@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Financeiro - EuPsico</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    
+    <link rel="stylesheet" href="assets/painel-style.css">
+</head>
+<body>
+    <div id="toast-container"></div>
+    <div id="app-view" class="main-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>Financeiro</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><button class="nav-button" data-view="dashboard">Dashboard</button></li>
+                <li><button class="nav-button" data-view="gestao_profissionais">Gestão de Profissionais</button></li>
+                <li><button class="nav-button" data-view="resumo_horas">Resumo de Horas</button></li>
+                <li><button class="nav-button" data-view="cobranca_mensal">Cobrança Mensal</button></li>
+                <li><button class="nav-button" data-view="controle_pagamentos">Controle de Pagamentos</button></li>
+                <li><button class="nav-button" data-view="devedores">Devedores</button></li>
+                <li><button class="nav-button" data-view="acordos">Acordos</button></li>
+                <li><button class="nav-button" data-view="lancamentos">Lançamentos</button></li>
+                <li><button class="nav-button" data-view="envio_comprovantes">Envio de Comprovantes</button></li>
+                <li><button class="nav-button" data-view="repasse">Repasse Profissionais</button></li>
+                <li><button class="nav-button" data-view="relatorios">Relatórios e Backup</button></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="index.html" class="back-button">Voltar para o Início</a> 
+                <button id="logout-button">Sair</button>
+            </div>
+        </nav>
+        <main class="content">
+            <div id="content-area">
+                <h2>Carregando...</h2>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    
+    <script type="module" src="assets/painel-script.js"></script>
+</body>
+</html>

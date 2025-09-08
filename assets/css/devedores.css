@@ -1,0 +1,51 @@
+/* assets/css/devedores.css */
+
+#devedores-content .table-wrapper {
+    overflow-x: auto;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#devedores-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+#devedores-content th, 
+#devedores-content td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+#devedores-content thead th {
+    background-color: #0d2d4e; /* Azul escuro do painel */
+    color: white;
+}
+
+#devedores-content tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+#devedores-content tfoot td {
+    font-weight: bold;
+    font-size: 1.1em;
+    background-color: #e9ecef;
+}
+
+.loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 50px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

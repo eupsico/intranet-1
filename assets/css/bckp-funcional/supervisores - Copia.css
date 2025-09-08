@@ -1,0 +1,125 @@
+/* assets/css/supervisores.css */
+
+#supervisor-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+.supervisor-card { 
+    background-color: #fff; 
+    border-radius: 10px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    display: flex; 
+    overflow: hidden; 
+    min-height: 550px; }
+.supervisor-card-left { 
+    background-color: #40b0df; 
+    color: white; 
+    padding: 25px; 
+    width: 250px; 
+    display: flex; 
+    flex-direction: column; 
+    flex-shrink: 0; }
+.supervisor-card-left h2 { 
+    font-size: clamp(1.4rem, 2vw, 2rem); /* Título principal */
+    margin: 0; 
+    text-transform: uppercase; }
+.supervisor-card-left h3 { 
+    background-color: #04396d; 
+    font-size: clamp(0.9rem, 1.5vw, 1.2rem); /* Subtítulo */ 
+    padding: 8px; 
+    text-align: center; 
+    border-radius: 5px; 
+    margin: 15px 0; 
+    letter-spacing: 1px;
+}
+.contact-info { 
+    list-style: none; 
+    padding: 0; 
+    margin: 10px 0; 
+    font-size: clamp(0.8rem, 1vw, 1rem); /* Informações de contato */
+}
+.contact-info li { margin-bottom: 10px; }
+.photo-container { 
+    /*margin-top: auto; */
+    height: 200%;
+    position: relative; 
+    text-align: center; 
+}
+.photo-container img.supervisor-photo {
+    position: absolute;
+    bottom: 0;
+    left: 36%;
+   /* transform: translateX(-50%);*/
+    width: clamp(150x, 20vw, 800px);
+    height: clamp(150px, 20vw, 800px);
+    border-radius: 8px; 
+    object-fit: cover;
+    image-rendering: -webkit-optimize-contrast; /* Adicione esta linha */
+}
+.photo-container img.overlay-logo { 
+    position: absolute; 
+    bottom: 5%; 
+    left: 5%; 
+    width: 50%; 
+    height: auto;
+    object-fit: contain;
+}
+.supervisor-card-right { padding: 25px; flex-grow: 1; position: relative; }
+.supervisor-card-right .profile-header { 
+    background-color: #04396d; 
+    color: white; 
+    padding: 10px 15px; 
+    border-radius: 5px; 
+    text-align: center; 
+    ffont-size: clamp(1rem, 2vw, 1.5rem); /* Cabeçalho do perfil */
+    font-weight: bold; 
+    letter-spacing: 2px; 
+    margin-bottom: 20px; 
+}
+.supervisor-card-right h4 { 
+    font-size: clamp(0.8rem, 1.2vw, 1rem); /* Subtítulo da seção */ 
+    text-transform: uppercase; 
+    color: #04396d; 
+    border-bottom: 2px solid #38a9e4; 
+    padding-bottom: 5px; 
+    margin-top: 20px; 
+    margin-bottom: 10px; }
+.supervisor-card-right ul { 
+    list-style: none; 
+    padding-left: 0; 
+    font-size: clamp(0.85rem, 1vw, 1rem); /* Lista de informações */ 
+    line-height: 1.6; }
+.supervisor-card-right ul li::before { content: '•'; color: #38a9e4; font-weight: bold; display: inline-block; width: 1em; margin-left: -1em; }
+.loading-spinner { border: 5px solid #f3f3f3; border-top: 5px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 50px auto; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* --- ESTILOS DO MODAL DE EDIÇÃO --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background-color: #fff; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background-color: #0d2d4e; color: white; border-radius: 8px 8px 0 0; }
+.modal-header h2 { margin: 0; font-size: 1.2em; }
+.close-modal-btn { background: none; border: none; color: white; font-size: 2em; cursor: pointer; }
+.modal-body { padding: 25px; overflow-y: auto; }
+.modal-body .form-group { margin-bottom: 15px; }
+.modal-body label { font-weight: bold; display: block; margin-bottom: 5px; }
+.modal-body input, .modal-body textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 15px 25px; background-color: #f1f1f1; border-top: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+.edit-supervisor-btn { position: absolute; top: 15px; right: 15px; background-color: #ffc107; color: black; border: none; padding: 6px 10px; font-size: 0.8em; font-weight: bold; border-radius: 4px; cursor: pointer; }
+
+/* --- ESTILO DE GRADE PARA A LISTA DE SUPERVISORES --- */
+
+#supervisor-grid-container {
+    display: grid;
+    /* Tenta criar colunas de no mínimo 400px, preenchendo o espaço. 
+       Em telas maiores, isso resulta em aprox. 3 colunas. 
+       Em telas menores, ele se ajusta automaticamente para 2 ou 1. */
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 25px; /* Espaçamento entre os cards */
+}
+
+/* Ajuste para garantir que os cards não encolham demais */
+.supervisor-card {
+    min-width: 380px;
+}

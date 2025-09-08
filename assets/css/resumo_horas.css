@@ -1,0 +1,52 @@
+/* assets/css/resumo_horas.css */
+
+.loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 50px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#resumo-horas-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+#resumo-horas-content th, 
+#resumo-horas-content td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+#resumo-horas-content thead th {
+    background-color: #0d2d4e; /* Azul escuro do painel */
+    color: white;
+}
+
+#resumo-horas-content tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+#resumo-horas-content strong {
+    font-weight: bold;
+    color: #0d2d4e;
+}

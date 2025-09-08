@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - EuPsico</title>
+    <link rel="stylesheet" href="../assets/css/painel-style.css">
+    <link rel="stylesheet" href="../assets/css/admin-painel-style.css">
+</head>
+<body>
+    <div id="toast-container"></div>
+    <div class="admin-panel-container">
+        
+        <div id="card-grid-area">
+            <div class="view-header-band">
+                <h1>Módulos Administrativos</h1>
+            </div>
+
+            <a href="../index.html" class="secondary-action-button">&larr; Voltar para a Intranet Principal</a>
+            
+            <p class="page-subtitle">Selecione um módulo abaixo para visualizar ou editar.</p>
+            
+            <div id="admin-modules-grid" class="modules-grid">
+                </div>
+        </div>
+
+        <div id="view-content-area">
+            </div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="../assets/js/administrativo-painel-script.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+/* assets/css/formulario-supervisao.css (Versão 1) */
+#supervisao-view .section-title {
+    background-color: #04396d;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    font-size: 1.5em;
+    text-align: center;
+    margin: 20px 0;
+}
+#supervisao-view .section-subtitle {
+    background-color: #1d70b7;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 5px;
+    font-size: 1.2em;
+    margin: 25px 0 15px 0;
+}
+#supervisao-view .form-group { margin-bottom: 15px; }
+#supervisao-view .form-row { display: flex; flex-wrap: wrap; gap: 20px; }
+#supervisao-view .form-row .form-group { flex: 1; min-width: 200px; }
+#supervisao-view label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+#supervisao-view input, #supervisao-view textarea, #supervisao-view select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 1em;
+}
+#supervisao-view .save-status-container {
+    text-align: right;
+    color: #28a745;
+    font-style: italic;
+    margin-bottom: 15px;
+    height: 20px;
+}
+#supervisao-view #lista-registros .registro-item {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+/* --- NOVOS ESTILOS PARA OS FILTROS --- */
+#filtros-container {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+#filtros-container .filtro-grupo {
+    flex: 1;
+    min-width: 250px;
+}
+
+#filtros-container label {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #555;
+}
+
+#filtros-container input,
+#filtros-container select {
+    width: 100%;
+    margin-top: 5px;
+}
+    flex-wrap: wrap;
+    gap: 15px;
+}
+#supervisao-view #lista-registros .registro-item:hover { background-color: #f0f0f0; }
+#supervisao-view #lista-registros .registro-item span { font-size: 0.9em; }

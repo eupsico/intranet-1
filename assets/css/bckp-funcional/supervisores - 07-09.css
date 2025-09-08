@@ -1,0 +1,87 @@
+/* --- ESTRUTURA PRINCIPAL E GRADE --- */
+#supervisor-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.supervisor-card { 
+    background-color: #04396d; /* O fundo do card base é o azul */
+    border-radius: 10px; 
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1); 
+    font-family: Arial, sans-serif;
+    transition: all 0.4s ease-in-out;
+    cursor: pointer;
+    position: relative; /* Essencial para o posicionamento da parte direita */
+    z-index: 1; /* Z-index padrão */
+}
+
+/* Quando o card está expandido, ele ganha destaque */
+.supervisor-card.is-expanded {
+    z-index: 10; /* Fica acima dos outros cards */
+}
+
+
+/* --- COLUNA DA ESQUERDA (AZUL) - VISÃO RESUMIDA --- */
+.supervisor-card-left { 
+    color: white; 
+    padding: 25px; 
+    width: 100%;
+    display: flex; 
+    flex-direction: column; 
+    text-align: center;
+    box-sizing: border-box;
+}
+.photo-container { width: 150px; height: 150px; margin: 0 auto 20px auto; border-radius: 50%; overflow: hidden; border: 4px solid #40b0df; }
+.supervisor-photo { width: 100%; height: 100%; object-fit: cover; }
+.supervisor-identity h2 { font-size: 1.6rem; margin: 0 0 10px 0; text-transform: uppercase; font-weight: bold; line-height: 1.2; }
+.title-box { background-color: #40b0df; color: white; padding: 8px 15px; border-radius: 5px; font-size: 1rem; font-weight: bold; display: inline-block; margin-bottom: 25px; letter-spacing: 1px; }
+.supervisor-contact { margin-top: auto; font-size: 0.9rem; line-height: 1.5; }
+.supervisor-contact p { margin: 5px 0; }
+.logo-container { margin-top: 25px; text-align: center; }
+.logo-container img { width: 100px; }
+
+
+/* --- COLUNA DA DIREITA (BRANCA) - EFEITO OVERLAY --- */
+.supervisor-card-right { 
+    background-color: #fff;
+    border-radius: 0 10px 10px 0;
+    box-shadow: 5px 0px 15px rgba(0,0,0,0.2);
+    padding: 25px; 
+    position: absolute; /* Posição absoluta em relação ao .supervisor-card */
+    top: 0;
+    left: 100%; /* Começa do lado de fora, à direita */
+    width: 420px; 
+    height: 100%;
+    box-sizing: border-box;
+    opacity: 0; /* Começa invisível */
+    transform: translateX(20px); /* Começa um pouco deslocado para a direita */
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    pointer-events: none; /* Não é clicável quando escondido */
+}
+
+/* Quando o card está expandido, a parte direita aparece */
+.supervisor-card.is-expanded .supervisor-card-right {
+    opacity: 1;
+    transform: translateX(0); /* Volta para a posição original */
+    pointer-events: all; /* Torna-se clicável */
+}
+
+/* --- BOTÃO DE EDITAR --- */
+.edit-supervisor-btn {
+    position: absolute; top: 15px; right: 15px; background-color: #f7d000; color: #04396d;
+    border: none; padding: 8px 12px; font-size: 0.85em; font-weight: bold; border-radius: 5px;
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background-color 0.3s;
+}
+.edit-supervisor-btn:hover { background-color: #e0be00; }
+
+/* --- CABEÇALHO E SEÇÕES DO PERFIL (dentro da parte direita) --- */
+.profile-header { background-color: #f0f0f0; text-align: right; padding: 5px 15px; margin-bottom: 25px; }
+.profile-header h3 { color: #04396d; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; margin: 0; display: inline-block; position: relative; padding-right: 25px; }
+.profile-header h3::after { content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; background-color: #f7d000; }
+.profile-section { margin-bottom: 20px; }
+.profile-section h4 { font-size: 1rem; text-transform: uppercase; color: #04396d; border-bottom: 2px solid #40b0df; padding-bottom: 8px; margin: 0 0 10px 0; font-weight: bold; }
+.profile-section ul { list-style: none; padding-left: 0; font-size: 0.95rem; line-height: 1.7; color: #333; }
+.profile-section ul li { padding-left: 20px; position: relative; }
+.profile-section ul li::before { content: '•'; color: #40b0df; font-weight: bold; position: absolute; left: 0; top: 0; }

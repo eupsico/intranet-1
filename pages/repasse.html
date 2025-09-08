@@ -1,0 +1,54 @@
+<div class="view-container">
+    <h1>Processamento de Pagamentos de Profissionais</h1>
+
+    <div id="status-message"></div>
+
+    <div id="repasse-loading" style="text-align: center; padding: 20px;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div id="repasse-main-content" style="display: none;">
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="filtro-profissional">Filtrar por Profissional</label>
+                <select id="filtro-profissional"></select>
+            </div>
+            <div class="filter-group">
+                <label for="filtro-mes">Filtrar por Mês de Referência</label>
+                <select id="filtro-mes"></select>
+            </div>
+            <div class="filter-group">
+                <label for="filtro-ano">Filtrar por Ano</label>
+                <select id="filtro-ano"></select>
+            </div>
+            <div class="filter-group">
+                <button id="export-pdf-btn" class="action-button btn-pdf">Exportar PDF</button>
+                <button id="export-csv-btn" class="action-button btn-excel">Exportar CSV</button>
+            </div>
+        </div>
+
+        <div id="summary-container" style="display: none;">
+            <div class="summary-cards">
+                <div class="card recebido"><h3>Total Recebido (Comprovantes)</h3><p id="total-recebido">R$ 0,00</p></div>
+                <div class="card devido"><h3 id="titulo-devido">Total Devido</h3><p id="total-devido">R$ 0,00</p></div>
+                <div class="card saldo"><h3 id="titulo-saldo">Saldo (Repasse)</h3><p id="saldo-profissional">R$ 0,00</p></div>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <h3>Comprovantes Enviados no Período</h3>
+            <table id="comprovantes-table">
+                <thead><tr><th>Profissional</th><th>Data Pag.</th><th>Mês Ref.</th><th>Valor Pago</th><th>Link</th><th>Ações</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="custom-confirm-repasse" class="modal-overlay">
+    <div class="modal-content">
+        <p id="confirm-repasse-message"></p>
+        <button id="confirm-repasse-yes">Sim, Excluir</button>
+        <button id="confirm-repasse-no">Cancelar</button>
+    </div>
+</div>

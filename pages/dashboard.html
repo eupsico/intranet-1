@@ -1,0 +1,39 @@
+<div class="view-container" id="dashboard-content">
+    <h1>Dashboard Financeiro</h1>
+    <div class="controls-section">
+        <div><label><strong>Período:</strong></label> <select id="dashboard-mes-selector"></select> <select id="dashboard-ano-selector"></select></div>
+        <div>
+            <button id="update-dashboard-btn" class="action-button btn-update">Atualizar Dashboard</button>
+            <button id="export-pdf-btn" class="action-button btn-pdf">Exportar PDF</button>
+        </div>
+    </div>
+    <div class="summary-cards">
+        <div class="card receitas"><h3>Receitas Pagas (Mês)</h3><p id="total-receitas">R$ 0,00</p></div>
+        <div class="card despesas"><h3>Despesas Pagas (Mês)</h3><p id="total-despesas">R$ 0,00</p></div>
+        <div class="card atrasadas"><h3>Despesas Atrasadas</h3><p id="total-atrasadas">R$ 0,00</p></div>
+        <div class="card saldo"><h3>Saldo do Mês</h3><p id="saldo-total">R$ 0,00</p></div>
+    </div>
+    <div class="table-section">
+        <h2>Contas a Pagar em Atraso</h2>
+        <table id="atraso-table"><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="table-section">
+        <h2>Contas a Pagar (Mês Selecionado)</h2>
+        <table id="contas-a-pagar-table"><thead><tr><th>Vencimento</th><th>Pagamento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Ação</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="table-section">
+        <h2>Entradas (Mês Selecionado)</h2>
+        <table id="entradas-table"><thead><tr><th>Vencimento</th><th>Pagamento</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="chart-section-wrapper">
+        <h2>Análise Gráfica</h2>
+        <div class="chart-section">
+            <div class="chart-section-title"><h3>Evolução Financeira (Últimos 12 Meses)</h3></div>
+            <canvas id="evolucaoMensalChart"></canvas>
+        </div>
+        <div class="charts-grid">
+            <div class="chart-section"><h3>Despesas por Categoria (Mês)</h3><canvas id="despesasCategoriaChart"></canvas></div>
+            <div class="chart-section"><h3>Receitas por Categoria (Mês)</h3><canvas id="receitasCategoriaChart"></canvas></div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,74 @@
+<div class="view-container">
+    <div class="form-section">
+        <h2>Adicionar Lançamento Financeiro</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="lancamento-desc">Descrição</label>
+                <input type="text" id="lancamento-desc" placeholder="Ex: Aluguel do escritório">
+            </div>
+            <div class="form-group">
+                <label for="lancamento-valor">Valor (R$)</label>
+                <input type="number" id="lancamento-valor" step="0.01" placeholder="150.50">
+            </div>
+            <div class="form-group">
+                <label for="lancamento-tipo">Tipo</label>
+                <select id="lancamento-tipo">
+                    <option value="despesa">Despesa</option>
+                    <option value="receita">Receita</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="lancamento-categoria">Categoria</label>
+                <input type="text" id="lancamento-categoria" placeholder="Ex: Contas Fixas">
+            </div>
+            <div class="form-group">
+                <label for="lancamento-vencimento">Data Vencimento</label>
+                <input type="date" id="lancamento-vencimento">
+            </div>
+            <div class="form-group">
+                <label for="lancamento-pagamento">Data Pagamento (Opcional)</label>
+                <input type="date" id="lancamento-pagamento">
+            </div>
+            <button id="save-lancamento-btn" class="action-button">Salvar Lançamento</button>
+        </div>
+    </div>
+    <div class="view-section">
+        <h2>Lançamentos Registrados</h2>
+        <div class="filters">
+            <strong>Filtros:</strong>
+            <select id="filtro-mes"></select>
+            <select id="filtro-ano"></select>
+            <div id="tipo-filter-buttons">
+                <button class="filter-btn active" data-tipo="todos">Todos</button>
+                <button class="filter-btn" data-tipo="receita">Receitas</button>
+                <button class="filter-btn" data-tipo="despesa">Despesas</button>
+            </div>
+        </div>
+        <table id="lancamentos-table">
+            <thead>
+                <tr>
+                    <th>Vencimento</th>
+                    <th>Pagamento</th>
+                    <th>Descrição</th>
+                    <th>Tipo</th>
+                    <th>Valor (R$)</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="6">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="confirmation-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Confirmar Exclusão</h3>
+        <p>Tem certeza que deseja remover este lançamento? Esta ação não pode ser desfeita.</p>
+        <div class="modal-buttons">
+            <button id="btn-cancel-delete" class="btn-cancel-delete">Cancelar</button>
+            <button id="btn-confirm-delete" class="btn-confirm-delete">Sim, Excluir</button>
+        </div>
+    </div>
+</div>

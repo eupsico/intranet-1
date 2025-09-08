@@ -1,0 +1,50 @@
+/* Estilo para o container principal do painel administrativo */
+.admin-panel-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.admin-panel-container h1 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+}
+
+/* Esconde a área de conteúdo da view por padrão */
+#view-content-area {
+    display: none;
+}
+
+/* Estilos dos cards (inspirado no style.css da página inicial) */
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.module-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #e0e0e0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.card-icon { flex-shrink: 0; color: #1a73e8; }
+.card-icon svg { width: 32px; height: 32px; }
+.card-content h3 { margin: 0 0 5px 0; font-size: 1.2em; }
+.card-content p { margin: 0; color: #666; font-size: 0.95em; line-height: 1.4; }

@@ -1,0 +1,30 @@
+/* assets/css/repasse.css */
+.filter-section { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; background-color: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+.filter-group { display: flex; flex-direction: column; }
+label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+select { width: 100%; min-width: 200px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+
+.action-button { border: none; padding: 10px 18px; font-size: 1em; font-weight: bold; border-radius: 5px; cursor: pointer; color: white; }
+.btn-pdf { background-color: #D93025; }
+.btn-excel { background-color: #1D6F42; }
+
+.btn-delete { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.btn-delete:hover { background-color: #c0392b; }
+
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
+.card { background-color: #f8f9fa; border-radius: 8px; padding: 20px; text-align: center; border-left: 5px solid; }
+.card h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #555; }
+.card p { margin: 0; font-size: 1.8em; font-weight: bold; }
+.card.recebido { border-color: #28a745; } .card.recebido p { color: #28a745; }
+.card.devido { border-color: #dc3545; } .card.devido p { color: #dc3545; }
+.card.saldo { border-color: #007bff; } .card.saldo p { color: #007bff; }
+
+.table-section { margin-top: 30px; }
+#comprovantes-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+#comprovantes-table th, #comprovantes-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
+#comprovantes-table thead th { background-color: #6c757d; color: white; }
+
+#status-message { padding: 15px; margin-bottom: 20px; border-radius: 5px; color: white; display: none; text-align: center; font-weight: bold; }
+#status-message.success { background-color: #28a745; }
+#status-message.error { background-color: #dc3545; }
+#status-message.info { background-color: #17a2b8; }
