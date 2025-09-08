@@ -1,0 +1,154 @@
+/* Estilos gerais para a página do dashboard */
+body {
+    background-color: #f4f7f9;
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+/* Cabeçalho de Boas-Vindas */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
+
+.welcome-message h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: #04396d;
+}
+
+.welcome-message p {
+    margin: 5px 0 0;
+    color: #555;
+}
+
+.user-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-profile-header img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-profile-header span {
+    font-weight: bold;
+}
+
+.logout-button-dashboard {
+    background-color: #e74c3c;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.logout-button-dashboard:hover {
+    background-color: #c0392b;
+}
+
+
+/* Estrutura das Seções */
+.dashboard-section {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
+
+.section-header {
+    margin-bottom: 25px;
+    border-bottom: 2px solid #04396d;
+    padding-bottom: 10px;
+}
+
+.section-header h2 {
+    margin: 0;
+    color: #04396d;
+    font-size: 1.5em;
+}
+
+/* Seção Institucional */
+.about-us-content p {
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.mission-vision-values {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.info-card {
+    background-color: #f4f7f9;
+    padding: 25px;
+    border-radius: 8px;
+    border-left: 5px solid #40b0df;
+}
+
+.info-card h3 {
+    margin-top: 0;
+    color: #04396d;
+}
+
+.info-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.info-card ul li {
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 20px;
+}
+
+.info-card ul li::before {
+    content: '✓';
+    color: #40b0df;
+    position: absolute;
+    left: 0;
+}
+
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* Proporção 16:9 */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    background: #000;
+    border-radius: 8px;
+}
+
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Seção de Avisos */
+#announcements-list {
+    color: #777;
+}
