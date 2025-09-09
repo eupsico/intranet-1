@@ -15,13 +15,36 @@
 
     const auth = firebase.auth();
 
+    // --- INÍCIO DA ALTERAÇÃO: Funcionalidade do Modal de Reavaliação ---
+    function inicializarModalPipefy() {
+        const modal = document.getElementById("pipefyModal");
+        const btn = document.getElementById("openPipefyModalBtn");
+        const span = document.getElementById("closePipefyModalBtn");
+
+        // Se os elementos do modal existirem na página, ativa os botões
+        if (modal && btn && span) {
+            btn.onclick = function() { modal.style.display = "block"; }
+            span.onclick = function() { modal.style.display = "none"; }
+            window.onclick = function(event) { 
+                if (event.target == modal) { 
+                    modal.style.display = "none"; 
+                } 
+            }
+        }
+    }
+    // --- FIM DA ALTERAÇÃO ---
+
     // Função que verifica o status de autenticação do usuário
     function checkAuth() {
         auth.onAuthStateChanged(user => {
             if (user) {
                 // Usuário está logado.
-                // A página pode carregar normalmente.
                 console.log("Usuário autenticado, acesso permitido ao Portal do Voluntário.");
+
+                // --- INÍCIO DA ALTERAÇÃO: Chama a função para ativar o modal ---
+                inicializarModalPipefy();
+                // --- FIM DA ALTERAÇÃO ---
+
             } else {
                 // Usuário não está logado, redireciona para a página de login.
                 console.log("Usuário não autenticado, redirecionando para o login.");
