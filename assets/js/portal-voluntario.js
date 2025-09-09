@@ -15,13 +15,12 @@
 
     const auth = firebase.auth();
 
-    // --- INÍCIO DA ALTERAÇÃO: Funcionalidade do Modal de Reavaliação ---
+    // --- LÓGICA DO MODAL (será chamada após o carregamento do conteúdo) ---
     function inicializarModalPipefy() {
         const modal = document.getElementById("pipefyModal");
         const btn = document.getElementById("openPipefyModalBtn");
         const span = document.getElementById("closePipefyModalBtn");
 
-        // Se os elementos do modal existirem na página, ativa os botões
         if (modal && btn && span) {
             btn.onclick = function() { modal.style.display = "block"; }
             span.onclick = function() { modal.style.display = "none"; }
@@ -32,21 +31,58 @@
             }
         }
     }
-    // --- FIM DA ALTERAÇÃO ---
+
+    // --- NOVA FUNÇÃO PARA CARREGAR O CONTEÚDO DAS SEÇÕES ---
+    async function loadSectionContent() {
+        const sectionsToLoad = [
+            { id: 'gestao', filePath: './portal-voluntario/gestao.html' },
+            { id: 'solicitacoes', filePath: './portal-voluntario/solicitacoes.html' }
+            // Adicione aqui futuras seções que se tornarão modulares
+        ];
+
+        const fetchPromises = sectionsToLoad.map(section =>
+            fetch(section.filePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Não foi possível carregar ${section.filePath}`);
+                    }
+                    return response.text();
+                })
+                .then(html => ({ id: section.id, html: html }))
+        );
+
+        try {
+            const results = await Promise.all(fetchPromises);
+
+            results.forEach(result => {
+                const container = document.querySelector(`#${result.id} .section-content`);
+                if (container) {
+                    container.innerHTML = result.html;
+                }
+            });
+
+            // SOMENTE DEPOIS de carregar o conteúdo, ativamos o script do modal.
+            inicializarModalPipefy();
+
+        } catch (error) {
+            console.error("Erro ao carregar conteúdo das seções:", error);
+            sectionsToLoad.forEach(section => {
+                const container = document.querySelector(`#${section.id} .section-content`);
+                if (container) {
+                    container.innerHTML = `<p style="color: red;">Não foi possível carregar o conteúdo desta seção.</p>`;
+                }
+            });
+        }
+    }
 
     // Função que verifica o status de autenticação do usuário
     function checkAuth() {
         auth.onAuthStateChanged(user => {
             if (user) {
-                // Usuário está logado.
-                console.log("Usuário autenticado, acesso permitido ao Portal do Voluntário.");
-
-                // --- INÍCIO DA ALTERAÇÃO: Chama a função para ativar o modal ---
-                inicializarModalPipefy();
-                // --- FIM DA ALTERAÇÃO ---
-
+                console.log("Usuário autenticado, carregando conteúdo do portal...");
+                // Chama a nova função para carregar o conteúdo dinâmico
+                loadSectionContent();
             } else {
-                // Usuário não está logado, redireciona para a página de login.
                 console.log("Usuário não autenticado, redirecionando para o login.");
                 window.location.href = '../index.html';
             }
