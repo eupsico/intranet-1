@@ -1,0 +1,132 @@
+/* Adiciona a rolagem suave ao clicar nos links do menu */
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 100px; /* Espaço para não esconder o título atrás do header fixo */
+}
+
+body {
+    background-color: #f4f7f9;
+    font-family: Arial, sans-serif;
+    color: #333;
+    margin: 0;
+    padding-top: 80px; /* Espaço para o cabeçalho fixo */
+}
+
+/* Cabeçalho Fixo */
+.portal-header {
+    background-color: #ffffff;
+    padding: 15px 0;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    position: fixed; /* Fixa o header no topo */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+.portal-header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.portal-header-content h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: #04396d;
+}
+
+/* Menu de Navegação */
+.portal-nav a {
+    color: #555;
+    text-decoration: none;
+    font-weight: bold;
+    margin-left: 25px;
+    transition: color 0.2s ease-in-out;
+}
+
+.portal-nav a:hover {
+    color: #04396d;
+}
+
+/* Conteúdo Principal */
+.portal-main {
+    padding: 30px 0;
+}
+
+.portal-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Estilo das Seções */
+.portal-section {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
+
+.section-header {
+    margin-bottom: 25px;
+    border-bottom: 2px solid #04396d;
+    padding-bottom: 10px;
+}
+
+.section-header h2 {
+    margin: 0;
+    color: #04396d;
+    font-size: 1.5em;
+}
+
+.section-content p {
+    line-height: 1.7;
+    font-size: 1.1em;
+}
+
+/* Botão Voltar */
+.back-button {
+    display: inline-block;
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    margin-top: 20px;
+}
+
+.back-button:hover {
+    background-color: #5a6268;
+}
+
+/* Responsividade para o menu */
+@media (max-width: 992px) {
+    .portal-header-content {
+        flex-direction: column;
+        gap: 15px;
+    }
+    body {
+        padding-top: 140px;
+        scroll-padding-top: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .portal-nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+    .portal-nav a {
+        margin-left: 10px;
+    }
+}
