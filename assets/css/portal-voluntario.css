@@ -107,19 +107,106 @@ body {
     background-color: #5a6268;
 }
 
-/* Responsividade para o menu */
+/* --- ESTILOS PARA OS PERFIS DOS GESTORES --- */
+.leader-profile {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+/* Alterna a direção da foto/texto para perfis alternados */
+.leader-profile.alt {
+    flex-direction: row-reverse;
+}
+
+.leader-photo {
+    flex-shrink: 0; /* Impede que a foto encolha */
+    width: 180px; /* Largura fixa para a foto */
+    text-align: center;
+}
+
+.leader-photo img {
+    width: 100%;
+    border-radius: 8px; /* Cantos arredondados */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border: 4px solid #ffffff; /* Borda branca na imagem */
+}
+
+.leader-details {
+    flex-grow: 1; /* Permite que os detalhes ocupem o espaço restante */
+}
+
+.leader-details h3 { /* Nome do gestor */
+    font-size: 1.8em;
+    color: #03204c;
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.leader-title { /* Cargo do gestor */
+    font-size: 1.1em;
+    color: #54595f;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.leader-details h4 { /* Título da equipe (RH, Eventos, etc.) */
+    font-size: 1.3em;
+    color: #1d70b7;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e0e7f1;
+    padding-bottom: 5px;
+}
+
+.leader-details ul {
+    padding-left: 20px;
+    margin: 10px 0 0 0;
+    line-height: 1.7;
+}
+
+.leader-details ul li {
+    margin-bottom: 8px;
+}
+
+/* --- ESTILO DO RODAPÉ (MOVIDO DA PÁGINA ANTIGA) --- */
+.main-footer {
+    background-color: #03204c;
+    color: #b1d4e0;
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
+    border-radius: 8px; /* Para harmonizar com os cards do portal */
+}
+
+.main-footer p {
+    margin: 5px 0;
+}
+
+.main-footer a {
+    color: #b1d4e0;
+    text-decoration: none;
+}
+
+.main-footer a:hover {
+    text-decoration: underline;
+}
+
+/* --- AJUSTES PARA TELAS MENORES (Responsividade) --- */
 @media (max-width: 992px) {
     .portal-header-content {
         flex-direction: column;
         gap: 15px;
     }
     body {
-        padding-top: 140px;
+        padding-top: 140px; /* Aumenta o padding para acomodar o header em duas linhas */
         scroll-padding-top: 150px;
     }
-}
-
-@media (max-width: 768px) {
     .portal-nav {
         display: flex;
         flex-wrap: wrap;
@@ -129,4 +216,25 @@ body {
     .portal-nav a {
         margin-left: 10px;
     }
+}
+
+@media (max-width: 768px) {
+    /* Altera o layout dos perfis de gestores para coluna em telas menores */
+    .leader-profile, .leader-profile.alt {
+        flex-direction: column;
+        align-items: center; /* Centraliza a foto e o texto */
+    }
+    .leader-details {
+        text-align: center; /* Centraliza o texto quando a foto está acima */
+    }
+    .leader-details ul {
+        text-align: left; /* Mantém as listas alinhadas à esquerda para melhor leitura */
+    }
+    /* Ajustes de fonte para telas menores */
+    .portal-header-content h1 { font-size: 1.5em; }
+    .section-header h2 { font-size: 1.3em; }
+    .leader-details h3 { font-size: 1.5em; }
+    .leader-title { font-size: 1em; }
+    .leader-details h4 { font-size: 1.1em; }
+    .section-content p { font-size: 0.95em; }
 }
