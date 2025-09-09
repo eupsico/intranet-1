@@ -15,7 +15,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Função para preencher o cabeçalho com os dados do usuário
     function populateHeader(user, userData) {
         const welcomeTitle = document.getElementById('welcome-title');
         const userPhoto = document.getElementById('user-photo-header');
@@ -23,7 +22,6 @@
         const logoutButton = document.querySelector('.logout-button-dashboard');
 
         if (welcomeTitle) {
-            // Usa o primeiro nome para a saudação
             const firstName = userData.nome ? userData.nome.split(' ')[0] : '';
             welcomeTitle.textContent = `Bem-vindo(a), ${firstName}!`;
         }
@@ -41,13 +39,11 @@
         }
     }
 
-    // Função para renderizar os cards de módulos (mesma lógica do app.js)
     function renderModuleCards(userData) {
         const navLinks = document.getElementById('nav-links');
         if (!navLinks) return;
-        navLinks.innerHTML = ''; // Limpa o spinner de carregamento
+        navLinks.innerHTML = '';
         
-        // Definição dos ícones e áreas (copiado do seu app.js para consistência)
         const icons = {
             intranet: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 12c0-5.25-4.25-9.5-9.5-9.5S2.5 6.75 2.5 12s4.25 9.5 9.5 9.5s9.5-4.25 9.5-9.5Z"/><path d="M12 2.5v19"/><path d="M2.5 12h19"/></svg>`,
             administrativo: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>`,
@@ -94,13 +90,20 @@
                 const card = document.createElement('a');
                 card.href = area.url;
                 card.className = 'module-card';
+                
+                // --- INÍCIO DA ALTERAÇÃO ---
+                // O Título (h3) agora é colocado dentro do card-icon para corresponder ao novo CSS.
                 card.innerHTML = `
-                    <div class="card-icon">${area.icon || icons.intranet}</div>
-                    <div class="card-content">
+                    <div class="card-icon">
+                        ${area.icon || icons.intranet}
                         <h3>${area.titulo}</h3>
+                    </div>
+                    <div class="card-content">
                         <p>${area.descricao}</p>
                     </div>
                 `;
+                // --- FIM DA ALTERAÇÃO ---
+
                 navLinks.appendChild(card);
             }
         }
@@ -113,11 +116,9 @@
                 const userDoc = await db.collection("usuarios").doc(user.uid).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
-                    // Preenche o cabeçalho e os módulos
                     populateHeader(user, userData);
                     renderModuleCards(userData);
                 } else {
-                    // Usuário autenticado mas sem registro no Firestore
                     auth.signOut();
                 }
             } catch (error) {
@@ -125,7 +126,6 @@
                 auth.signOut();
             }
         } else {
-            // Se não houver usuário, volta para a página de login
             window.location.href = '../index.html';
         }
     });
