@@ -1,8 +1,11 @@
 /* Estilos gerais para a página do dashboard */
 body {
     background-color: #f4f7f9;
-    font-family: Arial, sans-serif;
+    font-family: 'Poppins', sans-serif; /* Fonte mais moderna */
     color: #333;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
 }
 
 .dashboard-container {
@@ -26,7 +29,7 @@ body {
 .welcome-message h1 {
     margin: 0;
     font-size: 1.8em;
-    color: #04396d;
+    color: #04396d; /* Cor do título */
 }
 
 .welcome-message p {
@@ -45,10 +48,12 @@ body {
     height: 45px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid #04396d; /* Borda na foto */
 }
 
 .user-profile-header span {
     font-weight: bold;
+    color: #04396d; /* Cor do email */
 }
 
 .logout-button-dashboard {
@@ -87,12 +92,21 @@ body {
     font-size: 1.5em;
 }
 
-/* Seção Institucional */
-.about-us-content p {
+/* Seção Institucional - Texto Sobre Nós */
+.info-card-about {
+    background-color: #f4f7f9;
+    padding: 25px;
+    border-radius: 8px;
+    border-left: 5px solid #40b0df; /* Borda azul igual aos outros cards */
+    margin-bottom: 30px; /* Espaço após este card */
+}
+.info-card-about p {
     line-height: 1.6;
-    margin-bottom: 30px;
+    margin: 0;
 }
 
+
+/* Cards de Missão, Visão, Valores */
 .mission-vision-values {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -104,7 +118,7 @@ body {
     background-color: #f4f7f9;
     padding: 25px;
     border-radius: 8px;
-    border-left: 5px solid #40b0df;
+    border-left: 5px solid #40b0df; /* Borda azul */
 }
 
 .info-card h3 {
@@ -130,6 +144,7 @@ body {
     left: 0;
 }
 
+/* Vídeo Institucional */
 .video-container {
     position: relative;
     padding-bottom: 56.25%; /* Proporção 16:9 */
@@ -138,6 +153,7 @@ body {
     max-width: 100%;
     background: #000;
     border-radius: 8px;
+    margin-top: 30px; /* Espaço para separar do MVV */
 }
 
 .video-container iframe {
@@ -148,7 +164,143 @@ body {
     height: 100%;
 }
 
+/* Seção de Acesso Rápido - Cards de Módulos */
+#quick-access-modules .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+#quick-access-modules .module-card {
+    background-color: #ffffff; /* Fundo branco para o card */
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden; /* Para o efeito do título */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+#quick-access-modules .module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+}
+
+#quick-access-modules .module-card .card-icon {
+    background-color: #04396d; /* Fundo escuro para o título/ícone */
+    padding: 20px;
+    color: white;
+    text-align: center;
+    font-size: 1.2em; /* Tamanho do título */
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px; /* Altura mínima para o cabeçalho */
+}
+#quick-access-modules .module-card .card-icon h3 {
+    margin: 0;
+    color: white; /* Título em branco */
+}
+#quick-access-modules .module-card .card-icon svg {
+    fill: white;
+    stroke: white;
+    margin-right: 10px;
+    width: 28px; /* Tamanho maior para o ícone */
+    height: 28px;
+}
+
+
+#quick-access-modules .module-card .card-content {
+    padding: 20px;
+}
+
+#quick-access-modules .module-card .card-content h3 {
+    display: none; /* Esconde o h3 dentro do card-content para não duplicar */
+}
+
+#quick-access-modules .module-card .card-content p {
+    margin: 0;
+    color: #555;
+    font-size: 0.95em;
+}
+
 /* Seção de Avisos */
 #announcements-list {
     color: #777;
+}
+
+/* Rodapé Principal */
+.main-footer {
+    background-color: #04396d;
+    color: #ffffff;
+    text-align: center;
+    padding: 30px 20px;
+    margin-top: 50px;
+    border-radius: 8px; /* Borda arredondada */
+}
+
+.main-footer p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.main-footer a {
+    color: #40b0df; /* Cor azul para os links do rodapé */
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.main-footer a:hover {
+    color: #6accee;
+    text-decoration: underline;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+    }
+
+    .welcome-message {
+        margin-bottom: 15px;
+    }
+
+    .user-profile-header {
+        flex-direction: column;
+    }
+
+    .user-profile-header span {
+        margin-top: 5px;
+    }
+
+    .mission-vision-values {
+        grid-template-columns: 1fr;
+    }
+
+    #quick-access-modules .modules-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        margin: 10px auto;
+        padding: 0 10px;
+    }
+
+    .dashboard-section {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+        font-size: 1.3em;
+    }
+
+    .welcome-message h1 {
+        font-size: 1.5em;
+    }
 }
