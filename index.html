@@ -1,22 +1,103 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Intranet EuPsico</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="./assets/css/style.css">
-  
-  <link rel="icon" type="image/png" href="./favicon.png"> 
+    <meta charset="UTF-8">
+    <title>Intranet EuPsico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="./assets/css/painel-style.css">
+    <link rel="stylesheet" href="./assets/css/intranet-geral.css">
+    
+    <link rel="icon" type="image/png" href="./favicon.png"> 
 </head>
 <body>
-  <div id="app">
-  </div>
+    
+    <div id="app">
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+        <div id="login-view"></div>
 
-  <script type="module" src="./assets/js/app.js"></script>
+        <div id="dashboard-view" style="display: none;">
+            <div class="dashboard-container">
+        
+                <header class="dashboard-header">
+                    <div class="welcome-message">
+                        <h1 id="welcome-title">Bem-vindo(a) à Intranet EuPsico!</h1>
+                        <p>Aqui você encontra as principais ferramentas e informações do seu dia a dia.</p>
+                    </div>
+                    <div class="user-profile-header">
+                        <img id="user-photo-header" src="https://i.ibb.co/61Ym24n/default-user.png" alt="Foto do usuário">
+                        <span id="user-email-header">carregando...</span>
+                        <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
+                    </div>
+                </header>
+
+                <section id="institutional-section" class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Sobre Nós</h2>
+                    </div>
+                    <div class="info-card-about">
+                        <p>A EuPsico é um Grupo de Atendimento Multidisciplinar que nasceu em Abril de 2010, quando um grupo de psicólogos identificou que a população de Carapicuíba - SP tinha pouco acesso a saúde mental. O propósito da Eupsico é a promoção da saúde mental, pois acredita que todos devem ter acesso e conhecimento no que se refere a esse assunto tão importante. Para atingir esse objetivo, a Eupsico realiza palestras, rodas de conversas e grupos de discussão, quebrando paradigmas relacionados a saúde mental em Escolas, parques, empresas, entre outros lugares. Hoje temos uma equipe composta por diversos profissionais que ajudam a manter esse projeto vivo, na busca constante proporcionar um atendimento de qualidade a nossos clientes.</p>
+                    </div>
+                    <div class="mission-vision-values">
+                        <div class="info-card">
+                            <h3>Nossa Missão</h3>
+                            <p>Proporcionar a população em situação de vulnerabilidade social e econômica acesso a um serviço de qualidade, possibilitando cidadania e inclusão social.</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>Nossa Visão</h3>
+                            <p>Ser protagonista na prestação de serviço a população em vulnerabilidade, com grande representatividade no seguimento, sendo referência em saúde mental na região.</p>
+                        </div>
+                        <div class="info-card">
+                            <h3>Nossos Valores</h3>
+                            <ul>
+                                <li>Ética</li>
+                                <li>Qualidade</li>
+                                <li>Solidariedade</li>
+                                <li>Empreendedorismo</li>
+                                <li>Responsabilidade Social</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="video-container">
+                         <iframe width="560" height="315" src="https://www.youtube.com/embed/P4QnzlU0Z8w" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                </section>
+
+                <section id="quick-access-modules" class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Acesso Rápido</h2>
+                    </div>
+                    <div id="nav-links" class="modules-grid">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </section>
+
+                <section id="announcements-section" class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Últimos Avisos</h2>
+                    </div>
+                    <div id="announcements-list">
+                        <p>Em breve, os comunicados mais recentes aparecerão aqui.</p>
+                    </div>
+                </section>
+                
+                <footer class="main-footer">
+                    <p>Avenida Inocêncio Serafico, 141, Centro de Carapicuíba - SP, 06320-290</p>
+                    <p>
+                        <a href="https://wa.me/5511997949074" target="_blank" rel="noopener noreferrer">WhatsApp (11) 99794-9074</a> | 
+                        <a href="mailto:atendimento@eupsico.org.br">atendimento@eupsico.org.br</a>
+                    </p>
+                    <p>&copy; 2025 EuPsico. Todos os direitos reservados.</p>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script type="module" src="./assets/js/app.js"></script>
 </body>
 </html>
