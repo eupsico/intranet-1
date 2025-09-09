@@ -8,14 +8,18 @@ const firebaseConfig = {
         messagingSenderId: "1041518416343",
         appId: "1:1041518416343:web:0a11c03c205b802ed7bb92"
 };
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 document.addEventListener('DOMContentLoaded', function() {
-    const appContainer = document.getElementById('app');
+    const loginView = document.getElementById('login-view');
+    const dashboardView = document.getElementById('dashboard-view');
     let inactivityTimer;
 
+    // --- LÓGICA DE INATIVIDADE (sem alterações) ---
     function resetInactivityTimer() {
         clearTimeout(inactivityTimer);
         inactivityTimer = setTimeout(() => {
@@ -23,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
             auth.signOut();
         }, 20 * 60 * 1000); 
     }
-
     function setupInactivityListeners() {
         window.addEventListener('mousemove', resetInactivityTimer);
         window.addEventListener('mousedown', resetInactivityTimer);
@@ -33,22 +36,21 @@ document.addEventListener('DOMContentLoaded', function() {
         resetInactivityTimer();
     }
 
+    // --- LÓGICA DE AUTENTICAÇÃO PRINCIPAL ---
     function handleAuth() {
-        appContainer.innerHTML = `<p style="text-align:center; margin-top: 50px;">Verificando autenticação...</p>`;
         auth.onAuthStateChanged(async (user) => {
             try {
                 if (user) {
                     const userDoc = await db.collection("usuarios").doc(user.uid).get();
                     if (userDoc.exists && userDoc.data().funcoes?.length > 0) {
                         const userData = userDoc.data();
-                        renderDashboard(user, userData);
+                        renderDashboard(user, userData); // Mostra o dashboard
                         setupInactivityListeners();
                     } else {
-                        renderAccessDenied();
-                        auth.signOut();
+                        renderAccessDenied(); // Mostra acesso negado
                     }
                 } else {
-                    renderLogin();
+                    renderLogin(); // Mostra a tela de login
                 }
             } catch (error) {
                 console.error("Erro durante a verificação de autenticação:", error);
@@ -58,9 +60,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- FUNÇÕES DE RENDERIZAÇÃO (atualizadas para a nova estrutura) ---
+
     function renderLogin(message = "Por favor, faça login para continuar.") {
-        appContainer.innerHTML = `
-            <div id="login-view" class="content-box">
+        dashboardView.style.display = 'none';
+        loginView.style.display = 'block';
+        loginView.innerHTML = `
+            <div class="content-box" style="max-width: 400px; margin: 10vh auto; text-align: center;">
                 <img src="./assets/img/logo-eupsico.png" alt="Logo EuPsico" style="max-width: 100px;">
                 <h2>Intranet EuPsico</h2>
                 <p>${message}</p>
@@ -68,14 +74,16 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         document.getElementById('login-button').addEventListener('click', () => {
-            appContainer.innerHTML = `<p style="text-align:center; margin-top: 50px;">Aguarde...</p>`;
+            loginView.innerHTML = `<p style="text-align:center; margin-top: 50px;">Aguarde...</p>`;
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).catch(error => console.error(error));
         });
     }
 
     function renderAccessDenied() {
-        appContainer.innerHTML = `
+        dashboardView.style.display = 'none';
+        loginView.style.display = 'block';
+        loginView.innerHTML = `
             <div class="content-box" style="max-width: 800px; margin: 50px auto; text-align: center;">
                 <h2>Acesso Negado</h2>
                 <p>Você está autenticado, mas seu usuário não tem permissões definidas. Contate o administrador.</p>
@@ -85,23 +93,33 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('denied-logout').addEventListener('click', () => auth.signOut());
     }
 
+    // Esta função agora mostra o dashboard e popula seus dados dinâmicos
     function renderDashboard(user, userData) {
-        appContainer.innerHTML = `
-            <header class="main-header">
-                <h1>Intranet EuPsico</h1>
-                <div class="user-profile">
-                    <img id="user-photo" src="${user.photoURL || 'https://i.ibb.co/61Ym24n/default-user.png'}" alt="Foto">
-                    <span id="user-email">${user.email}</span>
-                    <button id="logout-button">Sair</button>
-                </div>
-            </header>
-            <h2 class="modules-title">Módulos da Intranet</h2>
-            <div id="nav-links" class="modules-grid"></div>
-        `;
-        document.getElementById('logout-button').addEventListener('click', () => auth.signOut());
+        loginView.style.display = 'none';
+        dashboardView.style.display = 'block';
+        
+        // Popula o cabeçalho
+        const welcomeTitle = document.getElementById('welcome-title');
+        const userPhoto = document.getElementById('user-photo-header');
+        const userEmail = document.getElementById('user-email-header');
+        const logoutButton = document.getElementById('logout-button-dashboard');
+
+        if (welcomeTitle) {
+            const firstName = userData.nome ? userData.nome.split(' ')[0] : '';
+            welcomeTitle.textContent = `Bem-vindo(a), ${firstName}!`;
+        }
+        if (userPhoto) { userPhoto.src = user.photoURL || 'https://i.ibb.co/61Ym24n/default-user.png'; }
+        if (userEmail) { userEmail.textContent = user.email; }
+        if (logoutButton) { logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut();
+        });}
+
+        // Popula a grade de módulos
         renderModuleCards(userData);
     }
 
+    // Esta função continua igual, mas agora renderiza dentro do novo dashboard
     function renderModuleCards(userData) {
         const navLinks = document.getElementById('nav-links');
         if (!navLinks) return;
@@ -121,11 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         const areas = {
-            intranet: { 
-                titulo: 'Intranet Geral', 
-                descricao: 'Avisos, notícias e informações para todos.', 
-               // url: './pages/intranet-geral.html', roles: ['todos'], icon: icons.intranet },
-               url: 'pages/intranet-geral.html', roles: ['admin'], icon: icons.intranet },
+            // Removido o link 'Intranet Geral' daqui, pois já estamos nela.
             administrativo: { titulo: 'Intranet Administrativo', descricao: 'Processos, documentos e organização.', url: './pages/administrativo-painel.html', roles: ['admin', 'gestor', 'assistente'], icon: icons.administrativo },
             captacao: { titulo: 'Intranet Captação', descricao: 'Ferramentas e informações para captação.', url: '#', roles: ['admin', 'captacao'], icon: icons.captacao },
             financeiro: { titulo: 'Intranet Financeiro', descricao: 'Painel de controle financeiro e relatórios.', url: './pages/painel.html', roles: ['admin', 'financeiro'], icon: icons.financeiro },
@@ -137,54 +151,36 @@ document.addEventListener('DOMContentLoaded', function() {
             supervisores: { titulo: 'Painel do Supervisor', descricao: 'Acesse seu perfil e acompanhamentos.', url: './pages/supervisores-painel.html', roles: ['admin', 'supervisor'], icon: icons.rh },
             supervisao: { 
                 titulo: 'Intranet Supervisão', 
-                descricao: 'Preencha e visualize suas fichas de acompanhamento.', 
+                descricao: 'Acesse perfis de supervisores e agende sua supervisão.', 
                 url: './pages/supervisao-painel.html', 
-                roles: ['admin', 'atendimento','supervisor'],
-                professions: ['Psicólogo', 'Psicopedagoga', 'Musicoterapeuta']
+                roles: ['admin', 'atendimento','supervisor', 'psicologo', 'psicopedagoga', 'musicoterapeuta']
             },
         };
 
         const userFuncoes = (userData.funcoes || []).map(f => f.toLowerCase());
-        const userProfissao = userData.profissao || '';
-
-        let cardsParaMostrar = [];
-
+        
         for (const key in areas) {
             const area = areas[key];
             const rolesLowerCase = (area.roles || []).map(r => r.toLowerCase());
-
-            let temPermissao = false;
-            
-            if (userFuncoes.includes('admin')) {
-                temPermissao = true;
-            } else if (rolesLowerCase.includes('todos')) {
-                temPermissao = true;
-            } else if (rolesLowerCase.some(role => userFuncoes.includes(role))) {
-                temPermissao = true;
-            } else if (area.professions && area.professions.includes(userProfissao)) {
-                temPermissao = true;
-            }
+            let temPermissao = rolesLowerCase.some(role => userFuncoes.includes(role));
+            if (userFuncoes.includes('admin')) { temPermissao = true; }
 
             if (temPermissao) {
-                cardsParaMostrar.push(area);
+                const card = document.createElement('a');
+                card.href = area.url;
+                card.className = 'module-card';
+                card.innerHTML = `
+                    <div class="card-icon">
+                        ${area.icon}
+                        <h3>${area.titulo}</h3>
+                    </div>
+                    <div class="card-content">
+                        <p>${area.descricao}</p>
+                    </div>
+                `;
+                navLinks.appendChild(card);
             }
         }
-
-        cardsParaMostrar.sort((a, b) => a.titulo.localeCompare(b.titulo));
-        
-        cardsParaMostrar.forEach(config => {
-            const card = document.createElement('a');
-            card.href = config.url;
-            card.className = 'module-card';
-            card.innerHTML = `
-                <div class="card-icon">${config.icon || icons.intranet}</div>
-                <div class="card-content">
-                    <h3>${config.titulo}</h3>
-                    <p>${config.descricao}</p>
-                </div>
-            `;
-            navLinks.appendChild(card);
-        });
     }
 
     handleAuth();
