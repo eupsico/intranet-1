@@ -464,3 +464,30 @@ ul.action-list a:hover {
     color: var(--cor-primaria, #04396d);
     text-decoration: none;
 }
+/* --- Estilos específicos para o conteúdo do widget de stats --- */
+.stats-container {
+    display: flex;
+    justify-content: space-around; /* Distribui os itens igualmente */
+    align-items: center;
+    text-align: center;
+    padding: 16px 0; /* Espaçamento vertical */
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column; /* Coloca o número em cima do texto */
+    align-items: center;
+    gap: 4px; /* Pequeno espaço entre o número e o texto */
+}
+
+.stat-value {
+    font-size: 2.2em; /* Tamanho grande para o número */
+    font-weight: 700; /* Bem destacado */
+    color: var(--cor-primaria, #04396d);
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    color: var(--cor-texto-suave, #666);
+}
