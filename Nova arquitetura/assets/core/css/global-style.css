@@ -1,0 +1,295 @@
+/* ==========================================================================
+   GLOBAL STYLE - EUPSICO INTRANET
+   Arquivo base unificado para estilos globais.
+   ========================================================================== */
+
+/* --- Variáveis de Cor e Fonte --- */
+:root {
+  --cor-primaria: #04396d;
+  --cor-secundaria: #40b0df;
+  --cor-fundo: #f4f7f9;
+  --cor-surface: #ffffff; /* Cor de fundo para cards e seções */
+  --cor-texto: #333;
+  --cor-texto-suave: #666;
+  --cor-perigo: #e74c3c;
+  --cor-perigo-hover: #c0392b;
+  --fonte-principal: 'Poppins', sans-serif;
+}
+
+/* --- Reset Básico e Estilos Globais --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--fonte-principal);
+  background-color: var(--cor-fundo);
+  color: var(--cor-texto);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--cor-secundaria);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ==========================================================================
+   Layout Principal
+   ========================================================================== */
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+/* --- Cabeçalho Padrão --- */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--cor-primaria);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 30px;
+}
+
+.main-header .welcome-message h1 {
+  margin: 0;
+  font-size: 1.8em;
+  color: white;
+}
+
+.main-header .welcome-message p {
+  margin: 5px 0 0;
+  color: #e0e0e0;
+}
+
+.main-header .user-profile {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.main-header .user-profile img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--cor-secundaria);
+}
+
+.main-header .user-profile span {
+  font-weight: bold;
+  color: white;
+}
+
+/* --- Rodapé Padrão --- */
+.main-footer {
+  background-color: var(--cor-primaria);
+  color: white;
+  text-align: center;
+  padding: 30px 20px;
+  margin-top: 50px;
+  border-radius: 8px;
+}
+.main-footer a {
+  color: var(--cor-secundaria);
+}
+.main-footer a:hover {
+  color: #6accee;
+}
+
+/* ==========================================================================
+   Componentes Padrão
+   ========================================================================== */
+
+/* --- Botões --- */
+.btn {
+  padding: 8px 15px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 0.9em;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+.btn-danger {
+  background-color: var(--cor-perigo);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: var(--cor-perigo-hover);
+}
+
+/* --- Seções de Conteúdo --- */
+.content-section {
+  background-color: var(--cor-surface);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 30px;
+}
+
+.section-header {
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--cor-primaria);
+  padding-bottom: 10px;
+}
+
+.section-header h2 {
+  margin: 0;
+  color: var(--cor-primaria);
+  font-size: 1.5em;
+}
+
+/* --- Cards de Módulos (Acesso Rápido) --- */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.module-card {
+  background-color: var(--cor-surface);
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: var(--cor-texto);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.module-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+  text-decoration: none;
+}
+
+.module-card .card-header {
+  background-color: var(--cor-primaria);
+  padding: 20px;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
+.module-card .card-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 1.1em;
+}
+
+.module-card .card-content {
+  padding: 20px;
+  font-size: 0.95em;
+  color: var(--cor-texto-suave);
+}
+
+/* ==========================================================================
+   Estilos Específicos de Página (Ex: Login, Dashboard)
+   ========================================================================== */
+
+/* --- Estilos para a Tela de Login --- */
+#login-view {
+  background-color: var(--cor-surface);
+  padding: 50px 40px;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  text-align: center;
+  max-width: 400px;
+  margin: 60px auto;
+}
+
+#login-view h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.8em;
+}
+
+#login-view p {
+  color: var(--cor-texto-suave);
+  margin-bottom: 30px;
+}
+
+#login-button {
+  background-color: var(--cor-secundaria);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 4px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#login-button:hover {
+  background-color: #3aa1cf;
+}
+
+
+/* --- Estilos para Seção Institucional (Dashboard) --- */
+.info-card {
+  background-color: var(--cor-fundo);
+  padding: 25px;
+  border-radius: 8px;
+  border-left: 5px solid var(--cor-secundaria);
+  margin-bottom: 20px;
+}
+
+.info-card h3 {
+  margin-top: 0;
+  color: var(--cor-primaria);
+}
+
+.mission-vision-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+
+/* ==========================================================================
+   Responsividade
+   ========================================================================== */
+@media (max-width: 768px) {
+  .main-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+    gap: 15px;
+  }
+  .modules-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    margin: 10px auto;
+    padding: 0 10px;
+  }
+  .content-section {
+    padding: 20px;
+  }
+}
