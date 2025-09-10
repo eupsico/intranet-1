@@ -24,6 +24,7 @@
 }
 
 body {
+   visibility: hidden; /* Esconde o corpo da página por padrão */
   font-family: var(--fonte-principal);
   background-color: var(--cor-fundo);
   color: var(--cor-texto);
