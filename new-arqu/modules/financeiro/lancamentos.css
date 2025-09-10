@@ -1,0 +1,28 @@
+/* assets/css/lancamentos.css */
+.form-section, .view-section { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; background-color: #fff; }
+.form-section h2, .view-section h2 { margin-top: 0; color: #004a7f; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; }
+label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+.action-button { border: none; padding: 10px 20px; height: 40px; font-size: 1em; font-weight: bold; border-radius: 5px; cursor: pointer; color: white; background-color: #007bff; }
+.action-button:disabled { background-color: #6c757d; }
+
+.filters { display: flex; gap: 10px; align-items: center; margin: 15px 0; flex-wrap: wrap; }
+.filter-btn { padding: 8px 15px; border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer; border-radius: 5px; }
+.filter-btn.active { background-color: #007bff; color: white; border-color: #007bff; }
+
+#lancamentos-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+#lancamentos-table th, #lancamentos-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+#lancamentos-table thead th { background-color: #6c757d; color: white; }
+.text-receita { color: #28a745; font-weight: bold; }
+.text-despesa { color: #dc3545; font-weight: bold; }
+.delete-btn { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 1.4em; font-weight: bold; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { background-color: #fff; padding: 25px; border-radius: 8px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 400px; }
+.modal-content h3 { margin-top: 0; }
+.modal-buttons { margin-top: 20px; }
+.modal-buttons button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 0 10px; }
+.btn-confirm-delete { background-color: #dc3545; color: white; }
+.btn-cancel-delete { background-color: #6c757d; color: white; }

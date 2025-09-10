@@ -1,0 +1,68 @@
+/* assets/css/controle_pagamentos.css */
+
+.period-selector {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 5px;
+    flex-wrap: wrap;
+}
+
+.period-selector label {
+    font-weight: bold;
+}
+
+#pagamentos-content .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#pagamentos-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+#pagamentos-content th, 
+#pagamentos-content td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+#pagamentos-content thead th {
+    background-color: #0d2d4e;
+    color: white;
+}
+
+#pagamentos-content input[type="date"] {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-width: 140px;
+}
+
+#pagamentos-content .save-row-btn {
+    background-color: #17a2b8; /* Azul claro (info) */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#pagamentos-content .save-row-btn:hover {
+    background-color: #138496;
+}
+
+#pagamentos-content .save-row-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}

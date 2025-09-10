@@ -1,0 +1,86 @@
+/* assets/css/cobranca_mensal.css */
+
+.header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.period-selector {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 5px;
+    flex-wrap: wrap;
+}
+
+.period-selector label {
+    font-weight: bold;
+}
+
+.period-selector select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+#cobranca-mensal-content .table-wrapper {
+    overflow-x: auto;
+}
+
+#cobranca-mensal-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+    margin-top: 10px;
+}
+
+#cobranca-mensal-content th, 
+#cobranca-mensal-content td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+#cobranca-mensal-content thead th {
+    background-color: #0d2d4e;
+    color: white;
+}
+
+#cobranca-mensal-content input, 
+#cobranca-mensal-content select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#cobranca-mensal-content .action-button {
+    border: none;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    margin: 2px;
+}
+
+.save-btn { background-color: #28a745; }
+.edit-btn { background-color: #007bff; }
+.cancel-btn { background-color: #6c757d; }
+
+.whatsapp-btn {
+    background-color: #25D366;
+    text-decoration: none;
+    color: white !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
