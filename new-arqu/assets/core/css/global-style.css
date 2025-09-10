@@ -491,3 +491,107 @@ ul.action-list a:hover {
     font-size: 0.9em;
     color: var(--cor-texto-suave, #666);
 }
+/* ==========================================================================
+   ESTILOS DO LAYOUT DAS PÁGINAS INTERNAS (com Sidebar)
+   ========================================================================== */
+.page-wrapper {
+  display: flex;
+  /* Garante que o conteúdo ocupe pelo menos a altura da tela menos o header */
+  min-height: calc(100vh - 64px); 
+}
+
+/* --- Sidebar (Menu Lateral) --- */
+.sidebar {
+  width: 240px;
+  background-color: var(--cor-primaria, #04396d);
+  flex-shrink: 0; /* Impede que o menu encolha */
+  padding-top: 24px;
+}
+
+.main-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.main-nav a {
+  display: block;
+  color: #e0e0e0;
+  padding: 14px 24px;
+  text-decoration: none;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.main-nav a:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+/* Estilo para o item de menu ativo */
+.main-nav li.active a {
+  background-color: var(--cor-secundaria, #40b0df);
+  color: #ffffff;
+  border-left: 3px solid #ffffff;
+}
+
+/* --- Área de Conteúdo Principal --- */
+.main-content {
+  flex-grow: 1; /* Faz o conteúdo ocupar todo o espaço restante */
+  padding: 32px;
+  background-color: var(--cor-fundo, #f4f7f9);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 1.8em;
+  color: var(--cor-texto, #333);
+}
+
+/* Botão secundário para "Voltar" */
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    text-decoration: none;
+}
+
+.page-content {
+  background-color: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* --- Responsividade para o Layout Interno --- */
+@media (max-width: 992px) {
+    .sidebar {
+        display: none; /* Em telas menores, o menu lateral some */
+    }
+
+    .main-content {
+        padding: 24px; /* Reduz o padding em telas menores */
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+}
