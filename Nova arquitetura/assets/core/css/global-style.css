@@ -293,3 +293,89 @@ img {
     padding: 20px;
   }
 }
+/* ==========================================================================
+   ESTILOS DO DASHBOARD HÍBRIDO (Estrutura Principal)
+   ========================================================================== */
+
+/* --- Cabeçalho Minimalista --- */
+.main-header-hybrid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    height: 64px; /* Altura fixa para o cabeçalho */
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* Espaçamento entre os itens */
+}
+
+.header-logo {
+    height: 32px; /* Ajuste a altura do logo conforme necessário */
+    width: auto;
+}
+
+.header-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: transparent;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #555;
+    font-family: var(--fonte-principal);
+    font-size: 14px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.header-button:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+}
+
+.header-button svg {
+    stroke: #555;
+}
+
+.user-profile-menu img {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    object-fit: cover;
+}
+
+/* --- Área de Conteúdo Principal --- */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+.page-title h1 {
+    font-size: 2em;
+    font-weight: 600;
+    color: var(--cor-primaria, #04396d); /* Usa a variável de cor se existir */
+    margin: 0;
+}
+
+.page-title p {
+    font-size: 1.1em;
+    color: var(--cor-texto-suave, #666);
+    margin-top: 4px;
+}
+
+/* --- Grid dos Widgets --- */
+.widget-grid {
+    margin-top: 32px;
+    display: grid;
+    /* Define que o grid terá colunas de no mínimo 300px, se ajustando ao espaço */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px; /* Espaçamento entre os widgets */
+}
