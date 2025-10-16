@@ -10,61 +10,113 @@ import {
   functions,
 } from "../../../../assets/js/firebase-init.js";
 
-// Lógica do Modal de Mensagens
+// --- Lógica do Modal de Mensagens ---
+
+// Guarda os dados temporariamente enquanto o modal está aberto
+let dadosParaMensagem = {};
+
 export function abrirModalMensagens(
   paciente,
   atendimento,
   { systemConfigs, userData }
 ) {
   const modal = document.getElementById("enviar-mensagem-modal");
-  const nomePacienteSpan = document.getElementById("mensagem-paciente-nome");
+  const nomePacienteSpan = document.getElementById(
+    "mensagem-paciente-nome-selecao"
+  );
   const listaModelos = document.getElementById("lista-modelos-mensagem");
+  const selecaoView = document.getElementById("mensagem-selecao-view");
+  const formularioView = document.getElementById("mensagem-formulario-view");
+
+  // Salva os dados para serem usados pelas outras funções do modal
+  dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
 
   nomePacienteSpan.textContent = paciente.nomeCompleto;
   listaModelos.innerHTML = ""; // Limpa a lista anterior
+
+  // Garante que a view de seleção esteja visível e o formulário oculto
+  selecaoView.style.display = "block";
+  formularioView.style.display = "none";
 
   const templates = systemConfigs?.textos || {};
   if (Object.keys(templates).length === 0) {
     listaModelos.innerHTML = "<p>Nenhum modelo de mensagem configurado.</p>";
   } else {
     for (const key in templates) {
-      // Transforma camelCase para Título (ex: boasVindasPlantao -> Boas Vindas Plantao)
       const title = key
         .replace(/([A-Z])/g, " $1")
         .replace(/^./, (str) => str.toUpperCase());
       const btn = document.createElement("button");
       btn.className = "action-button secondary-button";
       btn.textContent = title;
-      btn.onclick = () => {
-        const telefone = paciente.telefoneCelular?.replace(/\D/g, "");
-        if (telefone) {
-          let msg = templates[key]
-            .replace(/{p}/g, paciente.nomeCompleto)
-            .replace(/{nomePaciente}/g, paciente.nomeCompleto)
-            .replace(/{t}/g, userData.nome)
-            .replace(/{saudacao}/g, "Olá");
-
-          if (key === "envioContrato" && atendimento) {
-            const contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${atendimento.atendimentoId}`;
-            msg = msg.replace(/{contractUrl}/g, contractUrl);
-          }
-
-          window.open(
-            `https://wa.me/55${telefone}?text=${encodeURIComponent(msg)}`,
-            "_blank"
-          );
-          modal.style.display = "none";
-        } else {
-          alert("Telefone não cadastrado para este paciente.");
-        }
-      };
+      // Altera o onclick para chamar a função que preenche o formulário
+      btn.onclick = () => preencherFormularioMensagem(key, title);
       listaModelos.appendChild(btn);
     }
   }
   modal.style.display = "flex";
+
+  // Adiciona o listener para o botão de voltar
+  document.getElementById("btn-voltar-selecao").onclick = () => {
+    selecaoView.style.display = "block";
+    formularioView.style.display = "none";
+  };
 }
 
-// Lógica do Modal de Solicitar Novas Sessões
+function preencherFormularioMensagem(templateKey, templateTitle) {
+  const { paciente, atendimento, systemConfigs, userData } = dadosParaMensagem;
+
+  const selecaoView = document.getElementById("mensagem-selecao-view");
+  const formularioView = document.getElementById("mensagem-formulario-view");
+  const formTitle = document.getElementById("mensagem-form-title");
+  const previewTextarea = document.getElementById("output-mensagem-preview");
+
+  formTitle.textContent = templateTitle;
+
+  let msgTemplate = systemConfigs.textos[templateKey] || "";
+
+  // Substituições padrão
+  msgTemplate = msgTemplate
+    .replace(/{p}/g, paciente.nomeCompleto)
+    .replace(/{nomePaciente}/g, paciente.nomeCompleto)
+    .replace(/{t}/g, userData.nome)
+    .replace(/{saudacao}/g, "Olá");
+
+  // Substituição específica para o contrato
+  if (templateKey === "envioContrato" && atendimento) {
+    const contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${atendimento.atendimentoId}`;
+    msgTemplate = msgTemplate.replace(/{contractUrl}/g, contractUrl);
+  }
+
+  previewTextarea.value = msgTemplate;
+
+  // Alterna as views
+  selecaoView.style.display = "none";
+  formularioView.style.display = "block";
+}
+
+// **NOVA FUNÇÃO:** Lida com o envio da mensagem
+export function handleMensagemSubmit() {
+  const { paciente } = dadosParaMensagem;
+  const telefone = paciente.telefoneCelular?.replace(/\D/g, "");
+  const mensagem = document.getElementById("output-mensagem-preview").value;
+  const modal = document.getElementById("enviar-mensagem-modal");
+
+  if (telefone && mensagem) {
+    window.open(
+      `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`,
+      "_blank"
+    );
+    modal.style.display = "none";
+  } else {
+    alert(
+      "Não foi possível gerar o link. Verifique o telefone do paciente e a mensagem."
+    );
+  }
+}
+
+// --- Lógica do Modal de Solicitar Novas Sessões ---
+
 export function abrirModalSolicitarSessoes(
   paciente,
   atendimento,
@@ -117,13 +169,27 @@ export function abrirModalSolicitarSessoes(
     validarHorarioNaGrade(dadosDaGrade, salasPresenciais);
   };
   tipoAtendimentoSelect.dispatchEvent(new Event("change"));
+}
 
-  document.getElementById("solicitar-sessoes-confirmar-btn").onclick = () => {
-    alert(
-      "Sua solicitação de novo horário foi enviada ao administrativo para cadastro na grade."
-    );
-    modal.style.display = "none";
-  };
+// **NOVA FUNÇÃO:** Lida com o submit da solicitação de novas sessões
+export function handleSolicitarSessoesSubmit(evento) {
+  evento.preventDefault();
+  const form = document.getElementById("solicitar-sessoes-form");
+  const modal = document.getElementById("solicitar-sessoes-modal");
+
+  // Validação do formulário
+  if (form.checkValidity() === false) {
+    alert("Por favor, preencha todos os campos obrigatórios.");
+    // Adiciona uma classe para destacar campos inválidos, se desejar.
+    form.classList.add("was-validated");
+    return;
+  }
+
+  // Se o formulário for válido
+  alert(
+    "Sua solicitação de novo horário foi enviada ao administrativo para cadastro na grade."
+  );
+  modal.style.display = "none";
 }
 
 function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
@@ -165,7 +231,8 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
   }
 }
 
-// Lógica dos Modais Originais
+// --- Lógica dos Modais Originais (sem alterações) ---
+
 export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
   const modal = document.getElementById("encerramento-modal");
   const form = document.getElementById("encerramento-form");
@@ -227,7 +294,6 @@ export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
           "disponibilidade-section"
         ).innerHTML;
         novaDisponibilidadeContainer.innerHTML = disponibilidadeHtml;
-        // addDisponibilidadeListeners(novaDisponibilidadeContainer); // Simplificado para evitar dependência cruzada complexa
       } catch (error) {
         console.error("Erro ao carregar HTML da disponibilidade:", error);
         novaDisponibilidadeContainer.innerHTML =
@@ -400,7 +466,8 @@ export async function abrirModalDesfechoPb(
   }
 }
 
-// Funções de Submit dos Formulários
+// --- Funções de Submit dos Formulários (sem alterações) ---
+
 export async function handleEncerramentoSubmit(evento, user, userData) {
   evento.preventDefault();
   const form = evento.target;
