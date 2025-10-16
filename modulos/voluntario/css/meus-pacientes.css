@@ -177,7 +177,7 @@
 }
 .modal-body {
     overflow-y: auto;
-    padding-right: 15px; /* Para a barra de rolagem */
+    padding-right: 15px;
 }
 .modal-header {
     display: flex;
