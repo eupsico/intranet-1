@@ -10,17 +10,32 @@ import {
   abrirModalMensagens,
   handleEncerramentoSubmit,
   handleHorariosPbSubmit,
-  handleSolicitarSessoesSubmit, // Adicionada a importação da nova função
-  handleMensagemSubmit, // Adicionada a importação da nova função
+  handleSolicitarSessoesSubmit,
+  handleMensagemSubmit,
 } from "./modals.js";
 
 export function adicionarEventListenersGerais(user, userData, loadedData) {
   const container = document.getElementById("pacientes-accordion-container");
   if (!container) return;
 
-  // Listener principal para o container de pacientes (usando delegação de eventos)
+  // --- CORREÇÃO: Listener global para fechar todos os modais ---
+  // Este listener garante que qualquer botão com a classe 'close-modal-btn' funcione.
+  document.body.addEventListener("click", function (e) {
+    if (
+      e.target.classList.contains("close-modal-btn") ||
+      e.target.closest(".close-modal-btn")
+    ) {
+      const modalAberto = document.querySelector(
+        '.modal-overlay[style*="flex"], .modal[style*="block"]'
+      );
+      if (modalAberto) {
+        modalAberto.style.display = "none";
+      }
+    }
+  });
+
+  // Listener principal para o container de pacientes
   container.addEventListener("click", async (e) => {
-    // Lógica para abrir/fechar o accordion
     const header = e.target.closest(".accordion-header");
     if (header) {
       const content = header.nextElementSibling;
@@ -36,7 +51,6 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       return;
     }
 
-    // Lógica para os botões de ação dentro do accordion
     const botao = e.target.closest(".action-button");
     if (!botao) return;
 
@@ -66,10 +80,10 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
         abrirModalHorariosPb(pacienteId, atendimentoId, dependencies);
         break;
       case "desfecho_pb":
-        abrirModalDesfechoPb(pacienteId, atendimentoId, dadosDoPaciente);
+        // Passando 'meuAtendimento' diretamente para o modal de desfecho
+        abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento);
         break;
       case "pdf_contrato":
-        // Esta é a chamada correta para o botão do contrato
         gerarPdfContrato(dadosDoPaciente, meuAtendimento);
         break;
       case "solicitar_sessoes":
@@ -88,28 +102,25 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
   // Listeners para os formulários dos modais
   document
     .getElementById("encerramento-form")
-    .addEventListener("submit", (e) =>
+    ?.addEventListener("submit", (e) =>
       handleEncerramentoSubmit(e, user, userData)
     );
 
   document
     .getElementById("horarios-pb-form")
-    .addEventListener("submit", (e) =>
+    ?.addEventListener("submit", (e) =>
       handleHorariosPbSubmit(e, user, userData)
     );
 
-  // **NOVO LISTENER:** Botão de confirmar solicitação de novas sessões
   document
     .getElementById("btn-confirmar-solicitacao")
-    .addEventListener("click", (e) => {
-      // A função handleSolicitarSessoesSubmit fará a validação do formulário
+    ?.addEventListener("click", (e) => {
       handleSolicitarSessoesSubmit(e);
     });
 
-  // **NOVO LISTENER:** Botão de enviar mensagem via WhatsApp
   document
     .getElementById("btn-gerar-enviar-whatsapp")
-    .addEventListener("click", (e) => {
+    ?.addEventListener("click", (e) => {
       handleMensagemSubmit(e);
     });
 }
