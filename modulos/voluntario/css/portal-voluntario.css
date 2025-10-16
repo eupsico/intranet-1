@@ -1,0 +1,49 @@
+/* Arquivo: /modulos/voluntario/css/portal-voluntario.css
+   Versão: 2.1
+   Descrição: Adicionada regra para corrigir a cor do texto da aba ativa.
+*/
+
+/* Estilos para a seção de Gestão (leader-profile) */
+.leader-profile {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    padding: 30px 0;
+    border-top: 1px solid var(--cor-borda);
+}
+.leader-profile:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+.leader-profile.alt { flex-direction: row-reverse; }
+.leader-photo { flex-shrink: 0; width: 180px; text-align: center; }
+.leader-photo img {
+    width: 100%;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+}
+.leader-details { flex-grow: 1; }
+.leader-details h3 { font-size: 1.6em; color: var(--cor-primaria); margin-top: 0; }
+.leader-title { color: var(--cor-texto-secundario); margin-top: -10px; margin-bottom: 20px; }
+.leader-details h4 { font-size: 1.2em; color: var(--cor-primaria); margin-top: 25px; border-bottom: 1px solid var(--cor-borda); padding-bottom: 5px;}
+.leader-details ul { padding-left: 20px; line-height: 1.7; }
+
+/* Estilo para o ícone no menu da sidebar */
+.sidebar-menu .icon {
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .leader-profile, .leader-profile.alt {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+/* Regra específica para corrigir a cor do texto e do ícone na aba ativa do menu */
+#sidebar-menu a.active span {
+    color: var(--cor-texto-inverso) !important;
+}

@@ -1,0 +1,99 @@
+/* Arquivo: /modulos/admin/css/dashboard-admin.css */
+
+/* --- Estilos para a Lista de Disponibilidade --- */
+.disponibilidade-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.assistente-item {
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 15px;
+    box-shadow: var(--sombra-suave);
+}
+
+.assistente-item .assistente-nome {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--cor-primaria);
+    margin: 0 0 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.assistente-item .disponibilidade-detalhes {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    font-size: 0.95em;
+}
+
+.assistente-item .disponibilidade-detalhes li {
+    margin-bottom: 8px;
+    color: var(--cor-texto-secundario);
+}
+
+.assistente-item .disponibilidade-detalhes li.detalhe-item {
+    padding-left: 20px; /* Adiciona um recuo para os detalhes */
+}
+
+.assistente-item .disponibilidade-detalhes li.detalhe-item span {
+    font-weight: 600;
+    color: var(--cor-texto-principal);
+    min-width: 80px;
+    display: inline-block;
+}
+
+.assistente-item .disponibilidade-detalhes li strong {
+    color: var(--cor-texto-principal);
+}
+
+.assistente-item .no-dispo {
+    font-style: italic;
+    color: var(--cor-texto-secundario);
+}
+
+
+/* --- Estilos para a Tabela de Usuários --- */
+#usuarios-admin-container .table-responsive {
+    overflow-x: auto;
+}
+
+#usuarios-admin-container table {
+    width: 100%;
+    min-width: 600px;
+}
+
+#usuarios-admin-container .badge {
+    display: inline-block;
+    padding: .35em .65em;
+    font-size: .75em;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25rem;
+    background-color: var(--cor-secundaria);
+    text-transform: capitalize;
+}
+
+#usuarios-admin-container .text-right {
+    text-align: right;
+}
+
+.action-button.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.8em;
+}
+
+.action-button.secondary {
+    background-color: #6c757d;
+}
+.action-button.secondary:hover {
+    background-color: #5a6268;
+}

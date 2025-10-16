@@ -1,0 +1,49 @@
+<div class="view-container view-relatorios">
+    <h1>Relatórios e Backups</h1>
+    
+    <div class="tabs-container">
+        <button class="tab-link active" data-tab="RelatorioInadimplentes">Relatório de Inadimplentes</button>
+        <button class="tab-link" data-tab="RelatorioHoras">Relatório de Horas</button>
+        <button class="tab-link" data-tab="BackupMensal">Backup Mensal</button>
+    </div>
+
+    <div id="RelatorioInadimplentes" class="tab-content">
+        <p class="description-box">Gere uma lista de todos os profissionais com pagamentos pendentes ou filtre por um profissional específico.</p>
+        <div class="report-controls">
+            <div class="filter-box">
+                <label for="debtor-professional-selector">Selecionar Profissional:</label>
+                <select id="debtor-professional-selector"></select>
+            </div>
+            <div class="report-actions">
+                <button id="btn-debtors-csv" class="action-button btn-excel">Gerar Excel (CSV)</button>
+                <button id="btn-debtors-pdf" class="action-button btn-pdf">Gerar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="RelatorioHoras" class="tab-content" style="display: none;">
+        <p class="description-box">Gere um relatório com a quantidade de horas por profissional com base na grade de horários atual.</p>
+        <div class="report-controls">
+             <div class="report-actions">
+                <button id="btn-hours-csv" class="action-button btn-excel">Gerar Excel (CSV)</button>
+                <button id="btn-hours-pdf" class="action-button btn-pdf">Gerar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="BackupMensal" class="tab-content" style="display: none;">
+        <p class="description-box">Gere um relatório em PDF com o resumo financeiro (cobranças e pagamentos) de um período específico.</p>
+        <div class="report-controls">
+            <div class="filter-box">
+                <label>Selecionar Período:</label>
+                <div class="selectors">
+                    <select id="backup-mes-selector"></select>
+                    <select id="backup-ano-selector"></select>
+                </div>
+            </div>
+            <div class="report-actions">
+                <button id="btn-backup-pdf" class="action-button">Gerar Backup em PDF</button>
+            </div>
+        </div>
+    </div>
+</div>

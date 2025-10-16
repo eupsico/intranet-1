@@ -1,0 +1,164 @@
+/* Arquivo: /modulos/voluntario/css/meus-pacientes.css */
+
+/* Container principal */
+#meus-pacientes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Card de paciente */
+#pacientes-cards-container .paciente-card{
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    border-left: 5px solid var(--cor-primaria);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+    display: flex;
+    flex-direction: column;
+}
+
+.paciente-card h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--cor-primaria);
+}
+
+.paciente-card p {
+    margin: 5px 0;
+    color: var(--cor-texto-secundario);
+}
+
+.paciente-card .action-button {
+    margin-top: 15px;
+    align-self: flex-end; /* substitui float:right */
+}
+
+/* Mensagem de erro */
+.error-message {
+    padding: 20px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    border-radius: var(--borda-radius);
+    text-align: center;
+}
+
+/* Esconde campos condicionais por padrão */
+.hidden {
+    display: none;
+}
+
+/* Estilos para os modais */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.6);
+}
+
+.modal-content {
+    background-color: var(--cor-fundo);
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    width: 90%;
+    max-width: 700px;
+    box-shadow: var(--sombra-padrao);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh; /* altura máxima */
+    overflow-y: auto; /* garante rolagem */
+}
+
+.modal-content .close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal .modal-content h3 {
+    margin-top: 0;
+    color: var(--cor-primaria);
+}
+
+.modal .modal-content form {
+    overflow-y: auto;
+    padding-right: 15px;
+}
+
+/* Grupo de checkboxes */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+/* Checkboxes desabilitados */
+.checkbox-group label.disabled {
+    color: #999;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+/* Oculta cabeçalho do modal de encerramento */
+#encerramento-modal .modal-header {
+    display: none;
+}
+
+#encerramento-modal .modal-body {
+    padding-top: 15px;
+}
+
+/* Oculta cabeçalho do modal de horários PB */
+#horarios-pb-modal .modal-header {
+    display: none;
+}
+
+#horarios-pb-modal .modal-body {
+    padding-top: 15px;
+}
+
+/* Botões de rádio lado a lado */
+#horarios-pb-form .form-group div {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+#horarios-pb-form .form-group div label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+/* Responsividade */
+@media (max-width: 480px) {
+  .paciente-card {
+    padding: 12px;
+  }
+}
+.paciente-card .card-actions {
+    display: flex;
+    gap: 10px; /* Espaço entre os botões */
+    margin-top: 15px;
+}

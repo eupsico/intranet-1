@@ -1,0 +1,48 @@
+/* Arquivo: /modulos/servico-social/css/dashboard-servico-social.css */
+
+.info-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.summary-card,
+.info-card {
+    background-color: var(--cor-surface);
+    padding: 25px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+    border-left: 5px solid var(--cor-primaria);
+}
+
+.summary-card h4,
+.info-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-primaria);
+    font-size: 1.2em;
+}
+
+.summary-card ul,
+.info-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+    font-size: 0.95em;
+    color: var(--cor-texto-secundario);
+    line-height: 1.6;
+}
+
+.summary-card ul li,
+.info-card ul li {
+    margin-bottom: 8px;
+}
+
+.card-footer-link {
+    display: block;
+    margin-top: 20px;
+    font-weight: 500;
+}

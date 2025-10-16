@@ -1,0 +1,89 @@
+/* Estilos para a página do Plantão Psicológico */
+
+.accordion-plantao .accordion-item {
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.accordion-plantao .accordion-item:last-child {
+    border-bottom: none;
+}
+
+.accordion-plantao .accordion-header {
+    padding: 20px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2em; /* Ajustado para o design system */
+    font-weight: 600;
+    color: var(--cor-primaria);
+    transition: background-color 0.3s ease;
+}
+
+.accordion-plantao .accordion-header:hover {
+    background-color: var(--cor-fundo);
+}
+
+.accordion-plantao .accordion-header::after {
+    content: '+';
+    font-size: 1.5em; /* Ajustado */
+    font-weight: 300;
+    color: var(--cor-secundaria);
+    transition: transform 0.3s ease;
+}
+
+.accordion-plantao .accordion-header.active {
+    background-color: var(--cor-fundo);
+}
+
+.accordion-plantao .accordion-header.active::after {
+    content: '−';
+}
+
+.accordion-plantao .accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-out;
+}
+
+.accordion-plantao .accordion-content {
+    padding: 0px 20px 20px 20px;
+    line-height: 1.7;
+}
+
+.accordion-plantao .accordion-content ul,
+.accordion-plantao .accordion-content ol {
+    padding-left: 20px;
+}
+
+.accordion-plantao .accordion-content ul li,
+.accordion-plantao .accordion-content ol li {
+    margin-bottom: 8px;
+}
+
+.accordion-plantao h4 {
+    font-size: 1.2em;
+    color: var(--cor-primaria);
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--cor-borda);
+    padding-bottom: 5px;
+}
+
+.accordion-plantao h5 {
+    font-size: 1.0em;
+    font-weight: bold;
+    color: var(--cor-texto-principal);
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+
+.question-block {
+    margin-top: 20px;
+    padding-left: 15px;
+    border-left: 3px solid var(--cor-secundaria);
+}
+
+.question-block p {
+    margin: 5px 0;
+}

@@ -1,0 +1,36 @@
+/* /modulos/gestao/css/feedback.css */
+body {
+    background-color: var(--cor-fundo);
+}
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+}
+.info-header {
+    background-color: var(--cor-primaria);
+    color: white;
+    padding: 25px;
+    border-radius: var(--borda-radius) var(--borda-radius) 0 0;
+    margin: -25px -25px 25px -25px;
+}
+.info-header h2, .info-header p {
+    margin: 0;
+}
+.info-header p {
+    margin-top: 8px;
+    opacity: 0.9;
+}
+.feedback-period {
+    text-align: center;
+    background-color: var(--cor-fundo-box);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 25px;
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-principal);
+}
+.loading, .message-box {
+    text-align: center;
+    font-size: 1.1em;
+    padding: 40px 20px;
+}

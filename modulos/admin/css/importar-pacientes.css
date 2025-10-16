@@ -1,0 +1,118 @@
+/* Estilos para a página de importação de pacientes */
+
+.import-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px; /* Espaçamento entre os cartões */
+}
+
+.card {
+    background-color: #fff;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden; /* Garante que os cantos arredondados sejam aplicados ao header */
+}
+
+.card-header {
+    background-color: #f7f7f7;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.card-body ol {
+    padding-left: 20px;
+    margin-top: 10px;
+}
+
+.card-body li {
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.warning {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffeeba;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+#import-form .form-group {
+    margin-bottom: 20px;
+}
+
+#import-form .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#import-form .action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Espaço entre o ícone e o texto */
+}
+
+/* Estilos para o resultado */
+#result-content .progress-bar {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+#result-content .progress-bar-fill {
+    height: 20px;
+    width: 100%; /* A animação será contínua */
+    background-color: var(--primary-color, #007bff);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.success-text {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.error-text {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.error-list {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.error-list li {
+    margin-bottom: 5px;
+}
+
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: .2em;
+}

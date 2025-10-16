@@ -1,0 +1,66 @@
+/* Arquivo: /modulos/financeiro/css/relatorios.css
+   Versão: 2.1
+   Descrição: Adiciona estilo para o filtro de período na aba de Relatório de Horas.
+*/
+
+/* Garante que o container da view se ajuste bem ao conteúdo das abas */
+.view-relatorios .view-container {
+    padding: 0;
+}
+
+/* Container para os controles dentro de uma aba */
+.report-controls {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end; /* Alinha os itens na base */
+}
+
+/* Caixa de filtro individual, seguindo o padrão do módulo */
+.filter-box {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+}
+
+.filter-box label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.filter-box .selectors {
+    display: flex;
+    gap: 15px;
+}
+
+/* Container para os botões de ação */
+.report-actions {
+    margin-left: auto; /* Empurra os botões para a direita */
+    display: flex;
+    gap: 10px;
+}
+
+/* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
+@media (max-width: 768px) {
+    .report-controls {
+        flex-direction: column;
+        align-items: stretch; /* Faz os itens ocuparem a largura total */
+    }
+
+    .report-actions {
+        margin-left: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filter-box .selectors {
+        flex-direction: column;
+    }
+}

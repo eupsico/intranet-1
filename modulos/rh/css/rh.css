@@ -1,0 +1,18 @@
+/* Arquivo: /modulos/rh/css/rh.css
+   Versão: 1.0
+   Descrição: Estilos principais e compartilhados para o Painel de RH.
+*/
+
+/* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
+.view-rh .view-container {
+    padding: 0;
+}
+
+/* Estilo para o modal de edição de profissional */
+.modal-content {
+    max-width: 600px;
+}
+/* Adicione este bloco de código NO FINAL do seu arquivo */
+.table-section table {
+    min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
+}

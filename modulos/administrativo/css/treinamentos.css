@@ -1,0 +1,110 @@
+/* --- Estilos para o Acordeão de Vídeos (Painel Administrativo) --- */
+.videos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espaço entre os itens do acordeão */
+}
+
+.accordion-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.accordion-header {
+    background-color: #f9f9f9;
+    border: none;
+    border-bottom: 1px solid #eee;
+    padding: 15px 20px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-header:hover, .accordion-header.active {
+    background-color: #f1f1f1;
+}
+
+.accordion-icon {
+    font-size: 1.5rem;
+    font-weight: 300;
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+    padding: 0 20px; /* Adiciona preenchimento lateral */
+}
+
+.accordion-content .video-description {
+    padding: 20px 0; /* Espaçamento vertical */
+    line-height: 1.5;
+}
+
+.accordion-content .video-embed {
+    position: relative;
+    padding-bottom: 56.25%; 
+    height: 0;
+    overflow: hidden;
+    margin-bottom: 20px; /* Espaço abaixo do vídeo */
+}
+
+.accordion-content .video-embed iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+
+/* --- Estilos para a Lista de Gerenciamento (Painel Admin) --- */
+.videos-list {
+    margin-top: 20px;
+}
+
+.video-list-item {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #fff;
+    margin-bottom: 10px;
+}
+
+.video-info { flex-grow: 1; }
+.video-info strong {
+    font-size: 1.1em;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+.video-info a {
+    color: var(--primary-color, #007bff);
+    word-break: break-all;
+    font-size: 0.9em;
+}
+.video-info p { margin: 5px 0 0; color: #666; }
+.video-actions { margin-top: 10px; flex-shrink: 0; }
+.video-actions button { margin-left: 10px; }
+
+
+/* --- Estilos para o Modal (Pop-up) --- */
+.modal-content .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}

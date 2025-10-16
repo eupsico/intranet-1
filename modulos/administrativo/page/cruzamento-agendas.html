@@ -1,0 +1,109 @@
+<div class="container-fluid cruzamento-agendas-view">
+    <h2 class="mb-4">Cruzamento de Agendas Profissional x Paciente</h2>
+
+    <div class="tabs-container" id="cruzamento-tabs">
+        <button class="tab-link active" data-tab="compatibilidade">Compatibilidade</button>
+        <button class="tab-link" data-tab="tentativas">Tentativas de Agendamento</button>
+        <button class="tab-link" data-tab="disponibilidade-geral">Disponibilidade Geral</button>
+    </div>
+
+    <div id="compatibilidade" class="tab-content active">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Verificar Compatibilidade Automática</h5>
+            </div>
+            <div class="card-body">
+                <p>Selecione um profissional para ver a lista de pacientes compatíveis que estão nas filas "Encaminhar para Plantão" ou "Encaminhar para PB".</p>
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-md-6">
+                        <label for="profissional-select" class="form-label"><strong>Profissional</strong></label>
+                        <select id="profissional-select" class="form-select"></select>
+                    </div>
+                </div>
+
+                <div id="loading-spinner" class="text-center my-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Buscando pacientes compatíveis...</p>
+                </div>
+
+                <div id="resultados-compatibilidade" style="display: none;">
+                    <h5 class="mb-3">Pacientes Compatíveis Encontrados</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Nome do Paciente</th>
+                                    <th scope="col">Telefone</th>
+                                    <th scope="col">Disponibilidade Paciente</th>
+                                    <th scope="col">Disponibilidade Profissional</th>
+                                    <th scope="col">Fila</th>
+                                    <th scope="col">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compatibilidade-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="nenhum-paciente-compativel" class="alert alert-info mt-3" style="display: none;">
+                        Nenhum paciente compatível encontrado para este profissional.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tentativas" class="tab-content" style="display: none;">
+        <div class="card shadow-sm">
+             <div class="card-header bg-light">
+                <h5 class="mb-0">Acompanhamento de Tentativas</h5>
+            </div>
+            <div class="card-body">
+                <p>Gerencie o status do contato com os pacientes selecionados para agendamento.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Paciente</th>
+                                <th scope="col">Profissional</th>
+                                <th scope="col">Telefone Paciente</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tentativas-tbody"></tbody>
+                    </table>
+                </div>
+                 <div id="nenhuma-tentativa" class="alert alert-info mt-3">
+                    Nenhum paciente em processo de agendamento no momento.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="disponibilidade-geral" class="tab-content" style="display: none;">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Disponibilidade Geral dos Profissionais</h5>
+            </div>
+            <div class="card-body">
+                <p>Lista de todos os profissionais que atendem e suas disponibilidades cadastradas.</p>
+                 <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Profissional</th>
+                                <th scope="col">Disponibilidade Cadastrada</th>
+                                <th scope="col">Modalidade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="disponibilidade-geral-tbody">
+                             </tbody>
+                    </table>
+                </div>
+                <div id="nenhum-profissional-disponibilidade" class="alert alert-info mt-3" style="display: none;">
+                    Nenhum profissional com disponibilidade cadastrada foi encontrado.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,225 @@
+/* Arquivo: /modulos/voluntario/css/recursos.css
+   Versão: 2.2 (Adiciona responsividade para tabelas)
+   Descrição: Estilos completos para as abas de Mensagens e Disponibilidade.
+*/
+
+/* --- Estilos para a Aba de Mensagens --- */
+#mensagens .accordion {
+    margin-bottom: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    overflow: hidden;
+    background-color: var(--cor-surface);
+}
+#mensagens .accordion-trigger {
+    background-color: var(--cor-surface);
+    color: var(--cor-primaria);
+    cursor: pointer;
+    padding: 15px 20px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 1.1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    position: relative;
+}
+#mensagens .accordion-trigger:hover {
+    background-color: var(--cor-fundo);
+}
+#mensagens .accordion-trigger::after {
+    content: '+';
+    font-size: 1.5em;
+    color: var(--cor-primaria);
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+#mensagens .accordion-trigger.active {
+    background-color: var(--cor-fundo);
+}
+#mensagens .accordion-trigger.active::after {
+    content: '−';
+}
+#mensagens .accordion-content {
+    padding: 0 20px;
+    background-color: white;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+}
+#mensagens .accordion-content.active {
+    padding: 20px;
+}
+#mensagens .output-area {
+    margin-top: 20px;
+}
+#mensagens .output-area textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-fundo);
+    font-family: 'Courier New', Courier, monospace;
+    resize: vertical;
+}
+
+/* --- Estilos para a Aba de Disponibilidade --- */
+.disponibilidade-view {
+    background-color: var(--cor-surface);
+    padding: 30px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+}
+.disponibilidade-view .display-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.disponibilidade-view .display-header h3 {
+    margin: 0;
+    color: var(--cor-primaria);
+    font-size: 1.4em;
+}
+.disponibilidade-view .display-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.disponibilidade-view .schedule-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 2;
+    min-width: 300px;
+}
+.disponibilidade-view .schedule-list li {
+    background-color: var(--cor-fundo);
+    padding: 8px 12px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 8px;
+    border-left: 4px solid var(--cor-secundaria);
+}
+.disponibilidade-view .demands-display {
+    flex: 1;
+    min-width: 250px;
+    background-color: #fff9e1;
+    border: 1px solid #ffecb3;
+    padding: 15px;
+    border-radius: var(--borda-radius);
+}
+.disponibilidade-view .demands-display h4 {
+    margin-top: 0;
+    color: #856404;
+}
+.disponibilidade-view .edit-controls {
+    text-align: right;
+    padding-top: 15px;
+    border-top: 1px solid var(--cor-borda);
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.disponibilidade-view .delete-row-btn {
+    background-color: var(--cor-erro);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.disponibilidade-view .add-row-btn {
+    margin-top: 10px;
+}
+.disponibilidade-view .edit-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.disponibilidade-view .edit-table th, 
+.disponibilidade-view .edit-table td {
+    border: 1px solid var(--cor-borda);
+    padding: 8px;
+    text-align: left;
+}
+.disponibilidade-view .edit-table thead th {
+    background-color: var(--cor-fundo);
+}
+
+
+/* --- INÍCIO DA CORREÇÃO --- */
+/* Adiciona responsividade para as tabelas das grades e disponibilidade */
+
+/* Estilos para a tabela da grade (a ser usado em outro arquivo, como grade.css) */
+.grade-table-container {
+    overflow-x: auto; /* Permite rolagem horizontal em último caso */
+}
+
+/* Estilos genéricos para tabelas responsivas */
+.responsive-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.responsive-table th,
+.responsive-table td {
+    padding: 12px 15px;
+    border: 1px solid var(--cor-borda);
+    text-align: left;
+}
+.responsive-table thead th {
+    background-color: var(--cor-primaria);
+    color: white;
+    font-weight: 600;
+}
+.responsive-table tbody tr:nth-of-type(even) {
+    background-color: var(--cor-fundo-hover);
+}
+
+/* --- Magia da Responsividade --- */
+@media (max-width: 768px) {
+    .responsive-table thead {
+        display: none; /* 1. Esconde o cabeçalho original */
+    }
+
+    .responsive-table,
+    .responsive-table tbody,
+    .responsive-table tr,
+    .responsive-table td {
+        display: block; /* 2. Transforma tudo em blocos empilháveis */
+        width: 100%;
+    }
+
+    .responsive-table tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--cor-borda);
+        border-radius: var(--borda-radius);
+        overflow: hidden;
+    }
+
+    .responsive-table td {
+        text-align: right; /* 3. Alinha o conteúdo à direita */
+        padding-left: 50%; /* Deixa espaço para o título */
+        position: relative;
+        border: none;
+        border-bottom: 1px solid var(--cor-borda);
+    }
+
+    .responsive-table td::before {
+        content: attr(data-label); /* 4. Pega o título do atributo "data-label" */
+        position: absolute;
+        left: 15px;
+        width: calc(50% - 30px);
+        text-align: left;
+        font-weight: 600;
+        color: var(--cor-primaria);
+    }
+}
+/* --- FIM DA CORREÇÃO --- */

@@ -1,0 +1,9 @@
+/* Arquivo: /modulos/voluntario/css/painel-supervisor.css */
+/* Descrição: Estilos específicos para o Painel do Supervisor. */
+
+/* O painel utiliza o mesmo estilo de abas do 'supervisao.css' e 'design-system.css'. */
+/* Este espaço pode ser usado para adicionar estilos específicos de elementos do painel no futuro. */
+
+#painel-supervisor-content {
+    padding-top: 20px;
+}

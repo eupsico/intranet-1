@@ -1,0 +1,85 @@
+<div class="view-container">
+    <h2>Cálculo de Contribuição</h2>
+    <p class="description-box">Utilize esta ferramenta para determinar o valor da contribuição do paciente com base na renda e nos critérios socioeconômicos da EuPsico.</p>
+
+    <div class="calculator-grid">
+        <div class="calculator-section">
+            <h3>Calculadora Interativa</h3>
+            <div class="form-group">
+                <label for="renda-input">Informe a Renda do Paciente/Família (R$)</label>
+                <input type="number" id="renda-input" class="form-control" placeholder="Digite a renda para ver os valores">
+            </div>
+            
+            <div id="tabela-calculo-container" class="resultado-calculo">
+                <div class="loading-spinner"></div>
+            </div>
+            </div>
+
+        <div class="criteria-section">
+            <h3>Tabela de Critérios</h3>
+            <p>Os critérios abaixo são um guia geral. A tabela da calculadora será sempre baseada nas faixas salvas no Painel de Administração.</p>
+            <div class="table-section" style="padding: 0; box-shadow: none;">
+                                  <table>
+                    <thead>
+                        <tr>
+                            <th>Faixa</th>
+                            <th>Critérios Principais</th>
+                            <th>% sobre a Renda</th>
+                            <th>Contribuição Fixa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Faixa 1</strong></td>
+                            <td>Vulnerabilidade social (renda até 1 SM, BPC, desemprego sem apoio)</td>
+                            <td>6,5%</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Faixa 2</strong></td>
+                            <td>Renda entre 1 e 3 salários-mínimos, com renda familiar única.</td>
+                            <td>8%</td>
+                            <td>-</td>
+                        </tr>
+                         <tr>
+                            <td><strong>Faixa 3</strong></td>
+                            <td>Renda entre 1 e 3 salários-mínimos, com outras fontes de apoio.</td>
+                            <td>9%</td>
+                            <td>-</td>
+                        </tr>
+                         <tr>
+                            <td><strong>Faixa 4</strong></td>
+                            <td>Demais casos com renda de até 3 salários-mínimos.</td>
+                            <td>10%</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Faixa 5</strong></td>
+                            <td>Renda de 3 a 4 salários-mínimos.</td>
+                            <td>-</td>
+                            <td>R$ 130,00</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Faixa 6</strong></td>
+                            <td>Renda de 4 a 5 salários-mínimos.</td>
+                            <td>-</td>
+                            <td>R$ 150,00</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Faixa 7</strong></td>
+                            <td>Renda acima de 5 salários-mínimos.</td>
+                             <td>-</td>
+                            <td>R$ 200,00 ou encaminhamento</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Familiar</strong></td>
+                            <td>Atendimento de mais de um membro da mesma família.</td>
+                            <td>+40% sobre o maior valor</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,84 @@
+<div class="view-container">
+    <button id="btn-voltar-lista" class="action-button secondary" style="margin-bottom: 20px;">&larr; Voltar para a Lista</button>
+    
+    <div class="triagem-grid">
+        <div class="patient-data-column">
+            <h3>Dados Completos da Inscrição</h3>
+            <div id="patient-details-container">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <div class="triagem-form-column">
+            <h3>Formulário de Triagem</h3>
+            <form id="triagem-form">
+                <div class="form-group">
+                    <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
+                    <select id="triagem-status" name="triagem-status" class="form-control" required>
+                        <option value="">Selecione o status...</option>
+                        <option value="encaminhado">Sim, encaminhado para plantão.</option>
+                        <option value="nao_realizada">Não (informar motivo)</option>
+                        <option value="desistiu">Sim, paciente desistiu</option>
+                    </select>
+                </div>
+
+                <div id="campos-encaminhado" class="conditional-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="valor-contribuicao">Valor contribuição (R$): <span class="required-asterisk">*</span></label>
+                        <input type="text" id="valor-contribuicao" name="valor-contribuicao" class="form-control" placeholder="R$ 0,00" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="criterios-valor">Critérios utilizados para definição do valor: <span class="required-asterisk">*</span></label>
+                        <textarea id="criterios-valor" name="criterios-valor" rows="4" class="form-control" placeholder="Em caso de isenção, informe para quando deve ser marcada a reavaliação." required></textarea>
+                    </div>
+                    <hr>
+                    <p><strong>Confirmar disponibilidade do paciente:</strong></p>
+                    <div class="form-group">
+                        <label for="modalidade-atendimento">Prefere atendimento na modalidade:</label>
+                        <select id="modalidade-atendimento" name="modalidade-atendimento" class="form-control">
+                            <option value="Presencial">Presencial</option>
+                            <option value="Online">Online</option>
+                            <option value="Qualquer">Qualquer modalidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="preferencia-genero">Prefere ser atendido por:</label>
+                        <select id="preferencia-genero" name="preferencia-genero" class="form-control">
+                            <option value="Mulher">Mulher</option>
+                            <option value="Homem">Homem</option>
+                            <option value="Indiferente">Indiferente</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <p><strong>Ampliar disponibilidade:</strong></p>
+                    <div class="form-group">
+                        <p>Quanto maior a disponibilidade, mais rápido o paciente é chamado para o atendimento.</p>
+                        <label for="ampliar-disponibilidade">Deseja ampliar a disponibilidade?</label>
+                        <select id="ampliar-disponibilidade" name="ampliar-disponibilidade" class="form-control">
+                            <option value="nao">Não</option>
+                            <option value="sim">Sim</option>
+                        </select>
+                    </div>
+                    <div id="nova-disponibilidade-container" class="conditional-fields" style="display: none;">
+                        </div>
+                       <hr>
+                    <div class="form-group">
+                        <label for="queixa-paciente">Queixa principal do paciente (resumo):</label>
+                        <textarea id="queixa-paciente" name="queixa-paciente" rows="4" class="form-control"></textarea>
+                    </div>
+                </div>
+
+                <div id="campos-observacao" class="conditional-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="observacao-geral">Observação: <span class="required-asterisk">*</span></label>
+                        <textarea id="observacao-geral" name="observacao-geral" rows="4" class="form-control" placeholder="Informe o motivo da não realização ou desistência." required></textarea>
+                    </div>
+                </div>
+
+                <div class="button-bar" style="margin-top: 20px;">
+                    <button type="submit" class="action-button">Salvar Triagem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

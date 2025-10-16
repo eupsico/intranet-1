@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato Terapêutico - EuPsico</title>
+    <link rel="stylesheet" href="../assets/css/design-system.css">
+    <style>
+        /* CSS GERAL E FONTES */
+        :root {
+            --cor-primaria: #0056b3;
+            --cor-secundaria: #f0f8ff;
+            --cor-texto: #333;
+            --cor-sucesso: #188038;
+            --cor-erro: #d93025;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--cor-texto);
+            line-height: 1.7;
+            margin: 0;
+            padding: 20px 10px;
+        }
+
+        /* CONTAINER PRINCIPAL */
+        .contract-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 40px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+            border: 1px solid #eef;
+        }
+
+        /* CABEÇALHO */
+        .contract-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .contract-header img {
+            max-width: 140px;
+            margin-bottom: 20px;
+        }
+
+        /* TÍTULOS */
+        h1, h2 {
+            color: var(--cor-primaria);
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 1.8em;
+            border: none;
+            padding: 0;
+        }
+        h2 {
+            font-size: 1.4em;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        /* SEÇÕES DE DADOS */
+        .data-section {
+            background-color: #f9fafb;
+            border-left: 5px solid var(--cor-primaria);
+            padding: 20px 25px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+        .data-section h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        .data-section p {
+            margin: 8px 0;
+        }
+        
+        /* SEPARADOR */
+        .section-divider {
+            margin-top: 40px;
+            margin-bottom: 40px;
+            border: 0;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* FORMULÁRIO */
+        .acceptance-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--cor-primaria);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
+        }
+        .action-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--cor-primaria);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #004494;
+        }
+        .action-button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+        
+        /* UTILITÁRIOS */
+        .hidden { display: none; }
+        #contract-loading { text-align: center; padding: 40px; }
+        .error-message, .feedback-error { color: var(--cor-erro); font-weight: bold; }
+        .feedback-success { color: var(--cor-sucesso); font-weight: bold; }
+
+        /* AJUSTES PARA TELAS MENORES (RESPONSIVIDADE) */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+            .contract-container {
+                margin: 0;
+                padding: 20px;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+            }
+            h1 { font-size: 1.5em; }
+            h2 { font-size: 1.2em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contract-container">
+        <div class="contract-header">
+            <img src="../assets/img/logo-eupsico.png" alt="Logo EuPsico">
+            <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS</h1>
+        </div>
+
+        <div id="contract-loading">
+            <div class="loading-spinner"></div>
+            <p>Carregando dados do contrato...</p>
+        </div>
+        
+        <div id="contract-error" class="error-message hidden"></div>
+
+        <div id="contract-content" class="hidden">
+            
+            <h2>1. DOS PAPÉIS DE CADA PARTE</h2>
+            <p>Ao <strong>TERAPEUTA</strong>, cabe a escuta técnica e reflexiva sem julgamentos, as intervenções, as orientações e os encaminhamentos. Sendo vedado pelo código de ética da profissão a indução de convicções políticas, filosóficas, morais, ideológicas, religiosas, orientação sexual, ou a qualquer tipo de preconceito no seu exercício funcional.</p>
+            <p>Ao <strong>PACIENTE</strong>, cabe expressar suas necessidades sem medo de ser julgado, falar como se sente no processo terapêutico, tirar suas dúvidas, e seguir as orientações ligadas ao objetivo de seu tratamento.</p>
+            <p>Ao <strong>RESPONSÁVEL LEGAL</strong>, cabe a autorização para realização do acompanhamento terapêutico e possíveis encaminhamentos do PACIENTE.</p>
+            
+            <h2>2. DO ATENDIMENTO</h2>
+            <p>O atendimento será realizado por profissional inserido na <strong>EUPSICO</strong> de acordo com a disponibilidade de cada profissional, observada as definições contidas na triagem e o encaminhamento efetuado pela equipe de assistência social.</p>
+            <p>As datas e os horários de cada encontro serão definidos entre o TERAPEUTA e o PACIENTE, bem como a duração de cada encontro será de cinquenta (50) minutos, uma (1) vez por semana ou à critério das partes.</p>
+            <p>A TERAPIA tem um prazo máximo de seis (6) meses podendo ser prorrogada de acordo com a avaliação profissional, e/ou a demanda do paciente.</p>
+            <p>A Eupsico realiza férias coletivas, nas últimas semanas de dezembro, sendo assim não haverá atendimento nesse período e o pagamento será feito de maneira integral, independentemente do número de sessões.</p>
+            <p>Não haverá atendimento aos domingos, e feriados.</p>
+            
+            <h2>3. DO PAGAMENTO</h2>
+            <p>O PACIENTE e/ou RESPONSÁVEL LEGAL com o aceite do presente contrato terapêutico e autorização para o atendimento, se compromete, a contribuir mensalmente com a importância definida na triagem, até o dia dez (10) de cada mês, ficando condicionado este valor por um período mínimo de seis (6) meses e/ou a qualquer tempo, quando houver alteração da capacidade econômica do PACIENTE.</p>
+            <p>Caso o PACIENTE e/ou RESPONSÁVEL LEGAL não proceda com o pagamento acordado na sessão de triagem por mais de dois (2) meses o processo terapêutico será interrompido, e caso o paciente deseje continuar a terapia deverá efetuar uma nova solicitação de atendimento, quitar os débitos pendentes e aguardar na fila de espera, para encaminhamento ao profissional disponível para atendimento.</p>
+            
+            <h2>4. DO REAJUSTE</h2>
+            <p>A cada semestre o PACIENTE será submetido a uma nova avaliação com a equipe de serviço social da EuPsico para a fixação dos valores a serem reajustados.</p>
+            
+            <h2>5. DOS DIREITOS DO PACIENTE</h2>
+            <ul>
+                <li>Sigilo de todas as informações tratadas na sessão.</li>
+                <li>A um (1) mês de férias a pedido do PACIENTE, sendo que se deve realizar o pagamento do mês normalmente, para que possa reservar sua vaga na instituição.</li>
+                <li>A troca do TERAPEUTA, desde que todas as suas contribuições estejam PAGAS.</li>
+            </ul>
+            
+            <h2>6. DOS DEVERES DO PACIENTE</h2>
+            <p>O PACIENTE deve comparecer nos dias e horários ajustados com o TERAPEUTA, e em caso de atraso do TERAPEUTA, poderá o PACIENTE exigir a compensação do tempo de atraso, podendo ser na mesma sessão ou em sessão futura a ser ajustada entre as partes.</p>
+            <p>Em caso de atraso do PACIENTE o período do atraso será considerado como perdido.</p>
+            <p>Caso precise faltar o PACIENTE deverá comunicar ao TERAPEUTA com 24 horas de antecedência o motivo da falta.</p>
+            
+            <h2>7. DA RESCISÃO CONTRATUAL</h2>
+            <p>O Presente contrato poderá ser rescindido nas modalidades a seguir:</p>
+            <ol>
+                <li>Pela desistência por parte do PACIENTE;
+                    <ol type="a">
+                        <li>Em caso de desistência o PACIENTE deverá comunicar ao profissional ou a EuPsico até o dia 09 do mês vigente, efetuando o pagamento da contribuição do mês vigente para rescisão do contrato.</li>
+                        <li>Caso o PACIENTE não comunique ao profissional ou a EuPsico, as contribuições mensais continuaram em aberto até que o paciente informe sobre a desistência, sendo necessário o pagamento das contribuições em aberto para rescisão do contrato.</li>
+                    </ol>
+                </li>
+                <li>Falta injustificada em duas sessões terapêuticas, ensejando o desligamento automático do tratamento em curso;</li>
+                <li>Por solicitação de troca do TERAPEUTA a pedido do PACIENTE;</li>
+                <li>Por incompatibilidade de horários entre o PACIENTE e o TERAPEUTA;</li>
+                <li>Pela alta concedida pelo profissional;</li>
+                <li>Não pagamento da contribuição por dois meses.</li>
+            </ol>
+            
+            <hr class="section-divider">
+
+            <div id="clausula-menor-idade-section" class="hidden">
+                <h2>AUTORIZAÇÃO PARA ACOMPANHAMENTO PSICOTERAPÊUTICO DE CRIANÇAS E ADOLESCENTES (MENORES DE 18 ANOS)</h2>
+                <p>Eu como RESPONSÁVEL LEGAL pela(o) criança/adolescente (PACIENTE), autorizo o acompanhamento terapêutico e os encaminhamentos cabíveis.</p>
+                <p>Todas as intervenções e documentos produzidos serão regidos pelos dispositivos legais vigentes, em especial pelo disposto na Resolução CFP nº10, de 2005 (Código de Ética Profissional do Psicólogo), bem como pelas demais Resoluções da Psicologia relacionadas ao exercício da profissão.</p>
+                <p>Em especial, serão garantidos à(s) criança(s) ou adolescente(s) o sigilo das informações e a preservação da dignidade e da intimidade durante a prestação dos serviços de que trata esta autorização.</p>
+            </div>
+
+            <div class="data-section">
+                <h3>Dados do Atendimento</h3>
+                <p><strong>Terapeuta:</strong> <span id="data-terapeuta"></span></p>
+                <p><strong>Nome completo do PACIENTE:</strong> <span id="data-paciente-nome"></span></p>
+                <div id="responsavel-section" class="hidden">
+                    <p><strong>Nome do Responsável Legal:</strong> <span id="data-responsavel-nome"></span></p>
+                </div>
+                <p><strong>Data de nascimento do PACIENTE:</strong> <span id="data-paciente-nascimento"></span></p>
+                <p><strong>Valor da contribuição mensal:</strong> <span id="data-contribuicao"></span></p>
+            </div>
+            
+            <div class="data-section">
+                <h3>Dados da Sessão</h3>
+                <p><strong>Dia da sessão:</strong> <span id="data-dia-sessao"></span></p>
+                <p><strong>Horário do atendimento:</strong> <span id="data-horario-sessao"></span></p>
+                <p><strong>Tipo de atendimento:</strong> <span id="data-tipo-atendimento"></span></p>
+            </div>
+
+            <div id="acceptance-form-section" class="acceptance-section">
+                <h2>ACEITE DOS TERMOS E CONDIÇÕES</h2>
+                <p>Ao preencher o formulário abaixo e confirmar digitalmente, declaro ter ciência e concordar com todos os termos propostos.</p>
+                <form id="signature-form" novalidate>
+                    <div class="form-group">
+                        <label for="signer-name" id="signer-name-label">Nome Completo (de quem assina o contrato):</label>
+                        <input type="text" id="signer-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signer-cpf" id="signer-cpf-label">CPF (de quem assina o contrato):</label>
+                        <input type="text" id="signer-cpf" class="form-control" required maxlength="14">
+                        <div id="cpf-feedback" class="feedback-error" style="font-size: 0.9em; margin-top: 5px;"></div>
+                    </div>
+                    <div class="form-group">
+                        <p><strong>Declaro ter ciência e concordar com os termos propostos.</strong></p>
+                        <label><input type="radio" name="agreement" value="concordo" required> Concordo</label>
+                        <label><input type="radio" name="agreement" value="nao-concordo"> Não concordo</label>
+                    </div>
+                    <button type="submit" class="action-button">Assinar Contrato</button>
+                    <div id="signature-feedback" style="margin-top: 15px;"></div>
+                </form>
+            </div>
+            
+            <div id="thank-you-section" class="acceptance-section hidden">
+                <h2>Obrigado!</h2>
+                <p>O contrato foi assinado digitalmente com sucesso. A EuPsico foi notificada.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+      import { db, doc, getDoc, functions, httpsCallable } from '../assets/js/firebase-init.js';
+
+      const assinarContrato = httpsCallable(functions, 'assinarContrato');
+
+      function showError(message) {
+          const errorDiv = document.getElementById('contract-error');
+          errorDiv.textContent = message;
+          errorDiv.classList.remove('hidden');
+          document.getElementById('contract-loading').classList.add('hidden');
+          document.getElementById('contract-content').classList.add('hidden');
+      }
+
+      function calculateAge(birthDateString) {
+          if (!birthDateString) return null;
+          const today = new Date();
+          const birthDate = new Date(birthDateString + "T03:00:00");
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+          }
+          return age;
+      }
+
+      function validaCPF(cpf) {
+          cpf = String(cpf).replace(/[^\d]/g, '');
+          if (cpf.length !== 11) return false;
+          if (/^(\d)\1+$/.test(cpf)) return false;
+          let soma = 0;
+          let resto;
+          for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+          resto = (soma * 10) % 11;
+          if (resto === 10 || resto === 11) resto = 0;
+          if (resto !== parseInt(cpf.substring(9, 10))) return false;
+          soma = 0;
+          for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+          resto = (soma * 10) % 11;
+          if (resto === 10 || resto === 11) resto = 0;
+          if (resto !== parseInt(cpf.substring(10, 11))) return false;
+          return true;
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        const loadingDiv = document.getElementById('contract-loading');
+        const contentDiv = document.getElementById('contract-content');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const pacienteId = urlParams.get('id');
+        const atendimentoId = urlParams.get('atendimentoId');
+
+        if (!pacienteId || !atendimentoId) {
+            showError("Erro: Parâmetros inválidos. O link do contrato está incompleto.");
+            return;
+        }
+
+        try {
+            const docRef = doc(db, 'trilhaPaciente', pacienteId);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                showError("Erro: Paciente não encontrado.");
+                return;
+            }
+
+            const pacienteData = docSnap.data();
+            const meuAtendimento = pacienteData.atendimentosPB?.find(at => at.atendimentoId === atendimentoId);
+
+            if (!meuAtendimento) {
+                showError("Erro: Atendimento específico não localizado para este paciente.");
+                return;
+            }
+
+            const idade = calculateAge(pacienteData.dataNascimento);
+            const isMenor = idade !== null && idade < 18;
+
+            if (isMenor) {
+                document.getElementById('clausula-menor-idade-section').classList.remove('hidden');
+                if (pacienteData.responsavel && pacienteData.responsavel.nome) {
+                    document.getElementById('responsavel-section').classList.remove('hidden');
+                    document.getElementById('data-responsavel-nome').textContent = pacienteData.responsavel.nome;
+                }
+                document.getElementById('signer-name-label').textContent = 'Nome Completo do Responsável Legal:';
+                document.getElementById('signer-cpf-label').textContent = 'CPF do Responsável Legal:';
+            }
+
+            document.getElementById('data-terapeuta').textContent = meuAtendimento.profissionalNome || 'Não informado';
+            document.getElementById('data-paciente-nome').textContent = pacienteData.nomeCompleto || 'Não informado';
+            document.getElementById('data-paciente-nascimento').textContent = new Date(pacienteData.dataNascimento + 'T03:00:00').toLocaleDateString('pt-BR');
+            document.getElementById('data-contribuicao').textContent = `R$ ${pacienteData.valorContribuicao || '0,00'}`;
+
+            const horarioInfo = meuAtendimento.horarioSessao || {};
+            document.getElementById('data-dia-sessao').textContent = horarioInfo.diaSemana || 'A definir';
+            document.getElementById('data-horario-sessao').textContent = horarioInfo.horario || 'A definir';
+            document.getElementById('data-tipo-atendimento').textContent = horarioInfo.tipoAtendimento || 'A definir';
+
+            loadingDiv.classList.add('hidden');
+            contentDiv.classList.remove('hidden');
+
+            if (meuAtendimento.contratoAssinado) {
+                document.getElementById('acceptance-form-section').classList.add('hidden');
+                document.getElementById('thank-you-section').classList.remove('hidden');
+            }
+
+            const cpfInput = document.getElementById('signer-cpf');
+            const cpfFeedback = document.getElementById('cpf-feedback');
+            cpfInput.addEventListener('input', () => {
+                let value = cpfInput.value.replace(/\D/g, '');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                cpfInput.value = value;
+                
+                if (value.length === 14) {
+                    if (validaCPF(value)) {
+                        cpfFeedback.textContent = '';
+                    } else {
+                        cpfFeedback.textContent = 'CPF inválido.';
+                    }
+                } else {
+                    cpfFeedback.textContent = '';
+                }
+            });
+            
+            const signatureForm = document.getElementById('signature-form');
+            signatureForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const feedbackDiv = document.getElementById('signature-feedback');
+                const submitButton = signatureForm.querySelector('button');
+                const cpfValue = document.getElementById('signer-cpf').value;
+
+                if (!validaCPF(cpfValue)) {
+                    feedbackDiv.textContent = 'O CPF informado não é válido. Por favor, corrija.';
+                    feedbackDiv.className = 'feedback-error';
+                    return;
+                }
+
+                const agreement = signatureForm.elements['agreement'].value;
+                if (agreement !== 'concordo') {
+                    feedbackDiv.textContent = 'Você precisa concordar com os termos para assinar.';
+                    feedbackDiv.className = 'feedback-error';
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.textContent = 'Salvando...';
+                feedbackDiv.textContent = '';
+
+                try {
+                    const nomeSignatario = document.getElementById('signer-name').value;
+                    const cpfSignatario = cpfValue;
+
+                    const result = await assinarContrato({
+                        pacienteId: pacienteId,
+                        atendimentoId: atendimentoId,
+                        nomeSignatario: nomeSignatario,
+                        cpfSignatario: cpfSignatario,
+                        versaoContrato: "1.0"
+                    });
+
+                    if (result.data && !result.data.success) {
+                        throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
+                    }
+
+                    document.getElementById('acceptance-form-section').classList.add('hidden');
+                    document.getElementById('thank-you-section').classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Erro ao salvar assinatura:", error);
+                    feedbackDiv.textContent = `Erro ao salvar a assinatura. (${error.message})`;
+                    feedbackDiv.className = 'feedback-error';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Assinar Contrato';
+                }
+            });
+
+        } catch (error) {
+            console.error("Erro ao carregar o contrato:", error);
+            showError("Ocorreu um erro inesperado ao carregar o contrato.");
+        }
+      });
+    </script>
+</body>
+</html>

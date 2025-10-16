@@ -1,0 +1,28 @@
+/* Arquivo: /modulos/financeiro/css/configuracoes.css
+   Versão: 1.0
+   Descrição: Estilos específicos para a tela de Configurações.
+*/
+
+/* Estilo para destacar os parágrafos de descrição 
+.description-box {
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+    font-size: 0.95em;
+    color: var(--cor-texto-secundario);
+}*/
+
+/* Estilo para organizar os campos de formulário em uma linha */
+.form-row {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os itens quebrem para a linha de baixo em telas pequenas */
+    gap: 20px; /* Espaçamento entre os campos */
+}
+
+/* Faz com que cada campo no .form-row ocupe o espaço disponível igualmente */
+.form-row .form-group {
+    flex: 1;
+    min-width: 200px; /* Largura mínima para cada campo antes de quebrar a linha */
+}

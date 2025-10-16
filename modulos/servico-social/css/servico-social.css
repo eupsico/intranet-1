@@ -1,0 +1,176 @@
+/* Arquivo: /modulos/servico-social/css/servico-social.css */
+
+/* Layout principal da tela de triagem */
+.triagem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr; /* Coluna da esquerda menor que a da direita */
+    gap: 30px;
+}
+
+/* Coluna da esquerda para dados do paciente */
+.patient-data-column {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    border: 1px solid var(--cor-borda);
+}
+
+.patient-data-column h3, .triagem-form-column h3 {
+    font-size: 1.3em;
+    color: var(--cor-primaria);
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.patient-info-group {
+    margin-bottom: 15px;
+}
+
+.patient-info-group strong {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+    display: block;
+}
+
+.patient-info-group p {
+    margin: 2px 0 0 0;
+    font-size: 1em;
+}
+
+/* Coluna da direita para o formulário */
+.triagem-form-column {
+    background-color: var(--cor-surface);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-suave);
+}
+
+.conditional-fields {
+    border-left: 3px solid var(--cor-secundaria);
+    padding-left: 20px;
+    margin-top: 20px;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 992px) {
+    .triagem-grid {
+        grid-template-columns: 1fr; /* Empilha as colunas */
+    }
+}
+
+.resultado-calculo {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+}
+.resultado-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+}
+.resultado-coluna h4 {
+    color: var(--cor-primaria);
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.resultado-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 1.05em;
+}
+.valor-resultado {
+    font-weight: 600;
+}
+
+.form-section-title {
+    font-size: 1.3em;
+    color: var(--cor-primaria);
+    margin-top: 30px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    padding-bottom: 10px;
+}
+.datas-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+}
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.view-container {
+    max-width: 900px;
+    margin: auto;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.6;
+}
+
+.view-container h2 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.description-box {
+    background: #f7f7f7;
+    border-left: 4px solid #007BFF;
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 15px;
+    color: #444;
+}
+
+.secao-titulo {
+    background-color: #e6f2ff; /* azul bem claro */
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 25px;
+    color: #003366;
+}
+
+.secao-conteudo {
+    margin: 10px 0 20px 0;
+    padding-left: 10px;
+}
+
+.secao-conteudo h4 {
+    margin-top: 15px;
+    font-size: 16px;
+    color: #004080;
+}
+
+.secao-conteudo ul, 
+.secao-conteudo ol {
+    margin-left: 25px;
+}
+
+.secao-conteudo p {
+    margin: 6px 0;
+}
+
+
+.checkbox-item input[type="checkbox"]:disabled + label {
+    cursor: not-allowed;
+    text-decoration: line-through;
+    color: var(--cor-texto-secundario);
+    opacity: 0.6;
+}
+/* Adicionado para o layout de filtros da disponibilidade */
+.disponibilidade-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+}

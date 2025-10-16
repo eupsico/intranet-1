@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Disponibilidade de Agendamentos - Serviço Social</title>
+    <link rel="stylesheet" href="../../../assets/css/design-system.css">
+</head>
+<body>
+    <div class="view-container">
+        <h1>Disponibilidade para Agendamentos</h1>
+        <p class="description-box">
+            A tabela abaixo exibe todos os horários disponíveis informados pelas assistentes sociais para triagens e reavaliações.
+        </p>
+
+        <div class="table-section">
+            <table id="disponibilidade-table">
+                <thead>
+                    <tr>
+                        <th>Assistente Social</th>
+                        <th>Data</th>
+                        <th>Hora de Início</th>
+                        <th>Hora de Fim</th>
+                        <th>Modalidade</th>
+                    </tr>
+                </thead>
+                <tbody id="disponibilidade-table-body">
+                    <tr><td colspan="5"><div class="loading-spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

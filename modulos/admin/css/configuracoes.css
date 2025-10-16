@@ -1,0 +1,210 @@
+/* Arquivo: /modulos/admin/css/configuracoes.css */
+
+/* Estilos Gerais */
+.config-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.title {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: #666;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+/* Sistema de Abas */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 1.5rem;
+}
+
+.tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 1rem;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-link:hover {
+    background-color: #f7f7f7;
+    color: #000;
+}
+
+.tab-link.active {
+    border-bottom: 3px solid #007bff;
+    color: #007bff;
+    font-weight: 600;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Formulário */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-group .description {
+    font-size: 0.9rem;
+    color: #777;
+    margin-top: 0.5rem;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 2rem 0;
+}
+
+/* --- INÍCIO DA ALTERAÇÃO --- */
+/* Estilos para a Tabela de Faixas de Contribuição */
+.faixas-table-container {
+    margin-top: 1rem;
+}
+.faixas-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+.faixas-table th, .faixas-table td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: left;
+}
+.faixas-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.faixas-table td input[type="number"] {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.faixas-table td:last-child {
+    width: 50px;
+    text-align: center;
+}
+.btn-remover-faixa {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 24px;
+    text-align: center;
+}
+.btn-remover-faixa:hover {
+    background-color: #c82333;
+}
+.btn-adicionar-faixa {
+    margin-top: 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-adicionar-faixa:hover {
+    background-color: #218838;
+}
+/* --- FIM DA ALTERAÇÃO --- */
+
+/* Ações e Feedback */
+.actions {
+    margin-top: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-primary {
+    padding: 12px 25px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+#save-feedback {
+    font-weight: bold;
+}
+
+/* Spinner de Carregamento */
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

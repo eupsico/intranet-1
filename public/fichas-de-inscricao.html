@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Inscrição v3 - EuPsico</title>
+    <link rel="stylesheet" href="../assets/css/design-system.css">
+    <style>
+        body { background-color: var(--cor-fundo); font-family: var(--fonte-principal); color: var(--cor-texto-principal); }
+        .form-container { max-width: 800px; margin: 40px auto; background-color: var(--cor-surface); padding: 30px 40px; border-radius: var(--borda-radius); box-shadow: var(--sombra-padrao); }
+        .form-header { text-align: center; margin-bottom: 30px; }
+        .form-header img { max-width: 150px; margin-bottom: 15px; }
+        .instrucoes { background-color: var(--cor-fundo-box); padding: 25px; border-radius: var(--borda-radius); margin-bottom: 30px; border-left: 5px solid var(--cor-primaria); }
+        .instrucoes-header { text-align: center; margin-bottom: 25px; }
+        .instrucoes-header h4 { font-size: 1.4em; margin-bottom: 5px; }
+        .instrucoes-passos { display: flex; flex-direction: column; gap: 20px; }
+        .passo { display: flex; align-items: flex-start; gap: 15px; }
+        .passo-numero { flex-shrink: 0; width: 35px; height: 35px; background-color: var(--cor-primaria); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; }
+        .passo-texto { line-height: 1.6; }
+        .passo-texto ul { padding-left: 20px; margin-top: 10px; list-style-type: '✓ '; color: var(--cor-texto-secundario); }
+        .form-section-title { font-size: 1.5em; color: var(--cor-primaria); margin-top: 40px; margin-bottom: 20px; border-bottom: 2px solid var(--cor-secundaria); padding-bottom: 10px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .form-group p { font-size: 0.85em; color: var(--cor-texto-secundario); margin-top: 5px; }
+        .required-asterisk { color: var(--cor-erro); }
+        .hidden-section { display: none; }
+        .horarios-options-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 10px; margin-bottom: 20px; }
+        .horario-detalhe-container { background-color: var(--cor-fundo-box); padding: 15px; border-radius: var(--borda-radius); margin-top: 10px; }
+        .horario-detalhe-container label { font-weight: bold; display: block; margin-bottom: 10px; }
+        .horario-detalhe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+        .info-note { background-color: var(--cor-fundo-box); padding: 10px 15px; border-radius: var(--borda-radius); margin-bottom: 20px; font-size: 0.9em; border-left: 4px solid var(--cor-info); }
+        .error-message { color: var(--cor-erro); font-size: 0.85em; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="form-header">
+            <img src="../assets/img/logo-eupsico.png" alt="Logo EuPsico">
+            <h2>Ficha de Inscrição</h2>
+        </div>
+
+        <div id="form-content">
+            <div class="instrucoes">
+                 <div class="instrucoes-header">
+                     <h4>Seja bem-vindo(a) à EuPsico!</h4>
+                     <p>Para cuidar da sua saúde mental conosco, siga os passos abaixo:</p>
+                 </div>
+                 <div class="instrucoes-passos">
+                     <div class="passo"><div class="passo-numero">1</div><div class="passo-texto"><strong>Preencha este formulário</strong> com atenção e informações corretas.</div></div>
+                     <div class="passo"><div class="passo-numero">2</div><div class="passo-texto"><strong>Envie seus documentos</strong> pelo nosso WhatsApp:<ul><li>RG e CPF (do paciente e/ou responsável);</li><li>Comprovante de renda atualizado;</li><li>Comprovante de endereço com CEP.</li></ul></div></div>
+                     <div class="passo"><div class="passo-numero">3</div><div class="passo-texto"><strong>Realize a contribuição de R$30,00</strong>, referente à triagem, após o envio dos documentos.</div></div>
+                     <div class="passo"><div class="passo-numero">4</div><div class="passo-texto"><strong>Aguarde o contato da nossa equipe</strong> para os próximos passos.</div></div>
+                 </div>
+            </div>
+
+            <form id="inscricao-form" novalidate>
+                <h3 class="form-section-title">Identificação Inicial</h3>
+                
+                <div class="form-group">
+                    <label for="cpf">1. Informe o CPF da pessoa que será atendida: <span class="required-asterisk">*</span></label>
+                    <input type="text" id="cpf" name="cpf" class="form-control" placeholder="Digite um CPF válido e saia do campo" required>
+                    <div id="cpf-error" class="error-message">CPF inválido. Por favor, corrija.</div>
+                </div>
+
+                <div id="initial-fields">
+                    <div class="form-group">
+                        <label for="nome-completo">2. Informe o nome completo do paciente: <span class="required-asterisk">*</span></label>
+                        <input type="text" id="nome-completo" name="nomeCompleto" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="data-nascimento">3. Informe a data de nascimento do paciente: <span class="required-asterisk">*</span></label>
+                        <input type="date" id="data-nascimento" name="dataNascimento" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div id="form-body" class="hidden-section">
+                    
+                    <div id="update-section" class="hidden-section">
+                        <h3 class="form-section-title" style="color: #ffc107;">Atualização de Cadastro</h3>
+                        <p class="instrucoes" style="border-left-color: #ffc107;">Verificamos que já existe um cadastro para este CPF. Por favor, confirme ou atualize as informações abaixo para a reavaliação.</p>
+                        
+                        <div class="form-group">
+                            <label for="update-nome-completo">Nome Completo:</label>
+                            <input type="text" id="update-nome-completo" name="update-nome-completo" class="form-control" disabled>
+                        </div>
+
+                        <div id="endereco-bloqueado-section">
+                            <div class="form-row">
+                                <div class="form-group" style="grid-column: 1 / 3;"><label for="update-rua">Rua:</label><input type="text" id="update-rua" name="update-rua" class="form-control" disabled></div>
+                                <div class="form-group"><label for="update-numero">Nº:</label><input type="text" id="update-numero" name="update-numero" class="form-control" disabled></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label for="update-bairro">Bairro:</label><input type="text" id="update-bairro" name="update-bairro" class="form-control" disabled></div>
+                                <div class="form-group"><label for="update-cidade">Cidade:</label><input type="text" id="update-cidade" name="update-cidade" class="form-control" disabled></div>
+                                <div class="form-group"><label for="update-cep">CEP:</label><input type="text" id="update-cep" name="update-cep" class="form-control" disabled></div>
+                            </div>
+                            <button type="button" id="btn-alterar-endereco" class="action-button">Deseja alterar o endereço?</button>
+                        </div>
+
+                        <div class="form-row" style="margin-top: 20px;">
+                            <div class="form-group">
+                                <label for="update-pessoas-moradia">Quantas pessoas moram com você atualmente? <span class="required-asterisk">*</span></label>
+                                <input type="number" id="update-pessoas-moradia" name="update-pessoas-moradia" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                 <label for="update-casa-propria">A casa é: <span class="required-asterisk">*</span></label>
+                                 <select id="update-casa-propria" name="update-casa-propria" class="form-control">
+                                      <option value="">Selecione...</option>
+                                      <option value="Propria quitada">Própria (quitada)</option>
+                                      <option value="Propria pagando">Própria (pagando)</option>
+                                      <option value="Alugada">Alugada</option>
+                                      <option value="Cedida">Cedida</option>
+                                 </select>
+                            </div>
+                             <div class="form-group">
+                                <label for="update-valor-aluguel">Valor do Aluguel/Financiamento:</label>
+                                <input type="text" id="update-valor-aluguel" name="update-valor-aluguel" class="form-control" placeholder="R$ 0,00">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="update-renda-mensal">Sua Renda Individual (atualizada): <span class="required-asterisk">*</span></label>
+                                <input type="text" id="update-renda-mensal" name="update-renda-mensal" class="form-control" placeholder="R$ 0,00">
+                            </div>
+                            <div class="form-group">
+                                <label for="update-renda-familiar">Renda Familiar Total (atualizada): <span class="required-asterisk">*</span></label>
+                                <input type="text" id="update-renda-familiar" name="update-renda-familiar" class="form-control" placeholder="R$ 0,00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="new-register-section" class="hidden-section">
+                        <div id="full-form-fields">
+                            <h3 class="form-section-title">Dados Pessoais Complementares</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="rg">Informe o RG da pessoa que será atendida: <span class="required-asterisk">*</span></label>
+                                    <input type="text" id="rg" name="rg" class="form-control" placeholder="Somente números" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="genero">Gênero: <span class="required-asterisk">*</span></label>
+                                    <select id="genero" name="genero" class="form-control" required>
+                                        <option value="">Selecione...</option><option value="Feminino">Feminino</option><option value="Masculino">Masculino</option><option value="Nao-binario">Não-binário</option><option value="Outro">Outro</option><option value="Prefiro nao informar">Prefiro não informar</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="estado-civil">Selecione o estado Civil do paciente: <span class="required-asterisk">*</span></label>
+                                    <select id="estado-civil" name="estadoCivil" class="form-control" required>
+                                         <option value="">Selecione...</option><option value="Solteiro(a)">Solteiro(a)</option><option value="Casado(a)">Casado(a)</option><option value="Divorciado(a)">Divorciado(a)</option><option value="Viuvo(a)">Viúvo(a)</option><option value="Uniao Estavel">União Estável</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="escolaridade">Selecione qual a escolaridade do paciente: <span class="required-asterisk">*</span></label>
+                                    <select id="escolaridade" name="escolaridade" class="form-control" required>
+                                        <option value="">Selecione...</option><option value="Analfabeto">Analfabeto</option><option value="Fundamental Incompleto">Fundamental Incompleto</option><option value="Fundamental Completo">Fundamental Completo</option><option value="Medio Incompleto">Médio Incompleto</option><option value="Medio Completo">Médio Completo</option><option value="Superior Incompleto">Superior Incompleto</option><option value="Superior Completo">Superior Completo</option><option value="Pos-graduacao">Pós-graduação</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="responsavel-legal-section" class="hidden-section">
+                                <h3 class="form-section-title">Dados do Responsável Legal</h3>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="responsavel-nome">Nome completo do Responsável: <span class="required-asterisk">*</span></label><input type="text" id="responsavel-nome" name="responsavelNome" class="form-control"></div>
+                                    <div class="form-group"><label for="responsavel-cpf">CPF do Responsável: <span class="required-asterisk">*</span></label><input type="text" id="responsavel-cpf" name="responsavelCpf" class="form-control"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="responsavel-parentesco">Selecione qual o parentesco com o paciente: <span class="required-asterisk">*</span></label>
+                                        <select id="responsavel-parentesco" name="responsavelParentesco" class="form-control">
+                                            <option value="">Selecione...</option>
+                                            <option value="Pai">Pai</option>
+                                            <option value="Mãe">Mãe</option>
+                                            <option value="Avô">Avô</option>
+                                            <option value="Avó">Avó</option>
+                                            <option value="Tio(a)">Tio(a)</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group hidden-section" id="outro-parentesco-container">
+                                        <label for="responsavel-parentesco-outro">Qual o parentesco? <span class="required-asterisk">*</span></label>
+                                        <input type="text" id="responsavel-parentesco-outro" name="responsavelParentescoOutro" class="form-control">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="responsavel-contato">Telefone de Contato do Responsável: <span class="required-asterisk">*</span></label>
+                                        <input type="tel" id="responsavel-contato" name="responsavelContato" class="form-control" placeholder="(XX) XXXXX-XXXX">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 class="form-section-title">Contato</h3>
+                            <div class="form-row">
+                                <div class="form-group"><label for="telefone-celular">Telefone celular: <span class="required-asterisk">*</span></label><input type="tel" id="telefone-celular" name="telefoneCelular" class="form-control" placeholder="(XX) XXXXX-XXXX" required></div>
+                                <div class="form-group"><label for="telefone-fixo">Telefone Fixo:</label><input type="tel" id="telefone-fixo" name="telefoneFixo" class="form-control" placeholder="(XX) XXXX-XXXX"></div>
+                                <div class="form-group"><label for="email">Informe o seu melhor e-mail: <span class="required-asterisk">*</span></label><input type="email" id="email" name="email" class="form-control" required></div>
+                            </div>
+                            
+                            <h3 class="form-section-title">Endereço</h3>
+                            <div class="form-row">
+                                <div class="form-group"><label for="cep">Informe o CEP: <span class="required-asterisk">*</span></label><input type="text" id="cep" name="cep" class="form-control" placeholder="Digite o CEP e aguarde" required></div>
+                                <div class="form-group"><label for="cidade">Informe a cidade que o paciente mora: <span class="required-asterisk">*</span></label><input type="text" id="cidade" name="cidade" class="form-control" required readonly></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="grid-column: 1 / 3;"><label for="rua">Informe o nome da Rua: <span class="required-asterisk">*</span></label><input type="text" id="rua" name="rua" class="form-control" required readonly></div>
+                                <div class="form-group"><label for="numero-casa">Informe o número da casa: <span class="required-asterisk">*</span></label><input type="text" id="numero-casa" name="numeroCasa" class="form-control" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label for="bairro">Informe o Bairro: <span class="required-asterisk">*</span></label><input type="text" id="bairro" name="bairro" class="form-control" required readonly></div>
+                                <div class="form-group"><label for="complemento">Complemento do endereço:</label><input type="text" id="complemento" name="complemento" class="form-control" placeholder="Apto, bloco, etc."></div>
+                            </div>
+
+                            <h3 class="form-section-title">Dados Sociodemográficos</h3>
+                             <div class="form-row">
+                                 <div class="form-group"><label for="pessoas-moradia">Quantas pessoas moram com o paciente? <span class="required-asterisk">*</span></label><input type="number" id="pessoas-moradia" name="pessoasMoradia" class="form-control" required><p>Incluindo filhos, irmãos, parentes e amigos.</p></div>
+                                 <div class="form-group"><label for="tipo-moradia">Selecione o tipo de moradia: <span class="required-asterisk">*</span></label><select id="tipo-moradia" name="tipoMoradia" class="form-control" required><option value="">Selecione...</option><option value="Casa">Casa</option><option value="Apartamento">Apartamento</option><option value="Comunidade">Comunidade</option><option value="Outro">Outro</option></select></div>
+                                 <div class="form-group"><label for="casa-propria">A casa em que sua família reside é: <span class="required-asterisk">*</span></label><select id="casa-propria" name="casaPropria" class="form-control" required><option value="">Selecione...</option><option value="Propria quitada">Própria (quitada)</option><option value="Propria pagando">Própria (pagando)</option><option value="Alugada">Alugada</option><option value="Cedida">Cedida</option></select></div>
+                            </div>
+                            <div class="form-row">
+                                 <div class="form-group"><label for="valor-aluguel">Se alugada/pagando, qual o valor da prestação?</label><input type="text" id="valor-aluguel" name="valorAluguel" class="form-control" placeholder="R$ 0,00"></div>
+                                 <div class="form-group"><label for="renda-mensal">Qual a sua renda mensal, aproximadamente? <span class="required-asterisk">*</span></label><input type="text" id="renda-mensal" name="rendaMensal" class="form-control" required placeholder="R$ 0,00"><p>No caso de menores, informar a renda do responsável legal.</p></div>
+                                 <div class="form-group"><label for="renda-familiar">Qual a renda familiar mensal, aproximadamente? <span class="required-asterisk">*</span></label><input type="text" id="renda-familiar" name="rendaFamiliar" class="form-control" required placeholder="R$ 0,00"><p>Some a sua renda com a das pessoas que moram com você.</p></div>
+                            </div>
+                            <div class="form-row">
+                                 <div class="form-group"><label for="beneficio-social">Recebe algum benefício social? <span class="required-asterisk">*</span></label><select id="beneficio-social" name="beneficioSocial" class="form-control" required><option value="">Selecione...</option><option value="sim">Sim (Bolsa Família, BPC, etc.)</option><option value="nao">Não</option></select></div>
+                                 <div class="form-group"><label for="como-conheceu">Como conheceu a EuPsico? <span class="required-asterisk">*</span></label><select id="como-conheceu" name="comoConheceu" class="form-control" required><option value="">Selecione...</option><option value="Indicacao">Indicação de amigo/familiar</option><option value="Profissional">Indicação de outro profissional</option><option value="Google">Pesquisa no Google</option><option value="Redes Sociais">Redes Sociais (Instagram, etc.)</option><option value="Outro">Outro</option></select></div>
+                            </div>
+                            
+                            <h3 class="form-section-title">Queixa Principal</h3>
+                            <div class="form-group"><label for="tratamento-anterior">Você já fez ou faz tratamento para algum outro problema emocional? <span class="required-asterisk">*</span></label><textarea id="tratamento-anterior" name="tratamentoAnterior" rows="4" class="form-control" required></textarea><p>Se sim, informe quanto tempo durou, onde foi e o motivo do encerramento.</p></div>
+                            <div class="form-group"><label for="motivo-busca">Qual o motivo de ter buscado ajuda na EuPsico? <span class="required-asterisk">*</span></label><textarea id="motivo-busca" name="motivoBusca" rows="4" class="form-control" required></textarea></div>
+
+                            <div id="disponibilidade-section">
+                                <h3 class="form-section-title">Disponibilidade de Horário</h3>
+                                <div class="form-group">
+                                    <label>Opção de horário(s) para atendimento: <span class="required-asterisk">*</span></label>
+                                    <div class="horarios-options-container">
+                                        <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Durante a semana)</label></div>
+                                        <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Durante a semana)</label></div>
+                                        <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Durante a semana)</label></div>
+                                        <div><label><input type="checkbox" name="horario" value="manha-sabado"> Manhã (Sábado)</label></div>
+                                    </div>
+                                </div>
+                                <div id="horarios-especificos-container">
+                                    <div id="container-manha-semana" class="horario-detalhe-container hidden-section"></div>
+                                    <div id="container-tarde-semana" class="horario-detalhe-container hidden-section"></div>
+                                    <div id="container-noite-semana" class="horario-detalhe-container hidden-section"></div>
+                                    <div id="container-manha-sabado" class="horario-detalhe-container hidden-section"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="button-bar" style="margin-top: 40px;">
+                        <button type="submit" class="action-button">Enviar Inscrição</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="../assets/js/firebase-init.js"></script>
+    <script type="module" src="../assets/js/fichas-de-inscricao.js"></script>
+
+</body>
+</html>

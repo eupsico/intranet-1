@@ -1,0 +1,115 @@
+/* Arquivo: /modulos/voluntario/css/envio_comprovantes.css
+   Versão: 2.0
+   Descrição: Estilos refatorados para se alinharem ao design system da intranet.
+*/
+
+/* Container das instruções, agora usando o padrão description-box */
+.instructions {
+    background-color: var(--cor-fundo);
+    padding: 25px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+}
+.instructions h2 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: var(--cor-primaria);
+}
+.instructions h4 {
+    margin-top: 20px;
+    color: var(--cor-primaria);
+}
+.instructions ul {
+    padding-left: 20px;
+}
+.instructions ul li {
+    margin-bottom: 8px;
+}
+
+/* Seções de conteúdo principal (formulário, confirmação, etc.) */
+.form-section, .confirmation-section, .final-message-section {
+    background-color: var(--cor-surface);
+    padding: 30px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+}
+.form-section h3, .confirmation-section h3, .final-message-section h3 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: var(--cor-primaria);
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--cor-borda);
+    padding-bottom: 10px;
+}
+
+/* Layout do formulário */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+.button-container {
+    margin-top: 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Estilos para botões específicos desta tela */
+.action-button.edit-button {
+    background-color: var(--cor-alerta);
+}
+.action-button.new-button {
+    background-color: var(--cor-sucesso);
+}
+
+/* Mensagens de alerta */
+#message-container {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: var(--borda-radius);
+    border: 1px solid transparent;
+    display: none;
+}
+#message-container.alert-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+#message-container.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+/* Seção de confirmação e resumo */
+.confirmation-summary p {
+    font-size: 1.1em;
+    margin: 12px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.confirmation-summary span {
+    font-weight: 600;
+    color: var(--cor-texto-principal);
+}
+.final-message-section .alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: var(--borda-radius);
+    border: 1px solid #ffeeba;
+}
+
+/* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
+@media (max-width: 768px) {
+    .button-container {
+        flex-direction: column;
+    }
+    .action-button {
+        width: 100%;
+        text-align: center;
+    }
+}

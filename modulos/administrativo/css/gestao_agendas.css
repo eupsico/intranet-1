@@ -1,0 +1,79 @@
+/* Estilos gerais para a página de Gestão de Agendas */
+.gestao-agendas .card-header h5 {
+    font-weight: 600;
+    color: #333;
+}
+
+/* Estilo para a tabela de disponibilidades */
+#disponibilidades-table {
+    margin-top: 1rem;
+    border-radius: 0.5rem;
+    overflow: hidden; /* Garante que o border-radius seja aplicado nos cantos da tabela */
+}
+
+#disponibilidades-table th {
+    background-color: #f8f9fa; /* Um cinza bem claro para o cabeçalho */
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Limita a largura da coluna de dias e quebra a linha para não estourar o layout */
+#disponibilidades-table td.text-wrap {
+    min-width: 250px;
+    white-space: normal;
+}
+
+/* Estilo para os botões de ação na tabela */
+.config-btn {
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.config-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para o Modal de Configuração */
+#configurarAgendaModal .modal-header {
+    border-bottom: 2px solid #dee2e6;
+}
+
+#configurarAgendaModal .modal-title {
+    font-weight: 600;
+    color: var(--bs-primary); /* Usa a cor primária do Bootstrap */
+}
+
+/* Estilos para os cards de configuração de cada dia dentro do modal */
+#agenda-config-content .card {
+    border: 1px solid #e0e0e0;
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+#agenda-config-content .card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #c0c0c0;
+}
+
+#agenda-config-content .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #495057;
+}
+
+/* Ajustes nos inputs de rádio para melhor espaçamento e clique */
+#agenda-config-content .form-check {
+    margin-top: 0.5rem;
+}
+
+#agenda-config-content .form-check-label {
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+/* Animação sutil para o spinner de carregamento */
+#loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}

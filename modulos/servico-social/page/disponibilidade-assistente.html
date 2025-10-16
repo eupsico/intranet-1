@@ -1,0 +1,46 @@
+<div class="view-container">
+    <h1>Minha Disponibilidade</h1>
+    <p class="description-box">Informe seus horários para os atendimentos online e presenciais. O setor administrativo fará a distribuição entre triagens e reavaliações conforme a demanda.</p>
+
+    <div class="form-container" id="disponibilidade-form-container">
+        <form id="disponibilidade-form">
+            <div class="form-group">
+                <label for="assistente-nome">Assistente Social:</label>
+                <input type="text" id="assistente-nome" class="form-control" readonly>
+            </div>
+
+            <div class="form-row disponibilidade-filters">
+                <div class="form-group" style="flex: 2;">
+                    <label for="mes-disponibilidade">Escolha o mês que deseja informar:</label>
+                    <select id="mes-disponibilidade" class="form-control"></select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="hora-inicio-disponibilidade">Horário da primeira triagem:</label>
+                    <select id="hora-inicio-disponibilidade" class="form-control"></select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="hora-fim-disponibilidade">Horário da última triagem:</label>
+                    <select id="hora-fim-disponibilidade" class="form-control"></select>
+                </div>
+            </div>
+
+            <h3 class="form-section-title">Disponibilidade para o atendimento do seviço social Online</h3>
+            <p>(Triagem e Reavaliação será definida pelo administrativo de acordo com a demanda)</p>
+            <div class="form-group">
+                <div id="datas-container-online" class="datas-container">
+                    <p>Selecione um mês para ver os dias.</p>
+                </div>
+            </div>
+
+            <h3 class="form-section-title">Disponibilidade para o atendimento do seviço social Presencial</h3>
+            <p>(Triagem e Reavaliação será definida pelo administrativo de acordo com a demanda)</p>
+            <div id="datas-container-presencial" class="datas-container">
+                 <p>Selecione um mês para ver os dias.</p>
+            </div>
+            
+            <div class="button-bar">
+                <button type="submit" class="action-button">Salvar Disponibilidade</button>
+            </div>
+        </form>
+    </div>
+</div>

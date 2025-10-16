@@ -1,0 +1,51 @@
+/* Arquivo: /modulos/voluntario/css/agendamento.css */
+
+.modal-content.large {
+    max-width: 800px;
+}
+
+.date-option {
+    margin-bottom: 10px;
+}
+
+.date-option input[type="radio"] {
+    display: none;
+}
+
+.date-option label {
+    display: block;
+    padding: 15px;
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.date-option label:hover {
+    border-color: var(--cor-secundaria);
+    background-color: #f8f9fa;
+}
+
+.date-option input[type="radio"]:checked + label {
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    border-color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.date-option label span {
+    float: right;
+    font-weight: normal;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.date-option input[type="radio"]:checked + label span {
+    opacity: 1;
+}
+
+#datas-disponiveis-container {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 5px;
+}

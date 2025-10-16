@@ -1,0 +1,83 @@
+<div class="view-container">
+    <h1>Envio de Comprovantes</h1>
+
+    <div class="instructions">
+        <h2>Instruções para Inserção de Comprovantes de Pagamento</h2>
+        <p>Olá! Para garantir a agilidade e precisão no processamento dos seus pagamentos, é fundamental que você insira os comprovantes de pagamento das sessões dos pacientes neste formulário.</p>
+        <h4>Por que o prazo é importante?</h4>
+        <p>Nosso sistema de pagamentos é otimizado para processar os valores das sessões referentes ao mês corrente. Isso significa que, para que você receba pelos atendimentos realizados neste mês, precisamos dos comprovantes em tempo hábil.</p>
+        <p><strong>Atenção:</strong></p>
+        <ul>
+            <li><strong>Prazo:</strong> O limite para a inserção dos comprovantes é o <strong>dia <span id="prazo-dia">10</span> do mês corrente</strong>.</li>
+            <li><strong>Pagamento:</strong> Somente os valores referentes aos comprovantes enviados até o dia 10 serão processados e pagos neste mês. Comprovantes inseridos após essa data serão considerados para o próximo ciclo de pagamentos.</li>
+        </ul>
+        <p>Agradecemos a sua colaboração!</p>
+    </div>
+
+    <div id="message-container" style="display: none;"></div>
+
+    <div id="form-container">
+        <div class="form-section">
+            <h3>Inserir Novo Comprovante</h3>
+            <form id="comprovante-form" novalidate>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="form-profissional">Selecione seu nome abaixo:</label>
+                        <select id="form-profissional" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-paciente">Informe o nome do paciente:</label>
+                        <input type="text" id="form-paciente" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-data-pagamento">Informe a data do pagamento:</label>
+                        <input type="date" id="form-data-pagamento" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-mes-ref">Selecione o mês do pagamento:</label>
+                        <select id="form-mes-ref" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-valor">Informe o valor da contribuição:</label>
+                        <input type="text" id="form-valor" class="form-control" placeholder="R$ 0,00" inputmode="decimal" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-arquivo">Anexe o comprovante de pagamento:</label>
+                        <input type="file" id="form-arquivo" class="form-control" accept="image/*,application/pdf" required>
+                    </div>
+                </div>
+                <div class="button-container">
+                    <button id="btn-review" class="action-button" type="button">Revisar Dados</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmation-section" class="confirmation-section" style="display: none;">
+        <h3>Confirme os Dados</h3>
+        <div class="confirmation-summary">
+            <p><strong>Profissional:</strong> <span id="confirm-profissional"></span></p>
+            <p><strong>Paciente:</strong> <span id="confirm-paciente"></span></p>
+            <p><strong>Data do Pagamento:</strong> <span id="confirm-data"></span></p>
+            <p><strong>Mês de Referência:</strong> <span id="confirm-mes"></span></p>
+            <p><strong>Valor:</strong> <span id="confirm-valor"></span></p>
+            <p><strong>Arquivo:</strong> <span id="confirm-arquivo"></span></p>
+        </div>
+        <div class="button-container">
+            <button id="btn-edit" class="action-button edit-button" type="button">Corrigir</button>
+            <button id="btn-confirm-send" class="action-button" type="button">Confirmar e Enviar</button>
+        </div>
+    </div>
+
+    <div id="final-message-section" class="final-message-section" style="display: none;">
+        <h3>Envio Concluído com Sucesso!</h3>
+        <p>Os seguintes dados foram enviados:</p>
+        <div id="sent-data-summary" class="confirmation-summary"></div>
+        <div class="alert-warning">
+            <strong>Atenção:</strong> Para garantir o processamento correto, não envie este mesmo comprovante novamente este mês.
+        </div>
+        <div class="button-container">
+            <button id="btn-new-form" class="action-button new-button" type="button">Inserir Novo Comprovante</button>
+        </div>
+    </div>
+</div>

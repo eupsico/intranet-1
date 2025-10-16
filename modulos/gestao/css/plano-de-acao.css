@@ -1,0 +1,126 @@
+/* /modulos/gestao/css/plano-de-acao.css */
+
+/* --- Layout do Quadro Kanban --- */
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    align-items: flex-start;
+}
+.kanban-column {
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+    padding: 15px;
+    border: 1px solid var(--cor-borda);
+}
+.column-header {
+    text-align: center;
+    color: var(--cor-texto-principal);
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--cor-borda);
+    font-size: 1.2em;
+    font-weight: 600;
+}
+#coluna-a-fazer { background-color: #cfe2ff; }
+#coluna-em-andamento { background-color: #fff3cd; }
+#coluna-atrasado { background-color: #f8d7da; }
+#coluna-concluido { background-color: #d4edda; }
+
+/* --- Estilos dos Cards --- */
+.cards-container { min-height: 100px; }
+.kanban-card {
+    background-color: var(--cor-surface);
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-suave);
+    padding: 15px;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+.kanban-card p { margin: 0 0 8px 0; word-wrap: break-word; }
+.kanban-card small { color: var(--cor-texto-secundario); font-size: 0.9em; }
+.card-atividade { border-left: 5px solid var(--cor-secundaria); }
+.card-encaminhamento { border-left: 5px solid var(--cor-alerta); }
+.card-actions {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid var(--cor-borda);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.card-actions .status-buttons { display: flex; gap: 8px; }
+
+/* --- NOVOS ESTILOS PARA O MODAL DE ATUALIZAÇÃO --- */
+#update-modal .modal-content {
+    max-width: 700px;
+}
+#update-modal .modal-body {
+    padding: 20px 30px;
+}
+#update-modal #modal-origem {
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+    display: block;
+    margin-bottom: 20px;
+}
+#update-modal label {
+    font-weight: 600;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    display: block;
+}
+#historico-atualizacoes {
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 15px;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+#historico-atualizacoes .entrada-historico {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+#historico-atualizacoes .entrada-historico:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+#historico-atualizacoes p { margin: 0 0 5px 0; }
+#historico-atualizacoes small { color: #777; }
+
+#nova-atualizacao-form,
+#encaminhamento-vinculado-form {
+    border-top: 1px dashed var(--cor-borda);
+    margin-top: 25px;
+    padding-top: 20px;
+}
+#nova-atualizacao-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+#encaminhamento-vinculado-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+}
+#encaminhamento-vinculado-form .full-width {
+    grid-column: 1 / -1;
+}
+#encaminhamento-vinculado-form .form-group {
+    margin-bottom: 10px;
+}
+#update-modal .modal-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end; /* Alinha o botão à direita */
+}
+
+/* Esconde os botões individuais de salvar */
+#btn-salvar-nova-atualizacao,
+#btn-save-encaminhamento {
+    display: none;
+}

@@ -1,0 +1,100 @@
+<div class="view-container">
+    <h1>Gestão de Profissionais</h1>
+    <p class="description-box">Adicione novos profissionais, edite informações existentes e gerencie as funções de acesso à intranet.</p>
+    
+    <div class="button-bar" style="justify-content: flex-end; margin-bottom: 20px;">
+        <button class="action-button" id="add-profissional-btn">Adicionar Profissional</button>
+    </div>
+
+    <div class="table-section">
+        <table id="profissionais-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Funções</th>
+                    <th>Inativo?</th>
+                    <th>Primeira Fase</th>
+                    <th>Faz Atendimento</th>
+                    <th>Recebe Direto</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="8"><div class="loading-spinner"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="profissional-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Adicionar Novo Profissional</h2>
+            <button id="modal-close-btn" class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="profissional-form" novalidate>
+                <input type="hidden" id="profissional-id">
+                <input type="hidden" id="prof-username">
+                
+                <div class="form-group">
+                    <label for="prof-nome">Nome Completo</label>
+                    <input type="text" id="prof-nome" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="prof-email">E-mail (Login)</label>
+                    <input type="email" id="prof-email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="prof-contato">Telefone</label>
+                    <input type="tel" id="prof-contato" class="form-control" placeholder="(99) 99999-9999" required>
+                </div>
+                <div class="form-group">
+                    <label for="prof-profissao">Profissão</label>
+                    <select id="prof-profissao" class="form-control" required>
+                        <option value="" disabled selected>Selecione uma profissão</option>
+                        <option value="Psicólogo">Psicólogo</option>
+                        <option value="Psicopedagoga">Psicopedagoga</option>
+                        <option value="Musicoterapeuta">Musicoterapeuta</option>
+                        <option value="Assistente Social">Assistente Social</option>
+                        <option value="Advogado">Advogado</option>
+                        <option value="Nutricionista">Nutricionista</option>
+                        <option value="Assistente">Assistente Administrativo</option>
+                        <option value="Marketing">Marketing</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Funções:</h4>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" name="funcoes" value="admin"> Admin</label>
+                        <label><input type="checkbox" name="funcoes" value="financeiro"> Financeiro</label>
+                        <label><input type="checkbox" name="funcoes" value="rh"> RH</label>
+                        <label><input type="checkbox" name="funcoes" value="gestor"> Gestor</label>
+                        <label><input type="checkbox" name="funcoes" value="atendimento"> Atendimento</label>
+                        <label><input type="checkbox" name="funcoes" value="assistente"> Assistente</label>
+                        <label><input type="checkbox" name="funcoes" value="supervisor"> Supervisor</label>
+                        <label><input type="checkbox" name="funcoes" value="servico_social"> Serviço Social</label>
+                        <label><input type="checkbox" name="funcoes" value="estagiario"> Estagiário</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>Status e Configurações:</h4>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" id="prof-inativo"> Inativo?</label>
+                        <label><input type="checkbox" id="prof-recebeDireto"> Recebe Direto?</label>
+                        <label><input type="checkbox" id="prof-primeiraFase"> Primeira Fase?</label>
+                        <label><input type="checkbox" id="prof-fazAtendimento"> Faz Atendimento?</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button id="modal-delete-btn" class="action-button" style="background-color: var(--cor-erro); margin-right: auto;">Excluir</button>
+            <button id="modal-cancel-btn" class="action-button" style="background-color: #6c757d;">Cancelar</button>
+            <button id="modal-save-btn" class="action-button" style="background-color: #28a745;">Salvar</button>
+        </div>
+    </div>
+</div>

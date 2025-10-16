@@ -1,0 +1,38 @@
+<div class="view-container">
+    <button id="view-back-button" class="secondary-action-button">&larr; Voltar ao Painel</button>
+    
+    <div class="view-header-band">
+        <h1>Meu Perfil de Supervisor</h1>
+    </div>
+    <p class="page-subtitle">Visualize e edite suas informações de perfil.</p>
+    
+    <div id="supervisor-profile-container">
+        <div class="loading-spinner"></div>
+    </div>
+</div>
+
+<div id="details-profile-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Perfil Detalhado</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div id="details-modal-body" class="modal-body">
+            </div>
+    </div>
+</div>
+
+<div id="agendamento-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2>Agendar Supervisão</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div id="agendamento-modal-body" class="modal-body">
+            <div class="loading-spinner"></div>
+        </div>
+         <div class="modal-footer">
+            <button type="button" id="agendamento-cancel-btn" class="action-button">Cancelar</button>
+        </div>
+    </div>
+</div>

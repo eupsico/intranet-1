@@ -1,0 +1,39 @@
+/* Arquivo: /modulos/financeiro/css/controle_pagamentos.css
+   Versão: 1.0
+   Descrição: Estilos para a tela de Controle de Pagamentos.
+
+
+.description-box {
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+}*/
+
+.table-section thead th {
+    background-color: var(--cor-fundo);
+    color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.filter-box {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--cor-borda);
+    display: inline-block;
+}
+
+.filter-box h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--cor-texto-principal);
+    font-weight: 600;
+}
+
+.filter-box .selectors {
+    display: flex;
+    gap: 15px;
+}

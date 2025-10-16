@@ -1,0 +1,16 @@
+/* Arquivo: /modulos/voluntario/css/meus-supervisionados-view.css */
+
+/* Este módulo reutiliza os estilos de .ficha-item definidos em 'fichas-preenchidas.css' */
+/* Garanta que o arquivo 'fichas-preenchidas.css' esteja sendo carregado na página principal */
+
+#lista-fichas-container {
+    margin-top: 20px;
+}
+
+.no-fichas-message {
+    background-color: var(--cor-fundo-hover);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    text-align: center;
+    color: var(--cor-texto-secundario);
+}

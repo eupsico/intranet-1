@@ -1,0 +1,39 @@
+<div class="container-fluid gestao-agendas">
+    <h2 class="mb-4">Gestão de Agendas - Serviço Social</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Disponibilidades Registradas</h5>
+        </div>
+        <div class="card-body">
+            <p>Abaixo estão as disponibilidades informadas pelas assistentes sociais. Clique para definir os dias de <strong>Triagem</strong> e <strong>Reavaliação</strong>.</p>
+            
+            <div id="loading-spinner" class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2">Carregando disponibilidades...</p>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="disponibilidades-table" style="display:none;">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Assistente Social</th>
+                            <th scope="col">Mês/Ano</th>
+                            <th scope="col">Modalidade</th>
+                            <th scope="col">Dias Disponíveis</th>
+                            <th scope="col">Horário</th>
+                            <th scope="col">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="disponibilidades-body">
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-data-message" class="alert alert-info" style="display:none;">
+                Nenhuma disponibilidade encontrada para configuração.
+            </div>
+        </div>
+    </div>
+</div>

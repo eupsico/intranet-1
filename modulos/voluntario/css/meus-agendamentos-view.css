@@ -1,0 +1,157 @@
+/* Arquivo: /modulos/voluntario/css/meus-agendamentos-view.css */
+
+#lista-agendamentos-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.agendamento-item {
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: var(--sombra-suave);
+}
+
+.agendamento-data {
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    border-radius: var(--borda-radius);
+    padding: 10px;
+    text-align: center;
+    min-width: 60px;
+}
+
+.agendamento-data .dia {
+    display: block;
+    font-size: 1.8em;
+    font-weight: 700;
+}
+
+.agendamento-data .mes {
+    display: block;
+    font-size: 0.8em;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.agendamento-info h4 {
+    margin: 0 0 5px 0;
+    color: var(--cor-primaria-dark);
+}
+
+.agendamento-info p {
+    margin: 0;
+    font-size: 0.95em;
+    color: var(--cor-texto-secundario);
+}
+
+/* --- ESTILOS PARA TELAS PEQUENAS (MOBILE) --- */
+@media (max-width: 768px) {
+    body, html {
+        overflow-x: hidden;
+    }
+    .agendamento-item {
+        display: block;
+        height: auto;
+        overflow: visible;
+    }
+}
+/* Arquivo: /modulos/voluntario/css/meus-agendamentos-view.css */
+
+#agendamentos-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.agendamento-card-supervisor {
+    background-color: var(--cor-surface);
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-padrao);
+    border: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+}
+
+.agendamento-card-supervisor .card-header {
+    padding: 15px 20px;
+    background-color: var(--cor-fundo);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.agendamento-card-supervisor .card-header h4 {
+    margin: 0;
+    color: var(--cor-primaria);
+}
+
+.agendamento-card-supervisor .data-agendamento {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--cor-texto-secundario);
+}
+
+.agendamento-card-supervisor .card-body {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+.agendamento-card-supervisor .card-body p {
+    margin: 0 0 8px 0;
+    color: var(--cor-texto-secundario);
+    font-size: 0.95em;
+}
+
+.agendamento-card-supervisor .card-body p strong {
+    color: var(--cor-texto-principal);
+}
+
+.agendamento-card-supervisor .card-footer-details {
+    display: flex;
+    background-color: var(--cor-fundo);
+    border-top: 1px solid var(--cor-borda);
+    border-radius: 0 0 var(--borda-radius) var(--borda-radius);
+}
+
+.agendamento-card-supervisor .info-item {
+    flex: 1;
+    text-align: center;
+    padding: 15px 10px;
+    border-right: 1px solid var(--cor-borda);
+}
+
+.agendamento-card-supervisor .info-item:last-child {
+    border-right: none;
+}
+
+.agendamento-card-supervisor .info-item .label {
+    display: block;
+    font-size: 0.8em;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.agendamento-card-supervisor .info-item .value {
+    display: block;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--cor-primaria);
+}
+
+.no-fichas-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+}

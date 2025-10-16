@@ -1,0 +1,91 @@
+.cruzamento-agendas-view .form-select,
+.cruzamento-agendas-view .btn {
+    height: calc(2.25rem + 8px);
+}
+
+.cruzamento-agendas-view .table .action-button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+}
+
+.cruzamento-agendas-view .status-select {
+    min-width: 200px;
+}
+
+.cruzamento-agendas-view .tabs-container {
+    border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 20px;
+}
+
+.cruzamento-agendas-view .tab-link {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-weight: 500;
+    color: var(--cor-texto-secundario);
+}
+
+.cruzamento-agendas-view .tab-link.active {
+    border-bottom-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.cruzamento-agendas-view .tab-content {
+    display: none;
+}
+
+.cruzamento-agendas-view .tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.availability-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85em;
+    max-width: 400px; /* Evita que a célula fique muito larga */
+}
+
+.availability-list li {
+    display: inline-block;
+    background-color: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 2px;
+    border: 1px solid #dee2e6;
+}
+
+.modalidade-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    font-weight: 600;
+    border-radius: 12px;
+    text-transform: capitalize;
+}
+
+.modalidade-badge.online {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.modalidade-badge.presencial {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.modalidade-badge.ambas {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

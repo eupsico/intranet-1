@@ -1,0 +1,38 @@
+/* Arquivo: /modulos/financeiro/css/devedores.css
+   Versão: 1.0
+   Descrição: Estilos para a tela de Devedores.
+
+
+.description-box {
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+}*/
+
+.table-section thead th {
+    background-color: var(--cor-fundo);
+    color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.table-section tfoot td {
+    background-color: var(--cor-fundo);
+    font-weight: bold;
+}
+
+.filter-box {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--cor-borda);
+    display: inline-block;
+}
+
+.filter-box label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+}

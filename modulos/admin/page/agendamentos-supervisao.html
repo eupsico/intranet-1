@@ -1,0 +1,34 @@
+<div class="view-container">
+    <div class="view-header">
+        <h2>Agendamentos de Supervisão</h2>
+        
+        <div class="filter-bar">
+            <div class="form-group">
+                <label for="filtro-mes">Filtrar por Mês:</label>
+                <select id="filtro-mes" class="form-control"></select>
+            </div>
+            <button id="export-pdf-btn" class="action-button">Exportar para PDF</button>
+        </div>
+        </div>
+
+    <p class="description-box">
+        Lista de todas as supervisões agendadas pelos profissionais com os supervisores.
+    </p>
+
+    <div class="table-section">
+        <table id="supervisao-table">
+            <thead>
+                <tr>
+                    <th>Profissional (Supervisionado)</th>
+                    <th>Supervisor</th>
+                    <th>Data do Agendamento</th>
+                    <th>Horário</th>
+                    <th>Valor da Supervisão</th>
+                </tr>
+            </thead>
+            <tbody id="supervisao-table-body">
+                <tr><td colspan="5"><div class="loading-spinner"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

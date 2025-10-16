@@ -1,0 +1,15 @@
+/* Arquivo: /modulos/administrativo/css/administrativo.css
+   Versão: 1.0
+   Descrição: Estilos principais e compartilhados para o Painel Administrativo.
+*/
+
+/* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
+.view-administrativo .view-container {
+    padding: 0;
+}
+
+/* O estilo dos cards de módulo (.modules-grid, .module-card) 
+   agora é herdado do design-system.css para manter a consistência.
+   Este arquivo está pronto para receber outros estilos específicos 
+   do módulo administrativo que possam ser necessários no futuro. 
+*/

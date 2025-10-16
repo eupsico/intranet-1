@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar Pacientes - Painel Administrativo</title>
+    <link rel="stylesheet" href="../../../assets/css/design-system.css">
+    <link rel="stylesheet" href="../css/importar-pacientes.css">
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <h1>Importar Pacientes</h1>
+            <p>Envie uma planilha (CSV ou Excel) para cadastrar múltiplos pacientes de uma só vez.</p>
+        </header>
+
+        <main class="import-container">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Instruções</h3>
+                </div>
+                <div class="card-body">
+                    <p>Siga os passos abaixo para garantir que a importação ocorra corretamente:</p>
+                    <ol>
+                        <li><strong>Baixe o modelo da planilha:</strong> <a href="URL_DO_SEU_MODELO_DE_PLANILHA" target="_blank">Clique aqui para baixar o arquivo modelo.</a></li>
+                        <li><strong>Preencha a planilha:</strong> Adicione os dados dos pacientes nas colunas correspondentes. Não altere os nomes das colunas.</li>
+                        <li><strong>Selecione a Fila:</strong> Escolha a fila de atendimento para a qual os pacientes da planilha serão designados.</li>
+                        <li><strong>Envie o arquivo:</strong> Clique em "Escolher arquivo", selecione a planilha preenchida e clique em "Iniciar Importação".</li>
+                    </ol>
+                    <p class="warning"><strong>Atenção:</strong> A importação pode levar alguns minutos, dependendo do número de pacientes na planilha. Por favor, não feche esta página durante o processo.</p>
+                </div>
+            </div>
+
+            <form id="import-form" class="card">
+                <div class="card-header">
+                    <h3>Formulário de Importação</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="fila-select">Selecione a Fila de Destino:</label>
+                        <select id="fila-select" class="form-control" required>
+                            <option value="" disabled selected>Escolha uma fila...</option>
+                            <option value="inscricao_documentos">Inscrição e Documentos</option>
+                            <option value="triagem_agendada">Triagem Agendada</option>
+                            <option value="encaminhar_para_plantao">Encaminhar para Plantão</option>
+                            <option value="em_atendimento_plantao">Em Atendimento (Plantão)</option>
+                            <option value="encaminhar_para_pb">Encaminhar para PB</option>
+                            <option value="aguardando_info_horarios">Aguardando Info Horários</option>
+                            <option value="cadastrar_horario_psicomanager">Cadastrar Horário Psicomanager</option>
+                            <option value="em_atendimento_pb">Em Atendimento (PB)</option>
+                  
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="file-input">Selecione a Planilha (.csv, .xlsx):</label>
+                        <input type="file" id="file-input" class="form-control" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
+                    </div>
+                    <button type="submit" id="submit-button" class="action-button">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Iniciar Importação
+                    </button>
+                </div>
+            </form>
+
+            <div id="result-container" class="card" style="display: none;">
+                <div class="card-header">
+                    <h3>Resultado da Importação</h3>
+                </div>
+                <div class="card-body" id="result-content">
+                    </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="../js/importar-pacientes.js"></script>
+</body>
+</html>

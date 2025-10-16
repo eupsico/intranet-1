@@ -1,0 +1,232 @@
+/* Container principal do quadro Kanban */
+.kanban-board-container {
+    display: flex;
+    overflow-x: auto; /* Permite rolagem horizontal */
+    padding: 20px 10px;
+    background-color: #f4f7fa;
+    min-height: calc(100vh - 100px); /* Ajusta a altura mínima */
+}
+
+/* Quadro Kanban */
+.kanban-board {
+    display: flex;
+    gap: 15px; /* Espaçamento entre as colunas */
+    flex-grow: 1;
+}
+
+/* Colunas do Kanban */
+.kanban-column {
+    flex: 0 0 300px; /* Largura fixa para cada coluna */
+    display: flex;
+    flex-direction: column;
+    background-color: #e9edf2;
+    border-radius: 8px;
+    max-height: calc(100vh - 140px); /* Altura máxima da coluna */
+}
+
+.kanban-column-header {
+    padding: 15px;
+    border-bottom: 2px solid #d8dde4;
+}
+
+.kanban-column-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kanban-column-count {
+    background-color: #d1d9e4;
+    color: #4a5568;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.kanban-cards-container {
+    padding: 10px;
+    overflow-y: auto; /* Rolagem vertical para os cards */
+    flex-grow: 1;
+}
+
+/* Estilo dos Cards */
+.kanban-card {
+    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.kanban-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #2d3748;
+}
+
+.kanban-card .card-patient-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.kanban-card .card-patient-cpf {
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+/* Estilos para o Modal */
+.modal-body .form-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a202c;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-body .confirmation-box {
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+}
+
+.modal-body .checklist-group .form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.modal-body .checklist-group input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+}
+
+.modal-body .upload-area {
+    margin-top: 15px;
+}
+
+.hidden-section {
+    display: none;
+}
+
+/* Adicionar ao final de trilha-paciente.css */
+.form-grid-2-col {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    align-items: center;
+}
+
+.form-grid-3-col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    align-items: center;
+}
+
+.checklist-group .form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.checklist-group input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+    .form-grid-2-col, .form-grid-3-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- ESTILOS PARA O NOVO PAINEL COM SUBMENU --- */
+.module-panel-container {
+    display: grid;
+    grid-template-columns: 220px 1fr; /* Coluna do menu e área de conteúdo */
+    gap: 20px;
+    height: calc(100vh - 70px); /* 70px é a altura do header */
+}
+
+.module-submenu {
+    background-color: var(--cor-surface);
+    padding: 15px;
+    border-right: 1px solid var(--cor-borda);
+    overflow-y: auto;
+}
+
+.module-submenu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.module-submenu a {
+    display: block;
+    padding: 10px 15px;
+    margin-bottom: 5px;
+    border-radius: 6px;
+    color: var(--cor-texto-secundario);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.module-submenu a:hover {
+    background-color: var(--cor-fundo);
+    color: var(--cor-primaria);
+}
+
+.module-submenu a.active {
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    font-weight: 600;
+}
+
+.module-content {
+    overflow: hidden; /* Garante que o conteúdo não ultrapasse a área */
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Responsividade para o painel --- */
+
+/* --- CORREÇÃO: Classe usada pelo JS para ocultar campos --- */
+.hidden {
+    display: none !important;
+}
+@media (max-width: 768px) {
+    .module-panel-container {
+        grid-template-columns: 1fr; /* Apenas uma coluna em telas pequenas */
+        height: auto; /* Altura automática para telas menores */
+    }
+
+    .module-submenu {
+        border-right: none;
+        border-bottom: 1px solid var(--cor-borda);
+    }
+}

@@ -1,0 +1,92 @@
+/* Arquivo: /modulos/financeiro/css/acordos.css
+   Versão: 1.2
+   Descrição: Corrige layout dos botões de ação e adiciona estilo para o botão de exclusão.
+*/
+
+/*.description-box {
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+}*/
+
+.filter-box {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--cor-borda);
+    display: inline-block;
+}
+
+.table-section thead th {
+    /* Este estilo é controlado pelo painel-financeiro.css para ser global */
+}
+
+/* Estilos para o componente Accordion */
+.accordion {
+    margin-bottom: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    overflow: hidden;
+    background-color: var(--cor-surface);
+}
+
+.accordion-trigger {
+    width: 100%;
+    background-color: transparent;
+    border: none;
+    padding: 15px 20px;
+    text-align: left;
+    font-size: 1.1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.accordion-trigger:hover {
+    background-color: var(--cor-fundo);
+}
+
+.accordion-trigger.active {
+    background-color: #e9ecef;
+    color: var(--cor-texto-principal);
+    font-weight: 600;
+}
+
+.accordion-content {
+    background-color: #fafafa;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease;
+    padding: 0 20px; 
+}
+
+.accordion-content.active {
+    padding: 20px;
+}
+
+.accordion .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* ALTERAÇÃO: Novo container para os botões de ação */
+.accordion-actions {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os botões quebrem a linha em telas menores */
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+/* ALTERAÇÃO: Estilo para o novo botão de exclusão */
+.action-button.delete-btn {
+    background-color: var(--cor-erro);
+}
+.action-button.delete-btn:hover {
+    filter: brightness(1.1);
+}

@@ -1,0 +1,103 @@
+/* Arquivo: /modulos/voluntario/css/meu-perfil.css */
+
+#perfil-container {
+    background-color: var(--cor-surface);
+    padding: 30px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-suave);
+}
+
+/* Base para todas as linhas do formulário */
+.form-row, .form-row-flex {
+    display: grid;
+    gap: 20px 30px;
+    margin-bottom: 20px;
+}
+
+/* Linhas com colunas de tamanho igual */
+.form-row {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Linhas com colunas flexíveis (para Nome e Telefone) */
+.form-row-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Padrão para ocupar espaço igualmente */
+}
+
+/* Modificadores de tamanho para .form-row-flex */
+.form-group.flex-grow-2 {
+    flex-grow: 2; /* Ocupa o dobro do espaço */
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1; /* Ocupa a linha inteira em .form-row */
+    width: 100%; /* Garante a largura total em .form-row-flex */
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--cor-texto-principal);
+    font-size: 0.95em;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 12px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-background);
+    color: var(--cor-texto-secundario);
+    font-size: 1em;
+    transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+}
+
+.form-group input[readonly],
+.form-group textarea[readonly],
+.form-group select[disabled] {
+    background-color: #e9ecef;
+    cursor: default;
+    color: #6c757d;
+}
+
+.form-group input[type="date"] {
+    -webkit-appearance: none;
+    min-height: calc(1.5em + 24px); /* Garante altura similar aos outros campos */
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+#perfil-actions {
+    margin-top: 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+.btn.btn-secondary:hover {
+    background-color: #5a6268;
+}

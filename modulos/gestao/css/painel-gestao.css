@@ -1,0 +1,179 @@
+/* /modulos/gestao/css/painel-gestao.css */
+
+/*
+ * NOTA DE ATUALIZAÇÃO:
+ * Este arquivo está correto. Ele deve conter APENAS estilos que são específicos 
+ * para o CONTEÚDO das páginas do Painel de Gestão (tabelas, cards, formulários, etc.).
+ * O layout geral (cabeçalho, menu, fundo) é controlado pelo design-system.css.
+ */
+
+/* Estilos para os containers de conteúdo, se necessário */
+.reunioes-container,
+.ata-container,
+.plano-container,
+.feedback-container {
+  width: 100%;
+}
+
+/* Estilização para um card de dashboard específico deste módulo */
+.card-gestao {
+  background-color: var(--neutral-color-white);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--neutral-color-medium);
+}
+
+.card-gestao h3 {
+  margin-top: 0;
+  color: var(--primary-color-dark);
+  border-bottom: 1px solid var(--neutral-color-light);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+/* Estilos para o Acordeão de Atas */
+.accordion {
+    margin-bottom: 10px;
+    border-radius: var(--borda-radius);
+    overflow: hidden;
+    box-shadow: var(--sombra-suave);
+    border: 1px solid var(--cor-borda);
+}
+
+.accordion-trigger {
+    background-color: var(--cor-surface);
+    color: var(--cor-primaria);
+    cursor: pointer;
+    padding: 15px 20px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    font-size: 1.1em;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.accordion-trigger:hover {
+    background-color: var(--cor-fundo);
+}
+
+.accordion-trigger::after {
+    content: '+';
+    font-size: 1.5em;
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.accordion-content {
+    background: #f9fafb;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+}
+
+.accordion-content .content-wrapper {
+    padding: 20px;
+}
+
+/* Estilos para os itens dentro do acordeão */
+.ata-item-title {
+    background-color: var(--cor-fundo-box);
+    color: var(--cor-primaria-dark);
+    padding: 8px 15px;
+    margin-top: 15px;
+    border-radius: var(--borda-radius);
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.ata-item-content {
+    padding: 10px 15px;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.ata-item-content p, .ata-item-content ul {
+    margin: 5px 0;
+}
+
+.ata-item-content ul {
+    list-style-type: '• ';
+    padding-left: 20px;
+}
+
+/* Container para os botões de ação */
+.action-buttons-container {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--cor-borda);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.action-button.feedback {
+    background-color: var(--cor-alerta);
+}
+
+.action-button.pdf {
+    background-color: var(--cor-erro);
+}
+.next-meeting-info-card {
+    background-color: var(--cor-fundo-box); /* Azul bem clarinho */
+    border: 1px solid var(--cor-borda);
+    border-left: 5px solid var(--cor-secundaria);
+    border-radius: var(--borda-radius);
+    padding: 20px 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--sombra-suave);
+}
+
+.next-meeting-info-card h3 {
+    margin: 0 0 8px 0;
+    color: var(--cor-primaria-dark);
+    font-size: 1.2em;
+}
+
+.next-meeting-info-card p {
+    margin: 0;
+    font-size: 1em;
+    color: var(--cor-texto-principal);
+}
+
+/* Ajuste no cabeçalho da seção para incluir controles (filtro) */
+.section-header.with-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Permite que o filtro vá para baixo em telas pequenas */
+    gap: 20px;
+}
+
+.section-header.with-controls h2 {
+    margin-bottom: 0; /* Remove a margem inferior do h2 quando há controles */
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Grupo de filtro que foi movido */
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-group label {
+    font-weight: 500;
+    font-size: 0.9em;
+    white-space: nowrap; /* Impede que o texto do label quebre */
+}
+
+.filter-group select {
+    min-width: 220px; /* Define uma largura mínima para o seletor */
+}

@@ -1,0 +1,53 @@
+/* Arquivo: financeiro/css/painel-financeiro.css
+   Versão: 1.1.0
+   Descrição: Adiciona estilos globais para títulos de página e cabeçalhos de tabela.
+*/
+
+/* --- Estilos Globais do Módulo --- */
+
+/* ALTERAÇÃO: Estilo para todos os títulos de página (H1) */
+.view-container > h1 {
+    color: #1d70b7;
+    margin-bottom: 20px; /* Adiciona um espaço abaixo do título */
+    border-bottom: 2px solid var(--cor-borda);
+    padding-bottom: 15px;
+}
+
+/* ALTERAÇÃO: Novo estilo padrão para cabeçalhos de tabela, em um tom mais escuro */
+.table-section thead th {
+    background-color: #e9ecef; /* Tom de cinza mais escuro e neutro */
+    color: var(--cor-texto-principal); /* Cor do texto principal para bom contraste */
+    font-weight: 600;
+}
+
+
+/* --- Modificadores de Componentes Específicos --- */
+
+/* Cards de Resumo */
+.summary-cards .card.receitas,
+.summary-cards .card.recebido {
+    border-left-color: var(--cor-sucesso);
+}
+.summary-cards .card.despesas {
+    border-left-color: var(--cor-erro);
+}
+.summary-cards .card.atrasadas {
+    border-left-color: var(--cor-alerta);
+}
+.summary-cards .card.saldo {
+    border-left-color: var(--cor-primaria);
+}
+.summary-cards .card.devido {
+    border-left-color: var(--cor-texto-secundario);
+}
+
+/* Botões de Ação */
+.action-button.btn-pdf {
+    background-color: var(--cor-erro);
+}
+.action-button.btn-excel {
+    background-color: var(--cor-sucesso);
+}
+.action-button.btn-update {
+    background-color: var(--cor-secundaria);
+}

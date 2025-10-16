@@ -1,0 +1,80 @@
+/* Arquivo: /modulos/financeiro/css/cobranca_mensal.css
+   Versão: 1.1
+   Descrição: Ajusta o container do filtro para ser mais compacto e lado a lado.
+*/
+
+/* Estilo padrão para parágrafos de descrição */
+/*.description-box {
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 30px;
+    border-left: 4px solid var(--cor-secundaria);
+    font-size: 0.95em;
+    color: var(--cor-texto-secundario);
+}/*
+
+/* Estilo padrão para cabeçalhos de tabela no módulo financeiro */
+.table-section thead th,
+#cobranca-table thead th {
+    background-color: var(--cor-fundo);
+    color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+/* --- ALTERAÇÕES NO FILTRO DE PERÍODO --- */
+
+/* Novo container para o filtro de período, tornando-o mais destacado */
+.period-filter-box {
+    background-color: var(--cor-fundo);
+    padding: 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--cor-borda); /* Adiciona uma borda sutil */
+    
+    /* ALTERAÇÃO PRINCIPAL: Faz o container se ajustar ao conteúdo */
+    display: inline-block; 
+}
+
+.period-filter-box h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--cor-texto-principal);
+    font-weight: 600;
+    font-size: 1em; /* Tamanho de fonte ajustado */
+}
+
+/* Mantém os seletores lado a lado */
+.period-filter-box .selectors {
+    display: flex;
+    gap: 15px; 
+}
+
+/* --- Correção do Bug dos Botões Sobrepostos --- */
+
+/* Container Flex para os botões de ação na célula da tabela */
+.action-buttons-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px; 
+    min-width: 170px;
+}
+
+/* Estilo para o botão de cancelar, para diferenciá-lo do "Salvar" */
+.action-button.cancel-btn {
+    background-color: var(--cor-texto-secundario);
+}
+
+.action-button.cancel-btn:hover {
+    background-color: #555;
+}
+
+/* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
+@media (max-width: 768) {
+    .period-filter-box {
+        display: block; /* Ocupa a largura total no mobile */
+    }
+    .period-filter-box .selectors {
+        flex-direction: column; /* Empilha os seletores */
+    }
+}

@@ -1,0 +1,132 @@
+/* Arquivo: /modulos/financeiro/css/lancamentos.css
+   Versão: 1.0
+   Descrição: Estilos para a tela de Lançamentos, incluindo abas, formulário em colunas and modal.
+*/
+
+/* Container geral da view */
+.view-lancamentos .view-container {
+    padding: 0; /* Remove padding do container principal para as abas ocuparem toda a largura */
+}
+
+/* Estilo para o formulário em colunas */
+.lancamentos-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Layout responsivo */
+    gap: 20px;
+    align-items: flex-end; /* Alinha os itens na parte inferior */
+}
+
+/* Garante que o botão ocupe toda a coluna no grid */
+.lancamentos-form-grid .form-group-button {
+    grid-column: 1 / -1; /* Ocupa todas as colunas */
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (min-width: 1024px) {
+    .lancamentos-form-grid {
+        grid-template-columns: repeat(3, 1fr); /* Força 3 colunas em telas maiores */
+    }
+    .lancamentos-form-grid .form-group-button {
+        grid-column: auto; /* Em telas grandes, o botão volta a ser uma coluna normal */
+    }
+}
+
+/* Melhoria no design dos filtros da tabela */
+.lancamentos-filters {
+    background-color: var(--cor-fundo);
+    padding: 15px 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--cor-borda);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+}
+.lancamentos-filters > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.filter-btn {
+    padding: 8px 15px;
+    border: 1px solid var(--cor-borda);
+    background-color: var(--cor-surface);
+    cursor: pointer;
+    border-radius: var(--borda-radius);
+    transition: all 0.2s;
+}
+.filter-btn.active {
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    border-color: var(--cor-primaria);
+}
+
+/* Estilos para o Modal de Confirmação */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--cor-surface);
+    padding: 30px;
+    border-radius: var(--borda-radius);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--sombra-padrao);
+    text-align: center;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: var(--cor-primaria);
+}
+
+.modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.btn-confirm-delete {
+    background-color: var(--cor-erro);
+}
+
+.btn-cancel-delete {
+    background-color: var(--cor-texto-secundario);
+}
+
+/* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
+@media (max-width: 768px) {
+    .lancamentos-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .lancamentos-filters > div {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .lancamentos-form-grid .form-group-button {
+        justify-content: stretch;
+    }
+    .lancamentos-form-grid .form-group-button .action-button {
+        width: 100%;
+    }
+}

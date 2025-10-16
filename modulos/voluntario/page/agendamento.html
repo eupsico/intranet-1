@@ -1,0 +1,71 @@
+<div id="agendamento-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="agendamento-modal-title">Agendar Supervisão</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="agendamento-step-1">
+                <p class="description-box">Você está agendando uma supervisão com <strong id="agendamento-supervisor-nome"></strong>. Por favor, confirme seus dados, informe os detalhes dos pacientes e selecione um horário disponível.</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="agendamento-profissional-nome">Seu Nome</label>
+                        <input type="text" id="agendamento-profissional-nome">
+                    </div>
+                    <div class="form-group">
+                        <label for="agendamento-profissional-email">Seu E-mail</label>
+                        <input type="email" id="agendamento-profissional-email">
+                    </div>
+                    <div class="form-group">
+                        <label for="agendamento-profissional-telefone">Seu Telefone</label>
+                        <input type="tel" id="agendamento-profissional-telefone">
+                    </div>
+                </div>
+
+                <hr>
+
+                <h4 style="margin-bottom: 15px;">Informações dos Pacientes</h4>
+                <div class="form-group">
+                    <label for="numero-pacientes">Quantos pacientes você está atendendo?</label>
+                    <input type="number" id="numero-pacientes" class="form-control" min="1" value="1" style="max-width: 150px;">
+                </div>
+                <div id="pacientes-container" style="margin-top: 15px;">
+                    </div>
+
+                <hr>
+
+                <div id="valor-supervisao-container" style="margin-top: 15px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
+                    <h4 style="margin-bottom: 10px;">Custo da Supervisão</h4>
+                    <p style="margin-bottom: 10px;">O valor da supervisão corresponde a 20% da soma das contribuições de seus pacientes.</p>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1em;">
+                        <span>Total de Contribuições:</span>
+                        <strong id="total-contribuicoes-valor">R$ 0,00</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: var(--cor-principal);">
+                        <span>Valor da Supervisão:</span>
+                        <strong id="valor-supervisao-calculado">R$ 0,00</strong>
+                    </div>
+                </div>
+                <hr>
+                <h4>Horários Disponíveis</h4>
+                <div id="datas-disponiveis-container">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div id="agendamento-step-2" style="display: none; text-align: center; padding: 20px;">
+                <h3>Agendamento Realizado com Sucesso!</h3>
+                <p>O supervisor foi notificado. Você receberá um contato em breve para os próximos passos.</p>
+                <p>Obrigado!</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div id="footer-step-1" style="display: flex; justify-content: flex-end; gap: 10px; width: 100%;">
+                <button type="button" id="agendamento-cancel-btn" class="action-button secondary">Cancelar</button>
+                <button type="button" id="agendamento-confirm-btn" class="action-button">Confirmar Agendamento</button>
+            </div>
+            <div id="footer-step-2" style="display: none; text-align: center; width: 100%;">
+                <button type="button" id="agendamento-ok-btn" class="action-button">OK</button>
+            </div>
+        </div>
+    </div>
+</div>

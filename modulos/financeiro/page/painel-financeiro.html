@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Financeiro - EuPsico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="../../../assets/css/design-system.css">
+    <link rel="stylesheet" href="../css/painel-financeiro.css">
+    <link rel="stylesheet" href="../css/configuracoes.css">
+    <link rel="stylesheet" href="../css/resumo_horas.css">
+    <link rel="stylesheet" href="../css/cobranca_mensal.css">
+    <link rel="stylesheet" href="../css/controle_pagamentos.css">
+    <link rel="stylesheet" href="../css/devedores.css">
+    <link rel="stylesheet" href="../css/acordos.css">
+    <link rel="stylesheet" href="../css/lancamentos.css">
+    <link rel="stylesheet" href="../css/relatorios.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    
+    <div id="app">
+
+        <div id="login-view"></div>
+
+        <div id="dashboard-view">
+            <div class="layout-container">
+                
+                <nav class="sidebar">
+                    <div class="sidebar-content-wrapper">
+                        <ul id="sidebar-menu" class="sidebar-menu"></ul>
+                    </div>
+                </nav>
+                
+                <div id="menu-overlay" class="menu-overlay"></div>
+
+                <header class="header">
+                    <div class="header-start">
+                        <button id="sidebar-toggle" title="Alternar menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        </button>
+                        <img src="../../../assets/img/logo-branca.png" alt="Logo EuPsico" class="header-logo">
+                        
+                        <div id="page-title-container">
+                            </div>
+                    </div>
+                    <div class="user-profile-header">
+                        <img id="user-photo-header" src="https://www.eupsico.org.br/wp-content/uploads/2024/02/user-1.png" alt="Foto do usuário">
+                        <span id="user-greeting">carregando...</span>
+                        <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
+                    </div>
+                </header>
+
+                <main class="main-content">
+                    <div id="content-area" class="tab-content-area">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <div id="financial-views" style="display: none;">
+        
+        <div data-view-id="dashboard">
+            </div>
+
+        <div data-view-id="resumo_horas">
+              </div>
+        
+        <div data-view-id="configuracoes">
+            <div class="tabs-container">
+                <button class="tab-link active" data-tab="ModelosMensagem">Modelos de Mensagem</button>
+                <button class="tab-link" data-tab="ValoresSessao">Valores por Sessão</button>
+            </div>
+            <div id="ModelosMensagem" class="tab-content">
+                </div>
+            <div id="ValoresSessao" class="tab-content" style="display: none;">
+                </div>
+        </div>
+        
+    </div>
+
+    <script type="module" src="../../../assets/js/firebase-init.js"></script>
+    <script type="module" src="../../../assets/js/app.js"></script>
+
+</body>
+</html>

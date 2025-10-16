@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações do Sistema</title>
+    <link rel="stylesheet" href="../css/configuracoes.css"> 
+</head>
+<body>
+    <div class="config-container">
+        <h2 class="title">Configurações Gerais do Sistema</h2>
+        <p class="subtitle">Ajuste os parâmetros, textos e regras de negócio da plataforma.</p>
+
+        <div class="tabs">
+            <button class="tab-link active" onclick="openTab(event, 'financeiro')">Financeiro</button>
+            <button class="tab-link" onclick="openTab(event, 'agendamentos')">Agendamentos</button>
+            <button class="tab-link" onclick="openTab(event, 'listas')">Listas</button>
+            <button class="tab-link" onclick="openTab(event, 'textos')">Modelos de Mensagem</button>
+            <button class="tab-link" onclick="openTab(event, 'feedback')">Feedback</button>
+        </div>
+
+        <form id="config-form">
+            
+            <div id="financeiro" class="tab-content active">
+                <h3>Parâmetros Financeiros</h3>
+                <div class="form-group">
+                    <label for="percentualSupervisao">Percentual da Supervisão (%)</label>
+                    <input type="number" id="percentualSupervisao" name="financeiro.percentualSupervisao" placeholder="Ex: 20">
+                </div>
+                <div class="form-group">
+                    <label for="diaLimiteComprovantes">Dia Limite para Envio de Comprovantes</label>
+                    <input type="number" id="diaLimiteComprovantes" name="financeiro.diaLimiteComprovantes" placeholder="Ex: 10">
+                </div>
+                <hr>
+                <h4>Faixas de Contribuição (Serviço Social)</h4>
+                <p class="description">Defina as faixas de salário mínimo e os percentuais de contribuição correspondentes.</p>
+                <div class="form-group">
+                    <label for="percentualAdicionalFamilia">Percentual Adicional (Família %)</label>
+                    <input type="number" id="percentualAdicionalFamilia" name="financeiro.percentualAdicionalFamilia" placeholder="Ex: 40">
+                    <p class="description">Percentual a ser acrescido no valor de contribuição para atendimentos familiares.</p>
+                </div>
+                <div class="faixas-table-container">
+                    <table class="faixas-table">
+                        <thead>
+                            <tr>
+                                <th>Faixa (Até X salários mínimos)</th>
+                                <th>Percentual (%)</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faixas-contribuicao-tbody"></tbody>
+                    </table>
+                    <button type="button" id="btn-adicionar-faixa" class="btn-adicionar-faixa">+ Adicionar Faixa</button>
+                </div>
+            </div>
+
+            <div id="agendamentos" class="tab-content">
+                <h4>Regras de Agendamento (Triagem)</h4>
+                <p class="description">Parâmetros que afetam a busca e agendamento de horários para a triagem inicial com o serviço social.</p>
+                <div class="form-group">
+                    <label for="minimoHorasAntecedencia">Mínimo de Horas de Antecedência para Agendamento (Triagem)</label>
+                    <input type="number" id="minimoHorasAntecedencia" name="agendamentos.minimoHorasAntecedencia" placeholder="Ex: 24">
+                </div>
+                <div class="form-group">
+                    <label for="quantidadeDiasBusca">Quantidade de Dias para Busca de Horários (Triagem)</label>
+                    <input type="number" id="quantidadeDiasBusca" name="agendamentos.quantidadeDiasBusca" placeholder="Ex: 90">
+                </div>
+                <hr>
+                <h4>Regras de Agendamento (Supervisão)</h4>
+                <p class="description">Parâmetros que afetam a busca e agendamento de horários de supervisão pelos voluntários.</p>
+                <div class="form-group">
+                    <label for="minimoAgendaSupervisao">Mínimo de Horas de Antecedência para Agendamento (Supervisão)</label>
+                    <input type="number" id="minimoAgendaSupervisao" name="agendamentos.minimoAgendaSupervisao" placeholder="Ex: 48">
+                </div>
+                <div class="form-group">
+                    <label for="quantidadeDiasSupervisao">Quantidade de Dias para Busca de Horários (Supervisão)</label>
+                    <input type="number" id="quantidadeDiasSupervisao" name="agendamentos.quantidadeDiasSupervisao" placeholder="Ex: 60">
+                </div>
+                <hr>
+                <h4>Prazos da Trilha do Paciente (em dias úteis)</h4>
+                <div class="form-group">
+                    <label for="prazoContatoTriagem">Prazo para Contato da Triagem</label>
+                    <input type="number" id="prazoContatoTriagem" name="prazos.contatoTriagem" placeholder="Ex: 30">
+                </div>
+                <div class="form-group">
+                    <label for="prazoInicioTerapia">Prazo para Início da Terapia</label>
+                    <input type="number" id="prazoInicioTerapia" name="prazos.inicioTerapia" placeholder="Ex: 20">
+                </div>
+            </div>
+
+            <div id="listas" class="tab-content">
+                <h3>Listas Editáveis</h3>
+                <div class="form-group">
+                    <label for="departamentos">Lista de Departamentos (um por linha)</label>
+                    <textarea id="departamentos" name="listas.departamentos" rows="5" placeholder="Recursos Humanos&#10;Financeiro&#10;Marketing"></textarea>
+                </div>
+                <hr>
+                <div class="form-group">
+                    <label for="salasPresenciais">Nomes das Salas Presenciais (um por linha)</label>
+                    <textarea id="salasPresenciais" name="listas.salasPresenciais" rows="5" placeholder="Sala Leila Tardivo&#10;Sala Freud&#10;Sala Winnicott"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="profissoes">Lista de Profissões (uma por linha)</label>
+                    <textarea id="profissoes" name="listas.profissoes" rows="5" placeholder="Psicólogo(a)&#10;Assistente Social&#10;Médico(a)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="conselhos">Lista de Conselhos Profissionais (um por linha)</label>
+                    <textarea id="conselhos" name="listas.conselhos" rows="5" placeholder="CRP&#10;CRM&#10;CRESS"></textarea>
+                </div>
+            </div>
+            
+            <div id="textos" class="tab-content">
+                <h3>Modelos de Mensagem</h3>
+                <p class="description">Use variáveis como `{saudacao}`, `{p}`, `{d}`, `{t}`, etc. para personalizar as mensagens.</p>
+                <hr>
+                <h4>Mensagens Gerais e de Contrato</h4>
+                <div class="form-group">
+                    <label for="msgCobrancaVoluntario">Mensagem de Cobrança (Voluntário)</label>
+                    <textarea id="msgCobrancaVoluntario" name="textos.cobrancaVoluntario" rows="6"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="msgEnvioContrato">Mensagem de Envio do Contrato</label>
+                    <textarea id="msgEnvioContrato" name="textos.envioContrato" rows="6"></textarea>
+                </div>
+                <hr>
+                <h4>Mensagens de Boas-Vindas e Agendamento</h4>
+                <div class="form-group">
+                    <label for="msgBoasVindas">Mensagem de Boas-Vindas (Sessão Agendada)</label>
+                    <textarea id="msgBoasVindas" name="textos.boasVindas" rows="6"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="msgBoasVindasPlantao">Mensagem de Boas-Vindas (Plantão Psicológico)</label>
+                    <textarea id="msgBoasVindasPlantao" name="textos.boasVindasPlantao" rows="6"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="msgAgendarHorario">Mensagem para Agendar (Oferecer Horário)</label>
+                    <textarea id="msgAgendarHorario" name="textos.agendarHorario" rows="6"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="msgPrimeiroPagamento">Mensagem de Primeiro Pagamento</label>
+                    <textarea id="msgPrimeiroPagamento" name="textos.primeiroPagamento" rows="6"></textarea>
+                </div>
+            </div>
+
+            <div id="feedback" class="tab-content">
+                <h3>Modelo de Perguntas para Feedback</h3>
+                <p class="description">Defina as perguntas que aparecerão no formulário de feedback das reuniões técnicas.</p>
+                <div class="faixas-table-container">
+                    <table class="faixas-table">
+                        <thead>
+                            <tr>
+                                <th>ID (sem espaços/acentos)</th>
+                                <th>Texto da Pergunta</th>
+                                <th>Tipo (select ou textarea)</th>
+                                <th>Opções (separadas por vírgula)</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="perguntas-feedback-tbody"></tbody>
+                    </table>
+                    <button type="button" id="btn-adicionar-pergunta" class="btn-adicionar-faixa">+ Adicionar Pergunta</button>
+                </div>
+            </div>
+
+        </form>
+        
+        <div class="actions">
+            <button id="save-button" class="btn-primary">Salvar Alterações</button>
+            <div id="loading-spinner" class="spinner" style="display: none;"></div>
+            <div id="save-feedback"></div>
+        </div>
+    </div>
+</body>
+</html>

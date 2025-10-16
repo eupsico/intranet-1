@@ -1,0 +1,39 @@
+<div class="kanban-board-container">
+    <div id="kanban-board" class="kanban-board">
+        </div>
+</div>
+
+<div id="card-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="card-modal-title">Detalhes do Paciente</h3>
+            <span id="close-modal-btn" class="close-button">&times;</span>
+        </div>
+        <div id="card-modal-body" class="modal-body">
+            <div class="loading-spinner"></div>
+        </div>
+        <div class="modal-footer">
+            <button id="modal-cancel-btn" type="button" class="action-button secondary">Cancelar</button>
+            <button type="button" id="modal-move-btn" class="action-button warning" style="background-color: var(--cor-alerta); margin-right: auto;">Mover</button>
+            <button id="modal-save-btn" type="button" class="action-button primary">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="move-card-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="move-card-modal-title">Mover Paciente</h3>
+            <span id="close-move-card-modal-btn" class="close-button">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Mover <strong><span id="move-card-patient-name"></span></strong> para a etapa:</p>
+            <input type="hidden" id="move-card-id">
+            <select id="move-card-stage-select" class="form-control"></select>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-move-btn" type="button" class="action-button secondary">Cancelar</button>
+            <button id="confirm-move-btn" type="button" class="action-button primary">Confirmar Movimentação</button>
+        </div>
+    </div>
+</div>
