@@ -10,10 +10,11 @@ import {
   functions,
 } from "../../../../assets/js/firebase-init.js";
 
-// --- Lógica do Modal de Mensagens ---
+// --- Lógica do Modal de Mensagens (Aprimorada) ---
 
 // Guarda os dados temporariamente enquanto o modal está aberto
 let dadosParaMensagem = {};
+let templateOriginal = "";
 
 export function abrirModalMensagens(
   paciente,
@@ -28,13 +29,11 @@ export function abrirModalMensagens(
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
 
-  // Salva os dados para serem usados pelas outras funções do modal
   dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
 
   nomePacienteSpan.textContent = paciente.nomeCompleto;
-  listaModelos.innerHTML = ""; // Limpa a lista anterior
+  listaModelos.innerHTML = "";
 
-  // Garante que a view de seleção esteja visível e o formulário oculto
   selecaoView.style.display = "block";
   formularioView.style.display = "none";
 
@@ -49,14 +48,12 @@ export function abrirModalMensagens(
       const btn = document.createElement("button");
       btn.className = "action-button secondary-button";
       btn.textContent = title;
-      // Altera o onclick para chamar a função que preenche o formulário
       btn.onclick = () => preencherFormularioMensagem(key, title);
       listaModelos.appendChild(btn);
     }
   }
   modal.style.display = "flex";
 
-  // Adiciona o listener para o botão de voltar
   document.getElementById("btn-voltar-selecao").onclick = () => {
     selecaoView.style.display = "block";
     formularioView.style.display = "none";
@@ -69,33 +66,92 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
   const formTitle = document.getElementById("mensagem-form-title");
-  const previewTextarea = document.getElementById("output-mensagem-preview");
+  const formContainer = document.getElementById(
+    "mensagem-dynamic-form-container"
+  );
 
   formTitle.textContent = templateTitle;
+  formContainer.innerHTML = ""; // Limpa campos anteriores
+  templateOriginal = systemConfigs.textos[templateKey] || "";
 
-  let msgTemplate = systemConfigs.textos[templateKey] || "";
+  // Encontra todas as variáveis como {exemplo}
+  const variaveis = templateOriginal.match(/{[a-zA-Z0-9_]+}/g) || [];
+  const variaveisUnicas = [...new Set(variaveis)]; // Remove duplicadas
+
+  const variaveisFixas = [
+    "{p}",
+    "{nomePaciente}",
+    "{t}",
+    "{saudacao}",
+    "{contractUrl}",
+  ];
+
+  variaveisUnicas.forEach((variavel) => {
+    if (variaveisFixas.includes(variavel)) return; // Pula as variáveis que já são preenchidas
+
+    const nomeVariavel = variavel.replace(/[{}]/g, "");
+    const labelText =
+      nomeVariavel.charAt(0).toUpperCase() + nomeVariavel.slice(1);
+
+    const formGroup = document.createElement("div");
+    formGroup.className = "form-group";
+
+    const label = document.createElement("label");
+    label.textContent = `Preencha o campo "${labelText}":`;
+    label.htmlFor = `var-${nomeVariavel}`;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "form-control dynamic-var";
+    input.id = `var-${nomeVariavel}`;
+    input.dataset.variavel = variavel; // Armazena a variável original (ex: {d})
+    input.onkeyup = () => atualizarPreviewMensagem(); // Atualiza em tempo real
+
+    formGroup.appendChild(label);
+    formGroup.appendChild(input);
+    formContainer.appendChild(formGroup);
+  });
+
+  atualizarPreviewMensagem(); // Chama uma vez para preencher o texto inicial
+
+  selecaoView.style.display = "none";
+  formularioView.style.display = "block";
+}
+
+function atualizarPreviewMensagem() {
+  const { paciente, atendimento, userData } = dadosParaMensagem;
+  const previewTextarea = document.getElementById("output-mensagem-preview");
+  let mensagemAtualizada = templateOriginal;
 
   // Substituições padrão
-  msgTemplate = msgTemplate
+  mensagemAtualizada = mensagemAtualizada
     .replace(/{p}/g, paciente.nomeCompleto)
     .replace(/{nomePaciente}/g, paciente.nomeCompleto)
     .replace(/{t}/g, userData.nome)
     .replace(/{saudacao}/g, "Olá");
 
-  // Substituição específica para o contrato
-  if (templateKey === "envioContrato" && atendimento) {
+  if (templateOriginal.includes("{contractUrl}") && atendimento) {
     const contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${atendimento.atendimentoId}`;
-    msgTemplate = msgTemplate.replace(/{contractUrl}/g, contractUrl);
+    mensagemAtualizada = mensagemAtualizada.replace(
+      /{contractUrl}/g,
+      contractUrl
+    );
   }
 
-  previewTextarea.value = msgTemplate;
+  // Substituições das variáveis dinâmicas
+  const inputs = document.querySelectorAll(".dynamic-var");
+  inputs.forEach((input) => {
+    const placeholder = input.dataset.variavel;
+    // Usa uma RegEx global para substituir todas as ocorrências da variável
+    mensagemAtualizada = mensagemAtualizada.replace(
+      new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+      input.value || placeholder
+    );
+  });
 
-  // Alterna as views
-  selecaoView.style.display = "none";
-  formularioView.style.display = "block";
+  previewTextarea.value = mensagemAtualizada;
 }
 
-// **NOVA FUNÇÃO:** Lida com o envio da mensagem
 export function handleMensagemSubmit() {
   const { paciente } = dadosParaMensagem;
   const telefone = paciente.telefoneCelular?.replace(/\D/g, "");
@@ -124,7 +180,9 @@ export function abrirModalSolicitarSessoes(
 ) {
   const modal = document.getElementById("solicitar-sessoes-modal");
   modal.style.display = "flex";
-  document.getElementById("solicitar-sessoes-form").reset();
+  const form = document.getElementById("solicitar-sessoes-form");
+  form.reset();
+  form.classList.remove("was-validated");
 
   document.getElementById("solicitar-profissional-nome").value = userData.nome;
   document.getElementById("solicitar-paciente-nome").value =
@@ -142,9 +200,11 @@ export function abrirModalSolicitarSessoes(
 
   const salaSelect = document.getElementById("solicitar-sala");
   salaSelect.innerHTML = '<option value="Online">Online</option>';
-  salasPresenciais.forEach((sala) => {
-    salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
-  });
+  if (salasPresenciais) {
+    salasPresenciais.forEach((sala) => {
+      salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
+    });
+  }
 
   const fieldsToWatch = [
     "solicitar-dia-semana",
@@ -171,21 +231,17 @@ export function abrirModalSolicitarSessoes(
   tipoAtendimentoSelect.dispatchEvent(new Event("change"));
 }
 
-// **NOVA FUNÇÃO:** Lida com o submit da solicitação de novas sessões
 export function handleSolicitarSessoesSubmit(evento) {
   evento.preventDefault();
   const form = document.getElementById("solicitar-sessoes-form");
   const modal = document.getElementById("solicitar-sessoes-modal");
 
-  // Validação do formulário
   if (form.checkValidity() === false) {
     alert("Por favor, preencha todos os campos obrigatórios.");
-    // Adiciona uma classe para destacar campos inválidos, se desejar.
     form.classList.add("was-validated");
     return;
   }
 
-  // Se o formulário for válido
   alert(
     "Sua solicitação de novo horário foi enviada ao administrativo para cadastro na grade."
   );
@@ -210,7 +266,7 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
       }
     }
   } else {
-    const salaIndex = salasPresenciais.indexOf(sala);
+    const salaIndex = salasPresenciais?.indexOf(sala);
     if (
       salaIndex !== -1 &&
       dadosDaGrade?.presencial?.[dia]?.[horaKey]?.[`col${salaIndex}`]
@@ -231,7 +287,7 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
   }
 }
 
-// --- Lógica dos Modais Originais (sem alterações) ---
+// --- Lógica dos Modais Originais ---
 
 export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
   const modal = document.getElementById("encerramento-modal");
@@ -416,6 +472,17 @@ export async function abrirModalDesfechoPb(
   modal.style.display = "block";
 
   try {
+    const meuAtendimento = dadosDoPaciente.atendimentosPB?.find(
+      (at) => at.atendimentoId === atendimentoId
+    );
+
+    // **CORREÇÃO APLICADA AQUI**
+    if (!meuAtendimento) {
+      throw new Error(
+        "Erro crítico: Não foi possível encontrar os dados específicos deste atendimento para o paciente."
+      );
+    }
+
     const response = await fetch("../page/form-atendimento-pb.html");
     if (!response.ok)
       throw new Error("HTML do formulário de desfecho não encontrado.");
@@ -424,10 +491,6 @@ export async function abrirModalDesfechoPb(
     const form = body.querySelector("#form-atendimento-pb");
     form.dataset.pacienteId = pacienteId;
     form.dataset.atendimentoId = atendimentoId;
-
-    const meuAtendimento = dadosDoPaciente.atendimentosPB.find(
-      (at) => at.atendimentoId === atendimentoId
-    );
 
     form.querySelector("#profissional-nome").value =
       meuAtendimento.profissionalNome;
@@ -466,7 +529,7 @@ export async function abrirModalDesfechoPb(
   }
 }
 
-// --- Funções de Submit dos Formulários (sem alterações) ---
+// --- Funções de Submit dos Formulários ---
 
 export async function handleEncerramentoSubmit(evento, user, userData) {
   evento.preventDefault();
@@ -511,7 +574,7 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     await updateDoc(doc(db, "trilhaPaciente", pacienteId), dadosParaAtualizar);
     alert("Encerramento salvo com sucesso!");
     document.getElementById("encerramento-modal").style.display = "none";
-    location.reload(); // Recarrega a página para atualizar a lista
+    location.reload();
   } catch (error) {
     console.error("Erro ao salvar encerramento:", error);
     alert("Erro ao salvar.");
