@@ -1,164 +1,211 @@
 /* Arquivo: /modulos/voluntario/css/meus-pacientes.css */
 
-/* Container principal */
-#meus-pacientes-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+/* --- ESTRUTURA GERAL E CABEÇALHO --- */
+.view-header {
+    margin-bottom: 25px;
 }
-
-/* Card de paciente */
-#pacientes-cards-container .paciente-card{
-    background-color: var(--cor-surface);
-    border: 1px solid var(--cor-borda);
-    border-left: 5px solid var(--cor-primaria);
-    padding: 20px;
-    border-radius: var(--borda-radius);
-    box-shadow: var(--sombra-padrao);
-    display: flex;
-    flex-direction: column;
-}
-
-.paciente-card h4 {
-    margin-top: 0;
-    margin-bottom: 10px;
+.view-header h2 {
     color: var(--cor-primaria);
+    margin-bottom: 8px;
 }
-
-.paciente-card p {
-    margin: 5px 0;
+.description-box {
+    background-color: var(--cor-fundo-claro);
+    border-left: 4px solid var(--cor-primaria-light);
+    padding: 15px;
+    border-radius: var(--borda-radius);
     color: var(--cor-texto-secundario);
 }
 
-.paciente-card .action-button {
-    margin-top: 15px;
-    align-self: flex-end; /* substitui float:right */
+/* --- ESTILOS DO ACORDEÃO --- */
+.accordion-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-
-/* Mensagem de erro */
-.error-message {
-    padding: 20px;
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
+.paciente-accordion {
+    border: 1px solid var(--cor-borda);
     border-radius: var(--borda-radius);
-    text-align: center;
+    overflow: hidden;
+    background-color: var(--cor-surface);
+    transition: box-shadow 0.2s ease;
+}
+.paciente-accordion:hover {
+    box-shadow: var(--sombra-suave);
+}
+.accordion-header {
+    background-color: transparent;
+    padding: 15px 20px;
+    width: 100%;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.accordion-header.active, .accordion-header:hover {
+    background-color: var(--cor-fundo);
+}
+.header-info {
+    text-align: left;
+}
+.header-info .nome {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--cor-primaria);
+}
+.header-info .telefone {
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+    margin-top: 2px;
+}
+.accordion-icon {
+    font-size: 1.8em;
+    font-weight: 300;
+    color: var(--cor-primaria);
+    transition: transform 0.3s ease;
+}
+.accordion-header.active .accordion-icon {
+    transform: rotate(45deg);
+}
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+    padding: 0 20px;
+}
+.accordion-content-inner {
+    padding: 20px 0;
+    border-top: 1px solid var(--cor-borda);
 }
 
-/* Esconde campos condicionais por padrão */
-.hidden {
+/* --- DETALHES DENTRO DO ACORDEÃO --- */
+.patient-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px 25px;
+    margin-bottom: 20px;
+}
+.detail-item {
+    font-size: 0.95em;
+}
+.detail-item .label {
+    display: block;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    font-size: 0.9em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+.detail-item .value {
+    color: var(--cor-texto-principal);
+}
+.detail-item .value.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: 500;
+    color: white;
+}
+.status-badge.em_atendimento_plantao, .status-badge.em_atendimento_pb { background-color: #28a745; }
+.status-badge.aguardando_info_horarios, .status-badge.aguardando_contrato { background-color: #ffc107; color: #212529; }
+.card-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--cor-borda);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* --- MODAL DE SOLICITAÇÃO --- */
+.modal-content.large {
+    max-width: 850px;
+}
+#solicitar-sessoes-form fieldset {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+#solicitar-sessoes-form legend {
+    font-weight: 600;
+    color: var(--cor-primaria);
+    padding: 0 10px;
+    font-size: 1.1em;
+}
+#validacao-grade-feedback {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: var(--borda-radius);
+    border-left-width: 5px;
+    border-left-style: solid;
+}
+#validacao-grade-feedback.exists {
+    background-color: var(--cor-alerta-fundo);
+    border-left-color: var(--cor-alerta);
+    color: var(--cor-alerta-texto);
+}
+#validacao-grade-feedback.success {
+    background-color: var(--cor-sucesso-fundo);
+    border-left-color: var(--cor-sucesso);
+    color: var(--cor-sucesso-texto);
+}
+
+/* --- ESTILOS GERAIS PARA MODAIS --- */
+.modal-overlay, .modal {
     display: none;
-}
-
-/* Estilos para os modais */
-.modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1000; 
-    left: 0;
-    top: 0;
-    width: 100%; 
-    height: 100%; 
-    overflow: auto; 
+    position: fixed;
+    z-index: 1050;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    overflow: auto;
     background-color: rgba(0,0,0,0.6);
 }
-
 .modal-content {
     background-color: var(--cor-fundo);
     margin: 5% auto;
-    padding: 20px;
+    padding: 25px;
     border-radius: var(--borda-radius);
     width: 90%;
     max-width: 700px;
-    box-shadow: var(--sombra-padrao);
+    box-shadow: var(--sombra-modal);
     display: flex;
     flex-direction: column;
-    max-height: 90vh; /* altura máxima */
-    overflow-y: auto; /* garante rolagem */
+    max-height: 90vh;
 }
-
-.modal-content .close-button {
+.modal-body {
+    overflow-y: auto;
+    padding-right: 15px; /* Para a barra de rolagem */
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--cor-borda);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+.modal-header .modal-title-text {
+    color: var(--cor-primaria);
+    font-size: 1.5em;
+    margin: 0;
+}
+.modal-header .close-button, .close-modal-btn {
     color: #aaa;
-    float: right;
+    background: none;
+    border: none;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
 }
-
-.modal .modal-content h3 {
-    margin-top: 0;
-    color: var(--cor-primaria);
-}
-
-.modal .modal-content form {
-    overflow-y: auto;
-    padding-right: 15px;
-}
-
-/* Grupo de checkboxes */
-.checkbox-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
     gap: 10px;
-    background-color: var(--cor-fundo);
-    padding: 15px;
-    border-radius: var(--borda-radius);
+    padding-top: 20px;
+    border-top: 1px solid var(--cor-borda);
+    margin-top: 20px;
 }
-
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-/* Checkboxes desabilitados */
-.checkbox-group label.disabled {
-    color: #999;
-    cursor: not-allowed;
-    text-decoration: line-through;
-}
-
-/* Oculta cabeçalho do modal de encerramento */
-#encerramento-modal .modal-header {
-    display: none;
-}
-
-#encerramento-modal .modal-body {
-    padding-top: 15px;
-}
-
-/* Oculta cabeçalho do modal de horários PB */
-#horarios-pb-modal .modal-header {
-    display: none;
-}
-
-#horarios-pb-modal .modal-body {
-    padding-top: 15px;
-}
-
-/* Botões de rádio lado a lado */
-#horarios-pb-form .form-group div {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-#horarios-pb-form .form-group div label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-}
-
-/* Responsividade */
-@media (max-width: 480px) {
-  .paciente-card {
-    padding: 12px;
-  }
-}
-.paciente-card .card-actions {
-    display: flex;
-    gap: 10px; /* Espaço entre os botões */
-    margin-top: 15px;
-}
+.hidden { display: none; }

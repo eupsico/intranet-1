@@ -1,28 +1,101 @@
-<div class="container">
-  <h2>Meus Pacientes</h2>
+<div class="container-fluid" id="meus-pacientes-view">
+    <div class="view-header">
+        <h2>Meus Pacientes</h2>
+        <p class="description-box">Abaixo estão listados seus pacientes em atendimento. Clique em um paciente para ver os detalhes e ações disponíveis.</p>
+    </div>
 
-  <div id="loading-pacientes" style="display:none">
-    <p>Carregando pacientes...</p>
-  </div>
+    <div id="pacientes-accordion-container" class="accordion-container">
+        </div>
 
-  <div id="pacientes-cards-container"></div>
-
-  <div id="empty-state-pacientes" style="display:none">
-    <p>Nenhum paciente encontrado.</p>
-  </div>
+    <div id="empty-state-pacientes" style="display:none;">
+        <p>Nenhum paciente encontrado.</p>
+    </div>
 </div>
 
+<div id="solicitar-sessoes-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 class="modal-title-text">Solicitar Novas Sessões</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="solicitar-sessoes-form">
+                <input type="hidden" id="solicitar-paciente-id">
+                <input type="hidden" id="solicitar-atendimento-id">
+                
+                <fieldset>
+                    <legend>Dados do Agendamento</legend>
+                    <div class="form-row cols-2">
+                        <div class="form-group">
+                            <label>Nome do Profissional</label>
+                            <input type="text" id="solicitar-profissional-nome" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome do Paciente</label>
+                            <input type="text" id="solicitar-paciente-nome" class="form-control" readonly>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Detalhes da Nova Sessão</legend>
+                    <div class="form-row cols-3">
+                        <div class="form-group">
+                            <label for="solicitar-dia-semana">Dia da Sessão</label>
+                            <select id="solicitar-dia-semana" class="form-control" required>
+                                <option value="segunda">Segunda-feira</option>
+                                <option value="terca">Terça-feira</option>
+                                <option value="quarta">Quarta-feira</option>
+                                <option value="quinta">Quinta-feira</option>
+                                <option value="sexta">Sexta-feira</option>
+                                <option value="sabado">Sábado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="solicitar-horario">Horário</label>
+                            <select id="solicitar-horario" class="form-control" required>
+                                </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="solicitar-tipo-atendimento">Tipo de Atendimento</label>
+                            <select id="solicitar-tipo-atendimento" class="form-control" required>
+                                <option value="online">Online</option>
+                                <option value="presencial">Presencial</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row cols-2">
+                        <div class="form-group">
+                            <label for="solicitar-data-inicio">Iniciar sessões a partir de:</label>
+                            <input type="date" id="solicitar-data-inicio" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="solicitar-sala">Sala de Atendimento</label>
+                            <select id="solicitar-sala" class="form-control" required>
+                                <option value="Online">Online</option>
+                                </select>
+                        </div>
+                    </div>
+                </fieldset>
+                <div id="validacao-grade-feedback" class="info-note" style="display: none;"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="action-button secondary-button close-modal-btn">Cancelar</button>
+            <button type="button" id="solicitar-sessoes-confirmar-btn" class="action-button">Confirmar Solicitação</button>
+        </div>
+    </div>
+</div>
 
 <div id="encerramento-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="encerramento-modal-title">Encerrar Plantão</h3>
+            <h3>Encerrar Plantão</h3>
             <span class="close-button">&times;</span>
         </div>
         <div class="modal-body">
             <form id="encerramento-form">
                 <input type="hidden" id="paciente-id-modal">
-                
                 <div class="form-group">
                     <label>Encaminhamento:</label>
                     <div id="encerramento-encaminhamento" class="checkbox-group">
@@ -41,7 +114,6 @@
                         <label><input type="checkbox" name="encaminhamento" value="Grupo Reexista"> Grupo Reexista</label>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="data-encerramento">Data de encerramento/alta/desistência:</label>
                     <input type="date" id="data-encerramento" required>
@@ -50,7 +122,6 @@
                     <label for="quantidade-sessoes">Quantidade de sessões do plantão:</label>
                     <input type="number" id="quantidade-sessoes" required>
                 </div>
-
                 <div class="form-group">
                     <label for="pagamento-contribuicao">O paciente efetuou o pagamento da contribuição?</label>
                     <select id="pagamento-contribuicao" required>
@@ -59,7 +130,6 @@
                         <option value="nao">Não</option>
                     </select>
                 </div>
-
                 <div id="motivo-nao-pagamento-container" class="form-group hidden">
                     <label for="motivo-nao-pagamento">Motivo do não pagamento:</label>
                     <textarea id="motivo-nao-pagamento" rows="3"></textarea>
@@ -77,8 +147,7 @@
                         <option value="nao">Não</option>
                     </select>
                 </div>
-                <div id="nova-disponibilidade-container" class="hidden">
-                </div>
+                <div id="nova-disponibilidade-container" class="hidden"></div>
             </form>
         </div>
         <div class="modal-footer">
@@ -98,7 +167,6 @@
             <form id="horarios-pb-form">
                 <input type="hidden" id="paciente-id-horarios-modal">
                 <input type="hidden" id="atendimento-id-horarios-modal">
-
                 <div class="form-group">
                     <label>Paciente iniciou o atendimento em PB?</label>
                     <div>
@@ -107,7 +175,6 @@
                         <small style="display: block; margin-left: 25px; color: #666;">Selecione 'Não' apenas se o paciente desistiu ou não irá mais ser atendido por você.</small>
                     </div>
                 </div>
-
                 <div id="motivo-nao-inicio-pb-container" class="form-group hidden">
                     <label>Qual o motivo do não início do atendimento?</label>
                     <div class="radio-group-vertical">
@@ -115,18 +182,15 @@
                         <label><input type="radio" name="motivo-nao-inicio" value="outra_modalidade"> Prefere outra modalidade de atendimento ou outro horário</label>
                     </div>
                 </div>
-                
                 <div id="motivo-desistencia-container" class="form-group hidden">
                     <label for="motivo-desistencia-pb">Descreva o motivo da desistência:</label>
                     <textarea id="motivo-desistencia-pb" rows="3" class="form-control"></textarea>
                 </div>
-                
                 <div id="detalhar-solicitacao-container" class="form-group hidden">
                     <label for="detalhes-solicitacao-pb">Detalhe a solicitação do paciente (será enviada ao administrativo):</label>
                     <textarea id="detalhes-solicitacao-pb" rows="3" class="form-control"></textarea>
                 </div>
-                <div id="form-continuacao-pb" class="hidden">
-                    </div>
+                <div id="form-continuacao-pb" class="hidden"></div>
             </form>
         </div>
         <div class="modal-footer">
@@ -135,96 +199,11 @@
         </div>
     </div>
 </div>
+
 <div id="desfecho-pb-modal" class="modal" style="display: none;">
     <div class="modal-content large">
         <span class="close-button" data-close-modal>&times;</span>
         <h3>Registrar Desfecho do Atendimento (PB)</h3>
-        <div id="desfecho-pb-modal-body">
-        </div>
-    </div>
-</div>
-
-<div id="form-atendimento-pb" class="form-container" style="display: none;">
-    <h3>Registro de Atendimento e Desfecho</h3>
-
-    <div class="form-field">
-        <label for="profissional-nome">Nome do Profissional:</label>
-        <input type="text" id="profissional-nome" readonly>
-    </div>
-
-    <div class="form-field">
-        <label for="paciente-nome">Nome do Paciente:</label>
-        <input type="text" id="paciente-nome" readonly>
-    </div>
-
-    <div class="form-field">
-        <label for="valor-contribuicao">Valor da Contribuição:</label>
-        <input type="text" id="valor-contribuicao" readonly>
-    </div>
-
-    <div class="form-field">
-        <label for="data-inicio-atendimento">Data de Início do Atendimento:</label>
-        <input type="text" id="data-inicio-atendimento" readonly>
-    </div>
-
-    <div class="form-field">
-        <label for="desfecho-acompanhamento">Qual foi o desfecho do acompanhamento?</label>
-        <select id="desfecho-acompanhamento">
-            <option value="">Selecione...</option>
-            <option value="Alta">Alta</option>
-            <option value="Desistencia">Desistência</option>
-            <option value="Encaminhamento">Encaminhamento</option>
-        </select>
-    </div>
-
-    <div id="motivo-alta-desistencia-container" class="form-field" style="display: none;">
-        <label for="motivo-alta-desistencia">Descreva brevemente os motivos:</label>
-        <textarea id="motivo-alta-desistencia" rows="4"></textarea>
-    </div>
-
-    <div id="encaminhamento-container" style="display: none;">
-        <div class="form-field">
-            <label for="encaminhado-para">Encaminhado para:</label>
-            <select id="encaminhado-para">
-                <option value="">Selecione...</option>
-                <option value="Psicologo">Psicólogo</option>
-                <option value="Psicopedagogo">Psicopedagogo</option>
-                <option value="Grupo papo de adolescente">Grupo papo de adolescente</option>
-                <option value="Grupo envelhecimento ativo">Grupo envelhecimento ativo</option>
-                <option value="Grupo familia">Grupo família</option>
-                <option value="Grupo Questões de peso">Grupo Questões de peso</option>
-                <option value="Musicoterapeuta">Musicoterapeuta</option>
-                <option value="Grupo Funcional">Grupo Funcional</option>
-                <option value="Assistente Social">Assistente Social</option>
-            </select>
-        </div>
-
-        <div class="form-field">
-            <label for="motivo-encaminhamento">Informe o motivo do encaminhamento:</label>
-            <textarea id="motivo-encaminhamento" rows="4"></textarea>
-        </div>
-
-        <div class="form-field">
-            <label for="demanda-paciente">Informe a demanda do paciente:</label>
-            <textarea id="demanda-paciente" rows="4"></textarea>
-        </div>
-
-        <div class="form-field">
-            <label for="continua-atendimento">O paciente continuará a ser atendido por você?</label>
-            <select id="continua-atendimento">
-                <option value="Nao">Não</option>
-                <option value="Sim">Sim</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="form-field">
-        <label for="relato-caso">Faça um breve relato sobre o caso do paciente:</label>
-        <textarea id="relato-caso" rows="6" placeholder="Qual a queixa inicial, qual a queixa identificada, quais procedimentos utilizados no tratamento e como ele está atualmente."></textarea>
-    </div>
-
-    <div class="form-actions">
-        <button id="btn-salvar-desfecho" class="btn-salvar">Salvar</button>
-        <button id="btn-cancelar-desfecho" class="btn-cancelar">Cancelar</button>
+        <div id="desfecho-pb-modal-body"></div>
     </div>
 </div>
