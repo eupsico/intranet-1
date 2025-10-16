@@ -8,12 +8,15 @@ import {
   abrirModalDesfechoPb,
   abrirModalSolicitarSessoes,
   abrirModalMensagens,
+  handleEncerramentoSubmit,
+  handleHorariosPbSubmit,
 } from "./modals.js";
 
 export function adicionarEventListenersGerais(user, userData, loadedData) {
   const container = document.getElementById("pacientes-accordion-container");
   if (!container) return;
 
+  // Listener principal para o container de pacientes
   container.addEventListener("click", async (e) => {
     const header = e.target.closest(".accordion-header");
     if (header) {
@@ -49,12 +52,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       (at) => at.atendimentoId === atendimentoId
     );
 
-    // O objeto 'dependencies' agrupa tudo que os outros módulos precisam
-    const dependencies = {
-      user,
-      userData,
-      ...loadedData, // Inclui systemConfigs, dadosDaGrade, salasPresenciais
-    };
+    const dependencies = { user, userData, ...loadedData };
 
     switch (tipoDeAcao) {
       case "plantao":
@@ -90,4 +88,16 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
         break;
     }
   });
+
+  // Listeners para os formulários dos modais
+  document
+    .getElementById("encerramento-form")
+    .addEventListener("submit", (e) =>
+      handleEncerramentoSubmit(e, user, userData)
+    );
+  document
+    .getElementById("horarios-pb-form")
+    .addEventListener("submit", (e) =>
+      handleHorariosPbSubmit(e, user, userData)
+    );
 }
