@@ -93,3 +93,13 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       handleHorariosPbSubmit(e, user, userData)
     );
 }
+// Evento para gerar o contrato do paciente
+$(document).on("click", "#btn-gerar-contrato", function () {
+  const pacienteId = $("#modalAcoesPaciente").data("paciente-id");
+  if (pacienteId) {
+    actions.gerarContrato(pacienteId);
+  } else {
+    console.error("ID do paciente não encontrado.");
+    alert("Não foi possível gerar o contrato. ID do paciente não localizado.");
+  }
+});
