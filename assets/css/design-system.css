@@ -139,14 +139,59 @@ table tbody tr:hover { background-color: #e9ecef; }
 .tab-link:hover { background-color: var(--cor-fundo); color: var(--cor-primaria); }
 .tab-link.active { color: var(--cor-texto-inverso); background-color: var(--cor-primaria); border-bottom-color: var(--cor-secundaria); font-weight: 600; }
 .tab-content { background-color: var(--cor-surface); padding: 30px; border: 1px solid var(--cor-borda); border-top: none; border-radius: 0 0 var(--borda-radius) var(--borda-radius); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--cor-texto-principal); font-size: 0.95em; }
-.form-group input[type="text"], .form-group input[type="email"], .form-group input[type="number"], .form-group input[type="date"], .form-group select, .form-group textarea { width: 100%; padding: 12px 15px; border: 1px solid var(--cor-borda); border-radius: var(--borda-radius); background-color: var(--cor-surface); font-family: var(--fonte-principal); font-size: 1em; color: var(--cor-texto-principal); transition: border-color 0.2s, box-shadow 0.2s; }
-.form-group input[type="text"]:focus, .form-group input[type="email"]:focus, .form-group input[type="number"]:focus, .form-group input[type="date"]:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(4, 57, 109, 0.1); }
+.form-group { margin-bottom: 24px; } /* Aumenta o espaçamento */
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500; /* Deixa a fonte um pouco mais leve */
+    color: var(--cor-texto-principal);
+    font-size: 0.9em;
+}
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="number"],
+.form-group input[type="date"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-surface);
+    font-family: var(--fonte-principal);
+    font-size: 1em;
+    color: var(--cor-texto-principal);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: var(--sombra-suave); /* Adiciona uma sombra sutil */
+}
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="number"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(4, 57, 109, 0.15); /* Melhora a sombra de foco */
+}
 .form-group textarea { resize: vertical; min-height: 120px; }
 .button-bar { margin-top: 30px; display: flex; justify-content: flex-end; gap: 10px; }
 
-
+/* Adiciona estilo para fieldset e legend */
+fieldset {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    background-color: var(--cor-surface);
+}
+legend {
+    font-weight: 600;
+    color: var(--cor-primaria);
+    padding: 0 10px;
+    font-size: 1.1em;
+    margin-left: 10px;
+}
 /* --- ESTILOS PARA TELAS PEQUENAS (MOBILE) --- */
 @media (max-width: 768px) {
     body, html {
@@ -378,10 +423,11 @@ table tbody tr:hover { background-color: #e9ecef; }
     box-shadow: var(--sombra-padrao);
     width: 100%;
     max-width: 700px;
-    max-height: 90vh;
+    /* --- ALTERAÇÃO AQUI --- */
+    max-height: 90vh; 
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; /* O contêiner principal esconde o overflow */
 }
 
 .modal-header {
@@ -411,7 +457,8 @@ table tbody tr:hover { background-color: #e9ecef; }
 
 .modal-body {
     padding: 25px;
-    overflow-y: auto;
+    overflow-y: auto; /* A barra de rolagem aparecerá aqui dentro */
+    flex-grow: 1;     /* Faz o corpo do modal ocupar o espaço disponível */
 }
 
 .modal-footer {
@@ -439,4 +486,18 @@ table tbody tr:hover { background-color: #e9ecef; }
 .sidebar-content-wrapper {
     overflow-y: auto; /* Permite a rolagem vertical quando necessário */
     height: 100%;     /* Garante que o wrapper ocupe toda a altura da sidebar */
+}
+.action-button.secondary,
+.action-button.secondary-button {
+    background-color: transparent;
+    color: var(--cor-texto-secundario);
+    border: 1px solid var(--cor-borda);
+}
+
+.action-button.secondary:hover,
+.action-button.secondary-button:hover {
+    background-color: var(--cor-fundo);
+    color: var(--cor-primaria);
+    border-color: var(--cor-borda);
+    filter: none; /* Garante que não aplique o brilho do botão primário */
 }
