@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes.js
-// Versão: 9.0 (Modularizado)
+// Versão: 9.1 (Modularizado)
 
 import { initializeMeusPacientes } from "./meus-pacientes/data.js";
 
