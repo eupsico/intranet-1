@@ -1,0 +1,135 @@
+// Arquivo: /modulos/voluntario/js/meus-pacientes/ui.js
+
+export function calcularIdade(dataNascimento) {
+  if (!dataNascimento) return "N/A";
+  const hoje = new Date();
+  const nasc = new Date(dataNascimento);
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const m = hoje.getMonth() - nasc.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+    idade--;
+  }
+  return idade >= 0 ? `${idade} anos` : "N/A";
+}
+
+export function criarAccordionPaciente(paciente, atendimentoPB = null) {
+  const isPlantao = !atendimentoPB;
+  const statusKey = isPlantao
+    ? "em_atendimento_plantao"
+    : paciente.status === "aguardando_info_horarios"
+    ? "aguardando_info_horarios"
+    : !atendimentoPB.contratoAssinado
+    ? "aguardando_contrato"
+    : "em_atendimento_pb";
+
+  const mapaDeStatus = {
+    em_atendimento_plantao: {
+      label: "Em Atendimento (Plantão)",
+      acao: "Encerrar Plantão",
+      tipo: "plantao",
+      ativo: true,
+    },
+    aguardando_info_horarios: {
+      label: "Aguardando Info Horários (PB)",
+      acao: "Informar Horários",
+      tipo: "pb_horarios",
+      ativo: true,
+    },
+    aguardando_contrato: {
+      label: "Aguardando Contrato (PB)",
+      acao: "Enviar Contrato",
+      tipo: "contrato",
+      ativo: true,
+    },
+    em_atendimento_pb: {
+      label: "Em Atendimento (PB)",
+      acao: "Registrar Desfecho",
+      tipo: "desfecho_pb",
+      ativo: true,
+    },
+  };
+  const infoStatus = mapaDeStatus[statusKey] || {
+    label: "Status Desconhecido",
+    acao: "-",
+    tipo: "info",
+    ativo: false,
+  };
+
+  const dataEncaminhamento =
+    atendimentoPB?.dataEncaminhamento ||
+    paciente.plantaoInfo?.dataEncaminhamento
+      ? new Date(
+          `${
+            atendimentoPB?.dataEncaminhamento ||
+            paciente.plantaoInfo?.dataEncaminhamento
+          }T03:00:00`
+        ).toLocaleDateString("pt-BR")
+      : "N/A";
+  const idade = calcularIdade(paciente.dataNascimento);
+  const responsavelNome = paciente.responsavel?.nome || "N/A";
+  const atendimentoInfo = atendimentoPB?.horarioSessao || {};
+
+  const atendimentoIdAttr = atendimentoPB
+    ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
+    : "";
+
+  const acaoPrincipalBtn = `<button class="action-button" data-tipo="${
+    infoStatus.tipo
+  }" ${!infoStatus.ativo ? "disabled" : ""}>${infoStatus.acao}</button>`;
+  const pdfBtn = atendimentoPB?.contratoAssinado
+    ? `<button class="action-button secondary-button" data-tipo="pdf_contrato">PDF Contrato</button>`
+    : "";
+  const novaSessaoBtn = !isPlantao
+    ? `<button class="action-button" data-tipo="solicitar_sessoes">Solicitar Novas Sessões</button>`
+    : "";
+  const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
+
+  return `
+      <div class="paciente-accordion" data-id="${paciente.id}" data-telefone="${
+    paciente.telefoneCelular || ""
+  }" data-nome="${paciente.nomeCompleto}" ${atendimentoIdAttr}>
+          <button class="accordion-header">
+              <div class="header-info">
+                  <span class="nome">${paciente.nomeCompleto}</span>
+                  <span class="telefone">${
+                    paciente.telefoneCelular || "Telefone não informado"
+                  }</span>
+              </div>
+              <span class="accordion-icon">+</span>
+          </button>
+          <div class="accordion-content">
+              <div class="accordion-content-inner">
+                  <div class="patient-details-grid">
+                      <div class="detail-item"><span class="label">Status</span><span class="value status-badge status-${statusKey}">${
+    infoStatus.label
+  }</span></div>
+                      <div class="detail-item"><span class="label">Idade</span><span class="value">${idade}</span></div>
+                      ${
+                        idade < 18
+                          ? `<div class="detail-item"><span class="label">Responsável</span><span class="value">${responsavelNome}</span></div>`
+                          : ""
+                      }
+                      <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
+                      ${
+                        !isPlantao
+                          ? `
+                          <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
+                            atendimentoInfo.diaSemana || "A definir"
+                          }</span></div>
+                          <div class="detail-item"><span class="label">Horário</span><span class="value">${
+                            atendimentoInfo.horario || "A definir"
+                          }</span></div>
+                          <div class="detail-item"><span class="label">Modalidade</span><span class="value">${
+                            atendimentoInfo.tipoAtendimento || "A definir"
+                          }</span></div>
+                      `
+                          : ""
+                      }
+                  </div>
+                  <div class="card-actions">
+                      ${acaoPrincipalBtn} ${pdfBtn} ${novaSessaoBtn} ${whatsappBtn}
+                  </div>
+              </div>
+          </div>
+      </div>`;
+}
