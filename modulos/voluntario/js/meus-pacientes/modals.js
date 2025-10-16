@@ -460,13 +460,16 @@ function construirFormularioHorarios(nomeProfissional) {
 export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
   const modal = document.getElementById("desfecho-pb-modal");
   const body = document.getElementById("desfecho-pb-modal-body");
+  const footer = document.getElementById("desfecho-pb-modal-footer"); // Pega o rodapé
+
   body.innerHTML = '<div class="loading-spinner"></div>';
-  modal.style.display = "block";
+  footer.style.display = "none"; // Garante que o rodapé esteja escondido inicialmente
+  modal.style.display = "block"; // Usa 'block' para modais antigos
 
   try {
     if (!meuAtendimento) {
       throw new Error(
-        "Dados do atendimento específico (PB) não foram encontrados para este paciente. Não é possível registrar o desfecho."
+        "Dados do atendimento específico (PB) não foram encontrados. Não é possível registrar o desfecho."
       );
     }
 
@@ -475,7 +478,9 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
       throw new Error(
         "Arquivo do formulário de desfecho (form-atendimento-pb.html) não encontrado."
       );
+
     body.innerHTML = await response.text();
+    footer.style.display = "flex"; // Exibe o rodapé junto com o formulário
 
     const form = body.querySelector("#form-atendimento-pb");
     form.dataset.pacienteId = dadosDoPaciente.id;
@@ -511,13 +516,14 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
         desfechoSelect.value === "Encaminhamento" ? "block" : "none";
     });
 
+    // O evento de submit agora é ligado ao botão no rodapé do modal principal
     form.addEventListener("submit", handleDesfechoPbSubmit);
   } catch (error) {
     body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar modal:</b> ${error.message}</p>`;
+    footer.style.display = "flex"; // Mostra o rodapé mesmo em caso de erro para poder fechar
     console.error(error);
   }
 }
-
 // --- Funções de Submit dos Formulários ---
 
 export async function handleEncerramentoSubmit(evento, user, userData) {
