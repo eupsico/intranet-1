@@ -45,11 +45,8 @@
 
 <div id="solicitar-sessoes-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
-        <div class="modal-header">
-            <h2 class="modal-title-text">Solicitar Novas Sessões</h2>
-            <button class="close-modal-btn">&times;</button>
-        </div>
         <div class="modal-body">
+             <h2 class="modal-title-text" style="margin-bottom: 20px;">Solicitar Novas Sessões</h2>
             <form id="solicitar-sessoes-form">
                 <input type="hidden" id="solicitar-paciente-id">
                 <input type="hidden" id="solicitar-atendimento-id">
@@ -127,125 +124,45 @@
         <div class="modal-body">
             <form id="encerramento-form">
                 <input type="hidden" id="paciente-id-modal">
-                
                 <div class="form-group">
                     <label>Encaminhamento:</label>
-                    <div id="encerramento-encaminhamento" class="checkbox-group">
-                        <label><input type="checkbox" name="encaminhamento" value="Alta"> Alta</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Desistência"> Desistência</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Atendimento Psicológico"> Atendimento Psicológico</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Atendimento Psicopedagógico"> Atendimento Psicopedagógico</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Atendimento com musicoterapeuta"> Atendimento com musicoterapeuta</label>
-                        <label><input type="checkbox" name="encaminhamento" value="RAPS"> RAPS</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Grupo Questões de peso"> Grupo Questões de peso</label>
-                        <label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo papo de adolescente" disabled> Grupo papo de adolescente (Inativo)</label>
-                        <label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo de apoio à família" disabled> Grupo de apoio à família (Inativo)</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Grupo Funcional"> Grupo Funcional</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Grupo Envelhecimento Ativo"> Grupo Envelhecimento Ativo</label>
-                        <label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo TransVivências" disabled> Grupo TransVivências (Inativo)</label>
-                        <label><input type="checkbox" name="encaminhamento" value="Grupo Reexista"> Grupo Reexista</label>
-                    </div>
+                    <div id="encerramento-encaminhamento" class="checkbox-group"><label><input type="checkbox" name="encaminhamento" value="Alta"> Alta</label><label><input type="checkbox" name="encaminhamento" value="Desistência"> Desistência</label><label><input type="checkbox" name="encaminhamento" value="Atendimento Psicológico"> Atendimento Psicológico</label><label><input type="checkbox" name="encaminhamento" value="Atendimento Psicopedagógico"> Atendimento Psicopedagógico</label><label><input type="checkbox" name="encaminhamento" value="Atendimento com musicoterapeuta"> Atendimento com musicoterapeuta</label><label><input type="checkbox" name="encaminhamento" value="RAPS"> RAPS</label><label><input type="checkbox" name="encaminhamento" value="Grupo Questões de peso"> Grupo Questões de peso</label><label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo papo de adolescente" disabled> Grupo papo de adolescente (Inativo)</label><label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo de apoio à família" disabled> Grupo de apoio à família (Inativo)</label><label><input type="checkbox" name="encaminhamento" value="Grupo Funcional"> Grupo Funcional</label><label><input type="checkbox" name="encaminhamento" value="Grupo Envelhecimento Ativo"> Grupo Envelhecimento Ativo</label><label class="disabled"><input type="checkbox" name="encaminhamento" value="Grupo TransVivências" disabled> Grupo TransVivências (Inativo)</label><label><input type="checkbox" name="encaminhamento" value="Grupo Reexista"> Grupo Reexista</label></div>
                 </div>
-
-                <div class="form-group">
-                    <label for="data-encerramento">Data de encerramento/alta/desistência:</label>
-                    <input type="date" id="data-encerramento" required>
-                </div>
-                <div class="form-group">
-                    <label for="quantidade-sessoes">Quantidade de sessões do plantão:</label>
-                    <input type="number" id="quantidade-sessoes" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="pagamento-contribuicao">O paciente efetuou o pagamento da contribuição?</label>
-                    <select id="pagamento-contribuicao" required>
-                        <option value="">Selecione...</option>
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                    </select>
-                </div>
-
-                <div id="motivo-nao-pagamento-container" class="form-group hidden">
-                    <label for="motivo-nao-pagamento">Motivo do não pagamento:</label>
-                    <textarea id="motivo-nao-pagamento" rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="relato-encerramento">Breve relato (alta, desistência ou encaminhamento):</label>
-                    <textarea id="relato-encerramento" rows="4" placeholder="Utilize esse campo para informar o que houve com o processo de plantão desse paciente..." required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>A disponibilidade de atendimento continua a mesma?</label>
-                    <p id="disponibilidade-atual" style="font-weight: bold; color: var(--cor-primaria);"></p>
-                    <select id="manter-disponibilidade" required>
-                        <option value="">Selecione...</option>
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                    </select>
-                </div>
-                <div id="nova-disponibilidade-container" class="hidden">
-                </div>
+                <div class="form-group"><label for="data-encerramento">Data de encerramento/alta/desistência:</label><input type="date" id="data-encerramento" required></div>
+                <div class="form-group"><label for="quantidade-sessoes">Quantidade de sessões do plantão:</label><input type="number" id="quantidade-sessoes" required></div>
+                <div class="form-group"><label for="pagamento-contribuicao">O paciente efetuou o pagamento da contribuição?</label><select id="pagamento-contribuicao" required><option value="">Selecione...</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+                <div id="motivo-nao-pagamento-container" class="form-group hidden"><label for="motivo-nao-pagamento">Motivo do não pagamento:</label><textarea id="motivo-nao-pagamento" rows="3"></textarea></div>
+                <div class="form-group"><label for="relato-encerramento">Breve relato (alta, desistência ou encaminhamento):</label><textarea id="relato-encerramento" rows="4" placeholder="Utilize esse campo para informar o que houve com o processo de plantão desse paciente..." required></textarea></div>
+                <div class="form-group"><label>A disponibilidade de atendimento continua a mesma?</label><p id="disponibilidade-atual" style="font-weight: bold; color: var(--cor-primaria);"></p><select id="manter-disponibilidade" required><option value="">Selecione...</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+                <div id="nova-disponibilidade-container" class="hidden"></div>
             </form>
         </div>
-        <div class="modal-footer">
-            <button type="button" id="modal-cancel-btn" class="action-button secondary">Cancelar</button>
-            <button type="submit" id="modal-save-btn" class="action-button" form="encerramento-form">Salvar</button>
-        </div>
+        <div class="modal-footer"><button type="button" id="modal-cancel-btn" class="action-button secondary">Cancelar</button><button type="submit" id="modal-save-btn" class="action-button" form="encerramento-form">Salvar</button></div>
     </div>
 </div>
-
 <div id="horarios-pb-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Informar Horários - Psicoterapia Breve (PB)</h3>
-            <span class="close-button">&times;</span>
-        </div>
+            <h3>Informar Horários - Psicoterapia Breve (PB)</h3><span class="close-button">&times;</span></div>
         <div class="modal-body">
-            <form id="horarios-pb-form">
-                <input type="hidden" id="paciente-id-horarios-modal">
-                <input type="hidden" id="atendimento-id-horarios-modal">
-
-                <div class="form-group">
-                    <label>Paciente iniciou o atendimento em PB?</label>
-                    <div>
-                        <input type="radio" id="iniciou-pb-sim" name="iniciou-pb" value="sim" required> <label for="iniciou-pb-sim">Sim</label>
-                        <input type="radio" id="iniciou-pb-nao" name="iniciou-pb" value="nao" required> <label for="iniciou-pb-nao">Não</label>
-                        <small style="display: block; margin-left: 25px; color: #666;">Selecione 'Não' apenas se o paciente desistiu ou não irá mais ser atendido por você.</small>
-                    </div>
+            <form id="horarios-pb-form"><input type="hidden" id="paciente-id-horarios-modal"><input type="hidden" id="atendimento-id-horarios-modal">
+                <div class="form-group"><label>Paciente iniciou o atendimento em PB?</label>
+                    <div><input type="radio" id="iniciou-pb-sim" name="iniciou-pb" value="sim" required> <label for="iniciou-pb-sim">Sim</label><input type="radio" id="iniciou-pb-nao" name="iniciou-pb" value="nao" required> <label for="iniciou-pb-nao">Não</label><small style="display: block; margin-left: 25px; color: #666;">Selecione 'Não' apenas se o paciente desistiu ou não irá mais ser atendido por você.</small></div>
                 </div>
-
-                <div id="motivo-nao-inicio-pb-container" class="form-group hidden">
-                    <label>Qual o motivo do não início do atendimento?</label>
-                    <div class="radio-group-vertical">
-                        <label><input type="radio" name="motivo-nao-inicio" value="desistiu"> Desistiu</label>
-                        <label><input type="radio" name="motivo-nao-inicio" value="outra_modalidade"> Prefere outra modalidade de atendimento ou outro horário</label>
-                    </div>
+                <div id="motivo-nao-inicio-pb-container" class="form-group hidden"><label>Qual o motivo do não início do atendimento?</label>
+                    <div class="radio-group-vertical"><label><input type="radio" name="motivo-nao-inicio" value="desistiu"> Desistiu</label><label><input type="radio" name="motivo-nao-inicio" value="outra_modalidade"> Prefere outra modalidade de atendimento ou outro horário</label></div>
                 </div>
-                
-                <div id="motivo-desistencia-container" class="form-group hidden">
-                    <label for="motivo-desistencia-pb">Descreva o motivo da desistência:</label>
-                    <textarea id="motivo-desistencia-pb" rows="3" class="form-control"></textarea>
-                </div>
-                
-                <div id="detalhar-solicitacao-container" class="form-group hidden">
-                    <label for="detalhes-solicitacao-pb">Detalhe a solicitação do paciente (será enviada ao administrativo):</label>
-                    <textarea id="detalhes-solicitacao-pb" rows="3" class="form-control"></textarea>
-                </div>
-                <div id="form-continuacao-pb" class="hidden">
-                </div>
+                <div id="motivo-desistencia-container" class="form-group hidden"><label for="motivo-desistencia-pb">Descreva o motivo da desistência:</label><textarea id="motivo-desistencia-pb" rows="3" class="form-control"></textarea></div>
+                <div id="detalhar-solicitacao-container" class="form-group hidden"><label for="detalhes-solicitacao-pb">Detalhe a solicitação do paciente (será enviada ao administrativo):</label><textarea id="detalhes-solicitacao-pb" rows="3" class="form-control"></textarea></div>
+                <div id="form-continuacao-pb" class="hidden"></div>
             </form>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="action-button secondary" data-close-modal>Cancelar</button>
-            <button type="submit" class="action-button" form="horarios-pb-form">Salvar</button>
-        </div>
+        <div class="modal-footer"><button type="button" class="action-button secondary" data-close-modal>Cancelar</button><button type="submit" class="action-button" form="horarios-pb-form">Salvar</button></div>
     </div>
 </div>
-
 <div id="desfecho-pb-modal" class="modal" style="display: none;">
-    <div class="modal-content large">
-        <span class="close-button" data-close-modal>&times;</span>
+    <div class="modal-content large"><span class="close-button" data-close-modal>&times;</span>
         <h3>Registrar Desfecho do Atendimento (PB)</h3>
-        <div id="desfecho-pb-modal-body">
-        </div>
+        <div id="desfecho-pb-modal-body"></div>
     </div>
 </div>
