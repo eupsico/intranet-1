@@ -1,0 +1,81 @@
+<form id="form-atendimento-pb" class="form-layout" novalidate>
+    <fieldset>
+        <legend>Informações do Atendimento</legend>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Nome do Profissional</label>
+                <input type="text" id="profissional-nome" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label>Nome do Paciente</label>
+                <input type="text" id="paciente-nome" class="form-control" readonly>
+            </div>
+        </div>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Valor de Contribuição</label>
+                <input type="text" id="valor-contribuicao" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label>Data Início do Atendimento</label>
+                <input type="text" id="data-inicio-atendimento" class="form-control" readonly>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Registro do Desfecho</legend>
+        <div class="form-group">
+            <label for="desfecho-acompanhamento">Qual o desfecho do acompanhamento?</label>
+            <select id="desfecho-acompanhamento" class="form-control" required>
+                <option value="">Selecione uma opção...</option>
+                <option value="Alta">Alta</option>
+                <option value="Desistencia">Desistência</option>
+                <option value="Encaminhamento">Encaminhamento</option>
+            </select>
+        </div>
+
+        <div id="motivo-alta-desistencia-container" class="form-group" style="display: none;">
+            <label for="motivo-alta-desistencia">Motivo da Alta/Desistência:</label>
+            <textarea id="motivo-alta-desistencia" rows="4" class="form-control" placeholder="Descreva brevemente o motivo..."></textarea>
+        </div>
+
+        <div id="encaminhamento-container" style="display: none;">
+            <div class="form-group">
+                <label for="encaminhado-para">Encaminhado para:</label>
+                <select id="encaminhado-para" class="form-control">
+                    <option value="">Selecione o serviço...</option>
+                    <option value="Atendimento Psicológico">Atendimento Psicológico</option>
+                    <option value="Atendimento Psicopedagógico">Atendimento Psicopedagógico</option>
+                    <option value="Atendimento com musicoterapeuta">Atendimento com musicoterapeuta</option>
+                    <option value="RAPS">RAPS (Rede de Atenção Psicossocial)</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="motivo-encaminhamento">Motivo do Encaminhamento:</label>
+                <textarea id="motivo-encaminhamento" rows="3" class="form-control" placeholder="Descreva o motivo do encaminhamento..."></textarea>
+            </div>
+             <div class="form-group">
+                <label for="demanda-paciente">Demanda do Paciente:</label>
+                <textarea id="demanda-paciente" rows="3" class="form-control" placeholder="Qual a demanda específica do paciente?"></textarea>
+            </div>
+             <div class="form-group">
+                <label for="continua-atendimento">Paciente continua em atendimento com você?</label>
+                <select id="continua-atendimento" class="form-control">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="relato-caso">Breve relato do caso:</label>
+                <textarea id="relato-caso" rows="5" class="form-control" placeholder="Apresente um breve resumo do caso para o profissional que irá recebê-lo."></textarea>
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="modal-footer" style="margin-top: 20px;">
+        <button type="button" class="action-button secondary close-modal-btn">Cancelar</button>
+        <button type="submit" id="btn-salvar-desfecho" class="action-button">Salvar Desfecho</button>
+    </div>
+</form>
