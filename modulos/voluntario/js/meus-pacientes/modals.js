@@ -12,7 +12,6 @@ import {
 
 // --- Lógica do Modal de Mensagens (Aprimorada) ---
 
-// Guarda os dados temporariamente enquanto o modal está aberto
 let dadosParaMensagem = {};
 let templateOriginal = "";
 
@@ -30,10 +29,8 @@ export function abrirModalMensagens(
   const formularioView = document.getElementById("mensagem-formulario-view");
 
   dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
-
   nomePacienteSpan.textContent = paciente.nomeCompleto;
   listaModelos.innerHTML = "";
-
   selecaoView.style.display = "block";
   formularioView.style.display = "none";
 
@@ -61,7 +58,7 @@ export function abrirModalMensagens(
 }
 
 function preencherFormularioMensagem(templateKey, templateTitle) {
-  const { paciente, atendimento, systemConfigs, userData } = dadosParaMensagem;
+  const { systemConfigs, userData } = dadosParaMensagem;
 
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
@@ -71,12 +68,11 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   );
 
   formTitle.textContent = templateTitle;
-  formContainer.innerHTML = ""; // Limpa campos anteriores
+  formContainer.innerHTML = "";
   templateOriginal = systemConfigs.textos[templateKey] || "";
 
-  // Encontra todas as variáveis como {exemplo}
   const variaveis = templateOriginal.match(/{[a-zA-Z0-9_]+}/g) || [];
-  const variaveisUnicas = [...new Set(variaveis)]; // Remove duplicadas
+  const variaveisUnicas = [...new Set(variaveis)];
 
   const variaveisFixas = [
     "{p}",
@@ -87,35 +83,53 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   ];
 
   variaveisUnicas.forEach((variavel) => {
-    if (variaveisFixas.includes(variavel)) return; // Pula as variáveis que já são preenchidas
+    if (variaveisFixas.includes(variavel)) return;
 
     const nomeVariavel = variavel.replace(/[{}]/g, "");
     const labelText =
-      nomeVariavel.charAt(0).toUpperCase() + nomeVariavel.slice(1);
+      nomeVariavel.charAt(0).toUpperCase() +
+      nomeVariavel.slice(1).replace(/_/g, " ");
 
     const formGroup = document.createElement("div");
     formGroup.className = "form-group";
-
     const label = document.createElement("label");
     label.textContent = `Preencha o campo "${labelText}":`;
     label.htmlFor = `var-${nomeVariavel}`;
-
     const input = document.createElement("input");
-    input.type = "text";
+
+    if (nomeVariavel.toLowerCase().includes("data")) {
+      input.type = "date";
+    } else if (nomeVariavel.toLowerCase().includes("profissao")) {
+      input.type = "text";
+      if (userData.profissao) {
+        input.value = userData.profissao;
+      }
+    } else {
+      input.type = "text";
+    }
+
     input.className = "form-control dynamic-var";
     input.id = `var-${nomeVariavel}`;
-    input.dataset.variavel = variavel; // Armazena a variável original (ex: {d})
-    input.onkeyup = () => atualizarPreviewMensagem(); // Atualiza em tempo real
+    input.dataset.variavel = variavel;
+    input.oninput = () => atualizarPreviewMensagem();
 
     formGroup.appendChild(label);
     formGroup.appendChild(input);
     formContainer.appendChild(formGroup);
   });
 
-  atualizarPreviewMensagem(); // Chama uma vez para preencher o texto inicial
+  atualizarPreviewMensagem();
 
   selecaoView.style.display = "none";
   formularioView.style.display = "block";
+}
+
+function formatarData(dataString) {
+  if (!dataString || !/^\d{4}-\d{2}-\d{2}$/.test(dataString)) {
+    return dataString;
+  }
+  const [ano, mes, dia] = dataString.split("-");
+  return `${dia}/${mes}/${ano}`;
 }
 
 function atualizarPreviewMensagem() {
@@ -123,7 +137,6 @@ function atualizarPreviewMensagem() {
   const previewTextarea = document.getElementById("output-mensagem-preview");
   let mensagemAtualizada = templateOriginal;
 
-  // Substituições padrão
   mensagemAtualizada = mensagemAtualizada
     .replace(/{p}/g, paciente.nomeCompleto)
     .replace(/{nomePaciente}/g, paciente.nomeCompleto)
@@ -138,14 +151,16 @@ function atualizarPreviewMensagem() {
     );
   }
 
-  // Substituições das variáveis dinâmicas
   const inputs = document.querySelectorAll(".dynamic-var");
   inputs.forEach((input) => {
     const placeholder = input.dataset.variavel;
-    // Usa uma RegEx global para substituir todas as ocorrências da variável
+    let valor = input.value;
+    if (input.type === "date") {
+      valor = formatarData(valor);
+    }
     mensagemAtualizada = mensagemAtualizada.replace(
       new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-      input.value || placeholder
+      valor || placeholder
     );
   });
 
@@ -158,7 +173,7 @@ export function handleMensagemSubmit() {
   const mensagem = document.getElementById("output-mensagem-preview").value;
   const modal = document.getElementById("enviar-mensagem-modal");
 
-  if (telefone && mensagem) {
+  if (telefone && mensagem && !mensagem.includes("{")) {
     window.open(
       `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`,
       "_blank"
@@ -166,7 +181,7 @@ export function handleMensagemSubmit() {
     modal.style.display = "none";
   } else {
     alert(
-      "Não foi possível gerar o link. Verifique o telefone do paciente e a mensagem."
+      "Não foi possível gerar o link. Verifique se todos os campos foram preenchidos e se o paciente possui um telefone válido."
     );
   }
 }
@@ -189,7 +204,7 @@ export function abrirModalSolicitarSessoes(
     paciente.nomeCompleto;
   document.getElementById("solicitar-paciente-id").value = paciente.id;
   document.getElementById("solicitar-atendimento-id").value =
-    atendimento.atendimentoId;
+    atendimento?.atendimentoId || "";
 
   const horarioSelect = document.getElementById("solicitar-horario");
   horarioSelect.innerHTML = "";
@@ -302,7 +317,6 @@ export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
   );
   novaDisponibilidadeContainer.classList.add("hidden");
   novaDisponibilidadeContainer.innerHTML = "";
-
   const disponibilidadeEspecifica =
     dadosDoPaciente.disponibilidadeEspecifica || [];
   const textoDisponibilidade =
@@ -319,10 +333,8 @@ export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
           })
           .join(", ")
       : "Nenhuma disponibilidade específica informada.";
-
   document.getElementById("disponibilidade-atual").textContent =
     textoDisponibilidade;
-
   const pagamentoSelect = form.querySelector("#pagamento-contribuicao");
   pagamentoSelect.onchange = () => {
     document
@@ -331,7 +343,6 @@ export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
     document.getElementById("motivo-nao-pagamento").required =
       pagamentoSelect.value === "nao";
   };
-
   const dispSelect = form.querySelector("#manter-disponibilidade");
   dispSelect.onchange = async () => {
     const mostrar = dispSelect.value === "nao";
@@ -357,7 +368,6 @@ export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
       }
     }
   };
-
   modal.style.display = "block";
 }
 
@@ -367,7 +377,6 @@ export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
   form.reset();
   form.querySelector("#paciente-id-horarios-modal").value = pacienteId;
   form.querySelector("#atendimento-id-horarios-modal").value = atendimentoId;
-
   const motivoContainer = document.getElementById(
     "motivo-nao-inicio-pb-container"
   );
@@ -378,7 +387,6 @@ export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
   const solicitacaoContainer = document.getElementById(
     "detalhar-solicitacao-container"
   );
-
   motivoContainer.classList.add("hidden");
   continuacaoContainer.classList.add("hidden");
   desistenciaContainer.classList.add("hidden");
@@ -386,7 +394,6 @@ export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
   continuacaoContainer.innerHTML = "";
   document.getElementById("motivo-desistencia-pb").required = false;
   document.getElementById("detalhes-solicitacao-pb").required = false;
-
   const iniciouRadio = form.querySelectorAll('input[name="iniciou-pb"]');
   iniciouRadio.forEach((radio) => {
     radio.onchange = () => {
@@ -411,7 +418,6 @@ export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
         });
     };
   });
-
   const motivoNaoInicioRadio = form.querySelectorAll(
     'input[name="motivo-nao-inicio"]'
   );
@@ -427,7 +433,6 @@ export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
       }
     };
   });
-
   modal.style.display = "block";
 }
 
@@ -449,48 +454,32 @@ function construirFormularioHorarios(nomeProfissional) {
   let salasOptions = salas
     .map((sala) => `<option value="${sala}">${sala}</option>`)
     .join("");
-
-  return `<div class="form-group"><label>Nome Profissional:</label><input type="text" value="${nomeProfissional}" class="form-control" readonly></div>
-    <div class="form-group"><label for="dia-semana-pb">Dia da semana:</label><select id="dia-semana-pb" class="form-control" required><option value="">Selecione...</option><option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option><option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option></select></div>
-    <div class="form-group"><label for="horario-pb">Horário:</label><select id="horario-pb" class="form-control" required><option value="">Selecione...</option>${horasOptions}</select></div>
-    <div class="form-group"><label for="tipo-atendimento-pb-voluntario">Tipo de atendimento:</label><select id="tipo-atendimento-pb-voluntario" class="form-control" required><option value="">Selecione...</option><option>Presencial</option><option>Online</option></select></div>
-    <div class="form-group"><label for="alterar-grade-pb">Alterar/Incluir na grade?</label><select id="alterar-grade-pb" class="form-control" required><option value="">Selecione...</option><option>Sim</option><option>Não</option></select></div>
-    <div class="form-group"><label for="frequencia-atendimento-pb">Frequência:</label><select id="frequencia-atendimento-pb" class="form-control" required><option value="">Selecione...</option><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></div>
-    <div class="form-group"><label for="sala-atendimento-pb">Sala:</label><select id="sala-atendimento-pb" class="form-control" required><option value="">Selecione...</option>${salasOptions}</select></div>
-    <div class="form-group"><label for="data-inicio-sessoes">Data de início:</label><input type="date" id="data-inicio-sessoes" class="form-control" required></div>
-    <div class="form-group"><label for="observacoes-pb-horarios">Observações:</label><textarea id="observacoes-pb-horarios" rows="3" class="form-control"></textarea></div>`;
+  return `<div class="form-group"><label>Nome Profissional:</label><input type="text" value="${nomeProfissional}" class="form-control" readonly></div><div class="form-group"><label for="dia-semana-pb">Dia da semana:</label><select id="dia-semana-pb" class="form-control" required><option value="">Selecione...</option><option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option><option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option></select></div><div class="form-group"><label for="horario-pb">Horário:</label><select id="horario-pb" class="form-control" required><option value="">Selecione...</option>${horasOptions}</select></div><div class="form-group"><label for="tipo-atendimento-pb-voluntario">Tipo de atendimento:</label><select id="tipo-atendimento-pb-voluntario" class="form-control" required><option value="">Selecione...</option><option>Presencial</option><option>Online</option></select></div><div class="form-group"><label for="alterar-grade-pb">Alterar/Incluir na grade?</label><select id="alterar-grade-pb" class="form-control" required><option value="">Selecione...</option><option>Sim</option><option>Não</option></select></div><div class="form-group"><label for="frequencia-atendimento-pb">Frequência:</label><select id="frequencia-atendimento-pb" class="form-control" required><option value="">Selecione...</option><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></div><div class="form-group"><label for="sala-atendimento-pb">Sala:</label><select id="sala-atendimento-pb" class="form-control" required><option value="">Selecione...</option>${salasOptions}</select></div><div class="form-group"><label for="data-inicio-sessoes">Data de início:</label><input type="date" id="data-inicio-sessoes" class="form-control" required></div><div class="form-group"><label for="observacoes-pb-horarios">Observações:</label><textarea id="observacoes-pb-horarios" rows="3" class="form-control"></textarea></div>`;
 }
 
-export async function abrirModalDesfechoPb(
-  pacienteId,
-  atendimentoId,
-  dadosDoPaciente
-) {
+export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
   const modal = document.getElementById("desfecho-pb-modal");
   const body = document.getElementById("desfecho-pb-modal-body");
   body.innerHTML = '<div class="loading-spinner"></div>';
   modal.style.display = "block";
 
   try {
-    const meuAtendimento = dadosDoPaciente.atendimentosPB?.find(
-      (at) => at.atendimentoId === atendimentoId
-    );
-
-    // **CORREÇÃO APLICADA AQUI**
     if (!meuAtendimento) {
       throw new Error(
-        "Erro crítico: Não foi possível encontrar os dados específicos deste atendimento para o paciente."
+        "Dados do atendimento específico (PB) não foram encontrados para este paciente. Não é possível registrar o desfecho."
       );
     }
 
     const response = await fetch("../page/form-atendimento-pb.html");
     if (!response.ok)
-      throw new Error("HTML do formulário de desfecho não encontrado.");
+      throw new Error(
+        "Arquivo do formulário de desfecho (form-atendimento-pb.html) não encontrado."
+      );
     body.innerHTML = await response.text();
 
     const form = body.querySelector("#form-atendimento-pb");
-    form.dataset.pacienteId = pacienteId;
-    form.dataset.atendimentoId = atendimentoId;
+    form.dataset.pacienteId = dadosDoPaciente.id;
+    form.dataset.atendimentoId = meuAtendimento.atendimentoId;
 
     form.querySelector("#profissional-nome").value =
       meuAtendimento.profissionalNome;
@@ -524,7 +513,7 @@ export async function abrirModalDesfechoPb(
 
     form.addEventListener("submit", handleDesfechoPbSubmit);
   } catch (error) {
-    body.innerHTML = `<p class="alert alert-error">${error.message}</p>`;
+    body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar modal:</b> ${error.message}</p>`;
     console.error(error);
   }
 }
@@ -554,7 +543,6 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     : encaminhamentos.includes("Desistência")
     ? "desistencia"
     : "encaminhar_para_pb";
-
   let dadosParaAtualizar = {
     status: novoStatus,
     "plantaoInfo.encerramento": {
@@ -597,7 +585,6 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
   const atendimentoId = formulario.querySelector(
     "#atendimento-id-horarios-modal"
   ).value;
-
   const docRef = doc(db, "trilhaPaciente", pacienteId);
   const docSnap = await getDoc(docRef);
   if (!docSnap.exists()) {
@@ -628,7 +615,6 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
   }
 
   let dadosParaAtualizar = {};
-
   if (iniciou === "sim") {
     atendimentos[indiceDoAtendimento].horarioSessao = {
       responsavelId: user.uid,
@@ -650,7 +636,51 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
       lastUpdate: serverTimestamp(),
     };
   } else {
-    // ... (lógica de não início completa)
+    // --- CÓDIGO COMPLETO ---
+    const motivoNaoInicio = formulario.querySelector(
+      'input[name="motivo-nao-inicio"]:checked'
+    )?.value;
+    if (!motivoNaoInicio) {
+      alert("Por favor, selecione o motivo do não início.");
+      botaoSalvar.disabled = false;
+      return;
+    }
+
+    if (motivoNaoInicio === "desistiu") {
+      const motivoDescricao = formulario.querySelector(
+        "#motivo-desistencia-pb"
+      ).value;
+      if (!motivoDescricao) {
+        alert("Por favor, descreva o motivo da desistência.");
+        botaoSalvar.disabled = false;
+        return;
+      }
+      atendimentos[indiceDoAtendimento].status = "desistencia";
+      atendimentos[indiceDoAtendimento].motivoDesistencia = motivoDescricao;
+      dadosParaAtualizar = {
+        atendimentosPB: atendimentos,
+        status: "desistencia",
+        lastUpdate: serverTimestamp(),
+      };
+    } else {
+      // motivoNaoInicio === "outra_modalidade"
+      const detalhesSolicitacao = formulario.querySelector(
+        "#detalhes-solicitacao-pb"
+      ).value;
+      if (!detalhesSolicitacao) {
+        alert("Por favor, detalhe a solicitação do paciente.");
+        botaoSalvar.disabled = false;
+        return;
+      }
+      atendimentos[indiceDoAtendimento].status = "solicitado_reencaminhamento";
+      atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
+        detalhesSolicitacao;
+      dadosParaAtualizar = {
+        atendimentosPB: atendimentos,
+        status: "reavaliar_encaminhamento",
+        lastUpdate: serverTimestamp(),
+      };
+    }
   }
 
   try {
