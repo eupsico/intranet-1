@@ -1,32 +1,6 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/actions.js
 
-export function handleEnviarContrato(
-  pacienteId,
-  atendimentoId,
-  telefone,
-  nomePaciente,
-  { systemConfigs }
-) {
-  const numeroLimpo = telefone ? telefone.replace(/\D/g, "") : "";
-  if (!numeroLimpo || numeroLimpo.length < 10) {
-    alert("O número de telefone do paciente não é válido.");
-    return;
-  }
-  const contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${pacienteId}&atendimentoId=${atendimentoId}`;
-
-  let template =
-    systemConfigs.textos?.envioContrato ||
-    `(Modelo 'envioContrato' não encontrado nas configurações)`;
-
-  const mensagem = template
-    .replace(/{nomePaciente}/g, nomePaciente)
-    .replace(/{contractUrl}/g, contractUrl);
-
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=55${numeroLimpo}&text=${encodeURIComponent(
-    mensagem
-  )}`;
-  window.open(whatsappUrl, "_blank");
-}
+// A função handleEnviarContrato foi removida daqui.
 
 export async function gerarPdfContrato(pacienteData, meuAtendimento) {
   try {
