@@ -14,12 +14,12 @@ export function calcularIdade(dataNascimento) {
 
 export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const isPlantao = !atendimentoPB;
+
+  // Lógica de status simplificada
   const statusKey = isPlantao
     ? "em_atendimento_plantao"
     : paciente.status === "aguardando_info_horarios"
     ? "aguardando_info_horarios"
-    : !atendimentoPB.contratoAssinado
-    ? "aguardando_contrato"
     : "em_atendimento_pb";
 
   const mapaDeStatus = {
@@ -33,12 +33,6 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       label: "Aguardando Info Horários (PB)",
       acao: "Informar Horários",
       tipo: "pb_horarios",
-      ativo: true,
-    },
-    aguardando_contrato: {
-      label: "Aguardando Contrato (PB)",
-      acao: "Enviar Contrato",
-      tipo: "contrato",
       ativo: true,
     },
     em_atendimento_pb: {
@@ -68,11 +62,11 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const idade = calcularIdade(paciente.dataNascimento);
   const responsavelNome = paciente.responsavel?.nome || "N/A";
   const atendimentoInfo = atendimentoPB?.horarioSessao || {};
-
   const atendimentoIdAttr = atendimentoPB
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
 
+  // Definição dos botões de ação
   const acaoPrincipalBtn = `<button class="action-button" data-tipo="${
     infoStatus.tipo
   }" ${!infoStatus.ativo ? "disabled" : ""}>${infoStatus.acao}</button>`;
@@ -83,6 +77,16 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     ? `<button class="action-button" data-tipo="solicitar_sessoes">Solicitar Novas Sessões</button>`
     : "";
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
+
+  // Status de exibição ajustado para mostrar "Aguardando Contrato" quando aplicável
+  const displayStatus =
+    atendimentoPB && !atendimentoPB.contratoAssinado
+      ? "Aguardando Contrato"
+      : infoStatus.label;
+  const displayStatusClass =
+    atendimentoPB && !atendimentoPB.contratoAssinado
+      ? "status-aguardando_contrato"
+      : `status-${statusKey}`;
 
   return `
       <div class="paciente-accordion" data-id="${paciente.id}" data-telefone="${
@@ -100,9 +104,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
           <div class="accordion-content">
               <div class="accordion-content-inner">
                   <div class="patient-details-grid">
-                      <div class="detail-item"><span class="label">Status</span><span class="value status-badge status-${statusKey}">${
-    infoStatus.label
-  }</span></div>
+                      <div class="detail-item"><span class="label">Status</span><span class="value status-badge ${displayStatusClass}">${displayStatus}</span></div>
                       <div class="detail-item"><span class="label">Idade</span><span class="value">${idade}</span></div>
                       ${
                         idade < 18
@@ -131,5 +133,6 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                   </div>
               </div>
           </div>
-      </div>`;
+      </div>
+  `;
 }
