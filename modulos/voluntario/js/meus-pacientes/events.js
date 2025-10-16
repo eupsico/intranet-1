@@ -1,7 +1,7 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/events.js
 
 import { db, doc, getDoc } from "../../../../assets/js/firebase-init.js";
-import { handleEnviarContrato, gerarPdfContrato } from "./actions.js";
+import { gerarPdfContrato } from "./actions.js"; // handleEnviarContrato foi removido daqui
 import {
   abrirModalEncerramento,
   abrirModalHorariosPb,
@@ -61,15 +61,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       case "pb_horarios":
         abrirModalHorariosPb(pacienteId, atendimentoId, dependencies);
         break;
-      case "contrato":
-        handleEnviarContrato(
-          pacienteId,
-          atendimentoId,
-          accordion.dataset.telefone,
-          dadosDoPaciente.nomeCompleto,
-          dependencies
-        );
-        break;
+
       case "desfecho_pb":
         abrirModalDesfechoPb(pacienteId, atendimentoId, dadosDoPaciente);
         break;
