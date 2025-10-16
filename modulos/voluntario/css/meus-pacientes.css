@@ -119,6 +119,18 @@
     gap: 10px;
 }
 
+/* --- MODAL DE MENSAGENS --- */
+.message-templates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.message-templates-list button {
+    width: 100%;
+    text-align: left;
+}
+
+
 /* --- MODAL DE SOLICITAÇÃO --- */
 .modal-content.large {
     max-width: 850px;

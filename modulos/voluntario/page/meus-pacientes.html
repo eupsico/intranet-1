@@ -12,6 +12,24 @@
     </div>
 </div>
 
+<div id="enviar-mensagem-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title-text">Selecionar Mensagem</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Escolha um modelo de mensagem para enviar para <strong><span id="mensagem-paciente-nome"></span></strong>:</p>
+            <div id="lista-modelos-mensagem" class="message-templates-list">
+                </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="action-button secondary-button close-modal-btn">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+
 <div id="solicitar-sessoes-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <div class="modal-header">
@@ -87,15 +105,16 @@
     </div>
 </div>
 
-<div id="encerramento-modal" class="modal" style="display: none;">
+<div id="encerramento-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Encerrar Plantão</h3>
+            <h3 id="encerramento-modal-title">Encerrar Plantão</h3>
             <span class="close-button">&times;</span>
         </div>
         <div class="modal-body">
             <form id="encerramento-form">
                 <input type="hidden" id="paciente-id-modal">
+                
                 <div class="form-group">
                     <label>Encaminhamento:</label>
                     <div id="encerramento-encaminhamento" class="checkbox-group">
@@ -114,6 +133,7 @@
                         <label><input type="checkbox" name="encaminhamento" value="Grupo Reexista"> Grupo Reexista</label>
                     </div>
                 </div>
+
                 <div class="form-group">
                     <label for="data-encerramento">Data de encerramento/alta/desistência:</label>
                     <input type="date" id="data-encerramento" required>
@@ -122,6 +142,7 @@
                     <label for="quantidade-sessoes">Quantidade de sessões do plantão:</label>
                     <input type="number" id="quantidade-sessoes" required>
                 </div>
+
                 <div class="form-group">
                     <label for="pagamento-contribuicao">O paciente efetuou o pagamento da contribuição?</label>
                     <select id="pagamento-contribuicao" required>
@@ -130,6 +151,7 @@
                         <option value="nao">Não</option>
                     </select>
                 </div>
+
                 <div id="motivo-nao-pagamento-container" class="form-group hidden">
                     <label for="motivo-nao-pagamento">Motivo do não pagamento:</label>
                     <textarea id="motivo-nao-pagamento" rows="3"></textarea>
@@ -147,7 +169,8 @@
                         <option value="nao">Não</option>
                     </select>
                 </div>
-                <div id="nova-disponibilidade-container" class="hidden"></div>
+                <div id="nova-disponibilidade-container" class="hidden">
+                </div>
             </form>
         </div>
         <div class="modal-footer">
@@ -167,6 +190,7 @@
             <form id="horarios-pb-form">
                 <input type="hidden" id="paciente-id-horarios-modal">
                 <input type="hidden" id="atendimento-id-horarios-modal">
+
                 <div class="form-group">
                     <label>Paciente iniciou o atendimento em PB?</label>
                     <div>
@@ -175,6 +199,7 @@
                         <small style="display: block; margin-left: 25px; color: #666;">Selecione 'Não' apenas se o paciente desistiu ou não irá mais ser atendido por você.</small>
                     </div>
                 </div>
+
                 <div id="motivo-nao-inicio-pb-container" class="form-group hidden">
                     <label>Qual o motivo do não início do atendimento?</label>
                     <div class="radio-group-vertical">
@@ -182,15 +207,18 @@
                         <label><input type="radio" name="motivo-nao-inicio" value="outra_modalidade"> Prefere outra modalidade de atendimento ou outro horário</label>
                     </div>
                 </div>
+                
                 <div id="motivo-desistencia-container" class="form-group hidden">
                     <label for="motivo-desistencia-pb">Descreva o motivo da desistência:</label>
                     <textarea id="motivo-desistencia-pb" rows="3" class="form-control"></textarea>
                 </div>
+                
                 <div id="detalhar-solicitacao-container" class="form-group hidden">
                     <label for="detalhes-solicitacao-pb">Detalhe a solicitação do paciente (será enviada ao administrativo):</label>
                     <textarea id="detalhes-solicitacao-pb" rows="3" class="form-control"></textarea>
                 </div>
-                <div id="form-continuacao-pb" class="hidden"></div>
+                <div id="form-continuacao-pb" class="hidden">
+                    </div>
             </form>
         </div>
         <div class="modal-footer">
@@ -204,6 +232,7 @@
     <div class="modal-content large">
         <span class="close-button" data-close-modal>&times;</span>
         <h3>Registrar Desfecho do Atendimento (PB)</h3>
-        <div id="desfecho-pb-modal-body"></div>
+        <div id="desfecho-pb-modal-body">
+        </div>
     </div>
 </div>
