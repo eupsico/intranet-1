@@ -1,6 +1,6 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/events.js
 
-import { db, doc, getDoc } from "../../../assets/js/firebase-init.js";
+import { db, doc, getDoc } from "../../../../assets/js/firebase-init.js";
 import { handleEnviarContrato, gerarPdfContrato } from "./actions.js";
 import {
   abrirModalEncerramento,

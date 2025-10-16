@@ -8,7 +8,7 @@ import {
   query,
   where,
   getDocs,
-} from "../../../assets/js/firebase-init.js";
+} from "../../../../assets/js/firebase-init.js";
 import { criarAccordionPaciente } from "./ui.js";
 import { adicionarEventListenersGerais } from "./events.js";
 

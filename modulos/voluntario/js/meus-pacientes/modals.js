@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   httpsCallable,
   functions,
-} from "../../../assets/js/firebase-init.js";
+} from "../../../../assets/js/firebase-init.js";
 
 // Lógica do Modal de Mensagens
 export function abrirModalMensagens(
