@@ -18,16 +18,15 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
   const container = document.getElementById("pacientes-accordion-container");
   if (!container) return;
 
-  // --- CORREÇÃO: Listener global para fechar todos os modais ---
-  // Este listener garante que qualquer botão com a classe 'close-modal-btn' funcione.
+  // --- CORREÇÃO DEFINITIVA: Listener global para fechar TODOS os modais ---
   document.body.addEventListener("click", function (e) {
+    // Verifica se o clique foi em um botão com a classe 'close-modal-btn'
     if (
-      e.target.classList.contains("close-modal-btn") ||
+      e.target.matches(".close-modal-btn") ||
       e.target.closest(".close-modal-btn")
     ) {
-      const modalAberto = document.querySelector(
-        '.modal-overlay[style*="flex"], .modal[style*="block"]'
-      );
+      // Encontra o modal pai que está visível e o esconde
+      const modalAberto = e.target.closest(".modal-overlay, .modal");
       if (modalAberto) {
         modalAberto.style.display = "none";
       }
@@ -80,7 +79,6 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
         abrirModalHorariosPb(pacienteId, atendimentoId, dependencies);
         break;
       case "desfecho_pb":
-        // Passando 'meuAtendimento' diretamente para o modal de desfecho
         abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento);
         break;
       case "pdf_contrato":
@@ -99,28 +97,13 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
     }
   });
 
-  // Listeners para os formulários dos modais
-  document
-    .getElementById("encerramento-form")
-    ?.addEventListener("submit", (e) =>
-      handleEncerramentoSubmit(e, user, userData)
-    );
-
-  document
-    .getElementById("horarios-pb-form")
-    ?.addEventListener("submit", (e) =>
-      handleHorariosPbSubmit(e, user, userData)
-    );
-
+  // Listeners para os botões de SUBMIT dos modais
   document
     .getElementById("btn-confirmar-solicitacao")
-    ?.addEventListener("click", (e) => {
-      handleSolicitarSessoesSubmit(e);
-    });
-
+    ?.addEventListener("click", handleSolicitarSessoesSubmit);
   document
     .getElementById("btn-gerar-enviar-whatsapp")
-    ?.addEventListener("click", (e) => {
-      handleMensagemSubmit(e);
-    });
+    ?.addEventListener("click", handleMensagemSubmit);
+
+  // Os listeners de submit dos outros formulários são adicionados dinamicamente em modals.js
 }
