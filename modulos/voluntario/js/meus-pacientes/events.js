@@ -1,7 +1,7 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/events.js
 
 import { db, doc, getDoc } from "../../../../assets/js/firebase-init.js";
-import { gerarPdfContrato } from "./actions.js"; // handleEnviarContrato foi removido daqui
+import { gerarPdfContrato } from "./actions.js";
 import {
   abrirModalEncerramento,
   abrirModalHorariosPb,
@@ -10,14 +10,17 @@ import {
   abrirModalMensagens,
   handleEncerramentoSubmit,
   handleHorariosPbSubmit,
+  handleSolicitarSessoesSubmit, // Adicionada a importação da nova função
+  handleMensagemSubmit, // Adicionada a importação da nova função
 } from "./modals.js";
 
 export function adicionarEventListenersGerais(user, userData, loadedData) {
   const container = document.getElementById("pacientes-accordion-container");
   if (!container) return;
 
-  // Listener principal para o container de pacientes
+  // Listener principal para o container de pacientes (usando delegação de eventos)
   container.addEventListener("click", async (e) => {
+    // Lógica para abrir/fechar o accordion
     const header = e.target.closest(".accordion-header");
     if (header) {
       const content = header.nextElementSibling;
@@ -33,6 +36,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       return;
     }
 
+    // Lógica para os botões de ação dentro do accordion
     const botao = e.target.closest(".action-button");
     if (!botao) return;
 
@@ -61,11 +65,11 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       case "pb_horarios":
         abrirModalHorariosPb(pacienteId, atendimentoId, dependencies);
         break;
-
       case "desfecho_pb":
         abrirModalDesfechoPb(pacienteId, atendimentoId, dadosDoPaciente);
         break;
       case "pdf_contrato":
+        // Esta é a chamada correta para o botão do contrato
         gerarPdfContrato(dadosDoPaciente, meuAtendimento);
         break;
       case "solicitar_sessoes":
@@ -87,19 +91,25 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
     .addEventListener("submit", (e) =>
       handleEncerramentoSubmit(e, user, userData)
     );
+
   document
     .getElementById("horarios-pb-form")
     .addEventListener("submit", (e) =>
       handleHorariosPbSubmit(e, user, userData)
     );
+
+  // **NOVO LISTENER:** Botão de confirmar solicitação de novas sessões
+  document
+    .getElementById("btn-confirmar-solicitacao")
+    .addEventListener("click", (e) => {
+      // A função handleSolicitarSessoesSubmit fará a validação do formulário
+      handleSolicitarSessoesSubmit(e);
+    });
+
+  // **NOVO LISTENER:** Botão de enviar mensagem via WhatsApp
+  document
+    .getElementById("btn-gerar-enviar-whatsapp")
+    .addEventListener("click", (e) => {
+      handleMensagemSubmit(e);
+    });
 }
-// Evento para gerar o contrato do paciente
-$(document).on("click", "#btn-gerar-contrato", function () {
-  const pacienteId = $("#modalAcoesPaciente").data("paciente-id");
-  if (pacienteId) {
-    actions.gerarContrato(pacienteId);
-  } else {
-    console.error("ID do paciente não encontrado.");
-    alert("Não foi possível gerar o contrato. ID do paciente não localizado.");
-  }
-});
