@@ -1,3 +1,98 @@
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: var(--cor-surface);
+    padding: 20px 30px 30px 30px;
+    border-radius: var(--borda-radius);
+    box-shadow: var(--sombra-suave);
+}
+
+.form-header h2 {
+    color: var(--cor-primaria);
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.form-header p {
+    margin-bottom: 25px;
+    color: var(--cor-texto-secundario);
+    font-size: 0.95em;
+}
+
+/* Estilo para as seções */
+.modern-form fieldset {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.modern-form legend {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--cor-primaria-dark);
+    padding: 0 10px;
+    margin-left: 10px;
+}
+
+/* Layout em colunas */
+.form-row {
+    display: grid;
+    gap: 20px;
+    width: 100%;
+}
+.form-row.cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+.form-row.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+.form-row.cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--cor-texto-principal);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-fundo);
+    font-size: 1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.form-control[readonly] {
+    background-color: #f1f3f4;
+    cursor: not-allowed;
+    color: #5f6368;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
 /* Campos exclusivos do supervisor */
 .supervisor-field {
     background-color: #f8f9fa;
@@ -10,6 +105,42 @@
     font-style: italic;
 }
 
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Estilos para as mensagens de status */
+.status-message {
+    padding: 12px;
+    margin: 0 0 25px 0;
+    border-radius: var(--borda-radius);
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.95em;
+    border: 1px solid transparent;
+}
+
+.required-fields-notice {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}
+
+.autosave-saving {
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
+
+.autosave-success {
+    color: #3c763d;
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+}
 /* Estilo para o asterisco de campo obrigatório */
 .required-asterisk {
     color: #e74c3c;
@@ -17,11 +148,84 @@
     margin-left: 4px;
 }
 
+/* Estrutura do cabeçalho do formulário */
+.form-header .header-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Novo status de salvamento (discreto) */
+#autosave-status {
+    font-size: 0.9em;
+    font-style: italic;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+.hidden-on-create {
+    display: none;
+}
+
+/* Estilos para o Modal Pop-up Local */
+.local-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    animation: localFadeIn 0.3s forwards;
+}
+
+.local-modal-box {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    transform: scale(0.9);
+    animation: localScaleUp 0.3s forwards;
+}
+
+.local-modal-content {
+    font-size: 1.1em;
+    color: #333333;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.local-modal-actions .action-button {
+    min-width: 100px;
+}
+
+.local-modal-box.success {
+    border-top: 5px solid #28a745;
+}
+
+.local-modal-box.error {
+    border-top: 5px solid #dc3545;
+}
+
+@keyframes localFadeIn {
+    to { opacity: 1; }
+}
+
+@keyframes localScaleUp {
+    to { transform: scale(1); }
+}
 /* Responsividade para telas menores */
 @media (max-width: 768px) {
-    .form-grid.cols-2,
-    .form-grid.cols-3,
-    .form-grid.cols-4 {
+    .form-row.cols-2,
+    .form-row.cols-3,
+    .form-row.cols-4 {
         grid-template-columns: 1fr; /* Força uma única coluna */
     }
 
@@ -33,13 +237,4 @@
         padding: 15px;
     }
 }
-/* Novo status de salvamento (discreto) */
-#autosave-status {
-    font-size: 0.9em;
-    font-style: italic;
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
-.hidden-on-create {
-    display: none;
-}
+
