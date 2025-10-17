@@ -20,10 +20,10 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
 
   // --- CORREÇÃO DEFINITIVA: Listener global para fechar TODOS os modais ---
   document.body.addEventListener("click", function (e) {
-    // Verifica se o clique foi em um botão com a classe 'close-modal-btn'
+    // Verifica se o clique foi em um botão com a classe 'modal-cancel-btn'
     if (
-      e.target.matches(".close-modal-btn") ||
-      e.target.closest(".close-modal-btn")
+      e.target.matches(".modal-cancel-btn") ||
+      e.target.closest(".modal-cancel-btn")
     ) {
       // Encontra o modal pai que está visível e o esconde
       const modalAberto = e.target.closest(".modal-overlay, .modal");
