@@ -28,12 +28,18 @@ export function abrirModalMensagens(
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
 
+  // CORREÇÃO: Busca o botão dentro do modal para garantir que o contexto está correto
+  const btnWhatsapp = modal.querySelector("#btn-gerar-enviar-whatsapp");
+
   dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
   nomePacienteSpan.textContent = paciente.nomeCompleto;
   listaModelos.innerHTML = "";
   selecaoView.style.display = "block";
   formularioView.style.display = "none";
-  btnWhatsapp.style.display = "none";
+
+  if (btnWhatsapp) {
+    btnWhatsapp.style.display = "none";
+  }
 
   const templates = systemConfigs?.textos || {};
   if (Object.keys(templates).length === 0) {
@@ -55,7 +61,10 @@ export function abrirModalMensagens(
   document.getElementById("btn-voltar-selecao").onclick = () => {
     selecaoView.style.display = "block";
     formularioView.style.display = "none";
-    document.getElementById("btn-gerar-enviar-whatsapp").style.display = "none";
+    // CORREÇÃO: Esconde o botão ao voltar
+    if (btnWhatsapp) {
+      btnWhatsapp.style.display = "none";
+    }
   };
 }
 
@@ -64,11 +73,14 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
 
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
-  const btnWhatsapp = document.getElementById("btn-gerar-enviar-whatsapp");
   const formTitle = document.getElementById("mensagem-form-title");
   const formContainer = document.getElementById(
     "mensagem-dynamic-form-container"
   );
+
+  // CORREÇÃO: Busca o botão novamente no contexto correto
+  const modal = document.getElementById("enviar-mensagem-modal");
+  const btnWhatsapp = modal.querySelector("#btn-gerar-enviar-whatsapp");
 
   formTitle.textContent = templateTitle;
   formContainer.innerHTML = "";
@@ -125,7 +137,11 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
 
   selecaoView.style.display = "none";
   formularioView.style.display = "block";
-  btnWhatsapp.style.display = "inline-block";
+
+  // CORREÇÃO: Adiciona uma verificação para evitar erros e mostra o botão
+  if (btnWhatsapp) {
+    btnWhatsapp.style.display = "inline-block";
+  }
 }
 
 function formatarData(dataString) {
