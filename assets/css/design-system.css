@@ -461,13 +461,18 @@ legend {
     flex-grow: 1;     /* Faz o corpo do modal ocupar o espaço disponível */
 }
 
-.modal-footer {
+.modal-footer { 
     padding: 15px 25px;
     border-top: 1px solid var(--cor-borda);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     background-color: var(--cor-fundo);
+}
+.modal-footer p { margin: 0; }
+
+.profile-section {
+    margin-bottom: 20px;
 }
 
 .checkbox-grid {

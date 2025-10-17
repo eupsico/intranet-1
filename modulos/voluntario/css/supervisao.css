@@ -135,18 +135,7 @@
     padding: 25px;
     overflow-y: auto;
 }
-.modal-footer {
-    padding: 15px 25px;
-    background-color: var(--cor-fundo-hover);
-    border-top: 1px solid var(--cor-borda);
-    text-align: center;
-    font-size: 0.9em;
-    color: var(--cor-texto-secundario);
-}
-.modal-footer p { margin: 0; }
-.profile-section {
-    margin-bottom: 20px;
-}
+
 .profile-section h4 {
     color: var(--cor-primaria-dark);
     border-bottom: 2px solid var(--cor-primaria);
