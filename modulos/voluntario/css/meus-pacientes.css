@@ -206,14 +206,14 @@
     font-size: 1.5em;
     margin: 0;
 }
-.modal-header .close-button, .close-modal-btn {
+/*.modal-header .close-button, .close-modal-btn {
     color: #aaa;
     background: none;
     border: none;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
-}
+}*/
 .modal-footer {
     display: flex;
     justify-content: flex-end;
