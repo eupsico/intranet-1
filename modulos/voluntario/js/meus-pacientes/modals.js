@@ -33,6 +33,7 @@ export function abrirModalMensagens(
   listaModelos.innerHTML = "";
   selecaoView.style.display = "block";
   formularioView.style.display = "none";
+  btnWhatsapp.style.display = "none";
 
   const templates = systemConfigs?.textos || {};
   if (Object.keys(templates).length === 0) {
@@ -54,6 +55,7 @@ export function abrirModalMensagens(
   document.getElementById("btn-voltar-selecao").onclick = () => {
     selecaoView.style.display = "block";
     formularioView.style.display = "none";
+    document.getElementById("btn-gerar-enviar-whatsapp").style.display = "none";
   };
 }
 
@@ -62,6 +64,7 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
 
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
+  const btnWhatsapp = document.getElementById("btn-gerar-enviar-whatsapp");
   const formTitle = document.getElementById("mensagem-form-title");
   const formContainer = document.getElementById(
     "mensagem-dynamic-form-container"
@@ -122,6 +125,7 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
 
   selecaoView.style.display = "none";
   formularioView.style.display = "block";
+  btnWhatsapp.style.display = "inline-block";
 }
 
 function formatarData(dataString) {

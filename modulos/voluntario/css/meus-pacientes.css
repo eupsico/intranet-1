@@ -239,3 +239,14 @@
     font-size: 0.9em;
     resize: vertical;
 }
+.modal-content .modal-header {
+    background-color: transparent; /* Remove o fundo azul */
+    border-bottom: none; /* Remove a linha separadora se não for desejada */
+    padding-bottom: 0;
+    margin-bottom: 10px; /* Reduz o espaçamento inferior */
+}
+
+.modal-content .modal-header h3 {
+    color: var(--cor-primaria); /* Garante que o texto seja azul */
+    font-size: 1.5em; /* Mantém o tamanho do título padrão */
+}
