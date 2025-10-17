@@ -1,7 +1,6 @@
 // Arquivo: /modulos/voluntario/js/ficha-supervisao.js
-// Versão 4.0 (Atualizado para a sintaxe modular do Firebase v9)
+// Versão 5.0 (Refatorado para usar o Design System sem perder lógica)
 
-// 1. Importa as funções necessárias do nosso arquivo central de inicialização
 import {
   db,
   collection,
@@ -17,14 +16,11 @@ let currentUserData;
 
 /**
  * Função Principal (INIT): Ponto de entrada do módulo.
- * A assinatura foi simplificada para receber os dados diretamente.
  */
 export function init(user, userData) {
   currentUser = user;
   currentUserData = userData;
 
-  // Garante que o DOM está pronto antes de manipular os elementos
-  // Usar setTimeout(..., 0) é uma boa prática para isso.
   setTimeout(() => {
     const form = document.getElementById("form-supervisao");
     if (!form) {
@@ -54,7 +50,11 @@ function setupNovaFicha() {
   if (documentIdInput) documentIdInput.value = "";
 
   const outraContainer = document.getElementById("outra-abordagem-container");
-  if (outraContainer) outraContainer.style.display = "none";
+  if (outraContainer) outraContainer.classList.add("hidden");
+
+  // Garante que as seções de edição também fiquem ocultas
+  const secoesEdicao = document.getElementById("secoes-edicao");
+  if (secoesEdicao) secoesEdicao.classList.add("hidden");
 
   const saveButton = document.getElementById("btn-salvar-inicial");
   if (saveButton) {
@@ -71,10 +71,12 @@ function setupNovaFicha() {
 function setupEventListeners() {
   const saveButton = document.getElementById("btn-salvar-inicial");
   if (saveButton) {
+    // Limpa listeners antigos para evitar duplicação de cliques
     const newSaveButton = saveButton.cloneNode(true);
     saveButton.parentNode.replaceChild(newSaveButton, saveButton);
     newSaveButton.addEventListener("click", handleFinalSave);
   }
+
   const abordagemSelect = document.getElementById("abordagem-teorica");
   const outraAbordagemContainer = document.getElementById(
     "outra-abordagem-container"
@@ -83,32 +85,32 @@ function setupEventListeners() {
   if (abordagemSelect && outraAbordagemContainer) {
     abordagemSelect.addEventListener("change", () => {
       if (abordagemSelect.value === "Outra") {
-        outraAbordagemContainer.style.display = "block";
+        outraAbordagemContainer.classList.remove("hidden");
       } else {
-        outraAbordagemContainer.style.display = "none";
+        outraAbordagemContainer.classList.add("hidden");
       }
     });
   }
 }
 
 /**
- * Verifica se os campos marcados como obrigatórios estão preenchidos.
+ * Verifica se os campos com o atributo 'required' estão preenchidos.
  * @returns {boolean} - True se todos os campos obrigatórios estiverem preenchidos.
  */
 function verificarCamposObrigatorios() {
   const camposObrigatorios = document.querySelectorAll(
-    ".required-for-autosave"
+    "#form-supervisao [required]"
   );
   for (const campo of camposObrigatorios) {
     if (!campo.value.trim()) {
-      return false;
+      return false; // Apenas retorna falso, a mensagem será exibida pelo chamador.
     }
   }
   return true;
 }
 
 /**
- * Carrega a lista de supervisores do Firestore usando a sintaxe v9.
+ * Carrega a lista de supervisores do Firestore.
  */
 async function loadSupervisores() {
   const select = document.getElementById("supervisor-nome");
@@ -116,14 +118,12 @@ async function loadSupervisores() {
 
   select.innerHTML = '<option value="">Carregando...</option>';
   try {
-    // SINTAXE V9: Usa as funções query, collection e where
     const supervisoresQuery = query(
       collection(db, "usuarios"),
       where("funcoes", "array-contains", "supervisor"),
       where("inativo", "==", false)
     );
-
-    const querySnapshot = await getDocs(supervisoresQuery); // SINTAXE V9
+    const querySnapshot = await getDocs(supervisoresQuery);
 
     if (querySnapshot.empty) {
       select.innerHTML =
@@ -142,7 +142,7 @@ async function loadSupervisores() {
     supervisores.forEach((supervisor) => {
       const option = document.createElement("option");
       option.value = supervisor.uid;
-      option.dataset.nome = supervisor.nome; // Armazena o nome no dataset
+      option.dataset.nome = supervisor.nome;
       option.textContent = supervisor.nome;
       select.appendChild(option);
     });
@@ -161,15 +161,12 @@ function coletarDadosIniciais() {
   const selectedSupervisorOption =
     supervisorSelect.options[supervisorSelect.selectedIndex];
 
-  // O campo de abordagem teórica não estava sendo coletado, adicionei ele.
   const abordagemSelect = document.getElementById("abordagem-teorica");
   const abordagem = abordagemSelect.value;
 
   return {
     psicologoUid: currentUser.uid,
     psicologoNome: document.getElementById("psicologo-nome").value,
-
-    // Mantive a estrutura original dos seus dados
     identificacaoGeral: {
       supervisorUid: selectedSupervisorOption.value,
       supervisorNome: selectedSupervisorOption.dataset.nome || "",
@@ -179,6 +176,7 @@ function coletarDadosIniciais() {
     identificacaoPsicologo: {
       periodo: document.getElementById("psicologo-periodo").value,
       abordagem: abordagem,
+      outraAbordagem: document.getElementById("outra-abordagem-texto").value,
     },
     identificacaoCaso: {
       iniciais: document
@@ -189,7 +187,6 @@ function coletarDadosIniciais() {
       numSessoes: document.getElementById("paciente-sessoes").value,
       queixa: document.getElementById("queixa-demanda").value,
     },
-    // As fases e observações são inicializadas como objetos vazios, como no original
     fase1: {},
     fase2: {},
     fase3: {},
@@ -198,14 +195,15 @@ function coletarDadosIniciais() {
 }
 
 /**
- * Lida com o clique do botão de salvar, validando e enviando os dados para o Firestore com a sintaxe v9.
+ * Lida com o clique do botão de salvar, validando e enviando os dados para o Firestore.
  */
 async function handleFinalSave() {
   if (!verificarCamposObrigatorios()) {
-    showLocalModal(
-      "Por favor, preencha todos os campos com asterisco (*).",
-      "error"
-    );
+    // Em vez de um modal, usamos um alerta mais simples para validação.
+    const messageContainer = document.getElementById("message-container");
+    messageContainer.className = "alert alert-error";
+    messageContainer.textContent =
+      "Por favor, preencha todos os campos com asterisco (*).";
     return;
   }
 
@@ -213,21 +211,26 @@ async function handleFinalSave() {
   saveButton.disabled = true;
   saveButton.textContent = "Salvando...";
 
+  // Limpa mensagens de erro antigas
+  const messageContainer = document.getElementById("message-container");
+  messageContainer.className = "hidden";
+
   const formData = coletarDadosIniciais();
   const dadosParaSalvar = {
     ...formData,
-    criadoEm: serverTimestamp(), // SINTAXE V9
-    lastUpdated: serverTimestamp(), // SINTAXE V9
+    criadoEm: serverTimestamp(),
+    lastUpdated: serverTimestamp(),
   };
 
   try {
-    // SINTAXE V9: Usa collection e addDoc
     const collectionRef = collection(db, "fichas-supervisao-casos");
     const newDocRef = await addDoc(collectionRef, dadosParaSalvar);
 
     console.log("Ficha criada com o ID: ", newDocRef.id);
-    showLocalModal(
-      'Ficha salva com sucesso! Para editar, acesse a aba "Meus Acompanhamentos".',
+    showGlobalModal(
+      // <--- MUDANÇA AQUI
+      "Ficha salva com sucesso!",
+      'Para editar, acesse a aba "Meus Acompanhamentos".',
       "success",
       () => {
         setupNovaFicha(); // Reseta o formulário
@@ -235,8 +238,10 @@ async function handleFinalSave() {
     );
   } catch (error) {
     console.error("Erro ao salvar a ficha:", error);
-    showLocalModal(
-      "Ocorreu um erro ao salvar a ficha. Tente novamente.",
+    showGlobalModal(
+      // <--- MUDANÇA AQUI
+      "Ocorreu um erro ao salvar a ficha.",
+      "Por favor, tente novamente. Se o erro persistir, contate o suporte.",
       "error",
       () => {
         saveButton.disabled = false;
@@ -247,51 +252,58 @@ async function handleFinalSave() {
 }
 
 /**
- * Exibe um modal de notificação local. (Nenhuma alteração necessária aqui)
+ * Exibe um modal GLOBAL usando as classes do design-system.css.
+ * Substitui a antiga função showLocalModal.
+ * @param {string} title - O título do modal.
  * @param {string} message - A mensagem a ser exibida.
- * @param {'success' | 'error'} type - O tipo de modal.
+ * @param {'success' | 'error'} type - O tipo de modal (usado para estilização opcional).
  * @param {function} [onCloseCallback] - Função a ser executada ao fechar.
  */
-function showLocalModal(message, type = "success", onCloseCallback) {
-  const existingModal = document.getElementById("local-modal");
+function showGlobalModal(title, message, type = "success", onCloseCallback) {
+  const existingModal = document.getElementById("global-confirmation-modal");
   if (existingModal) {
     existingModal.remove();
   }
 
   const modalOverlay = document.createElement("div");
-  modalOverlay.id = "local-modal";
-  modalOverlay.className = "local-modal-overlay";
+  modalOverlay.id = "global-confirmation-modal";
+  // Usa a classe do Design System
+  modalOverlay.className = "modal-overlay";
 
-  const modalBox = document.createElement("div");
-  modalBox.className = "local-modal-box";
-  modalBox.classList.add(type);
-
-  const modalContent = document.createElement("div");
-  modalContent.className = "local-modal-content";
-  modalContent.textContent = message;
-
-  const modalActions = document.createElement("div");
-  modalActions.className = "local-modal-actions";
-
-  const okButton = document.createElement("button");
-  okButton.className = "action-button";
-  okButton.textContent = "OK";
-
-  modalActions.appendChild(okButton);
-  modalBox.appendChild(modalContent);
-  modalBox.appendChild(modalActions);
-  modalOverlay.appendChild(modalBox);
+  modalOverlay.innerHTML = `
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>${title}</h2>
+            <button class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>${message}</p>
+        </div>
+        <div class="modal-footer">
+            <button class="action-button ok-btn">OK</button>
+        </div>
+    </div>
+  `;
 
   document.body.appendChild(modalOverlay);
 
+  // Força a transição de opacidade
+  setTimeout(() => modalOverlay.classList.add("is-visible"), 10);
+
   const closeModal = () => {
-    modalOverlay.remove();
-    if (typeof onCloseCallback === "function") {
-      onCloseCallback();
-    }
+    modalOverlay.classList.remove("is-visible");
+    setTimeout(() => {
+      modalOverlay.remove();
+      if (typeof onCloseCallback === "function") {
+        onCloseCallback();
+      }
+    }, 300); // Espera a animação de fade-out
   };
 
-  okButton.addEventListener("click", closeModal);
+  modalOverlay.querySelector(".ok-btn").addEventListener("click", closeModal);
+  modalOverlay
+    .querySelector(".close-modal-btn")
+    .addEventListener("click", closeModal);
   modalOverlay.addEventListener("click", (e) => {
     if (e.target === modalOverlay) {
       closeModal();
