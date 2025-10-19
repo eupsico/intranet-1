@@ -5,7 +5,7 @@
     </div>
 
     <div id="pacientes-accordion-container" class="accordion-container">
-    </div>
+        </div>
 
     <div id="empty-state-pacientes" style="display:none;">
         <p>Nenhum paciente encontrado.</p>
@@ -51,7 +51,7 @@
                         <div class="form-group">
                             <label for="solicitar-horario">Horário</label>
                             <select id="solicitar-horario" class="form-control" required>
-                            </select>
+                                </select>
                         </div>
                         <div class="form-group">
                             <label for="solicitar-tipo-atendimento">Tipo de Atendimento</label>
@@ -70,7 +70,7 @@
                             <label for="solicitar-sala">Sala de Atendimento</label>
                             <select id="solicitar-sala" class="form-control" required>
                                 <option value="Online">Online</option>
-                            </select>
+                                </select>
                         </div>
                     </div>
                 </fieldset>
@@ -81,7 +81,7 @@
             <button type="button" class="action-button secondary-button modal-cancel-btn">Cancelar</button>
             <button type="button" class="action-button" id="btn-confirmar-solicitacao">Enviar Solicitação</button>
         </div>
-    </div> 
+    </div>
 </div>
 
 <div id="encerramento-modal" class="modal">
@@ -111,6 +111,7 @@
             <button type="submit" id="modal-save-btn" class="action-button" form="encerramento-form">Salvar</button></div>
     </div>
 </div>
+
 <div id="horarios-pb-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -131,6 +132,7 @@
         <div class="modal-footer"><button type="button" class="action-button secondary-button" data-close-modal>Cancelar</button><button type="submit" class="action-button" form="horarios-pb-form">Salvar</button></div>
     </div>
 </div>
+
 <div id="enviar-mensagem-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <div class="modal-header">
@@ -159,6 +161,7 @@
         </div>
     </div>
 </div>
+
 <div id="desfecho-pb-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <div class="modal-header">
@@ -169,6 +172,118 @@
         <div id="desfecho-pb-modal-footer" class="modal-footer" style="display: none;">
             <button type="button" class="action-button secondary-button modal-cancel-btn">Cancelar</button>
              <button type="submit" id="btn-salvar-desfecho-submit" class="action-button" form="form-atendimento-pb">Salvar Desfecho</button>
+        </div>
+    </div>
+</div>
+
+<div id="alterar-horario-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 class="modal-title-text">Solicitar Alteração de Horário/Modalidade</h2>
+        </div>
+        <div class="modal-body">
+            <form id="alterar-horario-form">
+                <input type="hidden" id="alterar-paciente-id">
+                <input type="hidden" id="alterar-atendimento-id">
+                
+                <fieldset>
+                    <legend>Dados Atuais</legend>
+                    <div class="form-row cols-2">
+                         <div class="form-group">
+                            <label>Nome do Paciente</label>
+                            <input type="text" id="alterar-paciente-nome" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Profissional</label>
+                            <input type="text" id="alterar-profissional-nome" class="form-control" readonly>
+                        </div>
+                    </div>
+                     <div class="form-row cols-3">
+                        <div class="form-group">
+                            <label>Dia Atual</label>
+                            <input type="text" id="alterar-dia-atual" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Horário Atual</label>
+                            <input type="text" id="alterar-horario-atual" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Modalidade Atual</label>
+                            <input type="text" id="alterar-modalidade-atual" class="form-control" readonly>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Nova Configuração da Sessão</legend>
+                    <div class="form-row cols-3">
+                        <div class="form-group">
+                            <label for="alterar-dia-semana">Selecione o novo dia da sessão:</label>
+                            <select id="alterar-dia-semana" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="segunda">Segunda-feira</option>
+                                <option value="terca">Terça-feira</option>
+                                <option value="quarta">Quarta-feira</option>
+                                <option value="quinta">Quinta-feira</option>
+                                <option value="sexta">Sexta-feira</option>
+                                <option value="sabado">Sábado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="alterar-horario">Selecione o novo horário da sessão:</label>
+                            <select id="alterar-horario" class="form-control" required>
+                                </select>
+                        </div>
+                         <div class="form-group">
+                            <label for="alterar-tipo-atendimento">Selecione o novo tipo de atendimento:</label>
+                            <select id="alterar-tipo-atendimento" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="Online">Online</option>
+                                <option value="Presencial">Presencial</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row cols-2">
+                       <div class="form-group">
+                            <label for="alterar-frequencia">O atendimento será realizado:</label>
+                            <select id="alterar-frequencia" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="Semanal">Semanal</option>
+                                <option value="Quinzenal">Quinzenal</option>
+                                <option value="Mensal">Mensal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="alterar-data-inicio">Informe a partir de qual data:</label>
+                            <input type="date" id="alterar-data-inicio" class="form-control" required>
+                        </div>
+                    </div>
+                     <div class="form-row cols-2">
+                         <div class="form-group">
+                            <label for="alterar-sala">Selecione abaixo a sala:</label>
+                            <select id="alterar-sala" class="form-control" required>
+                                <option value="Online">Online</option>
+                                </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="alterar-grade">Alterar/Incluir na grade?</label>
+                            <select id="alterar-grade" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="Sim">Sim</option>
+                                <option value="Não">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+                 <div class="form-group">
+                    <label for="alterar-justificativa">Justificativa (Opcional):</label>
+                    <textarea id="alterar-justificativa" rows="3" class="form-control" placeholder="Descreva brevemente o motivo da alteração, se necessário."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="action-button secondary-button modal-cancel-btn">Cancelar</button>
+            <button type="button" class="action-button" id="btn-confirmar-alteracao-horario">Enviar Solicitação de Alteração</button>
         </div>
     </div>
 </div>
