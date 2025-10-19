@@ -250,3 +250,8 @@
     color: var(--cor-primaria); /* Garante que o texto seja azul */
     font-size: 1.5em; /* Mantém o tamanho do título padrão */
 }
+@media (max-width: 600px) {
+  #mensagem-dynamic-form-container.dynamic-form-fields {
+    grid-template-columns: 1fr; /* Muda para uma única coluna */
+  }
+}
