@@ -13,14 +13,13 @@ export function calcularIdade(dataNascimento) {
 }
 
 export function criarAccordionPaciente(paciente, atendimentoPB = null) {
-  const isPlantao = !atendimentoPB;
+  // --- INÍCIO DA CORREÇÃO ---
+  // A fonte da verdade deve ser o status principal do paciente.
+  const isPlantao = paciente.status === "em_atendimento_plantao";
 
-  // Lógica de status simplificada
-  const statusKey = isPlantao
-    ? "em_atendimento_plantao"
-    : paciente.status === "aguardando_info_horarios"
-    ? "aguardando_info_horarios"
-    : "em_atendimento_pb";
+  // O statusKey deve ser o status real do paciente.
+  const statusKey = paciente.status;
+  // --- FIM DA CORREÇÃO ---
 
   const mapaDeStatus = {
     em_atendimento_plantao: {
@@ -41,13 +40,17 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       tipo: "desfecho_pb",
       ativo: true,
     },
+    // Fallback para status desconhecidos ou não listados
+    [statusKey]: {
+      label: `Status: ${statusKey.replace(/_/g, " ")}`,
+      acao: "Ação Indefinida",
+      tipo: "info",
+      ativo: false,
+    },
   };
-  const infoStatus = mapaDeStatus[statusKey] || {
-    label: "Status Desconhecido",
-    acao: "-",
-    tipo: "info",
-    ativo: false,
-  };
+
+  // Garante que 'infoStatus' sempre encontre uma entrada válida
+  const infoStatus = mapaDeStatus[statusKey];
 
   const dataEncaminhamento =
     atendimentoPB?.dataEncaminhamento ||
@@ -66,34 +69,35 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
 
-  // Definição dos botões de ação
+  // Definição dos botões de ação (agora corretos por causa de 'isPlantao')
   const acaoPrincipalBtn = `<button class="action-button" data-tipo="${
     infoStatus.tipo
   }" ${!infoStatus.ativo ? "disabled" : ""}>${infoStatus.acao}</button>`;
+
   const pdfBtn = atendimentoPB?.contratoAssinado
     ? `<button class="action-button secondary-button" data-tipo="pdf_contrato">PDF Contrato</button>`
     : "";
-  const novaSessaoBtn = !isPlantao
+
+  const novaSessaoBtn = !isPlantao // Corrigido
     ? `<button class="action-button" data-tipo="solicitar_sessoes">Solicitar Novas Sessões</button>`
     : "";
 
-  // --- INÍCIO DA MODIFICAÇÃO ---
-  const alterarHorarioBtn = !isPlantao
-    ? `<button class="action-button" data-tipo="alterar_horario">Alterar Horário/Sala</button>`
+  const alterarHorarioBtn = !isPlantao // Corrigido (botão da nossa última conversa)
+    ? `<button class="action-button" data-tipo="alterar_horario">Alterar Horário</button>`
     : "";
-  // --- FIM DA MODIFICAÇÃO ---
 
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
 
-  // Status de exibição ajustado para mostrar "Aguardando Contrato" quando aplicável
+  // Status de exibição (agora correto)
   const displayStatus =
     atendimentoPB && !atendimentoPB.contratoAssinado
       ? "Aguardando Contrato"
       : infoStatus.label;
+
   const displayStatusClass =
     atendimentoPB && !atendimentoPB.contratoAssinado
       ? "status-aguardando_contrato"
-      : `status-${statusKey}`;
+      : `status-${statusKey}`; // Usa o statusKey real
 
   return `
       <div class="paciente-accordion" data-id="${paciente.id}" data-telefone="${
@@ -120,18 +124,18 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                       }
                       <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
                       ${
-                        !isPlantao
+                        !isPlantao // Corrigido: Este bloco não será exibido para o paciente em plantão
                           ? `
-                      <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
-                        atendimentoInfo.diaSemana || "A definir"
-                      }</span></div>
-                      <div class="detail-item"><span class="label">Horário</span><span class="value">${
-                        atendimentoInfo.horario || "A definir"
-                      }</span></div>
-                      <div class="detail-item"><span class="label">Modalidade</span><span class="value">${
-                        atendimentoInfo.tipoAtendimento || "A definir"
-                      }</span></div>
-                    `
+                          <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
+                            atendimentoInfo.diaSemana || "A definir"
+                          }</span></div>
+                          <div class="detail-item"><span class="label">Horário</span><span class="value">${
+                            atendimentoInfo.horario || "A definir"
+                          }</span></div>
+                          <div class="detail-item"><span class="label">Modalidade</span><span class="value">${
+                            atendimentoInfo.tipoAtendimento || "A definir"
+                          }</span></div>
+                      `
                           : ""
                       }
                   </div>
