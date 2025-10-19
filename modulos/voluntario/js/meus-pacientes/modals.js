@@ -122,8 +122,11 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         campoElemento = document.createElement("select");
         campoElemento.innerHTML = "<option value=''>Selecione...</option>";
 
-        // Buscar do systemConfigs (conforme sua solicitação: configuracoesSistema -> geral -> listas-> profissoes)
-        const profissoes = systemConfigs?.geral?.listas?.profissoes || [];
+        // --- CORREÇÃO DA BUSCA ---
+        // A variável systemConfigs já é o doc 'geral'. O caminho correto é systemConfigs.listas.profissoes
+        const profissoes = systemConfigs?.listas?.profissoes || [];
+        // --- FIM DA CORREÇÃO ---
+
         profissoes.forEach((prof) => {
           campoElemento.innerHTML += `<option value="${prof}">${prof}</option>`;
         });
@@ -192,7 +195,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         campoElemento.type = "text";
         break;
 
-      // --- NOVOS CASOS ADICIONADOS ---
       case "m":
         novoLabel = "Informe o Mês de referência (ex: Janeiro):";
         campoElemento = document.createElement("input");
@@ -202,9 +204,8 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
       case "d":
         novoLabel = "Informe o Dia do vencimento (ex: 10):";
         campoElemento = document.createElement("input");
-        campoElemento.type = "text"; // Usando 'text' para permitir dias como "10" ou "15"
+        campoElemento.type = "text";
         break;
-      // --- FIM DOS NOVOS CASOS ---
 
       default:
         // Mantém o comportamento padrão para outras variáveis
@@ -220,15 +221,11 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     campoElemento.className = "form-control dynamic-var";
     campoElemento.id = `var-${nomeVariavel}`;
     campoElemento.dataset.variavel = variavel;
-    // Mantendo o 'oninput' do código original, que também funciona para 'select'
     campoElemento.oninput = () => atualizarPreviewMensagem();
 
-    // Adiciona ao form-group
     formGroup.appendChild(label);
     formGroup.appendChild(campoElemento);
     formContainer.appendChild(formGroup);
-
-    // --- FIM DA MODIFICAÇÃO CORRIGIDA ---
   });
 
   atualizarPreviewMensagem();
@@ -236,7 +233,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   selecaoView.style.display = "none";
   formularioView.style.display = "block";
 
-  // CORREÇÃO: Adiciona uma verificação para evitar erros e mostra o botão
   if (btnWhatsapp) {
     btnWhatsapp.style.display = "inline-block";
   }
