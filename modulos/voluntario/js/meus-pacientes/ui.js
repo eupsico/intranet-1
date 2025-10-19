@@ -76,6 +76,13 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const novaSessaoBtn = !isPlantao
     ? `<button class="action-button" data-tipo="solicitar_sessoes">Solicitar Novas Sessões</button>`
     : "";
+
+  // --- INÍCIO DA MODIFICAÇÃO ---
+  const alterarHorarioBtn = !isPlantao
+    ? `<button class="action-button" data-tipo="alterar_horario">Alterar Horário/Sala</button>`
+    : "";
+  // --- FIM DA MODIFICAÇÃO ---
+
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
 
   // Status de exibição ajustado para mostrar "Aguardando Contrato" quando aplicável
@@ -115,21 +122,21 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                       ${
                         !isPlantao
                           ? `
-                          <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
-                            atendimentoInfo.diaSemana || "A definir"
-                          }</span></div>
-                          <div class="detail-item"><span class="label">Horário</span><span class="value">${
-                            atendimentoInfo.horario || "A definir"
-                          }</span></div>
-                          <div class="detail-item"><span class="label">Modalidade</span><span class="value">${
-                            atendimentoInfo.tipoAtendimento || "A definir"
-                          }</span></div>
-                      `
+                      <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
+                        atendimentoInfo.diaSemana || "A definir"
+                      }</span></div>
+                      <div class="detail-item"><span class="label">Horário</span><span class="value">${
+                        atendimentoInfo.horario || "A definir"
+                      }</span></div>
+                      <div class="detail-item"><span class="label">Modalidade</span><span class="value">${
+                        atendimentoInfo.tipoAtendimento || "A definir"
+                      }</span></div>
+                    `
                           : ""
                       }
                   </div>
                   <div class="card-actions">
-                      ${acaoPrincipalBtn} ${pdfBtn} ${novaSessaoBtn} ${whatsappBtn}
+                      ${acaoPrincipalBtn} ${pdfBtn} ${novaSessaoBtn} ${alterarHorarioBtn} ${whatsappBtn}
                   </div>
               </div>
           </div>
