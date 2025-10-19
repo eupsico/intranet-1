@@ -16,9 +16,13 @@ export function init(user, userData) {
       let module;
       let initParams = [user, userData];
       switch (tabId) {
+        // --- INÍCIO DA MODIFICAÇÃO ---
+        /* O 'case "mensagens"' foi removido daqui
         case "mensagens":
           module = await import("./mensagens.js");
           break;
+        */
+        // --- FIM DA MODIFICAÇÃO ---
         case "disponibilidade":
           module = await import("./disponibilidade.js");
           break;
@@ -68,7 +72,12 @@ export function init(user, userData) {
 
   const handleHashChange = () => {
     const hashParts = window.location.hash.substring(1).split("/");
-    let activeTabId = "mensagens";
+
+    // --- INÍCIO DA MODIFICAÇÃO ---
+    // A aba padrão agora é "disponibilidade"
+    let activeTabId = "disponibilidade";
+    // --- FIM DA MODIFICAÇÃO ---
+
     if (hashParts[0] === "recursos" && hashParts[1]) {
       const foundTab = view.querySelector(
         `.tab-link[data-tab="${hashParts[1]}"]`
