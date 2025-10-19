@@ -1,69 +1,14 @@
 <div class="view-container">
     <h1>Recursos do Voluntário</h1>
-    <p class="description-box">Acesse aqui ferramentas úteis para o seu dia a dia, como modelos de mensagem, sua disponibilidade e a grade de horários completa.</p>
+    <p class="description-box">Acesse aqui ferramentas úteis para o seu dia a dia, como sua disponibilidade e a grade de horários completa.</p>
 
     <div class="tabs-container">
-        <button class="tab-link active" data-tab="mensagens">Modelos de Mensagem</button>
-        <button class="tab-link" data-tab="disponibilidade">Minha Disponibilidade</button>
+        <button class="tab-link active" data-tab="disponibilidade">Minha Disponibilidade</button>
         <button class="tab-link" data-tab="grade-online">Grade Online</button>
         <button class="tab-link" data-tab="grade-presencial">Grade Presencial</button>
     </div>
 
-    <div id="mensagens" class="tab-content">
-        <div class="accordion">
-            <button class="accordion-trigger">Cobrança Paciente em Atendimento</button>
-            <div class="accordion-content">
-                <div class="form-group"><label for="cobranca-paciente">Nome do Paciente</label><input type="text" id="cobranca-paciente" placeholder="Ex: João da Silva"></div>
-                <div class="form-group"><label for="cobranca-data">Vencimento</label><input type="date" id="cobranca-data"></div>
-                <div class="form-group"><label for="cobranca-mes">Mês de Referência</label><select id="cobranca-mes"></select></div>
-                <div class="form-group"><label for="cobranca-valor">Valor (R$)</label><input type="number" id="cobranca-valor" placeholder="Ex: 100"></div>
-                <div class="form-group"><label for="cobranca-pix">Chave PIX</label><input type="text" id="cobranca-pix" placeholder="Insira a chave PIX aqui"></div>
-                <button class="action-button" id="btn-cobranca">Gerar Mensagem</button>
-                <div class="output-area"><label>Mensagem Gerada (clique na caixa para copiar)</label><textarea readonly id="output-cobranca"></textarea></div>
-            </div>
-        </div>
-        <div class="accordion">
-            <button class="accordion-trigger">Apresentação Sessão Agendada</button>
-            <div class="accordion-content">
-                <div class="form-group"><label for="agendada-tipo">Tipo de Atendimento</label><select id="agendada-tipo"><option value="pb">Psicoterapia Breve (PB)</option><option value="plantao">Plantão Psicológico</option></select></div>
-                <hr style="margin: 15px 0;">
-                <div class="form-group"><label for="agendada-paciente">Nome do Paciente</label><input type="text" id="agendada-paciente" placeholder="Ex: Maria Oliveira"></div>
-                <div class="form-group"><label for="agendada-terapeuta">Seu Nome (Terapeuta)</label><input type="text" id="agendada-terapeuta" placeholder="Ex: Carlos Andrade"></div>
-                <div class="form-group"><label for="agendada-profissao">Sua Profissão</label><select id="agendada-profissao"><option value="psicólogo(a)">Psicólogo(a)</option><option value="psicopedagogo(a)">Psicopedagogo(a)</option><option value="musicoterapeuta">Musicoterapeuta</option></select></div>
-                <div class="form-group"><label for="agendada-diasemana">Dia da Semana</label><select id="agendada-diasemana"><option value="segunda-feira">Segunda-feira</option><option value="terça-feira">Terça-feira</option><option value="quarta-feira">Quarta-feira</option><option value="quinta-feira">Quinta-feira</option><option value="sexta-feira">Sexta-feira</option><option value="sábado">Sábado</option></select></div>
-                <div class="form-group"><label for="agendada-data">Data da Sessão</label><input type="date" id="agendada-data"></div>
-                <div class="form-group"><label for="agendada-hora">Hora da Sessão</label><select id="agendada-hora"></select></div>
-                <button class="action-button" id="btn-agendada">Gerar Mensagem</button>
-                <div class="output-area"><label>Mensagem Gerada (clique na caixa para copiar)</label><textarea readonly id="output-agendada"></textarea></div>
-            </div>
-        </div>
-        <div class="accordion">
-            <button class="accordion-trigger">Apresentação para Agendar Sessão</button>
-            <div class="accordion-content">
-                <div class="form-group"><label for="agendar-paciente">Nome do Paciente</label><input type="text" id="agendar-paciente" placeholder="Ex: José Pereira"></div>
-                <div class="form-group"><label for="agendar-terapeuta">Seu Nome (Terapeuta)</label><input type="text" id="agendar-terapeuta" placeholder="Ex: Fernanda Lima"></div>
-                <div class="form-group"><label for="agendar-profissao">Sua Profissão</label><select id="agendar-profissao"><option value="psicólogo(a)">Psicólogo(a)</option><option value="psicopedagogo(a)">Psicopedagogo(a)</option><option value="musicoterapeuta">Musicoterapeuta</option></select></div>
-                <div class="form-group"><label for="agendar-modalidade">Modalidade</label><select id="agendar-modalidade"><option value="online">Online</option><option value="presencial">Presencial</option></select></div>
-                <div class="form-group"><label for="agendar-diasemana">Dia da Semana Sugerido</label><select id="agendar-diasemana"><option value="segunda-feira">Segunda-feira</option><option value="terça-feira">Terça-feira</option><option value="quarta-feira">Quarta-feira</option><option value="quinta-feira">Quinta-feira</option><option value="sexta-feira">Sexta-feira</option><option value="sábado">Sábado</option></select></div>
-                <div class="form-group"><label for="agendar-hora">Hora Sugerida</label><select id="agendar-hora"></select></div>
-                <button class="action-button" id="btn-agendar">Gerar Mensagem</button>
-                <div class="output-area"><label>Mensagem Gerada (clique na caixa para copiar)</label><textarea readonly id="output-agendar"></textarea></div>
-            </div>
-        </div>
-        <div class="accordion">
-            <button class="accordion-trigger">Primeira Cobrança</button>
-            <div class="accordion-content">
-                <div class="form-group"><label for="primeira-paciente">Nome do Paciente</label><input type="text" id="primeira-paciente" placeholder="Ex: Patrícia Costa"></div>
-                <div class="form-group"><label for="primeira-data-agendamento">Data e Hora do Agendamento</label><input type="datetime-local" id="primeira-data-agendamento"></div>
-                <div class="form-group"><label for="primeira-valor">Valor (R$)</label><input type="number" id="primeira-valor" placeholder="Ex: 100"></div>
-                <div class="form-group"><label for="primeira-pix">Chave PIX</label><input type="text" id="primeira-pix" placeholder="Insira a chave PIX aqui"></div>
-                <button class="action-button" id="btn-primeira">Gerar Mensagem</button>
-                <div class="output-area"><label>Mensagem Gerada (clique na caixa para copiar)</label><textarea readonly id="output-primeira"></textarea></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="disponibilidade" class="tab-content" style="display: none;">
+    <div id="disponibilidade" class="tab-content">
         <div id="disponibilidade-container">
             <div class="loading-spinner"></div>
         </div>
