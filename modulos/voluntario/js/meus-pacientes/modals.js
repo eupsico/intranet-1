@@ -28,7 +28,6 @@ export function abrirModalMensagens(
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
 
-  // CORREÇÃO: Busca o botão dentro do modal para garantir que o contexto está correto
   const btnWhatsapp = modal.querySelector("#btn-gerar-enviar-whatsapp");
 
   dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
@@ -61,7 +60,6 @@ export function abrirModalMensagens(
   document.getElementById("btn-voltar-selecao").onclick = () => {
     selecaoView.style.display = "block";
     formularioView.style.display = "none";
-    // CORREÇÃO: Esconde o botão ao voltar
     if (btnWhatsapp) {
       btnWhatsapp.style.display = "none";
     }
@@ -78,7 +76,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     "mensagem-dynamic-form-container"
   );
 
-  // CORREÇÃO: Busca o botão novamente no contexto correto
   const modal = document.getElementById("enviar-mensagem-modal");
   const btnWhatsapp = modal.querySelector("#btn-gerar-enviar-whatsapp");
 
@@ -109,11 +106,9 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     formGroup.className = "form-group";
     const label = document.createElement("label");
 
-    // --- INÍCIO DA MODIFICAÇÃO CORRIGIDA ---
-
     let novoLabel = "";
     const nomeVariavelLower = nomeVariavel.toLowerCase();
-    let campoElemento; // Elemento do formulário (input ou select)
+    let campoElemento;
 
     switch (nomeVariavelLower) {
       case "prof":
@@ -121,27 +116,18 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         novoLabel = "Selecione sua profissão:";
         campoElemento = document.createElement("select");
         campoElemento.innerHTML = "<option value=''>Selecione...</option>";
-
-        // --- CORREÇÃO DA BUSCA ---
-        // A variável systemConfigs já é o doc 'geral'. O caminho correto é systemConfigs.listas.profissoes
         const profissoes = systemConfigs?.listas?.profissoes || [];
-        // --- FIM DA CORREÇÃO ---
-
         profissoes.forEach((prof) => {
           campoElemento.innerHTML += `<option value="${prof}">${prof}</option>`;
         });
-
-        // Preencher valor do userData se existir
         if (userData.profissao) {
           campoElemento.value = userData.profissao;
         }
         break;
-
       case "dia":
       case "diasemana":
         novoLabel = "Selecione o dia de atendimento:";
         campoElemento = document.createElement("select");
-
         const dias = [
           "Segunda-feira",
           "Terça-feira",
@@ -155,7 +141,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
           campoElemento.innerHTML += `<option value="${dia}">${dia}</option>`;
         });
         break;
-
       case "mod":
       case "modalidade":
         novoLabel = "Selecione a modalidade:";
@@ -165,49 +150,41 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
           "<option value='Presencial'>Presencial</option>";
         campoElemento.innerHTML += "<option value='Online'>Online</option>";
         break;
-
       case "data":
       case "datainicio":
         novoLabel = "Informe a data de inicio da terapia:";
         campoElemento = document.createElement("input");
         campoElemento.type = "date";
         break;
-
       case "hora":
       case "horario":
         novoLabel = "Informe a hora da sessão:";
         campoElemento = document.createElement("input");
         campoElemento.type = "time";
         break;
-
       case "v":
       case "valor":
         novoLabel = "Preencha o valor da sessão:";
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
         break;
-
       case "px":
       case "pix":
         novoLabel = "Informe seu PIX:";
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
         break;
-
       case "m":
         novoLabel = "Informe o Mês de referência (ex: Janeiro):";
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
         break;
-
       case "d":
         novoLabel = "Informe o Dia do vencimento (ex: 10):";
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
         break;
-
       default:
-        // Mantém o comportamento padrão para outras variáveis
         novoLabel = `Preencha o campo "${labelText}":`;
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
@@ -216,7 +193,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     label.textContent = novoLabel;
     label.htmlFor = `var-${nomeVariavel}`;
 
-    // Atributos comuns para o elemento criado
     campoElemento.className = "form-control dynamic-var";
     campoElemento.id = `var-${nomeVariavel}`;
     campoElemento.dataset.variavel = variavel;
@@ -323,7 +299,7 @@ export function abrirModalSolicitarSessoes(
   horarioSelect.innerHTML = "";
   for (let i = 7; i <= 21; i++) {
     const hora = `${String(i).padStart(2, "0")}:00`;
-    horarioSelect.innerHTML += `<option value="${i}">${hora}</option>`;
+    horarioSelect.innerHTML += `<option value="${i}">${hora}</option>`; // Usa i como value
   }
 
   const salaSelect = document.getElementById("solicitar-sala");
@@ -378,7 +354,7 @@ export function handleSolicitarSessoesSubmit(evento) {
 
 function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
   const dia = document.getElementById("solicitar-dia-semana").value;
-  const horario = document.getElementById("solicitar-horario").value;
+  const horario = document.getElementById("solicitar-horario").value; // Value é a hora (7, 8, ...)
   const tipo = document.getElementById("solicitar-tipo-atendimento").value;
   const sala = document.getElementById("solicitar-sala").value;
   const feedbackDiv = document.getElementById("validacao-grade-feedback");
@@ -414,6 +390,122 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
       "<strong>Disponível:</strong> O horário selecionado está livre na grade e será enviado para cadastro pelo administrativo.";
   }
 }
+
+// --- INÍCIO DA LÓGICA DO NOVO MODAL ---
+
+export function abrirModalAlterarHorario(
+  paciente,
+  atendimento,
+  { userData, salasPresenciais }
+) {
+  const modal = document.getElementById("alterar-horario-modal");
+  const form = document.getElementById("alterar-horario-form");
+  form.reset(); // Limpa o formulário
+
+  // Preenche dados fixos
+  document.getElementById("alterar-paciente-id").value = paciente.id;
+  document.getElementById("alterar-atendimento-id").value =
+    atendimento.atendimentoId;
+  document.getElementById("alterar-paciente-nome").value =
+    paciente.nomeCompleto;
+  document.getElementById("alterar-profissional-nome").value = userData.nome;
+
+  // Preenche dados atuais (se existirem)
+  const horarioAtual = atendimento?.horarioSessao || {};
+  document.getElementById("alterar-dia-atual").value =
+    horarioAtual.diaSemana || "N/A";
+  document.getElementById("alterar-horario-atual").value =
+    horarioAtual.horario || "N/A";
+  document.getElementById("alterar-modalidade-atual").value =
+    horarioAtual.tipoAtendimento || "N/A";
+
+  // Preenche select de Horário (08:00 às 21:00)
+  const horarioSelect = document.getElementById("alterar-horario");
+  horarioSelect.innerHTML = "<option value=''>Selecione...</option>"; // Adiciona a opção padrão
+  for (let i = 8; i <= 21; i++) {
+    const hora = `${String(i).padStart(2, "0")}:00`;
+    horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
+  }
+
+  // Preenche select de Salas
+  const salaSelect = document.getElementById("alterar-sala");
+  salaSelect.innerHTML = '<option value="Online">Online</option>'; // Online sempre disponível
+  if (salasPresenciais && Array.isArray(salasPresenciais)) {
+    salasPresenciais.forEach((sala) => {
+      if (sala && sala.trim() !== "") {
+        // Garante que não adicione opções vazias
+        salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
+      }
+    });
+  }
+
+  // Lógica para habilitar/desabilitar Sala baseado na Modalidade
+  const tipoAtendimentoSelect = document.getElementById(
+    "alterar-tipo-atendimento"
+  );
+  tipoAtendimentoSelect.onchange = () => {
+    const tipo = tipoAtendimentoSelect.value;
+    salaSelect.disabled = tipo === "Online";
+    if (tipo === "Online") {
+      salaSelect.value = "Online";
+    } else {
+      // Se tiver salas presenciais, seleciona a primeira por padrão, senão deixa vazio
+      if (salasPresenciais && salasPresenciais.length > 0) {
+        salaSelect.value = salasPresenciais[0]; // Ou pode deixar como ""
+      } else {
+        salaSelect.value = ""; // Nenhuma sala presencial disponível
+      }
+    }
+  };
+  // Dispara o evento change inicial para configurar a sala corretamente
+  tipoAtendimentoSelect.dispatchEvent(new Event("change"));
+
+  modal.style.display = "flex"; // Mostra o modal
+}
+
+// Função para lidar com o submit do formulário de alteração
+export function handleAlterarHorarioSubmit(evento) {
+  evento.preventDefault(); // Impede o envio padrão do formulário
+  const form = document.getElementById("alterar-horario-form");
+  const modal = document.getElementById("alterar-horario-modal");
+
+  // Validação simples (pode ser aprimorada)
+  if (!form.checkValidity()) {
+    alert(
+      "Por favor, preencha todos os campos obrigatórios (*) para a nova configuração."
+    );
+    // Adicionar classe para destacar campos inválidos (se usar validação HTML5)
+    form.classList.add("was-validated");
+    return;
+  }
+
+  // Coleta os dados (exemplo)
+  const dados = {
+    pacienteId: document.getElementById("alterar-paciente-id").value,
+    atendimentoId: document.getElementById("alterar-atendimento-id").value,
+    novoDia: document.getElementById("alterar-dia-semana").value,
+    novoHorario: document.getElementById("alterar-horario").value,
+    novaModalidade: document.getElementById("alterar-tipo-atendimento").value,
+    novaFrequencia: document.getElementById("alterar-frequencia").value,
+    dataInicioAlteracao: document.getElementById("alterar-data-inicio").value,
+    novaSala: document.getElementById("alterar-sala").value,
+    alterarGrade: document.getElementById("alterar-grade").value,
+    justificativa: document.getElementById("alterar-justificativa").value,
+  };
+
+  console.log("Dados da solicitação de alteração:", dados); // Para depuração
+
+  // Aqui você adicionaria a lógica para enviar os dados
+  // Ex: chamar uma função Cloud, atualizar Firestore, etc.
+  // Por enquanto, apenas exibimos um alerta e fechamos o modal.
+
+  alert("Solicitação de alteração enviada para o administrativo!");
+  modal.style.display = "none"; // Esconde o modal
+  form.reset(); // Limpa o formulário
+  form.classList.remove("was-validated"); // Remove a classe de validação
+}
+
+// --- FIM DA LÓGICA DO NOVO MODAL ---
 
 // --- Lógica dos Modais Originais ---
 
@@ -573,11 +665,11 @@ function construirFormularioHorarios(nomeProfissional) {
 export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
   const modal = document.getElementById("desfecho-pb-modal");
   const body = document.getElementById("desfecho-pb-modal-body");
-  const footer = document.getElementById("desfecho-pb-modal-footer"); // Pega o rodapé
+  const footer = document.getElementById("desfecho-pb-modal-footer");
 
   body.innerHTML = '<div class="loading-spinner"></div>';
-  footer.style.display = "none"; // Garante que o rodapé esteja escondido inicialmente
-  modal.style.display = "block"; // Usa 'block' para modais antigos
+  footer.style.display = "none";
+  modal.style.display = "block";
 
   try {
     if (!meuAtendimento) {
@@ -593,7 +685,7 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
       );
 
     body.innerHTML = await response.text();
-    footer.style.display = "flex"; // Exibe o rodapé junto com o formulário
+    footer.style.display = "flex";
 
     const form = body.querySelector("#form-atendimento-pb");
     form.dataset.pacienteId = dadosDoPaciente.id;
@@ -629,11 +721,10 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
         desfechoSelect.value === "Encaminhamento" ? "block" : "none";
     });
 
-    // O evento de submit agora é ligado ao botão no rodapé do modal principal
     form.addEventListener("submit", handleDesfechoPbSubmit);
   } catch (error) {
     body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar modal:</b> ${error.message}</p>`;
-    footer.style.display = "flex"; // Mostra o rodapé mesmo em caso de erro para poder fechar
+    footer.style.display = "flex";
     console.error(error);
   }
 }
@@ -755,7 +846,6 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
       lastUpdate: serverTimestamp(),
     };
   } else {
-    // --- CÓDIGO COMPLETO ---
     const motivoNaoInicio = formulario.querySelector(
       'input[name="motivo-nao-inicio"]:checked'
     )?.value;
@@ -782,7 +872,6 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
         lastUpdate: serverTimestamp(),
       };
     } else {
-      // motivoNaoInicio === "outra_modalidade"
       const detalhesSolicitacao = formulario.querySelector(
         "#detalhes-solicitacao-pb"
       ).value;
@@ -820,7 +909,7 @@ async function handleDesfechoPbSubmit(evento) {
   const form = evento.target;
   const pacienteId = form.dataset.pacienteId;
   const atendimentoId = form.dataset.atendimentoId;
-  const botaoSalvar = form.querySelector("#btn-salvar-desfecho");
+  const botaoSalvar = form.querySelector("#btn-salvar-desfecho-submit"); // Corrigido para pegar o botão certo
   botaoSalvar.disabled = true;
   botaoSalvar.textContent = "Salvando...";
 
@@ -843,7 +932,8 @@ async function handleDesfechoPbSubmit(evento) {
       }
     } else {
       payload.motivo = form.querySelector("#motivo-alta-desistencia").value;
-      if (!payload.motivo) {
+      if (!payload.motivo && ["Alta", "Desistencia"].includes(desfecho)) {
+        // Verificação corrigida
         throw new Error("O motivo é obrigatório para Alta ou Desistência.");
       }
     }
@@ -863,6 +953,6 @@ async function handleDesfechoPbSubmit(evento) {
     alert(`Falha ao salvar: ${error.message}`);
   } finally {
     botaoSalvar.disabled = false;
-    botaoSalvar.textContent = "Salvar";
+    botaoSalvar.textContent = "Salvar Desfecho"; // Corrigido texto do botão
   }
 }
