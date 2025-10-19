@@ -154,7 +154,7 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         });
         break;
 
-      case "mod": // Adicionado conforme sua solicitação
+      case "mod":
       case "modalidade":
         novoLabel = "Selecione a modalidade:";
         campoElemento = document.createElement("select");
@@ -191,6 +191,20 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         campoElemento = document.createElement("input");
         campoElemento.type = "text";
         break;
+
+      // --- NOVOS CASOS ADICIONADOS ---
+      case "m":
+        novoLabel = "Informe o Mês de referência (ex: Janeiro):";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "text";
+        break;
+
+      case "d":
+        novoLabel = "Informe o Dia do vencimento (ex: 10):";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "text"; // Usando 'text' para permitir dias como "10" ou "15"
+        break;
+      // --- FIM DOS NOVOS CASOS ---
 
       default:
         // Mantém o comportamento padrão para outras variáveis
