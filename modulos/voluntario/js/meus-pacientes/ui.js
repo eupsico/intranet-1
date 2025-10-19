@@ -1,30 +1,40 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/ui.js
 
+// --- CORREÇÃO NA FUNÇÃO calcularIdade ---
 export function calcularIdade(dataNascimento) {
-  if (!dataNascimento) return "N/A";
+  // Retorna "N/A" se a data for inválida, nula ou vazia
+  if (
+    !dataNascimento ||
+    typeof dataNascimento !== "string" ||
+    dataNascimento.trim() === ""
+  ) {
+    return "N/A";
+  }
+
+  // Tenta criar uma data. Se for inválida, retorna "N/A"
+  const nasc = new Date(dataNascimento + "T00:00:00"); // Adiciona T00:00:00 para consistência
+  if (isNaN(nasc.getTime())) {
+    console.warn("Formato de dataNascimento inválido:", dataNascimento);
+    return "N/A"; // Retorna N/A em vez de "Data inválida"
+  }
+
   const hoje = new Date();
-  // Garante que a data de nascimento seja interpretada corretamente como UTC para evitar problemas de fuso horário
-  const [year, month, day] = dataNascimento.split("-");
-  // Adiciona verificação para garantir que year, month e day são números válidos
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return "Data inválida";
-  const nasc = new Date(Date.UTC(year, month - 1, day)); // Usa UTC
-
-  if (isNaN(nasc.getTime())) return "Data inválida"; // Verifica se a data é válida
-
-  let idade = hoje.getUTCFullYear() - nasc.getUTCFullYear();
-  const m = hoje.getUTCMonth() - nasc.getUTCMonth();
-  if (m < 0 || (m === 0 && hoje.getUTCDate() < nasc.getUTCDate())) {
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const m = hoje.getMonth() - nasc.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
     idade--;
   }
+  // Retorna "N/A" se a idade calculada for negativa (data futura?)
   return idade >= 0 ? `${idade} anos` : "N/A";
 }
+// --- FIM DA CORREÇÃO ---
 
 export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const statusPaciente = paciente.status || "desconhecido";
 
-  let infoStatus = {}; // Objeto para guardar label, ação e tipo do botão principal
+  let infoStatus = {};
 
-  // Define o mapa de status com mais clareza
+  // Mapa de status como antes
   const mapaDeStatus = {
     em_atendimento_plantao: {
       label: "Em Atendimento (Plantão)",
@@ -40,9 +50,9 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     },
     cadastrar_horario_psicomanager: {
       label: "Horários Informados (PB)",
-      acao: "Registrar Desfecho", // Temporário - A ação pode mudar
-      tipo: "desfecho_pb", // Temporário
-      ativo: true, // Ou false, dependendo da regra
+      acao: "Registrar Desfecho",
+      tipo: "desfecho_pb",
+      ativo: true,
     },
     em_atendimento_pb: {
       label: "Em Atendimento (PB)",
@@ -62,21 +72,19 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       acao: "Encaminhado",
       tipo: "info",
       ativo: false,
-    }, // Label abreviado
+    },
     encaminhado_parceiro: {
       label: "Encaminhado p/ Parceiro",
       acao: "Encaminhado",
       tipo: "info",
       ativo: false,
-    }, // Label abreviado
-    // Adicione outros status aqui se necessário
+    },
   };
 
-  // Tenta encontrar o status no mapa
+  // Define infoStatus baseado no mapa ou fallback
   if (mapaDeStatus[statusPaciente]) {
     infoStatus = mapaDeStatus[statusPaciente];
   } else {
-    // Fallback genérico se o status for realmente desconhecido
     infoStatus = {
       label: `Status: ${statusPaciente.replace(/_/g, " ")}`,
       acao: "Verificar Status",
@@ -88,15 +96,6 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     );
   }
 
-  // --- CORREÇÃO: Lógica para exibir detalhes de PB ---
-  // Mostra os detalhes se atendimentoPB existir E tiver informações de horárioSessao
-  const mostrarDetalhesPB = !!(
-    atendimentoPB &&
-    atendimentoPB.horarioSessao &&
-    atendimentoPB.horarioSessao.diaSemana
-  );
-  // --- FIM DA CORREÇÃO ---
-
   // ---- DADOS GERAIS DO PACIENTE (mantidos) ----
   const dataEncaminhamento =
     atendimentoPB?.dataEncaminhamento ||
@@ -105,27 +104,22 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
           `${
             atendimentoPB?.dataEncaminhamento ||
             paciente.plantaoInfo?.dataEncaminhamento
-          }T03:00:00`
+          }T03:00:00` // Adicionado T03:00:00 para fuso
         ).toLocaleDateString("pt-BR")
       : "N/A";
-  const idade = calcularIdade(paciente.dataNascimento);
+  const idade = calcularIdade(paciente.dataNascimento); // Usa a função corrigida
   const responsavelNome = paciente.responsavel?.nome || "N/A";
-  const atendimentoInfo = atendimentoPB?.horarioSessao || {};
+  const atendimentoInfo = atendimentoPB?.horarioSessao || {}; // Informações da sessão PB
   const atendimentoIdAttr = atendimentoPB
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
 
-  // ---- BOTÕES DE AÇÃO ----
-  // Botão Principal (baseado no infoStatus)
+  // ---- BOTÕES DE AÇÃO (mantidos da lógica anterior) ----
   const acaoPrincipalBtn = `<button class="action-button" data-tipo="${
     infoStatus.tipo
   }" ${!infoStatus.ativo ? "disabled" : ""}>${infoStatus.acao}</button>`;
-
-  // --- CORREÇÃO: Botões de PB agora usam a nova lógica `mostrarDetalhesPB` ---
-  // Define se os botões específicos de PB devem aparecer (não é o mesmo que mostrar os detalhes, pois mesmo no plantão pode haver ações de PB)
   const mostrarBotoesPB =
-    statusPaciente !== "em_atendimento_plantao" && atendimentoPB;
-
+    statusPaciente !== "em_atendimento_plantao" && atendimentoPB; // Botões PB só fora do plantão
   const pdfBtn =
     mostrarBotoesPB && atendimentoPB?.contratoAssinado
       ? `<button class="action-button secondary-button" data-tipo="pdf_contrato">PDF Contrato</button>`
@@ -136,16 +130,13 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const alterarHorarioBtn = mostrarBotoesPB
     ? `<button class="action-button" data-tipo="alterar_horario">Alterar Horário</button>`
     : "";
-  // --- FIM DA CORREÇÃO ---
-
-  // Botão de WhatsApp (sempre visível)
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
 
-  // ---- LÓGICA DE EXIBIÇÃO DO STATUS NO BADGE (Refinada) ----
-  let displayStatus = infoStatus.label; // Começa com o label padrão do status
-  let displayStatusClass = `status-${statusPaciente}`; // Usa o status real para a classe
+  // ---- CORREÇÃO NA LÓGICA DE EXIBIÇÃO DO STATUS ----
+  let displayStatus = infoStatus.label; // Pega o label do mapa
+  let displayStatusClass = `status-${statusPaciente}`; // Classe baseada no status real
 
-  // Caso especial: Se for PB e estiver aguardando contrato, sobrescreve
+  // Caso especial: Aguardando Contrato (somente se não for plantão)
   if (
     statusPaciente !== "em_atendimento_plantao" &&
     atendimentoPB &&
@@ -155,10 +146,11 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     displayStatusClass = "status-aguardando_contrato";
   }
 
-  // Garante que displayStatus nunca seja vazio
+  // Fallback final para garantir que algo seja exibido
   if (!displayStatus || displayStatus.trim() === "") {
-    displayStatus = `Status: ${statusPaciente}`; // Fallback final
+    displayStatus = statusPaciente.replace(/_/g, " ") || "Status Desconhecido"; // Evita "Status: status_desconhecido"
   }
+  // --- FIM DA CORREÇÃO ---
 
   return `
       <div class="paciente-accordion" data-id="${paciente.id}" data-telefone="${
@@ -185,11 +177,14 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                       }
                       <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
                       ${
-                        // --- CORREÇÃO: Detalhes de PB agora usam a nova lógica ---
-                        mostrarDetalhesPB // Mostra se atendimentoPB.horarioSessao tiver dados
+                        // --- CORREÇÃO: Mostrar detalhes de PB SE EXISTIREM ---
+                        // Verifica se 'atendimentoInfo' (horarioSessao) tem dados, independentemente do status
+                        atendimentoInfo.diaSemana ||
+                        atendimentoInfo.horario ||
+                        atendimentoInfo.tipoAtendimento
                           ? `
                           <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
-                            atendimentoInfo.diaSemana || "A definir"
+                            atendimentoInfo.diaSemana || "A definir" // Usa fallback se campo específico faltar
                           }</span></div>
                           <div class="detail-item"><span class="label">Horário</span><span class="value">${
                             atendimentoInfo.horario || "A definir"
@@ -198,7 +193,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                             atendimentoInfo.tipoAtendimento || "A definir"
                           }</span></div>
                       `
-                          : "" // Não mostra se não houver dados de horárioSessao
+                          : "" // Não mostra a seção se não houver NENHUM dado em horarioSessao
                         // --- FIM DA CORREÇÃO ---
                       }
                   </div>
