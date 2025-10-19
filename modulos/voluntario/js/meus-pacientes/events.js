@@ -8,7 +8,11 @@ import {
   abrirModalDesfechoPb,
   abrirModalSolicitarSessoes,
   abrirModalMensagens,
-  handleEncerramentoSubmit,
+  // --- INÍCIO DA MODIFICAÇÃO ---
+  abrirModalAlterarHorario, // Importa a nova função
+  handleAlterarHorarioSubmit, // Importa a nova função de submit
+  // --- FIM DA MODIFICAÇÃO ---
+  handleEncerramentoSubmit, // Mantém as existentes
   handleHorariosPbSubmit,
   handleSolicitarSessoesSubmit,
   handleMensagemSubmit,
@@ -18,14 +22,14 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
   const container = document.getElementById("pacientes-accordion-container");
   if (!container) return;
 
-  // --- CORREÇÃO DEFINITIVA: Listener global para fechar TODOS os modais ---
+  // Listener global para fechar modais pelo botão Cancelar/Fechar
   document.body.addEventListener("click", function (e) {
-    // Verifica se o clique foi em um botão com a classe 'modal-cancel-btn'
     if (
       e.target.matches(".modal-cancel-btn") ||
-      e.target.closest(".modal-cancel-btn")
+      e.target.closest(".modal-cancel-btn") ||
+      e.target.matches(".close-button") || // Adiciona listener para spans com classe close-button
+      e.target.closest(".close-button")
     ) {
-      // Encontra o modal pai que está visível e o esconde
       const modalAberto = e.target.closest(".modal-overlay, .modal");
       if (modalAberto) {
         modalAberto.style.display = "none";
@@ -35,6 +39,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
 
   // Listener principal para o container de pacientes
   container.addEventListener("click", async (e) => {
+    // Lógica para abrir/fechar accordion (mantida)
     const header = e.target.closest(".accordion-header");
     if (header) {
       const content = header.nextElementSibling;
@@ -50,6 +55,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       return;
     }
 
+    // Lógica para botões de ação
     const botao = e.target.closest(".action-button");
     if (!botao) return;
 
@@ -58,6 +64,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
     const atendimentoId = accordion.dataset.atendimentoId;
     const tipoDeAcao = botao.dataset.tipo;
 
+    // Busca dados do paciente (mantida)
     const docRef = doc(db, "trilhaPaciente", pacienteId);
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
@@ -69,8 +76,9 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       (at) => at.atendimentoId === atendimentoId
     );
 
-    const dependencies = { user, userData, ...loadedData };
+    const dependencies = { user, userData, ...loadedData }; // Agrupa dados necessários
 
+    // Direciona a ação baseada no data-tipo do botão
     switch (tipoDeAcao) {
       case "plantao":
         abrirModalEncerramento(pacienteId, dadosDoPaciente);
@@ -91,6 +99,11 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
           dependencies
         );
         break;
+      // --- INÍCIO DA MODIFICAÇÃO ---
+      case "alterar_horario": // Novo case para o botão
+        abrirModalAlterarHorario(dadosDoPaciente, meuAtendimento, dependencies);
+        break;
+      // --- FIM DA MODIFICAÇÃO ---
       case "whatsapp":
         abrirModalMensagens(dadosDoPaciente, meuAtendimento, dependencies);
         break;
@@ -105,5 +118,34 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
     .getElementById("btn-gerar-enviar-whatsapp")
     ?.addEventListener("click", handleMensagemSubmit);
 
-  // Os listeners de submit dos outros formulários são adicionados dinamicamente em modals.js
+  // --- INÍCIO DA MODIFICAÇÃO ---
+  // Listener para o botão de submit do novo modal
+  document
+    .getElementById("btn-confirmar-alteracao-horario")
+    ?.addEventListener("click", handleAlterarHorarioSubmit);
+  // --- FIM DA MODIFICAÇÃO ---
+
+  // Os listeners de submit dos formulários #encerramento-form e #horarios-pb-form
+  // são adicionados diretamente aos botões de submit dentro de modals.js
+  // (Ex: via form="ID_DO_FORMULARIO" no botão e um listener no submit do form)
+  // Certifique-se que handleEncerramentoSubmit e handleHorariosPbSubmit
+  // estão sendo corretamente atrelados aos seus respectivos formulários/botões.
+  // Pelo código em modals.js, eles parecem estar usando o atributo 'form' no botão,
+  // então um listener no 'submit' do formulário é o ideal.
+
+  const encerramentoForm = document.getElementById("encerramento-form");
+  if (encerramentoForm) {
+    encerramentoForm.addEventListener("submit", (e) =>
+      handleEncerramentoSubmit(e, user, userData)
+    );
+  }
+
+  const horariosPbForm = document.getElementById("horarios-pb-form");
+  if (horariosPbForm) {
+    horariosPbForm.addEventListener("submit", (e) =>
+      handleHorariosPbSubmit(e, user, userData)
+    );
+  }
+
+  // O listener para handleDesfechoPbSubmit é adicionado dinamicamente em abrirModalDesfechoPb
 }
