@@ -108,13 +108,62 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     const formGroup = document.createElement("div");
     formGroup.className = "form-group";
     const label = document.createElement("label");
-    label.textContent = `Preencha o campo "${labelText}":`;
+
+    // --- INÍCIO DA MODIFICAÇÃO ---
+
+    let novoLabel = "";
+    const nomeVariavelLower = nomeVariavel.toLowerCase();
+
+    switch (nomeVariavelLower) {
+      case "prof":
+      case "profissao":
+        novoLabel = "Selecione sua profissão:";
+        // NOTA: A lógica de buscar no Firebase e criar um <select>
+        // precisaria ser implementada aqui, alterando o tipo de 'input'.
+        // Por enquanto, apenas o label foi alterado.
+        break;
+      case "dia":
+      case "diasemana":
+        novoLabel =
+          "Selecione o dia de atendimento (Lista de segunda a sábado):";
+        // NOTA: Aqui também seria ideal alterar o 'input' para um <select>
+        // com os dias da semana.
+        break;
+      case "data":
+      case "datainicio":
+        novoLabel = "Informe a data de inicio da terapia:";
+        break;
+      case "hora":
+      case "horario":
+        novoLabel = "Informe a hora da sessão:";
+        break;
+      case "v":
+      case "valor":
+        novoLabel = "Preencha o valor da sessão:";
+        break;
+      case "px":
+      case "pix":
+        novoLabel = "Informe seu PIX:";
+        break;
+      default:
+        // Mantém o comportamento padrão para outras variáveis
+        novoLabel = `Preencha o campo "${labelText}":`;
+    }
+
+    label.textContent = novoLabel;
+
+    // --- FIM DA MODIFICAÇÃO ---
+
     label.htmlFor = `var-${nomeVariavel}`;
     const input = document.createElement("input");
 
-    if (nomeVariavel.toLowerCase().includes("data")) {
+    // Ajustes de tipo de input baseados no nome da variável
+    if (nomeVariavelLower.includes("data")) {
       input.type = "date";
-    } else if (nomeVariavel.toLowerCase().includes("profissao")) {
+    } else if (nomeVariavelLower.includes("hora")) {
+      // Adicionado para 'hora'
+      input.type = "time";
+    } else if (nomeVariavelLower.includes("profissao")) {
       input.type = "text";
       if (userData.profissao) {
         input.value = userData.profissao;
