@@ -109,77 +109,112 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     formGroup.className = "form-group";
     const label = document.createElement("label");
 
-    // --- INÍCIO DA MODIFICAÇÃO ---
+    // --- INÍCIO DA MODIFICAÇÃO CORRIGIDA ---
 
     let novoLabel = "";
     const nomeVariavelLower = nomeVariavel.toLowerCase();
+    let campoElemento; // Elemento do formulário (input ou select)
 
     switch (nomeVariavelLower) {
       case "prof":
       case "profissao":
         novoLabel = "Selecione sua profissão:";
-        // NOTA: A lógica de buscar no Firebase e criar um <select>
-        // precisaria ser implementada aqui, alterando o tipo de 'input'.
-        // Por enquanto, apenas o label foi alterado.
+        campoElemento = document.createElement("select");
+        campoElemento.innerHTML = "<option value=''>Selecione...</option>";
+
+        // Buscar do systemConfigs (conforme sua solicitação: configuracoesSistema -> geral -> listas-> profissoes)
+        const profissoes = systemConfigs?.geral?.listas?.profissoes || [];
+        profissoes.forEach((prof) => {
+          campoElemento.innerHTML += `<option value="${prof}">${prof}</option>`;
+        });
+
+        // Preencher valor do userData se existir
+        if (userData.profissao) {
+          campoElemento.value = userData.profissao;
+        }
         break;
+
       case "dia":
       case "diasemana":
         novoLabel =
           "Selecione o dia de atendimento (Lista de segunda a sábado):";
-        // NOTA: Aqui também seria ideal alterar o 'input' para um <select>
-        // com os dias da semana.
+        campoElemento = document.createElement("select");
+
+        const dias = [
+          "Segunda-feira",
+          "Terça-feira",
+          "Quarta-feira",
+          "Quinta-feira",
+          "Sexta-feira",
+          "Sábado",
+        ];
+        campoElemento.innerHTML = "<option value=''>Selecione...</option>";
+        dias.forEach((dia) => {
+          campoElemento.innerHTML += `<option value="${dia}">${dia}</option>`;
+        });
         break;
+
+      case "mod": // Adicionado conforme sua solicitação
+      case "modalidade":
+        novoLabel = "Selecione a modalidade:";
+        campoElemento = document.createElement("select");
+        campoElemento.innerHTML = "<option value=''>Selecione...</option>";
+        campoElemento.innerHTML +=
+          "<option value='Presencial'>Presencial</option>";
+        campoElemento.innerHTML += "<option value='Online'>Online</option>";
+        break;
+
       case "data":
       case "datainicio":
         novoLabel = "Informe a data de inicio da terapia:";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "date";
         break;
+
       case "hora":
       case "horario":
         novoLabel = "Informe a hora da sessão:";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "time";
         break;
+
       case "v":
       case "valor":
         novoLabel = "Preencha o valor da sessão:";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "text";
         break;
+
       case "px":
       case "pix":
         novoLabel = "Informe seu PIX:";
+        campoElemento = document.createElement("input");
+        campoElemento.type = "text";
         break;
+
       default:
         // Mantém o comportamento padrão para outras variáveis
         novoLabel = `Preencha o campo "${labelText}":`;
+        campoElemento = document.createElement("input");
+        campoElemento.type = "text";
     }
 
     label.textContent = novoLabel;
-
-    // --- FIM DA MODIFICAÇÃO ---
-
     label.htmlFor = `var-${nomeVariavel}`;
-    const input = document.createElement("input");
 
-    // Ajustes de tipo de input baseados no nome da variável
-    if (nomeVariavelLower.includes("data")) {
-      input.type = "date";
-    } else if (nomeVariavelLower.includes("hora")) {
-      // Adicionado para 'hora'
-      input.type = "time";
-    } else if (nomeVariavelLower.includes("profissao")) {
-      input.type = "text";
-      if (userData.profissao) {
-        input.value = userData.profissao;
-      }
-    } else {
-      input.type = "text";
-    }
+    // Atributos comuns para o elemento criado
+    campoElemento.className = "form-control dynamic-var";
+    campoElemento.id = `var-${nomeVariavel}`;
+    campoElemento.dataset.variavel = variavel;
+    // Mantendo o 'oninput' do código original, que também funciona para 'select'
+    campoElemento.oninput = () => atualizarPreviewMensagem();
 
-    input.className = "form-control dynamic-var";
-    input.id = `var-${nomeVariavel}`;
-    input.dataset.variavel = variavel;
-    input.oninput = () => atualizarPreviewMensagem();
-
+    // Adiciona ao form-group
     formGroup.appendChild(label);
-    formGroup.appendChild(input);
+    formGroup.appendChild(campoElemento);
     formContainer.appendChild(formGroup);
+
+    // --- FIM DA MODIFICAÇÃO CORRIGIDA ---
   });
 
   atualizarPreviewMensagem();
