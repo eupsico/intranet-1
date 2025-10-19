@@ -139,8 +139,7 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
 
       case "dia":
       case "diasemana":
-        novoLabel =
-          "Selecione o dia de atendimento (Lista de segunda a sábado):";
+        novoLabel = "Selecione o dia de atendimento:";
         campoElemento = document.createElement("select");
 
         const dias = [
