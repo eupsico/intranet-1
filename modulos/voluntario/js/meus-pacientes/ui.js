@@ -5,9 +5,11 @@ export function calcularIdade(dataNascimento) {
   const hoje = new Date();
   // Garante que a data de nascimento seja interpretada corretamente como UTC para evitar problemas de fuso horário
   const [year, month, day] = dataNascimento.split("-");
+  // Adiciona verificação para garantir que year, month e day são números válidos
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return "Data inválida";
   const nasc = new Date(Date.UTC(year, month - 1, day)); // Usa UTC
 
-  if (isNaN(nasc)) return "Data inválida"; // Verifica se a data é válida
+  if (isNaN(nasc.getTime())) return "Data inválida"; // Verifica se a data é válida
 
   let idade = hoje.getUTCFullYear() - nasc.getUTCFullYear();
   const m = hoje.getUTCMonth() - nasc.getUTCMonth();
@@ -18,9 +20,8 @@ export function calcularIdade(dataNascimento) {
 }
 
 export function criarAccordionPaciente(paciente, atendimentoPB = null) {
-  const statusPaciente = paciente.status || "desconhecido"; // Garante que sempre haja um status
+  const statusPaciente = paciente.status || "desconhecido";
 
-  // --- CORREÇÃO DEFINITIVA DA LÓGICA DE STATUS E BOTÕES ---
   let infoStatus = {}; // Objeto para guardar label, ação e tipo do botão principal
 
   // Define o mapa de status com mais clareza
@@ -38,28 +39,17 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       ativo: true,
     },
     cadastrar_horario_psicomanager: {
-      // Status que estava faltando
       label: "Horários Informados (PB)",
-      acao: "Registrar Desfecho", // Ação após informar horários pode ser registrar desfecho
-      tipo: "desfecho_pb", // Ou talvez uma ação diferente? Por ora, leva ao desfecho.
-      ativo: true, // Ou talvez desabilitado até Adm confirmar? Depende da regra.
+      acao: "Registrar Desfecho", // Temporário - A ação pode mudar
+      tipo: "desfecho_pb", // Temporário
+      ativo: true, // Ou false, dependendo da regra
     },
-    // Adicione outros status de PB aqui, se necessário
-    // Exemplo:
-    // aguardando_contrato: {
-    //     label: "Aguardando Contrato (PB)",
-    //     acao: "Reenviar Contrato", // Ação exemplo
-    //     tipo: "reenviar_contrato", // Tipo exemplo
-    //     ativo: true,
-    // },
     em_atendimento_pb: {
-      // Status que estava faltando mapeamento claro
       label: "Em Atendimento (PB)",
       acao: "Registrar Desfecho",
       tipo: "desfecho_pb",
       ativo: true,
     },
-    // Status Finais ou Informativos (sem ação principal clara ou botão desabilitado)
     alta: { label: "Alta", acao: "Alta", tipo: "info", ativo: false },
     desistencia: {
       label: "Desistência",
@@ -68,18 +58,18 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       ativo: false,
     },
     encaminhado_grupo: {
-      label: "Encaminhado para Grupo",
+      label: "Encaminhado p/ Grupo",
       acao: "Encaminhado",
       tipo: "info",
       ativo: false,
-    },
+    }, // Label abreviado
     encaminhado_parceiro: {
-      label: "Encaminhado para Parceiro",
+      label: "Encaminhado p/ Parceiro",
       acao: "Encaminhado",
       tipo: "info",
       ativo: false,
-    },
-    // Adicione outros status finais conforme necessário
+    }, // Label abreviado
+    // Adicione outros status aqui se necessário
   };
 
   // Tenta encontrar o status no mapa
@@ -89,7 +79,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     // Fallback genérico se o status for realmente desconhecido
     infoStatus = {
       label: `Status: ${statusPaciente.replace(/_/g, " ")}`,
-      acao: "Verificar Status", // Botão informativo, mas desabilitado
+      acao: "Verificar Status",
       tipo: "info",
       ativo: false,
     };
@@ -98,11 +88,14 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     );
   }
 
-  // Determina se os detalhes/botões de PB devem ser mostrados
-  // Mostra se NÃO for plantão E se houver um atendimento PB associado
-  const mostrarDetalhesPB =
-    statusPaciente !== "em_atendimento_plantao" && atendimentoPB;
-  // --- FIM DA CORREÇÃO DA LÓGICA ---
+  // --- CORREÇÃO: Lógica para exibir detalhes de PB ---
+  // Mostra os detalhes se atendimentoPB existir E tiver informações de horárioSessao
+  const mostrarDetalhesPB = !!(
+    atendimentoPB &&
+    atendimentoPB.horarioSessao &&
+    atendimentoPB.horarioSessao.diaSemana
+  );
+  // --- FIM DA CORREÇÃO ---
 
   // ---- DADOS GERAIS DO PACIENTE (mantidos) ----
   const dataEncaminhamento =
@@ -112,7 +105,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
           `${
             atendimentoPB?.dataEncaminhamento ||
             paciente.plantaoInfo?.dataEncaminhamento
-          }T03:00:00` // Considera fuso horário de Brasília
+          }T03:00:00`
         ).toLocaleDateString("pt-BR")
       : "N/A";
   const idade = calcularIdade(paciente.dataNascimento);
@@ -128,32 +121,44 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     infoStatus.tipo
   }" ${!infoStatus.ativo ? "disabled" : ""}>${infoStatus.acao}</button>`;
 
-  // Botões Condicionais de PB (só aparecem se mostrarDetalhesPB for true)
+  // --- CORREÇÃO: Botões de PB agora usam a nova lógica `mostrarDetalhesPB` ---
+  // Define se os botões específicos de PB devem aparecer (não é o mesmo que mostrar os detalhes, pois mesmo no plantão pode haver ações de PB)
+  const mostrarBotoesPB =
+    statusPaciente !== "em_atendimento_plantao" && atendimentoPB;
+
   const pdfBtn =
-    mostrarDetalhesPB && atendimentoPB?.contratoAssinado
+    mostrarBotoesPB && atendimentoPB?.contratoAssinado
       ? `<button class="action-button secondary-button" data-tipo="pdf_contrato">PDF Contrato</button>`
       : "";
-  const novaSessaoBtn = mostrarDetalhesPB
+  const novaSessaoBtn = mostrarBotoesPB
     ? `<button class="action-button" data-tipo="solicitar_sessoes">Solicitar Novas Sessões</button>`
     : "";
-  const alterarHorarioBtn = mostrarDetalhesPB
+  const alterarHorarioBtn = mostrarBotoesPB
     ? `<button class="action-button" data-tipo="alterar_horario">Alterar Horário</button>`
     : "";
+  // --- FIM DA CORREÇÃO ---
 
   // Botão de WhatsApp (sempre visível)
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
 
-  // ---- LÓGICA DE EXIBIÇÃO DO STATUS NO BADGE ----
-  // Prioriza "Aguardando Contrato" se for o caso, senão usa o label do infoStatus
-  const displayStatus =
-    mostrarDetalhesPB && atendimentoPB && !atendimentoPB.contratoAssinado
-      ? "Aguardando Contrato"
-      : infoStatus.label; // Usa o label correto do mapa
+  // ---- LÓGICA DE EXIBIÇÃO DO STATUS NO BADGE (Refinada) ----
+  let displayStatus = infoStatus.label; // Começa com o label padrão do status
+  let displayStatusClass = `status-${statusPaciente}`; // Usa o status real para a classe
 
-  const displayStatusClass =
-    mostrarDetalhesPB && atendimentoPB && !atendimentoPB.contratoAssinado
-      ? "status-aguardando_contrato" // Classe específica se esperando contrato
-      : `status-${statusPaciente}`; // Usa o status real do Firebase para a classe CSS
+  // Caso especial: Se for PB e estiver aguardando contrato, sobrescreve
+  if (
+    statusPaciente !== "em_atendimento_plantao" &&
+    atendimentoPB &&
+    !atendimentoPB.contratoAssinado
+  ) {
+    displayStatus = "Aguardando Contrato";
+    displayStatusClass = "status-aguardando_contrato";
+  }
+
+  // Garante que displayStatus nunca seja vazio
+  if (!displayStatus || displayStatus.trim() === "") {
+    displayStatus = `Status: ${statusPaciente}`; // Fallback final
+  }
 
   return `
       <div class="paciente-accordion" data-id="${paciente.id}" data-telefone="${
@@ -180,8 +185,8 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                       }
                       <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
                       ${
-                        // Detalhes de PB só aparecem se não for plantão E existir atendimentoPB
-                        mostrarDetalhesPB
+                        // --- CORREÇÃO: Detalhes de PB agora usam a nova lógica ---
+                        mostrarDetalhesPB // Mostra se atendimentoPB.horarioSessao tiver dados
                           ? `
                           <div class="detail-item"><span class="label">Dia da Sessão</span><span class="value">${
                             atendimentoInfo.diaSemana || "A definir"
@@ -193,7 +198,8 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                             atendimentoInfo.tipoAtendimento || "A definir"
                           }</span></div>
                       `
-                          : "" // Não mostra nada se for plantão
+                          : "" // Não mostra se não houver dados de horárioSessao
+                        // --- FIM DA CORREÇÃO ---
                       }
                   </div>
                   <div class="card-actions">
