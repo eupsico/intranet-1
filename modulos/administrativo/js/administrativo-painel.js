@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/administrativo-painel.js
-// Versão: 2.1 (Adicionado menu e rota para Treinamentos)
+// Versão: 2.2 (Adicionado menu e rota para Solicitações)
 
 export function initadministrativoPanel(user, db, userData) {
   const contentArea = document.getElementById("content-area");
@@ -103,6 +103,12 @@ export function initadministrativoPanel(user, db, userData) {
       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
     },
     {
+      id: "solicitacoes-admin",
+      name: "Solicitações",
+      roles: ["admin", "gestor", "assistente"],
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>`,
+    },
+    {
       id: "treinamentos",
       name: "Treinamentos",
       roles: ["admin", "gestor", "assistente"],
@@ -120,24 +126,24 @@ export function initadministrativoPanel(user, db, userData) {
   function buildSidebarMenu(userRoles = []) {
     if (!sidebarMenu) return;
     sidebarMenu.innerHTML = `
-            <li>
-                <a href="../../../index.html" class="back-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    <span>Voltar à Intranet</span>
-                </a>
-            </li>
-            <li class="menu-separator"></li>
-        `;
+                <li>
+                    <a href="../../../index.html" class="back-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span>Voltar à Intranet</span>
+                    </a>
+                </li>
+                <li class="menu-separator"></li>
+            `;
     views.forEach((view) => {
       const hasPermission = view.roles.some((role) => userRoles.includes(role));
       if (hasPermission) {
         sidebarMenu.innerHTML += `
-                        <li>
-                            <a href="#${view.id}" data-view="${view.id}">
-                                ${view.icon}
-                                <span>${view.name}</span>
-                            </a>
-                        </li>`;
+                                <li>
+                                    <a href="#${view.id}" data-view="${view.id}">
+                                        ${view.icon}
+                                        <span>${view.name}</span>
+                                    </a>
+                                </li>`;
       }
     });
   }
@@ -207,9 +213,9 @@ export function initadministrativoPanel(user, db, userData) {
     const pageTitleContainer = document.getElementById("page-title-container");
     if (pageTitleContainer) {
       pageTitleContainer.innerHTML = `
-                <h1>Painel Administrativo</h1>
-                <p>Gestão de configurações e dados do sistema.</p>
-            `;
+                        <h1>Painel Administrativo</h1>
+                        <p>Gestão de configurações e dados do sistema.</p>
+                    `;
     }
   }
 
