@@ -403,7 +403,7 @@ export function init() {
       startY: 30,
       theme: "plain",
       body: [
-        ["Receitas Pagas:", totalReceitas],
+        ["Receitas:", totalReceitas],
         ["Despesas Pagas:", totalDespesas],
         ["Saldo do Mês:", saldoTotal],
         ["Despesas Atrasadas:", totalAtrasadas],
