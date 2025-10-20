@@ -54,7 +54,7 @@ export function init(user, userData) {
     if (!tabContainer || !contentSections) return;
 
     tabContainer.querySelectorAll(".tab-link").forEach((btn) => {
-      btn.classList.remove("active");
+      btn.classList.toggle("active", btn.dataset.tab === tabId); // Usa toggle para simplificar
     });
     const targetButton = tabContainer.querySelector(
       `.tab-link[data-tab="${tabId}"]`
