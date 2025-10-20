@@ -174,53 +174,7 @@
     gap: 20px;
     align-items: flex-end;
 }
-/* --- ESTILOS DAS ABAS (Adicionado) --- */
-.tabs-container {
-    display: flex;
-    flex-wrap: wrap;
-    border-bottom: 2px solid var(--cor-borda);
-    margin-bottom: 0; /* Remove a margem para colar no conteúdo */
-}
 
-.tab-link {
-    padding: 12px 25px;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
-    font-family: var(--fonte-principal);
-    font-size: 1em;
-    color: var(--cor-texto-secundario);
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px; /* Alinha com a borda principal */
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.tab-link:hover {
-    background-color: var(--cor-fundo);
-    color: var(--cor-primaria);
-}
-
-.tabs-container .tab-link.active {
-    color: var(--cor-primaria);
-    border-bottom-color: var(--cor-primaria);
-    font-weight: 600;
-    background-color: var(--cor-fundo-box);
-}
-
-.tab-content {
-    background-color: var(--cor-surface);
-    padding: 30px;
-    border: 1px solid var(--cor-borda);
-    border-top: none; /* A borda superior é feita pelo container de abas */
-    border-radius: 0 0 var(--borda-radius) var(--borda-radius);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    display: none; /* Escondido por padrão */
-}
-
-.tab-content.active {
-    display: block; /* Visível quando ativo */
-}
 
 /* Status badge para a tabela de reavaliação */
 .status-badge {
