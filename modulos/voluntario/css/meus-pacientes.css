@@ -2,11 +2,11 @@
 
 /* --- ESTRUTURA GERAL E CABEÇALHO --- */
 .view-header {
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 .view-header h2 {
     color: var(--cor-primaria);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 .description-box {
     background-color: var(--cor-fundo-claro);
@@ -14,6 +14,7 @@
     padding: 15px;
     border-radius: var(--borda-radius);
     color: var(--cor-texto-secundario);
+    margin-bottom: 15px;
 }
 
 /* --- ESTILOS DO ACORDEÃO --- */
