@@ -679,7 +679,7 @@ function resetConditionalFieldsReavaliacao() {
 
 /**
  * Salva os dados da reavaliação (Serviço Social).
- * Função movida e CORRIGIDA para usar Timestamp.now() no array.
+ * Função movida e CORRIGIDA para usar Timestamp.now() no array e RESTAURAR status original.
  */
 async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
   evento.preventDefault();
@@ -692,9 +692,22 @@ async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
 
   try {
     const agendamentoRef = doc(db, "agendamentos", agendamentoId);
+    const pacienteRef = doc(db, "trilhaPaciente", pacienteId); // Referência ao paciente
+
+    // Obter os dados atuais do paciente para pegar o status anterior
+    const pacienteSnap = await getDoc(pacienteRef);
+    if (!pacienteSnap.exists()) {
+      throw new Error(`Paciente ${pacienteId} não encontrado.`);
+    }
+    const pacienteDataAtual = pacienteSnap.data();
+    // --- INÍCIO DA ALTERAÇÃO ---
+    // Pega o status para o qual o paciente deve voltar. Se não existir, usa um padrão seguro.
+    const statusDeRetorno =
+      pacienteDataAtual.statusAnteriorReavaliacao || "encaminhar_para_plantao";
+    // --- FIM DA ALTERAÇÃO ---
 
     let dadosAgendamentoUpdate = {
-      status: "",
+      status: "", // Será definido abaixo
       resultadoReavaliacao: {
         realizada: realizada === "sim",
         registradoPorId: currentUserData.uid,
@@ -704,13 +717,19 @@ async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
       lastUpdate: serverTimestamp(),
     };
 
+    let dadosPacienteUpdate = {
+      // Objeto para atualizar o paciente
+      status: statusDeRetorno, // Define o status de retorno
+      statusAnteriorReavaliacao: null, // Limpa o campo de status anterior
+      lastUpdate: serverTimestamp(),
+    };
+
     if (realizada === "sim") {
       const novoValorInput = form.querySelector("#reavaliacao-novo-valor");
       const criterios = form.querySelector("#reavaliacao-criterios").value;
-      const novoValor = parseFloat(novoValorInput.value); // Converte para número
+      const novoValor = parseFloat(novoValorInput.value);
 
       if (isNaN(novoValor) || novoValor <= 0 || !criterios.trim()) {
-        // Adicionado trim() para critérios
         throw new Error(
           "Preencha o novo valor (maior que zero) e os critérios."
         );
@@ -723,12 +742,6 @@ async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
         criterios;
 
       // --- INÍCIO DA CORREÇÃO DO ERRO ---
-      const pacienteRef = doc(db, "trilhaPaciente", pacienteId);
-      const pacienteSnap = await getDoc(pacienteRef);
-      const pacienteDataAtual = pacienteSnap.exists()
-        ? pacienteSnap.data()
-        : {};
-
       const novoRegistroHistorico = {
         valor: novoValor,
         data: Timestamp.now(), // FIX: Usar Timestamp.now() para arrays
@@ -742,22 +755,19 @@ async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
         novoRegistroHistorico,
       ];
 
-      const dadosPacienteUpdate = {
-        valorContribuicao: novoValor,
-        historicoContribuicao: novoHistorico,
-        lastUpdate: serverTimestamp(),
-      };
+      // Adiciona os campos específicos da reavaliação realizada ao update do paciente
+      dadosPacienteUpdate.valorContribuicao = novoValor;
+      dadosPacienteUpdate.historicoContribuicao = novoHistorico;
+      // --- FIM DA CORREÇÃO DO ERRO ---
 
       // Executa as atualizações em sequência
       await updateDoc(agendamentoRef, dadosAgendamentoUpdate);
-      await updateDoc(pacienteRef, dadosPacienteUpdate);
-      // --- FIM DA CORREÇÃO DO ERRO ---
+      await updateDoc(pacienteRef, dadosPacienteUpdate); // Atualiza paciente com novo valor E status restaurado
     } else if (realizada === "nao") {
       const motivoNao = form.querySelector("#reavaliacao-motivo-nao").value;
       const reagendado = form.querySelector("#reavaliacao-reagendado").value;
 
       if (!motivoNao.trim() || !reagendado) {
-        // Adicionado trim() para motivo
         throw new Error("Preencha o motivo e se foi reagendado.");
       }
 
@@ -768,7 +778,19 @@ async function handleSalvarReavaliacaoSS(evento, agendamentoId, pacienteId) {
       dadosAgendamentoUpdate.status =
         reagendado === "sim" ? "reagendado" : "ausente";
 
+      // Atualiza o agendamento
       await updateDoc(agendamentoRef, dadosAgendamentoUpdate);
+
+      // --- INÍCIO DA ALTERAÇÃO ---
+      // Se NÃO foi reagendado, restaura o status do paciente.
+      // Se FOI reagendado, o status do paciente continua 'aguardando_reavaliacao'.
+      if (reagendado === "nao") {
+        await updateDoc(pacienteRef, dadosPacienteUpdate);
+      } else {
+        // Se foi reagendado, não muda o status do paciente, apenas atualiza o lastUpdate
+        await updateDoc(pacienteRef, { lastUpdate: serverTimestamp() });
+      }
+      // --- FIM DA ALTERAÇÃO ---
     } else {
       throw new Error("Selecione se a reavaliação foi realizada.");
     }
