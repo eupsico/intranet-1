@@ -64,7 +64,8 @@ export function init(user, userData) {
     }
 
     contentSections.forEach((section) => {
-      section.style.display = section.id === tabId ? "block" : "none";
+      section.classList.toggle("active", section.id === tabId); // Adiciona/Remove a classe 'active'
+      // section.style.display = section.id === tabId ? "block" : "none"; // REMOVE ESTA LINHA
     });
 
     loadTabModule(tabId);
