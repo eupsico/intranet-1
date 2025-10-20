@@ -24,12 +24,14 @@ export function initsocialPanel(user, userData) {
       roles: ["admin", "servico_social"],
       icon: icons.dashboard,
     },
+    // --- INÍCIO DA ALTERAÇÃO ---
     {
-      id: "agendamentos-triagem",
-      name: "Agendamentos de Triagem",
+      id: "agendamentos-view", // ID da nova view com abas
+      name: "Agendamentos", // Nome genérico no menu
       roles: ["admin", "servico_social"],
       icon: icons.agendamentos,
     },
+    // --- FIM DA ALTERAÇÃO ---
     {
       id: "fila-atendimento",
       name: "Fila de Atendimento",
