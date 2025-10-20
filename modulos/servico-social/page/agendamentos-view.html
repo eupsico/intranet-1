@@ -11,7 +11,21 @@
                 <p class="description-box">Abaixo está a lista de todos os pacientes com triagem agendada. Clique em "Preencher Ficha" para iniciar o atendimento.</p>
                 <div class="table-section">
                     <table id="triagem-table">
-                        </table>
+                         <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nome</th>
+                                <th>Responsável</th>
+                                <th>Telefone</th>
+                                <th>Data Agendada</th>
+                                <th>Hora Agendada</th>
+                                <th>Assistente Social</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="triagem-table-body">
+                            </tbody>
+                    </table>
                     <div id="triagem-empty-state" style="display: none; text-align: center; padding: 20px;">Nenhum agendamento de triagem encontrado.</div>
                 </div>
             </div>
@@ -20,7 +34,19 @@
                 <p class="description-box">Abaixo está a lista de todos os pacientes com reavaliação agendada. Clique em "Realizar Reavaliação" para acessar o formulário.</p>
                 <div class="table-section">
                     <table id="reavaliacao-table">
-                         </table>
+                        <thead>
+                            <tr>
+                                <th>Nome do Paciente</th>
+                                <th>Solicitado Por (Profissional)</th>
+                                <th>Data Agendada</th>
+                                <th>Hora Agendada</th>
+                                <th>Assistente Social</th>
+                                <th>Status</th> <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reavaliacao-table-body">
+                            </tbody>
+                    </table>
                      <div id="reavaliacao-empty-state" style="display: none; text-align: center; padding: 20px;">Nenhum agendamento de reavaliação encontrado.</div>
                 </div>
             </div>
