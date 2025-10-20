@@ -158,7 +158,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
 
   // ---- CORREÇÃO NA LÓGICA DE EXIBIÇÃO DO STATUS ----
   let displayStatus = infoStatus.label; // Pega o label do mapa
-  let displayStatusClass = `status-${statusPaciente}`; // Classe baseada no status real
+  let displayStatusClass = statusPaciente; // Classe baseada no status real
 
   // Caso especial: Aguardando Contrato (somente se não for plantão)
   if (
@@ -167,7 +167,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     !atendimentoPB.contratoAssinado
   ) {
     displayStatus = "Aguardando Contrato";
-    displayStatusClass = "status-aguardando_contrato";
+    displayStatusClass = "aguardando_contrato";
   }
 
   // Fallback final para garantir que algo seja exibido
