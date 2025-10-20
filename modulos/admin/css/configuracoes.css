@@ -29,41 +29,6 @@
     margin-bottom: 1.5rem;
 }
 
-.tab-link {
-    padding: 10px 20px;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
-    font-size: 1rem;
-    color: #555;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.tab-link:hover {
-    background-color: #f7f7f7;
-    color: #000;
-}
-
-.tab-link.active {
-    border-bottom: 3px solid #007bff;
-    color: #007bff;
-    font-weight: 600;
-}
-
-.tab-content {
-    display: none;
-    animation: fadeIn 0.5s;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
 
 /* Formulário */
 .form-group {
