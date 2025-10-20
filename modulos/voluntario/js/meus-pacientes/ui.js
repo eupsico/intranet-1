@@ -109,7 +109,31 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
       : "N/A";
   const idade = calcularIdade(paciente.dataNascimento); // Usa a função corrigida
   const responsavelNome = paciente.responsavel?.nome || "N/A";
-  const atendimentoInfo = atendimentoPB?.horarioSessao || {}; // Informações da sessão PB
+
+  // --- INÍCIO DA CORREÇÃO ---
+  // Unifica as informações da sessão, priorizando PB, mas usando Plantão se for o caso
+  const atendimentoInfo = atendimentoPB?.horarioSessao
+    ? {
+        // Dados do PB
+        diaSemana: atendimentoPB.horarioSessao.diaSemana,
+        horario: atendimentoPB.horarioSessao.horario,
+        tipoAtendimento: atendimentoPB.horarioSessao.tipoAtendimento,
+      }
+    : paciente.plantaoInfo && paciente.plantaoInfo.dataPrimeiraSessao // Verifica se plantaoInfo e a data existem
+    ? {
+        // Dados do Plantão
+        // Capitaliza a primeira letra do dia da semana
+        diaSemana: ((dia) => dia.charAt(0).toUpperCase() + dia.slice(1))(
+          new Date(
+            paciente.plantaoInfo.dataPrimeiraSessao + "T03:00:00"
+          ).toLocaleDateString("pt-BR", { weekday: "long" })
+        ),
+        horario: paciente.plantaoInfo.horaPrimeiraSessao,
+        tipoAtendimento: paciente.plantaoInfo.tipoAtendimento,
+      }
+    : {}; // Fallback
+  // --- FIM DA CORREÇÃO ---
+
   const atendimentoIdAttr = atendimentoPB
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
