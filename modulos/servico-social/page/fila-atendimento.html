@@ -10,7 +10,7 @@
         </div>
 
         <div class="triagem-form-column">
-            <h3>Formulário de Triagem</h3>
+            <h3 id="form-title">Formulário de Triagem</h3>
             <form id="triagem-form">
                 <div class="form-group">
                     <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
@@ -61,7 +61,7 @@
                     </div>
                     <div id="nova-disponibilidade-container" class="conditional-fields" style="display: none;">
                         </div>
-                       <hr>
+                        <hr>
                     <div class="form-group">
                         <label for="queixa-paciente">Queixa principal do paciente (resumo):</label>
                         <textarea id="queixa-paciente" name="queixa-paciente" rows="4" class="form-control"></textarea>
@@ -79,35 +79,6 @@
                     <button type="submit" class="action-button">Salvar Triagem</button>
                 </div>
             </form>
-        </div>
-    </div>
-    <div class="view-container">
-    <button id="btn-voltar-lista" class="action-button secondary" style="margin-bottom: 20px;">&larr; Voltar para a Lista</button>
-    
-    <div class="triagem-grid">
-        <div class="patient-data-column">
-            <h3>Dados Completos da Inscrição</h3>
-            <div id="patient-details-container">
-                <div class="loading-spinner"></div>
-            </div>
-        </div>
-
-        <div class="triagem-form-column">
-            <h3 id="form-title">Formulário de Triagem</h3>
-            <form id="triagem-form">
-                <div class="form-group">
-                    <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
-                    <select id="triagem-status" name="triagem-status" class="form-control" required>
-                        <option value="">Selecione o status...</option>
-                        <option value="encaminhado">Sim, encaminhado para plantão.</option>
-                        <option value="nao_realizada">Não (informar motivo)</option>
-                        <option value="desistiu">Sim, paciente desistiu</option>
-                    </select>
-                </div>
-                <div class="button-bar" style="margin-top: 20px;">
-                    <button type="submit" class="action-button">Salvar Triagem</button>
-                </div>
-            </form>
             
             <form id="reavaliacao-ss-form" style="display: none;">
                 <input type="hidden" id="reavaliacao-agendamento-id">
@@ -115,7 +86,7 @@
 
                 <fieldset>
                     <legend>Informações da Solicitação</legend>
-                    <div id="reavaliacao-loading-info" class="loading-spinner" style="display: none;"></div>
+                    <div id="reavaliacao-loading-info" class="loading-spinner" style="display: none; position: absolute; top: 10px; right: 10px;"></div>
                     <div class="form-row cols-2">
                          <div class="form-group">
                             <label>Paciente</label>
@@ -177,11 +148,10 @@
                     </div>
                 </fieldset>
                 
-                <div class="modal-footer" style="padding: 20px 0 0 0; border-top: 1px solid var(--cor-borda); margin-top: 20px;">
+                <div class="button-bar" style="margin-top: 20px;">
                     <button type="submit" class="action-button" id="btn-salvar-reavaliacao-ss">Salvar Reavaliação</button>
                 </div>
             </form>
             </div>
-    </div>
     </div>
 </div>
