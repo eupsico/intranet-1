@@ -92,17 +92,25 @@ export function init(user, userData) {
   if (tabContainer) {
     const newTabContainer = tabContainer.cloneNode(true);
     tabContainer.parentNode.replaceChild(newTabContainer, tabContainer);
-    newTabContainer.addEventListener("click", (e) => {
-      if (
-        e.target.tagName === "BUTTON" &&
-        e.target.classList.contains("tab-link")
-      ) {
-        const tabId = e.target.dataset.tab;
-        window.location.hash = `recursos/${tabId}`;
+
+    // ATUALIZA a variável tabContainer para apontar para o novo container
+    tabContainer = newTabContainer; // <--- ADICIONE ESTA LINHA
+
+    // Adiciona o listener ao NOVO container
+    tabContainer.addEventListener("click", (e) => {
+      const clickedTab = e.target.closest(".tab-link");
+      if (clickedTab) {
+        const tabId = clickedTab.dataset.tab;
+        if (window.location.hash !== `#recursos/${tabId}`) {
+          window.location.hash = `recursos/${tabId}`;
+        }
       }
     });
   }
 
+  // Listener para quando o hash na URL muda
   window.addEventListener("hashchange", handleHashChange);
+
+  // Chama para carregar a aba inicial
   handleHashChange();
 }
