@@ -12,6 +12,11 @@ import {
   abrirModalAlterarHorario, // Importa a nova função
   handleAlterarHorarioSubmit, // Importa a nova função de submit
   // --- FIM DA MODIFICAÇÃO ---
+
+  // --- INÍCIO DA ALTERAÇÃO (Reavaliação) ---
+  abrirModalReavaliacao,
+  handleReavaliacaoSubmit,
+  // --- FIM DA ALTERAÇÃO (Reavaliação) ---
   handleEncerramentoSubmit, // Mantém as existentes
   handleHorariosPbSubmit,
   handleSolicitarSessoesSubmit,
@@ -107,6 +112,12 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
       case "whatsapp":
         abrirModalMensagens(dadosDoPaciente, meuAtendimento, dependencies);
         break;
+
+      // --- INÍCIO DA ALTERAÇÃO (Reavaliação) ---
+      case "reavaliacao":
+        abrirModalReavaliacao(dadosDoPaciente, meuAtendimento, dependencies);
+        break;
+      // --- FIM DA ALTERAÇÃO (Reavaliação) ---
     }
   });
 
@@ -124,6 +135,12 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
     .getElementById("btn-confirmar-alteracao-horario")
     ?.addEventListener("click", handleAlterarHorarioSubmit);
   // --- FIM DA MODIFICAÇÃO ---
+
+  // --- INÍCIO DA ALTERAÇÃO (Reavaliação) ---
+  document
+    .getElementById("btn-confirmar-reavaliacao")
+    ?.addEventListener("click", handleReavaliacaoSubmit);
+  // --- FIM DA ALTERAÇÃO (Reavaliação) ---
 
   // Os listeners de submit dos formulários #encerramento-form e #horarios-pb-form
   // são adicionados diretamente aos botões de submit dentro de modals.js
