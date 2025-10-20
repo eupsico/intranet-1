@@ -8,13 +8,12 @@ import {
   serverTimestamp,
   httpsCallable,
   functions,
-  // --- INÍCIO DA ALTERAÇÃO (Reavaliação) ---
   collection,
   query,
   where,
   getDocs,
   addDoc,
-  // --- FIM DA ALTERAÇÃO (Reavaliação) ---
+  Timestamp,
 } from "../../../../assets/js/firebase-init.js";
 
 // --- Lógica do Modal de Mensagens (Aprimorada) ---
@@ -512,10 +511,6 @@ export function handleAlterarHorarioSubmit(evento) {
   form.classList.remove("was-validated"); // Remove a classe de validação
 }
 
-// --- FIM DA LÓGICA DO NOVO MODAL ---
-
-// --- INÍCIO DA ALTERAÇÃO (Lógica Reavaliação) ---
-
 // Variável para guardar a configuração da agenda de reavaliação e dados do paciente/usuário
 let currentReavaliacaoConfig = {};
 
@@ -538,7 +533,14 @@ export async function abrirModalReavaliacao(
   const tipoAtendimentoSelect = document.getElementById(
     "reavaliacao-tipo-atendimento"
   );
-  const dataInput = document.getElementById("reavaliacao-data");
+
+  // ***** NOVOS SELETORES *****
+  const datasContainer = document.getElementById(
+    "reavaliacao-datas-disponiveis"
+  );
+  const dataSelecionadaInput = document.getElementById(
+    "reavaliacao-data-selecionada"
+  );
   const horariosContainer = document.getElementById(
     "reavaliacao-horarios-disponiveis"
   );
@@ -548,11 +550,14 @@ export async function abrirModalReavaliacao(
   msgSemAgenda.style.display = "none";
   form.style.display = "none";
   btnConfirmar.style.display = "none";
+
+  // ***** RESET MODIFICADO *****
+  datasContainer.innerHTML =
+    "<p>Selecione uma modalidade para ver as datas.</p>";
   horariosContainer.innerHTML =
     "<p>Selecione uma data para ver os horários.</p>";
-  dataInput.value = "";
-  // Define a data mínima para hoje
-  dataInput.min = new Date().toISOString().split("T")[0];
+  dataSelecionadaInput.value = "";
+  // ***** FIM DO RESET MODIFICADO *****
 
   // Preencher dados fixos do formulário
   document.getElementById("reavaliacao-paciente-id").value = paciente.id;
@@ -567,10 +572,17 @@ export async function abrirModalReavaliacao(
 
   try {
     // 1. Verificar se há agenda configurada para "reavaliação"
+
+    // ***** LÓGICA DE BUSCA MODIFICADA *****
+    // Busca todas as agendas de reavaliação futuras
+    const hoje = new Date().toISOString().split("T")[0];
     const agendaQuery = query(
       collection(db, "agendaConfigurada"),
-      where("tipo", "==", "reavaliacao")
+      where("tipo", "==", "reavaliacao"),
+      where("data", ">=", hoje) // Busca apenas de hoje em diante
     );
+    // ***** FIM DA LÓGICA DE BUSCA *****
+
     const agendaSnapshot = await getDocs(agendaQuery);
 
     if (agendaSnapshot.empty) {
@@ -599,7 +611,7 @@ export async function abrirModalReavaliacao(
     // 4. Lógica da Modalidade (Tipo de Atendimento)
     const modalidades = [
       ...new Set(agendasConfig.map((a) => a.modalidade)),
-    ].filter(Boolean); // Filtra nulos/undefined
+    ].filter(Boolean);
 
     tipoAtendimentoSelect.innerHTML = "";
     if (modalidades.length > 1) {
@@ -618,31 +630,55 @@ export async function abrirModalReavaliacao(
       tipoAtendimentoGroup.style.display = "none";
       tipoAtendimentoSelect.innerHTML = `<option value="${modalidades[0]}" selected>${modalidades[0]}</option>`;
       tipoAtendimentoSelect.required = false;
+      // Se só tem uma modalidade, já carrega as datas
+      renderizarDatasDisponiveis(modalidades[0]);
     } else {
-      // Caso estranho: agenda existe mas sem modalidade
       throw new Error(
         "Agenda de reavaliação configurada de forma inválida (sem modalidade)."
       );
     }
 
-    // 5. Adicionar listeners para carregar horários
-    tipoAtendimentoSelect.onchange = () =>
-      carregarHorariosReavaliacao(currentReavaliacaoConfig);
-    dataInput.onchange = () =>
-      carregarHorariosReavaliacao(currentReavaliacaoConfig);
+    // 5. Adicionar listeners
+    tipoAtendimentoSelect.onchange = () => {
+      // Limpa seleções anteriores
+      horariosContainer.innerHTML =
+        "<p>Selecione uma data para ver os horários.</p>";
+      dataSelecionadaInput.value = "";
+      // Renderiza as novas datas
+      renderizarDatasDisponiveis(tipoAtendimentoSelect.value);
+    };
 
-    // Listener para seleção de slot de horário
+    // Listener para seleção de DATA
+    datasContainer.onclick = (e) => {
+      const target = e.target.closest(".slot-time");
+      if (target && !target.disabled) {
+        // Desmarca a data selecionada anteriormente
+        const selecionadoAnterior = datasContainer.querySelector(
+          ".slot-time.selected"
+        );
+        if (selecionadoAnterior) {
+          selecionadoAnterior.classList.remove("selected");
+        }
+        // Marca a nova data
+        target.classList.add("selected");
+        dataSelecionadaInput.value = target.dataset.data; // Armazena AAAA-MM-DD
+
+        // Carrega os horários para esta data
+        carregarHorariosReavaliacao();
+      }
+    };
+
+    // Listener para seleção de HORÁRIO
     horariosContainer.onclick = (e) => {
-      if (e.target.classList.contains("slot-time") && !e.target.disabled) {
-        // Desmarca o botão selecionado anteriormente
+      const target = e.target.closest(".slot-time");
+      if (target && !target.disabled) {
         const selecionadoAnterior = horariosContainer.querySelector(
           ".slot-time.selected"
         );
         if (selecionadoAnterior) {
           selecionadoAnterior.classList.remove("selected");
         }
-        // Marca o novo botão
-        e.target.classList.add("selected");
+        target.classList.add("selected");
       }
     };
   } catch (error) {
@@ -654,51 +690,125 @@ export async function abrirModalReavaliacao(
 }
 
 /**
+ * NOVA FUNÇÃO
+ * Renderiza os botões de DATA com base na modalidade selecionada.
+ */
+function renderizarDatasDisponiveis(modalidade) {
+  const datasContainer = document.getElementById(
+    "reavaliacao-datas-disponiveis"
+  );
+  if (!modalidade) {
+    datasContainer.innerHTML =
+      "<p>Selecione uma modalidade para ver as datas.</p>";
+    return;
+  }
+
+  const { agendas } = currentReavaliacaoConfig;
+
+  // Filtra as agendas pela modalidade E agrupa por data (para remover duplicados)
+  const datasDisponiveis = [
+    ...new Set(
+      agendas.filter((a) => a.modalidade === modalidade).map((a) => a.data)
+    ),
+  ];
+
+  datasDisponiveis.sort(); // Ordena as datas
+
+  if (datasDisponiveis.length === 0) {
+    datasContainer.innerHTML =
+      "<p>Nenhuma data disponível encontrada para esta modalidade.</p>";
+    return;
+  }
+
+  // Formata as datas para exibição
+  const datasHtml = datasDisponiveis
+    .map((dataISO) => {
+      const dataObj = new Date(dataISO + "T03:00:00"); // Ajuste de fuso
+      const diaSemana = dataObj.toLocaleDateString("pt-BR", {
+        weekday: "long",
+      });
+      const dataFormatada = dataObj.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+      });
+      const diaSemanaCapitalizado =
+        diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
+
+      return `<button type="button" class="slot-time" data-data="${dataISO}">${diaSemanaCapitalizado} (${dataFormatada})</button>`;
+    })
+    .join("");
+
+  datasContainer.innerHTML = datasHtml;
+}
+
+/**
  * Carrega os horários disponíveis para reavaliação com base na data e modalidade.
  * (Similar ao `agendamento-triagem.js`)
  */
 async function carregarHorariosReavaliacao() {
+  // ***** LÓGICA MODIFICADA *****
   const modalidade = document.getElementById(
     "reavaliacao-tipo-atendimento"
   ).value;
-  const dataISO = document.getElementById("reavaliacao-data").value;
+  const dataISO = document.getElementById("reavaliacao-data-selecionada").value; // Pega do input oculto
   const horariosContainer = document.getElementById(
     "reavaliacao-horarios-disponiveis"
   );
 
   if (!modalidade || !dataISO) {
     horariosContainer.innerHTML =
-      "<p>Por favor, selecione a modalidade (se houver) e a data.</p>";
+      "<p>Por favor, selecione a modalidade e a data.</p>";
     return;
   }
+  // ***** FIM DA MODIFICAÇÃO *****
 
   horariosContainer.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // 1. Encontrar a configuração de agenda correta
-    const agenda = currentReavaliacaoConfig.agendas.find(
-      (a) => a.modalidade === modalidade
+    // 1. Encontrar as configurações de agenda para esta data/modalidade
+    // (Pode haver múltiplas assistentes sociais com agenda no mesmo dia)
+    const agendasDoDia = currentReavaliacaoConfig.agendas.filter(
+      (a) => a.modalidade === modalidade && a.data === dataISO
     );
-    if (!agenda) {
-      throw new Error("Configuração de agenda não encontrada.");
+
+    if (agendasDoDia.length === 0) {
+      throw new Error("Configuração de agenda não encontrada para esta data.");
     }
 
-    // 2. Pegar o dia da semana (ex: 'segunda')
-    const dataObj = new Date(dataISO + "T03:00:00"); // Fuso horário
-    const diaSemana = dataObj
-      .toLocaleDateString("pt-BR", { weekday: "long" })
-      .toLowerCase()
-      .split("-")[0];
+    // 2. Pegar todos os slots disponíveis de todas as assistentes para este dia/modalidade
+    let slotsDoDia = new Set();
+    agendasDoDia.forEach((agenda) => {
+      // A 'agendaConfigurada' já deve ter os slots em 'dias'
+      // Mas o modelo da imagem (image_3b810e.png) mostra 'inicio' e 'fim'
+      // Vamos usar a lógica de 'inicio' e 'fim' como no agendamento-publico.js
+      const [hInicio, mInicio] = agenda.inicio.split(":").map(Number);
+      const [hFim, mFim] = agenda.fim.split(":").map(Number);
+      const inicioEmMinutos = hInicio * 60 + mInicio;
+      const fimEmMinutos = hFim * 60 + mFim;
 
-    // 3. Pegar os slots disponíveis (ex: ["09:00", "10:00"])
-    const slotsDoDia = agenda.dias[diaSemana];
-    if (!slotsDoDia || slotsDoDia.length === 0) {
+      for (
+        let minutos = inicioEmMinutos;
+        minutos < fimEmMinutos;
+        minutos += 30
+      ) {
+        const hAtual = Math.floor(minutos / 60);
+        const mAtual = minutos % 60;
+        const horaSlot = `${String(hAtual).padStart(2, "0")}:${String(
+          mAtual
+        ).padStart(2, "0")}`;
+        slotsDoDia.add(horaSlot);
+      }
+    });
+
+    const slotsOrdenados = [...slotsDoDia].sort();
+
+    if (slotsOrdenados.length === 0) {
       horariosContainer.innerHTML =
         "<p>Nenhum horário configurado para este dia da semana.</p>";
       return;
     }
 
-    // 4. Buscar agendamentos existentes para cruzar dados
+    // 3. Buscar agendamentos existentes para cruzar dados
     const agendamentosQuery = query(
       collection(db, "agendamentos"),
       where("data", "==", dataISO),
@@ -710,9 +820,9 @@ async function carregarHorariosReavaliacao() {
       (doc) => doc.data().hora
     );
 
-    // 5. Renderizar os slots
+    // 4. Renderizar os slots
     let slotsHtml = "";
-    slotsDoDia.forEach((hora) => {
+    slotsOrdenados.forEach((hora) => {
       if (horariosOcupados.includes(hora)) {
         slotsHtml += `<button type="button" class="slot-time disabled" disabled>${hora}</button>`;
       } else {
@@ -733,6 +843,7 @@ async function carregarHorariosReavaliacao() {
  * Lida com o submit do formulário de reavaliação.
  * Cria um novo documento na coleção "agendamentos".
  */
+
 export async function handleReavaliacaoSubmit(evento) {
   evento.preventDefault();
   const modal = document.getElementById("reavaliacao-modal");
@@ -755,16 +866,46 @@ export async function handleReavaliacaoSubmit(evento) {
     const modalidade = document.getElementById(
       "reavaliacao-tipo-atendimento"
     ).value;
-    const data = document.getElementById("reavaliacao-data").value;
+
+    // ***** COLETA DE DADOS MODIFICADA *****
+    const data = document.getElementById("reavaliacao-data-selecionada").value; // Pega do input oculto
     const selectedSlot = document.querySelector(
       "#reavaliacao-horarios-disponiveis .slot-time.selected"
     );
     const hora = selectedSlot ? selectedSlot.dataset.hora : null;
+    // ***** FIM DA COLETA DE DADOS *****
 
     // 2. Validação
     if (!motivo || !modalidade || !data || !hora) {
       throw new Error(
         "Por favor, preencha o motivo, data e selecione um horário."
+      );
+    }
+
+    // ***** LÓGICA DE ASSOCIAÇÃO DE ASSISTENTE *****
+    // Encontra uma assistente social que corresponda à data, hora e modalidade
+    const dataHoraSlot = new Date(`${data}T${hora}:00`);
+    const hSlot = parseInt(hora.split(":")[0], 10);
+    const mSlot = parseInt(hora.split(":")[1], 10);
+    const minutoSlot = hSlot * 60 + mSlot;
+
+    const agendaCorrespondente = currentReavaliacaoConfig.agendas.find((a) => {
+      const [hInicio, mInicio] = a.inicio.split(":").map(Number);
+      const [hFim, mFim] = a.fim.split(":").map(Number);
+      const inicioEmMinutos = hInicio * 60 + mInicio;
+      const fimEmMinutos = hFim * 60 + mFim;
+
+      return (
+        a.data === data &&
+        a.modalidade === modalidade &&
+        minutoSlot >= inicioEmMinutos &&
+        minutoSlot < fimEmMinutos
+      );
+    });
+
+    if (!agendaCorrespondente) {
+      throw new Error(
+        "Não foi possível encontrar uma assistente social disponível para este horário. A agenda pode ter sido atualizada. Tente selecionar novamente."
       );
     }
 
@@ -779,6 +920,14 @@ export async function handleReavaliacaoSubmit(evento) {
       modalidade: modalidade,
       tipo: "reavaliacao",
       status: "agendado", // Status inicial
+
+      // ***** NOVOS CAMPOS DE ASSOCIAÇÃO *****
+      assistenteSocialId: agendaCorrespondente.assistenteId,
+      assistenteSocialNome: agendaCorrespondente.assistenteNome,
+      // Converte a data/hora do JS para um Timestamp do Firebase
+      dataAgendamento: Timestamp.fromDate(dataHoraSlot),
+      // ***** FIM DOS NOVOS CAMPOS *****
+
       solicitacaoInfo: {
         valorContribuicaoAtual: valorAtual,
         motivoReavaliacao: motivo,
@@ -802,8 +951,6 @@ export async function handleReavaliacaoSubmit(evento) {
     btnConfirmar.textContent = "Enviar Solicitação";
   }
 }
-
-// --- FIM DA ALTERAÇÃO (Lógica Reavaliação) ---
 
 // --- Lógica dos Modais Originais ---
 
