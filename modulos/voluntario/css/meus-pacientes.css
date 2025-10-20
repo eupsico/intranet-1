@@ -1,15 +1,5 @@
 /* Arquivo: /modulos/voluntario/css/meus-pacientes.css */
 
-/* --- ESTRUTURA GERAL E CABEÇALHO --- */
-.view-header {
-   
-}
-.view-header h2 {
-    color: var(--cor-primaria);
-    margin-bottom: 1px;
-}
-
-
 /* --- ESTILOS DO ACORDEÃO --- */
 .accordion-container {
     display: flex;
@@ -330,6 +320,3 @@
     cursor: not-allowed;
     text-decoration: line-through;
 }
-/* --- ESTILOS DO MODAL DE REAVALIAÇÃO (Fim) --- */
-
-/* --- (Restante do arquivo meus-pacientes.css) --- */
