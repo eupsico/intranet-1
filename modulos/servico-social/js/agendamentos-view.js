@@ -12,8 +12,8 @@ import {
   updateDoc, // Importar updateDoc
   Timestamp, // Importar Timestamp
   serverTimestamp, // Importar serverTimestamp
+  getDoc, // Adicionado para buscar dados do paciente
 } from "../../../assets/js/firebase-init.js";
-import { getUserData } from "../../../assets/js/app.js"; // Supondo que app.js exporta getUserData
 
 let currentUserData = null; // Guardar dados do usuário logado
 
@@ -245,7 +245,7 @@ async function abrirModalRealizarReavaliacao(agendamentoId, pacienteId) {
   const loadingDiv = modal.querySelector(".modal-body fieldset"); // Pega o primeiro fieldset para mostrar loading
   loadingDiv.insertAdjacentHTML(
     "afterbegin",
-    '<div class="loading-spinner modal-loading"></div>'
+    '<div class="loading-spinner modal-loading" style="position: absolute; top: 10px; right: 10px;"></div>'
   );
 
   try {
@@ -374,8 +374,7 @@ async function handleSalvarReavaliacaoSS(evento) {
         valorContribuicao: parseFloat(novoValor),
         // Adiciona ao histórico (cria o array se não existir)
         historicoContribuicao: [
-          ...(currentAgendamentoData.pacienteDados?.historicoContribuicao ||
-            []), // Pega histórico anterior se houver
+          // ...(currentAgendamentoData.pacienteDados?.historicoContribuicao || []), // Pega histórico anterior se houver (removido, pois pacienteDados não está sendo carregado)
           {
             valor: parseFloat(novoValor),
             data: serverTimestamp(), // Ou usar a data do agendamento? Usar serverTimestamp por segurança
