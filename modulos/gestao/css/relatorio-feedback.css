@@ -1,36 +1,4 @@
 /* /modulos/gestao/css/relatorio-feedback.css */
-
-/* --- INÍCIO DA CORREÇÃO --- */
-/* Aumentamos a especificidade adicionando .tab-nav antes dos seletores. */
-
-.tab-nav .tab-link {
-    background: none;
-    border: none;
-    padding: 12px 25px;
-    font-size: 1.1em;
-    cursor: pointer;
-    margin-bottom: -2px;
-    color: var(--cor-texto-secundario);
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s ease;
-}
-
-.tab-nav .tab-link:hover {
-    color: var(--cor-primaria);
-}
-
-.tab-nav .tab-link.active {
-    border-bottom-color: var(--cor-primaria);
-    font-weight: 600;
-    color: var(--cor-primaria); /* Esta regra agora será aplicada corretamente. */
-}
-/* --- FIM DA CORREÇÃO --- */
-
-
-.tab-content { display: none; }
-.tab-content.active { display: block; animation: fadeIn 0.5s; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
 .table-container { overflow-x: auto; }
 .resumo-tabela {
     width: 100%;
