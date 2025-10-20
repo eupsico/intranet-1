@@ -201,10 +201,11 @@
     color: var(--cor-primaria);
 }
 
-.tab-link.active {
+.tabs-container .tab-link.active {
     color: var(--cor-primaria);
     border-bottom-color: var(--cor-primaria);
     font-weight: 600;
+    background-color: var(--cor-fundo-box);
 }
 
 .tab-content {
