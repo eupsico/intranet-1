@@ -8,14 +8,7 @@
     color: var(--cor-primaria);
     margin-bottom: 1px;
 }
-.description-box {  
-    background-color: var(--cor-fundo-claro);
-    border-left: 4px solid var(--cor-primaria-light);
-    padding: 1px;
-    border-radius: var(--borda-radius);
-    color: var(--cor-texto-secundario);
-    margin-bottom: 15px;
-}
+
 
 /* --- ESTILOS DO ACORDEÃO --- */
 .accordion-container {
