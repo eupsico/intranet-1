@@ -12,7 +12,7 @@ const menuFilters = {
     "cadastrar_horario_psicomanager",
     "em_atendimento_pb",
   ],
-  outros: ["pacientes_parcerias", "grupos"],
+  outros: ["pacientes_parcerias", "grupos", "aguardando_reavaliacao"],
   encerramento: ["desistencia", "alta"],
 };
 
