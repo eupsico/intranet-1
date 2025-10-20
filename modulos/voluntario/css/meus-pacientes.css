@@ -262,3 +262,81 @@
     margin-left: 5px;
     display: block; /* Para ficar abaixo do valor */
 }
+
+/* --- ESTILOS DO MODAL DE REAVALIAÇÃO (Início) --- */
+.info-fieldset {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.info-fieldset legend {
+    font-weight: 600;
+    color: var(--cor-primaria);
+    padding: 0 10px;
+    font-size: 1.1em;
+}
+.reavaliacao-info-text {
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.reavaliacao-info-text ol > li {
+    margin-bottom: 10px;
+}
+.reavaliacao-info-text ul {
+    margin-top: 5px;
+}
+
+/* Estilo dos containers de slots (datas e horas) */
+.slots-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+    min-height: 40px;
+}
+.slots-container.date-slots {
+    background-color: transparent;
+    padding: 0;
+}
+.slots-container p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+}
+
+/* Estilo dos botões de slot (data ou hora) */
+.slot-time {
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-primaria);
+    padding: 8px 12px;
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    font-weight: 500;
+    font-family: var(--fonte-principal);
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+.slot-time:hover {
+    background-color: var(--cor-fundo-hover);
+    border-color: var(--cor-secundaria);
+}
+.slot-time.selected {
+    background-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    border-color: var(--cor-primaria);
+    font-weight: 600;
+}
+.slot-time.disabled {
+    background-color: #f0f0f0;
+    color: #aaa;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+/* --- ESTILOS DO MODAL DE REAVALIAÇÃO (Fim) --- */
+
+/* --- (Restante do arquivo meus-pacientes.css) --- */
