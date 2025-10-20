@@ -54,7 +54,7 @@ export function init(user, userData) {
     if (!tabContainer || !contentSections) return;
 
     tabContainer.querySelectorAll(".tab-link").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.tab === tabId); // Usa toggle para simplificar
+      btn.classList.remove("active");
     });
     const targetButton = tabContainer.querySelector(
       `.tab-link[data-tab="${tabId}"]`
@@ -64,8 +64,7 @@ export function init(user, userData) {
     }
 
     contentSections.forEach((section) => {
-      section.classList.toggle("active", section.id === tabId); // Adiciona/Remove a classe 'active'
-      // section.style.display = section.id === tabId ? "block" : "none"; // REMOVE ESTA LINHA
+      section.style.display = section.id === tabId ? "block" : "none";
     });
 
     loadTabModule(tabId);
