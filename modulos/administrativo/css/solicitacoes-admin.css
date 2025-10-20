@@ -1,0 +1,131 @@
+/* Arquivo: /modulos/administrativo/css/solicitacoes-admin.css */
+
+/* --- ESTRUTURA GERAL E ABAS --- */
+#solicitacoes-admin-view .view-header {
+    margin-bottom: 20px;
+}
+
+#solicitacoes-admin-view .view-header h2 {
+    margin-bottom: 10px;
+}
+
+/* Oculta todas as abas por padrão */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Mostra a aba ativa */
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- CONTROLES DA TABELA --- */
+.table-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+}
+.table-controls .form-control {
+    max-width: 300px;
+    padding: 8px 12px;
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+/* --- BADGES (Selos de Status e Contadores) --- */
+.notification-badge {
+    background-color: var(--cor-erro);
+    color: white;
+    font-size: 0.75em;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-transform: capitalize;
+    color: #fff;
+}
+
+.status-badge.pendente {
+    background-color: var(--cor-alerta);
+    color: var(--cor-texto-principal);
+}
+.status-badge.aprovado, .status-badge.concluido, .status-badge.enviado {
+    background-color: var(--cor-sucesso);
+}
+.status-badge.rejeitado {
+    background-color: var(--cor-erro);
+}
+.status-badge.informativo {
+    background-color: var(--cor-secundaria);
+}
+.status-badge.aguardando_envio, .status-badge.aguardando {
+    background-color: #6c757d;
+}
+
+
+/* --- TABELAS --- */
+.table-section .empty-state {
+    text-align: center;
+    padding: 30px;
+    color: var(--cor-texto-secundario);
+}
+
+.table-wrapper table .action-button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+/* --- DETALHES NO MODAL --- */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.detail-item {
+    font-size: 0.95em;
+}
+
+.detail-item .label {
+    display: block;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    font-size: 0.9em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.detail-item .value {
+    color: var(--cor-texto-principal);
+    font-size: 1.05em;
+}
+
+.detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-item textarea.value {
+    width: 100%;
+    min-height: 100px;
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 10px;
+    font-family: var(--fonte-principal);
+}
