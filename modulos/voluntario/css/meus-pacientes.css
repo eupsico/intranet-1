@@ -39,7 +39,7 @@
 }
 .accordion-header {
     background-color: transparent;
-    padding: 15px 20px;
+    padding: 5px 5px;
     width: 100%;
     border: none;
     display: flex;
