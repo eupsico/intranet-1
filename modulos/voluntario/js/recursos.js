@@ -104,7 +104,7 @@ export function init(user, userData) {
     }
   };
 
-  // --- FUNÇÃO switchTab ---
+  // --- FUNÇÃO switchTab COM setTimeout ---
   const switchTab = (tabId) => {
     console.log(`[SwitchTab] Tentando trocar para aba: ${tabId}`);
 
@@ -164,13 +164,13 @@ export function init(user, userData) {
       return;
     }
 
-    // 3. CARREGA O MÓDULO (com delay)
+    // 3. CARREGA O MÓDULO (com delay via setTimeout)
     console.log(
-      `[SwitchTab ${tabId}] Agendando carregamento do módulo via requestAnimationFrame.`
+      `[SwitchTab ${tabId}] Agendando carregamento do módulo via setTimeout(0).`
     );
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       console.log(
-        `[RAF ${tabId}] Executando callback. Verificando se ${tabId} ainda é a aba ativa.`
+        `[Timeout ${tabId}] Executando callback. Verificando se ${tabId} ainda é a aba ativa.`
       );
       const currentActiveButton = tabContainer
         ? tabContainer.querySelector(".tab-link.active")
@@ -180,15 +180,18 @@ export function init(user, userData) {
         : null;
 
       if (currentActiveTabId === tabId) {
-        console.log(`[RAF ${tabId}] Aba ainda ativa. Chamando loadTabModule.`);
+        console.log(
+          `[Timeout ${tabId}] Aba ainda ativa. Chamando loadTabModule.`
+        );
         // Chama loadTabModule - a própria função agora verifica se já carregou com SUCESSO
         loadTabModule(tabId);
       } else {
         console.log(
-          `[RAF ${tabId}] Aba mudou para ${currentActiveTabId} antes do carregamento. Cancelando.`
+          `[Timeout ${tabId}] Aba mudou para ${currentActiveTabId} antes do carregamento. Cancelando.`
         );
       }
-    });
+    }, 0); // Delay mínimo para adiar a execução
+
     console.log(`[SwitchTab ${tabId}] Função switchTab concluída.`);
   };
 
