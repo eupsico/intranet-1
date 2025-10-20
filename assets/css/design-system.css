@@ -134,11 +134,53 @@ table tbody tr:hover { background-color: #e9ecef; }
 .summary-cards .card p { font-size: 1.8em; font-weight: 600; margin: 0; color: var(--cor-texto-principal); }
 .action-button { background-color: var(--cor-primaria); color: var(--cor-texto-inverso); border: none; padding: 10px 20px; border-radius: var(--borda-radius); font-size: 0.9em; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; transition: background-color 0.2s, transform 0.2s; }
 .action-button:hover { filter: brightness(1.1); transform: translateY(-1px); text-decoration: none; color: var(--cor-texto-inverso); }
-.tabs-container { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--cor-borda); margin-bottom: 0; }
-.tab-link { padding: 12px 25px; cursor: pointer; border: none; background-color: transparent; font-family: var(--fonte-principal); font-size: 1em; color: var(--cor-texto-secundario); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s ease; font-weight: 500; border-radius: var(--borda-radius) var(--borda-radius) 0 0; }
-.tab-link:hover { background-color: var(--cor-fundo); color: var(--cor-primaria); }
-.tab-link.active { color: var(--cor-texto-inverso); background-color: var(--cor-primaria); border-bottom-color: var(--cor-secundaria); font-weight: 600; }
-.tab-content { background-color: var(--cor-surface); padding: 30px; border: 1px solid var(--cor-borda); border-top: none; border-radius: 0 0 var(--borda-radius) var(--borda-radius); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.tabs-container {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 0; /* Garante que o conteúdo cole na aba */
+}
+.tab-link {
+    padding: 12px 25px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-family: var(--fonte-principal);
+    font-size: 1em;
+    color: var(--cor-texto-secundario);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px; /* Alinha a borda inferior com a borda do container */
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+.tab-link:hover {
+    background-color: var(--cor-fundo); /* Fundo claro no hover */
+    color: var(--cor-primaria);       /* Texto azul primário no hover */
+}
+.tab-link.active {
+    color: var(--cor-primaria);            /* Texto azul primário */
+    border-bottom-color: var(--cor-primaria); /* Borda inferior azul primário */
+    font-weight: 600;
+    background-color: var(--cor-fundo-box); /* Fundo azul claro */
+}
+.tab-content {
+    background-color: var(--cor-surface);
+    padding: 30px;
+    border: 1px solid var(--cor-borda);
+    border-top: none; /* Remove a borda superior, pois o container já tem */
+    border-radius: 0 0 var(--borda-radius) var(--borda-radius); /* Cantos arredondados só embaixo */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    display: none; /* Esconde o conteúdo por padrão */
+    animation: fadeIn 0.3s ease-in-out; /* Adiciona animação suave */
+}
+/* Mostra o conteúdo da aba ativa */
+.tab-content.active {
+    display: block;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .form-group { margin-bottom: 24px; } /* Aumenta o espaçamento */
 .form-group label {
     display: block;
