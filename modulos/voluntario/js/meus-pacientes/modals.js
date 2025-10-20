@@ -844,6 +844,10 @@ async function carregarHorariosReavaliacao() {
  * Cria um novo documento na coleção "agendamentos".
  */
 
+/**
+ * Lida com o submit do formulário de reavaliação.
+ * Cria um novo documento na coleção "agendamentos" E ATUALIZA O TRILHAPACIENTE.
+ */
 export async function handleReavaliacaoSubmit(evento) {
   evento.preventDefault();
   const modal = document.getElementById("reavaliacao-modal");
@@ -866,14 +870,11 @@ export async function handleReavaliacaoSubmit(evento) {
     const modalidade = document.getElementById(
       "reavaliacao-tipo-atendimento"
     ).value;
-
-    // ***** COLETA DE DADOS MODIFICADA *****
-    const data = document.getElementById("reavaliacao-data-selecionada").value; // Pega do input oculto
+    const data = document.getElementById("reavaliacao-data-selecionada").value;
     const selectedSlot = document.querySelector(
       "#reavaliacao-horarios-disponiveis .slot-time.selected"
     );
     const hora = selectedSlot ? selectedSlot.dataset.hora : null;
-    // ***** FIM DA COLETA DE DADOS *****
 
     // 2. Validação
     if (!motivo || !modalidade || !data || !hora) {
@@ -882,8 +883,6 @@ export async function handleReavaliacaoSubmit(evento) {
       );
     }
 
-    // ***** LÓGICA DE ASSOCIAÇÃO DE ASSISTENTE *****
-    // Encontra uma assistente social que corresponda à data, hora e modalidade
     const dataHoraSlot = new Date(`${data}T${hora}:00`);
     const hSlot = parseInt(hora.split(":")[0], 10);
     const mSlot = parseInt(hora.split(":")[1], 10);
@@ -909,44 +908,56 @@ export async function handleReavaliacaoSubmit(evento) {
       );
     }
 
-    // 3. Preparar objeto para salvar
+    // 3. Preparar objeto para salvar em "agendamentos"
     const agendamentoData = {
       pacienteId: pacienteId,
       pacienteNome: pacienteNome,
-      profissionalId: currentReavaliacaoConfig.user.uid, // ID do profissional que solicitou
+      profissionalId: currentReavaliacaoConfig.user.uid,
       profissionalNome: profissionalNome,
       data: data,
       hora: hora,
       modalidade: modalidade,
       tipo: "reavaliacao",
-      status: "agendado", // Status inicial
-
-      // ***** NOVOS CAMPOS DE ASSOCIAÇÃO *****
+      status: "agendado",
       assistenteSocialId: agendaCorrespondente.assistenteId,
       assistenteSocialNome: agendaCorrespondente.assistenteNome,
-      // Converte a data/hora do JS para um Timestamp do Firebase
       dataAgendamento: Timestamp.fromDate(dataHoraSlot),
-      // ***** FIM DOS NOVOS CAMPOS *****
-
       solicitacaoInfo: {
         valorContribuicaoAtual: valorAtual,
         motivoReavaliacao: motivo,
         solicitadoEm: serverTimestamp(),
       },
       criadoEm: serverTimestamp(),
+      // --- INÍCIO DA ALTERAÇÃO ---
+      // Guardar o status de origem do paciente
+      statusOrigem: currentReavaliacaoConfig.paciente.status,
+      // --- FIM DA ALTERAÇÃO ---
     };
 
     // 4. Salvar na coleção "agendamentos"
     await addDoc(collection(db, "agendamentos"), agendamentoData);
 
-    // 5. Sucesso
-    alert("Reavaliação agendada com sucesso! O Serviço Social foi notificado.");
+    // --- INÍCIO DA ALTERAÇÃO ---
+    // 5. Atualizar o trilhaPaciente
+    const pacienteRef = doc(db, "trilhaPaciente", pacienteId);
+    await updateDoc(pacienteRef, {
+      status: "aguardando_reavaliacao", // Novo status
+      statusAnteriorReavaliacao: currentReavaliacaoConfig.paciente.status, // Guarda o status antigo
+      lastUpdate: serverTimestamp(),
+    });
+    // --- FIM DA ALTERAÇÃO ---
+
+    // 6. Sucesso
+    alert(
+      "Reavaliação agendada com sucesso! O paciente foi movido para a fila de reavaliação."
+    );
     modal.style.display = "none";
+    location.reload(); // Recarrega a página "Meus Pacientes" para refletir a mudança de status
   } catch (error) {
     console.error("Erro ao agendar reavaliação:", error);
     alert(`Erro ao salvar: ${error.message}`);
   } finally {
-    // 6. Resetar botão
+    // 7. Resetar botão
     btnConfirmar.disabled = false;
     btnConfirmar.textContent = "Enviar Solicitação";
   }
