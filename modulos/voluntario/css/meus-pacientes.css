@@ -255,3 +255,9 @@
     grid-template-columns: 1fr; /* Muda para uma única coluna */
   }
 }
+.reavaliacao-info {
+    font-size: 0.8em;
+    color: var(--cor-texto-secundario);
+    margin-left: 5px;
+    display: block; /* Para ficar abaixo do valor */
+}

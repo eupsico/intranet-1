@@ -110,12 +110,27 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const idade = calcularIdade(paciente.dataNascimento); // Usa a função corrigida
   const responsavelNome = paciente.responsavel?.nome || "N/A";
 
-  // --- INÍCIO DA ALTERAÇÃO (Valor Contribuição) ---
-  const valorContribuicao = paciente.valorContribuicao
-    ? `R$ ${parseFloat(paciente.valorContribuicao)
-        .toFixed(2)
-        .replace(".", ",")}`
-    : "A definir";
+  // --- INÍCIO DA ALTERAÇÃO (Valor Contribuição e Reavaliação) ---
+  let valorContribuicaoTexto = "A definir";
+  let reavaliadoInfo = ""; // Texto adicional se foi reavaliado
+
+  if (paciente.valorContribuicao) {
+    valorContribuicaoTexto = `R$ ${parseFloat(paciente.valorContribuicao)
+      .toFixed(2)
+      .replace(".", ",")}`;
+
+    // Verifica se a última entrada no histórico foi uma reavaliação
+    const historico = paciente.historicoContribuicao;
+    if (Array.isArray(historico) && historico.length > 0) {
+      const ultimoRegistro = historico[historico.length - 1];
+      if (ultimoRegistro.motivo === "Reavaliação") {
+        const dataReavaliacao = ultimoRegistro.data?.toDate
+          ? ultimoRegistro.data.toDate().toLocaleDateString("pt-BR")
+          : "";
+        reavaliadoInfo = `<small class="reavaliacao-info">(Reavaliado em ${dataReavaliacao})</small>`;
+      }
+    }
+  }
   // --- FIM DA ALTERAÇÃO ---
 
   // --- INÍCIO DA CORREÇÃO ---
@@ -212,8 +227,11 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                           : ""
                       }
                       <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
-                      
-                      <div class="detail-item"><span class="label">Valor Contribuição</span><span class="value">${valorContribuicao}</span></div>
+
+                      <div class="detail-item">
+                        <span class="label">Valor Contribuição</span>
+                        <span class="value">${valorContribuicaoTexto} ${reavaliadoInfo}</span>
+                      </div>
                       ${
                         // --- CORREÇÃO: Mostrar detalhes de PB SE EXISTIREM ---
                         // Verifica se 'atendimentoInfo' (horarioSessao) tem dados, independentemente do status
@@ -237,7 +255,7 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                   </div>
                   <div class="card-actions">
                       ${acaoPrincipalBtn} ${pdfBtn} ${novaSessaoBtn} ${alterarHorarioBtn} ${whatsappBtn}
-                      
+
                       ${reavaliacaoBtn}
                       </div>
               </div>
