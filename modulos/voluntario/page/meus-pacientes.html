@@ -367,8 +367,11 @@ Example               </div>
                         
                         <div id="reavaliacao-agenda-container">
                             <div class="form-group">
-                                <label for="reavaliacao-data">Escolha a data:</label>
-                                <input type="date" id="reavaliacao-data" class="form-control">
+                                <label>Escolha a data:</label>
+                                <div id="reavaliacao-datas-disponiveis" class="slots-container date-slots">
+                                    <p>Selecione uma modalidade para ver as datas.</p>
+                                </div>
+                                <input type="hidden" id="reavaliacao-data-selecionada">
                             </div>
                             <div class="form-group">
                                 <label>Horários disponíveis:</label>
@@ -377,7 +380,7 @@ Example               </div>
                                 </div>
                             </div>
                         </div>
-                    </fieldset>
+                        </fieldset>
                 </form>
             </div>
         </div>
