@@ -110,6 +110,14 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
   const idade = calcularIdade(paciente.dataNascimento); // Usa a função corrigida
   const responsavelNome = paciente.responsavel?.nome || "N/A";
 
+  // --- INÍCIO DA ALTERAÇÃO (Valor Contribuição) ---
+  const valorContribuicao = paciente.valorContribuicao
+    ? `R$ ${parseFloat(paciente.valorContribuicao)
+        .toFixed(2)
+        .replace(".", ",")}`
+    : "A definir";
+  // --- FIM DA ALTERAÇÃO ---
+
   // --- INÍCIO DA CORREÇÃO ---
   // Unifica as informações da sessão, priorizando PB, mas usando Plantão se for o caso
   const atendimentoInfo = atendimentoPB?.horarioSessao
@@ -156,6 +164,10 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
     : "";
   const whatsappBtn = `<button class="action-button secondary-button btn-whatsapp" data-tipo="whatsapp">Enviar Mensagem</button>`;
 
+  // --- INÍCIO DA ALTERAÇÃO (Botão Reavaliação) ---
+  const reavaliacaoBtn = `<button class="action-button secondary-button" data-tipo="reavaliacao">Reavaliação</button>`;
+  // --- FIM DA ALTERAÇÃO ---
+
   // ---- CORREÇÃO NA LÓGICA DE EXIBIÇÃO DO STATUS ----
   let displayStatus = infoStatus.label; // Pega o label do mapa
   let displayStatusClass = statusPaciente; // Classe baseada no status real
@@ -200,6 +212,8 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                           : ""
                       }
                       <div class="detail-item"><span class="label">Data Encaminhamento</span><span class="value">${dataEncaminhamento}</span></div>
+                      
+                      <div class="detail-item"><span class="label">Valor Contribuição</span><span class="value">${valorContribuicao}</span></div>
                       ${
                         // --- CORREÇÃO: Mostrar detalhes de PB SE EXISTIREM ---
                         // Verifica se 'atendimentoInfo' (horarioSessao) tem dados, independentemente do status
@@ -223,7 +237,9 @@ export function criarAccordionPaciente(paciente, atendimentoPB = null) {
                   </div>
                   <div class="card-actions">
                       ${acaoPrincipalBtn} ${pdfBtn} ${novaSessaoBtn} ${alterarHorarioBtn} ${whatsappBtn}
-                  </div>
+                      
+                      ${reavaliacaoBtn}
+                      </div>
               </div>
           </div>
       </div>
