@@ -12,6 +12,7 @@ import {
   serverTimestamp, // Importa o serverTimestamp
 } from "../../../assets/js/firebase-init.js";
 
+// --- INÍCIO DA ALTERAÇÃO ---
 const COLUMNS_CONFIG = {
   inscricao_documentos: "Inscrição e Documentos",
   triagem_agendada: "Triagem Agendada",
@@ -22,11 +23,13 @@ const COLUMNS_CONFIG = {
   aguardando_info_horarios: "Aguardando Info Horários",
   cadastrar_horario_psicomanager: "Cadastrar Horário Psicomanager",
   em_atendimento_pb: "Em Atendimento (PB)",
+  aguardando_reavaliacao: "Aguardando Reavaliação", // <-- NOVA LINHA ADICIONADA
   pacientes_parcerias: "Pacientes Parcerias",
   grupos: "Grupos",
   desistencia: "Desistência",
   alta: "Alta",
 };
+// --- FIM DA ALTERAÇÃO ---
 
 let allCardsData = {};
 let currentColumnFilter = [];
