@@ -81,4 +81,107 @@
             </form>
         </div>
     </div>
+    <div class="view-container">
+    <button id="btn-voltar-lista" class="action-button secondary" style="margin-bottom: 20px;">&larr; Voltar para a Lista</button>
+    
+    <div class="triagem-grid">
+        <div class="patient-data-column">
+            <h3>Dados Completos da Inscrição</h3>
+            <div id="patient-details-container">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <div class="triagem-form-column">
+            <h3 id="form-title">Formulário de Triagem</h3>
+            <form id="triagem-form">
+                <div class="form-group">
+                    <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
+                    <select id="triagem-status" name="triagem-status" class="form-control" required>
+                        <option value="">Selecione o status...</option>
+                        <option value="encaminhado">Sim, encaminhado para plantão.</option>
+                        <option value="nao_realizada">Não (informar motivo)</option>
+                        <option value="desistiu">Sim, paciente desistiu</option>
+                    </select>
+                </div>
+                <div class="button-bar" style="margin-top: 20px;">
+                    <button type="submit" class="action-button">Salvar Triagem</button>
+                </div>
+            </form>
+            
+            <form id="reavaliacao-ss-form" style="display: none;">
+                <input type="hidden" id="reavaliacao-agendamento-id">
+                <input type="hidden" id="reavaliacao-paciente-id-ss"> 
+
+                <fieldset>
+                    <legend>Informações da Solicitação</legend>
+                    <div id="reavaliacao-loading-info" class="loading-spinner" style="display: none;"></div>
+                    <div class="form-row cols-2">
+                         <div class="form-group">
+                            <label>Paciente</label>
+                            <p id="reavaliacao-modal-paciente-nome">-</p>
+                        </div>
+                         <div class="form-group">
+                            <label>Solicitado Por</label>
+                            <p id="reavaliacao-modal-profissional-nome">-</p>
+                        </div>
+                    </div>
+                     <div class="form-row cols-2">
+                         <div class="form-group">
+                            <label>Valor Contribuição Atual</label>
+                            <p id="reavaliacao-modal-valor-atual">-</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Motivo da Reavaliação (informado pelo profissional)</label>
+                            <p id="reavaliacao-modal-motivo">-</p>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Registro da Reavaliação</legend>
+                    <div class="form-group required">
+                        <label for="reavaliacao-realizada">A reavaliação foi realizada?</label>
+                        <select id="reavaliacao-realizada" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                        </select>
+                    </div>
+
+                    <div id="reavaliacao-nao-realizada-fields" style="display: none;">
+                        <div class="form-group required">
+                            <label for="reavaliacao-motivo-nao">Motivo (Não Realizada):</label>
+                            <textarea id="reavaliacao-motivo-nao" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group required">
+                            <label for="reavaliacao-reagendado">Foi reagendado?</label>
+                             <select id="reavaliacao-reagendado" class="form-control">
+                                <option value="">Selecione...</option>
+                                <option value="sim">Sim</option>
+                                <option value="nao">Não</option>
+                            </select>
+                            <small>Se 'Sim', o agendamento permanecerá na lista. Se 'Não', será removido.</small>
+                        </div>
+                    </div>
+
+                    <div id="reavaliacao-sim-realizada-fields" style="display: none;">
+                        <div class="form-group required">
+                            <label for="reavaliacao-novo-valor">Valor da Nova Contribuição (R$):</label>
+                            <input type="number" step="0.01" id="reavaliacao-novo-valor" class="form-control" placeholder="Ex: 60.00">
+                        </div>
+                         <div class="form-group required">
+                            <label for="reavaliacao-criterios">Critérios utilizados para definição do valor:</label>
+                            <textarea id="reavaliacao-criterios" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                </fieldset>
+                
+                <div class="modal-footer" style="padding: 20px 0 0 0; border-top: 1px solid var(--cor-borda); margin-top: 20px;">
+                    <button type="submit" class="action-button" id="btn-salvar-reavaliacao-ss">Salvar Reavaliação</button>
+                </div>
+            </form>
+            </div>
+    </div>
+    </div>
 </div>

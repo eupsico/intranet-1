@@ -11,21 +11,7 @@
                 <p class="description-box">Abaixo está a lista de todos os pacientes com triagem agendada. Clique em "Preencher Ficha" para iniciar o atendimento.</p>
                 <div class="table-section">
                     <table id="triagem-table">
-                        <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th>Nome</th>
-                                <th>Responsável</th>
-                                <th>Telefone</th>
-                                <th>Data Agendada</th>
-                                <th>Hora Agendada</th>
-                                <th>Assistente Social</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="triagem-table-body">
-                            </tbody>
-                    </table>
+                        </table>
                     <div id="triagem-empty-state" style="display: none; text-align: center; padding: 20px;">Nenhum agendamento de triagem encontrado.</div>
                 </div>
             </div>
@@ -34,104 +20,10 @@
                 <p class="description-box">Abaixo está a lista de todos os pacientes com reavaliação agendada. Clique em "Realizar Reavaliação" para acessar o formulário.</p>
                 <div class="table-section">
                     <table id="reavaliacao-table">
-                        <thead>
-                            <tr>
-                                <th>Nome do Paciente</th>
-                                <th>Solicitado Por (Profissional)</th>
-                                <th>Data Agendada</th>
-                                <th>Hora Agendada</th>
-                                <th>Assistente Social</th>
-                                <th>Status</th> <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reavaliacao-table-body">
-                            </tbody>
-                    </table>
+                         </table>
                      <div id="reavaliacao-empty-state" style="display: none; text-align: center; padding: 20px;">Nenhum agendamento de reavaliação encontrado.</div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<div id="realizar-reavaliacao-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content large">
-        <div class="modal-header">
-            <h2 class="modal-title-text">Formulário de Reavaliação</h2>
-            <span class="close-button">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="reavaliacao-ss-form">
-                <input type="hidden" id="reavaliacao-agendamento-id">
-                <input type="hidden" id="reavaliacao-paciente-id-ss"> 
-
-                <fieldset>
-                    <legend>Informações da Solicitação</legend>
-                    <div class="form-row cols-2">
-                         <div class="form-group">
-                            <label>Paciente</label>
-                            <p id="reavaliacao-modal-paciente-nome">-</p>
-                        </div>
-                         <div class="form-group">
-                            <label>Solicitado Por</label>
-                            <p id="reavaliacao-modal-profissional-nome">-</p>
-                        </div>
-                    </div>
-                     <div class="form-row cols-2">
-                         <div class="form-group">
-                            <label>Valor Contribuição Atual</label>
-                            <p id="reavaliacao-modal-valor-atual">-</p>
-                        </div>
-                        <div class="form-group">
-                            <label>Motivo da Reavaliação (informado pelo profissional)</label>
-                            <p id="reavaliacao-modal-motivo">-</p>
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset>
-                    <legend>Registro da Reavaliação</legend>
-                    <div class="form-group required">
-                        <label for="reavaliacao-realizada">A reavaliação foi realizada?</label>
-                        <select id="reavaliacao-realizada" class="form-control" required>
-                            <option value="">Selecione...</option>
-                            <option value="sim">Sim</option>
-                            <option value="nao">Não</option>
-                        </select>
-                    </div>
-
-                    <div id="reavaliacao-nao-realizada-fields" style="display: none;">
-                        <div class="form-group required">
-                            <label for="reavaliacao-motivo-nao">Motivo (Não Realizada):</label>
-                            <textarea id="reavaliacao-motivo-nao" class="form-control" rows="3"></textarea>
-                        </div>
-                        <div class="form-group required">
-                            <label for="reavaliacao-reagendado">Foi reagendado?</label>
-                             <select id="reavaliacao-reagendado" class="form-control">
-                                <option value="">Selecione...</option>
-                                <option value="sim">Sim</option>
-                                <option value="nao">Não</option>
-                            </select>
-                            <small>Se 'Sim', o agendamento permanecerá na lista. Se 'Não', será removido.</small>
-                        </div>
-                    </div>
-
-                    <div id="reavaliacao-sim-realizada-fields" style="display: none;">
-                        <div class="form-group required">
-                            <label for="reavaliacao-novo-valor">Valor da Nova Contribuição (R$):</label>
-                            <input type="number" step="0.01" id="reavaliacao-novo-valor" class="form-control" placeholder="Ex: 60.00">
-                        </div>
-                         <div class="form-group required">
-                            <label for="reavaliacao-criterios">Critérios utilizados para definição do valor:</label>
-                            <textarea id="reavaliacao-criterios" class="form-control" rows="4"></textarea>
-                        </div>
-                    </div>
-                </fieldset>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="action-button secondary-button modal-cancel-btn">Cancelar</button>
-            <button type="submit" class="action-button" id="btn-salvar-reavaliacao-ss" form="reavaliacao-ss-form">Salvar Reavaliação</button>
         </div>
     </div>
 </div>
