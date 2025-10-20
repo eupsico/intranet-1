@@ -9,18 +9,7 @@
     margin-bottom: 3px;
 }
 
-.description-box {
-    /* Sobrepõe o padding: 15px do design-system.css */
-    padding-top: 5px;    
-    padding-bottom: 5px; 
-    
-    /* Mantém o padding lateral */
-    padding-left: 15px;  
-    padding-right: 15px; 
 
-    /* Sobrepõe o margin-bottom: 30px do design-system.css */
-    margin-bottom: 0; 
-}
 /* --- ESTILOS DO ACORDEÃO --- */
 .accordion-container {
     display: flex;

@@ -3,7 +3,7 @@
    Descrição: Estilos refatorados para se alinharem ao design system da intranet.
 */
 
-/* Container das instruções, agora usando o padrão description-box */
+
 .instructions {
     background-color: var(--cor-fundo);
     padding: 25px;
