@@ -132,12 +132,6 @@ function initPortal(user, userData) {
       roles: ["todos"],
     },
     {
-      id: "solicitacoes",
-      name: "Solicitações",
-      icon: icons.solicitacoes,
-      roles: ["todos"],
-    },
-    {
       id: "plantao-psicologico",
       name: "Guia do Plantão",
       icon: icons.plantao,
