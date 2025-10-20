@@ -1,0 +1,38 @@
+/* Em modulos/gestao/css/ata-de-reuniao.css */
+
+/* Garante que o H3 dentro do card específico tenha a separação */
+#lista-reunioes-agendadas h3 {
+    margin-top: 0;
+    color: var(--cor-primaria);
+    border-bottom: 1px solid var(--cor-borda); /* Linha divisória */
+    padding-bottom: 12px; /* Espaçamento interno antes da linha */
+    margin-bottom: 16px; /* Espaçamento externo DEPOIS da linha */
+    font-size: 1.2rem;
+}
+
+/* Remove estilos padrão da lista UL */
+#lista-reunioes-agendadas .item-list {
+    list-style: none; /* Remove marcadores */
+    padding: 0;       /* Remove padding padrão da UL */
+    margin: 0 -20px; /* Alinha com as bordas do card (ajuste se o padding do .card for diferente) */
+}
+
+/* Estilo para cada item LI da lista de reuniões */
+#lista-reunioes-agendadas .item-list li {
+    padding: 15px 20px; /* Espaçamento interno vertical e horizontal */
+    border-bottom: 1px dashed var(--cor-borda); /* Linha tracejada separando */
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    color: var(--cor-texto-principal); /* Cor do texto padrão */
+}
+
+/* Remove a borda do último item */
+#lista-reunioes-agendadas .item-list li:last-child {
+    border-bottom: none;
+}
+
+/* Efeito hover para destacar */
+#lista-reunioes-agendadas .item-list li:hover {
+    background-color: var(--cor-fundo); /* Fundo claro no hover */
+    color: var(--cor-primaria); /* Opcional: muda a cor do texto no hover */
+}
