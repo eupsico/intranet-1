@@ -1,0 +1,154 @@
+<div class="container-fluid" id="solicitacoes-admin-view">
+    <div class="view-header">
+        <h2>Solicitações dos Profissionais</h2>
+        <p class="description-box">Acompanhe e gerencie as solicitações feitas pelos profissionais.</p>
+    </div>
+
+    <div class="tabs-container">
+        <button class="tab-link active" data-tab="tab-novas-sessoes">
+            Novas Sessões
+            <span classid="count-novas-sessoes" class="notification-badge" style="display: none;"></span>
+        </button>
+        <button class="tab-link" data-tab="tab-alteracoes-horario">
+            Alterações de Horário
+            <span id="count-alteracoes-horario" class="notification-badge" style="display: none;"></span>
+        </button>
+        <button class="tab-link" data-tab="tab-desfechos-pb">
+            Desfechos (PB)
+            <span id="count-desfechos-pb" class="notification-badge" style="display: none;"></span>
+        </button>
+        <button class="tab-link" data-tab="tab-status-contratos">
+            Status Contratos
+            <span id="count-status-contratos" class="notification-badge" style="display: none;"></span>
+        </button>
+    </div>
+
+    <div id="tab-content-container">
+
+        <div id="tab-novas-sessoes" class="tab-content active">
+            <div class="table-section">
+                <h2>Solicitações de Novas Sessões</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-novas-sessoes" class="form-control" placeholder="Buscar profissional ou paciente...">
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Solicitação</th>
+                                <th>Profissional</th>
+                                <th>Paciente</th>
+                                <th>Novo Dia</th>
+                                <th>Novo Horário</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-novas-sessoes">
+                            </tbody>
+                    </table>
+                </div>
+                <div id="empty-state-novas-sessoes" class="empty-state" style="display: none;">
+                    <p>Nenhuma solicitação de novas sessões encontrada.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-alteracoes-horario" class="tab-content">
+            <div class="table-section">
+                <h2>Solicitações de Alteração de Horário/Modalidade</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-alteracoes-horario" class="form-control" placeholder="Buscar profissional ou paciente...">
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Solicitação</th>
+                                <th>Profissional</th>
+                                <th>Paciente</th>
+                                <th>De</th>
+                                <th>Para</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-alteracoes-horario">
+                            </tbody>
+                    </table>
+                </div>
+                <div id="empty-state-alteracoes-horario" class="empty-state" style="display: none;">
+                    <p>Nenhuma solicitação de alteração de horário encontrada.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-desfechos-pb" class="tab-content">
+            <div class="table-section">
+                <h2>Registros de Desfecho (Psicoterapia Breve)</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-desfechos-pb" class="form-control" placeholder="Buscar profissional ou paciente...">
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Registro</th>
+                                <th>Profissional</th>
+                                <th>Paciente</th>
+                                <th>Tipo de Desfecho</th>
+                                <th>Sessões Realizadas</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-desfechos-pb">
+                            </tbody>
+                    </table>
+                </div>
+                 <div id="empty-state-desfechos-pb" class="empty-state" style="display: none;">
+                    <p>Nenhum registro de desfecho encontrado.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-status-contratos" class="tab-content">
+            <div class="table-section">
+                <h2>Status de Envio do Contrato</h2>
+                 <div class="table-controls">
+                    <input type="text" id="search-status-contratos" class="form-control" placeholder="Buscar profissional ou paciente...">
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Profissional</th>
+                                <th>Status do Contrato</th>
+                                <th>Última Atualização</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-status-contratos">
+                            </tbody>
+                    </table>
+                </div>
+                 <div id="empty-state-status-contratos" class="empty-state" style="display: none;">
+                    <p>Nenhum status de contrato para exibir.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="solicitacao-details-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="modal-title" class="modal-title-text">Detalhes da Solicitação</h2>
+            <button id="modal-close-btn" class="close-modal-btn">&times;</button>
+        </div>
+        <div id="modal-body-content" class="modal-body">
+            </div>
+        <div id="modal-footer-actions" class="modal-footer">
+            <button type="button" class="action-button secondary-button" id="modal-cancel-btn">Fechar</button>
+            </div>
+    </div>
+</div>
