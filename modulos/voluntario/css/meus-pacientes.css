@@ -2,16 +2,16 @@
 
 /* --- ESTRUTURA GERAL E CABEÇALHO --- */
 .view-header {
-    margin-bottom: 15px;
+    margin-bottom: 1px;
 }
 .view-header h2 {
     color: var(--cor-primaria);
-    margin-bottom: 10px;
+    margin-bottom: 1px;
 }
 .description-box {
     background-color: var(--cor-fundo-claro);
     border-left: 4px solid var(--cor-primaria-light);
-    padding: 15px;
+    padding: 1px;
     border-radius: var(--borda-radius);
     color: var(--cor-texto-secundario);
     margin-bottom: 15px;
