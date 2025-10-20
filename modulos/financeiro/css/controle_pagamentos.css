@@ -3,14 +3,6 @@
    Descrição: Estilos para a tela de Controle de Pagamentos.
 
 
-.description-box {
-    background-color: var(--cor-fundo);
-    padding: 15px;
-    border-radius: var(--borda-radius);
-    margin-bottom: 30px;
-    border-left: 4px solid var(--cor-secundaria);
-}*/
-
 .table-section thead th {
     background-color: var(--cor-fundo);
     color: var(--cor-primaria);

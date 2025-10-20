@@ -3,14 +3,6 @@
    Descrição: Corrige layout dos botões de ação e adiciona estilo para o botão de exclusão.
 */
 
-/*.description-box {
-    background-color: var(--cor-fundo);
-    padding: 15px;
-    border-radius: var(--borda-radius);
-    margin-bottom: 30px;
-    border-left: 4px solid var(--cor-secundaria);
-}*/
-
 .filter-box {
     background-color: var(--cor-fundo);
     padding: 20px;

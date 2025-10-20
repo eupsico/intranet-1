@@ -376,13 +376,13 @@ legend {
 }
 /* --- COMPONENTES DE TEXTO E LAYOUT --- */
 
-.description-box {
+.description-box { 
     background-color: var(--cor-fundo-box);
     border-left: 4px solid var(--cor-secundaria);
     border-radius: var(--borda-radius);
-    padding: 15px;
-    margin-bottom: 30px;
-   /* border-radius: 0 8px 8px 0;*/
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 0 8px 8px 0;*/
     font-size: 0.95em;
     color: var(--cor-texto-secundario);
 }
