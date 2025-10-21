@@ -1,54 +1,77 @@
 // Arquivo: /modulos/voluntario/js/recursos.js
-// Versão 4.0 (Sem Hash - Estilo Supervisão)
-// Remove toda a lógica de hash e usa apenas show/hide.
+// Versão 4.1 (Debug Profundo - Sem Hash)
 
 // NENHUMA IMPORTAÇÃO ESTÁTICA AQUI
 
 export function init(user, userData) {
+  // 1. O SCRIPT FOI CHAMADO?
   console.log(
-    "[Recursos Init V4.0] Módulo Iniciado (Sem Hash - Estilo Supervisão)."
+    "[DEBUG V4.1] init() em recursos.js FOI CHAMADA. (Se você não vê isso, o erro está no 'portal-voluntario.js')"
   );
-  const view = document.querySelector(".view-container");
+  const view = document.querySelector(".view-container"); // 2. O CONTAINER PRINCIPAL EXISTE?
   if (!view) {
     console.error(
-      "[Recursos Init] Erro Fatal: .view-container não encontrado."
+      "[DEBUG V4.1] ERRO FATAL: .view-container não encontrado. O HTML de 'recursos.html' não foi carregado corretamente."
     );
     return;
   }
+  console.log("[DEBUG V4.1] .view-container encontrado com sucesso.", view);
 
   let tabContainer = view.querySelector(".tabs-container"); // Container dos botões/links
-  const allContentSections = view.querySelectorAll(".tab-content"); // Pega todas as seções
+  const allContentSections = view.querySelectorAll(".tab-content"); // Pega todas as seções // 3. OS BOTÕES E CONTEÚDOS EXISTEM?
 
   if (!tabContainer) {
-    console.error("[Recursos Init] Erro: .tabs-container não encontrado."); // Não é fatal, mas os cliques não funcionarão.
+    console.error(
+      "[DEBUG V4.1] ERRO: .tabs-container (Botões) não encontrado."
+    );
+  } else {
+    console.log(
+      "[DEBUG V4.1] .tabs-container (Botões) encontrado.",
+      tabContainer
+    );
   }
+
   if (allContentSections.length === 0) {
     console.error(
-      "[Recursos Init] Erro CRÍTICO: Nenhum .tab-content (seções de conteúdo) encontrado. As abas não funcionarão."
+      "[DEBUG V4.1] ERRO CRÍTICO: Nenhum .tab-content (Seções de Conteúdo) encontrado."
     );
     return;
   }
+  console.log(
+    `[DEBUG V4.1] ${allContentSections.length} seções .tab-content encontradas.`,
+    allContentSections
+  );
 
   const initializedTabs = new Set();
 
-  // --- FUNÇÃO initializeTabScript (Mantida) ---
-  // Esta função é responsável por carregar o script da aba (disponibilidade.js, etc.)
+  // --- FUNÇÃO initializeTabScript ---
   const initializeTabScript = async (tabId) => {
-    if (!tabId || initializedTabs.has(tabId)) {
-      return; // Já inicializado ou ID inválido
+    if (!tabId) {
+      console.warn("[DEBUG V4.1] initializeTabScript chamada com tabId nulo.");
+      return;
+    }
+    if (initializedTabs.has(tabId)) {
+      console.log(
+        `[DEBUG V4.1] initializeTabScript: Aba ${tabId} já inicializada. Pulando.`
+      );
+      return;
     }
     console.log(
-      `[InitializeTab ${tabId}] Tentando carregar e inicializar script...`
+      `[DEBUG V4.1] initializeTabScript: Tentando carregar e inicializar script para: ${tabId}`
     );
 
     const targetContentEl = view.querySelector(`#${tabId}`);
 
     if (!targetContentEl) {
       console.error(
-        `[InitializeTab ${tabId}] ERRO CRÍTICO: Elemento de conteúdo #${tabId} NÃO encontrado no HTML.`
+        `[DEBUG V4.1] ERRO CRÍTICO: Elemento de conteúdo #${tabId} NÃO encontrado no HTML.`
       );
       return;
-    } // Gerencia o spinner de "Carregando..."
+    }
+    console.log(
+      `[DEBUG V4.1] Elemento de conteúdo #${tabId} encontrado.`,
+      targetContentEl
+    );
 
     let spinner = targetContentEl.querySelector(".loading-spinner");
     if (
@@ -58,75 +81,71 @@ export function init(user, userData) {
     ) {
       targetContentEl.innerHTML =
         '<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>';
-      spinner = targetContentEl.querySelector(".loading-spinner");
     } else if (spinner) {
       spinner.style.display = "block";
-    } // Lógica de importação dinâmica (robusta contra erros)
+    }
+    console.log(`[DEBUG V4.1] Spinner para #${tabId} ativado.`); // Lógica de importação dinâmica
 
     try {
       let module;
-      let initParams = [user, userData]; // Mapeamento dinâmico
+      let initParams = [user, userData];
+      let scriptPath = ""; // Mapeamento dinâmico
 
       switch (tabId) {
         case "disponibilidade":
-          module = await import("./disponibilidade.js");
+          scriptPath = "./disponibilidade.js";
+          module = await import(scriptPath);
           break;
         case "grade-online":
-          module = await import("./grade-view.js");
+          scriptPath = "./grade-view.js";
+          module = await import(scriptPath);
           initParams.push("online");
           break;
         case "grade-presencial":
-          module = await import("./grade-view.js");
+          scriptPath = "./grade-view.js";
+          module = await import(scriptPath);
           initParams.push("presencial");
           break;
         case "alterar-grade":
-          module = await import("./alterar-grade.js");
+          scriptPath = "./alterar-grade.js";
+          module = await import(scriptPath);
           break;
         default:
           console.warn(
-            `[InitializeTab ${tabId}] Nenhum módulo JS mapeado para esta aba.`
+            `[DEBUG V4.1] Nenhum módulo JS mapeado para esta aba: ${tabId}.`
           );
           if (spinner) spinner.remove();
           if (targetContentEl.textContent.includes("Carregando")) {
             targetContentEl.innerHTML = `<p>Recurso não configurado.</p>`;
           }
           return;
-      } // Se o módulo foi carregado e tem um init, execute-o
+      }
+
+      console.log(`[DEBUG V4.1] IMPORTAÇÃO de ${scriptPath} BEM-SUCEDIDA.`); // Se o módulo foi carregado e tem um init, execute-o
 
       if (module && typeof module.init === "function") {
-        console.log(`[InitializeTab ${tabId}] Chamando init() do módulo...`);
+        console.log(`[DEBUG V4.1] Chamando module.init() para ${tabId}...`);
         await module.init(...initParams);
-        console.log(
-          `[InitializeTab ${tabId}] Script inicializado com sucesso.`
-        );
+        console.log(`[DEBUG V4.1] Script ${tabId} inicializado com SUCESSO.`);
         initializedTabs.add(tabId); // Marca como inicializado SOMENTE após sucesso
 
-        if (spinner && spinner.parentNode) {
-          spinner.remove();
-        } else if (targetContentEl.querySelector(".loading-spinner")) {
+        if (targetContentEl.querySelector(".loading-spinner")) {
           targetContentEl.querySelector(".loading-spinner").remove();
         }
       } else {
-        console.warn(
-          `[InitializeTab ${tabId}] Módulo carregado, mas não possui a função init().`
+        console.error(
+          `[DEBUG V4.1] ERRO: Módulo ${scriptPath} carregado, mas não possui a função "export function init()".`
         );
         if (spinner) spinner.remove();
       }
     } catch (error) {
-      // *** AVISO ***
-      // Se a importação falhar (ex: erro 404 no fetch do disponibilidade.js)
-      // O erro será mostrado AQUI, dentro da aba.
       console.error(
-        `[InitializeTab ${tabId}] ERRO CRÍTICO ao importar ou inicializar o módulo:`,
+        `[DEBUG V4.1] ERRO CRÍTICO ao IMPORTAR ou INICIALIZAR o módulo para ${tabId}:`,
         error
       );
       if (targetContentEl) {
-        const errorSpinner = targetContentEl.querySelector(".loading-spinner");
-        if (errorSpinner) errorSpinner.remove();
-
-        const pCarregando = targetContentEl.querySelector("p");
-        if (pCarregando && pCarregando.textContent.includes("Carregando")) {
-          pCarregando.remove();
+        if (targetContentEl.querySelector(".loading-spinner")) {
+          targetContentEl.querySelector(".loading-spinner").remove();
         }
         targetContentEl.innerHTML = `<p class="alert alert-error" style="color: red; padding: 10px; border: 1px solid red;">Ocorreu um erro grave ao carregar este recurso (${tabId}). Verifique o console (F12).</p>`;
       }
@@ -134,26 +153,18 @@ export function init(user, userData) {
   }; // --- FIM DA FUNÇÃO initializeTabScript --- // --- FUNÇÃO switchTab (Simplificada) ---
 
   const switchTab = (tabId) => {
-    console.log(`[SwitchTab V4.0] Trocando para aba: ${tabId}`);
+    console.log(`[DEBUG V4.1] switchTab: Trocando para aba: ${tabId}`);
 
     if (!tabContainer) {
-      console.warn("[SwitchTab] Container de botões não encontrado."); // Não é fatal, podemos trocar o conteúdo mesmo sem botões
+      console.warn("[DEBUG V4.1] Container de botões não encontrado.");
     }
 
     const targetContent = view.querySelector(`#${tabId}`);
 
     if (!targetContent) {
       console.error(
-        `[SwitchTab] Erro CRÍTICO: Conteúdo da aba #${tabId} não encontrado no DOM.`
+        `[DEBUG V4.1] ERRO CRÍTICO: Conteúdo da aba #${tabId} não encontrado no DOM.`
       );
-      // Tenta carregar a aba padrão se a aba alvo não existir
-      const defaultTabId = "disponibilidade";
-      if (tabId !== defaultTabId) {
-        console.warn(
-          `[SwitchTab] Tentando voltar para a aba padrão ${defaultTabId}`
-        );
-        switchTab(defaultTabId); // Chama recursivamente com a padrão
-      }
       return;
     } // 1. ATUALIZA BOTÕES (se existirem)
 
@@ -165,50 +176,48 @@ export function init(user, userData) {
     } // 2. ATUALIZA CONTEÚDO (Visibilidade)
 
     allContentSections.forEach((section) => {
-      const isActive = section.id === tabId; // section.classList.toggle("active", isActive); // 'active' é opcional se usarmos display
-      section.style.display = isActive ? "block" : "none"; // Controle direto de display
-    }); // 3. CHAMA A INICIALIZAÇÃO DO SCRIPT DA ABA (se necessário)
+      const isActive = section.id === tabId;
+      section.style.display = isActive ? "block" : "none";
+    });
+    console.log(`[DEBUG V4.1] switchTab: Seção #${tabId} tornada visível.`); // 3. CHAMA A INICIALIZAÇÃO DO SCRIPT DA ABA
+
+    initializeTabScript(tabId);
 
     console.log(
-      `[SwitchTab ${tabId}] Chamando initializeTabScript (se necessário)...`
+      `[DEBUG V4.1] switchTab: Troca visual para ${tabId} concluída.`
     );
-    initializeTabScript(tabId); // Carrega o JS da aba (ex: disponibilidade.js)
-
-    console.log(`[SwitchTab ${tabId}] Troca visual concluída.`);
   }; // --- Lógica de Event Listeners (MODIFICADA) ---
 
   if (tabContainer) {
-    // Adiciona o listener de clique UMA VEZ ao container dos botões
+    // Clonar para garantir que listeners antigos sejam removidos
+    const newTabContainer = tabContainer.cloneNode(true);
+    tabContainer.parentNode.replaceChild(newTabContainer, tabContainer);
+    tabContainer = newTabContainer;
+
     tabContainer.addEventListener("click", (e) => {
-      const clickedTab = e.target.closest(".tab-link"); // Acha o botão clicado
+      const clickedTab = e.target.closest(".tab-link");
       if (clickedTab && clickedTab.dataset.tab) {
-        e.preventDefault(); // Previne qualquer comportamento padrão do botão
+        e.preventDefault();
         const tabId = clickedTab.dataset.tab;
 
-        // LÓGICA DE HASH REMOVIDA
-
-        // LÓGICA ADICIONADA:
-        // Apenas chama a função switchTab diretamente.
-        console.log(`[Click Listener] Aba ${tabId} clicada.`);
+        console.log(`[DEBUG V4.1] CLIQUE detectado no botão da aba: ${tabId}`);
         switchTab(tabId);
       }
     });
-    console.log("[Recursos Init] Listener de clique (Sem Hash) adicionado.");
+    console.log("[DEBUG V4.1] Listener de clique (Sem Hash) ADICIONADO.");
   } else {
     console.warn(
-      "[Recursos Init] .tabs-container (botões das abas) não encontrado."
+      "[DEBUG V4.1] .tabs-container (botões das abas) não encontrado. CLIQUES NÃO FUNCIONARÃO."
     );
-  } // --- LÓGICA DE HASH REMOVIDA --- // const handleHashChange = () => { ... }; // window.removeEventListener("hashchange", handleHashChange); // window.addEventListener("hashchange", handleHashChange); // --- INICIALIZAÇÃO (MODIFICADA) ---
+  } // --- LÓGICA DE HASH REMOVIDA --- // --- INICIALIZAÇÃO (MODIFICADA) ---
 
-  // Define a aba padrão que deve ser aberta
   const defaultTabId = "disponibilidade";
-  console.log(`[Recursos Init] Carregando aba padrão: ${defaultTabId}`);
+  console.log(`[DEBUG V4.1] Agendando carga da aba padrão: ${defaultTabId}`);
 
-  // Chama o switchTab para a aba padrão
-  // Usamos um timeout para garantir que o HTML foi renderizado
   setTimeout(() => {
+    console.log(`[DEBUG V4.1] EXECUTANDO carga da aba padrão: ${defaultTabId}`);
     switchTab(defaultTabId);
   }, 100);
 
-  console.log("[Recursos Init] Inicialização V4.0 (Sem Hash) concluída.");
+  console.log("[DEBUG V4.1] Inicialização (V4.1) concluída.");
 } // Fim da função init
