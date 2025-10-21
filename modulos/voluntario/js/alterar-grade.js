@@ -104,8 +104,8 @@ function setupDOMElements() {
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
-  if (currentUserData && currentUserData.nomeCompleto) {
-    nomeInput.value = currentUserData.nomeCompleto;
+  if (currentUserData && currentUserData.nome) {
+    nomeInput.value = currentUserData.nome;
   } else {
     nomeInput.value = "Nome não encontrado";
   }
@@ -277,7 +277,7 @@ async function handleFormSubmit(e) {
   // Monta o objeto da solicitação
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
-    solicitanteNome: currentUserData.nomeCompleto || "Nome não encontrado",
+    solicitanteNome: currentUserData.nome || "Nome não encontrado",
     horariosParaExcluir: horariosParaExcluir,
     totalHorariosAtual: totalHorariosAtual,
     motivo: motivo,
