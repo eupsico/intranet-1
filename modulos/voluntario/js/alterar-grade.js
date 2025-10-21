@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 13: Adiciona modal de sucesso com redirecionamento.
+// VERSÃO 13.1: Bloqueia totalmente a exclusão se o profissional tiver 5 ou menos horários.
 
 import {
   db,
@@ -25,6 +25,7 @@ const DIAS_SEMANA_NOMES = {
 let currentUser;
 let currentUserData;
 let totalHorariosAtual = 0;
+const LIMITE_MINIMO = 5; // Define o limite mínimo globalmente
 let form,
   nomeInput,
   totalInput,
@@ -34,36 +35,23 @@ let form,
   feedbackMessage,
   avisoMinimo;
 
-// --- INÍCIO DA ALTERAÇÃO V13: Função de Modal ---
-
-/**
- * Exibe um modal de notificação local.
- * @param {string} message - A mensagem a ser exibida.
- * @param {'success' | 'error'} type - O tipo de modal.
- * @param {function} [onCloseCallback] - Função a ser executada ao fechar.
- */
+// --- Função de Modal (V13) ---
 function showLocalModal(message, type = "success", onCloseCallback) {
-  // Remove qualquer modal existente para evitar duplicação
   const existingModal = document.getElementById("local-notification-modal");
   if (existingModal) {
     existingModal.remove();
   }
-
   const modalOverlay = document.createElement("div");
   modalOverlay.id = "local-notification-modal";
-  modalOverlay.className = "modal-overlay is-visible"; // Usa classes do design-system
-  modalOverlay.style.display = "flex"; // Garante a visibilidade
-
+  modalOverlay.className = "modal-overlay is-visible";
+  modalOverlay.style.display = "flex";
   const modalBox = document.createElement("div");
-  modalBox.className = "modal-content"; // Usa classes do design-system
-  modalBox.style.maxWidth = "450px"; // Define um tamanho razoável
-
-  // Adiciona um ícone baseado no tipo
+  modalBox.className = "modal-content";
+  modalBox.style.maxWidth = "450px";
   const iconHtml =
     type === "success"
       ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 15px auto; display: block;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
       : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 15px auto; display: block;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
-
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
   modalBody.style.textAlign = "center";
@@ -74,30 +62,24 @@ function showLocalModal(message, type = "success", onCloseCallback) {
         }</h3>
         <p style="font-size: 1em; line-height: 1.5;">${message}</p>
     `;
-
   const modalFooter = document.createElement("div");
   modalFooter.className = "modal-footer";
   modalFooter.style.justifyContent = "center";
-
   const okButton = document.createElement("button");
   okButton.type = "button";
   okButton.className = "action-button";
   okButton.textContent = "OK";
-
   modalFooter.appendChild(okButton);
   modalBox.appendChild(modalBody);
   modalBox.appendChild(modalFooter);
   modalOverlay.appendChild(modalBox);
-
   document.body.appendChild(modalOverlay);
-
   const closeModal = () => {
     modalOverlay.remove();
     if (typeof onCloseCallback === "function") {
       onCloseCallback();
     }
   };
-
   okButton.addEventListener("click", closeModal);
   modalOverlay.addEventListener("click", (e) => {
     if (e.target === modalOverlay) {
@@ -105,13 +87,13 @@ function showLocalModal(message, type = "success", onCloseCallback) {
     }
   });
 }
-// --- FIM DA ALTERAÇÃO V13 ---
+// --- FIM Função de Modal ---
 
 /**
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V13 - Modal de Sucesso).");
+  console.log("[Alterar Grade] Módulo iniciado (V13.1 - Trava <= 5 horários).");
   currentUser = user;
   currentUserData = userData;
 
@@ -124,7 +106,7 @@ export async function init(user, userData) {
   // Se o HTML ainda não foi carregado
   if (!viewContainer.querySelector("form")) {
     try {
-      const response = await fetch("../page/alterar-grade.html"); //
+      const response = await fetch("../page/alterar-grade.html");
       if (!response.ok) {
         throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
       }
@@ -157,7 +139,7 @@ function setupDOMElements() {
   gradesContainer = document.getElementById("grades-para-exclusao");
   motivoTextarea = document.getElementById("motivo-exclusao");
   submitButton = document.getElementById("btn-enviar-solicitacao");
-  feedbackMessage = document.getElementById("solicitacao-feedback"); //
+  feedbackMessage = document.getElementById("solicitacao-feedback");
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
 }
 
@@ -200,7 +182,6 @@ async function loadGradeDataFromAdmin() {
  */
 async function loadAndRenderGrades() {
   if (gradesContainer) {
-    //
     gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
   }
   await loadGradeDataFromAdmin();
@@ -275,19 +256,17 @@ async function loadAndRenderGrades() {
   }
 
   if (totalHorariosAtual === 0) {
-    if (gradesContainer) {
-      gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
-    }
-    if (motivoTextarea) motivoTextarea.disabled = true;
-    if (submitButton) submitButton.disabled = true;
-    if (avisoMinimo) avisoMinimo.style.display = "none";
+    gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
+    motivoTextarea.disabled = true;
+    submitButton.disabled = true;
+    avisoMinimo.style.display = "none";
   } else {
-    if (gradesContainer) gradesContainer.innerHTML = finalHtml;
-    if (motivoTextarea) motivoTextarea.disabled = false;
+    gradesContainer.innerHTML = finalHtml;
+    motivoTextarea.disabled = false;
   }
 
   if (totalInput) totalInput.value = totalHorariosAtual;
-  validateForm();
+  validateForm(); // Valida o formulário após renderizar
 }
 
 /**
@@ -330,34 +309,36 @@ function validateForm() {
   let isHorarioOk = selecionadosCount > 0;
   let isMinimoOk = true;
 
-  const LIMITE_MINIMO = 5;
+  // --- INÍCIO DA LÓGICA V13.1 ---
+  if (totalHorariosAtual <= LIMITE_MINIMO) {
+    // Se tem 5 ou menos, NÃO PODE excluir
+    isMinimoOk = false;
+    avisoMinimo.style.display = "block";
+    avisoMinimo.className = "alert alert-error"; // Vermelho
+    avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
+            Você possui ${totalHorariosAtual} horários. Você já está no limite mínimo de ${LIMITE_MINIMO} horários e não pode excluir mais.`;
 
-  if (totalHorariosAtual > LIMITE_MINIMO) {
+    // Desabilita TODOS os checkboxes e o motivo
+    allCheckboxes.forEach((cb) => {
+      cb.disabled = true;
+      cb.parentElement.classList.add("disabled-check");
+    });
+    motivoTextarea.disabled = true;
+    isHorarioOk = false; // Força a invalidação
+    isMotivoOk = false; // Força a invalidação
+  } else if (totalHorariosAtual > LIMITE_MINIMO) {
+    // Se tem mais de 5 (ex: 6), aplica a regra normal
     isMinimoOk = horariosRestantes >= LIMITE_MINIMO;
+
     avisoMinimo.style.display = "block";
     avisoMinimo.classList.toggle("alert-warning", isMinimoOk && isHorarioOk);
     avisoMinimo.classList.toggle("alert-error", !isMinimoOk);
     avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
             Você deve manter no mínimo ${LIMITE_MINIMO} horários. 
             (Atual: ${totalHorariosAtual} | Selecionados: ${selecionadosCount} | Restantes: ${horariosRestantes})`;
-  } else {
-    isMinimoOk = true;
-    avisoMinimo.style.display = "block";
-    avisoMinimo.className = "alert alert-info";
-    avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é ${LIMITE_MINIMO}.`;
-  }
 
-  if (motivo.length === 0 && isHorarioOk) {
-    motivoTextarea.classList.add("is-invalid");
-  } else {
-    motivoTextarea.classList.remove("is-invalid");
-  }
-
-  const isValid = isMotivoOk && isHorarioOk && isMinimoOk;
-  if (submitButton) submitButton.disabled = !isValid;
-
-  if (totalHorariosAtual > LIMITE_MINIMO) {
-    const maxSelecionaveis = totalHorariosAtual - LIMITE_MINIMO;
+    // Lógica de bloqueio (V12)
+    const maxSelecionaveis = totalHorariosAtual - LIMITE_MINIMO; // Ex: 6 - 5 = 1
     if (selecionadosCount >= maxSelecionaveis) {
       allCheckboxes.forEach((cb) => {
         if (!cb.checked) {
@@ -371,12 +352,17 @@ function validateForm() {
         cb.parentElement.classList.remove("disabled-check");
       });
     }
-  } else {
-    allCheckboxes.forEach((cb) => {
-      cb.disabled = false;
-      cb.parentElement.classList.remove("disabled-check");
-    });
   }
+  // --- FIM DA LÓGICA V13.1 ---
+
+  if (motivo.length === 0 && isHorarioOk) {
+    motivoTextarea.classList.add("is-invalid");
+  } else {
+    motivoTextarea.classList.remove("is-invalid");
+  }
+
+  const isValid = isMotivoOk && isHorarioOk && isMinimoOk;
+  if (submitButton) submitButton.disabled = !isValid;
 }
 
 /**
@@ -384,12 +370,7 @@ function validateForm() {
  */
 async function handleFormSubmit(e) {
   e.preventDefault();
-  console.log("[Alterar Grade] Tentativa de envio do formulário.");
-
-  if (!submitButton || submitButton.disabled) {
-    console.warn("[Alterar Grade] Envio bloqueado. Botão desabilitado.");
-    return;
-  }
+  if (!submitButton || submitButton.disabled) return;
 
   submitButton.disabled = true;
   submitButton.innerHTML = `<span class="loading-spinner-small"></span> Enviando...`;
@@ -397,7 +378,6 @@ async function handleFormSubmit(e) {
   if (!feedbackMessage) {
     feedbackMessage = document.getElementById("solicitacao-feedback");
   }
-
   if (feedbackMessage) {
     feedbackMessage.style.display = "none";
   }
@@ -425,8 +405,6 @@ async function handleFormSubmit(e) {
     dataSolicitacao: serverTimestamp(),
   };
 
-  console.log("[Alterar Grade] Dados da solicitação:", solicitacaoData);
-
   try {
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
@@ -435,32 +413,24 @@ async function handleFormSubmit(e) {
 
     console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id);
 
-    // --- INÍCIO DA ALTERAÇÃO V13 ---
-    // Em vez de mostrar a mensagem na tela, chama o modal.
-    // Ao fechar o modal (clicar em "OK"), redireciona para o dashboard.
     showLocalModal(
       "Sua solicitação foi enviada com sucesso e será analisada pela administração.",
       "success",
       () => {
-        // Callback executado após o usuário clicar em "OK"
         window.location.hash = "#dashboard";
       }
     );
-    // --- FIM DA ALTERAÇÃO V13 ---
   } catch (error) {
     console.error("[Alterar Grade] Erro ao salvar solicitação:", error);
 
-    // --- INÍCIO DA ALTERAÇÃO V13 ---
-    // Chama o modal de erro
     showLocalModal(
       "Erro ao enviar sua solicitação. Por favor, tente novamente.",
       "error"
     );
-    // --- FIM DA ALTERAÇÃO V13 ---
 
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`; //
+      submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
     }
   }
 }
