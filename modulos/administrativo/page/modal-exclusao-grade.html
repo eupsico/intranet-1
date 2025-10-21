@@ -1,0 +1,55 @@
+<div id="modal-exclusao-content">
+    
+    <fieldset class="form-fieldset">
+        <legend>Detalhes da Solicitação</legend>
+        <div class="form-group">
+            <label>Profissional:</label>
+            <p id="modal-solicitante-nome" class="static-text">Carregando...</p>
+        </div>
+        <div class="form-group">
+            <label>Horários Solicitados para Exclusão:</label>
+            <ul id="modal-horarios-list" class="static-list">
+                </ul>
+        </div>
+        <div class="form-group">
+            <label>Motivo do Profissional:</label>
+            <p id="modal-solicitante-motivo" class="static-text static-text-box">Carregando...</p>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-fieldset">
+        <legend>Resposta da Administração</legend>
+        
+        <div class="form-group">
+            <label>O(s) horário(s) foi(ram) excluído(s) da grade?</label>
+            <div class="radio-group">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="foiExcluido" id="radioExcluidoSim" value="sim">
+                    <label class="form-check-label" for="radioExcluidoSim">Sim</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="foiExcluido" id="radioExcluidoNao" value="nao">
+                    <label class="form-check-label" for="radioExcluidoNao">Não</label>
+                </div>
+            </div>
+        </div>
+
+        <div id="campos-feedback-sim" style="display: none;">
+            <div class="form-group">
+                <label for="dataExclusao">Data da Exclusão (Obrigatório):</label>
+                <input type="date" id="dataExclusao" name="dataExclusao" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="mensagemAdmin">Mensagem para o Voluntário (Obrigatório):</label>
+                <textarea id="mensagemAdmin" name="mensagemAdmin" rows="3" class="form-control" placeholder="Ex: Horário(s) removido(s) da grade." required></textarea>
+            </div>
+        </div>
+
+        <div id="campos-feedback-nao" style="display: none;">
+            <div class="form-group">
+                <label for="motivoRejeicao">Motivo da Rejeição (Obrigatório):</label>
+                <textarea id="motivoRejeicao" name="motivoRejeicao" rows="3" class="form-control" placeholder="Ex: Não foi possível remover os horários pois..." required></textarea>
+            </div>
+        </div>
+    </fieldset>
+</div>
