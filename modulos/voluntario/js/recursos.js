@@ -166,8 +166,19 @@ export function init(user, userData) {
     );
   } // --- INICIALIZAÇÃO ---
 
-  const defaultTabId = "disponibilidade";
-  console.log(`[Recursos Init V4.2] Carregando aba padrão: ${defaultTabId}`);
+  // Verifica se há uma aba de destino vinda de outro link (ex: dashboard)
+  const targetTab = sessionStorage.getItem("targetTab");
+  let defaultTabId = "disponibilidade"; // Define o padrão
+
+  if (targetTab) {
+    defaultTabId = targetTab; // Sobrescreve o padrão
+    sessionStorage.removeItem("targetTab"); // Limpa o storage para não afetar recarregamentos
+    console.log(
+      `[Recursos Init V4.2] Carregando aba de destino: ${defaultTabId}`
+    );
+  } else {
+    console.log(`[Recursos Init V4.2] Carregando aba padrão: ${defaultTabId}`);
+  }
 
   setTimeout(() => {
     switchTab(defaultTabId);
