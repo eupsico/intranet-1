@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/recursos.js
-// Versão 2.6 (Corrige lógica de loadedTabs para permitir recarregamento em caso de falha)
+// Versão 2.7 (Adiciona carregamento do módulo alterar-grade)
 
 export function init(user, userData) {
   console.log("[Recursos Init] Módulo Iniciado.");
@@ -60,6 +60,11 @@ export function init(user, userData) {
           module = await import("./grade-view.js");
           initParams.push("presencial");
           break;
+        // --- NOVA ABA ADICIONADA ---
+        case "alterar-grade":
+          module = await import("./alterar-grade.js");
+          break;
+        // --- FIM DA ADIÇÃO ---
         default:
           console.warn(`[LoadTabModule ${tabId}] Nenhum módulo definido.`);
           if (targetContentEl)
