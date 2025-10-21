@@ -1,8 +1,6 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// Versão 2.2 (Corrige ReferenceError: Timestamp is not defined)
+// Versão 2.3 (Implementa o carregamento de 'Alteração de Horário' como exemplo)
 
-// --- INÍCIO DA CORREÇÃO ---
-// Importa o 'Timestamp' que estava faltando
 import {
   db,
   collection,
@@ -15,21 +13,18 @@ import {
   updateDoc,
   serverTimestamp,
   onSnapshot,
-  Timestamp, // ADICIONADO
+  Timestamp,
 } from "../../../assets/js/firebase-init.js";
-// --- FIM DA CORREÇÃO ---
 
-// Variável global para o db (agora preenchida pelo import)
 let dbInstance = db;
-let adminUser; // Armazena o usuário admin que está logado
+let adminUser;
 
 // Função principal de inicialização do módulo
 export function init(db_ignored, user, userData) {
-  // O parâmetro 'db_ignored' não é mais necessário, mas mantemos para compatibilidade
   console.log(
-    "Módulo solicitacoes-admin.js V2.2 (Correção Timestamp) iniciado."
+    "Módulo solicitacoes-admin.js V2.3 (Implementando Alteração de Horário) iniciado."
   );
-  adminUser = userData; // Armazena dados do admin logado
+  adminUser = userData;
 
   // Elementos do DOM
   const tabsContainer = document.querySelector(".tabs-container");
@@ -41,178 +36,238 @@ export function init(db_ignored, user, userData) {
   const modalFooterActions = document.getElementById("modal-footer-actions");
   const modalCloseBtn = document.getElementById("modal-close-btn");
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
+  const tabContentContainer = document.querySelector(".tab-content-container"); //
 
   // --- Lógica de Troca de Abas ---
   function setupTabs() {
     if (!tabsContainer) return;
-
     tabsContainer.addEventListener("click", (event) => {
       const clickedTab = event.target.closest(".tab-link");
       if (!clickedTab) return;
-
       const targetTabId = clickedTab.dataset.tab;
-
-      // Remove 'active' de todas as abas e conteúdos
       tabLinks.forEach((link) => link.classList.remove("active"));
       tabContents.forEach((content) => content.classList.remove("active"));
-
-      // Adiciona 'active' na aba clicada e no conteúdo correspondente
       clickedTab.classList.add("active");
       const targetContent = document.getElementById(targetTabId);
       if (targetContent) {
         targetContent.classList.add("active");
-      } else {
-        console.error(`Conteúdo da aba não encontrado: ${targetTabId}`);
       }
     });
   }
 
-  // --- Funções de Carregamento de Dados (ainda vazias) ---
-  function loadNovasSessoes() {
-    // console.log("Carregando solicitações de novas sessões...");
-    const tableBody = document.getElementById("table-body-novas-sessoes");
-    const emptyState = document.getElementById("empty-state-novas-sessoes");
-    if (!tableBody || !emptyState) return;
-    // tableBody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
-    // emptyState.style.display = "none";
-    // TODO: Implementar busca no Firebase 'solicitacoes_novas_sessoes'
-  }
-
-  function loadAlteracoesHorario() {
-    // console.log("Carregando solicitações de alteração de horário...");
-    const tableBody = document.getElementById("table-body-alteracoes-horario");
-    const emptyState = document.getElementById(
-      "empty-state-alteracoes-horario"
-    );
-    if (!tableBody || !emptyState) return;
-    // tableBody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
-    // emptyState.style.display = "none";
-    // TODO: Implementar busca no Firebase 'solicitacoes_alteracao_horario'
-  }
-
-  function loadDesfechosPB() {
-    // console.log("Carregando desfechos PB...");
-    const tableBody = document.getElementById("table-body-desfechos-pb");
-    const emptyState = document.getElementById("empty-state-desfechos-pb");
-    if (!tableBody || !emptyState) return;
-    // tableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
-    // emptyState.style.display = "none";
-    // TODO: Implementar busca no Firebase 'desfechos_atendimento_pb'
-  }
-
-  function loadStatusContratos() {
-    // console.log("Carregando status dos contratos...");
-    const tableBody = document.getElementById("table-body-status-contratos");
-    const emptyState = document.getElementById("empty-state-status-contratos");
-    if (!tableBody || !emptyState) return;
-    // tableBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
-    // emptyState.style.display = "none";
-    // TODO: Implementar busca nos dados dos pacientes/atendimentos
-  }
-
-  // --- FUNÇÕES DE EXCLUSÃO DE HORÁRIOS (Corrigidas) ---
-
+  // --- FUNÇÃO HELPER GENÉRICA (Refatorada) ---
   /**
-   * Carrega e monitora as solicitações de exclusão de horários
+   * Carrega dados de solicitações de forma genérica
+   * @param {string} collectionName - Nome da coleção no Firebase
+   * @param {string} tableBodyId - ID do <tbody>
+   * @param {string} emptyStateId - ID do <div> de estado vazio
+   * @param {string} countBadgeId - ID do <span> do contador
+   * @param {function} renderRow - Função que (data, docId) e retorna o HTML <tr>
+   * @param {string} statusField - Nome do campo de status (ex: "status")
+   * @param {string} dateField - Nome do campo de data para ordenar (ex: "dataSolicitacao")
    */
-  function loadExclusaoHorarios() {
-    console.log("Carregando solicitações de exclusão de horários...");
-    const tableBody = document.getElementById("table-body-exclusao-horarios");
-    const emptyState = document.getElementById("empty-state-exclusao-horarios");
-    const countBadge = document.getElementById("count-exclusao-horarios");
+  function loadSolicitacoes(
+    collectionName,
+    tableBodyId,
+    emptyStateId,
+    countBadgeId,
+    renderRow,
+    statusField = "status",
+    dateField = "dataSolicitacao"
+  ) {
+    console.log(`Carregando solicitações de [${collectionName}]...`);
+    const tableBody = document.getElementById(tableBodyId);
+    const emptyState = document.getElementById(emptyStateId);
+    const countBadge = document.getElementById(countBadgeId);
 
     if (!tableBody || !emptyState || !countBadge) {
-      console.error("Elementos da tabela de exclusão não encontrados.");
+      console.error(
+        `Elementos do DOM não encontrados para [${collectionName}]. Verifique IDs.`
+      );
       return;
     }
 
-    const q = query(
-      collection(dbInstance, "solicitacoesExclusaoGrade"), //
-      orderBy("dataSolicitacao", "desc")
-    );
+    try {
+      const q = query(
+        collection(dbInstance, collectionName),
+        orderBy(dateField, "desc")
+      );
 
-    onSnapshot(
-      q,
-      (querySnapshot) => {
-        if (querySnapshot.empty) {
-          tableBody.innerHTML = "";
-          emptyState.style.display = "block";
-          countBadge.style.display = "none";
-          countBadge.textContent = "0";
-          return;
-        }
-
-        tableBody.innerHTML = ""; // Limpa a tabela
-        emptyState.style.display = "none";
-        let pendingCount = 0;
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.status === "Pendente") {
-            pendingCount++;
+      onSnapshot(
+        q,
+        (querySnapshot) => {
+          if (querySnapshot.empty) {
+            tableBody.innerHTML = "";
+            emptyState.style.display = "block";
+            countBadge.style.display = "none";
+            countBadge.textContent = "0";
+            return;
           }
 
-          const dataSol = data.dataSolicitacao
-            ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
-            : "N/A";
+          tableBody.innerHTML = "";
+          emptyState.style.display = "none";
+          let pendingCount = 0;
 
-          const horariosLabels =
-            data.horariosParaExcluir?.map((h) => h.label).join(", ") ||
-            "Erro: Horários não encontrados";
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data[statusField] === "Pendente") {
+              pendingCount++;
+            }
+            const tr = renderRow(data, doc.id);
+            tableBody.innerHTML += tr;
+          });
 
-          const statusClass = `status-${String(
-            data.status || "pendente"
-          ).toLowerCase()}`; //
-
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-                        <td>${dataSol}</td>
-                        <td>${data.solicitanteNome}</td>
-                        <td>${data.totalHorariosAtual}</td>
-                        <td>${horariosLabels}</td>
-                        <td class="motivo-cell">${data.motivo}</td>
-                        <td><span class="status-badge ${statusClass}">${
-            data.status
-          }</span></td>
-                        <td>
-                            <button class="action-button btn-acao-exclusao" data-id="${
-                              doc.id
-                            }">
-                                ${
-                                  data.status === "Pendente" ? "Aprovar" : "Ver"
-                                }
-                            </button>
-                        </td>
-                    `;
-          tableBody.appendChild(tr);
-        });
-
-        // Atualiza o contador de pendentes
-        if (pendingCount > 0) {
-          countBadge.textContent = pendingCount;
-          countBadge.style.display = "inline-block";
-        } else {
-          countBadge.style.display = "none";
+          if (pendingCount > 0) {
+            countBadge.textContent = pendingCount;
+            countBadge.style.display = "inline-block";
+          } else {
+            countBadge.style.display = "none";
+          }
+        },
+        (error) => {
+          console.error(`Erro ao buscar [${collectionName}]:`, error);
+          tableBody.innerHTML = `<tr><td colspan="7" class="text-error">Erro ao carregar dados: ${error.message}</td></tr>`;
         }
-      },
-      (error) => {
-        console.error("Erro ao buscar solicitações de exclusão:", error);
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-error">Erro ao carregar dados.</td></tr>`;
+      );
+    } catch (error) {
+      console.error(
+        `Falha ao construir query para [${collectionName}]:`,
+        error
+      );
+      tableBody.innerHTML = `<tr><td colspan="7" class="text-error">Falha na query. Verifique o nome da coleção e índices.</td></tr>`;
+    }
+  }
+
+  // --- Implementação das funções de carregamento ---
+
+  function loadNovasSessoes() {
+    const tableBody = document.getElementById("table-body-novas-sessoes");
+    const emptyState = document.getElementById("empty-state-novas-sessoes");
+    if (!tableBody || !emptyState) return;
+    // TODO: Implementar. Você precisa saber o nome da coleção e os campos.
+    // Exemplo:
+    /*
+    loadSolicitacoes(
+        "solicitacoesNovasSessoes", // <- Nome da coleção (ADIVINHADO)
+        "table-body-novas-sessoes",
+        "empty-state-novas-sessoes",
+        "count-novas-sessoes",
+        (data, docId) => {
+            const dataSol = data.dataSolicitacao ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR") : "N/A";
+            const statusClass = `status-${String(data.status || "pendente").toLowerCase()}`;
+            return `
+                <tr>
+                    <td>${dataSol}</td>
+                    <td>${data.solicitanteNome || 'N/A'}</td>
+                    <td>${data.pacienteNome || 'N/A'}</td>
+                    <td class="motivo-cell">${data.motivo || 'N/A'}</td>
+                    <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+                    <td><button class="action-button btn-acao-novas-sessoes" data-id="${docId}">Processar</button></td>
+                </tr>
+            `;
+        }
+    );
+    */
+  }
+
+  // --- INÍCIO DA IMPLEMENTAÇÃO V2.3 ---
+  function loadAlteracoesHorario() {
+    // ATENÇÃO: Assumindo que o nome da coleção é 'solicitacoesAlteracaoHorario'
+    // Se for outro nome, altere abaixo.
+    loadSolicitacoes(
+      "solicitacoesAlteracaoHorario", // <- Nome da coleção (ADIVINHADO)
+      "table-body-alteracoes-horario",
+      "empty-state-alteracoes-horario",
+      "count-alteracoes-horario",
+      (data, docId) => {
+        const dataSol = data.dataSolicitacao
+          ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
+          : "N/A";
+        const statusClass = `status-${String(
+          data.status || "pendente"
+        ).toLowerCase()}`;
+
+        // ATENÇÃO: Ajuste este HTML com base nos dados reais da sua coleção
+        return `
+            <tr>
+                <td>${dataSol}</td>
+                <td>${data.solicitanteNome || "N/A"}</td>
+                <td>${data.horarioAntigo || "N/A"}</td>
+                <td>${data.horarioNovo || "N/A"}</td>
+                <td class="motivo-cell">${data.motivo || "N/A"}</td>
+                <td><span class="status-badge ${statusClass}">${
+          data.status
+        }</span></td>
+                <td>
+                    <button class="action-button btn-acao-alteracao" data-id="${docId}">
+                        ${data.status === "Pendente" ? "Processar" : "Ver"}
+                    </button>
+                </td>
+            </tr>
+        `;
+      }
+    );
+  }
+  // --- FIM DA IMPLEMENTAÇÃO V2.3 ---
+
+  function loadDesfechosPB() {
+    const tableBody = document.getElementById("table-body-desfechos-pb");
+    const emptyState = document.getElementById("empty-state-desfechos-pb");
+    if (!tableBody || !emptyState) return;
+    // TODO: Implementar.
+  }
+
+  function loadStatusContratos() {
+    const tableBody = document.getElementById("table-body-status-contratos");
+    const emptyState = document.getElementById("empty-state-status-contratos");
+    if (!tableBody || !emptyState) return;
+    // TODO: Implementar.
+  }
+
+  function loadExclusaoHorarios() {
+    loadSolicitacoes(
+      "solicitacoesExclusaoGrade",
+      "table-body-exclusao-horarios",
+      "empty-state-exclusao-horarios",
+      "count-exclusao-horarios",
+      (data, docId) => {
+        const dataSol = data.dataSolicitacao
+          ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
+          : "N/A";
+        const horariosLabels =
+          data.horariosParaExcluir?.map((h) => h.label).join(", ") ||
+          "Erro: Horários não encontrados";
+        const statusClass = `status-${String(
+          data.status || "pendente"
+        ).toLowerCase()}`;
+
+        return `
+            <tr>
+                <td>${dataSol}</td>
+                <td>${data.solicitanteNome}</td>
+                <td>${data.totalHorariosAtual}</td>
+                <td>${horariosLabels}</td>
+                <td class="motivo-cell">${data.motivo}</td>
+                <td><span class="status-badge ${statusClass}">${
+          data.status
+        }</span></td>
+                <td>
+                    <button class="action-button btn-acao-exclusao" data-id="${docId}">
+                        ${data.status === "Pendente" ? "Aprovar" : "Ver"}
+                    </button>
+                </td>
+            </tr>
+        `;
       }
     );
   }
 
-  /**
-   * Abre o modal para processar a solicitação de exclusão
-   * @param {string} docId - ID do documento da solicitação
-   * @param {object} solicitacaoData - Dados da solicitação
-   */
+  // --- Funções do Modal (Específicas de Exclusão) ---
+  // (openExclusaoModal, setupModalFormLogic, handleSalvarExclusao)
+  // ... (O código das V2.2 para essas funções permanece o MESMO) ...
   async function openExclusaoModal(docId, solicitacaoData) {
     modalTitle.textContent = "Processar Solicitação de Exclusão";
-
-    // 1. Carrega o HTML do formulário do modal
     try {
-      // Caminho relativo corrigido
       const response = await fetch("./modal-exclusao-grade.html"); //
       if (!response.ok) throw new Error("Falha ao carregar o HTML do modal.");
       modalBodyContent.innerHTML = await response.text();
@@ -222,8 +277,6 @@ export function init(db_ignored, user, userData) {
       openModal();
       return;
     }
-
-    // 2. Preenche os detalhes da solicitação
     document.getElementById("modal-solicitante-nome").textContent =
       solicitacaoData.solicitanteNome;
     document.getElementById("modal-solicitante-motivo").textContent =
@@ -233,27 +286,21 @@ export function init(db_ignored, user, userData) {
       solicitacaoData.horariosParaExcluir
         ?.map((h) => `<li>${h.label} (${h.path})</li>`)
         .join("") || "<li>Erro ao carregar horários</li>";
-
-    // 3. Adiciona os botões de ação dinâmicos
     modalFooterActions
       .querySelectorAll(".dynamic-action-btn")
       .forEach((btn) => btn.remove());
-
     if (solicitacaoData.status === "Pendente") {
       const saveButton = document.createElement("button");
       saveButton.type = "button";
       saveButton.id = "btn-salvar-exclusao";
-      saveButton.className = "action-button dynamic-action-btn"; //
+      saveButton.className = "action-button dynamic-action-btn";
       saveButton.textContent = "Salvar Resposta";
       modalFooterActions.appendChild(saveButton);
-
       saveButton.addEventListener("click", () => handleSalvarExclusao(docId), {
         once: true,
       });
-
       setupModalFormLogic();
     } else {
-      // Se não estiver pendente, apenas exibe os dados preenchidos
       const feedback = solicitacaoData.adminFeedback || {};
       if (feedback.foiExcluido) {
         document.querySelector(
@@ -273,58 +320,42 @@ export function init(db_ignored, user, userData) {
     }
     openModal();
   }
-
-  /**
-   * Adiciona a lógica de show/hide para os campos do formulário do modal
-   */
   function setupModalFormLogic() {
     const radioSim = document.getElementById("radioExcluidoSim");
     const radioNao = document.getElementById("radioExcluidoNao");
     const camposSim = document.getElementById("campos-feedback-sim");
     const camposNao = document.getElementById("campos-feedback-nao");
-
     if (!radioSim || !radioNao || !camposSim || !camposNao) return;
-
     const toggleFields = () => {
       camposSim.style.display = radioSim.checked ? "block" : "none";
       camposNao.style.display = radioNao.checked ? "block" : "none";
     };
-
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
     toggleFields();
   }
-
-  /**
-   * Salva a resposta do admin para a solicitação de exclusão
-   * @param {string} docId
-   */
   async function handleSalvarExclusao(docId) {
     const saveButton = document.getElementById("btn-salvar-exclusao");
     saveButton.disabled = true;
     saveButton.innerHTML = `<span class="loading-spinner-small"></span> Salvando...`;
-
     const foiExcluido = document.querySelector(
       'input[name="foiExcluido"]:checked'
     )?.value;
     const dataExclusaoInput = document.getElementById("dataExclusao").value;
     const mensagemAdmin = document.getElementById("mensagemAdmin").value;
     const motivoRejeicao = document.getElementById("motivoRejeicao").value;
-
     if (!foiExcluido) {
       alert("Selecione 'Sim' ou 'Não'.");
       saveButton.disabled = false;
       saveButton.innerHTML = "Salvar Resposta";
       return;
     }
-
     let statusFinal = "";
     const adminFeedback = {
       foiExcluido: foiExcluido,
       dataResolucao: serverTimestamp(),
       adminNome: adminUser.nome || "Admin",
     };
-
     if (foiExcluido === "sim") {
       if (!dataExclusaoInput || !mensagemAdmin) {
         alert("Para 'Sim', a data da exclusão e a mensagem são obrigatórias.");
@@ -333,12 +364,9 @@ export function init(db_ignored, user, userData) {
         return;
       }
       statusFinal = "Concluída";
-      // --- INÍCIO DA CORREÇÃO ---
-      // Usa o Timestamp importado para converter a data
       adminFeedback.dataExclusao = Timestamp.fromDate(
-        new Date(dataExclusaoInput + "T00:00:00") //
+        new Date(dataExclusaoInput + "T00:00:00")
       );
-      // --- FIM DA CORREÇÃO ---
       adminFeedback.mensagemAdmin = mensagemAdmin;
     } else {
       if (!motivoRejeicao) {
@@ -350,14 +378,12 @@ export function init(db_ignored, user, userData) {
       statusFinal = "Rejeitada";
       adminFeedback.motivoRejeicao = motivoRejeicao;
     }
-
     try {
       const docRef = doc(dbInstance, "solicitacoesExclusaoGrade", docId);
       await updateDoc(docRef, {
         status: statusFinal,
         adminFeedback: adminFeedback,
       });
-
       console.log("Solicitação atualizada com sucesso!");
       closeModal();
     } catch (error) {
@@ -372,7 +398,6 @@ export function init(db_ignored, user, userData) {
   function openModal() {
     if (modal) modal.style.display = "flex";
   }
-
   function closeModal() {
     if (modal) modal.style.display = "none";
     modalBodyContent.innerHTML = "";
@@ -384,22 +409,19 @@ export function init(db_ignored, user, userData) {
 
   // --- Inicialização ---
   setupTabs();
-  // Carrega os dados de todas as abas
   loadNovasSessoes();
-  loadAlteracoesHorario();
+  loadAlteracoesHorario(); // <-- AGORA ESTÁ SENDO CHAMADO
   loadDesfechosPB();
   loadStatusContratos();
-  loadExclusaoHorarios(); // CHAMA A FUNÇÃO CORRIGIDA
+  loadExclusaoHorarios();
 
-  // Adiciona listener de evento na tabela de exclusão
-  const tableBodyExclusao = document.getElementById(
-    "table-body-exclusao-horarios"
-  );
-  if (tableBodyExclusao) {
-    tableBodyExclusao.addEventListener("click", async (e) => {
-      const button = e.target.closest(".btn-acao-exclusao");
-      if (button) {
-        const docId = button.dataset.id;
+  // --- Listener de Evento Genérico (V2.3) ---
+  if (tabContentContainer) {
+    tabContentContainer.addEventListener("click", async (e) => {
+      // Botão de Exclusão (Existente)
+      const buttonExclusao = e.target.closest(".btn-acao-exclusao");
+      if (buttonExclusao) {
+        const docId = buttonExclusao.dataset.id;
         const docRef = doc(dbInstance, "solicitacoesExclusaoGrade", docId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
@@ -408,11 +430,28 @@ export function init(db_ignored, user, userData) {
           console.error("Documento não encontrado!");
           alert("Erro: Solicitação não encontrada.");
         }
+        return; // Para a execução
       }
+
+      // Botão de Alteração (Novo)
+      const buttonAlteracao = e.target.closest(".btn-acao-alteracao");
+      if (buttonAlteracao) {
+        const docId = buttonAlteracao.dataset.id;
+        console.log("Clicou em 'Processar' para alteração de horário:", docId);
+        alert(
+          "TODO: Criar o modal para 'Alteração de Horário' (ex: openAlteracaoHorarioModal())."
+        );
+        // TODO: Você precisará criar uma função 'openAlteracaoHorarioModal(docId)'
+        // similar à 'openExclusaoModal' para processar este item.
+        return;
+      }
+
+      // TODO: Adicionar 'else if' para os outros botões
+      // (ex: .btn-acao-novas-sessoes)
     });
   }
 
-  // Event listeners do modal
+  // Event listeners do modal (Fechar/Cancelar)
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
   if (modal) {
