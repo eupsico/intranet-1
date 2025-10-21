@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 12: Bloqueia checkboxes para não permitir menos de 5 horários.
+// VERSÃO 12.1: Corrige falha silenciosa no envio do formulário e adiciona logs.
 
 import {
   db,
@@ -12,8 +12,6 @@ import {
 
 // --- Constantes Globais ---
 let dadosDasGrades = {};
-
-// Mapa para traduzir os dias
 const DIAS_SEMANA_NOMES = {
   segunda: "Segunda-feira",
   terca: "Terça-feira",
@@ -40,7 +38,9 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V12 - Trava de 5 horários).");
+  console.log(
+    "[Alterar Grade] Módulo iniciado (V12.1 - Correção Submit Silencioso)."
+  );
   currentUser = user;
   currentUserData = userData;
 
@@ -53,7 +53,7 @@ export async function init(user, userData) {
   // Se o HTML ainda não foi carregado
   if (!viewContainer.querySelector("form")) {
     try {
-      const response = await fetch("../page/alterar-grade.html");
+      const response = await fetch("../page/alterar-grade.html"); //
       if (!response.ok) {
         throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
       }
@@ -118,7 +118,9 @@ async function loadGradeDataFromAdmin() {
     }
   } catch (error) {
     console.error("[Alterar Grade] Erro ao carregar dados da grade:", error);
-    gradesContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar os dados da grade. Tente novamente.</p>`;
+    if (gradesContainer) {
+      gradesContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar os dados da grade. Tente novamente.</p>`;
+    }
   }
 }
 
@@ -126,10 +128,14 @@ async function loadGradeDataFromAdmin() {
  * Carrega e renderiza os checkboxes da grade do usuário
  */
 async function loadAndRenderGrades() {
-  gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
+  if (gradesContainer) {
+    gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
+  }
   await loadGradeDataFromAdmin();
   totalHorariosAtual = 0;
-  gradesContainer.innerHTML = "";
+  if (gradesContainer) {
+    gradesContainer.innerHTML = "";
+  }
 
   if (
     !currentUserData ||
@@ -197,16 +203,18 @@ async function loadAndRenderGrades() {
   }
 
   if (totalHorariosAtual === 0) {
-    gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
-    motivoTextarea.disabled = true;
-    submitButton.disabled = true;
-    avisoMinimo.style.display = "none";
+    if (gradesContainer) {
+      gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
+    }
+    if (motivoTextarea) motivoTextarea.disabled = true;
+    if (submitButton) submitButton.disabled = true;
+    if (avisoMinimo) avisoMinimo.style.display = "none";
   } else {
-    gradesContainer.innerHTML = finalHtml;
-    motivoTextarea.disabled = false;
+    if (gradesContainer) gradesContainer.innerHTML = finalHtml;
+    if (motivoTextarea) motivoTextarea.disabled = false;
   }
 
-  totalInput.value = totalHorariosAtual;
+  if (totalInput) totalInput.value = totalHorariosAtual;
   validateForm();
 }
 
@@ -216,20 +224,18 @@ async function loadAndRenderGrades() {
 function setupEventListeners() {
   if (!form) return;
 
-  // Limpa listeners antigos (essencial se o init for chamado várias vezes)
   const newForm = form.cloneNode(true);
   form.parentNode.replaceChild(newForm, form);
   form = newForm;
 
-  // Remapeia elementos internos do formulário clonado
   motivoTextarea = document.getElementById("motivo-exclusao");
   submitButton = document.getElementById("btn-enviar-solicitacao");
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
   gradesContainer = document.getElementById("grades-para-exclusao");
+  feedbackMessage = document.getElementById("solicitacao-feedback"); //
 
-  // Adiciona novos listeners
-  form.addEventListener("change", validateForm); // 'change' pega cliques nos checkboxes
-  motivoTextarea.addEventListener("input", validateForm);
+  form.addEventListener("change", validateForm);
+  if (motivoTextarea) motivoTextarea.addEventListener("input", validateForm);
   form.addEventListener("submit", handleFormSubmit);
 }
 
@@ -237,9 +243,8 @@ function setupEventListeners() {
  * Valida o formulário, atualiza o botão E BLOQUEIA os checkboxes (Lógica V12)
  */
 function validateForm() {
-  if (!form) return;
+  if (!form || !avisoMinimo || !motivoTextarea) return;
 
-  // 1. Obter todos os elementos necessários
   const allCheckboxes = form.querySelectorAll('input[name="horario_excluir"]');
   const selectedCheckboxes = form.querySelectorAll(
     'input[name="horario_excluir"]:checked'
@@ -249,69 +254,52 @@ function validateForm() {
   const selecionadosCount = selectedCheckboxes.length;
   const horariosRestantes = totalHorariosAtual - selecionadosCount;
 
-  // 2. Lógica de Validação para o Botão SUBMIT
   let isMotivoOk = motivo.length > 0;
   let isHorarioOk = selecionadosCount > 0;
-  let isMinimoOk = true; // Assume que é válido por padrão
+  let isMinimoOk = true;
 
   const LIMITE_MINIMO = 5;
 
   if (totalHorariosAtual > LIMITE_MINIMO) {
-    // Se o total é > 5 (ex: 6), o restante DEVE ser >= 5
     isMinimoOk = horariosRestantes >= LIMITE_MINIMO;
-
     avisoMinimo.style.display = "block";
-    avisoMinimo.classList.toggle("alert-warning", isMinimoOk && isHorarioOk); // Amarelo se ok
-    avisoMinimo.classList.toggle("alert-error", !isMinimoOk); // Vermelho se inválido
+    avisoMinimo.classList.toggle("alert-warning", isMinimoOk && isHorarioOk);
+    avisoMinimo.classList.toggle("alert-error", !isMinimoOk);
     avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
             Você deve manter no mínimo ${LIMITE_MINIMO} horários. 
             (Atual: ${totalHorariosAtual} | Selecionados: ${selecionadosCount} | Restantes: ${horariosRestantes})`;
   } else {
-    // Se o total é <= 5 (ex: 4), a regra de "mínimo 5" não se aplica para *validar o botão*.
     isMinimoOk = true;
     avisoMinimo.style.display = "block";
     avisoMinimo.className = "alert alert-info";
     avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é ${LIMITE_MINIMO}.`;
   }
 
-  // Feedback visual para o motivo
   if (motivo.length === 0 && isHorarioOk) {
     motivoTextarea.classList.add("is-invalid");
   } else {
     motivoTextarea.classList.remove("is-invalid");
   }
 
-  // Validação final do Botão
   const isValid = isMotivoOk && isHorarioOk && isMinimoOk;
-  submitButton.disabled = !isValid;
-
-  // 3. Lógica de BLOQUEIO de Checkboxes (V12)
-  // Esta lógica é separada da validação do botão submit.
+  if (submitButton) submitButton.disabled = !isValid;
 
   if (totalHorariosAtual > LIMITE_MINIMO) {
-    // Só pode selecionar (total - 5)
-    const maxSelecionaveis = totalHorariosAtual - LIMITE_MINIMO; // Ex: 6 - 5 = 1
-
+    const maxSelecionaveis = totalHorariosAtual - LIMITE_MINIMO;
     if (selecionadosCount >= maxSelecionaveis) {
-      // Atingiu o limite (Ex: 1 selecionado)
-      // Desabilita todos os NÃO marcados.
       allCheckboxes.forEach((cb) => {
         if (!cb.checked) {
           cb.disabled = true;
-          cb.parentElement.classList.add("disabled-check"); // Adiciona classe para feedback visual
+          cb.parentElement.classList.add("disabled-check");
         }
       });
     } else {
-      // Não atingiu o limite (Ex: 0 selecionados)
-      // Habilita TODOS (para o caso de ter desmarcado 1)
       allCheckboxes.forEach((cb) => {
         cb.disabled = false;
         cb.parentElement.classList.remove("disabled-check");
       });
     }
   } else {
-    // Se o total é <= 5, a regra de bloqueio não se aplica.
-    // Garante que todos estejam habilitados.
     allCheckboxes.forEach((cb) => {
       cb.disabled = false;
       cb.parentElement.classList.remove("disabled-check");
@@ -324,11 +312,30 @@ function validateForm() {
  */
 async function handleFormSubmit(e) {
   e.preventDefault();
-  if (submitButton.disabled) return;
+  console.log("[Alterar Grade] Tentativa de envio do formulário."); // LOG
+
+  if (!submitButton || submitButton.disabled) {
+    console.warn("[Alterar Grade] Envio bloqueado. Botão desabilitado.");
+    return;
+  }
 
   submitButton.disabled = true;
   submitButton.innerHTML = `<span class="loading-spinner-small"></span> Enviando...`;
-  feedbackMessage.style.display = "none";
+
+  // --- INÍCIO DA CORREÇÃO V12.1 ---
+  // Garante que o feedbackMessage seja encontrado
+  if (!feedbackMessage) {
+    feedbackMessage = document.getElementById("solicitacao-feedback"); //
+  }
+
+  if (feedbackMessage) {
+    feedbackMessage.style.display = "none";
+  } else {
+    console.warn(
+      "[Alterar Grade] Elemento #solicitacao-feedback não encontrado."
+    );
+  }
+  // --- FIM DA CORREÇÃO V12.1 ---
 
   const selectedCheckboxes = form.querySelectorAll(
     'input[name="horario_excluir"]:checked'
@@ -353,30 +360,46 @@ async function handleFormSubmit(e) {
     dataSolicitacao: serverTimestamp(),
   };
 
+  console.log("[Alterar Grade] Dados da solicitação:", solicitacaoData); // LOG
+
   try {
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
       solicitacaoData
     );
 
-    console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id);
+    console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id); // LOG
 
-    feedbackMessage.className = "alert alert-success";
-    feedbackMessage.innerHTML =
-      "Sua solicitação foi enviada com sucesso e será analisada pela administração.";
-    feedbackMessage.style.display = "block";
+    if (feedbackMessage) {
+      feedbackMessage.className = "alert alert-success";
+      feedbackMessage.innerHTML =
+        "Sua solicitação foi enviada com sucesso e será analisada pela administração.";
+      feedbackMessage.style.display = "block";
+    }
 
     form.reset();
     await loadAndRenderGrades(); // Recarrega a grade
-    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
-  } catch (error) {
-    console.error("[Alterar Grade] Erro ao salvar solicitação:", error);
-    feedbackMessage.className = "alert alert-error";
-    feedbackMessage.innerHTML =
-      "Erro ao enviar sua solicitação. Tente novamente.";
-    feedbackMessage.style.display = "block";
 
-    submitButton.disabled = false;
-    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
+    // --- INÍCIO DA CORREÇÃO V12.1 ---
+    // Restaura o ícone original do HTML
+    if (submitButton) {
+      submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`; //
+    }
+    // --- FIM DA CORREÇÃO V12.1 ---
+  } catch (error) {
+    console.error("[Alterar Grade] Erro ao salvar solicitação:", error); // LOG
+
+    if (feedbackMessage) {
+      feedbackMessage.className = "alert alert-error";
+      feedbackMessage.innerHTML =
+        "Erro ao enviar sua solicitação. Tente novamente.";
+      feedbackMessage.style.display = "block";
+    }
+
+    if (submitButton) {
+      submitButton.disabled = false;
+      // Restaura o ícone original do HTML
+      submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`; //
+    }
   }
 }
