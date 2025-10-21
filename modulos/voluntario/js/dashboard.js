@@ -128,7 +128,8 @@ export function init(user, userData) {
                             ? agendamentosOnline.join("")
                             : "<li>Nenhum horário online.</li>"
                         }</ul>
-                        <a href="#recursos/alterar-grade" class="card-footer-link">Solicitar exclusão de horários.</a>
+                        <a href="#recursos" class="card-footer-link" onclick="setTimeout(() => abrirAba('alterar-grade'), 100)">Solicitar exclusão de horários.</a>
+Solicitar exclusão de horários.</a>
                     </div>
                     <div class="summary-card">
                         <h4>🏢 Grade Presencial (${horasPresencial})</h4>
@@ -137,7 +138,8 @@ export function init(user, userData) {
                             ? agendamentosPresencial.join("")
                             : "<li>Nenhum horário presencial.</li>"
                         }</ul>
-                        <a href="#recursos/alterar-grade" class="card-footer-link">Solicitar exclusão de horários.</a>
+                        <a href="#recursos" class="card-footer-link" onclick="setTimeout(() => abrirAba('alterar-grade'), 100)">Solicitar exclusão de horários.</a>
+Solicitar exclusão de horários.</a>
                     </div>
                 </div>
             </div>`;
