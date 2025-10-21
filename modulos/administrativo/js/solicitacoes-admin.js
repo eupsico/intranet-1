@@ -1,8 +1,10 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// Versão 2.0 (Implementa a lógica da aba "Exclusão Horários")
+// Versão 2.1 (Independente - Importa o firebase-init.js)
 
+// --- INÍCIO DA CORREÇÃO ---
+// Importa o 'db' e as funções do Firestore diretamente do firebase-init.js
 import {
-  getFirestore,
+  db, // A instância do DB
   collection,
   query,
   where,
@@ -13,16 +15,17 @@ import {
   updateDoc,
   serverTimestamp,
   onSnapshot,
-} from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
+// --- FIM DA CORREÇÃO ---
 
-// Variável global para o db
-let dbInstance;
+// Variável global para o db (agora preenchida pelo import)
+let dbInstance = db;
 let adminUser; // Armazena o usuário admin que está logado
 
 // Função principal de inicialização do módulo
-export function init(db, user, userData) {
-  console.log("Módulo solicitacoes-admin.js iniciado.");
-  dbInstance = db; // Armazena a instância do DB
+export function init(db_ignored, user, userData) {
+  // O parâmetro 'db_ignored' não é mais necessário, mas mantemos para compatibilidade
+  console.log("Módulo solicitacoes-admin.js V2.1 (Independente) iniciado.");
   adminUser = userData; // Armazena dados do admin logado
 
   // Elementos do DOM
@@ -104,7 +107,7 @@ export function init(db, user, userData) {
     // TODO: Implementar busca nos dados dos pacientes/atendimentos
   }
 
-  // --- INÍCIO: NOVAS FUNÇÕES (EXCLUSÃO DE HORÁRIOS) ---
+  // --- FUNÇÕES DE EXCLUSÃO DE HORÁRIOS (Corrigidas) ---
 
   /**
    * Carrega e monitora as solicitações de exclusão de horários
@@ -120,10 +123,13 @@ export function init(db, user, userData) {
       return;
     }
 
+    // --- INÍCIO DA CORREÇÃO ---
+    // A variável dbInstance agora é o 'db' importado
     const q = query(
-      collection(dbInstance, "solicitacoesExclusaoGrade"),
+      collection(dbInstance, "solicitacoesExclusaoGrade"), // Erro estava aqui
       orderBy("dataSolicitacao", "desc")
     );
+    // --- FIM DA CORREÇÃO ---
 
     onSnapshot(
       q,
@@ -150,11 +156,13 @@ export function init(db, user, userData) {
             ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
             : "N/A";
 
-          const horariosLabels = data.horariosParaExcluir
-            .map((h) => h.label)
-            .join(", ");
+          const horariosLabels =
+            data.horariosParaExcluir?.map((h) => h.label).join(", ") ||
+            "Erro: Horários não encontrados";
 
-          const statusClass = `status-${String(data.status).toLowerCase()}`;
+          const statusClass = `status-${String(
+            data.status || "pendente"
+          ).toLowerCase()}`;
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -167,7 +175,7 @@ export function init(db, user, userData) {
             data.status
           }</span></td>
                         <td>
-                            <button class="btn btn-primary btn-sm btn-acao-exclusao" data-id="${
+                            <button class="action-button btn-acao-exclusao" data-id="${
                               doc.id
                             }">
                                 ${
@@ -204,9 +212,8 @@ export function init(db, user, userData) {
 
     // 1. Carrega o HTML do formulário do modal
     try {
-      const response = await fetch(
-        "modulos/administrativo/page/modal-exclusao-grade.html"
-      );
+      // Caminho relativo corrigido
+      const response = await fetch("./modal-exclusao-grade.html");
       if (!response.ok) throw new Error("Falha ao carregar o HTML do modal.");
       modalBodyContent.innerHTML = await response.text();
     } catch (error) {
@@ -222,12 +229,12 @@ export function init(db, user, userData) {
     document.getElementById("modal-solicitante-motivo").textContent =
       solicitacaoData.motivo;
     const horariosList = document.getElementById("modal-horarios-list");
-    horariosList.innerHTML = solicitacaoData.horariosParaExcluir
-      .map((h) => `<li>${h.label} (${h.path})</li>`)
-      .join("");
+    horariosList.innerHTML =
+      solicitacaoData.horariosParaExcluir
+        ?.map((h) => `<li>${h.label} (${h.path})</li>`)
+        .join("") || "<li>Erro ao carregar horários</li>";
 
     // 3. Adiciona os botões de ação dinâmicos
-    // Limpa botões antigos (exceto o "Fechar" padrão)
     modalFooterActions
       .querySelectorAll(".dynamic-action-btn")
       .forEach((btn) => btn.remove());
@@ -236,37 +243,34 @@ export function init(db, user, userData) {
       const saveButton = document.createElement("button");
       saveButton.type = "button";
       saveButton.id = "btn-salvar-exclusao";
-      saveButton.className = "btn btn-primary dynamic-action-btn";
+      saveButton.className = "action-button dynamic-action-btn"; // Classe de estilo do design system
       saveButton.textContent = "Salvar Resposta";
       modalFooterActions.appendChild(saveButton);
 
-      // 4. Adiciona listener ao botão Salvar
       saveButton.addEventListener("click", () => handleSalvarExclusao(docId), {
         once: true,
-      }); // {once: true} previne clicks duplicados
+      });
 
-      // 5. Adiciona lógica de visibilidade do formulário
       setupModalFormLogic();
     } else {
       // Se não estiver pendente, apenas exibe os dados preenchidos
       const feedback = solicitacaoData.adminFeedback || {};
-      document.querySelector(
-        `input[name="foiExcluido"][value="${feedback.foiExcluido}"]`
-      ).checked = true;
+      if (feedback.foiExcluido) {
+        document.querySelector(
+          `input[name="foiExcluido"][value="${feedback.foiExcluido}"]`
+        ).checked = true;
+      }
       document.getElementById("dataExclusao").valueAsDate =
         feedback.dataExclusao ? feedback.dataExclusao.toDate() : null;
       document.getElementById("mensagemAdmin").value =
         feedback.mensagemAdmin || "";
       document.getElementById("motivoRejeicao").value =
         feedback.motivoRejeicao || "";
-      // Desabilita todos os campos
       modalBodyContent
-        .querySelectorAll("input, textarea")
+        .querySelectorAll("input, textarea, select")
         .forEach((el) => (el.disabled = true));
-      setupModalFormLogic(); // Roda para mostrar os campos corretos
+      setupModalFormLogic();
     }
-
-    // 6. Abre o modal
     openModal();
   }
 
@@ -279,6 +283,8 @@ export function init(db, user, userData) {
     const camposSim = document.getElementById("campos-feedback-sim");
     const camposNao = document.getElementById("campos-feedback-nao");
 
+    if (!radioSim || !radioNao || !camposSim || !camposNao) return;
+
     const toggleFields = () => {
       camposSim.style.display = radioSim.checked ? "block" : "none";
       camposNao.style.display = radioNao.checked ? "block" : "none";
@@ -286,7 +292,7 @@ export function init(db, user, userData) {
 
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
-    toggleFields(); // Chama na inicialização
+    toggleFields();
   }
 
   /**
@@ -300,12 +306,11 @@ export function init(db, user, userData) {
 
     const foiExcluido = document.querySelector(
       'input[name="foiExcluido"]:checked'
-    )?.value; // "sim" ou "nao"
+    )?.value;
     const dataExclusaoInput = document.getElementById("dataExclusao").value;
     const mensagemAdmin = document.getElementById("mensagemAdmin").value;
     const motivoRejeicao = document.getElementById("motivoRejeicao").value;
 
-    // Validação
     if (!foiExcluido) {
       alert("Selecione 'Sim' ou 'Não'.");
       saveButton.disabled = false;
@@ -317,7 +322,7 @@ export function init(db, user, userData) {
     const adminFeedback = {
       foiExcluido: foiExcluido,
       dataResolucao: serverTimestamp(),
-      adminNome: adminUser.nomeCompleto || "Admin",
+      adminNome: adminUser.nome || "Admin",
     };
 
     if (foiExcluido === "sim") {
@@ -328,10 +333,11 @@ export function init(db, user, userData) {
         return;
       }
       statusFinal = "Concluída";
-      adminFeedback.dataExclusao = new Date(dataExclusaoInput + "T00:00:00"); // Adiciona hora para evitar problemas de fuso
+      adminFeedback.dataExclusao = Timestamp.fromDate(
+        new Date(dataExclusaoInput + "T00:00:00")
+      );
       adminFeedback.mensagemAdmin = mensagemAdmin;
     } else {
-      // (foiExcluido === "nao")
       if (!motivoRejeicao) {
         alert("Para 'Não', o motivo da rejeição é obrigatório.");
         saveButton.disabled = false;
@@ -342,7 +348,6 @@ export function init(db, user, userData) {
       adminFeedback.motivoRejeicao = motivoRejeicao;
     }
 
-    // Atualiza o documento no Firestore
     try {
       const docRef = doc(dbInstance, "solicitacoesExclusaoGrade", docId);
       await updateDoc(docRef, {
@@ -360,8 +365,6 @@ export function init(db, user, userData) {
     }
   }
 
-  // --- FIM: NOVAS FUNÇÕES ---
-
   // --- Funções do Modal (Genéricas) ---
   function openModal() {
     if (modal) modal.style.display = "flex";
@@ -369,22 +372,23 @@ export function init(db, user, userData) {
 
   function closeModal() {
     if (modal) modal.style.display = "none";
-    modalBodyContent.innerHTML = ""; // Limpa conteúdo anterior
+    modalBodyContent.innerHTML = "";
     modalFooterActions
       .querySelectorAll(".dynamic-action-btn")
-      .forEach((btn) => btn.remove()); // Remove botões dinâmicos
-    modalTitle.textContent = "Detalhes da Solicitação"; // Reseta título
+      .forEach((btn) => btn.remove());
+    modalTitle.textContent = "Detalhes da Solicitação";
   }
 
   // --- Inicialização ---
   setupTabs();
-  loadNovasSessoes(); // Carrega a primeira aba por padrão
+  // Carrega os dados de todas as abas
+  loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
   loadStatusContratos();
-  loadExclusaoHorarios(); // CHAMA A NOVA FUNÇÃO
+  loadExclusaoHorarios(); // CHAMA A FUNÇÃO CORRIGIDA
 
-  // Adiciona listener de evento na tabela de exclusão (event delegation)
+  // Adiciona listener de evento na tabela de exclusão
   const tableBodyExclusao = document.getElementById(
     "table-body-exclusao-horarios"
   );
@@ -393,7 +397,6 @@ export function init(db, user, userData) {
       const button = e.target.closest(".btn-acao-exclusao");
       if (button) {
         const docId = button.dataset.id;
-        // Busca os dados mais recentes antes de abrir o modal
         const docRef = doc(dbInstance, "solicitacoesExclusaoGrade", docId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
@@ -409,7 +412,6 @@ export function init(db, user, userData) {
   // Event listeners do modal
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
-  // Fecha o modal se clicar fora do conteúdo
   if (modal) {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
