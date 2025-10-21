@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 9: Corrige a lógica de contagem para renderizar os checkboxes.
+// VERSÃO 12: Bloqueia checkboxes para não permitir menos de 5 horários.
 
 import {
   db,
@@ -13,7 +13,7 @@ import {
 // --- Constantes Globais ---
 let dadosDasGrades = {};
 
-// Mapa para traduzir os dias (usado pela nova lógica)
+// Mapa para traduzir os dias
 const DIAS_SEMANA_NOMES = {
   segunda: "Segunda-feira",
   terca: "Terça-feira",
@@ -22,25 +22,6 @@ const DIAS_SEMANA_NOMES = {
   sexta: "Sexta-feira",
   sabado: "Sábado",
 };
-
-// Constantes originais mantidas
-const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
-const HORAS = [
-  "08:00",
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-  "19:00",
-  "20:00",
-  "21:00",
-];
 // --- FIM DAS CONSTANTES ---
 
 let currentUser;
@@ -59,7 +40,7 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V9 - Correção Checkbox).");
+  console.log("[Alterar Grade] Módulo iniciado (V12 - Trava de 5 horários).");
   currentUser = user;
   currentUserData = userData;
 
@@ -84,11 +65,10 @@ export async function init(user, userData) {
     }
   }
 
-  // Sempre reconfigura os elementos DOM e recarrega os dados
   try {
     setupDOMElements();
     populateInitialData();
-    await loadAndRenderGrades(); // Lógica V9 (correta)
+    await loadAndRenderGrades();
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -114,7 +94,6 @@ function setupDOMElements() {
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
-  // O campo correto é 'nome'
   if (currentUserData && currentUserData.nome) {
     nomeInput.value = currentUserData.nome;
   } else {
@@ -144,13 +123,13 @@ async function loadGradeDataFromAdmin() {
 }
 
 /**
- * Carrega e renderiza os checkboxes da grade do usuário (Lógica V9)
+ * Carrega e renderiza os checkboxes da grade do usuário
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
-  await loadGradeDataFromAdmin(); // Carrega os dados da grade central
+  await loadGradeDataFromAdmin();
   totalHorariosAtual = 0;
-  gradesContainer.innerHTML = ""; // Limpa o spinner
+  gradesContainer.innerHTML = "";
 
   if (
     !currentUserData ||
@@ -162,18 +141,15 @@ async function loadAndRenderGrades() {
     return;
   }
 
-  // Lógica V8 (igual ao dashboard): A grade usa o username OU o nome completo.
   const userUsername = currentUserData.username;
   const userFullName = currentUserData.nome;
 
   const horariosOnline = [];
   const horariosPresencial = [];
 
-  // Itera pela grade central
   for (const path in dadosDasGrades) {
     const nomeNaGrade = dadosDasGrades[path];
 
-    // Compara pelo username OU pelo nome completo
     if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
       const parts = path.split(".");
       if (parts.length === 4) {
@@ -182,7 +158,6 @@ async function loadAndRenderGrades() {
         const diaNome = DIAS_SEMANA_NOMES[diaKey] || diaKey;
         const label = `${diaNome}, ${horaFormatada}`;
 
-        // Cria o HTML do checkbox
         const checkboxHtml = `
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="horario_excluir" value="${path}" id="chk_${path}" data-label="${label}">
@@ -192,17 +167,13 @@ async function loadAndRenderGrades() {
                     </div>
                 `;
 
-        // --- INÍCIO DA CORREÇÃO V9 ---
-        // O contador totalHorariosAtual só deve incrementar se o item for
-        // de fato adicionado a uma das listas.
         if (tipo === "online") {
           horariosOnline.push(checkboxHtml);
-          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
+          totalHorariosAtual++;
         } else if (tipo === "presencial") {
           horariosPresencial.push(checkboxHtml);
-          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
+          totalHorariosAtual++;
         }
-        // --- FIM DA CORREÇÃO V9 ---
       }
     }
   }
@@ -236,7 +207,7 @@ async function loadAndRenderGrades() {
   }
 
   totalInput.value = totalHorariosAtual;
-  validateForm(); // Valida o formulário após renderizar
+  validateForm();
 }
 
 /**
@@ -245,57 +216,107 @@ async function loadAndRenderGrades() {
 function setupEventListeners() {
   if (!form) return;
 
-  // Remove listeners antigos para evitar duplicação
-  form.removeEventListener("change", validateForm);
-  motivoTextarea.removeEventListener("input", validateForm);
-  form.removeEventListener("submit", handleFormSubmit);
+  // Limpa listeners antigos (essencial se o init for chamado várias vezes)
+  const newForm = form.cloneNode(true);
+  form.parentNode.replaceChild(newForm, form);
+  form = newForm;
+
+  // Remapeia elementos internos do formulário clonado
+  motivoTextarea = document.getElementById("motivo-exclusao");
+  submitButton = document.getElementById("btn-enviar-solicitacao");
+  avisoMinimo = document.getElementById("aviso-minimo-horarios");
+  gradesContainer = document.getElementById("grades-para-exclusao");
 
   // Adiciona novos listeners
-  form.addEventListener("change", validateForm);
+  form.addEventListener("change", validateForm); // 'change' pega cliques nos checkboxes
   motivoTextarea.addEventListener("input", validateForm);
   form.addEventListener("submit", handleFormSubmit);
 }
 
 /**
- * Valida o formulário e atualiza o estado do botão e avisos
+ * Valida o formulário, atualiza o botão E BLOQUEIA os checkboxes (Lógica V12)
  */
 function validateForm() {
   if (!form) return;
 
+  // 1. Obter todos os elementos necessários
+  const allCheckboxes = form.querySelectorAll('input[name="horario_excluir"]');
   const selectedCheckboxes = form.querySelectorAll(
     'input[name="horario_excluir"]:checked'
   );
   const motivo = motivoTextarea.value.trim();
-  const horariosRestantes = totalHorariosAtual - selectedCheckboxes.length;
 
+  const selecionadosCount = selectedCheckboxes.length;
+  const horariosRestantes = totalHorariosAtual - selecionadosCount;
+
+  // 2. Lógica de Validação para o Botão SUBMIT
   let isMotivoOk = motivo.length > 0;
-  let isHorarioOk = selectedCheckboxes.length > 0;
-  let isMinimoOk = true;
+  let isHorarioOk = selecionadosCount > 0;
+  let isMinimoOk = true; // Assume que é válido por padrão
 
-  if (totalHorariosAtual > 5) {
-    isMinimoOk = horariosRestantes >= 5;
+  const LIMITE_MINIMO = 5;
+
+  if (totalHorariosAtual > LIMITE_MINIMO) {
+    // Se o total é > 5 (ex: 6), o restante DEVE ser >= 5
+    isMinimoOk = horariosRestantes >= LIMITE_MINIMO;
+
     avisoMinimo.style.display = "block";
-    avisoMinimo.classList.toggle("alert-warning", isMinimoOk);
-    avisoMinimo.classList.toggle("alert-error", !isMinimoOk);
+    avisoMinimo.classList.toggle("alert-warning", isMinimoOk && isHorarioOk); // Amarelo se ok
+    avisoMinimo.classList.toggle("alert-error", !isMinimoOk); // Vermelho se inválido
     avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
-            Você deve manter no mínimo 5 horários. 
-            (Atual: ${totalHorariosAtual} | Selecionados: ${selectedCheckboxes.length} | Restantes: ${horariosRestantes})`;
+            Você deve manter no mínimo ${LIMITE_MINIMO} horários. 
+            (Atual: ${totalHorariosAtual} | Selecionados: ${selecionadosCount} | Restantes: ${horariosRestantes})`;
   } else {
+    // Se o total é <= 5 (ex: 4), a regra de "mínimo 5" não se aplica para *validar o botão*.
+    isMinimoOk = true;
     avisoMinimo.style.display = "block";
     avisoMinimo.className = "alert alert-info";
-    avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é 5.`;
-    isMinimoOk = true;
+    avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é ${LIMITE_MINIMO}.`;
   }
 
   // Feedback visual para o motivo
-  if (motivo.length > 0 && !isMotivoOk) {
+  if (motivo.length === 0 && isHorarioOk) {
     motivoTextarea.classList.add("is-invalid");
   } else {
     motivoTextarea.classList.remove("is-invalid");
   }
 
+  // Validação final do Botão
   const isValid = isMotivoOk && isHorarioOk && isMinimoOk;
   submitButton.disabled = !isValid;
+
+  // 3. Lógica de BLOQUEIO de Checkboxes (V12)
+  // Esta lógica é separada da validação do botão submit.
+
+  if (totalHorariosAtual > LIMITE_MINIMO) {
+    // Só pode selecionar (total - 5)
+    const maxSelecionaveis = totalHorariosAtual - LIMITE_MINIMO; // Ex: 6 - 5 = 1
+
+    if (selecionadosCount >= maxSelecionaveis) {
+      // Atingiu o limite (Ex: 1 selecionado)
+      // Desabilita todos os NÃO marcados.
+      allCheckboxes.forEach((cb) => {
+        if (!cb.checked) {
+          cb.disabled = true;
+          cb.parentElement.classList.add("disabled-check"); // Adiciona classe para feedback visual
+        }
+      });
+    } else {
+      // Não atingiu o limite (Ex: 0 selecionados)
+      // Habilita TODOS (para o caso de ter desmarcado 1)
+      allCheckboxes.forEach((cb) => {
+        cb.disabled = false;
+        cb.parentElement.classList.remove("disabled-check");
+      });
+    }
+  } else {
+    // Se o total é <= 5, a regra de bloqueio não se aplica.
+    // Garante que todos estejam habilitados.
+    allCheckboxes.forEach((cb) => {
+      cb.disabled = false;
+      cb.parentElement.classList.remove("disabled-check");
+    });
+  }
 }
 
 /**
@@ -322,7 +343,6 @@ async function handleFormSubmit(e) {
 
   const motivo = motivoTextarea.value.trim();
 
-  // O campo correto é 'nome'
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
@@ -334,7 +354,6 @@ async function handleFormSubmit(e) {
   };
 
   try {
-    // ESTA É A FUNÇÃO QUE ABRE O CHAMADO (não altera a grade)
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
       solicitacaoData
