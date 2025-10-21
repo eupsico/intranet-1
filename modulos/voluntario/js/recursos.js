@@ -1,3 +1,6 @@
+// eupsico/intranet-1/intranet-1-3f5b28aea177748beae753ef1bee8bfd1916ed36/modulos/voluntario/js/recursos.js
+// CORRIGIDO
+
 // Arquivo: /modulos/voluntario/js/recursos.js
 // Versão 3.0 (Padronizado para Padrão 2: Pré-Renderizado + Hash)
 
@@ -101,7 +104,7 @@ export function init(user, userData) {
         }
       } catch (error) {
         console.error(
-          `[InitializeTab ${tabId}] ERRO durante a inicialização do script:`,
+          `[InitializeTab ${tabId}] ERRO during a inicialização do script:`,
           error
         );
         if (targetContentEl) {
@@ -295,8 +298,12 @@ export function init(user, userData) {
   console.log(
     "[Recursos Init] Chamando handleHashChange para carregar aba inicial."
   );
-  // Usar setTimeout 0 ainda pode ser útil para garantir que todo o DOM esteja pronto
-  setTimeout(handleHashChange, 0);
+
+  // CORREÇÃO: Aumentado o timeout de 0 para 100ms.
+  // Isso dá ao navegador tempo para renderizar o HTML injetado
+  // (recursos.html) antes que os scripts das abas (disponibilidade.js)
+  // tentem encontrar seus containers (ex: #disponibilidade).
+  setTimeout(handleHashChange, 100);
 
   console.log("[Recursos Init] Inicialização V3.0 concluída.");
 } // Fim da função init
