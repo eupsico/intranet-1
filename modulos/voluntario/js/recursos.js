@@ -176,8 +176,9 @@ export function init(user, userData) {
       console.warn(`[SwitchTab] Botão para aba ${tabId} não encontrado.`);
 
     // 2. ATUALIZA CONTEÚDO (Visibilidade)
-    const allContentSections =
-      tabContentContainer.querySelectorAll(":scope > .tab-pane"); // :scope garante filhos diretos
+    const allContentSections = tabContentContainer.querySelectorAll(
+      ":scope > .tab-content"
+    ); // :scope garante filhos diretos
     let foundContent = false;
     allContentSections.forEach((section) => {
       const isActive = section.id === tabId;
