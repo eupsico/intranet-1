@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/dashboard.js
-// Versão: 2.0 (Atualizado para a sintaxe modular do Firebase v9)
+// Versão: 2.1 (Atualiza links da grade e adiciona card "Minhas Solicitações")
 
 // 1. Importa todas as funções necessárias do nosso arquivo central de inicialização
 import {
@@ -18,6 +18,10 @@ import {
 export function init(user, userData) {
   const summaryContainer = document.getElementById("summary-panel-container");
   const infoCardContainer = document.getElementById("info-card-container");
+  // NOVO: Container para o novo card de solicitações
+  const solicitacoesContainer = document.getElementById(
+    "solicitacoes-container"
+  );
 
   if (!summaryContainer || !infoCardContainer) return;
 
@@ -55,6 +59,7 @@ export function init(user, userData) {
 
   /**
    * Renderiza o painel "Meu Resumo Semanal".
+   * (Links de "Atualize sua grade" foram alterados)
    */
   function renderSummaryPanel() {
     if (!userData || !userData.username) {
@@ -123,7 +128,7 @@ export function init(user, userData) {
                             ? agendamentosOnline.join("")
                             : "<li>Nenhum horário online.</li>"
                         }</ul>
-                        <a href="#solicitacoes" class="card-footer-link">Atualize sua grade em Solicitações.</a>
+                        <a href="#recursos/alterar-grade" class="card-footer-link">Solicitar exclusão de horários.</a>
                     </div>
                     <div class="summary-card">
                         <h4>🏢 Grade Presencial (${horasPresencial})</h4>
@@ -132,7 +137,7 @@ export function init(user, userData) {
                             ? agendamentosPresencial.join("")
                             : "<li>Nenhum horário presencial.</li>"
                         }</ul>
-                        <a href="#solicitacoes" class="card-footer-link">Atualize sua grade em Solicitações.</a>
+                        <a href="#recursos/alterar-grade" class="card-footer-link">Solicitar exclusão de horários.</a>
                     </div>
                 </div>
             </div>`;
@@ -267,6 +272,127 @@ export function init(user, userData) {
     }
   }
 
+  // --- NOVA FUNÇÃO ---
+  /**
+   * Busca e renderiza o card "Minhas Solicitações"
+   */
+  async function renderMinhasSolicitacoes() {
+    if (!solicitacoesContainer) return; // Se o container não existir no HTML, não faz nada
+
+    solicitacoesContainer.innerHTML = `
+            <div class="info-card" id="card-minhas-solicitacoes">
+                <h3><i class="fas fa-tasks"></i> Minhas Solicitações</h3>
+                <h4>Solicitações em Aberto</h4>
+                <div id="solicitacoes-abertas-content">
+                    <div class="loading-spinner-small"></div>
+                </div>
+                <hr>
+                <h4>Concluídas (Últimos 30 dias)</h4>
+                <div id="solicitacoes-concluidas-content">
+                    <div class="loading-spinner-small"></div>
+                </div>
+            </div>
+        `;
+
+    const abertasContent = document.getElementById(
+      "solicitacoes-abertas-content"
+    );
+    const concluidasContent = document.getElementById(
+      "solicitacoes-concluidas-content"
+    );
+
+    const umMesAtras = new Date();
+    umMesAtras.setDate(umMesAtras.getDate() - 30);
+
+    // Query para todas as solicitações do usuário
+    const q = query(
+      collection(db, "solicitacoesExclusaoGrade"),
+      where("solicitanteId", "==", user.uid),
+      orderBy("dataSolicitacao", "desc")
+    );
+
+    try {
+      const querySnapshot = await getDocs(q);
+      let abertasHtml = "";
+      let concluidasHtml = "";
+
+      if (querySnapshot.empty) {
+        abertasContent.innerHTML = "<p>Nenhuma solicitação em aberto.</p>";
+        concluidasContent.innerHTML =
+          "<p>Nenhuma solicitação concluída recentemente.</p>";
+        return;
+      }
+
+      querySnapshot.forEach((doc) => {
+        const sol = doc.data();
+
+        const dataSol = sol.dataSolicitacao
+          ? sol.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
+          : "Data pendente";
+
+        const horarios = sol.horariosParaExcluir.map((h) => h.label).join(", ");
+
+        // Define o status e o feedback do admin
+        let statusHtml = "";
+        let feedbackHtml = "";
+
+        const statusClass = `status-${String(sol.status).toLowerCase()}`;
+        statusHtml = `<span class_ ="status-badge ${statusClass}">${sol.status}</span>`;
+
+        if (sol.status === "Concluída" && sol.adminFeedback) {
+          const dataExclusao = sol.adminFeedback.dataExclusao
+            ? sol.adminFeedback.dataExclusao
+                .toDate()
+                .toLocaleDateString("pt-BR")
+            : "";
+          feedbackHtml = `<p class="feedback-admin"><strong>Admin:</strong> ${
+            sol.adminFeedback.mensagemAdmin || "Horário excluído."
+          } (Em: ${dataExclusao})</p>`;
+        } else if (sol.status === "Rejeitada" && sol.adminFeedback) {
+          feedbackHtml = `<p class="feedback-admin feedback-rejeitado"><strong>Admin:</strong> ${
+            sol.adminFeedback.motivoRejeicao || "Solicitação rejeitada."
+          }</p>`;
+        }
+
+        const itemHtml = `
+                    <li class="solicitacao-item">
+                        <div class="solicitacao-header">
+                            <strong>Data:</strong> ${dataSol} ${statusHtml}
+                        </div>
+                        <div class="solicitacao-body">
+                            <p><strong>Horários:</strong> ${horarios}</p>
+                            <p><strong>Motivo:</strong> ${sol.motivo}</p>
+                            ${feedbackHtml}
+                        </div>
+                    </li>
+                `;
+
+        if (sol.status === "Pendente") {
+          abertasHtml += itemHtml;
+        } else {
+          // Verifica se foi concluída/rejeitada no último mês
+          const dataResolucao = sol.adminFeedback?.dataResolucao
+            ? sol.adminFeedback.dataResolucao.toDate()
+            : null;
+          if (dataResolucao && dataResolucao >= umMesAtras) {
+            concluidasHtml += itemHtml;
+          }
+        }
+      }); // Fim do forEach
+
+      abertasContent.innerHTML = abertasHtml
+        ? `<ul class="solicitacoes-list">${abertasHtml}</ul>`
+        : "<p>Nenhuma solicitação em aberto.</p>";
+      concluidasContent.innerHTML = concluidasHtml
+        ? `<ul class="solicitacoes-list">${concluidasHtml}</ul>`
+        : "<p>Nenhuma solicitação concluída nos últimos 30 dias.</p>";
+    } catch (error) {
+      console.error("Erro ao buscar solicitações:", error);
+      abertasContent.innerHTML = `<p class="alert alert-error">Erro ao carregar solicitações.</p>`;
+      concluidasContent.innerHTML = "";
+    }
+  }
+
   /**
    * Função principal que inicializa a renderização do dashboard.
    */
@@ -276,6 +402,8 @@ export function init(user, userData) {
 
     await fetchValoresConfig();
     await renderInfoCards();
+    // CHAMA A NOVA FUNÇÃO
+    renderMinhasSolicitacoes().catch(console.error);
 
     const gradesDocRef = doc(db, "administrativo", "grades"); // Sintaxe v9
 
