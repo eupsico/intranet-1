@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 7: Re-adiciona constantes originais + mantém a lógica de busca correta (V6).
+// VERSÃO 8: Restaura a lógica de busca correta (V5) e as constantes (V7).
 
 import {
   db,
@@ -13,7 +13,7 @@ import {
 // --- Constantes Globais ---
 let dadosDasGrades = {};
 
-// Mapa para traduzir os dias (usado pela nova lógica V6)
+// Mapa para traduzir os dias (usado pela nova lógica)
 const DIAS_SEMANA_NOMES = {
   segunda: "Segunda-feira",
   terca: "Terça-feira",
@@ -23,9 +23,7 @@ const DIAS_SEMANA_NOMES = {
   sabado: "Sábado",
 };
 
-// --- INFORMAÇÕES IMPORTANTES REINSERIDAS ---
-// Constantes do arquivo original (não são mais usadas pela lógica V6,
-// mas mantidas para a integridade do arquivo).
+// --- INFORMAÇÕES IMPORTANTES REINSERIDAS (do V7) ---
 const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const HORAS = [
   "08:00",
@@ -61,7 +59,9 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V7 - Código Completo).");
+  console.log(
+    "[Alterar Grade] Módulo iniciado (V8 - Lógica de busca corrigida)."
+  );
   currentUser = user;
   currentUserData = userData;
 
@@ -90,7 +90,7 @@ export async function init(user, userData) {
   try {
     setupDOMElements();
     populateInitialData();
-    await loadAndRenderGrades(); // Lógica V6 (correta)
+    await loadAndRenderGrades(); // Lógica V8 (correta)
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -146,7 +146,7 @@ async function loadGradeDataFromAdmin() {
 }
 
 /**
- * Carrega e renderiza os checkboxes da grade do usuário (Lógica V6)
+ * Carrega e renderiza os checkboxes da grade do usuário (Lógica V8 / V5)
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
@@ -154,15 +154,21 @@ async function loadAndRenderGrades() {
   totalHorariosAtual = 0;
   gradesContainer.innerHTML = ""; // Limpa o spinner
 
-  if (!currentUserData || !currentUserData.nome) {
+  if (
+    !currentUserData ||
+    (!currentUserData.username && !currentUserData.nome)
+  ) {
     console.error(
-      "[Alterar Grade] Não foi possível identificar o 'nome' do usuário."
+      "[Alterar Grade] Não foi possível identificar o 'username' ou 'nome' do usuário."
     );
     return;
   }
 
-  // Lógica V6 (igual ao dashboard): A grade usa o nome completo
+  // --- INÍCIO DA CORREÇÃO V8 (LÓGICA DO V5 / DASHBOARD) ---
+  // A grade usa tanto o username quanto o nome completo.
+  const userUsername = currentUserData.username;
   const userFullName = currentUserData.nome;
+  // --- FIM DA CORREÇÃO V8 ---
 
   const horariosOnline = [];
   const horariosPresencial = [];
@@ -171,8 +177,10 @@ async function loadAndRenderGrades() {
   for (const path in dadosDasGrades) {
     const nomeNaGrade = dadosDasGrades[path];
 
-    // Compara APENAS pelo nome completo
-    if (nomeNaGrade === userFullName) {
+    // --- INÍCIO DA CORREÇÃO V8 (LÓGICA DO V5 / DASHBOARD) ---
+    // Compara pelo username OU pelo nome completo
+    if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
+      // --- FIM DA CORREÇÃO V8 ---
       const parts = path.split(".");
       if (parts.length === 4) {
         const [tipo, diaKey, horaRaw, colKey] = parts;
