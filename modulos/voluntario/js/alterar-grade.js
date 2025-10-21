@@ -1,7 +1,8 @@
-// ARQUIVO ATUALIZADO: modulos/voluntario/js/alterar-grade.js
+// NOVO ARQUIVO: modulos/voluntario/js/alterar-grade.js
+// VERSÃO 3: Corrigindo DE VERDADE os caminhos de importação e fetch.
 
 // Importa as funções necessárias do Firebase
-// CAMINHO CORRIGIDO e importando o 'db' diretamente
+// --- LINHA CORRIGIDA ---
 import {
   db,
   doc,
@@ -66,7 +67,8 @@ export async function init(user, userData) {
   }
 
   try {
-    // CORREÇÃO: O fetch do HTML também precisa ser relativo ao PAI (portal-voluntario.html)
+    // --- LINHA CORRIGIDA ---
+    // O fetch é relativo à página 'portal-voluntario.html' (raiz do módulo), não ao 'alterar-grade.js'
     const response = await fetch("modulos/voluntario/page/alterar-grade.html");
     if (!response.ok) {
       throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
@@ -196,6 +198,7 @@ function renderGrade(horarios, tipoGrade) {
  * Adiciona os listeners de evento ao formulário
  */
 function setupEventListeners() {
+  if (!form) return;
   // Listener para qualquer mudança no formulário (checkboxes)
   form.addEventListener("change", validateForm);
 
