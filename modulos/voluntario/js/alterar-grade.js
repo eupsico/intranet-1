@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 10: Corrige a lógica de renderização dos checkboxes (o HTML não estava sendo salvo)
+// VERSÃO 9: Corrige a lógica de contagem para renderizar os checkboxes.
 
 import {
   db,
@@ -59,29 +59,36 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log(
-    "[Alterar Grade] Módulo iniciado (V10 - Correção Render Checkbox)."
-  );
+  console.log("[Alterar Grade] Módulo iniciado (V9 - Correção Checkbox).");
   currentUser = user;
   currentUserData = userData;
 
-  // --- INÍCIO DA CORREÇÃO: O seletor deve ser o ID da aba de conteúdo ---
-  // O arquivo recursos.js já carrega o HTML dentro da aba correta.
-  // O container da view é a própria aba.
   const viewContainer = document.querySelector("#alterar-grade");
-  // --- FIM DA CORREÇÃO ---
-
   if (!viewContainer) {
     console.error("[Alterar Grade] Container #alterar-grade não encontrado.");
     return;
   }
 
-  // O HTML já foi carregado pelo 'recursos.js', então não precisamos fazer fetch
-  // Apenas mapeamos os elementos
+  // Se o HTML ainda não foi carregado
+  if (!viewContainer.querySelector("form")) {
+    try {
+      const response = await fetch("../page/alterar-grade.html");
+      if (!response.ok) {
+        throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
+      }
+      viewContainer.innerHTML = await response.text();
+    } catch (error) {
+      console.error("[Alterar Grade] Erro ao carregar HTML:", error);
+      viewContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar o módulo. Tente recarregar a página.</p>`;
+      return;
+    }
+  }
+
+  // Sempre reconfigura os elementos DOM e recarrega os dados
   try {
     setupDOMElements();
     populateInitialData();
-    await loadAndRenderGrades(); // Lógica V10 (correta)
+    await loadAndRenderGrades(); // Lógica V9 (correta)
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -107,6 +114,7 @@ function setupDOMElements() {
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
+  // O campo correto é 'nome'
   if (currentUserData && currentUserData.nome) {
     nomeInput.value = currentUserData.nome;
   } else {
@@ -136,7 +144,7 @@ async function loadGradeDataFromAdmin() {
 }
 
 /**
- * Carrega e renderiza os checkboxes da grade do usuário (Lógica V10)
+ * Carrega e renderiza os checkboxes da grade do usuário (Lógica V9)
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
@@ -154,14 +162,12 @@ async function loadAndRenderGrades() {
     return;
   }
 
+  // Lógica V8 (igual ao dashboard): A grade usa o username OU o nome completo.
   const userUsername = currentUserData.username;
   const userFullName = currentUserData.nome;
 
-  // --- INÍCIO DA CORREÇÃO V10 ---
-  // As listas devem ser declaradas AQUI, antes do loop
   const horariosOnline = [];
   const horariosPresencial = [];
-  // --- FIM DA CORREÇÃO V10 ---
 
   // Itera pela grade central
   for (const path in dadosDasGrades) {
@@ -186,22 +192,21 @@ async function loadAndRenderGrades() {
                     </div>
                 `;
 
-        // --- INÍCIO DA CORREÇÃO V10 ---
-        // Adiciona o HTML à lista correta e incrementa o contador
+        // --- INÍCIO DA CORREÇÃO V9 ---
+        // O contador totalHorariosAtual só deve incrementar se o item for
+        // de fato adicionado a uma das listas.
         if (tipo === "online") {
           horariosOnline.push(checkboxHtml);
-          totalHorariosAtual++;
+          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
         } else if (tipo === "presencial") {
           horariosPresencial.push(checkboxHtml);
-          totalHorariosAtual++;
+          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
         }
-        // --- FIM DA CORREÇÃO V10 ---
+        // --- FIM DA CORREÇÃO V9 ---
       }
     }
   }
 
-  // A lógica de renderização final (fora do loop) agora funciona
-  // porque as variáveis horariosOnline e horariosPresencial contêm o HTML.
   let finalHtml = "";
   if (horariosOnline.length > 0) {
     finalHtml += `<div class="grade-section">
@@ -241,14 +246,9 @@ function setupEventListeners() {
   if (!form) return;
 
   // Remove listeners antigos para evitar duplicação
-  // (Necessário se o init for chamado múltiplas vezes sem recarregar a página)
-  const newForm = form.cloneNode(true);
-  form.parentNode.replaceChild(newForm, form);
-  form = newForm; // Atualiza a referência global do formulário
-
-  // Atualiza referências dos elementos internos do formulário
-  motivoTextarea = document.getElementById("motivo-exclusao");
-  submitButton = document.getElementById("btn-enviar-solicitacao");
+  form.removeEventListener("change", validateForm);
+  motivoTextarea.removeEventListener("input", validateForm);
+  form.removeEventListener("submit", handleFormSubmit);
 
   // Adiciona novos listeners
   form.addEventListener("change", validateForm);
@@ -275,20 +275,21 @@ function validateForm() {
   if (totalHorariosAtual > 5) {
     isMinimoOk = horariosRestantes >= 5;
     avisoMinimo.style.display = "block";
-    avisoMinimo.classList.toggle("alert-warning", isMinimoOk); // Amarelo se OK
-    avisoMinimo.classList.toggle("alert-error", !isMinimoOk); // Vermelho se Erro
-    avisoMinimo.innerHTML = `Você deve manter no mínimo 5 horários. 
+    avisoMinimo.classList.toggle("alert-warning", isMinimoOk);
+    avisoMinimo.classList.toggle("alert-error", !isMinimoOk);
+    avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
+            Você deve manter no mínimo 5 horários. 
             (Atual: ${totalHorariosAtual} | Selecionados: ${selectedCheckboxes.length} | Restantes: ${horariosRestantes})`;
   } else {
     avisoMinimo.style.display = "block";
-    avisoMinimo.className = "alert alert-info"; // Azul (informativo)
-    avisoMinimo.innerHTML = `Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é 5.`;
+    avisoMinimo.className = "alert alert-info";
+    avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é 5.`;
     isMinimoOk = true;
   }
 
   // Feedback visual para o motivo
-  if (motivo.length === 0 && selectedCheckboxes.length > 0) {
-    motivoTextarea.classList.add("is-invalid"); // (Adicione CSS para .is-invalid se necessário)
+  if (motivo.length > 0 && !isMotivoOk) {
+    motivoTextarea.classList.add("is-invalid");
   } else {
     motivoTextarea.classList.remove("is-invalid");
   }
@@ -321,6 +322,7 @@ async function handleFormSubmit(e) {
 
   const motivo = motivoTextarea.value.trim();
 
+  // O campo correto é 'nome'
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
@@ -332,6 +334,7 @@ async function handleFormSubmit(e) {
   };
 
   try {
+    // ESTA É A FUNÇÃO QUE ABRE O CHAMADO (não altera a grade)
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
       solicitacaoData
@@ -346,7 +349,7 @@ async function handleFormSubmit(e) {
 
     form.reset();
     await loadAndRenderGrades(); // Recarrega a grade
-    submitButton.innerHTML = `Enviar Solicitação`;
+    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
   } catch (error) {
     console.error("[Alterar Grade] Erro ao salvar solicitação:", error);
     feedbackMessage.className = "alert alert-error";
@@ -355,6 +358,6 @@ async function handleFormSubmit(e) {
     feedbackMessage.style.display = "block";
 
     submitButton.disabled = false;
-    submitButton.innerHTML = `Enviar Solicitação`;
+    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
   }
 }
