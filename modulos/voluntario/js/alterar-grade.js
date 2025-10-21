@@ -8,7 +8,7 @@ import {
   collection,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 // Importa o app Firebase e o DB
 import { app } from "/assets/js/firebase-init.js";
