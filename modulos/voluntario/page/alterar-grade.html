@@ -1,0 +1,52 @@
+<div id="alterar-grade-container" class="view-container-interna">
+    
+    <div class="description-box">
+        <p>Este espaço é para solicitar a <strong>exclusão de horários</strong> na sua grade de atendimento. Revise seus horários abaixo e selecione quais deseja remover.</p>
+    </div>
+
+    <form id="form-exclusao-grade">
+        
+        <div class="form-section">
+            <div class="form-group">
+                <label for="nome-profissional">Nome do Profissional:</label>
+                <input type="text" id="nome-profissional" name="nome-profissional" readonly disabled>
+            </div>
+            <div class="form-group">
+                <label for="total-horarios-atual">Total de Horários na Grade:</label>
+                <input type="text" id="total-horarios-atual" name="total-horarios-atual" value="Calculando..." readonly disabled>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="form-section">
+            <h3>Selecione os horários para excluir:</h3>
+            
+            <div class="alert alert-warning" id="aviso-minimo-horarios">
+                <i class="fas fa-exclamation-triangle"></i>
+                Lembrete: Todos os voluntários devem manter no mínimo 5 horários na grade.
+            </div>
+
+            <div id="grades-para-exclusao" class="loading-spinner" style="min-height: 200px;">
+                </div>
+        </div>
+
+        <hr>
+
+        <div class="form-section">
+            <div class="form-group">
+                <label for="motivo-exclusao">Motivo da Exclusão (Obrigatório):</label>
+                <textarea id="motivo-exclusao" name="motivo-exclusao" rows="4" placeholder="Por favor, descreva o motivo da sua solicitação." required></textarea>
+                <div class_ ="invalid-feedback">Este campo é obrigatório.</div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="btn-enviar-solicitacao" disabled>
+                <i class="fas fa-paper-plane"></i> Enviar Solicitação
+            </button>
+            <div id="solicitacao-feedback" class="feedback-message" style="display: none;"></div>
+        </div>
+
+    </form>
+</div>
