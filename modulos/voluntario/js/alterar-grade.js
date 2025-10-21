@@ -69,7 +69,7 @@ export async function init(user, userData) {
   try {
     // --- LINHA CORRIGIDA ---
     // O fetch é relativo à página 'portal-voluntario.html' (raiz do módulo), não ao 'alterar-grade.js'
-    const response = await fetch("modulos/voluntario/page/alterar-grade.html");
+    const response = await fetch("alterar-grade.html");
     if (!response.ok) {
       throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
     }
