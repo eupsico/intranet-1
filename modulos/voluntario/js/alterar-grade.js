@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 5: Corrige a busca de horários (usando 'nome' e 'username') e renderiza os checkboxes.
+// VERSÃO 7: Re-adiciona constantes originais + mantém a lógica de busca correta (V6).
 
 import {
   db,
@@ -10,12 +10,10 @@ import {
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
 
-// --- INÍCIO DAS CORREÇÕES V5 ---
-
-// 1. Variável para armazenar a grade central
+// --- Constantes Globais ---
 let dadosDasGrades = {};
 
-// 2. Mapa para traduzir os dias da semana (usado pela nova lógica)
+// Mapa para traduzir os dias (usado pela nova lógica V6)
 const DIAS_SEMANA_NOMES = {
   segunda: "Segunda-feira",
   terca: "Terça-feira",
@@ -25,7 +23,9 @@ const DIAS_SEMANA_NOMES = {
   sabado: "Sábado",
 };
 
-// 3. Constantes originais mantidas
+// --- INFORMAÇÕES IMPORTANTES REINSERIDAS ---
+// Constantes do arquivo original (não são mais usadas pela lógica V6,
+// mas mantidas para a integridade do arquivo).
 const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const HORAS = [
   "08:00",
@@ -43,7 +43,7 @@ const HORAS = [
   "20:00",
   "21:00",
 ];
-// --- FIM DAS CORREÇÕES V5 ---
+// --- FIM DAS INFORMAÇÕES REINSERIDAS ---
 
 let currentUser;
 let currentUserData;
@@ -61,7 +61,7 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V5 - Corrigido Checkbox).");
+  console.log("[Alterar Grade] Módulo iniciado (V7 - Código Completo).");
   currentUser = user;
   currentUserData = userData;
 
@@ -71,8 +71,7 @@ export async function init(user, userData) {
     return;
   }
 
-  // Se o HTML ainda não foi carregado (por exemplo, primeiro acesso à aba)
-  // O innerHTML é verificado para evitar recarregar o HTML se já estiver lá.
+  // Se o HTML ainda não foi carregado
   if (!viewContainer.querySelector("form")) {
     try {
       const response = await fetch("../page/alterar-grade.html");
@@ -82,7 +81,7 @@ export async function init(user, userData) {
       viewContainer.innerHTML = await response.text();
     } catch (error) {
       console.error("[Alterar Grade] Erro ao carregar HTML:", error);
-      viewContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar o módulo de alteração de grade. Tente recarregar a página.</p>`;
+      viewContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar o módulo. Tente recarregar a página.</p>`;
       return;
     }
   }
@@ -90,8 +89,8 @@ export async function init(user, userData) {
   // Sempre reconfigura os elementos DOM e recarrega os dados
   try {
     setupDOMElements();
-    populateInitialData(); // Corrigido V4
-    await loadAndRenderGrades(); // Corrigido V5
+    populateInitialData();
+    await loadAndRenderGrades(); // Lógica V6 (correta)
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -100,7 +99,7 @@ export async function init(user, userData) {
 }
 
 /**
- * Mapeia os elementos do DOM para as variáveis do módulo
+ * Mapeia os elementos do DOM
  */
 function setupDOMElements() {
   form = document.getElementById("form-exclusao-grade");
@@ -111,36 +110,19 @@ function setupDOMElements() {
   submitButton = document.getElementById("btn-enviar-solicitacao");
   feedbackMessage = document.getElementById("solicitacao-feedback");
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
-
-  if (
-    !form ||
-    !nomeInput ||
-    !totalInput ||
-    !gradesContainer ||
-    !motivoTextarea ||
-    !submitButton ||
-    !feedbackMessage ||
-    !avisoMinimo
-  ) {
-    console.error(
-      "[Alterar Grade] Erro fatal: Um ou mais elementos do DOM não foram encontrados."
-    );
-  }
 }
 
 /**
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
-  // Correção V4: O campo correto é 'nome', e não 'nomeCompleto'
+  // O campo correto é 'nome'
   if (currentUserData && currentUserData.nome) {
     nomeInput.value = currentUserData.nome;
   } else {
     nomeInput.value = "Nome não encontrado";
   }
 }
-
-// --- INÍCIO DAS NOVAS FUNÇÕES ---
 
 /**
  * Busca os dados da grade central do 'administrativo/grades'
@@ -155,7 +137,7 @@ async function loadGradeDataFromAdmin() {
       console.warn(
         "[Alterar Grade] Documento 'administrativo/grades' não encontrado."
       );
-      dadosDasGrades = {}; // Garante que é um objeto vazio
+      dadosDasGrades = {};
     }
   } catch (error) {
     console.error("[Alterar Grade] Erro ao carregar dados da grade:", error);
@@ -164,7 +146,7 @@ async function loadGradeDataFromAdmin() {
 }
 
 /**
- * Carrega os dados da grade do usuário e chama as funções de renderização
+ * Carrega e renderiza os checkboxes da grade do usuário (Lógica V6)
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
@@ -172,34 +154,25 @@ async function loadAndRenderGrades() {
   totalHorariosAtual = 0;
   gradesContainer.innerHTML = ""; // Limpa o spinner
 
-  if (
-    !currentUserData ||
-    (!currentUserData.username && !currentUserData.nome)
-  ) {
+  if (!currentUserData || !currentUserData.nome) {
     console.error(
-      "[Alterar Grade] Não foi possível identificar o username ou nome do usuário."
+      "[Alterar Grade] Não foi possível identificar o 'nome' do usuário."
     );
     return;
   }
 
-  // --- INÍCIO DA CORREÇÃO V5 ---
-  // Busca tanto o 'username' quanto o 'nome' (nome completo)
-  // O dashboard usa 'nome' (ex: "Marco Aurelio Teles do Egito") para preencher a grade.
-  const userUsername = currentUserData.username;
+  // Lógica V6 (igual ao dashboard): A grade usa o nome completo
   const userFullName = currentUserData.nome;
-  // --- FIM DA CORREÇÃO V5 ---
 
   const horariosOnline = [];
   const horariosPresencial = [];
 
-  // Itera pela grade central (mesma lógica do dashboard)
+  // Itera pela grade central
   for (const path in dadosDasGrades) {
     const nomeNaGrade = dadosDasGrades[path];
 
-    // --- INÍCIO DA CORREÇÃO V5 ---
-    // Verifica se o nome na grade corresponde ao username OU ao nome completo
-    if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
-      // --- FIM DA CORREÇÃO V5 ---
+    // Compara APENAS pelo nome completo
+    if (nomeNaGrade === userFullName) {
       const parts = path.split(".");
       if (parts.length === 4) {
         const [tipo, diaKey, horaRaw, colKey] = parts;
@@ -248,7 +221,7 @@ async function loadAndRenderGrades() {
   if (totalHorariosAtual === 0) {
     gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
     motivoTextarea.disabled = true;
-    submitButton.disabled = true; // Desabilita o envio se não há horários
+    submitButton.disabled = true;
     avisoMinimo.style.display = "none";
   } else {
     gradesContainer.innerHTML = finalHtml;
@@ -258,8 +231,6 @@ async function loadAndRenderGrades() {
   totalInput.value = totalHorariosAtual;
   validateForm(); // Valida o formulário após renderizar
 }
-
-// --- FIM DAS NOVAS FUNÇÕES ---
 
 /**
  * Adiciona os listeners de evento ao formulário
@@ -292,7 +263,7 @@ function validateForm() {
 
   let isMotivoOk = motivo.length > 0;
   let isHorarioOk = selectedCheckboxes.length > 0;
-  let isMinimoOk = true; // Padrão
+  let isMinimoOk = true;
 
   if (totalHorariosAtual > 5) {
     isMinimoOk = horariosRestantes >= 5;
@@ -304,9 +275,9 @@ function validateForm() {
             (Atual: ${totalHorariosAtual} | Selecionados: ${selectedCheckboxes.length} | Restantes: ${horariosRestantes})`;
   } else {
     avisoMinimo.style.display = "block";
-    avisoMinimo.className = "alert alert-info"; // Apenas informativo
+    avisoMinimo.className = "alert alert-info";
     avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é 5.`;
-    isMinimoOk = true; // Não bloqueia se o usuário já tem 5 ou menos
+    isMinimoOk = true;
   }
 
   // Feedback visual para o motivo
@@ -321,8 +292,7 @@ function validateForm() {
 }
 
 /**
- * Manipula o envio do formulário de exclusão
- * @param {Event} e - O evento de submit
+ * Manipula o envio do formulário de exclusão (Cria a solicitação)
  */
 async function handleFormSubmit(e) {
   e.preventDefault();
@@ -345,7 +315,7 @@ async function handleFormSubmit(e) {
 
   const motivo = motivoTextarea.value.trim();
 
-  // Correção V4: O campo correto é 'nome'
+  // O campo correto é 'nome'
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
@@ -357,6 +327,7 @@ async function handleFormSubmit(e) {
   };
 
   try {
+    // ESTA É A FUNÇÃO QUE ABRE O CHAMADO (não altera a grade)
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
       solicitacaoData
