@@ -549,3 +549,192 @@ legend {
     border-color: var(--cor-borda);
     filter: none; /* Garante que não aplique o brilho do botão primário */
 }
+/* --- INÍCIO: Estilos para Fluxo de Alteração de Grade --- */
+
+/* Estilos para a aba "Alterar Grade" (modulos/voluntario/page/alterar-grade.html) */
+.form-section {
+    margin-bottom: 25px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+/* Alertas específicos (já existem .alert, mas adicionando variações) */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: var(--borda-radius);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+.alert-error {
+    color: var(--cor-erro);
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+.alert i {
+    font-size: 1.2em;
+}
+
+
+/* Estiliza o grid de checkboxes de horários */
+.grade-checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+}
+
+/* Estilo para um item de checkbox (baseado no form-check do Bootstrap) */
+.form-check {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    transition: background-color 0.2s;
+}
+.form-check:hover {
+    background-color: var(--cor-fundo-box);
+}
+.form-check-input {
+    width: 1.3em;
+    height: 1.3em;
+    margin-right: 10px;
+    cursor: pointer;
+}
+.form-check-label {
+    margin-bottom: 0;
+    font-weight: 500;
+    cursor: pointer;
+}
+.form-actions {
+    margin-top: 20px;
+}
+
+/* Feedback de validação */
+.feedback-message {
+    padding: 15px;
+    border-radius: var(--borda-radius);
+    margin-top: 15px;
+    font-weight: 500;
+    display: none; /* Começa escondido */
+}
+
+/* --- Estilos para o Card "Minhas Solicitações" (Dashboard Voluntário) --- */
+#solicitacoes-container .info-card {
+    border-left-color: var(--cor-alerta); /* Cor diferente para solicitações */
+}
+
+.solicitacoes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.solicitacao-item {
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 15px;
+    margin-bottom: 10px;
+}
+.solicitacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+.solicitacao-body p {
+    margin: 5px 0;
+    font-size: 0.95em;
+    word-break: break-word;
+}
+.solicitacao-body p strong {
+    color: var(--cor-texto-principal);
+}
+
+/* Estilos para Status Badge (Admin e Voluntário) */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 0.8em;
+    color: var(--cor-texto-inverso);
+    text-transform: uppercase;
+}
+.status-badge.status-pendente { background-color: var(--cor-alerta); color: #333; }
+.status-badge.status-concluída { background-color: var(--cor-sucesso); }
+.status-badge.status-rejeitada { background-color: var(--cor-erro); }
+
+/* Estilo para feedback do admin no card do voluntário */
+.feedback-admin {
+    margin-top: 10px !important;
+    padding: 10px;
+    background-color: var(--cor-surface);
+    border-left: 3px solid var(--cor-sucesso);
+    border-radius: 0 var(--borda-radius) var(--borda-radius) 0;
+}
+.feedback-admin.feedback-rejeitado {
+    border-left-color: var(--cor-erro);
+}
+
+/* --- Estilos para Modal Admin (Formulário de Resposta) --- */
+.form-fieldset {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.form-fieldset legend {
+    font-weight: 600;
+    color: var(--cor-primaria);
+    padding: 0 8px;
+    font-size: 1.1em;
+}
+.static-text {
+    font-size: 1em;
+    color: var(--cor-texto-secundario);
+    padding: 8px 0;
+}
+.static-text-box {
+    background-color: var(--cor-fundo);
+    padding: 12px;
+    border-radius: var(--borda-radius);
+    border: 1px solid var(--cor-borda);
+    min-height: 60px;
+    white-space: pre-wrap; /* Preserva quebras de linha do motivo */
+}
+.static-list {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin-top: 10px;
+}
+.static-list li {
+    margin-bottom: 5px;
+    color: var(--cor-texto-secundario);
+}
+.radio-group {
+    display: flex;
+    gap: 20px;
+    padding-top: 5px;
+}
