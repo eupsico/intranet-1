@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 4: Corrige a fonte de dados da grade e o nome do usuário.
+// VERSÃO 5: Corrige a busca de horários (usando 'nome' e 'username') e renderiza os checkboxes.
 
 import {
   db,
@@ -10,7 +10,7 @@ import {
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
 
-// --- INÍCIO DAS CORREÇÕES ---
+// --- INÍCIO DAS CORREÇÕES V5 ---
 
 // 1. Variável para armazenar a grade central
 let dadosDasGrades = {};
@@ -25,8 +25,7 @@ const DIAS_SEMANA_NOMES = {
   sabado: "Sábado",
 };
 
-// 3. Constantes originais mantidas (embora não usadas pela nova lógica de busca,
-//    as deixamos aqui para manter a integridade do que você chamou de "outras informações")
+// 3. Constantes originais mantidas
 const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const HORAS = [
   "08:00",
@@ -44,7 +43,7 @@ const HORAS = [
   "20:00",
   "21:00",
 ];
-// --- FIM DAS CORREÇÕES ---
+// --- FIM DAS CORREÇÕES V5 ---
 
 let currentUser;
 let currentUserData;
@@ -62,11 +61,10 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V4 - Corrigido).");
+  console.log("[Alterar Grade] Módulo iniciado (V5 - Corrigido Checkbox).");
   currentUser = user;
   currentUserData = userData;
 
-  // Carrega o HTML da página (Lógica original mantida)
   const viewContainer = document.querySelector("#alterar-grade");
   if (!viewContainer) {
     console.error("[Alterar Grade] Container #alterar-grade não encontrado.");
@@ -92,8 +90,8 @@ export async function init(user, userData) {
   // Sempre reconfigura os elementos DOM e recarrega os dados
   try {
     setupDOMElements();
-    populateInitialData(); // Corrigido
-    await loadAndRenderGrades(); // Corrigido
+    populateInitialData(); // Corrigido V4
+    await loadAndRenderGrades(); // Corrigido V5
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -134,14 +132,12 @@ function setupDOMElements() {
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
-  // --- INÍCIO DA CORREÇÃO ---
-  // O campo correto é 'nome', e não 'nomeCompleto'
+  // Correção V4: O campo correto é 'nome', e não 'nomeCompleto'
   if (currentUserData && currentUserData.nome) {
     nomeInput.value = currentUserData.nome;
   } else {
     nomeInput.value = "Nome não encontrado";
   }
-  // --- FIM DA CORREÇÃO ---
 }
 
 // --- INÍCIO DAS NOVAS FUNÇÕES ---
@@ -169,7 +165,6 @@ async function loadGradeDataFromAdmin() {
 
 /**
  * Carrega os dados da grade do usuário e chama as funções de renderização
- * (Lógica substituída para ler 'dadosDasGrades' em vez de 'currentUserData.horarios')
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
@@ -187,9 +182,12 @@ async function loadAndRenderGrades() {
     return;
   }
 
-  // Usa tanto o username quanto o nome completo para garantir a correspondência
+  // --- INÍCIO DA CORREÇÃO V5 ---
+  // Busca tanto o 'username' quanto o 'nome' (nome completo)
+  // O dashboard usa 'nome' (ex: "Marco Aurelio Teles do Egito") para preencher a grade.
   const userUsername = currentUserData.username;
-  const userFullName = currentUserData.nome; // Corrigido
+  const userFullName = currentUserData.nome;
+  // --- FIM DA CORREÇÃO V5 ---
 
   const horariosOnline = [];
   const horariosPresencial = [];
@@ -198,8 +196,10 @@ async function loadAndRenderGrades() {
   for (const path in dadosDasGrades) {
     const nomeNaGrade = dadosDasGrades[path];
 
-    // Verifica se o nome na grade corresponde ao username ou ao nome completo
+    // --- INÍCIO DA CORREÇÃO V5 ---
+    // Verifica se o nome na grade corresponde ao username OU ao nome completo
     if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
+      // --- FIM DA CORREÇÃO V5 ---
       const parts = path.split(".");
       if (parts.length === 4) {
         const [tipo, diaKey, horaRaw, colKey] = parts;
@@ -292,8 +292,6 @@ function validateForm() {
 
   let isMotivoOk = motivo.length > 0;
   let isHorarioOk = selectedCheckboxes.length > 0;
-
-  // A regra de 5 horários mínimos
   let isMinimoOk = true; // Padrão
 
   if (totalHorariosAtual > 5) {
@@ -347,8 +345,7 @@ async function handleFormSubmit(e) {
 
   const motivo = motivoTextarea.value.trim();
 
-  // --- INÍCIO DA CORREÇÃO ---
-  // O campo correto é 'nome'
+  // Correção V4: O campo correto é 'nome'
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
@@ -358,7 +355,6 @@ async function handleFormSubmit(e) {
     status: "Pendente",
     dataSolicitacao: serverTimestamp(),
   };
-  // --- FIM DA CORREÇÃO ---
 
   try {
     const docRef = await addDoc(
