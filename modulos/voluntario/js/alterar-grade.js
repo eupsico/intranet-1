@@ -1,19 +1,15 @@
-// NOVO ARQUIVO: modulos/voluntario/js/alterar-grade.js
+// ARQUIVO ATUALIZADO: modulos/voluntario/js/alterar-grade.js
 
 // Importa as funções necessárias do Firebase
+// CAMINHO CORRIGIDO e importando o 'db' diretamente
 import {
-  getFirestore,
+  db,
   doc,
   getDoc,
   collection,
   addDoc,
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
-
-// Importa o app Firebase e o DB
-import { app } from "/assets/js/firebase-init.js";
-
-const db = getFirestore(app);
 
 // Constantes para renderizar a grade
 const DIAS_SEMANA = [
@@ -70,6 +66,7 @@ export async function init(user, userData) {
   }
 
   try {
+    // CORREÇÃO: O fetch do HTML também precisa ser relativo ao PAI (portal-voluntario.html)
     const response = await fetch("modulos/voluntario/page/alterar-grade.html");
     if (!response.ok) {
       throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
