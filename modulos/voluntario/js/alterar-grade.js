@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 12.1: Corrige falha silenciosa no envio do formulário e adiciona logs.
+// VERSÃO 13: Adiciona modal de sucesso com redirecionamento.
 
 import {
   db,
@@ -34,13 +34,84 @@ let form,
   feedbackMessage,
   avisoMinimo;
 
+// --- INÍCIO DA ALTERAÇÃO V13: Função de Modal ---
+
+/**
+ * Exibe um modal de notificação local.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success' | 'error'} type - O tipo de modal.
+ * @param {function} [onCloseCallback] - Função a ser executada ao fechar.
+ */
+function showLocalModal(message, type = "success", onCloseCallback) {
+  // Remove qualquer modal existente para evitar duplicação
+  const existingModal = document.getElementById("local-notification-modal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const modalOverlay = document.createElement("div");
+  modalOverlay.id = "local-notification-modal";
+  modalOverlay.className = "modal-overlay is-visible"; // Usa classes do design-system
+  modalOverlay.style.display = "flex"; // Garante a visibilidade
+
+  const modalBox = document.createElement("div");
+  modalBox.className = "modal-content"; // Usa classes do design-system
+  modalBox.style.maxWidth = "450px"; // Define um tamanho razoável
+
+  // Adiciona um ícone baseado no tipo
+  const iconHtml =
+    type === "success"
+      ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 15px auto; display: block;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+      : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 15px auto; display: block;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+
+  const modalBody = document.createElement("div");
+  modalBody.className = "modal-body";
+  modalBody.style.textAlign = "center";
+  modalBody.innerHTML = `
+        ${iconHtml}
+        <h3 style="margin-top: 0; color: var(--cor-primaria);">${
+          type === "success" ? "Sucesso!" : "Erro!"
+        }</h3>
+        <p style="font-size: 1em; line-height: 1.5;">${message}</p>
+    `;
+
+  const modalFooter = document.createElement("div");
+  modalFooter.className = "modal-footer";
+  modalFooter.style.justifyContent = "center";
+
+  const okButton = document.createElement("button");
+  okButton.type = "button";
+  okButton.className = "action-button";
+  okButton.textContent = "OK";
+
+  modalFooter.appendChild(okButton);
+  modalBox.appendChild(modalBody);
+  modalBox.appendChild(modalFooter);
+  modalOverlay.appendChild(modalBox);
+
+  document.body.appendChild(modalOverlay);
+
+  const closeModal = () => {
+    modalOverlay.remove();
+    if (typeof onCloseCallback === "function") {
+      onCloseCallback();
+    }
+  };
+
+  okButton.addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", (e) => {
+    if (e.target === modalOverlay) {
+      closeModal();
+    }
+  });
+}
+// --- FIM DA ALTERAÇÃO V13 ---
+
 /**
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log(
-    "[Alterar Grade] Módulo iniciado (V12.1 - Correção Submit Silencioso)."
-  );
+  console.log("[Alterar Grade] Módulo iniciado (V13 - Modal de Sucesso).");
   currentUser = user;
   currentUserData = userData;
 
@@ -86,7 +157,7 @@ function setupDOMElements() {
   gradesContainer = document.getElementById("grades-para-exclusao");
   motivoTextarea = document.getElementById("motivo-exclusao");
   submitButton = document.getElementById("btn-enviar-solicitacao");
-  feedbackMessage = document.getElementById("solicitacao-feedback");
+  feedbackMessage = document.getElementById("solicitacao-feedback"); //
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
 }
 
@@ -129,6 +200,7 @@ async function loadGradeDataFromAdmin() {
  */
 async function loadAndRenderGrades() {
   if (gradesContainer) {
+    //
     gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
   }
   await loadGradeDataFromAdmin();
@@ -232,7 +304,7 @@ function setupEventListeners() {
   submitButton = document.getElementById("btn-enviar-solicitacao");
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
   gradesContainer = document.getElementById("grades-para-exclusao");
-  feedbackMessage = document.getElementById("solicitacao-feedback"); //
+  feedbackMessage = document.getElementById("solicitacao-feedback");
 
   form.addEventListener("change", validateForm);
   if (motivoTextarea) motivoTextarea.addEventListener("input", validateForm);
@@ -240,7 +312,7 @@ function setupEventListeners() {
 }
 
 /**
- * Valida o formulário, atualiza o botão E BLOQUEIA os checkboxes (Lógica V12)
+ * Valida o formulário, atualiza o botão E BLOQUEIA os checkboxes
  */
 function validateForm() {
   if (!form || !avisoMinimo || !motivoTextarea) return;
@@ -312,7 +384,7 @@ function validateForm() {
  */
 async function handleFormSubmit(e) {
   e.preventDefault();
-  console.log("[Alterar Grade] Tentativa de envio do formulário."); // LOG
+  console.log("[Alterar Grade] Tentativa de envio do formulário.");
 
   if (!submitButton || submitButton.disabled) {
     console.warn("[Alterar Grade] Envio bloqueado. Botão desabilitado.");
@@ -322,20 +394,13 @@ async function handleFormSubmit(e) {
   submitButton.disabled = true;
   submitButton.innerHTML = `<span class="loading-spinner-small"></span> Enviando...`;
 
-  // --- INÍCIO DA CORREÇÃO V12.1 ---
-  // Garante que o feedbackMessage seja encontrado
   if (!feedbackMessage) {
-    feedbackMessage = document.getElementById("solicitacao-feedback"); //
+    feedbackMessage = document.getElementById("solicitacao-feedback");
   }
 
   if (feedbackMessage) {
     feedbackMessage.style.display = "none";
-  } else {
-    console.warn(
-      "[Alterar Grade] Elemento #solicitacao-feedback não encontrado."
-    );
   }
-  // --- FIM DA CORREÇÃO V12.1 ---
 
   const selectedCheckboxes = form.querySelectorAll(
     'input[name="horario_excluir"]:checked'
@@ -360,7 +425,7 @@ async function handleFormSubmit(e) {
     dataSolicitacao: serverTimestamp(),
   };
 
-  console.log("[Alterar Grade] Dados da solicitação:", solicitacaoData); // LOG
+  console.log("[Alterar Grade] Dados da solicitação:", solicitacaoData);
 
   try {
     const docRef = await addDoc(
@@ -368,37 +433,33 @@ async function handleFormSubmit(e) {
       solicitacaoData
     );
 
-    console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id); // LOG
+    console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id);
 
-    if (feedbackMessage) {
-      feedbackMessage.className = "alert alert-success";
-      feedbackMessage.innerHTML =
-        "Sua solicitação foi enviada com sucesso e será analisada pela administração.";
-      feedbackMessage.style.display = "block";
-    }
-
-    form.reset();
-    await loadAndRenderGrades(); // Recarrega a grade
-
-    // --- INÍCIO DA CORREÇÃO V12.1 ---
-    // Restaura o ícone original do HTML
-    if (submitButton) {
-      submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`; //
-    }
-    // --- FIM DA CORREÇÃO V12.1 ---
+    // --- INÍCIO DA ALTERAÇÃO V13 ---
+    // Em vez de mostrar a mensagem na tela, chama o modal.
+    // Ao fechar o modal (clicar em "OK"), redireciona para o dashboard.
+    showLocalModal(
+      "Sua solicitação foi enviada com sucesso e será analisada pela administração.",
+      "success",
+      () => {
+        // Callback executado após o usuário clicar em "OK"
+        window.location.hash = "#dashboard";
+      }
+    );
+    // --- FIM DA ALTERAÇÃO V13 ---
   } catch (error) {
-    console.error("[Alterar Grade] Erro ao salvar solicitação:", error); // LOG
+    console.error("[Alterar Grade] Erro ao salvar solicitação:", error);
 
-    if (feedbackMessage) {
-      feedbackMessage.className = "alert alert-error";
-      feedbackMessage.innerHTML =
-        "Erro ao enviar sua solicitação. Tente novamente.";
-      feedbackMessage.style.display = "block";
-    }
+    // --- INÍCIO DA ALTERAÇÃO V13 ---
+    // Chama o modal de erro
+    showLocalModal(
+      "Erro ao enviar sua solicitação. Por favor, tente novamente.",
+      "error"
+    );
+    // --- FIM DA ALTERAÇÃO V13 ---
 
     if (submitButton) {
       submitButton.disabled = false;
-      // Restaura o ícone original do HTML
       submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`; //
     }
   }
