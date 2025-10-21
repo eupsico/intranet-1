@@ -1,10 +1,10 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// Versão 2.1 (Independente - Importa o firebase-init.js)
+// Versão 2.2 (Corrige ReferenceError: Timestamp is not defined)
 
 // --- INÍCIO DA CORREÇÃO ---
-// Importa o 'db' e as funções do Firestore diretamente do firebase-init.js
+// Importa o 'Timestamp' que estava faltando
 import {
-  db, // A instância do DB
+  db,
   collection,
   query,
   where,
@@ -15,6 +15,7 @@ import {
   updateDoc,
   serverTimestamp,
   onSnapshot,
+  Timestamp, // ADICIONADO
 } from "../../../assets/js/firebase-init.js";
 // --- FIM DA CORREÇÃO ---
 
@@ -25,7 +26,9 @@ let adminUser; // Armazena o usuário admin que está logado
 // Função principal de inicialização do módulo
 export function init(db_ignored, user, userData) {
   // O parâmetro 'db_ignored' não é mais necessário, mas mantemos para compatibilidade
-  console.log("Módulo solicitacoes-admin.js V2.1 (Independente) iniciado.");
+  console.log(
+    "Módulo solicitacoes-admin.js V2.2 (Correção Timestamp) iniciado."
+  );
   adminUser = userData; // Armazena dados do admin logado
 
   // Elementos do DOM
@@ -123,13 +126,10 @@ export function init(db_ignored, user, userData) {
       return;
     }
 
-    // --- INÍCIO DA CORREÇÃO ---
-    // A variável dbInstance agora é o 'db' importado
     const q = query(
-      collection(dbInstance, "solicitacoesExclusaoGrade"), // Erro estava aqui
+      collection(dbInstance, "solicitacoesExclusaoGrade"), //
       orderBy("dataSolicitacao", "desc")
     );
-    // --- FIM DA CORREÇÃO ---
 
     onSnapshot(
       q,
@@ -162,7 +162,7 @@ export function init(db_ignored, user, userData) {
 
           const statusClass = `status-${String(
             data.status || "pendente"
-          ).toLowerCase()}`;
+          ).toLowerCase()}`; //
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -213,7 +213,7 @@ export function init(db_ignored, user, userData) {
     // 1. Carrega o HTML do formulário do modal
     try {
       // Caminho relativo corrigido
-      const response = await fetch("./modal-exclusao-grade.html");
+      const response = await fetch("./modal-exclusao-grade.html"); //
       if (!response.ok) throw new Error("Falha ao carregar o HTML do modal.");
       modalBodyContent.innerHTML = await response.text();
     } catch (error) {
@@ -243,7 +243,7 @@ export function init(db_ignored, user, userData) {
       const saveButton = document.createElement("button");
       saveButton.type = "button";
       saveButton.id = "btn-salvar-exclusao";
-      saveButton.className = "action-button dynamic-action-btn"; // Classe de estilo do design system
+      saveButton.className = "action-button dynamic-action-btn"; //
       saveButton.textContent = "Salvar Resposta";
       modalFooterActions.appendChild(saveButton);
 
@@ -333,9 +333,12 @@ export function init(db_ignored, user, userData) {
         return;
       }
       statusFinal = "Concluída";
+      // --- INÍCIO DA CORREÇÃO ---
+      // Usa o Timestamp importado para converter a data
       adminFeedback.dataExclusao = Timestamp.fromDate(
-        new Date(dataExclusaoInput + "T00:00:00")
+        new Date(dataExclusaoInput + "T00:00:00") //
       );
+      // --- FIM DA CORREÇÃO ---
       adminFeedback.mensagemAdmin = mensagemAdmin;
     } else {
       if (!motivoRejeicao) {
