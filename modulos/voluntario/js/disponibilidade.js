@@ -1,3 +1,6 @@
+// eupsico/intranet-1/intranet-1-3f5b28aea177748beae753ef1bee8bfd1916ed36/modulos/voluntario/js/disponibilidade.js
+// CORRIGIDO
+
 // Arquivo: /modulos/voluntario/js/disponibilidade.js
 // Versão 2.0 (Atualizado para a sintaxe modular do Firebase v9)
 
@@ -17,7 +20,8 @@ let currentUser; // Armazena o usuário autenticado
  * @param {object} userData - Dados do perfil do usuário do Firestore.
  */
 export function init(user, userData) {
-  const container = document.querySelector("#disponibilidade-container");
+  // CORREÇÃO: Alterado o seletor para corresponder ao ID no recursos.html
+  const container = document.querySelector("#disponibilidade");
   if (!container) {
     console.error("Container de disponibilidade não encontrado.");
     return;
@@ -31,7 +35,8 @@ export function init(user, userData) {
  * Busca os dados de disponibilidade mais recentes do usuário no Firestore.
  */
 async function fetchData() {
-  const container = document.querySelector("#disponibilidade-container");
+  // CORREÇÃO: Alterado o seletor
+  const container = document.querySelector("#disponibilidade");
   container.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
@@ -55,7 +60,8 @@ async function fetchData() {
  * @param {object} profData - Dados do perfil do profissional.
  */
 function renderUserView(profData) {
-  const container = document.querySelector("#disponibilidade-container");
+  // CORREÇÃO: Alterado o seletor
+  const container = document.querySelector("#disponibilidade");
   const horarios = profData.horarios || [];
 
   const horariosHtml =
@@ -137,7 +143,8 @@ function createNewScheduleRowHtml() {
  * @param {object} profData - Dados do perfil do profissional.
  */
 function renderEditView(profData) {
-  const container = document.querySelector("#disponibilidade-container");
+  // CORREÇÃO: Alterado o seletor
+  const container = document.querySelector("#disponibilidade");
   const horarios = profData.horarios || [];
 
   const scheduleRowsHtml = horarios
@@ -235,7 +242,8 @@ function renderEditView(profData) {
  * Salva as alterações de disponibilidade no Firestore usando a sintaxe v9.
  */
 async function saveAvailability() {
-  const container = document.querySelector("#disponibilidade-container");
+  // CORREÇÃO: Alterado o seletor
+  const container = document.querySelector("#disponibilidade");
   const saveButton = container.querySelector("#save-btn");
   saveButton.disabled = true;
   saveButton.textContent = "Salvando...";
