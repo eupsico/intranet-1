@@ -1,8 +1,6 @@
-// NOVO ARQUIVO: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 3: Corrigindo DE VERDADE os caminhos de importação e fetch.
+// Arquivo: modulos/voluntario/js/alterar-grade.js
+// VERSÃO 4: Corrige a fonte de dados da grade e o nome do usuário.
 
-// Importa as funções necessárias do Firebase
-// --- LINHA CORRIGIDA ---
 import {
   db,
   doc,
@@ -12,16 +10,24 @@ import {
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
 
-// Constantes para renderizar a grade
-const DIAS_SEMANA = [
-  "segunda",
-  "terca",
-  "quarta",
-  "quinta",
-  "sexta",
-  "sabado",
-  "domingo",
-];
+// --- INÍCIO DAS CORREÇÕES ---
+
+// 1. Variável para armazenar a grade central
+let dadosDasGrades = {};
+
+// 2. Mapa para traduzir os dias da semana (usado pela nova lógica)
+const DIAS_SEMANA_NOMES = {
+  segunda: "Segunda-feira",
+  terca: "Terça-feira",
+  quarta: "Quarta-feira",
+  quinta: "Quinta-feira",
+  sexta: "Sexta-feira",
+  sabado: "Sábado",
+};
+
+// 3. Constantes originais mantidas (embora não usadas pela nova lógica de busca,
+//    as deixamos aqui para manter a integridade do que você chamou de "outras informações")
+const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const HORAS = [
   "08:00",
   "09:00",
@@ -38,10 +44,11 @@ const HORAS = [
   "20:00",
   "21:00",
 ];
+// --- FIM DAS CORREÇÕES ---
 
 let currentUser;
 let currentUserData;
-let totalHorariosAtual = 0; // Armazena o total de horários do usuário
+let totalHorariosAtual = 0;
 let form,
   nomeInput,
   totalInput,
@@ -55,34 +62,42 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado.");
+  console.log("[Alterar Grade] Módulo iniciado (V4 - Corrigido).");
   currentUser = user;
   currentUserData = userData;
 
-  // Carrega o HTML da página
+  // Carrega o HTML da página (Lógica original mantida)
   const viewContainer = document.querySelector("#alterar-grade");
   if (!viewContainer) {
     console.error("[Alterar Grade] Container #alterar-grade não encontrado.");
     return;
   }
 
-  try {
-    // --- LINHA CORRIGIDA ---
-    // O fetch é relativo à página 'portal-voluntario.html' (raiz do módulo), não ao 'alterar-grade.js'
-    const response = await fetch("../page/alterar-grade.html");
-    if (!response.ok) {
-      throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
+  // Se o HTML ainda não foi carregado (por exemplo, primeiro acesso à aba)
+  // O innerHTML é verificado para evitar recarregar o HTML se já estiver lá.
+  if (!viewContainer.querySelector("form")) {
+    try {
+      const response = await fetch("../page/alterar-grade.html");
+      if (!response.ok) {
+        throw new Error(`Falha ao carregar o HTML: ${response.statusText}`);
+      }
+      viewContainer.innerHTML = await response.text();
+    } catch (error) {
+      console.error("[Alterar Grade] Erro ao carregar HTML:", error);
+      viewContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar o módulo de alteração de grade. Tente recarregar a página.</p>`;
+      return;
     }
-    viewContainer.innerHTML = await response.text();
+  }
 
-    // Agora que o HTML foi carregado, inicializa os elementos
+  // Sempre reconfigura os elementos DOM e recarrega os dados
+  try {
     setupDOMElements();
-    populateInitialData();
-    await loadAndRenderGrades();
+    populateInitialData(); // Corrigido
+    await loadAndRenderGrades(); // Corrigido
     setupEventListeners();
   } catch (error) {
-    console.error("[Alterar Grade] Erro ao carregar ou inicializar:", error);
-    viewContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar o módulo de alteração de grade. Tente recarregar a página.</p>`;
+    console.error("[Alterar Grade] Erro ao inicializar dados:", error);
+    viewContainer.innerHTML = `<p class="alert alert-error">Erro ao inicializar os dados. Tente recarregar a página.</p>`;
   }
 }
 
@@ -98,114 +113,168 @@ function setupDOMElements() {
   submitButton = document.getElementById("btn-enviar-solicitacao");
   feedbackMessage = document.getElementById("solicitacao-feedback");
   avisoMinimo = document.getElementById("aviso-minimo-horarios");
+
+  if (
+    !form ||
+    !nomeInput ||
+    !totalInput ||
+    !gradesContainer ||
+    !motivoTextarea ||
+    !submitButton ||
+    !feedbackMessage ||
+    !avisoMinimo
+  ) {
+    console.error(
+      "[Alterar Grade] Erro fatal: Um ou mais elementos do DOM não foram encontrados."
+    );
+  }
 }
 
 /**
  * Preenche os dados iniciais do formulário (nome)
  */
 function populateInitialData() {
+  // --- INÍCIO DA CORREÇÃO ---
+  // O campo correto é 'nome', e não 'nomeCompleto'
   if (currentUserData && currentUserData.nome) {
     nomeInput.value = currentUserData.nome;
   } else {
     nomeInput.value = "Nome não encontrado";
   }
+  // --- FIM DA CORREÇÃO ---
+}
+
+// --- INÍCIO DAS NOVAS FUNÇÕES ---
+
+/**
+ * Busca os dados da grade central do 'administrativo/grades'
+ */
+async function loadGradeDataFromAdmin() {
+  try {
+    const gradeRef = doc(db, "administrativo", "grades");
+    const gradeSnap = await getDoc(gradeRef);
+    if (gradeSnap.exists()) {
+      dadosDasGrades = gradeSnap.data();
+    } else {
+      console.warn(
+        "[Alterar Grade] Documento 'administrativo/grades' não encontrado."
+      );
+      dadosDasGrades = {}; // Garante que é um objeto vazio
+    }
+  } catch (error) {
+    console.error("[Alterar Grade] Erro ao carregar dados da grade:", error);
+    gradesContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar os dados da grade. Tente novamente.</p>`;
+  }
 }
 
 /**
  * Carrega os dados da grade do usuário e chama as funções de renderização
+ * (Lógica substituída para ler 'dadosDasGrades' em vez de 'currentUserData.horarios')
  */
 async function loadAndRenderGrades() {
-  totalHorariosAtual = 0; // Reseta a contagem
+  gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
+  await loadGradeDataFromAdmin(); // Carrega os dados da grade central
+  totalHorariosAtual = 0;
   gradesContainer.innerHTML = ""; // Limpa o spinner
 
-  // Busca os dados de horário do profissional (que já vêm no userData)
-  const horariosOnline = currentUserData.horarios?.online || {};
-  const horariosPresencial = currentUserData.horarios?.presencial || {};
+  if (
+    !currentUserData ||
+    (!currentUserData.username && !currentUserData.nome)
+  ) {
+    console.error(
+      "[Alterar Grade] Não foi possível identificar o username ou nome do usuário."
+    );
+    return;
+  }
 
-  // Renderiza as grades
-  const onlineHtml = renderGrade(horariosOnline, "online");
-  const presencialHtml = renderGrade(horariosPresencial, "presencial");
+  // Usa tanto o username quanto o nome completo para garantir a correspondência
+  const userUsername = currentUserData.username;
+  const userFullName = currentUserData.nome; // Corrigido
+
+  const horariosOnline = [];
+  const horariosPresencial = [];
+
+  // Itera pela grade central (mesma lógica do dashboard)
+  for (const path in dadosDasGrades) {
+    const nomeNaGrade = dadosDasGrades[path];
+
+    // Verifica se o nome na grade corresponde ao username ou ao nome completo
+    if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
+      const parts = path.split(".");
+      if (parts.length === 4) {
+        const [tipo, diaKey, horaRaw, colKey] = parts;
+        const horaFormatada = horaRaw.replace("-", ":");
+        const diaNome = DIAS_SEMANA_NOMES[diaKey] || diaKey;
+        const label = `${diaNome}, ${horaFormatada}`;
+
+        // Cria o HTML do checkbox
+        const checkboxHtml = `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="horario_excluir" value="${path}" id="chk_${path}" data-label="${label}">
+                        <label class="form-check-label" for="chk_${path}">
+                            ${label}
+                        </label>
+                    </div>
+                `;
+
+        if (tipo === "online") {
+          horariosOnline.push(checkboxHtml);
+        } else if (tipo === "presencial") {
+          horariosPresencial.push(checkboxHtml);
+        }
+        totalHorariosAtual++;
+      }
+    }
+  }
+
+  let finalHtml = "";
+  if (horariosOnline.length > 0) {
+    finalHtml += `<div class="grade-section">
+                        <h3>Grade Online</h3>
+                        <div class="grade-checkbox-list">${horariosOnline.join(
+                          ""
+                        )}</div>
+                      </div>`;
+  }
+  if (horariosPresencial.length > 0) {
+    finalHtml += `<div class="grade-section">
+                        <h3>Grade Presencial</h3>
+                        <div class="grade-checkbox-list">${horariosPresencial.join(
+                          ""
+                        )}</div>
+                      </div>`;
+  }
 
   if (totalHorariosAtual === 0) {
     gradesContainer.innerHTML = `<p class="alert">Você não possui horários cadastrados na grade.</p>`;
     motivoTextarea.disabled = true;
+    submitButton.disabled = true; // Desabilita o envio se não há horários
     avisoMinimo.style.display = "none";
   } else {
-    gradesContainer.innerHTML = onlineHtml + presencialHtml;
+    gradesContainer.innerHTML = finalHtml;
+    motivoTextarea.disabled = false;
   }
 
   totalInput.value = totalHorariosAtual;
-
-  // Validação inicial
-  validateForm();
+  validateForm(); // Valida o formulário após renderizar
 }
 
-/**
- * Renderiza uma grade (Online ou Presencial) e retorna o HTML
- * @param {object} horarios - O objeto de horários (online ou presencial)
- * @param {string} tipoGrade - "online" ou "presencial"
- * @returns {string} O HTML da grade
- */
-function renderGrade(horarios, tipoGrade) {
-  let html = `<div class="grade-section">
-                    <h3>Grade ${
-                      tipoGrade.charAt(0).toUpperCase() + tipoGrade.slice(1)
-                    }</h3>
-                    <div class="grade-checkbox-list">`;
-  let countGrade = 0;
-
-  DIAS_SEMANA.forEach((dia) => {
-    if (horarios[dia]) {
-      HORAS.forEach((hora) => {
-        const horaKey = hora.replace(":", "-");
-        if (horarios[dia][horaKey]) {
-          // Itera sobre as colunas (col1, col2, etc.)
-          Object.keys(horarios[dia][horaKey]).forEach((col) => {
-            const slot = horarios[dia][horaKey][col];
-
-            // Verifica se o slot pertence ao usuário logado
-            if (slot && slot.uid === currentUser.uid) {
-              const diaFormatado = dia.charAt(0).toUpperCase() + dia.slice(1);
-              const label = `${diaFormatado}, ${hora}`;
-              const path = `${tipoGrade}.${dia}.${horaKey}.${col}`;
-
-              html += `
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="horario_excluir" value="${path}" id="chk_${path}" data-label="${label}">
-                                    <label class="form-check-label" for="chk_${path}">
-                                        ${label}
-                                    </label>
-                                </div>
-                            `;
-              totalHorariosAtual++;
-              countGrade++;
-            }
-          });
-        }
-      });
-    }
-  });
-
-  if (countGrade === 0) {
-    html += `<p>Nenhum horário cadastrado nesta grade.</p>`;
-  }
-
-  html += `</div></div>`;
-  return html;
-}
+// --- FIM DAS NOVAS FUNÇÕES ---
 
 /**
  * Adiciona os listeners de evento ao formulário
  */
 function setupEventListeners() {
   if (!form) return;
-  // Listener para qualquer mudança no formulário (checkboxes)
+
+  // Remove listeners antigos para evitar duplicação
+  form.removeEventListener("change", validateForm);
+  motivoTextarea.removeEventListener("input", validateForm);
+  form.removeEventListener("submit", handleFormSubmit);
+
+  // Adiciona novos listeners
   form.addEventListener("change", validateForm);
-
-  // Listener para digitação no motivo
   motivoTextarea.addEventListener("input", validateForm);
-
-  // Listener para o envio do formulário
   form.addEventListener("submit", handleFormSubmit);
 }
 
@@ -213,38 +282,42 @@ function setupEventListeners() {
  * Valida o formulário e atualiza o estado do botão e avisos
  */
 function validateForm() {
-  if (!form) return; // Se o form não foi inicializado
+  if (!form) return;
 
   const selectedCheckboxes = form.querySelectorAll(
     'input[name="horario_excluir"]:checked'
   );
   const motivo = motivoTextarea.value.trim();
-
   const horariosRestantes = totalHorariosAtual - selectedCheckboxes.length;
 
   let isMotivoOk = motivo.length > 0;
   let isHorarioOk = selectedCheckboxes.length > 0;
-  let isMinimoOk = horariosRestantes >= 5;
 
-  // Atualiza feedback visual do motivo (se for obrigatório)
-  motivoTextarea.classList.toggle(
-    "is-invalid",
-    !isMotivoOk && motivo.length > 0
-  ); // Mostra inválido se começou a digitar e apagou
+  // A regra de 5 horários mínimos
+  let isMinimoOk = true; // Padrão
 
-  // Atualiza aviso de mínimo de horários
   if (totalHorariosAtual > 5) {
+    isMinimoOk = horariosRestantes >= 5;
+    avisoMinimo.style.display = "block";
     avisoMinimo.classList.toggle("alert-warning", isMinimoOk);
     avisoMinimo.classList.toggle("alert-error", !isMinimoOk);
     avisoMinimo.innerHTML = `<i class="fas fa-exclamation-triangle"></i>
             Você deve manter no mínimo 5 horários. 
             (Atual: ${totalHorariosAtual} | Selecionados: ${selectedCheckboxes.length} | Restantes: ${horariosRestantes})`;
   } else {
+    avisoMinimo.style.display = "block";
+    avisoMinimo.className = "alert alert-info"; // Apenas informativo
     avisoMinimo.innerHTML = `<i class="fas fa-info-circle"></i> Você possui ${totalHorariosAtual} horários. Lembre-se que o mínimo recomendado é 5.`;
-    isMinimoOk = true; // Permite excluir mesmo se já tiver menos de 5
+    isMinimoOk = true; // Não bloqueia se o usuário já tem 5 ou menos
   }
 
-  // Habilita o botão
+  // Feedback visual para o motivo
+  if (motivo.length > 0 && !isMotivoOk) {
+    motivoTextarea.classList.add("is-invalid");
+  } else {
+    motivoTextarea.classList.remove("is-invalid");
+  }
+
   const isValid = isMotivoOk && isHorarioOk && isMinimoOk;
   submitButton.disabled = !isValid;
 }
@@ -267,26 +340,27 @@ async function handleFormSubmit(e) {
   const horariosParaExcluir = [];
   selectedCheckboxes.forEach((cb) => {
     horariosParaExcluir.push({
-      path: cb.value, // ex: "online.segunda.09-00.col1"
-      label: cb.dataset.label, // ex: "Segunda, 09:00"
+      path: cb.value,
+      label: cb.dataset.label,
     });
   });
 
   const motivo = motivoTextarea.value.trim();
 
-  // Monta o objeto da solicitação
+  // --- INÍCIO DA CORREÇÃO ---
+  // O campo correto é 'nome'
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
     horariosParaExcluir: horariosParaExcluir,
     totalHorariosAtual: totalHorariosAtual,
     motivo: motivo,
-    status: "Pendente", // Status inicial
+    status: "Pendente",
     dataSolicitacao: serverTimestamp(),
   };
+  // --- FIM DA CORREÇÃO ---
 
   try {
-    // Salva a solicitação na nova coleção
     const docRef = await addDoc(
       collection(db, "solicitacoesExclusaoGrade"),
       solicitacaoData
@@ -294,17 +368,14 @@ async function handleFormSubmit(e) {
 
     console.log("[Alterar Grade] Solicitação enviada com ID:", docRef.id);
 
-    // Sucesso
     feedbackMessage.className = "alert alert-success";
     feedbackMessage.innerHTML =
       "Sua solicitação foi enviada com sucesso e será analisada pela administração.";
     feedbackMessage.style.display = "block";
 
-    // Limpa o formulário e recarrega a grade
     form.reset();
     await loadAndRenderGrades(); // Recarrega a grade
     submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
-    // O botão ficará desabilitado por validateForm(), o que é o correto
   } catch (error) {
     console.error("[Alterar Grade] Erro ao salvar solicitação:", error);
     feedbackMessage.className = "alert alert-error";
@@ -312,7 +383,7 @@ async function handleFormSubmit(e) {
       "Erro ao enviar sua solicitação. Tente novamente.";
     feedbackMessage.style.display = "block";
 
-    submitButton.disabled = false; // Reabilita para nova tentativa
+    submitButton.disabled = false;
     submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> Enviar Solicitação`;
   }
 }
