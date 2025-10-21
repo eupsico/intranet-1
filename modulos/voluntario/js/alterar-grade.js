@@ -1,5 +1,5 @@
 // Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 8: Restaura a lógica de busca correta (V5) e as constantes (V7).
+// VERSÃO 9: Corrige a lógica de contagem para renderizar os checkboxes.
 
 import {
   db,
@@ -23,7 +23,7 @@ const DIAS_SEMANA_NOMES = {
   sabado: "Sábado",
 };
 
-// --- INFORMAÇÕES IMPORTANTES REINSERIDAS (do V7) ---
+// Constantes originais mantidas
 const DIAS_SEMANA = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
 const HORAS = [
   "08:00",
@@ -41,7 +41,7 @@ const HORAS = [
   "20:00",
   "21:00",
 ];
-// --- FIM DAS INFORMAÇÕES REINSERIDAS ---
+// --- FIM DAS CONSTANTES ---
 
 let currentUser;
 let currentUserData;
@@ -59,9 +59,7 @@ let form,
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log(
-    "[Alterar Grade] Módulo iniciado (V8 - Lógica de busca corrigida)."
-  );
+  console.log("[Alterar Grade] Módulo iniciado (V9 - Correção Checkbox).");
   currentUser = user;
   currentUserData = userData;
 
@@ -90,7 +88,7 @@ export async function init(user, userData) {
   try {
     setupDOMElements();
     populateInitialData();
-    await loadAndRenderGrades(); // Lógica V8 (correta)
+    await loadAndRenderGrades(); // Lógica V9 (correta)
     setupEventListeners();
   } catch (error) {
     console.error("[Alterar Grade] Erro ao inicializar dados:", error);
@@ -146,7 +144,7 @@ async function loadGradeDataFromAdmin() {
 }
 
 /**
- * Carrega e renderiza os checkboxes da grade do usuário (Lógica V8 / V5)
+ * Carrega e renderiza os checkboxes da grade do usuário (Lógica V9)
  */
 async function loadAndRenderGrades() {
   gradesContainer.innerHTML = `<div class="loading-spinner" style="margin: 30px auto; display: block;"></div>`;
@@ -164,11 +162,9 @@ async function loadAndRenderGrades() {
     return;
   }
 
-  // --- INÍCIO DA CORREÇÃO V8 (LÓGICA DO V5 / DASHBOARD) ---
-  // A grade usa tanto o username quanto o nome completo.
+  // Lógica V8 (igual ao dashboard): A grade usa o username OU o nome completo.
   const userUsername = currentUserData.username;
   const userFullName = currentUserData.nome;
-  // --- FIM DA CORREÇÃO V8 ---
 
   const horariosOnline = [];
   const horariosPresencial = [];
@@ -177,10 +173,8 @@ async function loadAndRenderGrades() {
   for (const path in dadosDasGrades) {
     const nomeNaGrade = dadosDasGrades[path];
 
-    // --- INÍCIO DA CORREÇÃO V8 (LÓGICA DO V5 / DASHBOARD) ---
     // Compara pelo username OU pelo nome completo
     if (nomeNaGrade === userUsername || nomeNaGrade === userFullName) {
-      // --- FIM DA CORREÇÃO V8 ---
       const parts = path.split(".");
       if (parts.length === 4) {
         const [tipo, diaKey, horaRaw, colKey] = parts;
@@ -198,12 +192,17 @@ async function loadAndRenderGrades() {
                     </div>
                 `;
 
+        // --- INÍCIO DA CORREÇÃO V9 ---
+        // O contador totalHorariosAtual só deve incrementar se o item for
+        // de fato adicionado a uma das listas.
         if (tipo === "online") {
           horariosOnline.push(checkboxHtml);
+          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
         } else if (tipo === "presencial") {
           horariosPresencial.push(checkboxHtml);
+          totalHorariosAtual++; // <-- MOVIDO PARA CÁ
         }
-        totalHorariosAtual++;
+        // --- FIM DA CORREÇÃO V9 ---
       }
     }
   }
