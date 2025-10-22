@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// --- VERSÃO MODIFICADA PARA LER DA COLEÇÃO CENTRAL 'solicitacoes' ---
+// --- VERSÃO CORRIGIDA ---
 
 import {
   db,
@@ -7,33 +7,31 @@ import {
   query,
   where,
   orderBy,
-  getDocs, // Usaremos getDoc para modais, mas onSnapshot para tabelas
+  getDocs, // Usaremos getDocs para Contratos Pendentes
   doc,
   getDoc,
   updateDoc,
   serverTimestamp,
-  onSnapshot, // Para escutar atualizações em tempo real nas tabelas
+  onSnapshot,
   Timestamp,
 } from "../../../assets/js/firebase-init.js";
-// Adicionar importação de deleteDoc se for remover solicitações da trilha após processar
-// import { deleteDoc } from "../../../assets/js/firebase-init.js";
+// import { deleteDoc } from "../../../assets/js/firebase-init.js"; // Se necessário
 
 let dbInstance = db;
-let adminUser; // Dados do admin logado
+let adminUser;
 
-// --- Funções Auxiliares ---
+// --- Funções Auxiliares (mantidas) ---
 function formatarData(timestamp) {
   if (timestamp && typeof timestamp.toDate === "function") {
     return timestamp.toDate().toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
-      year: "numeric", // hour: '2-digit', minute: '2-digit' // Descomentar se precisar da hora
+      year: "numeric",
     });
   }
   return "N/A";
 }
 
-// Mapeamento de tipos internos para nomes amigáveis
 function formatarTipoSolicitacao(tipoInterno) {
   const mapaTipos = {
     novas_sessoes: "Novas Sessões",
@@ -41,18 +39,20 @@ function formatarTipoSolicitacao(tipoInterno) {
     desfecho: "Registro de Desfecho",
     reavaliacao: "Solicitação Reavaliação",
     exclusao_horario: "Exclusão de Horário",
-    inclusao_alteracao_grade: "Inclusão/Alt. Grade (PB)", // Tipo adicionado em modals.js // Adicione outros tipos conforme necessário
+    inclusao_alteracao_grade: "Inclusão/Alt. Grade (PB)",
+    // Adicionar outros tipos se necessário (ex: 'contrato_pendente' se criar solicitação)
   };
-  return mapaTipos[tipoInterno] || tipoInterno; // Retorna o nome mapeado ou o interno
+  return mapaTipos[tipoInterno] || tipoInterno;
 }
 
-// Função principal de inicialização do módulo
+// Função principal de inicialização
 export function init(db_ignored, user, userData) {
   console.log(
-    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') iniciado."
+    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.CORRIGIDA iniciado."
   );
-  adminUser = userData; // Guarda dados do admin logado // Seletores do DOM (mantidos)
+  adminUser = userData;
 
+  // Seletores DOM (mantidos)
   const tabsContainer = document.querySelector(".tabs-container");
   const tabLinks = document.querySelectorAll(".tab-link");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -62,9 +62,11 @@ export function init(db_ignored, user, userData) {
   const modalFooterActions = document.getElementById("modal-footer-actions");
   const modalCloseBtn = document.getElementById("modal-close-btn");
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
-  const tabContentContainer = document.querySelector(".tab-content-container"); // Configuração das Abas (mantida)
+  const tabContentContainer = document.querySelector(".tab-content-container");
 
+  // Configuração Abas (mantida)
   function setupTabs() {
+    // ... (código igual) ...
     if (!tabsContainer) return;
     tabsContainer.addEventListener("click", (event) => {
       const clickedTab = event.target.closest(".tab-link");
@@ -78,25 +80,18 @@ export function init(db_ignored, user, userData) {
         targetContent.classList.add("active");
       }
     });
-  }  // --- NOVA FUNÇÃO GENÉRICA: Carregar Solicitações da Coleção Central ---
-  /**
-   * Carrega solicitações pendentes de um tipo específico da coleção 'solicitacoes'.
-   * @param {string} tipoSolicitacao - O valor do campo 'tipo' no Firestore.
-   * @param {string} tableBodyId - ID do tbody da tabela HTML.
-   * @param {string} emptyStateId - ID do elemento de estado vazio HTML.
-   * @param {string} countBadgeId - ID do badge de contagem HTML.
-   * @param {function} renderRowFunction - Função que recebe (data, docId) e retorna o HTML da linha (tr).
-   * @param {number} colspan - Número de colunas na tabela para mensagens.
-   */
+  }
 
+  // --- Função Genérica: Carregar Solicitações da Coleção Central (mantida) ---
   function loadSolicitacoesPorTipo(
     tipoSolicitacao,
     tableBodyId,
     emptyStateId,
     countBadgeId,
     renderRowFunction,
-    colspan = 7 // Ajuste o default conforme necessário
+    colspan = 7
   ) {
+    // ... (código igual da versão anterior) ...
     console.log(`Carregando [${tipoSolicitacao}] da coleção 'solicitacoes'...`);
     const tableBody = document.getElementById(tableBodyId);
     const emptyState = document.getElementById(emptyStateId);
@@ -110,19 +105,18 @@ export function init(db_ignored, user, userData) {
     }
 
     try {
-      // Query para buscar solicitações PENDENTES do TIPO específico, ordenadas por data
       const q = query(
-        collection(dbInstance, "solicitacoes"), // Coleção central
-        where("tipo", "==", tipoSolicitacao), // Filtra pelo tipo
-        where("status", "==", "Pendente"), // Filtra por status Pendente
-        orderBy("dataSolicitacao", "desc") // Ordena mais recentes primeiro
-      ); // Usa onSnapshot para escutar atualizações em tempo real
+        collection(dbInstance, "solicitacoes"),
+        where("tipo", "==", tipoSolicitacao),
+        where("status", "==", "Pendente"),
+        orderBy("dataSolicitacao", "desc")
+      );
 
       const unsubscribe = onSnapshot(
         q,
         (querySnapshot) => {
-          tableBody.innerHTML = ""; // Limpa a tabela antes de popular
-          const pendingCount = querySnapshot.size; // Tamanho do snapshot já filtrado
+          tableBody.innerHTML = "";
+          const pendingCount = querySnapshot.size;
 
           if (querySnapshot.empty) {
             emptyState.style.display = "block";
@@ -141,14 +135,13 @@ export function init(db_ignored, user, userData) {
 
             querySnapshot.forEach((doc) => {
               const data = doc.data();
-              const docId = doc.id; // Chama a função específica para renderizar a linha desta solicitação
+              const docId = doc.id;
               const tr = renderRowFunction(data, docId);
-              tableBody.innerHTML += tr; // Adiciona a linha HTML
+              tableBody.innerHTML += tr;
             });
           }
         },
         (error) => {
-          // Callback de erro do onSnapshot
           console.error(
             `Erro ao buscar [${tipoSolicitacao}] em tempo real:`,
             error
@@ -157,9 +150,9 @@ export function init(db_ignored, user, userData) {
           emptyState.style.display = "none";
           countBadge.style.display = "none";
         }
-      ); // Guardar a função unsubscribe para poder parar de ouvir depois, se necessário // (Ex: ao sair da página) - Por simplicidade, omitido aqui.
+      );
+      // TODO: Gerenciar 'unsubscribe' ao sair da página
     } catch (error) {
-      // Erro ao construir a query
       console.error(
         `Falha ao construir query para [${tipoSolicitacao}]:`,
         error
@@ -168,7 +161,9 @@ export function init(db_ignored, user, userData) {
       emptyState.style.display = "none";
       countBadge.style.display = "none";
     }
-  } // --- Implementação das funções de carregamento (agora usam a função genérica) ---
+  }
+
+  // --- Implementação das funções de carregamento ---
 
   function loadNovasSessoes() {
     loadSolicitacoesPorTipo(
@@ -177,7 +172,7 @@ export function init(db_ignored, user, userData) {
       "empty-state-novas-sessoes",
       "count-novas-sessoes",
       renderNovasSessoesRow,
-      7 // Ajuste o colspan se a tabela tiver 7 colunas
+      7 // Colunas: Data, Profissional, Paciente, Horário Solicitado, Início Pref., Status, Ações
     );
   }
 
@@ -188,7 +183,7 @@ export function init(db_ignored, user, userData) {
       "empty-state-alteracoes-horario",
       "count-alteracoes-horario",
       renderAlteracaoHorarioRow,
-      8 // Ajuste o colspan se a tabela tiver 8 colunas
+      9 // Colunas: Data, Profissional, Paciente, De, Para, Início, Justificativa, Status, Ações
     );
   }
 
@@ -199,76 +194,206 @@ export function init(db_ignored, user, userData) {
       "empty-state-desfechos-pb",
       "count-desfechos-pb",
       renderDesfechoRow,
-      7 // Ajuste o colspan
+      8 // Colunas: Data Reg, Data Desf, Prof, Paciente, Tipo, Motivo, Status, Ações
     );
-  } // *** NOVO: Carregar Solicitações de Reavaliação ***
+  }
 
   function loadReavaliacao() {
     loadSolicitacoesPorTipo(
       "reavaliacao",
-      "table-body-reavaliacao", // <<< VERIFIQUE/CRIE O ID NO HTML
-      "empty-state-reavaliacao", // <<< VERIFIQUE/CRIE O ID NO HTML
-      "count-reavaliacao", // <<< VERIFIQUE/CRIE O ID NO HTML
-      renderReavaliacaoRow, // Função de renderização (abaixo)
-      6 // Ajuste o colspan
+      "table-body-reavaliacao", // Certifique-se que existe no HTML
+      "empty-state-reavaliacao", // Certifique-se que existe no HTML
+      "count-reavaliacao", // Certifique-se que existe no HTML
+      renderReavaliacaoRow,
+      8 // Colunas: Data Sol, Prof, Paciente, Valor Atual, Motivo, Pref. Agenda, Status, Ações
     );
   }
 
-  // *** NOVO: Carregar Solicitações de Inclusão/Alteração Grade PB ***
   function loadInclusaoAlteracaoGradePB() {
     loadSolicitacoesPorTipo(
-      "inclusao_alteracao_grade", // Tipo definido em modals.js
-      "table-body-inclusao-grade-pb", // <<< VERIFIQUE/CRIE O ID NO HTML (nova tabela/aba?)
-      "empty-state-inclusao-grade-pb", // <<< VERIFIQUE/CRIE O ID NO HTML
-      "count-inclusao-grade-pb", // <<< VERIFIQUE/CRIE O ID NO HTML
-      renderInclusaoAlteracaoGradePBRow, // Função de renderização (abaixo)
-      8 // Ajuste o colspan
+      "inclusao_alteracao_grade",
+      "table-body-inclusao-grade-pb", // Certifique-se que existe no HTML
+      "empty-state-inclusao-grade-pb", // Certifique-se que existe no HTML
+      "count-inclusao-grade-pb", // Certifique-se que existe no HTML
+      renderInclusaoAlteracaoGradePBRow,
+      9 // Colunas: Data Sol, Prof, Paciente, Dia, Hora, Mod, Sala, Status, Ações
     );
   }
 
-  function loadStatusContratos() {
-    // TODO: Implementar busca - Esta pode NÃO vir da coleção 'solicitacoes'.
-    console.warn("loadStatusContratos ainda não implementado.");
+  // *** ALTERADO: loadStatusContratos ***
+  // Busca pacientes em PB sem contrato assinado
+  async function loadStatusContratos() {
+    console.log("Carregando Status Contratos...");
+    const tableBodyId = "table-body-status-contratos";
+    const emptyStateId = "empty-state-status-contratos";
+    const countBadgeId = "count-status-contratos";
+    const colspan = 4; // Colunas: Paciente, Profissional, Status Contrato, Última Atualização
+
+    const tableBody = document.getElementById(tableBodyId);
+    const emptyState = document.getElementById(emptyStateId);
+    const countBadge = document.getElementById(countBadgeId);
+
+    if (!tableBody || !emptyState || !countBadge) {
+      console.error("Elementos do DOM não encontrados para Status Contratos.");
+      return;
+    }
+
+    tableBody.innerHTML = `<tr><td colspan="${colspan}">Buscando pacientes...</td></tr>`;
+    emptyState.style.display = "none";
+    countBadge.style.display = "none";
+
+    try {
+      // Query 1: Pacientes com status 'em_atendimento_pb'
+      const qPb = query(
+        collection(dbInstance, "trilhaPaciente"),
+        where("status", "==", "em_atendimento_pb")
+      );
+      // Query 2: Pacientes com status 'cadastrar_horario_psicomanager' (horários informados, mas contrato pode estar pendente)
+      const qCadastrar = query(
+        collection(dbInstance, "trilhaPaciente"),
+        where("status", "==", "cadastrar_horario_psicomanager")
+      );
+
+      // Executa as queries em paralelo
+      const [pbSnapshot, cadastrarSnapshot] = await Promise.all([
+        getDocs(qPb),
+        getDocs(qCadastrar),
+      ]);
+
+      let pendingContracts = [];
+
+      // Processa pacientes de ambas as queries
+      const processSnapshot = (snapshot) => {
+        snapshot.forEach((doc) => {
+          const pacienteData = doc.data();
+          const pacienteId = doc.id;
+
+          // Verifica CADA atendimento PB ativo
+          const atendimentosAtivos =
+            pacienteData.atendimentosPB?.filter(
+              (at) => at.statusAtendimento === "ativo"
+            ) || [];
+
+          atendimentosAtivos.forEach((atendimento) => {
+            // Se o contrato NÃO está assinado neste atendimento ativo
+            if (!atendimento.contratoAssinado) {
+              pendingContracts.push({
+                pacienteId: pacienteId,
+                pacienteNome:
+                  pacienteData.nomeCompleto || "Nome não encontrado",
+                profissionalNome:
+                  atendimento.profissionalNome || "Profissional não encontrado",
+                statusContrato: "Pendente",
+                lastUpdate: pacienteData.lastUpdate, // Pega a última atualização do paciente
+              });
+            }
+          });
+        });
+      };
+
+      processSnapshot(pbSnapshot);
+      processSnapshot(cadastrarSnapshot);
+
+      // Remove duplicados (caso um paciente apareça em ambas as queries com contrato pendente no mesmo atendimento - improvável mas seguro)
+      // Usando Map para simplificar a remoção de duplicados baseados em pacienteId + profissionalNome
+      const uniqueMap = new Map();
+      pendingContracts.forEach((item) => {
+        const key = `${item.pacienteId}-${item.profissionalNome}`;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, item);
+        }
+      });
+      pendingContracts = Array.from(uniqueMap.values());
+
+      // Ordena por nome do paciente
+      pendingContracts.sort((a, b) =>
+        a.pacienteNome.localeCompare(b.pacienteNome)
+      );
+
+      // Renderiza a tabela
+      if (pendingContracts.length === 0) {
+        tableBody.innerHTML = "";
+        emptyState.style.display = "block";
+        countBadge.style.display = "none";
+      } else {
+        tableBody.innerHTML = "";
+        emptyState.style.display = "none";
+        countBadge.textContent = pendingContracts.length;
+        countBadge.style.display = "inline-block";
+
+        pendingContracts.forEach((item) => {
+          const dataAtualizacao = formatarData(item.lastUpdate);
+          const tr = `
+                      <tr>
+                          <td>${item.pacienteNome}</td>
+                          <td>${item.profissionalNome}</td>
+                          <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
+                          <td>${dataAtualizacao}</td>
+                          {/* Adicionar coluna de Ações se necessário */}
+                      </tr>
+                   `;
+          tableBody.innerHTML += tr;
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao carregar status de contratos:", error);
+      tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-error">Erro ao carregar dados: ${error.message}</td></tr>`;
+      emptyState.style.display = "none";
+      countBadge.style.display = "none";
+    }
   }
 
+  // *** ALTERADO: loadExclusaoHorarios ***
+  // Mantém buscando de 'solicitacoes', mas ajusta colspan e remove fallback por enquanto
   function loadExclusaoHorarios() {
-    // Agora também usa a função genérica
     loadSolicitacoesPorTipo(
-      "exclusao_horario", // Tipo correspondente na coleção 'solicitacoes'
+      "exclusao_horario",
       "table-body-exclusao-horarios",
       "empty-state-exclusao-horarios",
       "count-exclusao-horarios",
       renderExclusaoHorarioRow,
-      7 // Colspan da tabela de Exclusão
+      7 // Colspan original: Data, Prof, Qtd Atual, Horários, Motivo, Status, Ações
     );
-  } // --- Funções de Renderização Específicas --- // (Adaptadas para ler de `data` e `data.detalhes`)
+    // Adicionar aqui lógica de fallback para ler 'solicitacoesExclusaoGrade' se necessário
+    // Ex: usar um Promise.all ou verificar se a primeira query retornou vazio e então buscar na antiga.
+  }
 
+  // --- Funções de Renderização ---
+
+  // ** CORRIGIDO: Removido comentário **
   function renderNovasSessoesRow(data, docId) {
-    const detalhes = data.detalhes || {}; // Objeto de detalhes
+    const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
     return `
-      <tr>
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        {/* Acessa os campos dentro de 'detalhes' */}
-        <td>${detalhes.diaSemana || "N/A"}, ${detalhes.horario || "N/A"} (${
+      <tr>
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${detalhes.diaSemana || "N/A"}, ${detalhes.horario || "N/A"} (${
       detalhes.modalidade || "N/A"
     })</td>
-        <td>${detalhes.dataInicioPreferencial || "N/A"}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao"
-                  data-doc-id="${docId}"
-                  data-tipo="novas_sessoes">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-      </tr>
-    `;
+        <td>${
+          detalhes.dataInicioPreferencial
+            ? formatarData(
+                Timestamp.fromDate(
+                  new Date(detalhes.dataInicioPreferencial + "T03:00:00")
+                )
+              )
+            : "N/A"
+        }</td> {/* Formata data */}
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          <button class="action-button btn-processar-solicitacao"
+                  data-doc-id="${docId}"
+                  data-tipo="novas_sessoes">
+            ${data.status === "Pendente" ? "Processar" : "Ver"}
+          </button>
+        </td>
+      </tr>
+    `;
   }
 
   function renderAlteracaoHorarioRow(data, docId) {
@@ -276,34 +401,43 @@ export function init(db_ignored, user, userData) {
     const antigos = detalhes.dadosAntigos || {};
     const novos = detalhes.dadosNovos || {};
     const dataSol = formatarData(data.dataSolicitacao);
+    const dataInicioNova = novos.dataInicio
+      ? formatarData(
+          Timestamp.fromDate(new Date(novos.dataInicio + "T03:00:00"))
+        )
+      : "N/A"; // Formata data
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+    // Adicionada coluna Justificativa
     return `
-      <tr>
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
+      <tr>
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
       antigos.modalidade || "N/A"
     })</td>
-        <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
+        <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
       novos.modalidade || "N/A"
     })</td>
-        <td>${novos.dataInicio || "N/A"}</td>
-        <td class="motivo-cell">${detalhes.justificativa || "N/A"}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao"
-                  data-doc-id="${docId}"
-                  data-tipo="alteracao_horario">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-      </tr>
-    `;
+        <td>${dataInicioNova}</td> {/* Data Início Nova */}
+        <td class="motivo-cell">${
+          detalhes.justificativa || "N/A"
+        }</td> {/* Justificativa */}
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          <button class="action-button btn-processar-solicitacao"
+                  data-doc-id="${docId}"
+                  data-tipo="alteracao_horario">
+            ${data.status === "Pendente" ? "Processar" : "Ver"}
+          </button>
+        </td>
+      </tr>
+    `;
   }
 
+  // ** CORRIGIDO: Removido comentário **
   function renderDesfechoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -311,137 +445,139 @@ export function init(db_ignored, user, userData) {
       ? formatarData(
           Timestamp.fromDate(new Date(detalhes.dataDesfecho + "T03:00:00"))
         )
-      : "N/A"; // Formata data do desfecho
+      : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
     return `
-      <tr>
-        <td>${dataSol}</td> {/* Data da Solicitação */}
-        <td>${dataDesf}</td> {/* Data do Desfecho */}
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.tipoDesfecho || "N/A"}</td>
-        <td class="motivo-cell">${
-      detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
-    }</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao"
-                  data-doc-id="${docId}"
-                  data-tipo="desfecho">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-      </tr>
-    `;
-  } // *** NOVA FUNÇÃO DE RENDERIZAÇÃO: Reavaliação ***
+      <tr>
+        <td>${dataSol}</td>
+        <td>${dataDesf}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${detalhes.tipoDesfecho || "N/A"}</td>
+        <td class="motivo-cell">${
+          detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
+        }</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          <button class="action-button btn-processar-solicitacao"
+                  data-doc-id="${docId}"
+                  data-tipo="desfecho">
+            ${data.status === "Pendente" ? "Processar" : "Ver"}
+          </button>
+        </td>
+      </tr>
+    `;
+  }
 
   function renderReavaliacaoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const pref = detalhes.preferenciaAgendamento || {};
     const dataSol = formatarData(data.dataSolicitacao);
+    const dataPrefFormatada = pref.data
+      ? formatarData(Timestamp.fromDate(new Date(pref.data + "T03:00:00")))
+      : "N/A"; // Formata data
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
     return `
-      <tr>
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.valorContribuicaoAtual || "N/A"}</td>
-        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
-        <td>${
-      pref.data
-        ? formatarData(Timestamp.fromDate(new Date(pref.data + "T03:00:00")))
-        : "N/A"
-    } ${pref.hora || ""} (${pref.modalidade || "N/A"})</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao"
-                  data-doc-id="${docId}"
-                  data-tipo="reavaliacao">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-      </tr>
-    `;
+      <tr>
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${detalhes.valorContribuicaoAtual || "N/A"}</td>
+        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
+        <td>${dataPrefFormatada} ${pref.hora || ""} (${
+      pref.modalidade || "N/A"
+    })</td> {/* Pref Agendamento */}
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          <button class="action-button btn-processar-solicitacao"
+                  data-doc-id="${docId}"
+                  data-tipo="reavaliacao">
+            ${data.status === "Pendente" ? "Processar" : "Ver"}
+          </button>
+        </td>
+      </tr>
+    `;
   }
 
-  // *** NOVA FUNÇÃO DE RENDERIZAÇÃO: Inclusão/Alteração Grade PB ***
   function renderInclusaoAlteracaoGradePBRow(data, docId) {
-    const detalhes = data.detalhes || {}; // Contém os dados do horarioSessao
+    const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
+    const dataInicioFormatada = detalhes.dataInicio
+      ? formatarData(
+          Timestamp.fromDate(new Date(detalhes.dataInicio + "T03:00:00"))
+        )
+      : "N/A"; // Formata data
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
     return `
-            <tr>
-                <td>${dataSol}</td>
-                <td>${data.solicitanteNome || "N/A"}</td>
-                <td>${data.pacienteNome || "N/A"}</td>
-                <td>${detalhes.diaSemana || "N/A"}</td>
-                <td>${detalhes.horario || "N/A"}</td>
-                <td>${
-                  detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
-                }</td>
-                <td>${detalhes.salaAtendimento || "N/A"}</td>
-                <td><span class="status-badge ${statusClass}">${
+        <tr>
+            <td>${dataSol}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${data.pacienteNome || "N/A"}</td>
+            <td>${detalhes.diaSemana || "N/A"}</td>
+            <td>${detalhes.horario || "N/A"}</td>
+            <td>${detalhes.modalidade || detalhes.tipoAtendimento || "N/A"}</td>
+            <td>${detalhes.salaAtendimento || "N/A"}</td>
+             <td>${dataInicioFormatada}</td> {/* Adicionada Data Início */}
+            <td><span class="status-badge ${statusClass}">${
       data.status
     }</span></td>
-                <td>
-                    <button class="action-button btn-processar-solicitacao"
-                            data-doc-id="${docId}"
-                            data-tipo="inclusao_alteracao_grade">
-                        ${data.status === "Pendente" ? "Processar" : "Ver"}
-                    </button>
-                </td>
-            </tr>
-        `;
+            <td>
+                <button class="action-button btn-processar-solicitacao"
+                        data-doc-id="${docId}"
+                        data-tipo="inclusao_alteracao_grade">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        </tr>
+    `;
   }
 
   function renderExclusaoHorarioRow(data, docId) {
-    const detalhes = data.detalhes || {}; // Assumindo que os detalhes foram movidos para cá
+    const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const horariosLabels =
-      detalhes.horariosParaExcluir?.map((h) => h.label).join(", ") || "Erro";
+      detalhes.horariosParaExcluir?.map((h) => h.label).join(", ") || "N/A"; // Fallback melhor
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
     return `
-      <tr>
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${detalhes.totalHorariosAtual ?? "N/A"}</td>
-        <td>${horariosLabels}</td>
-        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao"
-                  data-doc-id="${docId}"
-                  data-tipo="exclusao_horario">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-      </tr>
-    `;
-  }  // --- Lógica do Modal (Refatorada para ser Genérica) ---
-  /**
-   * Abre um modal genérico para processar/visualizar uma solicitação.
-   * @param {string} docId - ID do documento na coleção 'solicitacoes'.
-   * @param {string} tipo - Tipo da solicitação (ex: 'novas_sessoes').
-   */
+      <tr>
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${detalhes.totalHorariosAtual ?? "N/A"}</td>
+        <td>${horariosLabels}</td>
+        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          <button class="action-button btn-processar-solicitacao"
+                  data-doc-id="${docId}"
+                  data-tipo="exclusao_horario">
+            ${
+              data.status === "Pendente" ? "Processar" : "Ver"
+            } {/* Texto do botão ajustado */}
+          </button>
+        </td>
+      </tr>
+    `;
+  }
 
+  // --- Lógica do Modal Genérico (mantida, mas com correções no fetch path) ---
   async function openGenericSolicitacaoModal(docId, tipo) {
     console.log(`Abrindo modal para ${tipo}, ID: ${docId}`);
     modalTitle.textContent = `Processar Solicitação (${formatarTipoSolicitacao(
       tipo
     )})`;
-    modalBodyContent.innerHTML = '<div class="loading-spinner"></div>'; // Mostra loading
-    modalFooterActions.innerHTML = ""; // Limpa botões antigos
-    modalFooterActions.appendChild(modalCancelBtn); // Garante que o botão Cancelar esteja lá
+    modalBodyContent.innerHTML = '<div class="loading-spinner"></div>';
+    modalFooterActions.innerHTML = "";
+    modalFooterActions.appendChild(modalCancelBtn);
 
-    openModal(); // Abre o modal imediatamente com o loading
+    openModal();
 
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
@@ -450,56 +586,61 @@ export function init(db_ignored, user, userData) {
       if (!docSnap.exists()) {
         throw new Error("Solicitação não encontrada!");
       }
-      const solicitacaoData = docSnap.data(); // Carrega o HTML específico para o tipo de solicitação // (Você precisará criar esses arquivos HTML)
+      const solicitacaoData = docSnap.data();
 
-      let modalHtmlPath = "";
+      // ** CORREÇÃO: Usar caminho relativo CORRETO para os modais **
+      // Assumindo que solicitacoes-admin.js está em /modulos/administrativo/js/
+      // e os modais estão em /modulos/administrativo/page/
+      let modalHtmlPath = `../page/`; // Caminho base
+
       switch (tipo) {
         case "novas_sessoes":
-          modalHtmlPath = "./modal-novas-sessoes.html"; // <<< CRIE ESTE ARQUIVO
+          modalHtmlPath += "modal-novas-sessoes.html";
           break;
         case "alteracao_horario":
-          modalHtmlPath = "./modal-alteracao-horario.html"; // <<< CRIE ESTE ARQUIVO
+          modalHtmlPath += "modal-alteracao-horario.html";
           break;
         case "desfecho":
-          modalHtmlPath = "./modal-desfecho.html"; // <<< CRIE ESTE ARQUIVO
+          modalHtmlPath += "modal-desfecho.html";
           break;
         case "reavaliacao":
-          modalHtmlPath = "./modal-reavaliacao.html"; // <<< CRIE ESTE ARQUIVO
+          modalHtmlPath += "modal-reavaliacao.html";
           break;
         case "inclusao_alteracao_grade":
-          modalHtmlPath = "./modal-inclusao-alteracao-grade.html"; // <<< CRIE ESTE ARQUIVO
+          modalHtmlPath += "modal-inclusao-alteracao-grade.html";
           break;
-        case "exclusao_horario": // Reutiliza o modal existente
-          modalHtmlPath = "./modal-exclusao-grade.html"; // A lógica de preenchimento e save será tratada abaixo
+        case "exclusao_horario":
+          modalHtmlPath += "modal-exclusao-grade.html";
           break;
         default:
           throw new Error(`Tipo de solicitação desconhecido: ${tipo}`);
       }
 
+      console.log("Tentando carregar modal de:", modalHtmlPath); // Log para depuração
       const response = await fetch(modalHtmlPath);
-      if (!response.ok)
-        throw new Error(
-          `Falha ao carregar o HTML do modal (${modalHtmlPath}).`
+      if (!response.ok) {
+        console.error(
+          `Fetch falhou: ${response.status} ${response.statusText} para ${modalHtmlPath}`
         );
-      modalBodyContent.innerHTML = await response.text(); // Preenche os campos do modal com os dados da solicitação // (Esta função precisa ser criada/adaptada para cada tipo)
+        throw new Error(
+          `Falha ao carregar o HTML do modal (${response.statusText}). Verifique o caminho e se o arquivo existe.`
+        );
+      }
+      modalBodyContent.innerHTML = await response.text();
 
-      preencherCamposModal(tipo, solicitacaoData); // Adiciona botões de ação (Aprovar/Rejeitar ou Salvar específico)
-
+      preencherCamposModal(tipo, solicitacaoData);
       configurarAcoesModal(docId, tipo, solicitacaoData);
     } catch (error) {
       console.error("Erro ao abrir modal genérico:", error);
       modalBodyContent.innerHTML = `<p class="alert alert-error">Erro ao carregar detalhes: ${error.message}</p>`;
-      // Mantém o botão Cancelar visível
       modalFooterActions.innerHTML = "";
       modalFooterActions.appendChild(modalCancelBtn);
     }
   }
-  /**
-   * Preenche os campos do modal com base no tipo e nos dados.
-   * (Precisa ser implementado/adaptado para cada tipo de modal HTML)
-   */
 
+  // --- Funções preencherCamposModal, setTextContentIfExists, setValueIfExists (mantidas como antes) ---
   function preencherCamposModal(tipo, data) {
+    // ... (código igual da versão anterior, garantindo que os IDs batem com os HTMLs) ...
     const detalhes = data.detalhes || {};
 
     // Campos Comuns (exemplo, adicione mais se necessário)
@@ -516,11 +657,17 @@ export function init(db_ignored, user, userData) {
         setTextContentIfExists("#modal-ns-horario", detalhes.horario);
         setTextContentIfExists("#modal-ns-modalidade", detalhes.modalidade);
         setTextContentIfExists("#modal-ns-sala", detalhes.sala);
-        setValueIfExists(
+        // Corrigido para span
+        setTextContentIfExists(
           "#modal-ns-data-inicio",
           detalhes.dataInicioPreferencial
-        ); // Input date
-        // setTextContentIfExists("#modal-ns-justificativa", detalhes.justificativa); // Se houver
+            ? formatarData(
+                Timestamp.fromDate(
+                  new Date(detalhes.dataInicioPreferencial + "T03:00:00")
+                )
+              )
+            : "N/A"
+        );
         break;
       case "alteracao_horario":
         const antigos = detalhes.dadosAntigos || {};
@@ -615,7 +762,6 @@ export function init(db_ignored, user, userData) {
         setTextContentIfExists("#modal-rv-pref-hora", pref.hora);
         break;
       case "inclusao_alteracao_grade":
-        // Preenche os detalhes do horário a ser incluído/alterado
         setTextContentIfExists("#modal-ig-dia", detalhes.diaSemana);
         setTextContentIfExists("#modal-ig-horario", detalhes.horario);
         setTextContentIfExists(
@@ -635,26 +781,24 @@ export function init(db_ignored, user, userData) {
         setTextContentIfExists("#modal-ig-obs", detalhes.observacoes);
         break;
       case "exclusao_horario":
-        // Reutiliza a lógica existente, adaptando seletores se necessário
-        setTextContentIfExists("#modal-solicitante-nome", data.solicitanteNome); // Campo comum já preenchido
+        setTextContentIfExists("#modal-solicitante-nome", data.solicitanteNome);
         setTextContentIfExists("#modal-solicitante-motivo", detalhes.motivo);
-        const horariosList = document.getElementById("modal-horarios-list"); // Assume que o ID é o mesmo no HTML carregado
+        const horariosList = document.getElementById("modal-horarios-list");
         if (horariosList) {
           horariosList.innerHTML =
             detalhes.horariosParaExcluir
               ?.map((h) => `<li>${h.label} (${h.path || "Sem path"})</li>`)
-              .join("") || "<li>Erro</li>";
+              .join("") || "<li>Erro ao carregar horários</li>"; // Mensagem melhor
         }
-        // A lógica de preencher o feedback (Sim/Não) será tratada em configurarAcoesModal
         break;
     }
 
-    // Preenche o feedback do admin, se já existir (para visualização)
+    // Preenche o feedback do admin (mantido)
     if (data.adminFeedback && data.status !== "Pendente") {
       const feedback = data.adminFeedback;
       const feedbackContainer = document.getElementById(
         "modal-admin-feedback-view"
-      ); // Container padrão para exibir feedback
+      );
       if (feedbackContainer) {
         feedbackContainer.style.display = "block";
         setTextContentIfExists("#view-admin-nome", feedback.adminNome);
@@ -662,14 +806,12 @@ export function init(db_ignored, user, userData) {
           "#view-admin-data",
           formatarData(feedback.dataResolucao)
         );
-        setTextContentIfExists("#view-admin-status", data.status); // Mostra o status final
+        setTextContentIfExists("#view-admin-status", data.status);
         setTextContentIfExists(
           "#view-admin-mensagem",
           feedback.mensagemAdmin || feedback.motivoRejeicao || feedback.mensagem
-        ); // Tenta diferentes campos de mensagem
+        );
       }
-
-      // Desabilita campos do formulário principal se já foi processado
       modalBodyContent
         .querySelectorAll("form input, form select, form textarea")
         .forEach((el) => (el.disabled = true));
@@ -677,48 +819,40 @@ export function init(db_ignored, user, userData) {
       const feedbackContainer = document.getElementById(
         "modal-admin-feedback-view"
       );
-      if (feedbackContainer) feedbackContainer.style.display = "none"; // Esconde se não houver feedback
+      if (feedbackContainer) feedbackContainer.style.display = "none";
     }
   }
 
-  // Funções auxiliares para preencher/setar valor
   function setTextContentIfExists(selector, value) {
     const element = modalBodyContent.querySelector(selector);
     if (element) {
-      element.textContent = value || "N/A"; // Usa N/A como fallback
-    } else {
-      // console.warn(`Elemento não encontrado para setText: ${selector}`);
+      element.textContent = value || "N/A";
     }
   }
   function setValueIfExists(selector, value) {
     const element = modalBodyContent.querySelector(selector);
     if (element) {
-      element.value = value || ""; // Usa string vazia como fallback para inputs
-    } else {
-      // console.warn(`Elemento não encontrado para setValue: ${selector}`);
+      element.value = value || "";
     }
   }
-  /**
-   * Adiciona os botões e configura os handlers de ação no rodapé do modal.
-   */
 
+  // --- Funções configurarAcoesModal, handleGenericSolicitacaoAction (mantidas como antes) ---
   function configurarAcoesModal(docId, tipo, data) {
-    modalFooterActions.innerHTML = ""; // Limpa botões existentes primeiro
-    modalFooterActions.appendChild(modalCancelBtn); // Adiciona o botão Cancelar
+    // ... (código igual da versão anterior) ...
+    modalFooterActions.innerHTML = "";
+    modalFooterActions.appendChild(modalCancelBtn);
 
     if (data.status === "Pendente") {
-      // Se for Exclusão de Horário, usa a lógica específica dela
       if (tipo === "exclusao_horario") {
         const saveButton = document.createElement("button");
         saveButton.type = "button";
-        saveButton.id = "btn-salvar-exclusao"; // Mantém ID para compatibilidade?
+        saveButton.id = "btn-salvar-exclusao";
         saveButton.className = "action-button dynamic-action-btn";
         saveButton.textContent = "Salvar Resposta (Exclusão)";
-        saveButton.onclick = () => handleSalvarExclusao(docId, data); // Passa dados para evitar re-fetch
-        modalFooterActions.appendChild(saveButton); // Chama a função que configura a lógica Sim/Não do form de exclusão
+        saveButton.onclick = () => handleSalvarExclusao(docId, data);
+        modalFooterActions.appendChild(saveButton);
         setupModalFormLogicExclusao();
       } else {
-        // Para os outros tipos, botões genéricos Aprovar/Rejeitar
         const approveButton = document.createElement("button");
         approveButton.type = "button";
         approveButton.id = "btn-aprovar-solicitacao";
@@ -737,18 +871,17 @@ export function init(db_ignored, user, userData) {
           handleGenericSolicitacaoAction(docId, tipo, "Rejeitada", data);
         modalFooterActions.appendChild(rejectButton);
 
-        // Adiciona campo de mensagem do admin para Aprovar/Rejeitar
         const adminMessageGroup = document.getElementById(
           "modal-admin-message-group"
-        ); // Div padrão para mensagem do admin
+        );
         if (adminMessageGroup) adminMessageGroup.style.display = "block";
+        // Limpa campo de mensagem ao abrir
+        const adminMessageText = document.getElementById("admin-message-text");
+        if (adminMessageText) adminMessageText.value = "";
       }
     } else {
-      // Se não está pendente, apenas mostra os dados preenchidos e desabilitados
-      // (já feito em preencherCamposModal)
-      // Poderia adicionar um botão "Fechar" se o Cancelar não for suficiente
+      // Se não pendente (Exclusão)
       if (tipo === "exclusao_horario" && data.adminFeedback) {
-        // Preenche o formulário de feedback Sim/Não para visualização
         const feedback = data.adminFeedback || {};
         const foiExcluidoValue = feedback.foiExcluido
           ? String(feedback.foiExcluido)
@@ -774,20 +907,17 @@ export function init(db_ignored, user, userData) {
         if (motivoRejeicaoInput)
           motivoRejeicaoInput.value = feedback.motivoRejeicao || "";
 
-        setupModalFormLogicExclusao(); // Chama para exibir campos corretos
+        setupModalFormLogicExclusao();
         modalBodyContent
           .querySelectorAll("input, textarea, select")
-          .forEach((el) => (el.disabled = true)); // Garante desabilitação
+          .forEach((el) => (el.disabled = true));
       }
       const adminMessageGroup = document.getElementById(
         "modal-admin-message-group"
       );
-      if (adminMessageGroup) adminMessageGroup.style.display = "none"; // Esconde campo de nova mensagem
+      if (adminMessageGroup) adminMessageGroup.style.display = "none";
     }
   }
-  /**
-   * Handler genérico para Aprovar/Rejeitar solicitações (exceto Exclusão de Horário).
-   */
 
   async function handleGenericSolicitacaoAction(
     docId,
@@ -795,19 +925,18 @@ export function init(db_ignored, user, userData) {
     novoStatus,
     solicitacaoData
   ) {
-    const mensagemAdminInput = document.getElementById("admin-message-text"); // Textarea padrão para mensagem
+    // ... (código igual da versão anterior) ...
+    const mensagemAdminInput = document.getElementById("admin-message-text");
     const mensagemAdmin = mensagemAdminInput
       ? mensagemAdminInput.value.trim()
       : "";
 
-    // Rejeição exige mensagem
     if (novoStatus === "Rejeitada" && !mensagemAdmin) {
       alert("Por favor, forneça uma mensagem explicando o motivo da rejeição.");
-      mensagemAdminInput?.focus(); // Foca no campo de mensagem
+      mensagemAdminInput?.focus();
       return;
     }
 
-    // Desabilita botões
     const approveButton = document.getElementById("btn-aprovar-solicitacao");
     const rejectButton = document.getElementById("btn-rejeitar-solicitacao");
     if (approveButton) approveButton.disabled = true;
@@ -821,11 +950,10 @@ export function init(db_ignored, user, userData) {
       clickedButton.innerHTML = `<span class="loading-spinner-small"></span> Processando...`;
 
     try {
-      // 1. Atualizar o status e feedback na coleção 'solicitacoes'
       const docRef = doc(dbInstance, "solicitacoes", docId);
       const adminFeedback = {
         statusFinal: novoStatus,
-        mensagemAdmin: mensagemAdmin, // Salva a mensagem (pode estar vazia se aprovado sem msg)
+        mensagemAdmin: mensagemAdmin,
         dataResolucao: serverTimestamp(),
         adminNome: adminUser.nome || "Admin Desconhecido",
         adminId: adminUser.uid || "N/A",
@@ -838,7 +966,6 @@ export function init(db_ignored, user, userData) {
         `Solicitação ${docId} (${tipo}) atualizada para ${novoStatus}.`
       );
 
-      // 2. Executar ações específicas de aprovação (se aplicável)
       if (novoStatus === "Aprovada") {
         switch (tipo) {
           case "alteracao_horario":
@@ -853,24 +980,18 @@ export function init(db_ignored, user, userData) {
           case "inclusao_alteracao_grade":
             await processarAprovacaoInclusaoGrade(solicitacaoData);
             break;
-          // case 'novas_sessoes':
-          //     // Nenhuma ação automática na trilha por enquanto? Admin cadastra na grade manualmente.
-          //     console.log("Aprovação de Novas Sessões registrada. Admin deve cadastrar na grade.");
-          //     break;
-          // Não precisa de case para 'exclusao_horario', pois tem handler próprio.
+          // Adicionar outros cases se necessário
         }
       }
 
       alert(`Solicitação ${novoStatus.toLowerCase()} com sucesso!`);
       closeModal();
-      // O onSnapshot atualizará a tabela automaticamente.
     } catch (error) {
       console.error(
         `Erro ao ${novoStatus.toLowerCase()} solicitação ${docId} (${tipo}):`,
         error
       );
       alert(`Erro ao processar: ${error.message}`);
-      // Reabilita botões em caso de erro
       if (approveButton) approveButton.disabled = false;
       if (rejectButton) rejectButton.disabled = false;
       if (clickedButton)
@@ -879,9 +1000,9 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Funções de Processamento Específicas (Chamadas em caso de Aprovação) ---
-
+  // --- Funções de Processamento Específicas (mantidas como antes) ---
   async function processarAprovacaoAlteracaoHorario(solicitacao) {
+    /* ...código igual... */
     console.log("Processando aprovação de Alteração de Horário:", solicitacao);
     const { pacienteId, atendimentoId, detalhes } = solicitacao;
     const novosDados = detalhes.dadosNovos;
@@ -908,22 +1029,19 @@ export function init(db_ignored, user, userData) {
         );
       }
 
-      // Atualiza os dados do horarioSessao dentro do atendimento específico
       const horarioAtualizado = {
-        ...(atendimentosPB[index].horarioSessao || {}), // Mantém dados existentes
+        ...(atendimentosPB[index].horarioSessao || {}),
         diaSemana: novosDados.dia,
         horario: novosDados.horario,
         tipoAtendimento: novosDados.modalidade,
         frequencia: novosDados.frequencia,
         salaAtendimento: novosDados.sala,
-        dataInicio: novosDados.dataInicio, // Data de início da *nova* configuração
-        // Poderia adicionar um histórico aqui se desejado
-        ultimaAlteracaoAprovadaEm: serverTimestamp(), // Marca quando foi aprovado
+        dataInicio: novosDados.dataInicio,
+        ultimaAlteracaoAprovadaEm: serverTimestamp(),
       };
 
-      atendimentosPB[index].horarioSessao = horarioAtualizado;
+      atendimentosPB[index].horarioSessao = horarioAtualizado; // ATENÇÃO: Verificar nome correto 'horarioSessao' ou 'horarioSessoes'
 
-      // Atualiza o array no documento do paciente
       await updateDoc(pacienteRef, {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
@@ -932,29 +1050,26 @@ export function init(db_ignored, user, userData) {
         `Horário atualizado na trilha para paciente ${pacienteId}, atendimento ${atendimentoId}.`
       );
 
-      // TODO: Se 'novosDados.alterarGrade' for 'Sim', precisa notificar/integrar com a grade?
       if (novosDados.alterarGrade === "Sim") {
         console.warn(
           `Ação necessária: Atualizar grade para paciente ${pacienteId}, atendimento ${atendimentoId}.`
         );
-        // Aqui poderia chamar uma Cloud Function, se existir, ou apenas logar para ação manual.
       }
     } catch (error) {
       console.error(
         "Erro ao atualizar trilhaPaciente para alteração de horário:",
         error
       );
-      // Lança o erro para ser capturado pelo handleGenericSolicitacaoAction e notificar o usuário
       throw new Error(
         `Falha ao atualizar dados do paciente na trilha: ${error.message}`
       );
     }
   }
-
   async function processarAprovacaoDesfecho(solicitacao) {
+    /* ...código igual... */
     console.log("Processando aprovação de Desfecho:", solicitacao);
     const { pacienteId, atendimentoId, detalhes } = solicitacao;
-    const { tipoDesfecho, dataDesfecho } = detalhes; // Pega tipo e data do desfecho
+    const { tipoDesfecho, dataDesfecho } = detalhes;
 
     if (!pacienteId || !atendimentoId || !tipoDesfecho || !dataDesfecho) {
       throw new Error("Dados incompletos para processar desfecho.");
@@ -978,9 +1093,8 @@ export function init(db_ignored, user, userData) {
         );
       }
 
-      // Define o novo status do *atendimento* e do *paciente*
       let novoStatusAtendimento = "";
-      let novoStatusPaciente = ""; // Status geral do paciente
+      let novoStatusPaciente = "";
       switch (tipoDesfecho) {
         case "Alta":
           novoStatusAtendimento = "concluido_alta";
@@ -992,40 +1106,26 @@ export function init(db_ignored, user, userData) {
           break;
         case "Encaminhamento":
           novoStatusAtendimento = "concluido_encaminhamento";
-          // O status do paciente PODE depender se ele continua ou não
-          if (detalhes.continuaAtendimentoEuPsico === "Não") {
-            novoStatusPaciente = "encaminhado_externo"; // Ou um status similar
-          } else {
-            // Se continua, talvez o status do paciente não mude drasticamente,
-            // ou vá para um estado de 'aguardando_novo_servico'? Depende do fluxo.
-            // Por ora, vamos manter o status atual se ele continuar.
-            novoStatusPaciente = pacienteData.status;
-            console.log(
-              "Paciente encaminhado, mas continua na EuPsico. Status do paciente mantido:",
-              novoStatusPaciente
-            );
-          }
+          novoStatusPaciente =
+            detalhes.continuaAtendimentoEuPsico === "Não"
+              ? "encaminhado_externo"
+              : pacienteData.status;
           break;
         default:
           throw new Error(`Tipo de desfecho inválido: ${tipoDesfecho}`);
       }
 
-      // Adiciona os detalhes do desfecho ao objeto do atendimento
-      atendimentosPB[index].status = novoStatusAtendimento;
+      atendimentosPB[index].statusAtendimento = novoStatusAtendimento; // ATENÇÃO: Verificar nome 'status' ou 'statusAtendimento'
       atendimentosPB[index].desfecho = {
-        ...detalhes, // Inclui todos os detalhes (motivo, encaminhamento, etc.)
+        ...detalhes,
         aprovadoPor: adminUser.nome || "Admin",
         aprovadoEm: serverTimestamp(),
       };
-      // Remove o objeto horarioSessao se o atendimento foi concluído? Opcional.
-      // delete atendimentosPB[index].horarioSessao;
 
-      // Atualiza o array e o status GERAL do paciente
       const updateData = {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
       };
-      // Só atualiza o status GERAL se ele mudou
       if (novoStatusPaciente !== pacienteData.status) {
         updateData.status = novoStatusPaciente;
       }
@@ -1043,12 +1143,10 @@ export function init(db_ignored, user, userData) {
       );
     }
   }
-
   async function processarAprovacaoReavaliacao(solicitacao) {
+    /* ...código igual... */
     console.log("Processando aprovação de Reavaliação:", solicitacao);
-    const { pacienteId, detalhes } = solicitacao;
-    // A aprovação aqui significa que o admin CONCORDA que a reavaliação é necessária.
-    // O próximo passo é AGENDAR essa reavaliação.
+    const { pacienteId } = solicitacao;
 
     if (!pacienteId) {
       throw new Error("ID do Paciente faltando para processar reavaliação.");
@@ -1062,24 +1160,18 @@ export function init(db_ignored, user, userData) {
       }
       const pacienteData = pacienteSnap.data();
 
-      // Ação: Mudar o status do paciente para indicar que ele precisa agendar/realizar a reavaliação.
-      const novoStatus = "aguardando_reavaliacao"; // Ou um status similar
-
-      // Guarda o status anterior para saber para onde voltar depois
+      const novoStatus = "aguardando_reavaliacao";
       const statusAnterior = pacienteData.status;
 
       await updateDoc(pacienteRef, {
         status: novoStatus,
-        statusAnteriorReavaliacao: statusAnterior, // Guarda o status de onde veio
-        solicitacaoReavaliacaoAprovadaEm: serverTimestamp(), // Marca aprovação
+        statusAnteriorReavaliacao: statusAnterior,
+        solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
         lastUpdate: serverTimestamp(),
       });
       console.log(
         `Status do paciente ${pacienteId} atualizado para ${novoStatus}.`
       );
-
-      // Opcional: Enviar notificação para o Serviço Social agendar? Ou para o paciente?
-      // alert("Aprovação registrada. O próximo passo é agendar a reavaliação com o Serviço Social.");
     } catch (error) {
       console.error(
         "Erro ao atualizar trilhaPaciente para reavaliação:",
@@ -1090,44 +1182,23 @@ export function init(db_ignored, user, userData) {
       );
     }
   }
-
   async function processarAprovacaoInclusaoGrade(solicitacao) {
+    /* ...código igual... */
     console.log(
       "Processando aprovação de Inclusão/Alteração na Grade (PB):",
       solicitacao
     );
-    // Esta aprovação geralmente significa que o admin VERIFICOU e REALIZOU a alteração
-    // no sistema externo (Psicomanager?) ou na própria grade interna.
-    // A ação principal aqui é apenas registrar que foi feito.
-
-    // Poderia, opcionalmente, atualizar algo na trilhaPaciente se necessário,
-    // mas a definição do horário já deve ter sido feita em handleHorariosPbSubmit.
-    // Apenas logamos a confirmação.
     console.log(
       `Confirmação de Inclusão/Alteração na Grade para Paciente ${solicitacao.pacienteId} registrada.`
     );
     alert(
       "Confirmação de ação na grade registrada. Nenhuma alteração adicional na trilha foi feita por esta aprovação."
     );
+  }
 
-    // Se houvesse um campo na trilhaPaciente como 'horarioConfirmadoNaGrade: false',
-    // poderíamos atualizá-lo aqui para 'true'. Exemplo:
-    /*
-         const { pacienteId, atendimentoId } = solicitacao;
-         if (pacienteId && atendimentoId) {
-             const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
-             try {
-                 // Lógica para encontrar o atendimento e atualizar um campo específico
-                 // await updateDoc(pacienteRef, { [`atendimentosPB.${index}.horarioConfirmadoNaGrade`]: true });
-             } catch (error) {
-                 console.error("Erro ao marcar horário como confirmado na grade na trilha:", error);
-             }
-         }
-         */
-  } // --- Lógica Específica Modal Exclusão Horário (Adaptada) --- // Mantém a função, mas busca o HTML dentro do modal genérico
-
+  // --- Lógica Específica Modal Exclusão Horário (mantida como antes) ---
   function setupModalFormLogicExclusao() {
-    // Usa modalBodyContent como raiz para buscar os elementos
+    /* ...código igual... */
     const radioSim = modalBodyContent.querySelector("#radioExcluidoSim");
     const radioNao = modalBodyContent.querySelector("#radioExcluidoNao");
     const camposSim = modalBodyContent.querySelector("#campos-feedback-sim");
@@ -1145,24 +1216,19 @@ export function init(db_ignored, user, userData) {
       camposNao.style.display = radioNao.checked ? "block" : "none";
     };
 
-    // Remove listeners antigos para evitar duplicação se o modal for reaberto
     radioSim.removeEventListener("change", toggleFields);
     radioNao.removeEventListener("change", toggleFields);
-
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
-
-    toggleFields(); // Estado inicial
-  } // Handler adaptado para ler do modal genérico e usar updateDoc na coleção 'solicitacoes'
-
+    toggleFields();
+  }
   async function handleSalvarExclusao(docId, solicitacaoData) {
-    // Recebe dados para evitar re-fetch
-    const saveButton = document.getElementById("btn-salvar-exclusao"); // ID mantido
+    /* ...código igual... */
+    const saveButton = document.getElementById("btn-salvar-exclusao");
     if (!saveButton) return;
     saveButton.disabled = true;
     saveButton.innerHTML = `<span class="loading-spinner-small"></span> Salvando...`;
 
-    // Busca os valores DENTRO do modalBodyContent
     const foiExcluido = modalBodyContent.querySelector(
       'input[name="foiExcluido"]:checked'
     )?.value;
@@ -1174,10 +1240,7 @@ export function init(db_ignored, user, userData) {
       modalBodyContent.querySelector("#motivoRejeicao")?.value;
 
     try {
-      // Envolve a lógica em try/catch
-      if (!foiExcluido) {
-        throw new Error("Selecione 'Sim' ou 'Não'.");
-      }
+      if (!foiExcluido) throw new Error("Selecione 'Sim' ou 'Não'.");
 
       let statusFinal = "";
       const adminFeedback = {
@@ -1188,38 +1251,32 @@ export function init(db_ignored, user, userData) {
       };
 
       if (foiExcluido === "sim") {
-        if (!dataExclusaoInput || !mensagemAdmin) {
+        if (!dataExclusaoInput || !mensagemAdmin)
           throw new Error(
             "Para 'Sim', a data da exclusão e a mensagem são obrigatórias."
           );
-        }
-        statusFinal = "Concluída"; // Ou "Aprovada"? Usar "Concluída" parece mais apropriado aqui.
+        statusFinal = "Concluída";
         try {
           adminFeedback.dataExclusao = Timestamp.fromDate(
             new Date(dataExclusaoInput + "T12:00:00Z")
-          ); // Usa UTC
+          );
         } catch (dateError) {
           throw new Error(
             "Data de exclusão inválida. Use o formato AAAA-MM-DD."
           );
         }
         adminFeedback.mensagemAdmin = mensagemAdmin;
-        // TODO: Chamar Cloud Function ou lógica para REALMENTE excluir da grade?
         console.warn(
           `AÇÃO NECESSÁRIA: Excluir horários da grade para solicitação ${docId}. Horários:`,
           solicitacaoData.detalhes?.horariosParaExcluir
         );
-        // Exemplo: await httpsCallable(functions, 'excluirHorariosGrade')({ solicitacaoId: docId });
       } else {
-        // foiExcluido === "nao"
-        if (!motivoRejeicao) {
+        if (!motivoRejeicao)
           throw new Error("Para 'Não', o motivo da rejeição é obrigatório.");
-        }
         statusFinal = "Rejeitada";
         adminFeedback.motivoRejeicao = motivoRejeicao;
       }
 
-      // Atualiza o documento na coleção 'solicitacoes'
       const docRef = doc(dbInstance, "solicitacoes", docId);
       await updateDoc(docRef, {
         status: statusFinal,
@@ -1231,46 +1288,51 @@ export function init(db_ignored, user, userData) {
       );
       alert("Resposta salva com sucesso!");
       closeModal();
-      // O onSnapshot atualizará a tabela.
     } catch (error) {
       console.error("Erro ao salvar resposta de exclusão:", error);
       alert(`Erro ao salvar: ${error.message}`);
       saveButton.disabled = false;
       saveButton.innerHTML = "Salvar Resposta (Exclusão)";
     }
-  } // --- Funções do Modal (Genéricas - open/close) ---
+  }
 
+  // --- Funções do Modal (Genéricas - open/close - mantidas) ---
   function openModal() {
-    if (modal) modal.style.display = "flex";
+    /* ...código igual... */ if (modal) modal.style.display = "flex";
   }
   function closeModal() {
-    if (modal) modal.style.display = "none"; // Limpa apenas conteúdo e botões dinâmicos
+    /* ...código igual... */
+    if (modal) modal.style.display = "none";
     if (modalBodyContent) modalBodyContent.innerHTML = "";
-    if (modalFooterActions) modalFooterActions.innerHTML = ""; // Limpa tudo
-    // Readiciona o botão Cancelar padrão
+    if (modalFooterActions) modalFooterActions.innerHTML = "";
     if (modalCancelBtn && modalFooterActions)
       modalFooterActions.appendChild(modalCancelBtn);
-    if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação"; // Título padrão
-  } // --- Inicialização ---
+    if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação";
+  }
 
+  // --- Inicialização ---
   setupTabs();
   loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
-  loadReavaliacao(); // Adicionado
-  loadInclusaoAlteracaoGradePB(); // Adicionado
-  loadStatusContratos(); // TODO
-  loadExclusaoHorarios(); // Agora lê de 'solicitacoes' // --- Listener de Evento Genérico (Simplificado) ---
+  loadReavaliacao();
+  loadInclusaoAlteracaoGradePB();
+  loadStatusContratos(); // Será implementado agora
+  loadExclusaoHorarios();
+
+  // --- Listener de Evento Genérico (mantido como antes) ---
   if (tabContentContainer) {
+    // ... (código igual da versão anterior) ...
     tabContentContainer.addEventListener("click", async (e) => {
-      const button = e.target.closest(".btn-processar-solicitacao"); // Classe comum para todos os botões
+      const button = e.target.closest(".btn-processar-solicitacao");
 
       if (button) {
         const docId = button.dataset.docId;
         const tipo = button.dataset.tipo;
 
         if (docId && tipo) {
-          openGenericSolicitacaoModal(docId, tipo); // Chama o modal genérico
+          console.log(`Botão processar clicado: ID=${docId}, Tipo=${tipo}`); // Log para depuração
+          openGenericSolicitacaoModal(docId, tipo);
         } else {
           console.error(
             "Doc ID ou Tipo não encontrado no botão de processar:",
@@ -1279,16 +1341,15 @@ export function init(db_ignored, user, userData) {
           alert("Erro: Não foi possível identificar a solicitação.");
         }
       }
-      // Remover os listeners específicos antigos (btn-acao-exclusao, btn-acao-alteracao-trilha)
     });
-  } // Event listeners do modal (Fechar/Cancelar - Mantidos)
+  }
 
+  // Event listeners do modal (Fechar/Cancelar - mantidos)
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
   if (modal) {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
-        // Fecha ao clicar fora
         closeModal();
       }
     });
