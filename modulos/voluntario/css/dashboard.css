@@ -124,10 +124,13 @@
     border: 1px solid var(--cor-borda-leve);
     border-radius: var(--borda-radius-pequena);
     margin-bottom: 10px;
-    overflow: hidden; /* Garante que bordas arredondadas funcionem */
-    background-color: var(--cor-fundo-sutil); /* Fundo leve para destaque */
+    overflow: hidden;
+    background-color: var(--cor-fundo-sutil);
+    border-bottom: 1px solid var(--cor-borda-leve);
 }
-
+.solicitacao-item-container:last-child {
+    margin-bottom: 0;
+}
 /* Cabeçalho clicável */
 .solicitacao-item-header {
     display: flex;
@@ -135,8 +138,9 @@
     align-items: center;
     padding: 12px 15px;
     cursor: pointer;
-    background-color: transparent; /* Pode ajustar se quiser cor de fundo */
+    background-color: transparent;
     transition: background-color 0.2s ease;
+    gap: 10px;
 }
 
 .solicitacao-item-header:hover {
@@ -147,27 +151,30 @@
 .solicitacao-tipo {
     font-weight: 600;
     color: var(--cor-texto-principal);
-    margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .solicitacao-paciente {
     color: var(--cor-texto-secundario);
     font-size: 0.9em;
-    margin-right: auto; /* Empurra o status e indicador para a direita */
-    padding-left: 5px;
+    padding-left: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    text-align: left;
 }
 
 .solicitacao-status {
-   margin-left: 10px;
    flex-shrink: 0; /* Evita que o status encolha */
 }
 
 .solicitacao-indicator {
     font-weight: bold;
     font-size: 1.2em;
-    margin-left: 15px;
     color: var(--cor-primaria);
     transition: transform 0.2s ease;
+    flex-shrink: 0;
 }
 
 /* Estilo quando expandido */
@@ -177,7 +184,7 @@
 
 /* Corpo de detalhes (inicialmente oculto) */
 .solicitacao-item-details {
-    display: none; /* Começa oculto */
+    display: none; 
     padding: 15px;
     border-top: 1px solid var(--cor-borda-leve);
     background-color: #fff; /* Fundo branco para os detalhes */
@@ -211,7 +218,6 @@
 
 /* Badge de Status (se precisar de ajustes específicos aqui) */
 .status-badge {
-    /* Estilos existentes */
     display: inline-block; /* Garante alinhamento */
     vertical-align: middle; /* Alinha com o texto */
 }
