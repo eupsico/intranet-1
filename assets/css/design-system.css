@@ -738,3 +738,113 @@ legend {
     gap: 20px;
     padding-top: 5px;
 }
+/* --- ESTILOS ADICIONAIS PARA MODAIS GENÉRICOS DE SOLICITAÇÃO --- */
+
+.modal-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--cor-borda);
+}
+.modal-section:last-of-type {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.modal-section h4 {
+  color: var(--cor-primaria);
+  margin-bottom: 15px;
+  font-size: 1.1em;
+}
+
+/* Grid simples para detalhes lado a lado */
+.details-grid {
+  display: grid;
+  gap: 10px 20px; /* Espaçamento vertical e horizontal */
+}
+.details-grid.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Duas colunas responsivas */
+}
+.details-grid.cols-3 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Três colunas responsivas */
+}
+
+/* Ajustes no form-group dentro do details-grid */
+.details-grid .form-group {
+  margin-bottom: 10px; /* Menor margem interna no grid */
+}
+
+.details-grid .label,
+.modal-body .label { /* Estilo para os labels dos spans */
+  display: block;
+  font-weight: 500;
+  color: var(--cor-texto-secundario);
+  font-size: 0.85em;
+  margin-bottom: 3px;
+}
+
+.details-grid .value,
+.modal-body .value { /* Estilo para os valores dos spans */
+  display: block;
+  font-weight: 500;
+  color: var(--cor-texto-principal);
+  font-size: 1em;
+  word-wrap: break-word; /* Quebra palavras longas */
+}
+
+/* Estilo para preservar quebras de linha em textos (justificativa, motivo, etc.) */
+.pre-wrap {
+    white-space: pre-wrap;
+}
+
+/* Estilo para a seção de feedback anterior */
+.feedback-view h4 {
+    color: var(--cor-texto-secundario);
+    border-bottom: 1px dashed var(--cor-borda);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+.feedback-view .value#view-admin-status { /* Dar destaque ao status final */
+    font-weight: 600;
+}
+
+
+/* Ajuste para o loading spinner no modal */
+.modal-body .loading-spinner {
+    margin: 40px auto; /* Centraliza melhor no corpo do modal */
+}
+
+/* Ajuste no botão de ação dentro de tabelas e modais */
+td .action-button, .modal-footer .action-button {
+    padding: 8px 15px; /* Botões um pouco menores */
+    font-size: 0.85em;
+}
+
+/* Cores para botões Aprovar/Rejeitar */
+.action-button.success {
+    background-color: var(--cor-sucesso);
+}
+.action-button.success:hover {
+    filter: brightness(1.1);
+     background-color: var(--cor-sucesso); /* Mantém a cor no hover */
+}
+.action-button.error {
+     background-color: var(--cor-erro);
+}
+.action-button.error:hover {
+     filter: brightness(1.1);
+      background-color: var(--cor-erro); /* Mantém a cor no hover */
+}
+
+/* Spinner pequeno para botões */
+.loading-spinner-small {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid var(--cor-texto-inverso);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+    display: inline-block; /* Para ficar na mesma linha do texto (se houver) */
+    vertical-align: middle;
+    margin-right: 5px; /* Espaço antes do texto */
+}
