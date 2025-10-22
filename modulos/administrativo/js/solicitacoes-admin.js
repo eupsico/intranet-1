@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// --- VERSÃO FINAL COMPLETA (Unificada e sem abreviações) ---
+// --- VERSÃO FINAL COMPLETA (WhatsApp implementado) ---
 
 import {
   db,
@@ -8,13 +8,13 @@ import {
   where,
   orderBy,
   getDocs,
-  doc,
-  getDoc,
+  doc, // Necessário para buscar o telefone
+  getDoc, // Necessário para buscar o telefone
   updateDoc,
   serverTimestamp,
   onSnapshot,
   Timestamp,
-  // addDoc, // Descomente se for usar a coleção 'notificacoes' para o botão "Notificar"
+  // addDoc, // Se fosse usar a coleção 'notificacoes'
 } from "../../../assets/js/firebase-init.js";
 
 let dbInstance = db;
@@ -47,7 +47,7 @@ function formatarTipoSolicitacao(tipoInterno) {
 // Função principal de inicialização
 export function init(db_ignored, user, userData) {
   console.log(
-    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.FINAL COMPLETA iniciado."
+    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.WHATSAPP iniciado."
   );
   adminUser = userData;
 
@@ -61,7 +61,7 @@ export function init(db_ignored, user, userData) {
   const modalFooterActions = document.getElementById("modal-footer-actions");
   const modalCloseBtn = document.getElementById("modal-close-btn");
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
-  const tabContentContainer = document.querySelector("#tab-content-container"); // Seletor ID correto
+  const tabContentContainer = document.querySelector("#tab-content-container");
 
   // Configuração Abas
   function setupTabs() {
@@ -80,7 +80,6 @@ export function init(db_ignored, user, userData) {
         console.warn(`Conteúdo da aba não encontrado para ID: ${targetTabId}`);
       }
     });
-    // Ativa a primeira aba por padrão
     if (tabLinks.length > 0 && !document.querySelector(".tab-link.active")) {
       tabLinks[0].click();
     }
@@ -102,7 +101,7 @@ export function init(db_ignored, user, userData) {
 
     if (!tableBody || !emptyState || !countBadge) {
       console.error(
-        `Elementos do DOM não encontrados para [${tipoSolicitacao}]. Verifique IDs: ${tableBodyId}, ${emptyStateId}, ${countBadgeId}`
+        `Elementos do DOM não encontrados para [${tipoSolicitacao}].`
       );
       return;
     }
@@ -157,7 +156,7 @@ export function init(db_ignored, user, userData) {
           countBadge.style.display = "none";
         }
       );
-      // TODO: Gerenciar 'unsubscribe' ao sair da página para evitar memory leaks
+      // TODO: Gerenciar unsubscribe
     } catch (error) {
       console.error(
         `Falha ao construir query para [${tipoSolicitacao}]:`,
@@ -170,7 +169,6 @@ export function init(db_ignored, user, userData) {
   }
 
   // --- Implementação das funções de carregamento ---
-
   function loadNovasSessoes() {
     loadSolicitacoesPorTipo(
       "novas_sessoes",
@@ -181,7 +179,6 @@ export function init(db_ignored, user, userData) {
       7
     );
   }
-
   function loadAlteracoesHorario() {
     loadSolicitacoesPorTipo(
       "alteracao_horario",
@@ -192,7 +189,6 @@ export function init(db_ignored, user, userData) {
       9
     );
   }
-
   function loadDesfechosPB() {
     loadSolicitacoesPorTipo(
       "desfecho",
@@ -203,7 +199,6 @@ export function init(db_ignored, user, userData) {
       8
     );
   }
-
   function loadReavaliacao() {
     loadSolicitacoesPorTipo(
       "reavaliacao",
@@ -214,7 +209,6 @@ export function init(db_ignored, user, userData) {
       8
     );
   }
-
   function loadInclusaoAlteracaoGradePB() {
     loadSolicitacoesPorTipo(
       "inclusao_alteracao_grade",
@@ -226,13 +220,12 @@ export function init(db_ignored, user, userData) {
     );
   }
 
-  // --- loadStatusContratos (Incluindo botão de notificação) ---
   async function loadStatusContratos() {
     console.log("Carregando Status Contratos...");
     const tableBodyId = "table-body-status-contratos";
     const emptyStateId = "empty-state-status-contratos";
     const countBadgeId = "count-status-contratos";
-    const colspan = 5; // Paciente, Profissional, Status, Atualização, Ações
+    const colspan = 5; // Inclui Ações
 
     const tableBody = document.getElementById(tableBodyId);
     const emptyState = document.getElementById(emptyStateId);
@@ -257,12 +250,10 @@ export function init(db_ignored, user, userData) {
         collection(dbInstance, "trilhaPaciente"),
         where("status", "==", "cadastrar_horario_psicomanager")
       );
-
       const [pbSnapshot, cadastrarSnapshot] = await Promise.all([
         getDocs(qPb),
         getDocs(qCadastrar),
       ]);
-
       let pendingContracts = [];
       const processedPacientes = new Set();
 
@@ -276,7 +267,6 @@ export function init(db_ignored, user, userData) {
             pacienteData.atendimentosPB?.filter(
               (at) => at.statusAtendimento === "ativo"
             ) || [];
-
           atendimentosAtivos.forEach((atendimento) => {
             if (!atendimento.contratoAssinado) {
               pendingContracts.push({
@@ -293,10 +283,8 @@ export function init(db_ignored, user, userData) {
           });
         });
       };
-
       processSnapshot(pbSnapshot);
       processSnapshot(cadastrarSnapshot);
-
       pendingContracts.sort((a, b) =>
         a.pacienteNome.localeCompare(b.pacienteNome)
       );
@@ -310,7 +298,6 @@ export function init(db_ignored, user, userData) {
         emptyState.style.display = "none";
         countBadge.textContent = pendingContracts.length;
         countBadge.style.display = "inline-block";
-
         pendingContracts.forEach((item) => {
           const dataAtualizacao = formatarData(item.lastUpdate);
           const tr = document.createElement("tr");
@@ -320,16 +307,13 @@ export function init(db_ignored, user, userData) {
                         <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
                         <td>${dataAtualizacao}</td>
                         <td>
-                            <button class="action-button btn-notificar-contrato" 
-                                    data-paciente-id="${item.pacienteId}" 
-                                    data-paciente-nome="${item.pacienteNome}"
-                                    data-profissional-id="${item.profissionalId}"
-                                    data-profissional-nome="${item.profissionalNome}"
-                                    title="Notificar profissional sobre contrato pendente">
+                            <button class="action-button btn-notificar-contrato"
+                                    data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
+                                    data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
+                                    title="Notificar profissional sobre contrato pendente via WhatsApp">
                                 Notificar
                             </button>
-                        </td>
-                      `;
+                        </td>`;
           tableBody.appendChild(tr);
         });
       }
@@ -341,7 +325,6 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Função loadExclusaoHorarios (Lê da coleção 'solicitacoes') ---
   function loadExclusaoHorarios() {
     console.log(
       "Carregando solicitações de exclusão da coleção 'solicitacoes'..."
@@ -357,7 +340,6 @@ export function init(db_ignored, user, userData) {
   }
 
   // --- Funções de Renderização ---
-
   function renderNovasSessoesRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -372,24 +354,19 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.diaSemana || "N/A"}, ${detalhes.horario || "N/A"} (${
+    tr.innerHTML = `<td>${dataSol}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
+      detalhes.diaSemana || "N/A"
+    }, ${detalhes.horario || "N/A"} (${
       detalhes.modalidade || "N/A"
-    })</td>
-        <td>${dataInicioFormatada}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="novas_sessoes">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-    `;
+    })</td><td>${dataInicioFormatada}</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="novas_sessoes">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
-
   function renderAlteracaoHorarioRow(data, docId) {
     const detalhes = data.detalhes || {};
     const antigos = detalhes.dadosAntigos || {};
@@ -404,28 +381,23 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
-      antigos.modalidade || "N/A"
-    })</td>
-        <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
+    tr.innerHTML = `<td>${dataSol}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${data.pacienteNome || "N/A"}</td><td>${antigos.dia || "N/A"}, ${
+      antigos.horario || "N/A"
+    } (${antigos.modalidade || "N/A"})</td><td>${novos.dia || "N/A"}, ${
+      novos.horario || "N/A"
+    } (${
       novos.modalidade || "N/A"
-    })</td>
-        <td>${dataInicioNova}</td>
-        <td class="motivo-cell">${detalhes.justificativa || "N/A"}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-    `;
+    })</td><td>${dataInicioNova}</td><td class="motivo-cell">${
+      detalhes.justificativa || "N/A"
+    }</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
-
   function renderDesfechoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -438,25 +410,19 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${dataDesf}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.tipoDesfecho || "N/A"}</td>
-        <td class="motivo-cell">${
-          detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
-        }</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="desfecho">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-    `;
+    tr.innerHTML = `<td>${dataSol}</td><td>${dataDesf}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
+      detalhes.tipoDesfecho || "N/A"
+    }</td><td class="motivo-cell">${
+      detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
+    }</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="desfecho">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
-
   function renderReavaliacaoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const pref = detalhes.preferenciaAgendamento || {};
@@ -468,25 +434,21 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.valorContribuicaoAtual || "N/A"}</td>
-        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
-        <td>${dataPrefFormatada} ${pref.hora || ""} (${
+    tr.innerHTML = `<td>${dataSol}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
+      detalhes.valorContribuicaoAtual || "N/A"
+    }</td><td class="motivo-cell">${
+      detalhes.motivo || "N/A"
+    }</td><td>${dataPrefFormatada} ${pref.hora || ""} (${
       pref.modalidade || "N/A"
-    })</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="reavaliacao">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-    `;
+    })</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="reavaliacao">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
-
   function renderInclusaoAlteracaoGradePBRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -499,27 +461,23 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${data.pacienteNome || "N/A"}</td>
-        <td>${detalhes.diaSemana || "N/A"}</td>
-        <td>${detalhes.horario || "N/A"}</td>
-        <td>${detalhes.modalidade || detalhes.tipoAtendimento || "N/A"}</td>
-        <td>${detalhes.salaAtendimento || "N/A"}</td>
-        <td>${dataInicioFormatada}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-            <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">
-                ${data.status === "Pendente" ? "Processar" : "Ver"}
-            </button>
-        </td>
-    `;
+    tr.innerHTML = `<td>${dataSol}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
+      detalhes.diaSemana || "N/A"
+    }</td><td>${detalhes.horario || "N/A"}</td><td>${
+      detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
+    }</td><td>${
+      detalhes.salaAtendimento || "N/A"
+    }</td><td>${dataInicioFormatada}</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
-
   function renderExclusaoHorarioRow(data, docId) {
-    const detalhes = data.detalhes || {}; // Acessa dados dentro de 'detalhes'
+    const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const horariosLabels =
       detalhes.horariosParaExcluir?.map((h) => h.label).join(", ") || "N/A";
@@ -527,19 +485,17 @@ export function init(db_ignored, user, userData) {
       data.status || "pendente"
     ).toLowerCase()}`;
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${dataSol}</td>
-        <td>${data.solicitanteNome || "N/A"}</td>
-        <td>${detalhes.totalHorariosAtual ?? "N/A"}</td>
-        <td>${horariosLabels}</td>
-        <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="exclusao_horario">
-            ${data.status === "Pendente" ? "Processar" : "Ver"}
-          </button>
-        </td>
-    `;
+    tr.innerHTML = `<td>${dataSol}</td><td>${
+      data.solicitanteNome || "N/A"
+    }</td><td>${
+      detalhes.totalHorariosAtual ?? "N/A"
+    }</td><td>${horariosLabels}</td><td class="motivo-cell">${
+      detalhes.motivo || "N/A"
+    }</td><td><span class="status-badge ${statusClass}">${
+      data.status
+    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="exclusao_horario">${
+      data.status === "Pendente" ? "Processar" : "Ver"
+    }</button></td>`;
     return tr;
   }
 
@@ -553,13 +509,11 @@ export function init(db_ignored, user, userData) {
     modalFooterActions.innerHTML = "";
     modalFooterActions.appendChild(modalCancelBtn);
     openModal();
-
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) throw new Error("Solicitação não encontrada!");
       const solicitacaoData = docSnap.data();
-
       let modalHtmlPath = `../page/`;
       switch (tipo) {
         case "novas_sessoes":
@@ -579,19 +533,17 @@ export function init(db_ignored, user, userData) {
           break;
         case "exclusao_horario":
           modalHtmlPath += "modal-exclusao-grade.html";
-          break; // Reutiliza
+          break;
         default:
           throw new Error(`Tipo de solicitação desconhecido: ${tipo}`);
       }
-
       console.log("Tentando carregar modal de:", modalHtmlPath);
       const response = await fetch(modalHtmlPath);
       if (!response.ok)
         throw new Error(
-          `Falha ao carregar o HTML do modal (${response.statusText}). Verifique o caminho.`
+          `Falha ao carregar o HTML do modal (${response.statusText}).`
         );
       modalBodyContent.innerHTML = await response.text();
-
       preencherCamposModal(tipo, solicitacaoData);
       configurarAcoesModal(docId, tipo, solicitacaoData);
     } catch (error) {
@@ -611,7 +563,6 @@ export function init(db_ignored, user, userData) {
       "#modal-data-solicitacao",
       formatarData(data.dataSolicitacao)
     );
-
     try {
       switch (tipo) {
         case "novas_sessoes":
@@ -744,7 +695,7 @@ export function init(db_ignored, user, userData) {
           );
           setTextContentIfExists("#modal-ig-obs", detalhes.observacoes);
           break;
-        case "exclusao_horario": // Lê de 'detalhes'
+        case "exclusao_horario":
           setTextContentIfExists(
             "#modal-solicitante-nome",
             data.solicitanteNome
@@ -762,9 +713,7 @@ export function init(db_ignored, user, userData) {
                 )
                 .join("") || "<li>Nenhum horário especificado</li>";
           } else {
-            console.warn(
-              "Elemento #modal-horarios-list não encontrado no HTML de exclusão."
-            );
+            console.warn("Elemento #modal-horarios-list não encontrado.");
           }
           break;
       }
@@ -775,8 +724,6 @@ export function init(db_ignored, user, userData) {
       );
       modalBodyContent.innerHTML += `<p class="alert alert-error">Erro interno ao exibir detalhes.</p>`;
     }
-
-    // Preenche feedback se já houver
     if (data.adminFeedback && data.status !== "Pendente") {
       const feedback = data.adminFeedback;
       const feedbackContainer = document.getElementById(
@@ -798,7 +745,6 @@ export function init(db_ignored, user, userData) {
             "Sem mensagem."
         );
       }
-      // Desabilita campos de input
       modalBodyContent
         .querySelectorAll("input:not([type=hidden]), select, textarea")
         .forEach((el) => (el.disabled = true));
@@ -809,7 +755,6 @@ export function init(db_ignored, user, userData) {
       if (feedbackContainer) feedbackContainer.style.display = "none";
     }
   }
-
   function setTextContentIfExists(selector, value) {
     const element = modalBodyContent.querySelector(selector);
     if (element) element.textContent = value ?? "N/A";
@@ -823,10 +768,8 @@ export function init(db_ignored, user, userData) {
   function configurarAcoesModal(docId, tipo, data) {
     modalFooterActions.innerHTML = "";
     modalFooterActions.appendChild(modalCancelBtn);
-
     if (data.status === "Pendente") {
       if (tipo === "exclusao_horario") {
-        // Botão específico para salvar resposta de exclusão
         const saveButton = document.createElement("button");
         saveButton.type = "button";
         saveButton.id = "btn-salvar-exclusao";
@@ -834,9 +777,8 @@ export function init(db_ignored, user, userData) {
         saveButton.textContent = "Salvar Resposta (Exclusão)";
         saveButton.onclick = () => handleSalvarExclusao(docId, data);
         modalFooterActions.appendChild(saveButton);
-        setupModalFormLogicExclusao(); // Habilita lógica do form Sim/Não
+        setupModalFormLogicExclusao();
       } else {
-        // Botões padrão Aprovar/Rejeitar
         const approveButton = document.createElement("button");
         approveButton.type = "button";
         approveButton.id = "btn-aprovar-solicitacao";
@@ -845,7 +787,6 @@ export function init(db_ignored, user, userData) {
         approveButton.onclick = () =>
           handleGenericSolicitacaoAction(docId, tipo, "Aprovada", data);
         modalFooterActions.appendChild(approveButton);
-
         const rejectButton = document.createElement("button");
         rejectButton.type = "button";
         rejectButton.id = "btn-rejeitar-solicitacao";
@@ -854,8 +795,6 @@ export function init(db_ignored, user, userData) {
         rejectButton.onclick = () =>
           handleGenericSolicitacaoAction(docId, tipo, "Rejeitada", data);
         modalFooterActions.appendChild(rejectButton);
-
-        // Mostra campo de mensagem para Admin
         const adminMessageGroup = document.getElementById(
           "modal-admin-message-group"
         );
@@ -864,17 +803,13 @@ export function init(db_ignored, user, userData) {
           const adminMessageText = adminMessageGroup.querySelector(
             "#admin-message-text"
           );
-          if (adminMessageText) adminMessageText.value = ""; // Limpa ao abrir
+          if (adminMessageText) adminMessageText.value = "";
         } else {
-          console.warn(
-            "Elemento #modal-admin-message-group não encontrado no HTML do modal."
-          );
+          console.warn("#modal-admin-message-group não encontrado.");
         }
       }
     } else {
-      // Se não está Pendente (já processada)
       if (tipo === "exclusao_horario" && data.adminFeedback) {
-        // Preenche os campos do form de exclusão com a resposta anterior
         const feedback = data.adminFeedback || {};
         const foiExcluidoValue = feedback.foiExcluido
           ? String(feedback.foiExcluido)
@@ -893,13 +828,11 @@ export function init(db_ignored, user, userData) {
         );
         setValueIfExists("#mensagemAdmin", feedback.mensagemAdmin);
         setValueIfExists("#motivoRejeicao", feedback.motivoRejeicao);
-        setupModalFormLogicExclusao(); // Aplica a lógica Sim/Não para mostrar os campos corretos
-        // Desabilita todos os campos do form de exclusão
+        setupModalFormLogicExclusao();
         modalBodyContent
           .querySelectorAll("input:not([type=hidden]), select, textarea")
           .forEach((el) => (el.disabled = true));
       }
-      // Esconde o campo de *nova* mensagem do admin
       const adminMessageGroup = document.getElementById(
         "modal-admin-message-group"
       );
@@ -917,13 +850,11 @@ export function init(db_ignored, user, userData) {
     const mensagemAdmin = mensagemAdminInput
       ? mensagemAdminInput.value.trim()
       : "";
-
     if (novoStatus === "Rejeitada" && !mensagemAdmin) {
-      alert("Por favor, forneça uma mensagem explicando o motivo da rejeição.");
+      alert("Forneça o motivo da rejeição.");
       mensagemAdminInput?.focus();
       return;
     }
-
     const approveButton = document.getElementById("btn-aprovar-solicitacao");
     const rejectButton = document.getElementById("btn-rejeitar-solicitacao");
     if (approveButton) approveButton.disabled = true;
@@ -935,14 +866,13 @@ export function init(db_ignored, user, userData) {
     );
     if (clickedButton)
       clickedButton.innerHTML = `<span class="loading-spinner-small"></span> Processando...`;
-
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
       const adminFeedback = {
         statusFinal: novoStatus,
-        mensagemAdmin: mensagemAdmin, // Será vazia se aprovado sem msg
+        mensagemAdmin: mensagemAdmin,
         dataResolucao: serverTimestamp(),
-        adminNome: adminUser.nome || "Admin Desconhecido",
+        adminNome: adminUser.nome || "Admin",
         adminId: adminUser.uid || "N/A",
       };
       await updateDoc(docRef, {
@@ -952,10 +882,8 @@ export function init(db_ignored, user, userData) {
       console.log(
         `Solicitação ${docId} (${tipo}) atualizada para ${novoStatus}.`
       );
-
-      // Executa ações específicas PÓS-aprovação (atualizar trilha, etc.)
       if (novoStatus === "Aprovada") {
-        console.log("Executando ações de aprovação para:", tipo);
+        console.log("Executando ações pós-aprovação para:", tipo);
         switch (tipo) {
           case "alteracao_horario":
             await processarAprovacaoAlteracaoHorario(solicitacaoData);
@@ -969,14 +897,10 @@ export function init(db_ignored, user, userData) {
           case "inclusao_alteracao_grade":
             await processarAprovacaoInclusaoGrade(solicitacaoData);
             break;
-          // Não há ação automática para novas_sessoes ou exclusao_horario (Admin faz manualmente)
           default:
-            console.log(
-              `Nenhuma ação de aprovação específica definida para tipo: ${tipo}`
-            );
+            console.log(`Nenhuma ação pós-aprovação para tipo: ${tipo}`);
         }
       }
-
       alert(`Solicitação ${novoStatus.toLowerCase()} com sucesso!`);
       closeModal();
     } catch (error) {
@@ -984,8 +908,7 @@ export function init(db_ignored, user, userData) {
         `Erro ao ${novoStatus.toLowerCase()} solicitação ${docId} (${tipo}):`,
         error
       );
-      alert(`Erro ao processar: ${error.message}`); // Mostra erro específico (ex: da trilha)
-      // Reabilita botões em caso de erro
+      alert(`Erro ao processar: ${error.message}`);
       if (approveButton) approveButton.disabled = false;
       if (rejectButton) rejectButton.disabled = false;
       if (clickedButton)
@@ -994,45 +917,28 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Funções de Processamento Específicas Pós-Aprovação ---
+  // --- Funções de Processamento Pós-Aprovação ---
   async function processarAprovacaoAlteracaoHorario(solicitacao) {
-    console.log("Processando aprovação de Alteração de Horário:", solicitacao);
+    console.log("Processando aprovação: Alteração de Horário", solicitacao);
     const { pacienteId, atendimentoId, detalhes } = solicitacao;
     const novosDados = detalhes.dadosNovos;
     if (!pacienteId || !atendimentoId || !novosDados)
-      throw new Error("Dados incompletos para processar alteração de horário.");
-
+      throw new Error("Dados incompletos para processar alteração.");
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
-        throw new Error(`Paciente ${pacienteId} não encontrado na trilha.`);
+        throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
       const atendimentosPB = pacienteData.atendimentosPB || [];
       const index = atendimentosPB.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
-
-      if (index === -1) {
-        // Tenta fallback pelo ID do profissional (menos seguro)
-        const fallbackIndex = atendimentosPB.findIndex(
-          (at) =>
-            at.profissionalId === solicitacao.solicitanteId &&
-            at.statusAtendimento === "ativo"
+      if (index === -1)
+        throw new Error(
+          `Atendimento ID ${atendimentoId} não encontrado no paciente ${pacienteId}.`
         );
-        if (fallbackIndex === -1)
-          throw new Error(
-            `Atendimento ativo não encontrado para o profissional ${solicitacao.solicitanteNome} no paciente ${pacienteId}.`
-          );
-        console.warn(
-          `Atendimento ID ${atendimentoId} não encontrado, usando fallback pelo profissionalId.`
-        );
-        // Idealmente, o atendimentoId deve estar correto na solicitação. Lançar erro é mais seguro.
-        throw new Error(`Atendimento ID ${atendimentoId} não encontrado.`);
-      }
-
-      // ATENÇÃO: Verifique o nome correto do campo ('horarioSessao' ou 'horarioSessoes')
-      const nomeCampoHorario = "horarioSessoes"; // <<< AJUSTE AQUI SE NECESSÁRIO
+      const nomeCampoHorario = "horarioSessoes"; // Ajuste se necessário
       const horarioAtualizado = {
         ...(atendimentosPB[index][nomeCampoHorario] || {}),
         diaSemana: novosDados.dia,
@@ -1044,7 +950,6 @@ export function init(db_ignored, user, userData) {
         ultimaAlteracaoAprovadaEm: serverTimestamp(),
       };
       atendimentosPB[index][nomeCampoHorario] = horarioAtualizado;
-
       await updateDoc(pacienteRef, {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
@@ -1052,63 +957,38 @@ export function init(db_ignored, user, userData) {
       console.log(
         `Horário atualizado na trilha para paciente ${pacienteId}, atendimento ${atendimentoId}.`
       );
-
-      if (novosDados.alterarGrade === "Sim") {
+      if (novosDados.alterarGrade === "Sim")
         console.warn(
-          `AÇÃO NECESSÁRIA: Atualizar grade manualmente para paciente ${pacienteId}, atendimento ${atendimentoId}.`
+          `AÇÃO NECESSÁRIA: Atualizar grade manualmente para ${pacienteId}.`
         );
-        // Aqui poderia chamar uma Cloud Function se a lógica for complexa
-      }
     } catch (error) {
-      console.error(
-        "Erro ao atualizar trilhaPaciente para alteração de horário:",
-        error
-      );
-      throw new Error(
-        `Falha ao atualizar dados do paciente na trilha: ${error.message}`
-      );
+      console.error("Erro ao atualizar trilha:", error);
+      throw new Error(`Falha ao atualizar dados do paciente: ${error.message}`);
     }
   }
-
   async function processarAprovacaoDesfecho(solicitacao) {
-    console.log("Processando aprovação de Desfecho:", solicitacao);
+    console.log("Processando aprovação: Desfecho", solicitacao);
     const { pacienteId, atendimentoId, detalhes } = solicitacao;
     const { tipoDesfecho, dataDesfecho } = detalhes;
     if (!pacienteId || !atendimentoId || !tipoDesfecho || !dataDesfecho)
-      throw new Error("Dados incompletos para processar desfecho.");
-
+      throw new Error("Dados incompletos para desfecho.");
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
-        throw new Error(`Paciente ${pacienteId} não encontrado na trilha.`);
+        throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
       const atendimentosPB = pacienteData.atendimentosPB || [];
       const index = atendimentosPB.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
-
-      if (index === -1) {
-        const fallbackIndex = atendimentosPB.findIndex(
-          (at) =>
-            at.profissionalId === solicitacao.solicitanteId &&
-            at.statusAtendimento === "ativo"
+      if (index === -1)
+        throw new Error(
+          `Atendimento ID ${atendimentoId} não encontrado no paciente ${pacienteId}.`
         );
-        if (fallbackIndex === -1)
-          throw new Error(
-            `Atendimento ativo não encontrado para o profissional ${solicitacao.solicitanteNome} no paciente ${pacienteId}.`
-          );
-        console.warn(
-          `Atendimento ID ${atendimentoId} não encontrado para desfecho, usando fallback.`
-        );
-        throw new Error(`Atendimento ID ${atendimentoId} não encontrado.`);
-      }
-
-      // ATENÇÃO: Verifique o nome correto do campo ('status' ou 'statusAtendimento')
-      const nomeCampoStatusAtendimento = "statusAtendimento"; // <<< AJUSTE AQUI SE NECESSÁRIO
+      const nomeCampoStatusAtendimento = "statusAtendimento"; // Ajuste se necessário
       let novoStatusAtendimento = "";
-      let novoStatusPaciente = pacienteData.status; // Mantém por padrão
-
+      let novoStatusPaciente = pacienteData.status;
       switch (tipoDesfecho) {
         case "Alta":
           novoStatusAtendimento = "concluido_alta";
@@ -1126,217 +1006,160 @@ export function init(db_ignored, user, userData) {
         default:
           throw new Error(`Tipo de desfecho inválido: ${tipoDesfecho}`);
       }
-
-      // Atualiza o status do ATENDIMENTO específico
       atendimentosPB[index][nomeCampoStatusAtendimento] = novoStatusAtendimento;
-      // Adiciona informações do desfecho ao atendimento
       atendimentosPB[index].desfecho = {
         ...detalhes,
         aprovadoPor: adminUser.nome || "Admin",
         aprovadoEm: serverTimestamp(),
       };
-
       const updateData = {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
       };
-      // Atualiza o status GERAL do paciente, se necessário
-      if (novoStatusPaciente !== pacienteData.status) {
+      if (novoStatusPaciente !== pacienteData.status)
         updateData.status = novoStatusPaciente;
-      }
-
       await updateDoc(pacienteRef, updateData);
       console.log(
-        `Desfecho registrado na trilha para paciente ${pacienteId}, atendimento ${atendimentoId}. Status Paciente: ${
+        `Desfecho registrado na trilha para ${pacienteId}. Status Paciente: ${
           updateData.status || pacienteData.status
         }`
       );
     } catch (error) {
-      console.error("Erro ao atualizar trilhaPaciente para desfecho:", error);
-      throw new Error(
-        `Falha ao registrar desfecho na trilha: ${error.message}`
-      );
+      console.error("Erro ao atualizar trilha:", error);
+      throw new Error(`Falha ao registrar desfecho: ${error.message}`);
     }
   }
-
   async function processarAprovacaoReavaliacao(solicitacao) {
-    console.log("Processando aprovação de Reavaliação:", solicitacao);
+    console.log("Processando aprovação: Reavaliação", solicitacao);
     const { pacienteId } = solicitacao;
-    if (!pacienteId)
-      throw new Error("ID do Paciente faltando para processar reavaliação.");
-
+    if (!pacienteId) throw new Error("ID do Paciente faltando.");
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
-        throw new Error(`Paciente ${pacienteId} não encontrado na trilha.`);
+        throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
-
       const novoStatus = "aguardando_reavaliacao";
       const statusAnterior = pacienteData.status;
-
       if (pacienteData.status !== novoStatus) {
         await updateDoc(pacienteRef, {
           status: novoStatus,
-          statusAnteriorReavaliacao: statusAnterior, // Salva o status anterior
+          statusAnteriorReavaliacao: statusAnterior,
           solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
           lastUpdate: serverTimestamp(),
         });
         console.log(
-          `Status do paciente ${pacienteId} atualizado para ${novoStatus}. Status anterior (${statusAnterior}) salvo.`
+          `Status do paciente ${pacienteId} -> ${novoStatus}. Status anterior (${statusAnterior}) salvo.`
         );
       } else {
-        // Se já estava aguardando, apenas atualiza o timestamp
         await updateDoc(pacienteRef, {
           solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
           lastUpdate: serverTimestamp(),
         });
         console.log(
-          `Paciente ${pacienteId} já estava aguardando reavaliação. Timestamp de aprovação atualizado.`
+          `Paciente ${pacienteId} já aguardava reavaliação. Timestamp atualizado.`
         );
       }
-      // TODO: Adicionar lógica para notificar o Serviço Social, se necessário.
     } catch (error) {
-      console.error(
-        "Erro ao atualizar trilhaPaciente para reavaliação:",
-        error
-      );
+      console.error("Erro ao atualizar trilha:", error);
       throw new Error(
-        `Falha ao atualizar status do paciente para reavaliação: ${error.message}`
+        `Falha ao atualizar status para reavaliação: ${error.message}`
       );
     }
   }
-
   async function processarAprovacaoInclusaoGrade(solicitacao) {
-    // Geralmente, a inclusão/alteração na grade é uma ação manual do admin após aprovar.
-    // Esta função serve mais como um log/confirmação.
+    console.log("Processando aprovação: Inclusão/Alt. Grade", solicitacao);
     console.log(
-      "Processando aprovação de Inclusão/Alteração na Grade (PB):",
-      solicitacao
+      `Confirmação registrada para Paciente ${solicitacao.pacienteId || "N/A"}.`
     );
-    console.log(
-      `Confirmação de Inclusão/Alteração na Grade para Paciente ${
-        solicitacao.pacienteId || "N/A"
-      } registrada.`
-    );
-    // alert("Confirmação de ação na grade registrada. Lembre-se de realizar a alteração manualmente se necessário.");
+    // alert("Confirmação registrada. Realize a alteração manualmente na grade.");
   }
 
   // --- Lógica Específica Modal Exclusão Horário ---
   function setupModalFormLogicExclusao() {
-    // Mostra/Esconde campos dependendo se foi excluído (Sim) ou rejeitado (Não)
     const radioSim = modalBodyContent.querySelector("#radioExcluidoSim");
     const radioNao = modalBodyContent.querySelector("#radioExcluidoNao");
     const camposSim = modalBodyContent.querySelector("#campos-feedback-sim");
     const camposNao = modalBodyContent.querySelector("#campos-feedback-nao");
-
     if (!radioSim || !radioNao || !camposSim || !camposNao) {
-      console.warn(
-        "Elementos do formulário de exclusão (Sim/Não) não encontrados no modal."
-      );
+      console.warn("Elementos do form de exclusão não encontrados.");
       return;
     }
-
     const toggleFields = () => {
       if (camposSim)
         camposSim.style.display = radioSim.checked ? "block" : "none";
       if (camposNao)
         camposNao.style.display = radioNao.checked ? "block" : "none";
     };
-
-    // Usa change em vez de click para radios
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
-    toggleFields(); // Define estado inicial ao carregar o modal
+    toggleFields();
   }
-
   async function handleSalvarExclusao(docId, solicitacaoData) {
-    // Salva a resposta do Admin para uma solicitação de exclusão
     const saveButton = document.getElementById("btn-salvar-exclusao");
-    if (!saveButton) {
-      console.error("Botão #btn-salvar-exclusao não encontrado.");
-      return;
-    }
+    if (!saveButton) return;
     saveButton.disabled = true;
     saveButton.innerHTML = `<span class="loading-spinner-small"></span> Salvando...`;
-
-    // Busca valores dos campos DENTRO do modal
     const foiExcluido = modalBodyContent.querySelector(
       'input[name="foiExcluido"]:checked'
-    )?.value; // "sim" ou "nao"
+    )?.value;
     const dataExclusaoInput =
-      modalBodyContent.querySelector("#dataExclusao")?.value; // YYYY-MM-DD
+      modalBodyContent.querySelector("#dataExclusao")?.value;
     const mensagemAdmin =
-      modalBodyContent.querySelector("#mensagemAdmin")?.value; // Mensagem se Sim
+      modalBodyContent.querySelector("#mensagemAdmin")?.value;
     const motivoRejeicao =
-      modalBodyContent.querySelector("#motivoRejeicao")?.value; // Mensagem se Nao
-
+      modalBodyContent.querySelector("#motivoRejeicao")?.value;
     try {
-      if (!foiExcluido)
-        throw new Error(
-          "Selecione se o horário foi excluído ('Sim') ou a solicitação foi rejeitada ('Não')."
-        );
-
+      if (!foiExcluido) throw new Error("Selecione 'Sim' ou 'Não'.");
       let statusFinal = "";
       const adminFeedback = {
-        foiExcluido: foiExcluido, // Armazena "sim" ou "nao"
+        foiExcluido: foiExcluido,
         dataResolucao: serverTimestamp(),
         adminNome: adminUser.nome || "Admin",
         adminId: adminUser.uid || "N/A",
       };
-
       if (foiExcluido === "sim") {
         if (!dataExclusaoInput || !mensagemAdmin)
-          throw new Error(
-            "Para 'Sim', a data da exclusão e a mensagem de confirmação são obrigatórias."
-          );
+          throw new Error("Para 'Sim', data e mensagem são obrigatórias.");
         statusFinal = "Concluída";
         try {
-          // Tenta criar data. Adiciona hora fixa UTC para evitar problemas de fuso no input date
           const dateObj = new Date(dataExclusaoInput + "T12:00:00Z");
           if (isNaN(dateObj.getTime())) throw new Error("Data inválida");
-          adminFeedback.dataExclusao = Timestamp.fromDate(dateObj); // Salva como Timestamp
+          adminFeedback.dataExclusao = Timestamp.fromDate(dateObj);
         } catch (dateError) {
-          throw new Error(
-            "Data de exclusão inválida. Use o formato AAAA-MM-DD."
-          );
+          throw new Error("Data inválida (AAAA-MM-DD).");
         }
-        adminFeedback.mensagemAdmin = mensagemAdmin; // Mensagem de confirmação
+        adminFeedback.mensagemAdmin = mensagemAdmin;
         console.warn(
-          `AÇÃO NECESSÁRIA: Excluir horários da grade manualmente para solicitação ${docId}. Horários:`,
+          `AÇÃO NECESSÁRIA: Excluir horários manualmente para ${docId}. Horários:`,
           solicitacaoData.detalhes?.horariosParaExcluir
         );
-        // Aqui poderia chamar uma Cloud Function para tentar excluir automaticamente, se implementado.
       } else {
-        // foiExcluido === "nao"
         if (!motivoRejeicao)
-          throw new Error("Para 'Não', o motivo da rejeição é obrigatório.");
+          throw new Error("Para 'Não', o motivo é obrigatório.");
         statusFinal = "Rejeitada";
-        adminFeedback.motivoRejeicao = motivoRejeicao; // Mensagem de rejeição
+        adminFeedback.motivoRejeicao = motivoRejeicao;
       }
-
-      // Atualiza o documento na coleção 'solicitacoes'
       const docRef = doc(dbInstance, "solicitacoes", docId);
       await updateDoc(docRef, {
         status: statusFinal,
         adminFeedback: adminFeedback,
       });
-
       console.log(
         `Solicitação de exclusão ${docId} atualizada para ${statusFinal}`
       );
-      alert("Resposta salva com sucesso!");
+      alert("Resposta salva!");
       closeModal();
     } catch (error) {
-      console.error("Erro ao salvar resposta de exclusão:", error);
-      alert(`Erro ao salvar: ${error.message}`);
-      // Reabilita o botão em caso de erro
+      console.error("Erro ao salvar exclusão:", error);
+      alert(`Erro: ${error.message}`);
       saveButton.disabled = false;
       saveButton.innerHTML = "Salvar Resposta (Exclusão)";
     }
   }
 
-  // --- Função para Notificar Contrato Pendente ---
+  // --- Função para Notificar Contrato Pendente via WhatsApp ---
+  // *** MODIFICADO: Implementa lógica do WhatsApp ***
   async function handleNotificarContrato(
     pacienteId,
     pacienteNome,
@@ -1344,51 +1167,67 @@ export function init(db_ignored, user, userData) {
     profissionalNome
   ) {
     console.log(
-      `Tentando notificar ${profissionalNome} (ID: ${profissionalId}) sobre contrato pendente do paciente ${pacienteNome} (ID: ${pacienteId})`
+      `Notificar ${profissionalNome} (ID: ${profissionalId}) sobre contrato de ${pacienteNome}`
     );
     const confirmacao = confirm(
-      `Deseja realmente enviar uma notificação para ${profissionalNome} sobre o contrato pendente do paciente ${pacienteNome}?`
+      `Enviar lembrete via WhatsApp para ${profissionalNome} sobre o contrato pendente do paciente ${pacienteNome}?`
     );
     if (!confirmacao) {
-      console.log("Notificação cancelada pelo admin.");
+      console.log("Notificação WhatsApp cancelada.");
       return;
     }
 
-    // --- IMPLEMENTAÇÃO DA NOTIFICAÇÃO ---
-    // A forma de notificar depende da arquitetura:
-    // Opção 1: Criar um documento numa coleção 'notificacoes' para o profissional ler.
-    // Opção 2: Enviar um email/push (requer configuração adicional ou Cloud Function).
-    // Opção 3: Adicionar um campo no perfil do profissional.
+    try {
+      // 1. Buscar o telefone do profissional
+      const userDocRef = doc(dbInstance, "usuarios", profissionalId); // Assumindo coleção 'usuarios'
+      const userDocSnap = await getDoc(userDocRef);
 
-    // Exemplo Opção 1 (requer 'addDoc' importado e coleção 'notificacoes'):
-    /*
-        try {
-          const notificacaoRef = collection(dbInstance, "notificacoes");
-          await addDoc(notificacaoRef, {
-            paraUsuarioId: profissionalId,
-            tipo: "aviso_contrato_pendente",
-            titulo: "Contrato Terapêutico Pendente",
-            mensagem: `Olá, ${profissionalNome}. Por favor, verifique o envio do contrato terapêutico para assinatura do paciente ${pacienteNome}.`,
-            dataEnvio: serverTimestamp(),
-            lida: false,
-            pacienteId: pacienteId, // Link opcional para o paciente
-            criadoPorNome: adminUser.nome || "Admin",
-            criadoPorId: adminUser.uid || "N/A"
-          });
-          alert("Notificação enviada com sucesso!");
-        } catch (error) {
-          console.error("Erro ao enviar notificação de contrato:", error);
-          alert(`Erro ao tentar enviar notificação: ${error.message}`);
-        }
-        */
+      if (!userDocSnap.exists()) {
+        throw new Error(
+          `Usuário profissional com ID ${profissionalId} não encontrado.`
+        );
+      }
 
-    // Implementação Provisória (Placeholder - REMOVA QUANDO IMPLEMENTAR A OPÇÃO ACIMA)
-    console.warn(
-      "Ação 'enviar mensagem' (handleNotificarContrato) executada, mas a lógica de envio (ex: addDoc para 'notificacoes') precisa ser implementada."
-    );
-    alert(
-      `Notificação para ${profissionalNome} registrada (simulação). Implemente a lógica de envio real em handleNotificarContrato.`
-    );
+      const userData = userDocSnap.data();
+      let telefone = userData.contato; // Assumindo campo 'telefone'
+
+      if (!telefone) {
+        throw new Error(`Telefone não cadastrado para ${profissionalNome}.`);
+      }
+
+      // 2. Limpar e formatar o número (remover não-dígitos, garantir código do país 55)
+      let numeroLimpo = telefone.replace(/\D/g, "");
+      if (numeroLimpo.length === 10 || numeroLimpo.length === 11) {
+        // Formato nacional (DDD + numero)
+        numeroLimpo = "55" + numeroLimpo; // Adiciona 55 se não tiver
+      } else if (
+        numeroLimpo.startsWith("55") &&
+        (numeroLimpo.length === 12 || numeroLimpo.length === 13)
+      ) {
+        // Já está no formato internacional correto
+      } else {
+        throw new Error(
+          `Formato de telefone inválido para ${profissionalNome}: ${telefone}`
+        );
+      }
+
+      // 3. Montar a mensagem
+      const mensagem = `Olá ${profissionalNome}. Lembrete: O contrato terapêutico do paciente ${pacienteNome} está pendente de envio/assinatura. Por favor, verifique.`;
+
+      // 4. Codificar a mensagem para URL
+      const mensagemCodificada = encodeURIComponent(mensagem);
+
+      // 5. Montar a URL do WhatsApp
+      const whatsappUrl = `https://wa.me/${numeroLimpo}?text=${mensagemCodificada}`;
+
+      // 6. Abrir em nova aba
+      window.open(whatsappUrl, "_blank");
+      console.log("Link do WhatsApp aberto:", whatsappUrl);
+      alert(`Abrindo WhatsApp para enviar lembrete para ${profissionalNome}.`);
+    } catch (error) {
+      console.error("Erro ao tentar notificar via WhatsApp:", error);
+      alert(`Erro ao notificar: ${error.message}`);
+    }
   }
 
   // --- Funções Genéricas do Modal (Abrir/Fechar) ---
@@ -1397,10 +1236,10 @@ export function init(db_ignored, user, userData) {
   }
   function closeModal() {
     if (modal) modal.style.display = "none";
-    if (modalBodyContent) modalBodyContent.innerHTML = ""; // Limpa conteúdo
-    if (modalFooterActions) modalFooterActions.innerHTML = ""; // Limpa botões dinâmicos
+    if (modalBodyContent) modalBodyContent.innerHTML = "";
+    if (modalFooterActions) modalFooterActions.innerHTML = "";
     if (modalCancelBtn && modalFooterActions)
-      modalFooterActions.appendChild(modalCancelBtn); // Readiciona Cancelar
+      modalFooterActions.appendChild(modalCancelBtn);
     if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação";
   }
 
@@ -1417,28 +1256,27 @@ export function init(db_ignored, user, userData) {
   // --- Listener de Evento Principal (Delegação de Eventos) ---
   if (tabContentContainer) {
     console.log(
-      "Listener de clique principal anexado com sucesso a #tab-content-container."
+      "Listener de clique principal anexado a #tab-content-container."
     );
     tabContentContainer.addEventListener("click", async (e) => {
-      // Delegação para botões "Processar"
+      // Botões "Processar"
       const processarButton = e.target.closest(".btn-processar-solicitacao");
       if (processarButton) {
         e.preventDefault();
         const docId = processarButton.dataset.docId;
         const tipo = processarButton.dataset.tipo;
         if (docId && tipo) {
-          console.log(`Botão processar clicado: ID=${docId}, Tipo=${tipo}`);
+          console.log(`Processar: ID=${docId}, Tipo=${tipo}`);
           openGenericSolicitacaoModal(docId, tipo);
         } else {
           console.error(
-            "Doc ID ou Tipo não encontrado no botão de processar:",
+            "Dados incompletos no botão processar:",
             processarButton.dataset
           );
           alert("Erro: Não foi possível identificar a solicitação.");
         }
       }
-
-      // Delegação para botões "Notificar Contrato"
+      // Botões "Notificar Contrato"
       const notificarButton = e.target.closest(".btn-notificar-contrato");
       if (notificarButton) {
         e.preventDefault();
@@ -1451,13 +1289,8 @@ export function init(db_ignored, user, userData) {
           profissionalId === "null" ||
           profissionalId === "undefined"
         ) {
-          console.error(
-            "ID do Profissional inválido:",
-            notificarButton.dataset
-          );
-          alert(
-            "Erro: ID do profissional não encontrado neste registro. Não é possível notificar."
-          );
+          console.error("ID Profissional inválido:", notificarButton.dataset);
+          alert("Erro: ID do profissional não encontrado.");
           return;
         }
         handleNotificarContrato(
@@ -1465,31 +1298,25 @@ export function init(db_ignored, user, userData) {
           pacienteNome,
           profissionalId,
           profissionalNome
-        );
+        ); // Chama a nova função
       }
     });
   } else {
-    // Este erro não deve mais ocorrer pois o seletor foi corrigido
-    console.error(
-      "FALHA CRÍTICA: Container de conteúdo das abas #tab-content-container não encontrado. Listeners de clique não funcionarão."
-    );
+    console.error("FALHA CRÍTICA: #tab-content-container não encontrado.");
   }
 
   // --- Event Listeners do Modal (Fechar/Cancelar) ---
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
-  else console.warn("Botão de fechar modal (X) não encontrado.");
-
+  else console.warn("Botão fechar modal (X) não encontrado.");
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
-  else console.warn("Botão de cancelar modal não encontrado.");
-
+  else console.warn("Botão cancelar modal não encontrado.");
   if (modal) {
-    // Fecha modal se clicar fora da caixa de conteúdo
     modal.addEventListener("click", (event) => {
       if (event.target === modal) closeModal();
     });
   } else {
     console.error(
-      "Elemento do modal principal #solicitacao-details-modal não encontrado."
+      "Elemento modal principal #solicitacao-details-modal não encontrado."
     );
   }
 } // Fim da função init
