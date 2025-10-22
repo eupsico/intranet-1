@@ -26,6 +26,11 @@
     <fieldset>
         <legend>Registro do Desfecho</legend>
         <div class="form-group">
+            <label for="data-desfecho">Data do Desfecho:*</label>
+            <input type="date" id="data-desfecho" class="form-control" required />
+            <small>Informe a data em que ocorreu a alta, desistência ou encaminhamento.</small>
+        </div>
+        <div class="form-group">
             <label for="desfecho-acompanhamento">Qual o desfecho do acompanhamento?</label>
             <select id="desfecho-acompanhamento" class="form-control" required>
                 <option value="">Selecione uma opção...</option>
@@ -45,11 +50,14 @@
                 <label for="encaminhado-para">Encaminhado para:</label>
                 <select id="encaminhado-para" class="form-control">
                     <option value="">Selecione o serviço...</option>
-                    <option value="Atendimento Psicológico">Atendimento Psicológico</option>
+                    <option value="Atendimento Psicológico (PB)">Atendimento Psicológico</option>
                     <option value="Atendimento Psicopedagógico">Atendimento Psicopedagógico</option>
                     <option value="Atendimento com musicoterapeuta">Atendimento com musicoterapeuta</option>
-                    <option value="RAPS">RAPS (Rede de Atenção Psicossocial)</option>
-                    <option value="Outro">Outro</option>
+                    <option value="Grupo Questões de peso">Grupo Questões de peso</option>
+                    <option value="Grupo Funcional">Grupo Funcional</option>
+                    <option value="Grupo Envelhecimento Ativo">Grupo Envelhecimento Ativo</option>
+                     <option value="Grupo Reexista">Grupo Reexista</option>
+                    <option value="Outro">Outro (especificar no motivo)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -70,6 +78,14 @@
             <div class="form-group">
                 <label for="relato-caso">Breve relato do caso:</label>
                 <textarea id="relato-caso" rows="5" class="form-control" placeholder="Apresente um breve resumo do caso para o profissional que irá recebê-lo."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="quantidade-sessoes-realizadas">Quantidade de Sessões Realizadas (PB):</label>
+                <input type="number" id="quantidade-sessoes-realizadas" class="form-control" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="observacoes-gerais">Observações Gerais:</label>
+                <textarea id="observacoes-gerais" rows="3" class="form-control"></textarea>
             </div>
         </div>
     </fieldset>
