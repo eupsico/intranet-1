@@ -413,7 +413,7 @@ async function handleFormSubmit(e) {
   try {
     // *** MODIFICADO: Alterada a coleção para 'solicitacoes' ***
     const docRef = await addDoc(
-      collection(db, "solicitacoes"), // Alterado de "solicitacoesExclusaoGrade"
+      collection(db, "solicitacoes"),
       solicitacaoData
     );
 
