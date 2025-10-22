@@ -1,0 +1,103 @@
+<div class="modal-section">
+    <h4>Informações da Solicitação</h4>
+     <div class="details-grid cols-2">
+        <div class="form-group">
+            <span class="label">Solicitante:</span>
+            <span class="value" id="modal-solicitante-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Paciente:</span>
+            <span class="value" id="modal-paciente-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data da Solicitação:</span>
+            <span class="value" id="modal-data-solicitacao">Carregando...</span>
+        </div>
+    </div>
+</div>
+
+<div class="modal-section">
+    <h4>Horário Atual</h4>
+     <div class="details-grid cols-3">
+         <div class="form-group">
+            <span class="label">Dia:</span>
+            <span class="value" id="modal-ah-dia-atual">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Horário:</span>
+            <span class="value" id="modal-ah-horario-atual">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Modalidade:</span>
+            <span class="value" id="modal-ah-modalidade-atual">Carregando...</span>
+        </div>
+         </div>
+</div>
+
+<div class="modal-section">
+    <h4>Horário Solicitado</h4>
+     <div class="details-grid cols-3">
+         <div class="form-group">
+            <span class="label">Novo Dia:</span>
+            <span class="value" id="modal-ah-dia-novo">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Novo Horário:</span>
+            <span class="value" id="modal-ah-horario-novo">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Nova Modalidade:</span>
+            <span class="value" id="modal-ah-modalidade-nova">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Nova Frequência:</span>
+            <span class="value" id="modal-ah-frequencia-nova">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Nova Sala:</span>
+            <span class="value" id="modal-ah-sala-nova">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Iniciar a partir de:</span>
+            <span class="value" id="modal-ah-data-inicio-nova">Carregando...</span>
+        </div>
+          <div class="form-group">
+            <span class="label">Alterar na Grade?:</span>
+            <span class="value" id="modal-ah-alterar-grade">Carregando...</span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Justificativa:</span>
+        <p class="value pre-wrap" id="modal-ah-justificativa">Carregando...</p>
+    </div>
+</div>
+
+<div id="modal-admin-message-group" class="modal-section" style="display: none;">
+   <h4>Resposta do Administrador</h4>
+    <div class="form-group">
+        <label for="admin-message-text">Mensagem para o Voluntário (Obrigatório ao Rejeitar):</label>
+        <textarea id="admin-message-text" class="form-control" rows="3"></textarea>
+    </div>
+</div>
+
+<div id="modal-admin-feedback-view" class="modal-section feedback-view" style="display: none;">
+    <h4>Resposta Anterior</h4>
+    <div class="details-grid cols-2">
+         <div class="form-group">
+            <span class="label">Status Final:</span>
+            <span class="value" id="view-admin-status"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Respondido por:</span>
+            <span class="value" id="view-admin-nome"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Data Resposta:</span>
+            <span class="value" id="view-admin-data"></span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Mensagem:</span>
+        <p class="value pre-wrap" id="view-admin-mensagem"></p>
+    </div>
+</div>

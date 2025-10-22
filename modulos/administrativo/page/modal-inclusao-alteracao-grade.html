@@ -1,0 +1,84 @@
+<div class="modal-section">
+    <h4>Informações da Solicitação</h4>
+     <div class="details-grid cols-2">
+        <div class="form-group">
+            <span class="label">Solicitante (Profissional):</span>
+            <span class="value" id="modal-solicitante-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Paciente:</span>
+            <span class="value" id="modal-paciente-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data da Solicitação:</span> <span class="value" id="modal-data-solicitacao">Carregando...</span>
+        </div>
+    </div>
+</div>
+
+<div class="modal-section">
+    <h4>Detalhes do Horário a ser Incluído/Alterado na Grade</h4>
+     <div class="details-grid cols-3">
+         <div class="form-group">
+            <span class="label">Dia:</span>
+            <span class="value" id="modal-ig-dia">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Horário:</span>
+            <span class="value" id="modal-ig-horario">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Modalidade:</span>
+            <span class="value" id="modal-ig-modalidade">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Sala:</span>
+            <span class="value" id="modal-ig-sala">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Frequência:</span>
+            <span class="value" id="modal-ig-frequencia">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data de Início:</span>
+            <span class="value" id="modal-ig-data-inicio">Carregando...</span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Observações do Profissional:</span>
+        <p class="value pre-wrap" id="modal-ig-obs">Carregando...</p>
+    </div>
+    <div class="info-note warning">
+        <strong>Atenção:</strong> Esta solicitação é um lembrete para realizar a ação na grade (Psicomanager ou outra ferramenta). A aprovação aqui apenas confirma que a ação foi (ou será) realizada.
+    </div>
+</div>
+
+
+<div id="modal-admin-message-group" class="modal-section" style="display: none;">
+   <h4>Resposta do Administrador</h4>
+    <div class="form-group">
+        <label for="admin-message-text">Mensagem para o Voluntário (Opcional ao Aprovar / Obrigatório ao Rejeitar):</label>
+        <textarea id="admin-message-text" class="form-control" rows="3" placeholder="Ex: Horário incluído na grade. / Não foi possível incluir este horário pois..."></textarea>
+    </div>
+</div>
+
+<div id="modal-admin-feedback-view" class="modal-section feedback-view" style="display: none;">
+    <h4>Resposta Anterior</h4>
+    <div class="details-grid cols-2">
+         <div class="form-group">
+            <span class="label">Status Final:</span>
+            <span class="value" id="view-admin-status"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Respondido por:</span>
+            <span class="value" id="view-admin-nome"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Data Resposta:</span>
+            <span class="value" id="view-admin-data"></span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Mensagem:</span>
+        <p class="value pre-wrap" id="view-admin-mensagem"></p>
+    </div>
+</div>

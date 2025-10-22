@@ -1,0 +1,93 @@
+<div class="modal-section">
+    <h4>Informações da Solicitação</h4>
+     <div class="details-grid cols-2">
+        <div class="form-group">
+            <span class="label">Solicitante (Profissional):</span>
+            <span class="value" id="modal-solicitante-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Paciente:</span>
+            <span class="value" id="modal-paciente-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data do Registro:</span> <span class="value" id="modal-data-solicitacao">Carregando...</span>
+        </div>
+    </div>
+</div>
+
+<div class="modal-section">
+    <h4>Detalhes do Desfecho</h4>
+     <div class="details-grid cols-2">
+         <div class="form-group">
+            <span class="label">Tipo de Desfecho:</span>
+            <span class="value" id="modal-df-tipo">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data do Desfecho:</span> <span class="value" id="modal-df-data">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Sessões Realizadas (PB):</span>
+            <span class="value" id="modal-df-sessoes">Carregando...</span>
+        </div>
+    </div>
+    <div class="form-group full-width">
+        <span class="label">Motivo (Alta/Desistência/Encaminhamento):</span>
+        <p class="value pre-wrap" id="modal-df-motivo">Carregando...</p>
+    </div>
+
+    <div id="modal-df-encaminhamento-details" style="display: none; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+        <h5>Detalhes do Encaminhamento</h5>
+         <div class="details-grid cols-2">
+             <div class="form-group">
+                <span class="label">Serviço Encaminhado:</span>
+                <span class="value" id="modal-df-enc-servico"></span>
+            </div>
+             <div class="form-group">
+                <span class="label">Continua na EuPsico?:</span>
+                <span class="value" id="modal-df-enc-continua"></span>
+            </div>
+        </div>
+         <div class="form-group full-width">
+            <span class="label">Demanda do Paciente:</span>
+            <p class="value pre-wrap" id="modal-df-enc-demanda"></p>
+        </div>
+        <div class="form-group full-width">
+            <span class="label">Relato do Caso:</span>
+            <p class="value pre-wrap" id="modal-df-enc-relato"></p>
+        </div>
+    </div>
+     <div class="form-group full-width" style="margin-top: 15px;">
+        <span class="label">Observações Gerais:</span>
+        <p class="value pre-wrap" id="modal-df-obs">Carregando...</p>
+    </div>
+</div>
+
+<div id="modal-admin-message-group" class="modal-section" style="display: none;">
+   <h4>Resposta do Administrador</h4>
+    <div class="form-group">
+        <label for="admin-message-text">Mensagem para o Voluntário (Obrigatório ao Rejeitar):</label>
+        <textarea id="admin-message-text" class="form-control" rows="3"></textarea>
+    </div>
+</div>
+
+<div id="modal-admin-feedback-view" class="modal-section feedback-view" style="display: none;">
+    <h4>Resposta Anterior</h4>
+    <div class="details-grid cols-2">
+         <div class="form-group">
+            <span class="label">Status Final:</span>
+            <span class="value" id="view-admin-status"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Respondido por:</span>
+            <span class="value" id="view-admin-nome"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Data Resposta:</span>
+            <span class="value" id="view-admin-data"></span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Mensagem:</span>
+        <p class="value pre-wrap" id="view-admin-mensagem"></p>
+    </div>
+</div>

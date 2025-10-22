@@ -1,0 +1,75 @@
+<div class="modal-section">
+    <h4>Informações da Solicitação</h4>
+     <div class="details-grid cols-2">
+        <div class="form-group">
+            <span class="label">Solicitante (Profissional):</span>
+            <span class="value" id="modal-solicitante-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Paciente:</span>
+            <span class="value" id="modal-paciente-nome">Carregando...</span>
+        </div>
+        <div class="form-group">
+            <span class="label">Data da Solicitação:</span>
+            <span class="value" id="modal-data-solicitacao">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Valor Contribuição Atual:</span>
+            <span class="value" id="modal-rv-valor-atual">Carregando...</span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Motivo da Reavaliação:</span>
+        <p class="value pre-wrap" id="modal-rv-motivo">Carregando...</p>
+    </div>
+</div>
+
+<div class="modal-section">
+    <h4>Preferência de Agendamento (Informado pelo Voluntário)</h4>
+    <div class="details-grid cols-3">
+         <div class="form-group">
+            <span class="label">Modalidade:</span>
+            <span class="value" id="modal-rv-pref-modalidade">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Data Preferencial:</span>
+            <span class="value" id="modal-rv-pref-data">Carregando...</span>
+        </div>
+         <div class="form-group">
+            <span class="label">Hora Preferencial:</span>
+            <span class="value" id="modal-rv-pref-hora">Carregando...</span>
+        </div>
+    </div>
+    <small>Estes são dados informativos. O agendamento final será feito pelo Serviço Social/Administrativo.</small>
+</div>
+
+
+<div id="modal-admin-message-group" class="modal-section" style="display: none;">
+   <h4>Resposta do Administrador</h4>
+    <div class="form-group">
+        <label for="admin-message-text">Mensagem para o Voluntário (Obrigatório ao Rejeitar):</label>
+        <textarea id="admin-message-text" class="form-control" rows="3"></textarea>
+    </div>
+</div>
+
+<div id="modal-admin-feedback-view" class="modal-section feedback-view" style="display: none;">
+    <h4>Resposta Anterior</h4>
+    <div class="details-grid cols-2">
+         <div class="form-group">
+            <span class="label">Status Final:</span>
+            <span class="value" id="view-admin-status"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Respondido por:</span>
+            <span class="value" id="view-admin-nome"></span>
+        </div>
+         <div class="form-group">
+            <span class="label">Data Resposta:</span>
+            <span class="value" id="view-admin-data"></span>
+        </div>
+    </div>
+     <div class="form-group full-width">
+        <span class="label">Mensagem:</span>
+        <p class="value pre-wrap" id="view-admin-mensagem"></p>
+    </div>
+</div>
