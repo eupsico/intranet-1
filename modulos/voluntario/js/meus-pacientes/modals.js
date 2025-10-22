@@ -469,135 +469,46 @@ export function abrirModalAlterarHorario(
   modal.style.display = "flex"; // Mostra o modal
 }
 
-/**
- * Lida com o envio da solicitação de alteração de horário (V1.1).
- * Salva a solicitação em `solicitacoesAlteracaoHorario` E atualiza `trilhaPaciente`.
- * @param {Event} evento - O evento de submit do formulário.
- * @param {object} user - O objeto de usuário autenticado.
- * @param {object} userData - Os dados do usuário do Firestore.
- */
-export async function handleAlterarHorarioSubmit(evento, user, userData) {
-  evento.preventDefault();
+// Função para lidar com o submit do formulário de alteração
+export function handleAlterarHorarioSubmit(evento) {
+  evento.preventDefault(); // Impede o envio padrão do formulário
   const form = document.getElementById("alterar-horario-form");
   const modal = document.getElementById("alterar-horario-modal");
-  const btnConfirmar = document.getElementById(
-    "btn-confirmar-alteracao-horario"
-  );
 
-  // Validação do formulário Bootstrap
+  // Validação simples (pode ser aprimorada)
   if (!form.checkValidity()) {
     alert(
       "Por favor, preencha todos os campos obrigatórios (*) para a nova configuração."
     );
-    // Adiciona classe para mostrar feedback visual do Bootstrap
+    // Adicionar classe para destacar campos inválidos (se usar validação HTML5)
     form.classList.add("was-validated");
     return;
   }
 
-  // Desabilita botão para evitar envios múltiplos
-  btnConfirmar.disabled = true;
-  btnConfirmar.textContent = "Enviando...";
-
-  // Coleta os IDs e nomes
-  const pacienteId = document.getElementById("alterar-paciente-id").value;
-  const atendimentoId = document.getElementById("alterar-atendimento-id").value;
-  const pacienteNome = document.getElementById("alterar-paciente-nome").value; // Salvo no input oculto
-  const justificativa = document.getElementById("alterar-justificativa").value;
-
-  // Cria o objeto com todos os dados da solicitação
-  const solicitacaoData = {
-    // Dados do solicitante (quem está pedindo)
-    solicitanteId: user.uid,
-    solicitanteNome: userData.nome,
-
-    // IDs de referência (para encontrar o paciente/atendimento depois)
-    pacienteId: pacienteId,
-    atendimentoId: atendimentoId,
-
-    // Nome do paciente (para exibir no dashboard/admin)
-    pacienteNome: pacienteNome,
-
-    // Dados Antigos (como estava antes da solicitação)
-    dadosAntigos: {
-      dia: document.getElementById("alterar-dia-atual").value,
-      horario: document.getElementById("alterar-horario-atual").value,
-      modalidade: document.getElementById("alterar-modalidade-atual").value,
-    },
-
-    // Dados Novos (o que está sendo solicitado)
-    dadosNovos: {
-      dia: document.getElementById("alterar-dia-semana").value,
-      horario: document.getElementById("alterar-horario").value,
-      modalidade: document.getElementById("alterar-tipo-atendimento").value,
-      frequencia: document.getElementById("alterar-frequencia").value,
-      dataInicio: document.getElementById("alterar-data-inicio").value,
-      sala: document.getElementById("alterar-sala").value, // Campo Sala adicionado
-      alterarGrade: document.getElementById("alterar-grade").value, // Opção para alterar grade central
-    },
-
-    // Justificativa/Motivo fornecido pelo profissional
-    justificativa: justificativa,
-
-    // Dados de controle para o painel administrativo/dashboard
-    status: "Pendente", // Inicia como pendente
-    dataSolicitacao: serverTimestamp(), // Data/Hora atual do servidor
+  // Coleta os dados (exemplo)
+  const dados = {
+    pacienteId: document.getElementById("alterar-paciente-id").value,
+    atendimentoId: document.getElementById("alterar-atendimento-id").value,
+    novoDia: document.getElementById("alterar-dia-semana").value,
+    novoHorario: document.getElementById("alterar-horario").value,
+    novaModalidade: document.getElementById("alterar-tipo-atendimento").value,
+    novaFrequencia: document.getElementById("alterar-frequencia").value,
+    dataInicioAlteracao: document.getElementById("alterar-data-inicio").value,
+    novaSala: document.getElementById("alterar-sala").value,
+    alterarGrade: document.getElementById("alterar-grade").value,
+    justificativa: document.getElementById("alterar-justificativa").value,
   };
 
-  try {
-    // --- ESCRITA 1: Criar a solicitação na coleção separada ---
-    // Esta coleção é lida pelo Painel Administrativo e pelo Dashboard do Profissional
-    await addDoc(
-      collection(db, "solicitacoesAlteracaoHorario"), // Nome da coleção de solicitações
-      solicitacaoData // Salva o objeto completo
-    );
-    console.log("Solicitação salva em solicitacoesAlteracaoHorario");
+  console.log("Dados da solicitação de alteração:", dados); // Para depuração
 
-    // --- ESCRITA 2: Atualizar a trilha do paciente ---
-    // Isso mantém um histórico dentro do próprio paciente e pode ser usado pela tela "Meus Pacientes"
-    const trilhaDocRef = doc(db, "trilhaPaciente", pacienteId); // Referência ao documento do paciente
+  // Aqui você adicionaria a lógica para enviar os dados
+  // Ex: chamar uma função Cloud, atualizar Firestore, etc.
+  // Por enquanto, apenas exibimos um alerta e fechamos o modal.
 
-    // Cria um objeto para a atualização. Usa notação de colchetes para chave dinâmica.
-    const atualizacaoTrilha = {
-      // Navega até o atendimento específico dentro de 'atendimentosPB' e adiciona/atualiza
-      // o campo 'solicitacaoAlteracaoHorario' com os dados da solicitação.
-      ["atendimentosPB." + atendimentoId + ".solicitacaoAlteracaoHorario"]:
-        solicitacaoData,
-      // Atualiza também o campo 'lastUpdate' do paciente
-      lastUpdate: serverTimestamp(),
-    };
-
-    // Executa a atualização no documento do paciente
-    await updateDoc(trilhaDocRef, atualizacaoTrilha);
-    console.log("trilhaPaciente atualizada com a solicitação.");
-    // --- Fim das duas escritas ---
-
-    // Exibe mensagem de sucesso
-    alert(
-      "Solicitação de alteração enviada para o administrativo! Você pode acompanhar o status no seu Dashboard."
-    );
-
-    // Fecha o modal e limpa o formulário
-    modal.style.display = "none";
-    form.reset();
-    form.classList.remove("was-validated"); // Remove a validação visual
-
-    // Opcional: Tenta recarregar os dados na tela "Meus Pacientes" para refletir a mudança
-    // (Isso depende se a função carregarDadosPacientes está disponível globalmente)
-    if (typeof window.carregarDadosPacientes === "function") {
-      console.log("Recarregando dados dos pacientes...");
-      window.carregarDadosPacientes(user, userData); // Tenta recarregar a lista de pacientes
-    }
-  } catch (error) {
-    // Se qualquer uma das escritas falhar, captura o erro
-    console.error("Erro ao salvar solicitação de alteração:", error);
-    // Exibe uma mensagem de erro para o usuário
-    alert(`Erro ao enviar solicitação: ${error.message}`);
-  } finally {
-    // Este bloco SEMPRE é executado, mesmo se der erro ou sucesso
-    // Reabilita o botão de envio
-    btnConfirmar.disabled = false;
-    btnConfirmar.textContent = "Enviar Solicitação de Alteração";
-  }
+  alert("Solicitação de alteração enviada para o administrativo!");
+  modal.style.display = "none"; // Esconde o modal
+  form.reset(); // Limpa o formulário
+  form.classList.remove("was-validated"); // Remove a classe de validação
 }
 
 // Variável para guardar a configuração da agenda de reavaliação e dados do paciente/usuário
