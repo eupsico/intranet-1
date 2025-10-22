@@ -112,3 +112,106 @@
     margin-top: 15px;
     font-weight: 500;
 }
+/* Lista principal */
+.solicitacoes-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0; /* Ajuste a margem conforme necessário */
+}
+
+/* Container de cada item */
+.solicitacao-item-container {
+    border: 1px solid var(--cor-borda-leve);
+    border-radius: var(--borda-radius-pequena);
+    margin-bottom: 10px;
+    overflow: hidden; /* Garante que bordas arredondadas funcionem */
+    background-color: var(--cor-fundo-sutil); /* Fundo leve para destaque */
+}
+
+/* Cabeçalho clicável */
+.solicitacao-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    background-color: transparent; /* Pode ajustar se quiser cor de fundo */
+    transition: background-color 0.2s ease;
+}
+
+.solicitacao-item-header:hover {
+    background-color: var(--cor-borda-leve); /* Leve destaque no hover */
+}
+
+/* Elementos dentro do cabeçalho */
+.solicitacao-tipo {
+    font-weight: 600;
+    color: var(--cor-texto-principal);
+    margin-right: 10px;
+}
+
+.solicitacao-paciente {
+    color: var(--cor-texto-secundario);
+    font-size: 0.9em;
+    margin-right: auto; /* Empurra o status e indicador para a direita */
+    padding-left: 5px;
+}
+
+.solicitacao-status {
+   margin-left: 10px;
+   flex-shrink: 0; /* Evita que o status encolha */
+}
+
+.solicitacao-indicator {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-left: 15px;
+    color: var(--cor-primaria);
+    transition: transform 0.2s ease;
+}
+
+/* Estilo quando expandido */
+.solicitacao-item-header.expanded .solicitacao-indicator {
+   /* transform: rotate(45deg); /* Rotaciona o '+' para parecer um 'x' ou pode mudar o content */
+}
+
+/* Corpo de detalhes (inicialmente oculto) */
+.solicitacao-item-details {
+    display: none; /* Começa oculto */
+    padding: 15px;
+    border-top: 1px solid var(--cor-borda-leve);
+    background-color: #fff; /* Fundo branco para os detalhes */
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.solicitacao-item-details p {
+    margin: 0 0 8px 0; /* Espaçamento entre parágrafos nos detalhes */
+    color: var(--cor-texto-secundario);
+}
+.solicitacao-item-details strong {
+    color: var(--cor-texto-principal);
+    margin-right: 5px;
+}
+
+/* Feedback do Admin dentro dos detalhes */
+.feedback-admin {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--cor-borda-leve);
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+}
+.feedback-admin strong {
+    color: var(--cor-info); /* Cor diferente para o admin */
+}
+.feedback-rejeitado strong {
+     color: var(--cor-erro); /* Cor diferente se rejeitado */
+}
+
+/* Badge de Status (se precisar de ajustes específicos aqui) */
+.status-badge {
+    /* Estilos existentes */
+    display: inline-block; /* Garante alinhamento */
+    vertical-align: middle; /* Alinha com o texto */
+}
