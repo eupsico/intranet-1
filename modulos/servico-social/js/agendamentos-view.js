@@ -1,5 +1,5 @@
 // Arquivo: /modulos/servico-social/js/agendamentos-view.js
-// Responsável por gerenciar as abas de Triagem e Reavaliação
+// --- VERSÃO CORRIGIDA (Busca reavaliações pendentes na trilha) ---
 
 import {
   db,
@@ -14,17 +14,13 @@ import {
   serverTimestamp,
   getDoc,
 } from "../../../assets/js/firebase-init.js";
-// REMOVIDA: A linha "import { getUserData } from "../../../assets/js/app.js";" foi removida.
 
-let currentUserData = null; // Guardar dados do usuário logado
+let currentUserData = null;
 
 export function init(user, userData) {
-  currentUserData = userData; // Armazena os dados do usuário
+  currentUserData = userData;
   setupTabs();
-  loadTriagemData(); // Carrega a aba de triagem por padrão
-  // --- INÍCIO DA ALTERAÇÃO ---
-  // REMOVIDO: addModalEventListeners(); // Não precisamos mais do modal
-  // --- FIM DA ALTERAÇÃO ---
+  loadTriagemData(); // Carrega triagem por padrão
 }
 
 function setupTabs() {
@@ -34,20 +30,15 @@ function setupTabs() {
   tabLinks.forEach((link) => {
     link.addEventListener("click", () => {
       const tabId = link.dataset.tab;
-
-      // Desativa todos
       tabLinks.forEach((l) => l.classList.remove("active"));
       tabContents.forEach((c) => c.classList.remove("active"));
-
-      // Ativa o clicado
       link.classList.add("active");
       document.getElementById(tabId).classList.add("active");
 
-      // Carrega os dados da aba correspondente
       if (tabId === "triagem") {
         loadTriagemData();
       } else if (tabId === "reavaliacao") {
-        loadReavaliacaoData();
+        loadReavaliacaoData(); // Chama a função corrigida
       }
     });
   });
@@ -60,7 +51,7 @@ async function loadTriagemData() {
   if (!tableBody || !emptyState) return;
 
   tableBody.innerHTML =
-    '<tr><td colspan="8"><div class="loading-spinner"></div></td></tr>'; // Colspan 8
+    '<tr><td colspan="8"><div class="loading-spinner"></div></td></tr>';
   emptyState.style.display = "none";
 
   const isAdmin = (currentUserData.funcoes || []).includes("admin");
@@ -69,13 +60,13 @@ async function loadTriagemData() {
     const trilhaRef = collection(db, "trilhaPaciente");
     const queryConstraints = [
       where("status", "==", "triagem_agendada"),
-      orderBy("dataTriagem", "asc"), // Ordenar pela data da triagem
-      orderBy("horaTriagem", "asc"), // Depois pela hora
+      orderBy("dataTriagem", "asc"),
+      orderBy("horaTriagem", "asc"),
     ];
 
     if (!isAdmin) {
       queryConstraints.push(
-        where("assistenteSocialId", "==", currentUserData.uid) // Filtrar pelo ID
+        where("assistenteSocialId", "==", currentUserData.uid)
       );
     }
 
@@ -83,8 +74,8 @@ async function loadTriagemData() {
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      tableBody.innerHTML = ""; // Limpa a tabela
-      emptyState.style.display = "block"; // Mostra mensagem
+      tableBody.innerHTML = "";
+      emptyState.style.display = "block";
       return;
     }
 
@@ -94,23 +85,21 @@ async function loadTriagemData() {
       const dataAgendamento = data.dataTriagem
         ? new Date(data.dataTriagem + "T03:00:00").toLocaleDateString("pt-BR")
         : "Não definida";
-
       rowsHtml += `
-          <tr>
-              <td>${data.tipoTriagem || "N/A"}</td>
-              <td>${data.nomeCompleto || "N/A"}</td>
-              <td>${data.responsavel?.nome || "N/A"}</td>
-              <td>${data.telefoneCelular || "N/A"}</td>
-              <td>${dataAgendamento}</td>
-              <td>${data.horaTriagem || "N/A"}</td>
-              <td>${data.assistenteSocialNome || "N/A"}</td>
-              <td>
-                  <a href="#fila-atendimento/${doc.id}" class="action-button">
-                      Preencher Ficha
-                  </a>
-              </td>
-          </tr>
-      `;
+            <tr>
+                <td>${data.tipoTriagem || "N/A"}</td>
+                <td>${data.nomeCompleto || "N/A"}</td>
+                <td>${data.responsavel?.nome || "N/A"}</td>
+                <td>${data.telefoneCelular || "N/A"}</td>
+                <td>${dataAgendamento}</td>
+                <td>${data.horaTriagem || "N/A"}</td>
+                <td>${data.assistenteSocialNome || "N/A"}</td>
+                <td>
+                    <a href="#fila-atendimento/${doc.id}" class="action-button">
+                        Preencher Ficha
+                    </a>
+                </td>
+            </tr>`;
     });
     tableBody.innerHTML = rowsHtml;
   } catch (error) {
@@ -128,84 +117,93 @@ async function loadReavaliacaoData() {
   const emptyState = document.getElementById("reavaliacao-empty-state");
   if (!tableBody || !emptyState) return;
 
+  // *** MODIFICADO: Ajustado colspan para 6 colunas (Nome, Tel, Valor Atual, Solicitado Por, Data Solicitação, Ação) ***
   tableBody.innerHTML =
-    '<tr><td colspan="7"><div class="loading-spinner"></div></td></tr>'; // Colspan 7
+    '<tr><td colspan="6"><div class="loading-spinner"></div></td></tr>';
   emptyState.style.display = "none";
 
-  const isAdmin = (currentUserData.funcoes || []).includes("admin");
+  // Não precisamos mais filtrar por admin/assistente aqui, pois a lista é de pacientes aguardando *qualquer* assistente
+  // const isAdmin = (currentUserData.funcoes || []).includes("admin");
 
   try {
-    const agendamentosRef = collection(db, "agendamentos");
+    // *** MODIFICADO: Consulta na coleção 'trilhaPaciente' ***
+    const trilhaRef = collection(db, "trilhaPaciente");
     const queryConstraints = [
-      where("tipo", "==", "reavaliacao"),
-      where("status", "in", ["agendado", "reagendado"]), // Buscar agendados ou reagendados
-      orderBy("dataAgendamento", "asc"), // Ordenar por data/hora do Firebase Timestamp
+      // *** MODIFICADO: Filtro de status correto ***
+      where("status", "==", "aguardando_reavaliacao"),
+      // *** MODIFICADO: Ordenar pela data em que a solicitação foi aprovada (se disponível) ou lastUpdate ***
+      orderBy("solicitacaoReavaliacaoAprovadaEm", "desc"), // Ordena pelos mais recentes primeiro
+      // orderBy("lastUpdate", "desc") // Fallback de ordenação
     ];
 
-    if (!isAdmin) {
-      queryConstraints.push(
-        where("assistenteSocialId", "==", currentUserData.uid) // Filtrar pelo ID
-      );
-    }
+    // *** REMOVIDO: Filtro por assistenteSocialId não se aplica aqui ***
+    // if (!isAdmin) { ... }
 
-    const q = query(agendamentosRef, ...queryConstraints);
+    const q = query(trilhaRef, ...queryConstraints);
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
       tableBody.innerHTML = "";
+      emptyState.textContent =
+        "Nenhum paciente aguardando agendamento de reavaliação."; // Mensagem ajustada
       emptyState.style.display = "block";
       return;
     }
 
     let rowsHtml = "";
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const dataAgendamento = data.dataAgendamento?.toDate
-        ? data.dataAgendamento.toDate().toLocaleDateString("pt-BR")
-        : "N/A";
-      const horaAgendamento = data.dataAgendamento?.toDate
-        ? data.dataAgendamento
-            .toDate()
-            .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-        : "N/A";
-      const statusFormatado = (data.status || "agendado")
-        .replace("_", " ")
-        .replace(/^\w/, (c) => c.toUpperCase());
+    for (const docSnapshot of snapshot.docs) {
+      // Usar for...of para permitir await dentro do loop
+      const data = docSnapshot.data();
+      const pacienteId = docSnapshot.id;
 
-      // --- INÍCIO DA ALTERAÇÃO ---
-      // O botão agora é um link <a> que aponta para a fila de atendimento,
-      // passando o ID do paciente (trilhaId) e o ID do agendamento.
+      // Tenta buscar o nome do profissional que solicitou (pode não estar na trilha)
+      // Idealmente, o ID do solicitante estaria na trilha ou buscaríamos a última solicitação aprovada.
+      // Simplificação: Exibe "N/I" por enquanto. Para exibir o nome, precisaríamos buscar na coleção 'solicitacoes'
+      let solicitanteNome = "N/I";
+      // let dataSolicitacaoAprovada = data.solicitacaoReavaliacaoAprovadaEm?.toDate ? data.solicitacaoReavaliacaoAprovadaEm.toDate().toLocaleDateString("pt-BR") : "N/A";
+      // Pegar data da última atualização como fallback se 'solicitacaoReavaliacaoAprovadaEm' não existir
+      let dataStatusUpdate = data.lastUpdate?.toDate
+        ? data.lastUpdate.toDate().toLocaleDateString("pt-BR")
+        : "N/A";
+      if (data.solicitacaoReavaliacaoAprovadaEm?.toDate) {
+        dataStatusUpdate = data.solicitacaoReavaliacaoAprovadaEm
+          .toDate()
+          .toLocaleDateString("pt-BR");
+      }
+
+      // Formata o valor da contribuição atual
+      const valorAtualFormatado = data.valorContribuicao
+        ? `R$ ${parseFloat(data.valorContribuicao)
+            .toFixed(2)
+            .replace(".", ",")}`
+        : "N/A";
+
+      // *** MODIFICADO: Estrutura da linha e botão de ação ***
       rowsHtml += `
-          <tr data-agendamento-id="${doc.id}" data-paciente-id="${
-        data.pacienteId
-      }">
-              <td>${data.pacienteNome || "N/A"}</td>
-              <td>${data.profissionalNome || "N/A"}</td>
-              <td>${dataAgendamento}</td>
-              <td>${horaAgendamento}</td>
-              <td>${data.assistenteSocialNome || "N/A"}</td>
-              <td><span class="status-badge status-${
-                data.status || "agendado"
-              }">${statusFormatado}</span></td>
-              <td>
-                  <a href="#fila-atendimento/${data.pacienteId}/reavaliacao/${
-        doc.id
-      }" class="action-button">
-                      Realizar Reavaliação
-                  </a>
-              </td>
-          </tr>
-      `;
-      // --- FIM DA ALTERAÇÃO ---
-    });
-    tableBody.innerHTML = rowsHtml;
+            <tr>
+                <td>${data.nomeCompleto || "N/A"}</td>
+                <td>${data.telefoneCelular || "N/A"}</td>
+                <td>${valorAtualFormatado}</td>
+                <td>${solicitanteNome}</td> {/* Idealmente buscar da solicitação original */}
+                <td>${dataStatusUpdate}</td> {/* Data que entrou no status */}
+                <td>
+                    {/* O botão agora deve levar para uma tela/modal de AGENDAR a reavaliação */}
+                    {/* Exemplo: #agendar-reavaliacao/id_do_paciente */}
+                    <a href="#disponibilidade-agendamentos/${pacienteId}" class="action-button">
+                        Agendar Reavaliação
+                    </a>
+                    {/* Ou link direto para fila-atendimento se a intenção for já realizar */}
+                    {/* <a href="#fila-atendimento/${pacienteId}/reavaliacao/NOVO" class="action-button">Realizar Reavaliação</a> */}
+                </td>
+            </tr>`;
+    } // Fim do for...of
 
-    // REMOVIDO: addReavaliacaoButtonListeners(); // Não precisamos mais adicionar listeners aos botões
+    tableBody.innerHTML = rowsHtml;
   } catch (error) {
-    console.error("Erro ao carregar agendamentos de reavaliação:", error);
+    console.error("Erro ao carregar pacientes aguardando reavaliação:", error);
     tableBody.innerHTML = "";
     emptyState.textContent =
-      "Ocorreu um erro ao carregar os agendamentos de reavaliação.";
+      "Ocorreu um erro ao carregar os pacientes para reavaliação.";
     emptyState.style.display = "block";
   }
 }
