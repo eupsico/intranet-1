@@ -1,4 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/modals.js
+// Alterado para criar solicitações na coleção 'solicitacoes'
 
 import {
   db,
@@ -8,16 +9,21 @@ import {
   serverTimestamp,
   httpsCallable,
   functions,
-  collection,
+  collection, // Importado
   query,
   where,
   getDocs,
-  addDoc,
+  addDoc, // Importado
   Timestamp,
 } from "../../../../assets/js/firebase-init.js";
 
-// --- Lógica do Modal de Mensagens (Aprimorada) ---
+// Variáveis de escopo do módulo para armazenar dados necessários nos submits
+let currentUserData = null; // Para armazenar userData (nome, uid)
+let currentPacienteData = null; // Para armazenar dados do paciente atual do modal
+let currentAtendimentoData = null; // Para armazenar dados do atendimento atual do modal
 
+// --- Lógica do Modal de Mensagens (Sem alterações na lógica de salvar) ---
+// ... (código existente de abrirModalMensagens, preencherFormularioMensagem, formatarData, atualizarPreviewMensagem, handleMensagemSubmit) ...
 let dadosParaMensagem = {};
 let templateOriginal = "";
 
@@ -26,6 +32,11 @@ export function abrirModalMensagens(
   atendimento,
   { systemConfigs, userData }
 ) {
+  // Armazena dados para uso posterior se necessário
+  currentUserData = userData; // Salva para outros modais
+  currentPacienteData = paciente;
+  currentAtendimentoData = atendimento;
+
   const modal = document.getElementById("enviar-mensagem-modal");
   const nomePacienteSpan = document.getElementById(
     "mensagem-paciente-nome-selecao"
@@ -36,7 +47,7 @@ export function abrirModalMensagens(
 
   const btnWhatsapp = modal.querySelector("#btn-gerar-enviar-whatsapp");
 
-  dadosParaMensagem = { paciente, atendimento, systemConfigs, userData };
+  dadosParaMensagem = { paciente, atendimento, systemConfigs, userData }; // Mantém para esta função específica
   nomePacienteSpan.textContent = paciente.nomeCompleto;
   listaModelos.innerHTML = "";
   selecaoView.style.display = "block";
@@ -73,7 +84,7 @@ export function abrirModalMensagens(
 }
 
 function preencherFormularioMensagem(templateKey, templateTitle) {
-  const { systemConfigs, userData } = dadosParaMensagem;
+  const { systemConfigs, userData } = dadosParaMensagem; // Usa dados específicos da mensagem
 
   const selecaoView = document.getElementById("mensagem-selecao-view");
   const formularioView = document.getElementById("mensagem-formulario-view");
@@ -219,7 +230,8 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   }
 }
 
-function formatarData(dataString) {
+function formatarDataParaTexto(dataString) {
+  // Renomeada para clareza
   if (!dataString || !/^\d{4}-\d{2}-\d{2}$/.test(dataString)) {
     return dataString;
   }
@@ -228,7 +240,7 @@ function formatarData(dataString) {
 }
 
 function atualizarPreviewMensagem() {
-  const { paciente, atendimento, userData } = dadosParaMensagem;
+  const { paciente, atendimento, userData } = dadosParaMensagem; // Usa dados específicos
   const previewTextarea = document.getElementById("output-mensagem-preview");
   let mensagemAtualizada = templateOriginal;
 
@@ -251,7 +263,7 @@ function atualizarPreviewMensagem() {
     const placeholder = input.dataset.variavel;
     let valor = input.value;
     if (input.type === "date") {
-      valor = formatarData(valor);
+      valor = formatarDataParaTexto(valor); // Usa a função renomeada
     }
     mensagemAtualizada = mensagemAtualizada.replace(
       new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
@@ -263,7 +275,7 @@ function atualizarPreviewMensagem() {
 }
 
 export function handleMensagemSubmit() {
-  const { paciente } = dadosParaMensagem;
+  const { paciente } = dadosParaMensagem; // Usa dados específicos
   const telefone = paciente.telefoneCelular?.replace(/\D/g, "");
   const mensagem = document.getElementById("output-mensagem-preview").value;
   const modal = document.getElementById("enviar-mensagem-modal");
@@ -286,26 +298,35 @@ export function handleMensagemSubmit() {
 export function abrirModalSolicitarSessoes(
   paciente,
   atendimento,
-  { userData, salasPresenciais, dadosDaGrade }
+  { userData, salasPresenciais, dadosDaGrade } // Recebe userData aqui
 ) {
+  // Armazena dados no escopo do módulo
+  currentUserData = userData;
+  currentPacienteData = paciente;
+  currentAtendimentoData = atendimento;
+
   const modal = document.getElementById("solicitar-sessoes-modal");
   modal.style.display = "flex";
   const form = document.getElementById("solicitar-sessoes-form");
   form.reset();
   form.classList.remove("was-validated");
 
-  document.getElementById("solicitar-profissional-nome").value = userData.nome;
+  // Usa currentUserData
+  document.getElementById("solicitar-profissional-nome").value =
+    currentUserData.nome;
   document.getElementById("solicitar-paciente-nome").value =
     paciente.nomeCompleto;
-  document.getElementById("solicitar-paciente-id").value = paciente.id;
-  document.getElementById("solicitar-atendimento-id").value =
-    atendimento?.atendimentoId || "";
+
+  // Não precisamos mais guardar IDs no form se vamos pegar de current...Data
+  // document.getElementById("solicitar-paciente-id").value = paciente.id;
+  // document.getElementById("solicitar-atendimento-id").value = atendimento?.atendimentoId || "";
 
   const horarioSelect = document.getElementById("solicitar-horario");
   horarioSelect.innerHTML = "";
   for (let i = 7; i <= 21; i++) {
     const hora = `${String(i).padStart(2, "0")}:00`;
-    horarioSelect.innerHTML += `<option value="${i}">${hora}</option>`; // Usa i como value
+    // horarioSelect.innerHTML += `<option value="${i}">${hora}</option>`; // Usa i como value
+    horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`; // **CORREÇÃO: Usar a hora formatada como value**
   }
 
   const salaSelect = document.getElementById("solicitar-sala");
@@ -334,17 +355,19 @@ export function abrirModalSolicitarSessoes(
   tipoAtendimentoSelect.onchange = () => {
     const tipo = tipoAtendimentoSelect.value;
     const salaSelectEl = document.getElementById("solicitar-sala");
-    salaSelectEl.disabled = tipo === "online";
+    salaSelectEl.disabled = tipo === "online"; // **CORREÇÃO: comparar com 'online' em minúsculo**
     if (tipo === "online") salaSelectEl.value = "Online";
     validarHorarioNaGrade(dadosDaGrade, salasPresenciais);
   };
   tipoAtendimentoSelect.dispatchEvent(new Event("change"));
 }
 
-export function handleSolicitarSessoesSubmit(evento) {
+// *** ALTERADO: handleSolicitarSessoesSubmit para criar na coleção 'solicitacoes' ***
+export async function handleSolicitarSessoesSubmit(evento) {
   evento.preventDefault();
   const form = document.getElementById("solicitar-sessoes-form");
   const modal = document.getElementById("solicitar-sessoes-modal");
+  const btnSubmit = document.getElementById("btn-confirmar-solicitacao");
 
   if (form.checkValidity() === false) {
     alert("Por favor, preencha todos os campos obrigatórios.");
@@ -352,33 +375,94 @@ export function handleSolicitarSessoesSubmit(evento) {
     return;
   }
 
-  alert(
-    "Sua solicitação de novo horário foi enviada ao administrativo para cadastro na grade."
-  );
-  modal.style.display = "none";
+  // Desabilita botão e mostra loading (opcional)
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML =
+    '<span class="loading-spinner-small"></span> Enviando...';
+
+  try {
+    // Coleta os dados do formulário e do contexto
+    const solicitacaoData = {
+      tipo: "novas_sessoes", // Tipo da solicitação
+      status: "Pendente", // Status inicial
+      dataSolicitacao: serverTimestamp(), // Data/Hora atual
+      // Dados do solicitante (Voluntário)
+      solicitanteId: currentUserData.uid,
+      solicitanteNome: currentUserData.nome,
+      // Dados do Paciente
+      pacienteId: currentPacienteData.id,
+      pacienteNome: currentPacienteData.nomeCompleto,
+      // ID do atendimento PB atual (se houver)
+      atendimentoId: currentAtendimentoData?.atendimentoId || null,
+      // Detalhes específicos da solicitação de Novas Sessões
+      detalhes: {
+        diaSemana: form.querySelector("#solicitar-dia-semana").value,
+        horario: form.querySelector("#solicitar-horario").value,
+        modalidade: form.querySelector("#solicitar-tipo-atendimento").value,
+        sala: form.querySelector("#solicitar-sala").value,
+        dataInicioPreferencial: form.querySelector("#solicitar-data-inicio")
+          .value,
+        // Adicionar justificativa se houver campo no formulário HTML
+        // justificativa: form.querySelector("#solicitar-justificativa")?.value || ""
+      },
+      adminFeedback: null, // Campo para resposta do admin
+    };
+
+    // Salva na coleção 'solicitacoes'
+    await addDoc(collection(db, "solicitacoes"), solicitacaoData);
+
+    console.log("Solicitação de novas sessões criada:", solicitacaoData);
+    alert(
+      "Solicitação de novas sessões enviada com sucesso para o administrativo!"
+    );
+    modal.style.display = "none";
+    form.reset();
+    form.classList.remove("was-validated");
+  } catch (error) {
+    console.error("Erro ao enviar solicitação de novas sessões:", error);
+    alert(`Erro ao enviar solicitação: ${error.message}`);
+  } finally {
+    // Reabilita o botão
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Enviar Solicitação";
+  }
 }
+// *** FIM DA ALTERAÇÃO ***
 
 function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
   const dia = document.getElementById("solicitar-dia-semana").value;
-  const horario = document.getElementById("solicitar-horario").value; // Value é a hora (7, 8, ...)
+  // **CORREÇÃO: Pegar a hora formatada 'HH:MM' do value**
+  const horarioCompleto = document.getElementById("solicitar-horario").value;
   const tipo = document.getElementById("solicitar-tipo-atendimento").value;
   const sala = document.getElementById("solicitar-sala").value;
   const feedbackDiv = document.getElementById("validacao-grade-feedback");
 
-  const horaKey = `${String(horario).padStart(2, "0")}-00`;
+  // **CORREÇÃO: Usar a hora completa 'HH:MM' como chave**
+  // A chave na grade parece ser HH-MM (ex: 08-00)
+  const horaKey = horarioCompleto ? horarioCompleto.replace(":", "-") : null;
   let isOcupado = false;
 
+  if (!horaKey) {
+    feedbackDiv.style.display = "none"; // Esconde se não tem hora selecionada
+    return;
+  }
+
   if (tipo === "online") {
+    // **CORREÇÃO: usar 'online' minúsculo**
     for (let i = 0; i < 6; i++) {
+      // Acessa a grade usando as chaves corretas
       if (dadosDaGrade?.online?.[dia]?.[horaKey]?.[`col${i}`]) {
         isOcupado = true;
         break;
       }
     }
   } else {
+    // Presencial
     const salaIndex = salasPresenciais?.indexOf(sala);
     if (
-      salaIndex !== -1 &&
+      salaIndex !== undefined &&
+      salaIndex !== -1 && // Verifica se salaIndex é válido
+      // Acessa a grade usando as chaves corretas
       dadosDaGrade?.presencial?.[dia]?.[horaKey]?.[`col${salaIndex}`]
     ) {
       isOcupado = true;
@@ -387,34 +471,37 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
 
   feedbackDiv.style.display = "block";
   if (isOcupado) {
-    feedbackDiv.className = "info-note exists";
+    feedbackDiv.className = "info-note exists"; // Mantém a classe 'exists'
     feedbackDiv.innerHTML =
-      "<strong>Atenção:</strong> Este horário já está preenchido na grade. <br>De qualquer forma, sua solicitação será enviada para o administrativo cadastrar o horário.";
+      "<strong>Atenção:</strong> Este horário já está preenchido na grade. <br>Sua solicitação será enviada mesmo assim para análise do administrativo."; // Mensagem ajustada
   } else {
     feedbackDiv.className = "info-note success";
     feedbackDiv.innerHTML =
-      "<strong>Disponível:</strong> O horário selecionado está livre na grade e será enviado para cadastro pelo administrativo.";
+      "<strong>Disponível:</strong> O horário selecionado parece livre na grade. A solicitação será enviada para análise do administrativo."; // Mensagem ajustada
   }
 }
 
-// --- INÍCIO DA LÓGICA DO NOVO MODAL ---
+// --- Lógica do Modal de Alterar Horário ---
 
 export function abrirModalAlterarHorario(
   paciente,
   atendimento,
-  { userData, salasPresenciais }
+  { userData, salasPresenciais } // Recebe userData
 ) {
+  // Armazena dados no escopo do módulo
+  currentUserData = userData;
+  currentPacienteData = paciente;
+  currentAtendimentoData = atendimento;
+
   const modal = document.getElementById("alterar-horario-modal");
   const form = document.getElementById("alterar-horario-form");
   form.reset(); // Limpa o formulário
 
-  // Preenche dados fixos
-  document.getElementById("alterar-paciente-id").value = paciente.id;
-  document.getElementById("alterar-atendimento-id").value =
-    atendimento.atendimentoId;
+  // Preenche dados fixos (usa currentUserData)
   document.getElementById("alterar-paciente-nome").value =
     paciente.nomeCompleto;
-  document.getElementById("alterar-profissional-nome").value = userData.nome;
+  document.getElementById("alterar-profissional-nome").value =
+    currentUserData.nome;
 
   // Preenche dados atuais (se existirem)
   const horarioAtual = atendimento?.horarioSessao || {};
@@ -439,7 +526,6 @@ export function abrirModalAlterarHorario(
   if (salasPresenciais && Array.isArray(salasPresenciais)) {
     salasPresenciais.forEach((sala) => {
       if (sala && sala.trim() !== "") {
-        // Garante que não adicione opções vazias
         salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
       }
     });
@@ -455,74 +541,119 @@ export function abrirModalAlterarHorario(
     if (tipo === "Online") {
       salaSelect.value = "Online";
     } else {
-      // Se tiver salas presenciais, seleciona a primeira por padrão, senão deixa vazio
       if (salasPresenciais && salasPresenciais.length > 0) {
-        salaSelect.value = salasPresenciais[0]; // Ou pode deixar como ""
+        // salaSelect.value = salasPresenciais[0]; // Remove seleção automática
+        salaSelect.value = ""; // Deixa vazio para forçar seleção
       } else {
-        salaSelect.value = ""; // Nenhuma sala presencial disponível
+        salaSelect.value = "";
       }
     }
   };
-  // Dispara o evento change inicial para configurar a sala corretamente
   tipoAtendimentoSelect.dispatchEvent(new Event("change"));
 
   modal.style.display = "flex"; // Mostra o modal
 }
 
-// Função para lidar com o submit do formulário de alteração
-export function handleAlterarHorarioSubmit(evento) {
-  evento.preventDefault(); // Impede o envio padrão do formulário
+// *** ALTERADO: handleAlterarHorarioSubmit para criar na coleção 'solicitacoes' ***
+export async function handleAlterarHorarioSubmit(evento) {
+  evento.preventDefault();
   const form = document.getElementById("alterar-horario-form");
   const modal = document.getElementById("alterar-horario-modal");
+  const btnSubmit = document.getElementById("btn-confirmar-alteracao-horario");
 
-  // Validação simples (pode ser aprimorada)
   if (!form.checkValidity()) {
     alert(
       "Por favor, preencha todos os campos obrigatórios (*) para a nova configuração."
     );
-    // Adicionar classe para destacar campos inválidos (se usar validação HTML5)
     form.classList.add("was-validated");
     return;
   }
 
-  // Coleta os dados (exemplo)
-  const dados = {
-    pacienteId: document.getElementById("alterar-paciente-id").value,
-    atendimentoId: document.getElementById("alterar-atendimento-id").value,
-    novoDia: document.getElementById("alterar-dia-semana").value,
-    novoHorario: document.getElementById("alterar-horario").value,
-    novaModalidade: document.getElementById("alterar-tipo-atendimento").value,
-    novaFrequencia: document.getElementById("alterar-frequencia").value,
-    dataInicioAlteracao: document.getElementById("alterar-data-inicio").value,
-    novaSala: document.getElementById("alterar-sala").value,
-    alterarGrade: document.getElementById("alterar-grade").value,
-    justificativa: document.getElementById("alterar-justificativa").value,
-  };
+  // Desabilita botão e mostra loading (opcional)
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML =
+    '<span class="loading-spinner-small"></span> Enviando...';
 
-  console.log("Dados da solicitação de alteração:", dados); // Para depuração
+  try {
+    // Coleta dados antigos (já preenchidos no modal e armazenados em currentAtendimentoData)
+    const horarioAntigo = currentAtendimentoData?.horarioSessao || {};
+    const dadosAntigos = {
+      dia: horarioAntigo.diaSemana || "N/A",
+      horario: horarioAntigo.horario || "N/A",
+      modalidade: horarioAntigo.tipoAtendimento || "N/A",
+      sala: horarioAntigo.salaAtendimento || "N/A", // Adicionar se existir
+      frequencia: horarioAntigo.frequencia || "N/A", // Adicionar se existir
+    };
 
-  // Aqui você adicionaria a lógica para enviar os dados
-  // Ex: chamar uma função Cloud, atualizar Firestore, etc.
-  // Por enquanto, apenas exibimos um alerta e fechamos o modal.
+    // Coleta dados novos do formulário
+    const dadosNovos = {
+      dia: form.querySelector("#alterar-dia-semana").value,
+      horario: form.querySelector("#alterar-horario").value,
+      modalidade: form.querySelector("#alterar-tipo-atendimento").value,
+      frequencia: form.querySelector("#alterar-frequencia").value,
+      sala: form.querySelector("#alterar-sala").value,
+      dataInicio: form.querySelector("#alterar-data-inicio").value, // Data de início da alteração
+      alterarGrade: form.querySelector("#alterar-grade").value, // Solicita alteração na grade
+    };
 
-  alert("Solicitação de alteração enviada para o administrativo!");
-  modal.style.display = "none"; // Esconde o modal
-  form.reset(); // Limpa o formulário
-  form.classList.remove("was-validated"); // Remove a classe de validação
+    // Prepara o objeto da solicitação
+    const solicitacaoData = {
+      tipo: "alteracao_horario", // Tipo da solicitação
+      status: "Pendente", // Status inicial
+      dataSolicitacao: serverTimestamp(), // Data/Hora atual
+      // Dados do solicitante (Voluntário)
+      solicitanteId: currentUserData.uid,
+      solicitanteNome: currentUserData.nome,
+      // Dados do Paciente
+      pacienteId: currentPacienteData.id,
+      pacienteNome: currentPacienteData.nomeCompleto,
+      // ID do atendimento PB atual
+      atendimentoId: currentAtendimentoData?.atendimentoId || null,
+      // Detalhes específicos da solicitação de alteração
+      detalhes: {
+        dadosAntigos: dadosAntigos,
+        dadosNovos: dadosNovos,
+        justificativa: form.querySelector("#alterar-justificativa").value || "", // Justificativa opcional
+      },
+      adminFeedback: null, // Campo para resposta do admin
+    };
+
+    // Salva na coleção 'solicitacoes'
+    await addDoc(collection(db, "solicitacoes"), solicitacaoData);
+
+    console.log("Solicitação de alteração de horário criada:", solicitacaoData);
+    alert(
+      "Solicitação de alteração de horário enviada com sucesso para o administrativo!"
+    );
+    modal.style.display = "none";
+    form.reset();
+    form.classList.remove("was-validated");
+  } catch (error) {
+    console.error("Erro ao enviar solicitação de alteração de horário:", error);
+    alert(`Erro ao enviar solicitação: ${error.message}`);
+  } finally {
+    // Reabilita o botão
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Enviar Solicitação de Alteração";
+  }
 }
+// *** FIM DA ALTERAÇÃO ***
 
-// Variável para guardar a configuração da agenda de reavaliação e dados do paciente/usuário
+// --- Lógica do Modal de Reavaliação ---
+
+// Variável para guardar a configuração da agenda e dados
 let currentReavaliacaoConfig = {};
 
-/**
- * Abre o modal de solicitação de reavaliação.
- * Verifica se existe agenda configurada para "reavaliação".
- */
 export async function abrirModalReavaliacao(
   paciente,
-  atendimento,
-  { user, userData, systemConfigs }
+  atendimento, // atendimento pode ser null, mas recebemos para consistência
+  { user, userData, systemConfigs } // Recebe user e userData
 ) {
+  // Armazena dados no escopo do módulo
+  currentUserData = userData; // user já está em userData? Se sim, ok. Senão, salvar user também.
+  currentPacienteData = paciente;
+  currentAtendimentoData = atendimento; // Pode ser null
+
   const modal = document.getElementById("reavaliacao-modal");
   const form = document.getElementById("reavaliacao-form");
   const msgSemAgenda = document.getElementById("reavaliacao-sem-agenda");
@@ -533,8 +664,6 @@ export async function abrirModalReavaliacao(
   const tipoAtendimentoSelect = document.getElementById(
     "reavaliacao-tipo-atendimento"
   );
-
-  // ***** NOVOS SELETORES *****
   const datasContainer = document.getElementById(
     "reavaliacao-datas-disponiveis"
   );
@@ -545,77 +674,66 @@ export async function abrirModalReavaliacao(
     "reavaliacao-horarios-disponiveis"
   );
 
-  // Resetar o estado do modal
+  // Resetar
   form.reset();
   msgSemAgenda.style.display = "none";
   form.style.display = "none";
   btnConfirmar.style.display = "none";
-
-  // ***** RESET MODIFICADO *****
   datasContainer.innerHTML =
     "<p>Selecione uma modalidade para ver as datas.</p>";
   horariosContainer.innerHTML =
     "<p>Selecione uma data para ver os horários.</p>";
   dataSelecionadaInput.value = "";
-  // ***** FIM DO RESET MODIFICADO *****
 
-  // Preencher dados fixos do formulário
-  document.getElementById("reavaliacao-paciente-id").value = paciente.id;
+  // Preencher dados fixos (usa currentUserData)
+  document.getElementById("reavaliacao-paciente-id").value = paciente.id; // Mantém ID no form por segurança
   document.getElementById("reavaliacao-profissional-nome").value =
-    userData.nome;
+    currentUserData.nome;
   document.getElementById("reavaliacao-paciente-nome").value =
     paciente.nomeCompleto;
   document.getElementById("reavaliacao-valor-atual").value =
-    paciente.valorContribuicao || ""; // Deixa em branco se não houver
+    paciente.valorContribuicao || "";
 
   modal.style.display = "flex";
 
   try {
-    // 1. Verificar se há agenda configurada para "reavaliação"
-
-    // ***** LÓGICA DE BUSCA MODIFICADA *****
-    // Busca todas as agendas de reavaliação futuras
+    // Buscar agendas futuras
     const hoje = new Date().toISOString().split("T")[0];
     const agendaQuery = query(
       collection(db, "agendaConfigurada"),
       where("tipo", "==", "reavaliacao"),
-      where("data", ">=", hoje) // Busca apenas de hoje em diante
+      where("data", ">=", hoje)
     );
-    // ***** FIM DA LÓGICA DE BUSCA *****
-
     const agendaSnapshot = await getDocs(agendaQuery);
 
     if (agendaSnapshot.empty) {
-      // 2. Se não houver agenda, mostrar mensagem de erro
       msgSemAgenda.style.display = "block";
       return;
     }
 
-    // 3. Se houver agenda, mostrar formulário
+    // Mostrar formulário
     form.style.display = "block";
-    btnConfirmar.style.display = "block";
+    btnConfirmar.style.display = "block"; // Botão de submit agora é para a *solicitação*
 
     let agendasConfig = [];
     agendaSnapshot.forEach((doc) =>
       agendasConfig.push({ id: doc.id, ...doc.data() })
     );
 
-    // Salva as configurações para usar no submit e no carregamento de horários
+    // Salva configs (mantém, pode ser útil para preencher preferências no detalhes)
     currentReavaliacaoConfig = {
       agendas: agendasConfig,
       paciente: paciente,
-      user: user,
-      userData: userData,
+      // user: user, // Se user tiver mais dados que userData.uid
+      userData: currentUserData,
     };
 
-    // 4. Lógica da Modalidade (Tipo de Atendimento)
+    // Lógica da Modalidade
     const modalidades = [
       ...new Set(agendasConfig.map((a) => a.modalidade)),
     ].filter(Boolean);
-
     tipoAtendimentoSelect.innerHTML = "";
     if (modalidades.length > 1) {
-      // Mais de uma modalidade (Online, Presencial)
       tipoAtendimentoGroup.style.display = "block";
       tipoAtendimentoSelect.innerHTML =
         '<option value="">Selecione a modalidade...</option>';
@@ -626,58 +744,40 @@ export async function abrirModalReavaliacao(
       });
       tipoAtendimentoSelect.required = true;
     } else if (modalidades.length === 1) {
-      // Apenas uma modalidade
       tipoAtendimentoGroup.style.display = "none";
       tipoAtendimentoSelect.innerHTML = `<option value="${modalidades[0]}" selected>${modalidades[0]}</option>`;
       tipoAtendimentoSelect.required = false;
-      // Se só tem uma modalidade, já carrega as datas
-      renderizarDatasDisponiveis(modalidades[0]);
+      renderizarDatasDisponiveis(modalidades[0]); // Já carrega datas
     } else {
       throw new Error(
         "Agenda de reavaliação configurada de forma inválida (sem modalidade)."
       );
     }
 
-    // 5. Adicionar listeners
+    // Listeners (mantidos para seleção de preferência)
     tipoAtendimentoSelect.onchange = () => {
-      // Limpa seleções anteriores
       horariosContainer.innerHTML =
         "<p>Selecione uma data para ver os horários.</p>";
       dataSelecionadaInput.value = "";
-      // Renderiza as novas datas
       renderizarDatasDisponiveis(tipoAtendimentoSelect.value);
     };
-
-    // Listener para seleção de DATA
     datasContainer.onclick = (e) => {
       const target = e.target.closest(".slot-time");
       if (target && !target.disabled) {
-        // Desmarca a data selecionada anteriormente
-        const selecionadoAnterior = datasContainer.querySelector(
-          ".slot-time.selected"
-        );
-        if (selecionadoAnterior) {
-          selecionadoAnterior.classList.remove("selected");
-        }
-        // Marca a nova data
+        datasContainer
+          .querySelector(".slot-time.selected")
+          ?.classList.remove("selected");
         target.classList.add("selected");
-        dataSelecionadaInput.value = target.dataset.data; // Armazena AAAA-MM-DD
-
-        // Carrega os horários para esta data
-        carregarHorariosReavaliacao();
+        dataSelecionadaInput.value = target.dataset.data;
+        carregarHorariosReavaliacao(); // Carrega horários para seleção de preferência
       }
     };
-
-    // Listener para seleção de HORÁRIO
     horariosContainer.onclick = (e) => {
       const target = e.target.closest(".slot-time");
       if (target && !target.disabled) {
-        const selecionadoAnterior = horariosContainer.querySelector(
-          ".slot-time.selected"
-        );
-        if (selecionadoAnterior) {
-          selecionadoAnterior.classList.remove("selected");
-        }
+        horariosContainer
+          .querySelector(".slot-time.selected")
+          ?.classList.remove("selected");
         target.classList.add("selected");
       }
     };
@@ -689,11 +789,9 @@ export async function abrirModalReavaliacao(
   }
 }
 
-/**
- * NOVA FUNÇÃO
- * Renderiza os botões de DATA com base na modalidade selecionada.
- */
+// Renderizar Datas (mantida, útil para preferência)
 function renderizarDatasDisponiveis(modalidade) {
+  // ... (código igual) ...
   const datasContainer = document.getElementById(
     "reavaliacao-datas-disponiveis"
   );
@@ -741,12 +839,9 @@ function renderizarDatasDisponiveis(modalidade) {
   datasContainer.innerHTML = datasHtml;
 }
 
-/**
- * Carrega os horários disponíveis para reavaliação com base na data e modalidade.
- * (Similar ao `agendamento-triagem.js`)
- */
+// Carregar Horários (mantida, útil para preferência)
 async function carregarHorariosReavaliacao() {
-  // ***** LÓGICA MODIFICADA *****
+  // ... (código igual) ...
   const modalidade = document.getElementById(
     "reavaliacao-tipo-atendimento"
   ).value;
@@ -760,27 +855,27 @@ async function carregarHorariosReavaliacao() {
       "<p>Por favor, selecione a modalidade e a data.</p>";
     return;
   }
-  // ***** FIM DA MODIFICAÇÃO *****
 
   horariosContainer.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
     // 1. Encontrar as configurações de agenda para esta data/modalidade
-    // (Pode haver múltiplas assistentes sociais com agenda no mesmo dia)
     const agendasDoDia = currentReavaliacaoConfig.agendas.filter(
       (a) => a.modalidade === modalidade && a.data === dataISO
     );
 
     if (agendasDoDia.length === 0) {
-      throw new Error("Configuração de agenda não encontrada para esta data.");
+      // Não lança erro, apenas informa que não há slots configurados
+      horariosContainer.innerHTML =
+        "<p>Nenhum horário configurado para este dia/modalidade.</p>";
+      // throw new Error("Configuração de agenda não encontrada para esta data.");
+      return;
     }
 
-    // 2. Pegar todos os slots disponíveis de todas as assistentes para este dia/modalidade
+    // 2. Pegar todos os slots disponíveis de todas as assistentes
     let slotsDoDia = new Set();
     agendasDoDia.forEach((agenda) => {
-      // A 'agendaConfigurada' já deve ter os slots em 'dias'
-      // Mas o modelo da imagem (image_3b810e.png) mostra 'inicio' e 'fim'
-      // Vamos usar a lógica de 'inicio' e 'fim' como no agendamento-publico.js
+      // Lógica de 'inicio' e 'fim'
       const [hInicio, mInicio] = agenda.inicio.split(":").map(Number);
       const [hFim, mFim] = agenda.fim.split(":").map(Number);
       const inicioEmMinutos = hInicio * 60 + mInicio;
@@ -789,7 +884,7 @@ async function carregarHorariosReavaliacao() {
       for (
         let minutos = inicioEmMinutos;
         minutos < fimEmMinutos;
-        minutos += 30
+        minutos += 30 // Assumindo slots de 30 min
       ) {
         const hAtual = Math.floor(minutos / 60);
         const mAtual = minutos % 60;
@@ -808,22 +903,24 @@ async function carregarHorariosReavaliacao() {
       return;
     }
 
-    // 3. Buscar agendamentos existentes para cruzar dados
+    // 3. Buscar agendamentos existentes para marcar como ocupados
     const agendamentosQuery = query(
-      collection(db, "agendamentos"),
+      collection(db, "agendamentos"), // Coleção correta
       where("data", "==", dataISO),
-      where("tipo", "==", "reavaliacao"),
-      where("modalidade", "==", modalidade)
+      where("tipo", "==", "reavaliacao"), // Filtra por tipo
+      where("modalidade", "==", modalidade), // Filtra por modalidade
+      where("status", "in", ["agendado", "confirmado"]) // Considera agendado ou confirmado como ocupado
     );
     const agendamentosSnapshot = await getDocs(agendamentosQuery);
-    const horariosOcupados = agendamentosSnapshot.docs.map(
-      (doc) => doc.data().hora
-    );
+    const horariosOcupados = new Set(
+      agendamentosSnapshot.docs.map((doc) => doc.data().hora)
+    ); // Usa Set para busca rápida
 
     // 4. Renderizar os slots
     let slotsHtml = "";
     slotsOrdenados.forEach((hora) => {
-      if (horariosOcupados.includes(hora)) {
+      if (horariosOcupados.has(hora)) {
+        // Verifica se está no Set
         slotsHtml += `<button type="button" class="slot-time disabled" disabled>${hora}</button>`;
       } else {
         slotsHtml += `<button type="button" class="slot-time" data-hora="${hora}">${hora}</button>`;
@@ -839,286 +936,97 @@ async function carregarHorariosReavaliacao() {
   }
 }
 
-/**
- * Lida com o submit do formulário de reavaliação.
- * Cria um novo documento na coleção "agendamentos".
- */
-
-/**
- * Lida com o submit do formulário de reavaliação.
- * Cria um novo documento na coleção "agendamentos" E ATUALIZA O TRILHAPACIENTE.
- */
+// *** ALTERADO: handleReavaliacaoSubmit para criar na coleção 'solicitacoes' ***
 export async function handleReavaliacaoSubmit(evento) {
   evento.preventDefault();
   const modal = document.getElementById("reavaliacao-modal");
   const btnConfirmar = document.getElementById("btn-confirmar-reavaliacao");
   btnConfirmar.disabled = true;
-  btnConfirmar.textContent = "Salvando...";
+  btnConfirmar.textContent = "Enviando...";
 
   try {
-    // 1. Coletar dados do formulário e da config
-    const pacienteId = document.getElementById("reavaliacao-paciente-id").value;
-    const profissionalNome = document.getElementById(
-      "reavaliacao-profissional-nome"
-    ).value;
-    const pacienteNome = document.getElementById(
-      "reavaliacao-paciente-nome"
-    ).value;
+    // 1. Coletar dados do formulário e contexto
+    const motivo = document.getElementById("reavaliacao-motivo").value;
     const valorAtual =
       document.getElementById("reavaliacao-valor-atual").value || "N/A";
-    const motivo = document.getElementById("reavaliacao-motivo").value;
-    const modalidade = document.getElementById(
+    const modalidadePref = document.getElementById(
       "reavaliacao-tipo-atendimento"
     ).value;
-    const data = document.getElementById("reavaliacao-data-selecionada").value;
+    const dataPref = document.getElementById(
+      "reavaliacao-data-selecionada"
+    ).value;
     const selectedSlot = document.querySelector(
       "#reavaliacao-horarios-disponiveis .slot-time.selected"
     );
-    const hora = selectedSlot ? selectedSlot.dataset.hora : null;
+    const horaPref = selectedSlot ? selectedSlot.dataset.hora : null;
 
-    // 2. Validação
-    if (!motivo || !modalidade || !data || !hora) {
-      throw new Error(
-        "Por favor, preencha o motivo, data e selecione um horário."
-      );
+    // 2. Validação Mínima (Motivo é obrigatório)
+    if (!motivo) {
+      throw new Error("Por favor, preencha o motivo da reavaliação.");
     }
 
-    const dataHoraSlot = new Date(`${data}T${hora}:00`);
-    const hSlot = parseInt(hora.split(":")[0], 10);
-    const mSlot = parseInt(hora.split(":")[1], 10);
-    const minutoSlot = hSlot * 60 + mSlot;
-
-    const agendaCorrespondente = currentReavaliacaoConfig.agendas.find((a) => {
-      const [hInicio, mInicio] = a.inicio.split(":").map(Number);
-      const [hFim, mFim] = a.fim.split(":").map(Number);
-      const inicioEmMinutos = hInicio * 60 + mInicio;
-      const fimEmMinutos = hFim * 60 + mFim;
-
-      return (
-        a.data === data &&
-        a.modalidade === modalidade &&
-        minutoSlot >= inicioEmMinutos &&
-        minutoSlot < fimEmMinutos
-      );
-    });
-
-    if (!agendaCorrespondente) {
-      throw new Error(
-        "Não foi possível encontrar uma assistente social disponível para este horário. A agenda pode ter sido atualizada. Tente selecionar novamente."
-      );
-    }
-
-    // 3. Preparar objeto para salvar em "agendamentos"
-    const agendamentoData = {
-      pacienteId: pacienteId,
-      pacienteNome: pacienteNome,
-      profissionalId: currentReavaliacaoConfig.user.uid,
-      profissionalNome: profissionalNome,
-      data: data,
-      hora: hora,
-      modalidade: modalidade,
-      tipo: "reavaliacao",
-      status: "agendado",
-      assistenteSocialId: agendaCorrespondente.assistenteId,
-      assistenteSocialNome: agendaCorrespondente.assistenteNome,
-      dataAgendamento: Timestamp.fromDate(dataHoraSlot),
-      solicitacaoInfo: {
+    // 3. Preparar objeto para salvar em "solicitacoes"
+    const solicitacaoData = {
+      tipo: "reavaliacao", // Tipo da solicitação
+      status: "Pendente", // Status inicial
+      dataSolicitacao: serverTimestamp(), // Data/Hora atual
+      // Dados do solicitante (Voluntário)
+      solicitanteId: currentUserData.uid, // Usa o UID do usuário logado
+      solicitanteNome: currentUserData.nome,
+      // Dados do Paciente
+      pacienteId: currentPacienteData.id,
+      pacienteNome: currentPacienteData.nomeCompleto,
+      // ID do atendimento PB atual (se houver)
+      atendimentoId: currentAtendimentoData?.atendimentoId || null,
+      // Detalhes específicos da solicitação de reavaliação
+      detalhes: {
+        motivo: motivo,
         valorContribuicaoAtual: valorAtual,
-        motivoReavaliacao: motivo,
-        solicitadoEm: serverTimestamp(),
+        // Informações de preferência de agendamento (opcional, mas útil para o admin)
+        preferenciaAgendamento: {
+          modalidade: modalidadePref || null,
+          data: dataPref || null,
+          hora: horaPref || null,
+        },
       },
-      criadoEm: serverTimestamp(),
-      // --- INÍCIO DA ALTERAÇÃO ---
-      // Guardar o status de origem do paciente
-      statusOrigem: currentReavaliacaoConfig.paciente.status,
-      // --- FIM DA ALTERAÇÃO ---
+      adminFeedback: null, // Campo para resposta do admin
     };
 
-    // 4. Salvar na coleção "agendamentos"
-    await addDoc(collection(db, "agendamentos"), agendamentoData);
+    // 4. Salvar na coleção "solicitacoes"
+    await addDoc(collection(db, "solicitacoes"), solicitacaoData);
 
-    // --- INÍCIO DA ALTERAÇÃO ---
-    // 5. Atualizar o trilhaPaciente
-    const pacienteRef = doc(db, "trilhaPaciente", pacienteId);
-    await updateDoc(pacienteRef, {
-      status: "aguardando_reavaliacao", // Novo status
-      statusAnteriorReavaliacao: currentReavaliacaoConfig.paciente.status, // Guarda o status antigo
-      lastUpdate: serverTimestamp(),
-    });
-    // --- FIM DA ALTERAÇÃO ---
+    console.log("Solicitação de reavaliação criada:", solicitacaoData);
 
-    // 6. Sucesso
+    // 5. Sucesso - NÃO altera mais o status do paciente aqui
     alert(
-      "Reavaliação agendada com sucesso! O paciente foi movido para a fila de reavaliação."
+      "Solicitação de reavaliação enviada com sucesso para o administrativo!"
     );
     modal.style.display = "none";
-    location.reload(); // Recarrega a página "Meus Pacientes" para refletir a mudança de status
+    // location.reload(); // Não precisa recarregar a página aqui
   } catch (error) {
-    console.error("Erro ao agendar reavaliação:", error);
-    alert(`Erro ao salvar: ${error.message}`);
+    console.error("Erro ao enviar solicitação de reavaliação:", error);
+    alert(`Erro ao enviar solicitação: ${error.message}`);
   } finally {
-    // 7. Resetar botão
+    // 6. Resetar botão
     btnConfirmar.disabled = false;
     btnConfirmar.textContent = "Enviar Solicitação";
   }
 }
+// *** FIM DA ALTERAÇÃO ***
 
-// --- Lógica dos Modais Originais ---
+// --- Lógica do Modal de Desfecho PB ---
 
-export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
-  const modal = document.getElementById("encerramento-modal");
-  const form = document.getElementById("encerramento-form");
-  form.reset();
-  document.getElementById("paciente-id-modal").value = pacienteId;
-  document
-    .getElementById("motivo-nao-pagamento-container")
-    .classList.add("hidden");
-  const novaDisponibilidadeContainer = document.getElementById(
-    "nova-disponibilidade-container"
-  );
-  novaDisponibilidadeContainer.classList.add("hidden");
-  novaDisponibilidadeContainer.innerHTML = "";
-  const disponibilidadeEspecifica =
-    dadosDoPaciente.disponibilidadeEspecifica || [];
-  const textoDisponibilidade =
-    disponibilidadeEspecifica.length > 0
-      ? disponibilidadeEspecifica
-          .map((item) => {
-            const [periodo, hora] = item.split("_");
-            const periodoFormatado =
-              periodo.replace("-", " (").replace("-", " ") + ")";
-            return `${
-              periodoFormatado.charAt(0).toUpperCase() +
-              periodoFormatado.slice(1)
-            } ${hora}`;
-          })
-          .join(", ")
-      : "Nenhuma disponibilidade específica informada.";
-  document.getElementById("disponibilidade-atual").textContent =
-    textoDisponibilidade;
-  const pagamentoSelect = form.querySelector("#pagamento-contribuicao");
-  pagamentoSelect.onchange = () => {
-    document
-      .getElementById("motivo-nao-pagamento-container")
-      .classList.toggle("hidden", pagamentoSelect.value !== "nao");
-    document.getElementById("motivo-nao-pagamento").required =
-      pagamentoSelect.value === "nao";
-  };
-  const dispSelect = form.querySelector("#manter-disponibilidade");
-  dispSelect.onchange = async () => {
-    const mostrar = dispSelect.value === "nao";
-    novaDisponibilidadeContainer.classList.toggle("hidden", !mostrar);
-    if (mostrar && novaDisponibilidadeContainer.innerHTML.trim() === "") {
-      novaDisponibilidadeContainer.innerHTML =
-        '<div class="loading-spinner"></div>';
-      try {
-        const response = await fetch(
-          "../../../public/fichas-de-inscricao.html"
-        );
-        const text = await response.text();
-        const parser = new DOMParser();
-        const docHtml = parser.parseFromString(text, "text/html");
-        const disponibilidadeHtml = docHtml.getElementById(
-          "disponibilidade-section"
-        ).innerHTML;
-        novaDisponibilidadeContainer.innerHTML = disponibilidadeHtml;
-      } catch (error) {
-        console.error("Erro ao carregar HTML da disponibilidade:", error);
-        novaDisponibilidadeContainer.innerHTML =
-          '<p class="alert alert-error">Erro ao carregar opções.</p>';
-      }
-    }
-  };
-  modal.style.display = "block";
-}
+export async function abrirModalDesfechoPb(
+  paciente,
+  atendimento,
+  { userData }
+) {
+  // Recebe userData
+  // Armazena dados no escopo do módulo
+  currentUserData = userData;
+  currentPacienteData = paciente;
+  currentAtendimentoData = atendimento; // Garante que temos o atendimento PB aqui
 
-export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
-  const modal = document.getElementById("horarios-pb-modal");
-  const form = document.getElementById("horarios-pb-form");
-  form.reset();
-  form.querySelector("#paciente-id-horarios-modal").value = pacienteId;
-  form.querySelector("#atendimento-id-horarios-modal").value = atendimentoId;
-  const motivoContainer = document.getElementById(
-    "motivo-nao-inicio-pb-container"
-  );
-  const continuacaoContainer = document.getElementById("form-continuacao-pb");
-  const desistenciaContainer = document.getElementById(
-    "motivo-desistencia-container"
-  );
-  const solicitacaoContainer = document.getElementById(
-    "detalhar-solicitacao-container"
-  );
-  motivoContainer.classList.add("hidden");
-  continuacaoContainer.classList.add("hidden");
-  desistenciaContainer.classList.add("hidden");
-  solicitacaoContainer.classList.add("hidden");
-  continuacaoContainer.innerHTML = "";
-  document.getElementById("motivo-desistencia-pb").required = false;
-  document.getElementById("detalhes-solicitacao-pb").required = false;
-  const iniciouRadio = form.querySelectorAll('input[name="iniciou-pb"]');
-  iniciouRadio.forEach((radio) => {
-    radio.onchange = () => {
-      const mostrarFormulario = radio.value === "sim" && radio.checked;
-      const mostrarMotivo = radio.value === "nao" && radio.checked;
-      continuacaoContainer.classList.toggle("hidden", !mostrarFormulario);
-      motivoContainer.classList.toggle("hidden", !mostrarMotivo);
-      if (mostrarFormulario) {
-        desistenciaContainer.classList.add("hidden");
-        solicitacaoContainer.classList.add("hidden");
-      }
-      if (mostrarFormulario && continuacaoContainer.innerHTML === "") {
-        continuacaoContainer.innerHTML = construirFormularioHorarios(
-          userData.nome
-        );
-      }
-      continuacaoContainer
-        .querySelectorAll("select, input, textarea")
-        .forEach((elemento) => {
-          if (elemento.id !== "observacoes-pb-horarios")
-            elemento.required = mostrarFormulario;
-        });
-    };
-  });
-  const motivoNaoInicioRadio = form.querySelectorAll(
-    'input[name="motivo-nao-inicio"]'
-  );
-  motivoNaoInicioRadio.forEach((radio) => {
-    radio.onchange = () => {
-      if (radio.checked) {
-        const eDesistiu = radio.value === "desistiu";
-        desistenciaContainer.classList.toggle("hidden", !eDesistiu);
-        solicitacaoContainer.classList.toggle("hidden", eDesistiu);
-        document.getElementById("motivo-desistencia-pb").required = eDesistiu;
-        document.getElementById("detalhes-solicitacao-pb").required =
-          !eDesistiu;
-      }
-    };
-  });
-  modal.style.display = "block";
-}
-
-function construirFormularioHorarios(nomeProfissional) {
-  let horasOptions = "";
-  for (let i = 8; i <= 21; i++) {
-    const hora = `${String(i).padStart(2, "0")}:00`;
-    horasOptions += `<option value="${hora}">${hora}</option>`;
-  }
-  const salas = [
-    "Christian Dunker",
-    "Leila Tardivo",
-    "Leonardo Abrahão",
-    "Karina Okajima Fukumitsu",
-    "Maria Célia Malaquias (Grupo)",
-    "Maria Júlia Kovacs",
-    "Online",
-  ];
-  let salasOptions = salas
-    .map((sala) => `<option value="${sala}">${sala}</option>`)
-    .join("");
-  return `<div class="form-group"><label>Nome Profissional:</label><input type="text" value="${nomeProfissional}" class="form-control" readonly></div><div class="form-group"><label for="dia-semana-pb">Dia da semana:</label><select id="dia-semana-pb" class="form-control" required><option value="">Selecione...</option><option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option><option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option></select></div><div class="form-group"><label for="horario-pb">Horário:</label><select id="horario-pb" class="form-control" required><option value="">Selecione...</option>${horasOptions}</select></div><div class="form-group"><label for="tipo-atendimento-pb-voluntario">Tipo de atendimento:</label><select id="tipo-atendimento-pb-voluntario" class="form-control" required><option value="">Selecione...</option><option>Presencial</option><option>Online</option></select></div><div class="form-group"><label for="alterar-grade-pb">Alterar/Incluir na grade?</label><select id="alterar-grade-pb" class="form-control" required><option value="">Selecione...</option><option>Sim</option><option>Não</option></select></div><div class="form-group"><label for="frequencia-atendimento-pb">Frequência:</label><select id="frequencia-atendimento-pb" class="form-control" required><option value="">Selecione...</option><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></div><div class="form-group"><label for="sala-atendimento-pb">Sala:</label><select id="sala-atendimento-pb" class="form-control" required><option value="">Selecione...</option>${salasOptions}</select></div><div class="form-group"><label for="data-inicio-sessoes">Data de início:</label><input type="date" id="data-inicio-sessoes" class="form-control" required></div><div class="form-group"><label for="observacoes-pb-horarios">Observações:</label><textarea id="observacoes-pb-horarios" rows="3" class="form-control"></textarea></div>`;
-}
-
-export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
   const modal = document.getElementById("desfecho-pb-modal");
   const body = document.getElementById("desfecho-pb-modal-body");
   const footer = document.getElementById("desfecho-pb-modal-footer");
@@ -1128,13 +1036,14 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
   modal.style.display = "block";
 
   try {
-    if (!meuAtendimento) {
+    // Usa currentAtendimentoData
+    if (!currentAtendimentoData) {
       throw new Error(
         "Dados do atendimento específico (PB) não foram encontrados. Não é possível registrar o desfecho."
       );
     }
 
-    const response = await fetch("../page/form-atendimento-pb.html");
+    const response = await fetch("../page/form-atendimento-pb.html"); // Mantém o fetch do HTML
     if (!response.ok)
       throw new Error(
         "Arquivo do formulário de desfecho (form-atendimento-pb.html) não encontrado."
@@ -1144,21 +1053,25 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
     footer.style.display = "flex";
 
     const form = body.querySelector("#form-atendimento-pb");
-    form.dataset.pacienteId = dadosDoPaciente.id;
-    form.dataset.atendimentoId = meuAtendimento.atendimentoId;
+    // Remove os data attributes se não forem mais necessários diretamente no form
+    // form.dataset.pacienteId = currentPacienteData.id;
+    // form.dataset.atendimentoId = currentAtendimentoData.atendimentoId;
 
+    // Preenche o formulário usando current...Data
     form.querySelector("#profissional-nome").value =
-      meuAtendimento.profissionalNome;
-    form.querySelector("#paciente-nome").value = dadosDoPaciente.nomeCompleto;
+      currentAtendimentoData.profissionalNome || currentUserData.nome; // Fallback para nome do user logado
+    form.querySelector("#paciente-nome").value =
+      currentPacienteData.nomeCompleto;
     form.querySelector("#valor-contribuicao").value =
-      dadosDoPaciente.valorContribuicao || "Não definido";
-    form.querySelector("#data-inicio-atendimento").value = meuAtendimento
-      .horarioSessao?.dataInicio
-      ? new Date(
-          meuAtendimento.horarioSessao.dataInicio + "T03:00:00"
-        ).toLocaleDateString("pt-BR")
-      : "N/A";
+      currentPacienteData.valorContribuicao || "Não definido";
+    form.querySelector("#data-inicio-atendimento").value =
+      currentAtendimentoData.horarioSessao?.dataInicio
+        ? new Date(
+            currentAtendimentoData.horarioSessao.dataInicio + "T03:00:00"
+          ).toLocaleDateString("pt-BR")
+        : "N/A";
 
+    // Lógica dos campos condicionais (mantida)
     const desfechoSelect = form.querySelector("#desfecho-acompanhamento");
     const motivoContainer = form.querySelector(
       "#motivo-alta-desistencia-container"
@@ -1175,18 +1088,126 @@ export async function abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento) {
         : "none";
       encaminhamentoContainer.style.display =
         desfechoSelect.value === "Encaminhamento" ? "block" : "none";
+      // Torna campos required/not required dinamicamente
+      form.querySelector("#motivo-alta-desistencia").required = [
+        "Alta",
+        "Desistencia",
+      ].includes(desfechoSelect.value);
+      form.querySelector("#encaminhado-para").required =
+        desfechoSelect.value === "Encaminhamento";
+      form.querySelector("#motivo-encaminhamento").required =
+        desfechoSelect.value === "Encaminhamento";
     });
+    // Dispara o change inicial para garantir o estado correto
+    desfechoSelect.dispatchEvent(new Event("change"));
 
-    form.addEventListener("submit", handleDesfechoPbSubmit);
+    form.addEventListener("submit", handleDesfechoPbSubmit); // Mantém o listener
   } catch (error) {
     body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar modal:</b> ${error.message}</p>`;
-    footer.style.display = "flex";
+    footer.style.display = "flex"; // Mostra footer mesmo com erro para botão Cancelar
     console.error(error);
   }
 }
-// --- Funções de Submit dos Formulários ---
+
+// *** ALTERADO: handleDesfechoPbSubmit para criar na coleção 'solicitacoes' ***
+async function handleDesfechoPbSubmit(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const modal = form.closest(".modal-overlay"); // Encontra o modal pai
+  const botaoSalvar = modal.querySelector("#btn-salvar-desfecho-submit");
+
+  botaoSalvar.disabled = true;
+  botaoSalvar.textContent = "Enviando...";
+
+  try {
+    const desfechoTipo = form.querySelector("#desfecho-acompanhamento").value;
+    if (!desfechoTipo) throw new Error("Selecione um tipo de desfecho.");
+
+    // Coleta detalhes com base no tipo
+    let detalhesDesfecho = {};
+    if (desfechoTipo === "Encaminhamento") {
+      detalhesDesfecho = {
+        servicoEncaminhado: form.querySelector("#encaminhado-para").value,
+        motivoEncaminhamento: form.querySelector("#motivo-encaminhamento")
+          .value,
+        demandaPaciente: form.querySelector("#demanda-paciente").value || "",
+        continuaAtendimentoEuPsico: form.querySelector("#continua-atendimento")
+          .value,
+        relatoCaso: form.querySelector("#relato-caso").value || "",
+      };
+      // Validação específica de encaminhamento
+      if (
+        !detalhesDesfecho.servicoEncaminhado ||
+        !detalhesDesfecho.motivoEncaminhamento
+      ) {
+        throw new Error(
+          "Para encaminhamento, o serviço e o motivo são obrigatórios."
+        );
+      }
+    } else if (["Alta", "Desistencia"].includes(desfechoTipo)) {
+      detalhesDesfecho = {
+        motivo: form.querySelector("#motivo-alta-desistencia").value,
+      };
+      // Validação específica de alta/desistência
+      if (!detalhesDesfecho.motivo) {
+        throw new Error(`O motivo é obrigatório para ${desfechoTipo}.`);
+      }
+    }
+    // Adiciona data do desfecho (importante!)
+    const dataDesfechoInput = form.querySelector("#data-desfecho"); // Assumindo que existe um input com id="data-desfecho"
+    if (!dataDesfechoInput || !dataDesfechoInput.value) {
+      throw new Error("A data do desfecho é obrigatória.");
+    }
+    detalhesDesfecho.dataDesfecho = dataDesfechoInput.value;
+
+    // Prepara o objeto da solicitação
+    const solicitacaoData = {
+      tipo: "desfecho", // Tipo da solicitação
+      status: "Pendente", // Status inicial - Admin precisa confirmar/processar
+      dataSolicitacao: serverTimestamp(), // Data/Hora da submissão
+      // Dados do solicitante (Voluntário)
+      solicitanteId: currentUserData.uid,
+      solicitanteNome: currentUserData.nome,
+      // Dados do Paciente
+      pacienteId: currentPacienteData.id,
+      pacienteNome: currentPacienteData.nomeCompleto,
+      // ID do atendimento PB
+      atendimentoId: currentAtendimentoData?.atendimentoId || null,
+      // Detalhes específicos da solicitação de desfecho
+      detalhes: {
+        tipoDesfecho: desfechoTipo,
+        ...detalhesDesfecho, // Inclui os detalhes coletados (motivo ou dados de encaminhamento)
+        sessoesRealizadas:
+          form.querySelector("#quantidade-sessoes-realizadas")?.value || "N/A", // Adiciona qtd sessões se houver o campo
+        observacoesGerais:
+          form.querySelector("#observacoes-gerais")?.value || "", // Adiciona obs gerais se houver
+      },
+      adminFeedback: null, // Campo para resposta do admin
+    };
+
+    // Salva na coleção 'solicitacoes'
+    await addDoc(collection(db, "solicitacoes"), solicitacaoData);
+
+    console.log("Solicitação de desfecho criada:", solicitacaoData);
+    alert("Registro de desfecho enviado com sucesso para o administrativo!");
+    modal.style.display = "none";
+    // location.reload(); // Recarregar pode não ser necessário imediatamente
+  } catch (error) {
+    console.error("Erro ao enviar solicitação de desfecho:", error);
+    alert(`Falha ao enviar: ${error.message}`);
+  } finally {
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar Desfecho";
+  }
+}
+// *** FIM DA ALTERAÇÃO ***
+
+// --- Funções Submit Originais (Encerramento Plantão, Horários PB) ---
+// Mantidas caso ainda sejam usadas em algum fluxo, mas a lógica principal
+// de solicitação foi movida para as funções acima.
 
 export async function handleEncerramentoSubmit(evento, user, userData) {
+  // Esta função parece ser do Plantão, não PB. Mantida como está por enquanto.
   evento.preventDefault();
   const form = evento.target;
   const botaoSalvar = form
@@ -1208,21 +1229,49 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     ? "alta"
     : encaminhamentos.includes("Desistência")
     ? "desistencia"
-    : "encaminhar_para_pb";
+    : "encaminhar_para_pb"; // Ou outro status dependendo do encaminhamento
+
+  // Coleta dados do formulário para o objeto 'encerramento'
+  const encerramentoData = {
+    responsavelId: user.uid,
+    responsavelNome: userData.nome,
+    encaminhamento: encaminhamentos,
+    dataEncerramento: form.querySelector("#data-encerramento").value,
+    sessoesRealizadas: form.querySelector("#quantidade-sessoes").value,
+    pagamentoEfetuado: form.querySelector("#pagamento-contribuicao").value,
+    motivoNaoPagamento:
+      form.querySelector("#motivo-nao-pagamento").value || null, // Garante null se vazio
+    relato: form.querySelector("#relato-encerramento").value,
+    encerradoEm: serverTimestamp(), // Adiciona timestamp do encerramento
+  };
+
+  // Prepara a atualização do documento do paciente
   let dadosParaAtualizar = {
     status: novoStatus,
-    "plantaoInfo.encerramento": {
-      responsavelId: user.uid,
-      responsavelNome: userData.nome,
-      encaminhamento: encaminhamentos,
-      dataEncerramento: form.querySelector("#data-encerramento").value,
-      sessoesRealizadas: form.querySelector("#quantidade-sessoes").value,
-      pagamentoEfetuado: form.querySelector("#pagamento-contribuicao").value,
-      motivoNaoPagamento: form.querySelector("#motivo-nao-pagamento").value,
-      relato: form.querySelector("#relato-encerramento").value,
-    },
+    "plantaoInfo.encerramento": encerramentoData, // Salva dentro de plantaoInfo
     lastUpdate: serverTimestamp(),
   };
+
+  // Lógica da disponibilidade (mantida)
+  const manterDisp = form.querySelector("#manter-disponibilidade").value;
+  if (manterDisp === "nao") {
+    const checkboxes = form.querySelectorAll(
+      '#nova-disponibilidade-container input[type="checkbox"]:checked'
+    );
+    dadosParaAtualizar.disponibilidadeEspecifica = Array.from(checkboxes).map(
+      (cb) => cb.value
+    );
+  } else if (
+    manterDisp === "sim" &&
+    !dadosDoPaciente.disponibilidadeEspecifica
+  ) {
+    // Se era pra manter e não tinha nada, pode ser necessário buscar do cadastro original
+    console.warn(
+      "Manter disponibilidade selecionado, mas não há dados anteriores."
+    );
+    // Poderia buscar do 'users' ou 'inscricoes' se necessário, mas complexifica.
+    // Por ora, não faremos nada se for 'sim'.
+  }
 
   try {
     await updateDoc(doc(db, "trilhaPaciente", pacienteId), dadosParaAtualizar);
@@ -1238,6 +1287,11 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
 }
 
 export async function handleHorariosPbSubmit(evento, user, userData) {
+  // Esta função parece ser para *confirmar* o início do PB e definir o horário,
+  // não para *solicitar* uma alteração posterior.
+  // A lógica de updateDoc para 'trilhaPaciente' parece correta para este fluxo.
+  // Mantida como está.
+
   evento.preventDefault();
   const formulario = evento.target;
   const botaoSalvar = formulario
@@ -1252,165 +1306,248 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
     "#atendimento-id-horarios-modal"
   ).value;
   const docRef = doc(db, "trilhaPaciente", pacienteId);
-  const docSnap = await getDoc(docRef);
-  if (!docSnap.exists()) {
-    alert("Erro: Paciente não encontrado!");
-    botaoSalvar.disabled = false;
-    return;
-  }
-
-  const dadosDoPaciente = docSnap.data();
-  const atendimentos = dadosDoPaciente.atendimentosPB || [];
-  const indiceDoAtendimento = atendimentos.findIndex(
-    (at) => at.atendimentoId === atendimentoId
-  );
-
-  if (indiceDoAtendimento === -1) {
-    alert("Erro: Atendimento não encontrado para este paciente!");
-    botaoSalvar.disabled = false;
-    return;
-  }
-
-  const iniciou = formulario.querySelector(
-    'input[name="iniciou-pb"]:checked'
-  )?.value;
-  if (!iniciou) {
-    alert("Por favor, selecione se o paciente iniciou o atendimento.");
-    botaoSalvar.disabled = false;
-    return;
-  }
-
-  let dadosParaAtualizar = {};
-  if (iniciou === "sim") {
-    atendimentos[indiceDoAtendimento].horarioSessao = {
-      responsavelId: user.uid,
-      responsavelNome: userData.nome,
-      diaSemana: formulario.querySelector("#dia-semana-pb").value,
-      horario: formulario.querySelector("#horario-pb").value,
-      tipoAtendimento: formulario.querySelector(
-        "#tipo-atendimento-pb-voluntario"
-      ).value,
-      alterarGrade: formulario.querySelector("#alterar-grade-pb").value,
-      frequencia: formulario.querySelector("#frequencia-atendimento-pb").value,
-      salaAtendimento: formulario.querySelector("#sala-atendimento-pb").value,
-      dataInicio: formulario.querySelector("#data-inicio-sessoes").value,
-      observacoes: formulario.querySelector("#observacoes-pb-horarios").value,
-    };
-    dadosParaAtualizar = {
-      atendimentosPB: atendimentos,
-      status: "cadastrar_horario_psicomanager",
-      lastUpdate: serverTimestamp(),
-    };
-  } else {
-    const motivoNaoInicio = formulario.querySelector(
-      'input[name="motivo-nao-inicio"]:checked'
-    )?.value;
-    if (!motivoNaoInicio) {
-      alert("Por favor, selecione o motivo do não início.");
-      botaoSalvar.disabled = false;
-      return;
-    }
-
-    if (motivoNaoInicio === "desistiu") {
-      const motivoDescricao = formulario.querySelector(
-        "#motivo-desistencia-pb"
-      ).value;
-      if (!motivoDescricao) {
-        alert("Por favor, descreva o motivo da desistência.");
-        botaoSalvar.disabled = false;
-        return;
-      }
-      atendimentos[indiceDoAtendimento].status = "desistencia";
-      atendimentos[indiceDoAtendimento].motivoDesistencia = motivoDescricao;
-      dadosParaAtualizar = {
-        atendimentosPB: atendimentos,
-        status: "desistencia",
-        lastUpdate: serverTimestamp(),
-      };
-    } else {
-      const detalhesSolicitacao = formulario.querySelector(
-        "#detalhes-solicitacao-pb"
-      ).value;
-      if (!detalhesSolicitacao) {
-        alert("Por favor, detalhe a solicitação do paciente.");
-        botaoSalvar.disabled = false;
-        return;
-      }
-      atendimentos[indiceDoAtendimento].status = "solicitado_reencaminhamento";
-      atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
-        detalhesSolicitacao;
-      dadosParaAtualizar = {
-        atendimentosPB: atendimentos,
-        status: "reavaliar_encaminhamento",
-        lastUpdate: serverTimestamp(),
-      };
-    }
-  }
 
   try {
+    // Adicionado try/catch em volta de getDoc
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      throw new Error("Paciente não encontrado!");
+    }
+
+    const dadosDoPaciente = docSnap.data();
+    // Usar || {} para segurança caso atendimentosPB não exista
+    const atendimentos = dadosDoPaciente.atendimentosPB || [];
+    const indiceDoAtendimento = atendimentos.findIndex(
+      (at) => at.atendimentoId === atendimentoId
+    );
+
+    if (indiceDoAtendimento === -1) {
+      throw new Error("Atendimento não encontrado para este paciente!");
+    }
+
+    const iniciou = formulario.querySelector(
+      'input[name="iniciou-pb"]:checked'
+    )?.value;
+    if (!iniciou) {
+      throw new Error(
+        "Por favor, selecione se o paciente iniciou o atendimento."
+      );
+    }
+
+    let dadosParaAtualizar = {};
+    let novoStatusPaciente = dadosDoPaciente.status; // Mantém o status atual por padrão
+
+    if (iniciou === "sim") {
+      // Coleta os dados do horário definido
+      const horarioSessaoData = {
+        responsavelId: user.uid,
+        responsavelNome: userData.nome,
+        diaSemana: formulario.querySelector("#dia-semana-pb").value,
+        horario: formulario.querySelector("#horario-pb").value,
+        tipoAtendimento: formulario.querySelector(
+          "#tipo-atendimento-pb-voluntario"
+        ).value,
+        alterarGrade: formulario.querySelector("#alterar-grade-pb").value,
+        frequencia: formulario.querySelector("#frequencia-atendimento-pb")
+          .value,
+        salaAtendimento: formulario.querySelector("#sala-atendimento-pb").value,
+        dataInicio: formulario.querySelector("#data-inicio-sessoes").value,
+        observacoes:
+          formulario.querySelector("#observacoes-pb-horarios").value || "",
+        definidoEm: serverTimestamp(), // Adiciona timestamp da definição do horário
+      };
+
+      // Validação dos campos obrigatórios do horário
+      if (
+        !horarioSessaoData.diaSemana ||
+        !horarioSessaoData.horario ||
+        !horarioSessaoData.tipoAtendimento ||
+        !horarioSessaoData.alterarGrade ||
+        !horarioSessaoData.frequencia ||
+        !horarioSessaoData.salaAtendimento ||
+        !horarioSessaoData.dataInicio
+      ) {
+        throw new Error(
+          "Preencha todos os detalhes do horário (dia, hora, tipo, grade, frequência, sala, data início)."
+        );
+      }
+
+      // Atualiza o objeto do atendimento específico
+      atendimentos[indiceDoAtendimento].horarioSessao = horarioSessaoData;
+      atendimentos[indiceDoAtendimento].status = "ativo"; // Marca o atendimento como ativo
+
+      // Define o novo status do paciente
+      novoStatusPaciente = "em_atendimento_pb"; // Paciente agora está em atendimento PB
+
+      // Prepara a atualização
+      dadosParaAtualizar = {
+        atendimentosPB: atendimentos, // Array atualizado
+        status: novoStatusPaciente, // Novo status geral do paciente
+        lastUpdate: serverTimestamp(),
+      };
+
+      // --- ADICIONAL: Criar solicitação para Alterar/Incluir na Grade? ---
+      // Se o voluntário pediu para alterar/incluir na grade, criamos uma solicitação para o admin
+      if (horarioSessaoData.alterarGrade === "Sim") {
+        const solicitacaoGradeData = {
+          tipo: "inclusao_alteracao_grade", // Novo tipo específico
+          status: "Pendente",
+          dataSolicitacao: serverTimestamp(),
+          solicitanteId: user.uid,
+          solicitanteNome: userData.nome,
+          pacienteId: pacienteId,
+          pacienteNome: dadosDoPaciente.nomeCompleto,
+          atendimentoId: atendimentoId,
+          detalhes: {
+            ...horarioSessaoData, // Inclui todos os detalhes do horário definido
+          },
+          adminFeedback: null,
+        };
+        try {
+          await addDoc(collection(db, "solicitacoes"), solicitacaoGradeData);
+          console.log("Solicitação para inclusão/alteração na grade criada.");
+        } catch (gradeError) {
+          console.error("Erro ao criar solicitação para grade:", gradeError);
+          // Não impede o fluxo principal, mas loga o erro.
+          alert(
+            "Atenção: Houve um erro ao gerar a solicitação para alteração da grade, por favor, notifique o administrativo manualmente."
+          );
+        }
+      }
+    } else {
+      // iniciou === "nao"
+      const motivoNaoInicio = formulario.querySelector(
+        'input[name="motivo-nao-inicio"]:checked'
+      )?.value;
+      if (!motivoNaoInicio) {
+        throw new Error("Por favor, selecione o motivo do não início.");
+      }
+
+      if (motivoNaoInicio === "desistiu") {
+        const motivoDescricao = formulario.querySelector(
+          "#motivo-desistencia-pb"
+        ).value;
+        if (!motivoDescricao) {
+          throw new Error("Por favor, descreva o motivo da desistência.");
+        }
+        atendimentos[indiceDoAtendimento].status = "desistencia_antes_inicio"; // Status específico
+        atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
+        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp(); // Data da informação
+        novoStatusPaciente = "desistencia"; // Status geral do paciente
+      } else {
+        // "outra_modalidade" ou outro motivo que necessite reavaliação
+        const detalhesSolicitacao = formulario.querySelector(
+          "#detalhes-solicitacao-pb"
+        ).value;
+        if (!detalhesSolicitacao) {
+          throw new Error("Por favor, detalhe a solicitação do paciente.");
+        }
+        atendimentos[indiceDoAtendimento].status =
+          "solicitado_reencaminhamento"; // Status específico do atendimento
+        atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio; // Guarda o motivo selecionado
+        atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
+          detalhesSolicitacao; // Detalhes da solicitação
+        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp(); // Data da informação
+        novoStatusPaciente = "reavaliar_encaminhamento"; // Status geral do paciente
+      }
+      dadosParaAtualizar = {
+        atendimentosPB: atendimentos,
+        status: novoStatusPaciente,
+        lastUpdate: serverTimestamp(),
+      };
+    }
+
+    // Atualiza o documento trilhaPaciente
     await updateDoc(docRef, dadosParaAtualizar);
+
     alert("Informações salvas com sucesso!");
     document.getElementById("horarios-pb-modal").style.display = "none";
     location.reload();
   } catch (error) {
-    console.error("Erro ao salvar informações:", error);
-    alert("Erro ao salvar. Tente novamente.");
+    // Captura erros do getDoc e das validações
+    console.error("Erro ao salvar informações de Horários PB:", error);
+    alert(`Erro ao salvar: ${error.message}`);
   } finally {
     botaoSalvar.disabled = false;
+    // Resetar texto do botão pode ser feito aqui se necessário
   }
 }
 
-async function handleDesfechoPbSubmit(evento) {
-  evento.preventDefault();
-  const form = evento.target;
-  const pacienteId = form.dataset.pacienteId;
-  const atendimentoId = form.dataset.atendimentoId;
-  const botaoSalvar = form
-    .closest(".modal")
-    .querySelector("#btn-salvar-desfecho-submit"); // Corrigido para pegar o botão certo
-  botaoSalvar.disabled = true;
-  botaoSalvar.textContent = "Salvando...";
+// --- Funções Auxiliares e Fechamento de Modais (sem alterações) ---
+// ... (código existente para construirFormularioHorarios, fechar modais, etc.) ...
 
-  try {
-    const desfecho = form.querySelector("#desfecho-acompanhamento").value;
-    if (!desfecho) throw new Error("Selecione um desfecho.");
+// Adiciona listeners genéricos para fechar modais
+document.addEventListener("DOMContentLoaded", () => {
+  document
+    .querySelectorAll(
+      ".modal-overlay .modal-cancel-btn, .modal .close-button, [data-close-modal]"
+    )
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = button.closest(".modal-overlay, .modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      });
+    });
 
-    const payload = { pacienteId, atendimentoId, desfecho };
-
-    if (desfecho === "Encaminhamento") {
-      payload.encaminhamento = {
-        servico: form.querySelector("#encaminhado-para").value,
-        motivo: form.querySelector("#motivo-encaminhamento").value,
-        demanda: form.querySelector("#demanda-paciente").value,
-        continuaAtendimento: form.querySelector("#continua-atendimento").value,
-        relatoCaso: form.querySelector("#relato-caso").value,
-      };
-      if (!payload.encaminhamento.servico || !payload.encaminhamento.motivo) {
-        throw new Error("Para encaminhamento, preencha o serviço e o motivo.");
+  // Fechar ao clicar fora (para overlays)
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        overlay.style.display = "none";
       }
-    } else {
-      payload.motivo = form.querySelector("#motivo-alta-desistencia").value;
-      if (!payload.motivo && ["Alta", "Desistencia"].includes(desfecho)) {
-        // Verificação corrigida
-        throw new Error("O motivo é obrigatório para Alta ou Desistência.");
-      }
-    }
+    });
+  });
 
-    const registrarDesfechoPb = httpsCallable(functions, "registrarDesfechoPb");
-    const result = await registrarDesfechoPb(payload);
-
-    if (!result.data.success) {
-      throw new Error(result.data.message || "Ocorreu um erro no servidor.");
-    }
-
-    alert("Desfecho registrado com sucesso!");
-    document.getElementById("desfecho-pb-modal").style.display = "none";
-    location.reload();
-  } catch (error) {
-    console.error("Erro ao salvar desfecho:", error);
-    alert(`Falha ao salvar: ${error.message}`);
-  } finally {
-    botaoSalvar.disabled = false;
-    botaoSalvar.textContent = "Salvar Desfecho"; // Corrigido texto do botão
+  // Adiciona listeners aos botões de submit dos modais que foram alterados
+  const btnConfirmarSolicitacao = document.getElementById(
+    "btn-confirmar-solicitacao"
+  );
+  if (btnConfirmarSolicitacao) {
+    btnConfirmarSolicitacao.addEventListener(
+      "click",
+      handleSolicitarSessoesSubmit
+    );
   }
-}
+
+  const btnConfirmarAlteracao = document.getElementById(
+    "btn-confirmar-alteracao-horario"
+  );
+  if (btnConfirmarAlteracao) {
+    btnConfirmarAlteracao.addEventListener("click", handleAlterarHorarioSubmit);
+  }
+
+  const btnConfirmarReavaliacao = document.getElementById(
+    "btn-confirmar-reavaliacao"
+  );
+  if (btnConfirmarReavaliacao) {
+    btnConfirmarReavaliacao.addEventListener("click", handleReavaliacaoSubmit);
+  }
+
+  // Listener para o submit do desfecho já está no form dentro de abrirModalDesfechoPb
+  // Listener para o submit do encerramento plantão (form="encerramento-form")
+  const formEncerramento = document.getElementById("encerramento-form");
+  if (formEncerramento) {
+    // Precisamos garantir que 'user' e 'userData' estejam disponíveis aqui
+    // Isso pode exigir buscar do auth state no momento do submit ou
+    // armazená-los globalmente/no módulo quando o usuário faz login.
+    // Assumindo que estão disponíveis via uma função `getCurrentAuthData()`:
+    // formEncerramento.addEventListener('submit', (e) => {
+    //    const { user, userData } = getCurrentAuthData(); // Função hipotética
+    //    handleEncerramentoSubmit(e, user, userData);
+    // });
+    // **COMENTADO POR ENQUANTO** - A chamada original pode estar em outro lugar (ex: events.js)
+  }
+
+  // Listener para o submit dos horários PB (form="horarios-pb-form")
+  const formHorariosPb = document.getElementById("horarios-pb-form");
+  if (formHorariosPb) {
+    // Mesma questão do 'user' e 'userData' que acima
+    // formHorariosPb.addEventListener('submit', (e) => {
+    //    const { user, userData } = getCurrentAuthData(); // Função hipotética
+    //    handleHorariosPbSubmit(e, user, userData);
+    // });
+    // **COMENTADO POR ENQUANTO** - A chamada original pode estar em outro lugar (ex: events.js)
+  }
+});

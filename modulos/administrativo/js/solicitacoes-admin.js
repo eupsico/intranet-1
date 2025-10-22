@@ -128,10 +128,112 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Implementação das funções de carregamento ---
-
   function loadNovasSessoes() {
-    // TODO: Implementar busca
+    const collectionName = "solicitacoes"; // <<< CONFIRME: Nome da coleção onde são salvas
+    const tipoSolicitacao = "novas_sessoes"; // <<< CONFIRME: Valor do campo 'tipo'
+    const tableBodyId = "table-body-novas-sessoes"; // ID do tbody da tabela no HTML
+    const emptyStateId = "empty-state-novas-sessoes"; // ID do elemento 'nenhuma solicitação' no HTML
+    const countBadgeId = "count-novas-sessoes"; // ID do badge de contagem no HTML
+
+    console.log(
+      `Iniciando carregamento de Novas Sessões da coleção [${collectionName}] com tipo [${tipoSolicitacao}]...`
+    );
+
+    // Usaremos uma versão adaptada da query da função genérica para filtrar por tipo
+    const tableBody = document.getElementById(tableBodyId);
+    const emptyState = document.getElementById(emptyStateId);
+    const countBadge = document.getElementById(countBadgeId);
+
+    if (!tableBody || !emptyState || !countBadge) {
+      console.error(
+        `Elementos do DOM não encontrados para [${tipoSolicitacao}]. Verifique IDs: ${tableBodyId}, ${emptyStateId}, ${countBadgeId}`
+      );
+      return;
+    }
+
+    try {
+      const q = query(
+        collection(dbInstance, collectionName),
+        where("tipo", "==", tipoSolicitacao), // <<< FILTRO PELO TIPO
+        where("status", "==", "Pendente"), // <<< FILTRO POR STATUS PENDENTE
+        orderBy("dataSolicitacao", "desc") // Ordena pela data
+      );
+
+      onSnapshot(
+        q,
+        (querySnapshot) => {
+          tableBody.innerHTML = ""; // Limpa a tabela antes de popular
+          let pendingCount = querySnapshot.size; // onSnapshot já filtra, então size é o count
+
+          if (querySnapshot.empty) {
+            emptyState.style.display = "block";
+            countBadge.style.display = "none";
+            countBadge.textContent = "0";
+            console.log(
+              `Nenhuma solicitação de [${tipoSolicitacao}] pendente encontrada.`
+            );
+          } else {
+            emptyState.style.display = "none";
+            countBadge.textContent = pendingCount;
+            countBadge.style.display = "inline-block";
+            console.log(
+              `${pendingCount} solicitações de [${tipoSolicitacao}] pendentes encontradas.`
+            );
+
+            querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              const docId = doc.id;
+              const tr = renderNovasSessoesRow(data, docId); // Chama a função para renderizar a linha
+              tableBody.innerHTML += tr;
+            });
+          }
+        },
+        (error) => {
+          console.error(`Erro ao buscar [${tipoSolicitacao}]:`, error);
+          tableBody.innerHTML = `<tr><td colspan="6" class="text-error">Erro ao carregar dados: ${error.message}</td></tr>`; // Ajuste colspan se necessário
+          emptyState.style.display = "none";
+          countBadge.style.display = "none";
+        }
+      );
+    } catch (error) {
+      console.error(
+        `Falha ao construir query para [${tipoSolicitacao}]:`,
+        error
+      );
+      tableBody.innerHTML = `<tr><td colspan="6" class="text-error">Falha na query. Verifique o nome da coleção e índices.</td></tr>`; // Ajuste colspan
+      emptyState.style.display = "none";
+      countBadge.style.display = "none";
+    }
+  }
+
+  // --- NOVA FUNÇÃO: Renderizar Linha para Novas Sessões ---
+  // Adicione esta função DEPOIS da função loadNovasSessoes
+  function renderNovasSessoesRow(data, docId) {
+    // Ajuste os campos (data.nomePaciente, data.quantidade, etc.) conforme a estrutura REAL no Firestore
+    const dataSol = data.dataSolicitacao
+      ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
+      : "N/A";
+    const statusClass = `status-${String(
+      data.status || "pendente"
+    ).toLowerCase()}`;
+
+    // Adapte as colunas conforme a tabela HTML para "Novas Sessões"
+    // Exemplo de colunas: Data, Solicitante, Paciente, Qtd Solicitada, Justificativa, Status, Ações
+    return `
+    <tr>
+      <td>${dataSol}</td>
+      <td>${data.solicitanteNome || "N/A"}</td>
+      <td>${data.pacienteNome || "N/A"}</td>
+      <td>${data.quantidadeSolicitada || "N/A"}</td>
+      <td class="motivo-cell">${data.justificativa || "N/A"}</td>
+      <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+      <td>
+        <button class="action-button btn-acao-novas-sessoes" data-doc-id="${docId}">
+          ${data.status === "Pendente" ? "Processar" : "Ver"}
+        </button>
+      </td>
+    </tr>
+  `;
   }
 
   // --- INÍCIO DA ALTERAÇÃO V2.4.1-Debug ---
