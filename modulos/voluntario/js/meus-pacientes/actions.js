@@ -1,99 +1,222 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/actions.js
+// --- VERSÃO CORRIGIDA (Corrige erro em formatCurrency) ---
 
-// A função handleEnviarContrato foi removida daqui.
+// (A função handleEnviarContrato foi removida daqui em versões anteriores)
 
 export async function gerarPdfContrato(pacienteData, meuAtendimento) {
   try {
+    // Verifica se jsPDF está carregado
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error("Biblioteca jsPDF não carregada.");
+    }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const margin = 15;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const usableWidth = pageWidth - margin * 2;
-    let cursorY = 15;
+    let cursorY = 15; // Início do conteúdo abaixo do topo
 
+    // Função interna para carregar imagem como Base64
     const loadImageAsBase64 = async (url) => {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      try {
+        const response = await fetch(url);
+        if (!response.ok)
+          throw new Error(`Erro ao buscar imagem: ${response.statusText}`);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error(`Falha ao carregar imagem ${url}:`, error);
+        return null; // Retorna null se falhar
+      }
     };
 
+    // Título Centralizado
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text(
       "CONTRATO DE PRESTAÇÃO DE SERVIÇOS TERAPÊUTICOS",
       pageWidth / 2,
-      cursorY + 15,
+      cursorY + 15, // Ajusta posição inicial do título
       { align: "center" }
     );
-    cursorY += 35;
+    cursorY += 35; // Aumenta espaço após título
 
+    // Função interna para adicionar texto com quebra de linha e página
     const addTextSection = (text, options = {}) => {
       const {
         size = 10,
         style = "normal",
         spaceBefore = 0,
-        spaceAfter = 5,
+        spaceAfter = 5, // Espaço padrão após parágrafos
+        align = "justify", // Justificar por padrão
+        isListItem = false,
       } = options;
+
       cursorY += spaceBefore;
       doc.setFontSize(size);
       doc.setFont("helvetica", style);
-      const lines = doc.splitTextToSize(text, usableWidth);
+
+      // Remove espaços extras e normaliza quebras de linha
+      const cleanText = text.replace(/\s+/g, " ").trim();
+      if (!cleanText) return; // Pula se estiver vazio após limpar
+
+      const lines = doc.splitTextToSize(cleanText, usableWidth);
       const textHeight = doc.getTextDimensions(lines).h;
+
+      // Verifica se precisa adicionar nova página ANTES de adicionar o texto
       if (cursorY + textHeight > pageHeight - margin) {
         doc.addPage();
-        cursorY = margin;
+        cursorY = margin + 10; // Adiciona margem superior na nova página
       }
-      doc.text(lines, margin, cursorY);
+
+      // Adiciona marcador para itens de lista
+      if (isListItem) {
+        doc.text("•", margin, cursorY); // Marcador
+        doc.text(lines, margin + 4, cursorY, { align: align }); // Texto indentado
+      } else {
+        doc.text(lines, margin, cursorY, { align: align });
+      }
+
       cursorY += textHeight + spaceAfter;
     };
 
-    const response = await fetch("../../../public/contrato-terapeutico.html");
-    const htmlString = await response.text();
+    // Carrega o conteúdo HTML do contrato
+    // Certifique-se que o caminho está correto a partir da RAIZ do site onde o script é executado
+    const contratoHtmlUrl = "../../../public/contrato-terapeutico.html"; // Ajuste se necessário
+    let htmlString = "";
+    try {
+      const response = await fetch(contratoHtmlUrl);
+      if (!response.ok)
+        throw new Error(`Não foi possível carregar ${contratoHtmlUrl}`);
+      htmlString = await response.text();
+    } catch (fetchError) {
+      console.error("Erro ao buscar HTML do contrato:", fetchError);
+      alert("Erro ao carregar o modelo do contrato. Verifique o console.");
+      return; // Interrompe a geração
+    }
+
     const parser = new DOMParser();
     const htmlDoc = parser.parseFromString(htmlString, "text/html");
     const contractContent = htmlDoc.getElementById("contract-content");
 
-    contractContent.querySelectorAll("h2, h3, p, li, ol").forEach((el) => {
-      if (el.closest(".data-section")) return;
-      let text = el.textContent.trim();
-      if (!text) return;
-      const tagName = el.tagName.toLowerCase();
-      if (tagName === "h2")
-        addTextSection(text, {
-          size: 12,
-          style: "bold",
-          spaceBefore: 5,
-          spaceAfter: 4,
-        });
-      else if (tagName === "li" || tagName === "ol")
-        addTextSection(`• ${text}`, { size: 10, spaceAfter: 3 });
-      else addTextSection(text, { size: 10, spaceAfter: 5 });
-    });
-
-    const horarioInfo = meuAtendimento?.horarioSessao || {};
-    const formatDate = (dateString) =>
-      dateString
-        ? new Date(dateString + "T03:00:00").toLocaleDateString("pt-BR")
-        : "A definir";
-    const formatCurrency = (value) =>
-      value
-        ? parseFloat(
-            value.replace(/[^\d,]/g, "").replace(",", ".")
-          ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-        : "A definir";
-
-    const addDataBox = (title, data) => {
-      addTextSection(title, { size: 11, style: "bold", spaceBefore: 8 });
-      const boxStartY = cursorY;
-      data.forEach(([label, value]) =>
-        addTextSection(`${label} ${value}`, { size: 10, spaceAfter: 2 })
+    if (!contractContent) {
+      alert(
+        "Erro: Conteúdo do contrato (ID: contract-content) não encontrado no HTML."
       );
+      return;
+    }
+
+    // Processa os elementos HTML para adicionar ao PDF
+    contractContent
+      .querySelectorAll("h2, h3, p, li, ol > li, ul > li")
+      .forEach((el) => {
+        // Ignora a seção de dados que será adicionada depois
+        if (el.closest(".data-section")) return;
+
+        let text = el.textContent; // Pega texto bruto
+        if (!text) return; // Pula elementos sem texto
+
+        const tagName = el.tagName.toLowerCase();
+
+        // Tratamento específico por tag
+        if (tagName === "h2") {
+          addTextSection(text, {
+            size: 12,
+            style: "bold",
+            spaceBefore: 6,
+            spaceAfter: 4,
+            align: "left",
+          });
+        } else if (tagName === "h3") {
+          addTextSection(text, {
+            size: 11,
+            style: "bold",
+            spaceBefore: 5,
+            spaceAfter: 3,
+            align: "left",
+          });
+        } else if (tagName === "li") {
+          // Verifica se o pai é <ol> para numeração (simplificado aqui como bullet)
+          addTextSection(text, { size: 10, spaceAfter: 2, isListItem: true });
+        } else if (tagName === "p") {
+          addTextSection(text, { size: 10, spaceAfter: 5 }); // Parágrafo padrão
+        }
+        // Ignora tags não mapeadas (como <ul>, <ol> em si)
+      });
+
+    // --- FUNÇÃO formatCurrency CORRIGIDA ---
+    const formatCurrency = (value) => {
+      // 1. Checa null/undefined/string vazia
+      if (value == null || value === "") {
+        return "A definir";
+      }
+      // 2. Converte para string PRIMEIRO
+      const stringValue = String(value);
+      try {
+        stringValue;
+        // 3. Tenta limpar e converter (agora stringValue é garantido ser string)
+        const numericString = stringValue
+          .replace(/[^\d,]/g, "")
+          .replace(",", ".");
+        const numberValue = parseFloat(numericString);
+        // 4. Checa se o resultado é um número válido
+        if (isNaN(numberValue)) {
+          console.warn(
+            "formatCurrency: Valor não pôde ser convertido para número:",
+            value
+          );
+          return "Valor inválido";
+        }
+        // 5. Formata como moeda
+        return numberValue.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        });
+      } catch (e) {
+        console.error("Erro formatando moeda:", e, "Valor original:", value);
+        return "Erro na formatação"; // Retorna algo indicando erro
+      }
+    };
+    // --- FIM DA CORREÇÃO ---
+
+    // Função auxiliar para formatar datas (DD/MM/AAAA)
+    const formatDate = (dateString) => {
+      if (!dateString) return "A definir";
+      try {
+        // Adiciona T03:00:00 para tentar evitar problemas de fuso ao converter só a data
+        return new Date(dateString + "T03:00:00").toLocaleDateString("pt-BR");
+      } catch (e) {
+        console.error("Erro ao formatar data:", dateString, e);
+        return "Data inválida";
+      }
+    };
+
+    // Adiciona caixa de dados formatada
+    const addDataBox = (title, data) => {
+      addTextSection(title, {
+        size: 11,
+        style: "bold",
+        spaceBefore: 8,
+        align: "left",
+      });
+      const boxStartY = cursorY; // Posição Y antes de adicionar os dados
+      data.forEach(([label, value]) =>
+        // Adiciona label e valor, tratando valores nulos/undefined
+        addTextSection(`${label} ${value ?? "N/A"}`, {
+          size: 10,
+          spaceAfter: 2,
+          align: "left",
+        })
+      );
+      // Desenha o retângulo em volta dos dados adicionados
+      // A altura é calculada pela diferença entre a posição atual e a inicial
+      doc.setDrawColor(180, 180, 180); // Cor cinza claro para a borda
       doc.rect(
         margin - 2,
         boxStartY - 4,
@@ -101,19 +224,17 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
         cursorY - boxStartY,
         "S"
       );
-      cursorY += 5;
+      cursorY += 5; // Espaço após a caixa
     };
 
+    // Prepara os dados para as caixas
+    const horarioInfo = meuAtendimento?.horarioSessao || {};
+
+    // Caixa de Dados: Terapeuta e Paciente
     addDataBox("Dados do Terapeuta e Paciente", [
-      ["Terapeuta:", meuAtendimento?.profissionalNome || "A definir"],
-      [
-        "Nome completo do PACIENTE:",
-        pacienteData.nomeCompleto || "Não informado",
-      ],
-      [
-        "Nome do Responsável:",
-        pacienteData.responsavel?.nome || "Não aplicável",
-      ],
+      ["Terapeuta:", meuAtendimento?.profissionalNome], // Usa ?? 'N/A' dentro de addDataBox
+      ["Nome completo do PACIENTE:", pacienteData.nomeCompleto],
+      ["Nome do Responsável:", pacienteData.responsavel?.nome], // Será N/A se não houver responsável
       [
         "Data de nascimento do PACIENTE:",
         formatDate(pacienteData.dataNascimento),
@@ -121,47 +242,65 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
       [
         "Valor da contribuição mensal:",
         formatCurrency(pacienteData.valorContribuicao),
-      ],
+      ], // Chama a função corrigida
     ]);
 
+    // Caixa de Dados: Sessão
     addDataBox("Dados da Sessão", [
-      ["Dia da sessão:", horarioInfo.diaSemana || "A definir"],
-      ["Horário do atendimento:", horarioInfo.horario || "A definir"],
-      ["Tipo de atendimento:", horarioInfo.tipoAtendimento || "A definir"],
+      ["Dia da sessão:", horarioInfo.diaSemana],
+      ["Horário do atendimento:", horarioInfo.horario],
+      ["Tipo de atendimento:", horarioInfo.tipoAtendimento],
+      // Adicione a frequência se existir:
+      // ["Frequência:", horarioInfo.frequencia || "Semanal (Padrão)"],
     ]);
 
-    if (
-      pacienteData.contratoAssinado &&
-      pacienteData.contratoAssinado.assinadoEm
-    ) {
-      const assinatura = pacienteData.contratoAssinado;
+    // Adiciona informações de assinatura digital se existirem
+    // Assume que a assinatura está no objeto 'meuAtendimento' se for PB
+    const assinatura = meuAtendimento?.contratoAssinado;
+    if (assinatura && assinatura.assinadoEm?.toDate) {
+      // Verifica se tem timestamp válido
       const dataAssinatura = assinatura.assinadoEm.toDate();
       const textoAssinatura = `Assinado digitalmente por ${
-        assinatura.nomeSignatario
+        assinatura.nomeSignatario || "N/I"
       } (CPF: ${
-        assinatura.cpfSignatario
+        assinatura.cpfSignatario || "N/I"
       }) em ${dataAssinatura.toLocaleDateString(
         "pt-BR"
       )} às ${dataAssinatura.toLocaleTimeString("pt-BR")}.`;
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setPage(pageCount);
-      cursorY = pageHeight - 35;
+
+      // Verifica se há espaço suficiente na última página, senão adiciona nova
+      const assinaturaHeight =
+        doc.getTextDimensions(textoAssinatura, { maxWidth: usableWidth }).h +
+        15; // Altura estimada
+      if (cursorY + assinaturaHeight > pageHeight - margin) {
+        doc.addPage();
+        cursorY = margin + 10;
+      } else {
+        cursorY = pageHeight - 35; // Posiciona perto do rodapé
+      }
+
       addTextSection("Contrato Assinado", {
         size: 12,
         style: "bold",
         spaceAfter: 4,
+        align: "left",
       });
-      addTextSection(textoAssinatura, { size: 10, spaceAfter: 0 });
+      addTextSection(textoAssinatura, {
+        size: 9,
+        spaceAfter: 0,
+        align: "left",
+      }); // Fonte menor
     }
 
-    const logoUrl = "../../../assets/img/logo-eupsico.png";
+    // Adiciona marca d'água (logo) em todas as páginas
+    const logoUrl = "../../../assets/img/logo-eupsico.png"; // Ajuste o caminho se necessário
     const logoBase64 = await loadImageAsBase64(logoUrl);
     if (logoBase64) {
       const totalPages = doc.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setGState(new doc.GState({ opacity: 0.1, "stroke-opacity": 0.1 }));
-        const imgWidth = 90;
+        doc.setGState(new doc.GState({ opacity: 0.1 })); // Define opacidade
+        const imgWidth = 90; // Tamanho da logo
         const x = (pageWidth - imgWidth) / 2;
         const y = (pageHeight - imgWidth) / 2;
         doc.addImage(
@@ -174,12 +313,21 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
           undefined,
           "FAST"
         );
-        doc.setGState(new doc.GState({ opacity: 1, "stroke-opacity": 1 }));
+        doc.setGState(new doc.GState({ opacity: 1 })); // Restaura opacidade
       }
     }
-    doc.save(`Contrato_${pacienteData.nomeCompleto.replace(/ /g, "_")}.pdf`);
+
+    // Salva o PDF
+    doc.save(
+      `Contrato_${(pacienteData.nomeCompleto || "Paciente").replace(
+        / /g,
+        "_"
+      )}.pdf`
+    );
   } catch (error) {
-    console.error("Erro ao gerar PDF:", error);
-    alert("Não foi possível gerar o PDF.");
+    console.error("Erro ao gerar PDF do contrato:", error);
+    alert(
+      "Não foi possível gerar o PDF. Verifique o console para mais detalhes."
+    );
   }
 }
