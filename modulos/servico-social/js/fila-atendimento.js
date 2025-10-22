@@ -1,5 +1,5 @@
 // Arquivo: /modulos/servico-social/js/fila-atendimento.js
-// --- VERSÃO COM DEBUG COMPLETA (sem abreviações) ---
+// --- VERSÃO CORRIGIDA (Garante carregamento dos campos condicionais) ---
 
 import {
   db,
@@ -19,43 +19,43 @@ let currentUserData = null;
 
 /**
  * Função principal de inicialização da view Fila de Atendimento.
- * Determina se é Triagem ou Reavaliação com base na URL Hash.
  */
 export function init(user, userData, trilhaId) {
-  console.log(`fila-atendimento.js: init executado com trilhaId: ${trilhaId}`); // Log inicial
-  currentUserData = userData; // Salva os dados do usuário logado
+  currentUserData = userData;
 
   const hashParts = window.location.hash.substring(1).split("/");
-  // Exemplo Triagem: #fila-atendimento/paciente123
-  // Exemplo Reavaliação: #fila-atendimento/paciente123/reavaliacao/solicitacao456 (Usa ID da SOLICITAÇÃO)
-  const isReavaliacao = hashParts.length >= 3 && hashParts[2] === "reavaliacao"; // Ajuste para >=3
-  const solicitacaoId = isReavaliacao ? hashParts[3] : null; // Pega o ID da SOLICITAÇÃO
+  const isReavaliacao = hashParts.length >= 3 && hashParts[2] === "reavaliacao";
+  const solicitacaoId = isReavaliacao ? hashParts[3] : null;
 
   const formTitle = document.getElementById("form-title");
   const triagemForm = document.getElementById("triagem-form");
   const reavaliacaoForm = document.getElementById("reavaliacao-ss-form");
   const btnVoltar = document.getElementById("btn-voltar-lista");
 
-  // Ações do botão Voltar
   if (btnVoltar) {
-    btnVoltar.addEventListener(
-      "click",
-      () => (window.location.hash = "#agendamentos-view") // Sempre volta para a view de agendamentos
-    );
+    // Remove listener antigo para evitar duplicação se init for chamado novamente
+    const oldVoltarListener = btnVoltar._clickListener;
+    if (oldVoltarListener)
+      btnVoltar.removeEventListener("click", oldVoltarListener);
+    // Adiciona novo listener
+    const newVoltarListener = () =>
+      (window.location.hash = "#agendamentos-view");
+    btnVoltar.addEventListener("click", newVoltarListener);
+    btnVoltar._clickListener = newVoltarListener; // Guarda referência
   } else {
     console.warn("Botão 'Voltar' (#btn-voltar-lista) não encontrado.");
   }
 
-  // Verifica se os formulários existem antes de tentar resetar
+  // Reseta forms
   if (triagemForm) {
     triagemForm.reset();
-    resetConditionalFieldsTriagem(); // Garante que campos da triagem estejam ocultos/não required
+    resetConditionalFieldsTriagem();
   } else {
     console.warn("Formulário de Triagem (#triagem-form) não encontrado.");
   }
   if (reavaliacaoForm) {
     reavaliacaoForm.reset();
-    resetConditionalFieldsReavaliacao(); // Garante que campos da reavaliação estejam ocultos/não required
+    resetConditionalFieldsReavaliacao();
   } else {
     console.warn(
       "Formulário de Reavaliação (#reavaliacao-ss-form) não encontrado."
@@ -63,22 +63,24 @@ export function init(user, userData, trilhaId) {
   }
 
   if (isReavaliacao) {
-    // Modo Reavaliação
     if (formTitle) formTitle.textContent = "Formulário de Reavaliação";
     if (triagemForm) triagemForm.style.display = "none";
     if (reavaliacaoForm) reavaliacaoForm.style.display = "block";
-
-    carregarDadosPaciente(trilhaId); // Carrega dados do paciente (coluna esquerda)
-    carregarDadosReavaliacao(solicitacaoId, trilhaId); // Carrega dados da SOLICITAÇÃO (coluna direita)
-    setupReavaliacaoFormListeners(solicitacaoId, trilhaId); // Prepara listeners do form de reavaliação
+    carregarDadosPaciente(trilhaId);
+    carregarDadosReavaliacao(solicitacaoId, trilhaId);
+    // Garante que o form existe antes de adicionar listeners
+    if (reavaliacaoForm) {
+      setupReavaliacaoFormListeners(solicitacaoId, trilhaId);
+    }
   } else {
-    // Modo Triagem (lógica original)
     if (formTitle) formTitle.textContent = "Formulário de Triagem";
     if (triagemForm) triagemForm.style.display = "block";
     if (reavaliacaoForm) reavaliacaoForm.style.display = "none";
-
-    carregarDadosPaciente(trilhaId); // Carrega dados do paciente (coluna esquerda)
-    setupTriagemForm(user, userData, trilhaId); // Inicia a lógica original do formulário de triagem
+    carregarDadosPaciente(trilhaId);
+    // Garante que o form existe antes de adicionar listeners
+    if (triagemForm) {
+      setupTriagemForm(user, userData, trilhaId);
+    }
   }
 }
 
@@ -90,20 +92,18 @@ async function carregarDadosPaciente(trilhaId) {
     "patient-details-container"
   );
   if (!patientDetailsContainer) {
-    console.error(
-      "Container de detalhes do paciente (#patient-details-container) não encontrado."
-    );
+    console.error("#patient-details-container não encontrado.");
     return;
   }
   patientDetailsContainer.innerHTML = '<div class="loading-spinner"></div>';
   try {
     const trilhaDocRef = doc(db, "trilhaPaciente", trilhaId);
     const trilhaDoc = await getDoc(trilhaDocRef);
-
     if (!trilhaDoc.exists()) {
-      throw new Error("Paciente não encontrado na trilha com o ID fornecido.");
+      throw new Error("Paciente não encontrado na trilha.");
     }
     const data = trilhaDoc.data();
+    // Funções de formatação
     const formatDate = (dateStr) =>
       dateStr
         ? new Date(dateStr + "T03:00:00").toLocaleDateString("pt-BR")
@@ -111,10 +111,9 @@ async function carregarDadosPaciente(trilhaId) {
     const formatArray = (arr) =>
       arr && arr.length > 0 ? arr.join(", ") : "N/A";
     const formatCurrency = (value) =>
-      value
+      value != null
         ? `R$ ${parseFloat(value).toFixed(2).replace(".", ",")}`
-        : "Aguardando definição";
-
+        : "Aguardando"; // Trata 0
     const formatHistory = (history) => {
       if (!history || history.length === 0) return "Nenhum histórico.";
       return history
@@ -129,7 +128,7 @@ async function carregarDadosPaciente(trilhaId) {
         .join("");
     };
 
-    // Renderiza os detalhes do paciente
+    // Renderiza detalhes do paciente
     patientDetailsContainer.innerHTML = `
             <div class="patient-info-group"><strong>Nome:</strong><p>${
               data.nomeCompleto || "N/A"
@@ -209,9 +208,8 @@ async function carregarDadosPaciente(trilhaId) {
  * Formata a disponibilidade específica para exibição.
  */
 function formatarDisponibilidadeEspecifica(disponibilidade) {
-  if (!disponibilidade || disponibilidade.length === 0) {
+  if (!disponibilidade || disponibilidade.length === 0)
     return "Nenhum horário detalhado informado.";
-  }
   const dias = {
     "manha-semana": { label: "Manhã (Semana)", horarios: [] },
     "tarde-semana": { label: "Tarde (Semana)", horarios: [] },
@@ -220,14 +218,12 @@ function formatarDisponibilidadeEspecifica(disponibilidade) {
   };
   disponibilidade.forEach((item) => {
     const [periodo, hora] = item.split("_");
-    if (dias[periodo]) {
-      dias[periodo].horarios.push(hora);
-    }
+    if (dias[periodo]) dias[periodo].horarios.push(hora);
   });
   let html = "";
   for (const key in dias) {
     if (dias[key].horarios.length > 0) {
-      dias[key].horarios.sort(); // Ordena os horários
+      dias[key].horarios.sort();
       html += `<strong>${dias[key].label}:</strong> ${dias[key].horarios.join(
         ", "
       )}<br>`;
@@ -237,13 +233,16 @@ function formatarDisponibilidadeEspecifica(disponibilidade) {
 }
 
 // --- Lógica Específica do Formulário de Triagem ---
+
+// *** FUNÇÃO setupTriagemForm REVISADA ***
 function setupTriagemForm(user, userData, trilhaId) {
   const triagemForm = document.getElementById("triagem-form");
   if (!triagemForm) {
-    console.error("#triagem-form não encontrado.");
+    console.error("#triagem-form não encontrado durante setup.");
     return;
   }
-  // Define elementos e listeners
+  console.log("setupTriagemForm: Configurando listeners...");
+
   const statusSelect = document.getElementById("triagem-status");
   const valorContribuicaoInput = document.getElementById("valor-contribuicao");
   const ampliarDisponibilidadeSelect = document.getElementById(
@@ -253,30 +252,77 @@ function setupTriagemForm(user, userData, trilhaId) {
     "nova-disponibilidade-container"
   );
 
-  if (valorContribuicaoInput)
-    valorContribuicaoInput.addEventListener("input", () =>
-      formatarMoeda(valorContribuicaoInput)
-    );
-  if (statusSelect)
+  // Adiciona listener para formatação de moeda
+  if (valorContribuicaoInput) {
+    // Remove listener antigo se existir
+    const oldInputListener = valorContribuicaoInput._inputListener;
+    if (oldInputListener)
+      valorContribuicaoInput.removeEventListener("input", oldInputListener);
+    // Adiciona novo
+    const newInputListener = () => formatarMoeda(valorContribuicaoInput);
+    valorContribuicaoInput.addEventListener("input", newInputListener);
+    valorContribuicaoInput._inputListener = newInputListener; // Guarda referência
+  } else {
+    console.warn("#valor-contribuicao não encontrado.");
+  }
+
+  // Adiciona listener para campos condicionais do Status
+  if (statusSelect) {
+    // Remove listener antigo se existir
+    const oldChangeListener = statusSelect._changeListener;
+    if (oldChangeListener)
+      statusSelect.removeEventListener("change", oldChangeListener);
+    // Adiciona novo
     statusSelect.addEventListener("change", updateTriagemConditionalFields);
-  if (ampliarDisponibilidadeSelect && novaDisponibilidadeContainer)
-    ampliarDisponibilidadeSelect.addEventListener("change", () =>
+    statusSelect._changeListener = updateTriagemConditionalFields; // Guarda referência
+    console.log("Listener 'change' adicionado a #triagem-status");
+  } else {
+    console.warn("#triagem-status não encontrado.");
+  }
+
+  // Adiciona listener para campos condicionais da Disponibilidade
+  if (ampliarDisponibilidadeSelect && novaDisponibilidadeContainer) {
+    // Remove listener antigo se existir
+    const oldAmpliChangeListener = ampliarDisponibilidadeSelect._changeListener;
+    if (oldAmpliChangeListener)
+      ampliarDisponibilidadeSelect.removeEventListener(
+        "change",
+        oldAmpliChangeListener
+      );
+    // Adiciona novo
+    const newAmpliChangeListener = () =>
       toggleNovaDisponibilidade(
         ampliarDisponibilidadeSelect,
         novaDisponibilidadeContainer
-      )
+      );
+    ampliarDisponibilidadeSelect.addEventListener(
+      "change",
+      newAmpliChangeListener
     );
+    ampliarDisponibilidadeSelect._changeListener = newAmpliChangeListener; // Guarda referência
+    console.log("Listener 'change' adicionado a #ampliar-disponibilidade");
+  } else {
+    console.warn(
+      "#ampliar-disponibilidade ou #nova-disponibilidade-container não encontrados."
+    );
+  }
 
-  // Remove listener antigo antes de adicionar um novo para evitar duplicação
-  const formClone = triagemForm.cloneNode(true);
-  triagemForm.parentNode.replaceChild(formClone, triagemForm);
-  formClone.addEventListener("submit", (e) =>
-    handleSalvarTriagem(e, user, userData, trilhaId)
-  ); // Adiciona listener ao clone
+  // Adiciona listener de submit (removendo o antigo)
+  const currentSubmitListener = triagemForm._submitListener;
+  if (currentSubmitListener)
+    triagemForm.removeEventListener("submit", currentSubmitListener);
+  const newSubmitListener = (e) =>
+    handleSalvarTriagem(e, user, userData, trilhaId);
+  triagemForm.addEventListener("submit", newSubmitListener);
+  triagemForm._submitListener = newSubmitListener;
+  console.log("Listener 'submit' adicionado a #triagem-form");
 
+  // Carrega a queixa e define o estado inicial dos campos condicionais
   loadQueixaTriagem(trilhaId);
+  console.log(
+    "Chamando updateTriagemConditionalFields e toggleNovaDisponibilidade (inicial)."
+  );
   updateTriagemConditionalFields(); // Chama para definir estado inicial
-  // Verifica se os elementos existem antes de chamar toggleNovaDisponibilidade
   if (ampliarDisponibilidadeSelect && novaDisponibilidadeContainer) {
     toggleNovaDisponibilidade(
       ampliarDisponibilidadeSelect,
@@ -284,6 +330,8 @@ function setupTriagemForm(user, userData, trilhaId) {
     ); // Chama para definir estado inicial
   }
 }
+// *** FIM DA FUNÇÃO setupTriagemForm REVISADA ***
+
 async function loadQueixaTriagem(trilhaId) {
   try {
     const trilhaDocRef = doc(db, "trilhaPaciente", trilhaId);
@@ -291,12 +339,14 @@ async function loadQueixaTriagem(trilhaId) {
     if (trilhaDoc.exists()) {
       const queixaInput = document.getElementById("queixa-paciente");
       if (queixaInput) queixaInput.value = trilhaDoc.data().motivoBusca || "";
+      else console.warn("#queixa-paciente não encontrado.");
     }
   } catch (error) {
     console.error("Erro ao carregar queixa para triagem:", error);
   }
 }
 function formatarMoeda(input) {
+  if (!input) return;
   let value = input.value.replace(/\D/g, "");
   if (value === "") {
     input.value = "";
@@ -309,12 +359,14 @@ function formatarMoeda(input) {
   input.value = value;
 }
 function updateTriagemConditionalFields() {
+  console.log("updateTriagemConditionalFields: Executando..."); // Log
   const statusSelect = document.getElementById("triagem-status");
   const camposEncaminhado = document.getElementById("campos-encaminhado");
   const camposObservacao = document.getElementById("campos-observacao");
   const valorContribuicaoInput = document.getElementById("valor-contribuicao");
   const criteriosTextarea = document.getElementById("criterios-valor");
   const observacaoTextarea = document.getElementById("observacao-geral");
+
   if (
     !statusSelect ||
     !camposEncaminhado ||
@@ -322,9 +374,19 @@ function updateTriagemConditionalFields() {
     !valorContribuicaoInput ||
     !criteriosTextarea ||
     !observacaoTextarea
-  )
+  ) {
+    console.error(
+      "updateTriagemConditionalFields: Elementos condicionais não encontrados!"
+    );
     return;
+  }
+
   const selectedValue = statusSelect.value;
+  console.log(
+    "updateTriagemConditionalFields: Valor selecionado:",
+    selectedValue
+  ); // Log
+
   camposEncaminhado.style.display =
     selectedValue === "encaminhado" ? "block" : "none";
   camposObservacao.style.display =
@@ -335,9 +397,16 @@ function updateTriagemConditionalFields() {
   criteriosTextarea.required = selectedValue === "encaminhado";
   observacaoTextarea.required =
     selectedValue === "nao_realizada" || selectedValue === "desistiu";
+  console.log(
+    "updateTriagemConditionalFields: Visibilidade e required atualizados."
+  ); // Log
 }
 function toggleNovaDisponibilidade(selectElement, containerElement) {
   if (!selectElement || !containerElement) return;
+  console.log(
+    "toggleNovaDisponibilidade: Valor selecionado:",
+    selectElement.value
+  ); // Log
   if (selectElement.value === "sim") {
     containerElement.style.display = "block";
     if (containerElement.innerHTML.trim() === "") {
@@ -347,9 +416,9 @@ function toggleNovaDisponibilidade(selectElement, containerElement) {
                 <div class="form-group">
                     <label>Opção de horário(s) para atendimento:</label>
                     <div class="horarios-options-container">
-                        <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Durante a semana)</label></div>
-                        <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Durante a semana)</label></div>
-                        <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Semana)</label></div>
                         <div><label><input type="checkbox" name="horario" value="manha-sabado"> Manhã (Sábado)</label></div>
                     </div>
                 </div>
@@ -433,20 +502,13 @@ function resetConditionalFieldsTriagem() {
   if (criteriosTextarea) criteriosTextarea.required = false;
   if (observacaoTextarea) observacaoTextarea.required = false;
 }
-
-// *** FUNÇÃO handleSalvarTriagem COM DEBUG ***
 async function handleSalvarTriagem(evento, user, userData, trilhaId) {
-  console.log("handleSalvarTriagem: Iniciada para trilhaId:", trilhaId); // Log 1: Iniciou
-  evento.preventDefault(); // Impede o envio padrão
-  console.log("handleSalvarTriagem: preventDefault() chamado."); // Log 2: Verificou preventDefault
-
+  evento.preventDefault();
   const triagemForm = evento.target;
   if (!triagemForm) {
-    console.error("Erro: formulário não encontrado no evento.");
+    console.error("Erro: formulário não encontrado.");
     return;
   }
-
-  // Garante que temos todos os elementos necessários
   const statusSelect = document.getElementById("triagem-status");
   const valorContribuicaoInput = document.getElementById("valor-contribuicao");
   const criteriosTextarea = document.getElementById("criterios-valor");
@@ -460,67 +522,50 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
   const modalidadeSelect = document.getElementById("modalidade-atendimento");
   const preferenciaSelect = document.getElementById("preferencia-genero");
   const queixaInput = document.getElementById("queixa-paciente");
-
-  // Validação extra manual
   const statusValue = statusSelect ? statusSelect.value : null;
-  console.log("handleSalvarTriagem: Status selecionado:", statusValue); // Log 3: Status
-
   if (!statusValue) {
-    alert("Selecione o status da triagem.");
+    alert("Selecione o status.");
     return;
   }
-
   if (statusValue === "encaminhado") {
     const valorRaw = valorContribuicaoInput ? valorContribuicaoInput.value : "";
     const criteriosValue = criteriosTextarea
       ? criteriosTextarea.value.trim()
       : "";
-    // Converte valor BRL para número
     const valorNumerico =
       parseFloat(valorRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-    console.log(
-      `handleSalvarTriagem: Encaminhado - ValorRaw: ${valorRaw}, ValorNum: ${valorNumerico}, Criterios: ${criteriosValue}`
-    ); // Log 4: Dados encaminhado
     if (isNaN(valorNumerico) || valorNumerico <= 0 || !criteriosValue) {
-      alert(
-        'Os campos "Valor da contribuição" (maior que zero) e "Critérios" são obrigatórios.'
-      );
+      alert("Valor (>0) e Critérios são obrigatórios.");
       return;
     }
   } else if (statusValue === "nao_realizada" || statusValue === "desistiu") {
     const obsValue = observacaoTextarea ? observacaoTextarea.value.trim() : "";
-    console.log(
-      `handleSalvarTriagem: ${statusValue} - Observacao: ${obsValue}`
-    ); // Log 5: Dados não realizada/desistiu
     if (!obsValue) {
-      alert('O campo "Observação" é obrigatório para este status.');
+      alert("Observação obrigatória.");
       return;
     }
   }
-
   const saveButton = triagemForm.querySelector('button[type="submit"]');
   if (saveButton) {
     saveButton.disabled = true;
     saveButton.textContent = "Salvando...";
   }
-
   try {
-    console.log("handleSalvarTriagem: Dentro do try, antes de preparar dados."); // Log 6: Entrou no Try
     const trilhaDocRef = doc(db, "trilhaPaciente", trilhaId);
     let dadosParaSalvar = {
       lastUpdate: serverTimestamp(),
       assistenteSocialTriagem: { uid: user.uid, nome: userData.nome },
     };
-
     if (statusValue === "encaminhado") {
-      // Converte valor BRL para número ao salvar
       const valorNumerico =
         parseFloat(
           valorContribuicaoInput.value.replace(/[^\d,]/g, "").replace(",", ".")
         ) || 0;
+      const trilhaSnap = await getDoc(trilhaDocRef);
+      const trilhaData = trilhaSnap.exists() ? trilhaSnap.data() : {};
       dadosParaSalvar = {
         ...dadosParaSalvar,
-        status: "encaminhar_para_plantao", // Status correto para encaminhar
+        status: "encaminhar_para_plantao",
         valorContribuicao: valorNumerico,
         criteriosValor: criteriosTextarea ? criteriosTextarea.value : null,
         modalidadeAtendimento: modalidadeSelect ? modalidadeSelect.value : null,
@@ -528,22 +573,19 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
           ? preferenciaSelect.value
           : null,
         queixaPrincipal: queixaInput ? queixaInput.value : null,
-        // Garante que o histórico seja um array antes de adicionar
         historicoContribuicao: [
-          ...(Array.isArray(userData.historicoContribuicao)
-            ? userData.historicoContribuicao
-            : []), // Pega histórico anterior se existir
+          ...(Array.isArray(trilhaData.historicoContribuicao)
+            ? trilhaData.historicoContribuicao
+            : []),
           {
             valor: valorNumerico,
-            data: Timestamp.now(), // Usar Timestamp.now()
+            data: Timestamp.now(),
             motivo: "Triagem",
             responsavelId: currentUserData.uid,
             responsavelNome: currentUserData.nome,
           },
         ],
       };
-
-      // Coleta nova disponibilidade apenas se "Sim" foi selecionado
       if (
         ampliarDisponibilidadeSelect &&
         ampliarDisponibilidadeSelect.value === "sim" &&
@@ -564,46 +606,34 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
       dadosParaSalvar = {
         ...dadosParaSalvar,
         status: "desistencia",
-        desistenciaMotivo: `Desistiu na etapa de triagem. Motivo: ${
+        desistenciaMotivo: `Desistiu na triagem. Motivo: ${
           observacaoTextarea ? observacaoTextarea.value : "N/A"
         }`,
       };
     } else {
-      // nao_realizada
-      dadosParaSalvar.status = "inscricao_documentos"; // Volta para inscrição
-      dadosParaSalvar.statusTriagem = statusValue; // Guarda o status específico da triagem
+      dadosParaSalvar.status = "inscricao_documentos";
+      dadosParaSalvar.statusTriagem = statusValue;
       dadosParaSalvar.observacoesTriagem = observacaoTextarea
         ? observacaoTextarea.value
         : null;
     }
-
-    console.log(
-      "handleSalvarTriagem: Dados para salvar:",
-      JSON.stringify(dadosParaSalvar, null, 2)
-    ); // Log 7: Dados a salvar (formatado)
-    console.log("handleSalvarTriagem: Chamando updateDoc..."); // Log 8: Antes do update
     await updateDoc(trilhaDocRef, dadosParaSalvar);
-    console.log("handleSalvarTriagem: updateDoc concluído com sucesso."); // Log 9: Depois do update
-
-    alert("Ficha de triagem salva com sucesso! O paciente foi atualizado.");
-    console.log("handleSalvarTriagem: Redirecionando para #agendamentos-view"); // Log 10: Antes do redirect
+    alert("Ficha salva!");
     window.location.hash = "#agendamentos-view";
   } catch (error) {
-    console.error("Erro CRÍTICO ao salvar a triagem:", error); // Log 11: Erro
-    alert(
-      `Ocorreu um erro ao salvar a ficha: ${error.message}. Verifique o console.`
-    );
+    console.error("Erro ao salvar triagem:", error);
+    alert(`Erro: ${error.message}.`);
   } finally {
-    console.log("handleSalvarTriagem: Bloco finally executado."); // Log 12: Finally
     if (saveButton) {
       saveButton.disabled = false;
       saveButton.textContent = "Salvar Triagem";
     }
   }
 }
-// --- FIM DA FUNÇÃO handleSalvarTriagem ---
 
 // --- Lógica Específica do Formulário de Reavaliação ---
+
+// *** FUNÇÃO carregarDadosReavaliacao REVISADA ***
 async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
   const loadingInfo = document.getElementById("reavaliacao-loading-info");
   const formReavaliacao = document.getElementById("reavaliacao-ss-form");
@@ -612,6 +642,7 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
     return;
   }
   loadingInfo.style.display = "block";
+
   try {
     const solicitacaoRef = doc(db, "solicitacoes", solicitacaoId);
     const solicitacaoSnap = await getDoc(solicitacaoRef);
@@ -620,6 +651,8 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
     }
     const solicitacaoData = solicitacaoSnap.data();
     const detalhes = solicitacaoData.detalhes || {};
+
+    // Preenche informações da solicitação
     const pacienteNomeEl = document.getElementById(
       "reavaliacao-modal-paciente-nome"
     );
@@ -630,17 +663,25 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
       "reavaliacao-modal-valor-atual"
     );
     const motivoEl = document.getElementById("reavaliacao-modal-motivo");
+
     if (pacienteNomeEl)
       pacienteNomeEl.textContent = solicitacaoData.pacienteNome || "-";
+    else console.warn("#reavaliacao-modal-paciente-nome não encontrado.");
     if (profissionalNomeEl)
       profissionalNomeEl.textContent = solicitacaoData.solicitanteNome || "-";
-    const valorAtualFormatado = detalhes.valorContribuicaoAtual
-      ? `R$ ${parseFloat(detalhes.valorContribuicaoAtual)
-          .toFixed(2)
-          .replace(".", ",")}`
-      : "-";
+    else console.warn("#reavaliacao-modal-profissional-nome não encontrado.");
+    const valorAtualFormatado =
+      detalhes.valorContribuicaoAtual != null
+        ? `R$ ${parseFloat(detalhes.valorContribuicaoAtual)
+            .toFixed(2)
+            .replace(".", ",")}`
+        : "-"; // Trata 0
     if (valorAtualEl) valorAtualEl.textContent = valorAtualFormatado;
+    else console.warn("#reavaliacao-modal-valor-atual não encontrado.");
     if (motivoEl) motivoEl.textContent = detalhes.motivo || "-";
+    else console.warn("#reavaliacao-modal-motivo não encontrado.");
+
+    // Preenche IDs nos campos hidden
     const agendamentoIdInput = document.getElementById(
       "reavaliacao-agendamento-id"
     );
@@ -650,9 +691,13 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
     const pacienteIdInput = document.getElementById(
       "reavaliacao-paciente-id-ss"
     );
+
     if (agendamentoIdInput) agendamentoIdInput.value = "";
+    else console.warn("#reavaliacao-agendamento-id não encontrado.");
     if (solicitacaoIdInput) solicitacaoIdInput.value = solicitacaoId;
+    else console.warn("#reavaliacao-solicitacao-id-ss não encontrado.");
     if (pacienteIdInput) pacienteIdInput.value = pacienteId;
+    else console.warn("#reavaliacao-paciente-id-ss não encontrado.");
   } catch (error) {
     console.error("Erro ao carregar dados da solicitação:", error);
     alert(`Erro: ${error.message}`);
@@ -661,29 +706,55 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
     loadingInfo.style.display = "none";
   }
 }
+// *** FIM FUNÇÃO carregarDadosReavaliacao REVISADA ***
+
+// *** FUNÇÃO setupReavaliacaoFormListeners REVISADA ***
 function setupReavaliacaoFormListeners(solicitacaoId, pacienteId) {
   const form = document.getElementById("reavaliacao-ss-form");
   if (!form) {
     console.error("#reavaliacao-ss-form não encontrado.");
     return;
   }
+  console.log("setupReavaliacaoFormListeners: Configurando listeners...");
+
   const realizadaSelect = form.querySelector("#reavaliacao-realizada");
+
+  // Listener para campos condicionais
   if (realizadaSelect) {
+    // Remove listener antigo se existir
+    const oldChangeListener = realizadaSelect._changeListener;
+    if (oldChangeListener)
+      realizadaSelect.removeEventListener("change", oldChangeListener);
+    // Adiciona novo
     realizadaSelect.addEventListener(
       "change",
       updateReavaliacaoConditionalFields
     );
+    realizadaSelect._changeListener = updateReavaliacaoConditionalFields; // Guarda referência
+    console.log("Listener 'change' adicionado a #reavaliacao-realizada");
   } else {
     console.warn("#reavaliacao-realizada não encontrado.");
   }
-  const formClone = form.cloneNode(true);
-  form.parentNode.replaceChild(formClone, form);
-  formClone.addEventListener("submit", (e) =>
-    handleSalvarReavaliacaoSS(e, null, solicitacaoId, pacienteId)
-  );
+
+  // Listener para o submit (removendo o antigo)
+  const currentSubmitListener = form._submitListener;
+  if (currentSubmitListener)
+    form.removeEventListener("submit", currentSubmitListener);
+  const newSubmitListener = (e) =>
+    handleSalvarReavaliacaoSS(e, null, solicitacaoId, pacienteId);
+  form.addEventListener("submit", newSubmitListener);
+  form._submitListener = newSubmitListener;
+  console.log("Listener 'submit' adicionado a #reavaliacao-ss-form");
+
+  // Chama para definir estado inicial
+  console.log("Chamando updateReavaliacaoConditionalFields (inicial).");
   updateReavaliacaoConditionalFields();
 }
+// *** FIM FUNÇÃO setupReavaliacaoFormListeners REVISADA ***
+
+// *** FUNÇÃO updateReavaliacaoConditionalFields REVISADA ***
 function updateReavaliacaoConditionalFields() {
+  console.log("updateReavaliacaoConditionalFields: Executando..."); // Log
   const realizadaSelect = document.getElementById("reavaliacao-realizada");
   const naoRealizadaFields = document.getElementById(
     "reavaliacao-nao-realizada-fields"
@@ -691,16 +762,29 @@ function updateReavaliacaoConditionalFields() {
   const simRealizadaFields = document.getElementById(
     "reavaliacao-sim-realizada-fields"
   );
-  if (!realizadaSelect || !naoRealizadaFields || !simRealizadaFields) return;
+  if (!realizadaSelect || !naoRealizadaFields || !simRealizadaFields) {
+    console.error(
+      "updateReavaliacaoConditionalFields: Elementos condicionais não encontrados!"
+    );
+    return;
+  }
+
   const selecionado = realizadaSelect.value;
+  console.log(
+    "updateReavaliacaoConditionalFields: Valor selecionado:",
+    selecionado
+  ); // Log
+
   naoRealizadaFields.style.display = "none";
   simRealizadaFields.style.display = "none";
+  // É crucial resetar o 'required' antes de definir novamente
   naoRealizadaFields
     .querySelectorAll("textarea, select")
     .forEach((el) => (el.required = false));
   simRealizadaFields
     .querySelectorAll("input, textarea")
     .forEach((el) => (el.required = false));
+
   if (selecionado === "sim") {
     simRealizadaFields.style.display = "block";
     simRealizadaFields
@@ -712,7 +796,12 @@ function updateReavaliacaoConditionalFields() {
       .querySelectorAll("textarea, select")
       .forEach((el) => (el.required = true));
   }
+  console.log(
+    "updateReavaliacaoConditionalFields: Visibilidade e required atualizados."
+  ); // Log
 }
+// *** FIM FUNÇÃO updateReavaliacaoConditionalFields REVISADA ***
+
 function resetConditionalFieldsReavaliacao() {
   const naoRealizadaFields = document.getElementById(
     "reavaliacao-nao-realizada-fields"
@@ -737,6 +826,7 @@ async function handleSalvarReavaliacaoSS(
   solicitacaoId,
   pacienteId
 ) {
+  // Função sem alterações funcionais significativas, apenas garante referências
   evento.preventDefault();
   const form = evento.target;
   const btnSalvar = form.querySelector("#btn-salvar-reavaliacao-ss");
