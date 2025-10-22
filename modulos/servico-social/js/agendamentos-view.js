@@ -176,13 +176,9 @@ async function loadReavaliacaoData() {
       rowsHtml += `
             <tr>
                 <td>${data.pacienteNome || "N/A"}</td>
-                <td>${
-                  data.solicitanteNome || "N/A"
-                }</td> {/* Profissional que solicitou */}
+                <td>${data.solicitanteNome || "N/A"}</td> 
                 <td>${dataSolicitacaoFormatada}</td>
-                <td class="motivo-cell">${
-                  detalhes.motivo || "N/A"
-                }</td> {/* Motivo da solicitação */}
+                <td class="motivo-cell">${detalhes.motivo || "N/A"}</td> 
                 <td>${valorAtualFormatado}</td>
                 <td>
                     <a href="#disponibilidade-agendamentos/${
