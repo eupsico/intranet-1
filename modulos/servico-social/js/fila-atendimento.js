@@ -1,5 +1,5 @@
 // Arquivo: /modulos/servico-social/js/fila-atendimento.js
-// --- VERSÃO CORRIGIDA (Adiciona Resumos e Formatação de Moeda) ---
+// --- VERSÃO CORRIGIDA (Comentários e Escopo de Funções Corrigidos) ---
 
 import {
   db,
@@ -14,19 +14,76 @@ import {
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
 
+// Variável global para guardar dados do usuário logado
 let currentUserData = null;
 
-// *** NOVO: Helper para definir texto, tratando elementos não encontrados ***
+// --- FUNÇÕES AUXILIARES GLOBAIS ---
+
+/**
+ * Formata um valor numérico como moeda BRL (ex: "R$ 1.234,56").
+ * @param {number|string|null|undefined} value O valor a ser formatado.
+ * @returns {string} O valor formatado como moeda ou "N/A".
+ */
+function formatCurrency(value) {
+  // Verifica null, undefined e NaN explicitamente
+  if (value == null || isNaN(value)) {
+    return "N/A";
+  }
+  // Garante que é um número antes de formatar
+  const numberValue = Number(value);
+  if (isNaN(numberValue)) {
+    // Checa novamente após a conversão
+    return "N/A";
+  }
+  return numberValue.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Formata o valor de um input de texto para parecer moeda (ex: "1.234,56").
+ * @param {HTMLInputElement} input O elemento input.
+ */
+function formatarMoedaInput(input) {
+  if (!input) return;
+  let value = input.value.replace(/\D/g, ""); // Remove não-dígitos
+  if (value === "") {
+    input.value = "";
+    return;
+  }
+  // Converte para número dividindo por 100
+  let numberValue = parseInt(value, 10) / 100;
+  if (isNaN(numberValue)) {
+    // Se o valor for inválido após limpar
+    input.value = "";
+    return;
+  }
+  // Formata sem o símbolo R$
+  input.value = numberValue.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Define o texto de um elemento pelo ID, tratando caso não encontre.
+ * @param {string} elementId O ID do elemento HTML.
+ * @param {string|number|null|undefined} text O texto a ser definido.
+ */
 function setTextContentIfExists(elementId, text) {
   const element = document.getElementById(elementId);
   if (element) {
-    element.textContent = text || "-"; // Usa '-' se o texto for vazio/nulo
+    // Usa ?? para tratar null/undefined e exibir '-' nesses casos
+    element.textContent = text ?? "-";
   } else {
-    console.warn(
-      `Elemento com ID "${elementId}" não encontrado para definir texto.`
-    );
+    // Aviso no console apenas, não quebra a execução
+    console.warn(`Elemento com ID "${elementId}" não encontrado.`);
   }
 }
+// --- FIM FUNÇÕES AUXILIARES GLOBAIS ---
 
 /**
  * Função principal de inicialização da view Fila de Atendimento.
@@ -43,6 +100,7 @@ export function init(user, userData, trilhaId) {
   const reavaliacaoForm = document.getElementById("reavaliacao-ss-form");
   const btnVoltar = document.getElementById("btn-voltar-lista");
 
+  // Configura botão Voltar (com remoção de listener antigo)
   if (btnVoltar) {
     const oldVoltarListener = btnVoltar._clickListener;
     if (oldVoltarListener)
@@ -52,44 +110,45 @@ export function init(user, userData, trilhaId) {
     btnVoltar.addEventListener("click", newVoltarListener);
     btnVoltar._clickListener = newVoltarListener;
   } else {
-    console.warn("#btn-voltar-lista não encontrado.");
+    console.warn("Botão 'Voltar' (#btn-voltar-lista) não encontrado.");
   }
 
+  // Reseta forms e campos condicionais
   if (triagemForm) {
     triagemForm.reset();
     resetConditionalFieldsTriagem();
   } else {
-    console.warn("#triagem-form não encontrado.");
+    console.warn("Formulário de Triagem (#triagem-form) não encontrado.");
   }
   if (reavaliacaoForm) {
     reavaliacaoForm.reset();
     resetConditionalFieldsReavaliacao();
   } else {
-    console.warn("#reavaliacao-ss-form não encontrado.");
+    console.warn(
+      "Formulário de Reavaliação (#reavaliacao-ss-form) não encontrado."
+    );
   }
 
+  // Controla qual formulário exibir e quais dados carregar
   if (isReavaliacao) {
     if (formTitle) formTitle.textContent = "Formulário de Reavaliação";
     if (triagemForm) triagemForm.style.display = "none";
     if (reavaliacaoForm) reavaliacaoForm.style.display = "block";
-    carregarDadosPaciente(trilhaId, true); // Passa true para indicar reavaliação
+    carregarDadosPaciente(trilhaId, true); // true = Reavaliação (para resumo)
     carregarDadosReavaliacao(solicitacaoId, trilhaId);
     if (reavaliacaoForm) setupReavaliacaoFormListeners(solicitacaoId, trilhaId);
   } else {
     if (formTitle) formTitle.textContent = "Formulário de Triagem";
     if (triagemForm) triagemForm.style.display = "block";
     if (reavaliacaoForm) reavaliacaoForm.style.display = "none";
-    carregarDadosPaciente(trilhaId, false); // Passa false para indicar triagem
+    carregarDadosPaciente(trilhaId, false); // false = Triagem (para resumo)
     if (triagemForm) setupTriagemForm(user, userData, trilhaId);
   }
 }
 
 /**
- * Carrega os dados do paciente na coluna da esquerda E nos resumos dos forms.
- * @param {string} trilhaId ID do paciente na trilha.
- * @param {boolean} isReavaliacao Indica se é para preencher o resumo da reavaliação.
+ * Carrega dados do paciente na coluna esquerda E nos resumos.
  */
-// *** MODIFICADO: Adicionado parâmetro isReavaliacao e preenchimento dos resumos ***
 async function carregarDadosPaciente(trilhaId, isReavaliacao) {
   const patientDetailsContainer = document.getElementById(
     "patient-details-container"
@@ -106,17 +165,14 @@ async function carregarDadosPaciente(trilhaId, isReavaliacao) {
       throw new Error("Paciente não encontrado na trilha.");
     }
     const data = trilhaDoc.data();
-    // Funções de formatação
+
+    // Funções locais de formatação (formatCurrency é global agora)
     const formatDate = (dateStr) =>
       dateStr
         ? new Date(dateStr + "T03:00:00").toLocaleDateString("pt-BR")
         : "N/I";
     const formatArray = (arr) =>
       arr && arr.length > 0 ? arr.join(", ") : "N/A";
-    const formatCurrency = (value) =>
-      value != null
-        ? `R$ ${parseFloat(value).toFixed(2).replace(".", ",")}`
-        : "Aguardando";
     const formatHistory = (history) => {
       if (!history || history.length === 0) return "Nenhum histórico.";
       return history
@@ -124,14 +180,14 @@ async function carregarDadosPaciente(trilhaId, isReavaliacao) {
           const date = entry.data?.toDate
             ? entry.data.toDate().toLocaleDateString("pt-BR")
             : "Data N/A";
-          const value = formatCurrency(entry.valor);
+          const value = formatCurrency(entry.valor); // Usa formatCurrency global
           const reason = entry.motivo || "N/A";
           return `<li>${date}: ${value} (${reason})</li>`;
         })
         .join("");
     };
 
-    // Renderiza detalhes do paciente na coluna esquerda (sem alterações no HTML gerado)
+    // Renderiza detalhes do paciente (HTML sem comentários internos)
     patientDetailsContainer.innerHTML = `
             <div class="patient-info-group"><strong>Nome:</strong><p>${
               data.nomeCompleto || "N/A"
@@ -150,45 +206,59 @@ async function carregarDadosPaciente(trilhaId, isReavaliacao) {
             }</p></div>
             ${
               data.responsavel?.nome
-                ? `<div class="patient-info-group"><strong>Responsável:</strong><p>${
-                    data.responsavel.nome
-                  }</p></div><div class="patient-info-group"><strong>Contato Responsável:</strong><p>${
-                    data.responsavel.contato || "N/A"
-                  }</p></div>`
+                ? `
+            <div class="patient-info-group"><strong>Responsável:</strong><p>${
+              data.responsavel.nome
+            }</p></div>
+            <div class="patient-info-group"><strong>Contato Responsável:</strong><p>${
+              data.responsavel.contato || "N/A"
+            }</p></div>`
                 : ""
             }
-            <hr> <div class="patient-info-group"><strong>Endereço:</strong><p>${
+            <hr>
+            <div class="patient-info-group"><strong>Endereço:</strong><p>${
               data.rua || "N/A"
             }, ${data.numeroCasa || "S/N"} - ${data.bairro || "N/A"}, ${
       data.cidade || "N/A"
-    }</p></div> <div class="patient-info-group"><strong>CEP:</strong><p>${
-      data.cep || "N/A"
     }</p></div>
-            <hr> <div class="patient-info-group"><strong>Renda Individual:</strong><p>${
+            <div class="patient-info-group"><strong>CEP:</strong><p>${
+              data.cep || "N/A"
+            }</p></div>
+            <hr>
+            <div class="patient-info-group"><strong>Renda Individual:</strong><p>${
               data.rendaMensal || "N/A"
-            }</p></div> <div class="patient-info-group"><strong>Renda Familiar:</strong><p>${
-      data.rendaFamiliar || "N/A"
-    }</p></div> <div class="patient-info-group"><strong>Moradia:</strong><p>${
-      data.casaPropria || "N/A"
-    }</p></div> <div class="patient-info-group"><strong>Pessoas na Moradia:</strong><p>${
-      data.pessoasMoradia || "N/A"
-    }</p></div>
-            <hr> <div class="patient-info-group"><strong>Disponibilidade (Geral):</strong><p>${formatArray(
+            }</p></div>
+            <div class="patient-info-group"><strong>Renda Familiar:</strong><p>${
+              data.rendaFamiliar || "N/A"
+            }</p></div>
+            <div class="patient-info-group"><strong>Moradia:</strong><p>${
+              data.casaPropria || "N/A"
+            }</p></div>
+            <div class="patient-info-group"><strong>Pessoas na Moradia:</strong><p>${
+              data.pessoasMoradia || "N/A"
+            }</p></div>
+            <hr>
+            <div class="patient-info-group"><strong>Disponibilidade (Geral):</strong><p>${formatArray(
               data.disponibilidadeGeral
-            )}</p></div> <div class="patient-info-group"><strong>Disponibilidade (Específica):</strong><p>${formatarDisponibilidadeEspecifica(
-      data.disponibilidadeEspecifica
-    )}</p></div> <div class="patient-info-group"><strong>Motivo da Busca:</strong><p>${
-      data.motivoBusca || "N/A"
-    }</p></div>
-            <hr> <div class="patient-info-group"><strong>Valor Contribuição Atual:</strong><p>${formatCurrency(
+            )}</p></div>
+            <div class="patient-info-group"><strong>Disponibilidade (Específica):</strong><p>${formatarDisponibilidadeEspecifica(
+              data.disponibilidadeEspecifica
+            )}</p></div>
+            <div class="patient-info-group"><strong>Motivo da Busca:</strong><p>${
+              data.motivoBusca || "N/A"
+            }</p></div>
+            <hr>
+            <div class="patient-info-group"><strong>Valor Contribuição Atual:</strong><p>${formatCurrency(
               data.valorContribuicao
-            )}</p></div> <div class="patient-info-group"><strong>Histórico Contribuição:</strong><ul>${formatHistory(
-      data.historicoContribuicao
-    )}</ul></div> <div class="patient-info-group"><strong>Queixa Principal (Triagem):</strong><p>${
-      data.queixaPrincipal || "Aguardando triagem"
-    }</p></div>`;
+            )}</p></div>
+            <div class="patient-info-group"><strong>Histórico Contribuição:</strong><ul>${formatHistory(
+              data.historicoContribuicao
+            )}</ul></div>
+            <div class="patient-info-group"><strong>Queixa Principal (Triagem):</strong><p>${
+              data.queixaPrincipal || "Aguardando triagem"
+            }</p></div>`;
 
-    // --- NOVO: Preenche os campos de resumo nos formulários ---
+    // Preenche os campos de resumo nos formulários
     const prefix = isReavaliacao ? "reavaliacao" : "triagem";
     setTextContentIfExists(
       `${prefix}-resumo-renda-individual`,
@@ -203,14 +273,44 @@ async function carregarDadosPaciente(trilhaId, isReavaliacao) {
       `${prefix}-resumo-pessoas-moradia`,
       data.pessoasMoradia
     );
-    // --- FIM NOVO ---
+
+    // Mostra e preenche o valor da moradia condicionalmente
+    const valorMoradiaContainer = document.getElementById(
+      `${prefix}-resumo-valor-moradia-container`
+    );
+    const tipoMoradia = data.casaPropria ? data.casaPropria.toLowerCase() : "";
+    // Assumindo campo 'valorAluguelOuPrestacao'. AJUSTE SE NECESSÁRIO.
+    const valorMoradia = data.valorAluguelOuPrestacao;
+
+    if (valorMoradiaContainer) {
+      if (
+        tipoMoradia.includes("alugada") ||
+        tipoMoradia.includes("financiada")
+      ) {
+        setTextContentIfExists(
+          `${prefix}-resumo-valor-moradia`,
+          formatCurrency(valorMoradia)
+        ); // Usa formatCurrency global
+        valorMoradiaContainer.style.display = "block"; // Mostra a seção
+      } else {
+        valorMoradiaContainer.style.display = "none"; // Esconde a seção
+      }
+    } else {
+      console.warn(
+        `Container de valor de moradia #${prefix}-resumo-valor-moradia-container não encontrado.`
+      );
+    }
   } catch (error) {
     console.error("Erro ao carregar dados do paciente:", error);
-    patientDetailsContainer.innerHTML = `<p class="error-message">Erro ao carregar dados do paciente: ${error.message}</p>`;
+    if (patientDetailsContainer) {
+      patientDetailsContainer.innerHTML = `<p class="error-message">Erro: ${error.message}</p>`;
+    }
   }
 }
-// *** FIM MODIFICAÇÃO carregarDadosPaciente ***
 
+/**
+ * Formata a disponibilidade específica para exibição.
+ */
 function formatarDisponibilidadeEspecifica(disponibilidade) {
   if (!disponibilidade || disponibilidade.length === 0)
     return "Nenhum horário detalhado informado.";
@@ -243,7 +343,6 @@ function setupTriagemForm(user, userData, trilhaId) {
     console.error("#triagem-form não encontrado.");
     return;
   }
-  console.log("setupTriagemForm: Configurando listeners...");
   const statusSelect = document.getElementById("triagem-status");
   const valorContribuicaoInput = document.getElementById("valor-contribuicao");
   const ampliarDisponibilidadeSelect = document.getElementById(
@@ -253,11 +352,11 @@ function setupTriagemForm(user, userData, trilhaId) {
     "nova-disponibilidade-container"
   );
 
-  // Listeners (com remoção de antigos)
+  // Adiciona listeners (com remoção de antigos)
   if (valorContribuicaoInput) {
     const old = valorContribuicaoInput._inputListener;
     if (old) valorContribuicaoInput.removeEventListener("input", old);
-    const listener = () => formatarMoeda(valorContribuicaoInput);
+    const listener = () => formatarMoedaInput(valorContribuicaoInput);
     valorContribuicaoInput.addEventListener("input", listener);
     valorContribuicaoInput._inputListener = listener;
   } else console.warn("#valor-contribuicao não encontrado.");
@@ -310,27 +409,7 @@ async function loadQueixaTriagem(trilhaId) {
     console.error("Erro ao carregar queixa para triagem:", error);
   }
 }
-function formatarMoeda(input) {
-  // Função para formatar como R$ XX,XX
-  if (!input) return;
-  let value = input.value.replace(/\D/g, ""); // Remove tudo que não for dígito
-  if (value === "") {
-    input.value = "";
-    return;
-  }
-  // Converte para número, divide por 100
-  let numberValue = parseInt(value, 10) / 100;
-  // Formata como moeda BRL, mas remove o símbolo 'R$'
-  let formattedValue = numberValue.toLocaleString("pt-BR", {
-    // style: "currency", // Não usar style currency para evitar R$ duplicado
-    // currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  input.value = formattedValue; // Define o valor formatado (ex: "1.234,56")
-}
 function updateTriagemConditionalFields() {
-  console.log("updateTriagemConditionalFields: Executando...");
   const statusSelect = document.getElementById("triagem-status");
   const camposEncaminhado = document.getElementById("campos-encaminhado");
   const camposObservacao = document.getElementById("campos-observacao");
@@ -349,7 +428,6 @@ function updateTriagemConditionalFields() {
     return;
   }
   const selectedValue = statusSelect.value;
-  console.log("updateTriagemConditionalFields: Valor:", selectedValue);
   camposEncaminhado.style.display =
     selectedValue === "encaminhado" ? "block" : "none";
   camposObservacao.style.display =
@@ -360,19 +438,43 @@ function updateTriagemConditionalFields() {
   criteriosTextarea.required = selectedValue === "encaminhado";
   observacaoTextarea.required =
     selectedValue === "nao_realizada" || selectedValue === "desistiu";
-  console.log("updateTriagemConditionalFields: Atualizado.");
 }
 function toggleNovaDisponibilidade(selectElement, containerElement) {
   if (!selectElement || !containerElement) return;
   if (selectElement.value === "sim") {
     containerElement.style.display = "block";
     if (containerElement.innerHTML.trim() === "") {
-      /* Gera HTML disponibilidade */
-      containerElement.innerHTML = `<h3...>Nova Disponibilidade...</h3>...`; // Conteúdo completo
+      // Gera HTML da disponibilidade
+      containerElement.innerHTML = `
+                <h3 class="form-section-title">Nova Disponibilidade</h3>
+                <div class="form-group"><label>Horários:</label><div class="horarios-options-container">
+                    <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Semana)</label></div>
+                    <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Semana)</label></div>
+                    <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Semana)</label></div>
+                    <div><label><input type="checkbox" name="horario" value="manha-sabado"> Manhã (Sábado)</label></div>
+                </div></div>
+                <div id="horarios-especificos-container">
+                    <div id="container-manha-semana" style="display:none;"></div> <div id="container-tarde-semana" style="display:none;"></div>
+                    <div id="container-noite-semana" style="display:none;"></div> <div id="container-manha-sabado" style="display:none;"></div>
+                </div>`;
       containerElement
         .querySelectorAll('input[name="horario"]')
         .forEach((checkbox) => {
-          /* Adiciona listeners */
+          checkbox.addEventListener("change", (e) => {
+            const periodo = e.target.value;
+            const containerHorarios = containerElement.querySelector(
+              `#container-${periodo}`
+            );
+            if (containerHorarios) {
+              if (e.target.checked) {
+                gerarHorariosEspecificos(periodo, containerHorarios);
+                containerHorarios.style.display = "block";
+              } else {
+                containerHorarios.innerHTML = "";
+                containerHorarios.style.display = "none";
+              }
+            }
+          });
         });
     }
   } else {
@@ -381,7 +483,35 @@ function toggleNovaDisponibilidade(selectElement, containerElement) {
   }
 }
 function gerarHorariosEspecificos(periodo, container) {
-  /* Lógica para gerar checkboxes */
+  let horarios = [],
+    label = "";
+  switch (periodo /* Define horários e label */) {
+    case "manha-semana":
+      label = "Manhã (Seg-Sex):";
+      for (let i = 8; i < 12; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "tarde-semana":
+      label = "Tarde (Seg-Sex):";
+      for (let i = 12; i < 18; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "noite-semana":
+      label = "Noite (Seg-Sex):";
+      for (let i = 18; i < 21; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "manha-sabado":
+      label = "Manhã (Sábado):";
+      for (let i = 8; i < 13; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+  }
+  let html = `<label>${label}</label><div class="horario-detalhe-grid">`;
+  horarios.forEach((hora) => {
+    html += `<div><label><input type="checkbox" name="horario-especifico" value="${periodo}_${hora}"> ${hora}</label></div>`;
+  });
+  container.innerHTML = html + `</div>`;
 }
 function resetConditionalFieldsTriagem() {
   const camposEncaminhado = document.getElementById("campos-encaminhado");
@@ -422,7 +552,7 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
     alert("Selecione o status.");
     return;
   }
-  let valorNumerico = 0; // Inicializa
+  let valorNumerico = 0;
   if (statusValue === "encaminhado") {
     const valorRaw = valorContribuicaoInput ? valorContribuicaoInput.value : "";
     const criteriosValue = criteriosTextarea
@@ -524,7 +654,6 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
 }
 
 // --- Lógica Específica do Formulário de Reavaliação ---
-
 async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
   const loadingInfo = document.getElementById("reavaliacao-loading-info");
   const formReavaliacao = document.getElementById("reavaliacao-ss-form");
@@ -550,10 +679,8 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
       "reavaliacao-modal-profissional-nome",
       solicitacaoData.solicitanteNome
     );
-    const valorAtualFormatado =
-      detalhes.valorContribuicaoAtual != null
-        ? formatCurrency(detalhes.valorContribuicaoAtual)
-        : "-"; // Usa formatCurrency
+    // Usa a formatCurrency global agora
+    const valorAtualFormatado = formatCurrency(detalhes.valorContribuicaoAtual);
     setTextContentIfExists(
       "reavaliacao-modal-valor-atual",
       valorAtualFormatado
@@ -575,53 +702,39 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
   } catch (error) {
     console.error("Erro ao carregar dados da solicitação:", error);
     alert(`Erro: ${error.message}`);
-    formReavaliacao.innerHTML = `<p class="alert alert-error">Não foi possível carregar.</p>`;
+    if (formReavaliacao)
+      formReavaliacao.innerHTML = `<p class="alert alert-error">Não foi possível carregar.</p>`;
   } finally {
-    loadingInfo.style.display = "none";
+    if (loadingInfo) loadingInfo.style.display = "none";
   }
 }
-
-// *** FUNÇÃO setupReavaliacaoFormListeners MODIFICADA ***
 function setupReavaliacaoFormListeners(solicitacaoId, pacienteId) {
   const form = document.getElementById("reavaliacao-ss-form");
   if (!form) {
     console.error("#reavaliacao-ss-form não encontrado.");
     return;
   }
-  console.log("setupReavaliacaoFormListeners: Configurando listeners...");
-
   const realizadaSelect = form.querySelector("#reavaliacao-realizada");
-  const novoValorInput = form.querySelector("#reavaliacao-novo-valor"); // Pega o input do novo valor
+  const novoValorInput = form.querySelector("#reavaliacao-novo-valor");
 
   // Listener para campos condicionais
   if (realizadaSelect) {
-    const oldChangeListener = realizadaSelect._changeListener;
-    if (oldChangeListener)
-      realizadaSelect.removeEventListener("change", oldChangeListener);
+    const old = realizadaSelect._changeListener;
+    if (old) realizadaSelect.removeEventListener("change", old);
     realizadaSelect.addEventListener(
       "change",
       updateReavaliacaoConditionalFields
     );
     realizadaSelect._changeListener = updateReavaliacaoConditionalFields;
-    console.log("Listener 'change' adicionado a #reavaliacao-realizada");
-  } else {
-    console.warn("#reavaliacao-realizada não encontrado.");
-  }
-
-  // *** NOVO: Listener para formatação de moeda no novo valor ***
+  } else console.warn("#reavaliacao-realizada não encontrado.");
+  // Listener para formatação de moeda (usando formatarMoedaInput global)
   if (novoValorInput) {
-    const oldInputListener = novoValorInput._inputListener;
-    if (oldInputListener)
-      novoValorInput.removeEventListener("input", oldInputListener);
-    const listener = () => formatarMoeda(novoValorInput); // Reutiliza a função formatarMoeda
+    const old = novoValorInput._inputListener;
+    if (old) novoValorInput.removeEventListener("input", old);
+    const listener = () => formatarMoedaInput(novoValorInput);
     novoValorInput.addEventListener("input", listener);
     novoValorInput._inputListener = listener;
-    console.log("Listener 'input' adicionado a #reavaliacao-novo-valor");
-  } else {
-    console.warn("#reavaliacao-novo-valor não encontrado.");
-  }
-  // *** FIM NOVO ***
-
+  } else console.warn("#reavaliacao-novo-valor não encontrado.");
   // Listener para o submit
   const currentSubmitListener = form._submitListener;
   if (currentSubmitListener)
@@ -630,16 +743,10 @@ function setupReavaliacaoFormListeners(solicitacaoId, pacienteId) {
     handleSalvarReavaliacaoSS(e, null, solicitacaoId, pacienteId);
   form.addEventListener("submit", newSubmitListener);
   form._submitListener = newSubmitListener;
-  console.log("Listener 'submit' adicionado a #reavaliacao-ss-form");
-
   // Chama para definir estado inicial
-  console.log("Chamando updateReavaliacaoConditionalFields (inicial).");
   updateReavaliacaoConditionalFields();
 }
-// *** FIM FUNÇÃO setupReavaliacaoFormListeners MODIFICADA ***
-
 function updateReavaliacaoConditionalFields() {
-  console.log("updateReavaliacaoConditionalFields: Executando...");
   const realizadaSelect = document.getElementById("reavaliacao-realizada");
   const naoRealizadaFields = document.getElementById(
     "reavaliacao-nao-realizada-fields"
@@ -654,7 +761,6 @@ function updateReavaliacaoConditionalFields() {
     return;
   }
   const selecionado = realizadaSelect.value;
-  console.log("updateReavaliacaoConditionalFields: Valor:", selecionado);
   naoRealizadaFields.style.display = "none";
   simRealizadaFields.style.display = "none";
   naoRealizadaFields
@@ -668,14 +774,12 @@ function updateReavaliacaoConditionalFields() {
     simRealizadaFields.querySelectorAll("input, textarea").forEach((el) => {
       el.required = true;
     });
-  } // Define required para todos dentro
-  else if (selecionado === "nao") {
+  } else if (selecionado === "nao") {
     naoRealizadaFields.style.display = "block";
     naoRealizadaFields.querySelectorAll("textarea, select").forEach((el) => {
       el.required = true;
     });
-  } // Define required para todos dentro
-  console.log("updateReavaliacaoConditionalFields: Atualizado.");
+  }
 }
 function resetConditionalFieldsReavaliacao() {
   const naoRealizadaFields = document.getElementById(
@@ -695,8 +799,6 @@ function resetConditionalFieldsReavaliacao() {
   if (novoValor) novoValor.required = false;
   if (criterios) criterios.required = false;
 }
-
-// *** FUNÇÃO handleSalvarReavaliacaoSS MODIFICADA ***
 async function handleSalvarReavaliacaoSS(
   evento,
   agendamentoId,
@@ -728,25 +830,20 @@ async function handleSalvarReavaliacaoSS(
       lastUpdate: serverTimestamp(),
     };
     let dadosSolicitacaoUpdate = null;
-
     if (realizada === "sim") {
       const novoValorInput = form.querySelector("#reavaliacao-novo-valor");
       const criterios = form.querySelector("#reavaliacao-criterios")?.value;
-      // *** CORRIGIDO: Ler valor formatado e converter para número ***
       const valorString = novoValorInput
         ? novoValorInput.value.replace(/[^\d,]/g, "").replace(",", ".")
         : "0";
       const novoValor = parseFloat(valorString);
-
       if (
         isNaN(novoValor) ||
         novoValor <= 0 ||
         !criterios ||
         !criterios.trim()
       ) {
-        throw new Error(
-          "Preencha o novo valor (maior que zero) e os critérios."
-        );
+        throw new Error("Preencha novo valor (>0) e critérios.");
       }
       const novoRegistroHistorico = {
         valor: novoValor,
@@ -755,7 +852,6 @@ async function handleSalvarReavaliacaoSS(
         responsavelId: currentUserData.uid,
         responsavelNome: currentUserData.nome,
       };
-      // Garante que o histórico é um array antes de adicionar
       const novoHistorico = [
         ...(Array.isArray(pacienteDataAtual.historicoContribuicao)
           ? pacienteDataAtual.historicoContribuicao
@@ -809,20 +905,17 @@ async function handleSalvarReavaliacaoSS(
         };
         if (reagendado === "nao") {
           await updateDoc(pacienteRef, dadosPacienteUpdate);
-        } // Restaura status só se NÃO reagendar
-        else {
+        } else {
           await updateDoc(pacienteRef, { lastUpdate: serverTimestamp() });
-        } // Mantém aguardando se reagendar
+        }
       }
     } else {
       throw new Error("Selecione se a reavaliação foi realizada.");
     }
-
     if (dadosSolicitacaoUpdate && solicitacaoRef) {
       await updateDoc(solicitacaoRef, dadosSolicitacaoUpdate);
       console.log("Solicitação atualizada:", solicitacaoId);
     }
-
     alert("Reavaliação salva!");
     window.location.hash = "#agendamentos-view";
   } catch (error) {
@@ -835,4 +928,3 @@ async function handleSalvarReavaliacaoSS(
     }
   }
 }
-// *** FIM FUNÇÃO handleSalvarReavaliacaoSS MODIFICADA ***
