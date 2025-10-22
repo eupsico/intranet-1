@@ -1,5 +1,5 @@
-// Arquivo: modulos/voluntario/js/alterar-grade.js
-// VERSÃO 13.1: Bloqueia totalmente a exclusão se o profissional tiver 5 ou menos horários.
+// Arquivo: /modulos/voluntario/js/alterar-grade.js
+// --- VERSÃO MODIFICADA (Salva em 'solicitacoes') ---
 
 import {
   db,
@@ -93,7 +93,7 @@ function showLocalModal(message, type = "success", onCloseCallback) {
  * Função principal de inicialização do módulo
  */
 export async function init(user, userData) {
-  console.log("[Alterar Grade] Módulo iniciado (V13.1 - Trava <= 5 horários).");
+  console.log("[Alterar Grade] Módulo iniciado (V_COLECAO_UNIFICADA).");
   currentUser = user;
   currentUserData = userData;
 
@@ -218,13 +218,13 @@ async function loadAndRenderGrades() {
         const label = `${diaNome}, ${horaFormatada}`;
 
         const checkboxHtml = `
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="horario_excluir" value="${path}" id="chk_${path}" data-label="${label}">
-                        <label class="form-check-label" for="chk_${path}">
-                            ${label}
-                        </label>
-                    </div>
-                `;
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="horario_excluir" value="${path}" id="chk_${path}" data-label="${label}">
+                            <label class="form-check-label" for="chk_${path}">
+                                ${label}
+                            </label>
+                        </div>
+                    `;
 
         if (tipo === "online") {
           horariosOnline.push(checkboxHtml);
@@ -240,19 +240,19 @@ async function loadAndRenderGrades() {
   let finalHtml = "";
   if (horariosOnline.length > 0) {
     finalHtml += `<div class="grade-section">
-                        <h3>Grade Online</h3>
-                        <div class="grade-checkbox-list">${horariosOnline.join(
-                          ""
-                        )}</div>
-                      </div>`;
+                            <h3>Grade Online</h3>
+                            <div class="grade-checkbox-list">${horariosOnline.join(
+                              ""
+                            )}</div>
+                        </div>`;
   }
   if (horariosPresencial.length > 0) {
     finalHtml += `<div class="grade-section">
-                        <h3>Grade Presencial</h3>
-                        <div class="grade-checkbox-list">${horariosPresencial.join(
-                          ""
-                        )}</div>
-                      </div>`;
+                            <h3>Grade Presencial</h3>
+                            <div class="grade-checkbox-list">${horariosPresencial.join(
+                              ""
+                            )}</div>
+                        </div>`;
   }
 
   if (totalHorariosAtual === 0) {
@@ -309,7 +309,7 @@ function validateForm() {
   let isHorarioOk = selecionadosCount > 0;
   let isMinimoOk = true;
 
-  // --- INÍCIO DA LÓGICA V13.1 ---
+  // --- Lógica V13.1 ---
   if (totalHorariosAtual <= LIMITE_MINIMO) {
     // Se tem 5 ou menos, NÃO PODE excluir
     isMinimoOk = false;
@@ -395,19 +395,25 @@ async function handleFormSubmit(e) {
 
   const motivo = motivoTextarea.value.trim();
 
+  // *** MODIFICADO: Adicionado 'tipo' e 'detalhes' ***
   const solicitacaoData = {
     solicitanteId: currentUser.uid,
     solicitanteNome: currentUserData.nome || "Nome não encontrado",
-    horariosParaExcluir: horariosParaExcluir,
-    totalHorariosAtual: totalHorariosAtual,
-    motivo: motivo,
+    tipo: "exclusao_horario", // Adicionado tipo
+    detalhes: {
+      // Adicionado objeto 'detalhes'
+      horariosParaExcluir: horariosParaExcluir,
+      totalHorariosAtual: totalHorariosAtual,
+      motivo: motivo,
+    },
     status: "Pendente",
     dataSolicitacao: serverTimestamp(),
   };
 
   try {
+    // *** MODIFICADO: Alterada a coleção para 'solicitacoes' ***
     const docRef = await addDoc(
-      collection(db, "solicitacoesExclusaoGrade"),
+      collection(db, "solicitacoes"), // Alterado de "solicitacoesExclusaoGrade"
       solicitacaoData
     );
 
