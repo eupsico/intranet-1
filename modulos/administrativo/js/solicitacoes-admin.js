@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// --- VERSÃO MODIFICADA (Incluindo Botão Notificar Contrato) ---
+// --- VERSÃO CORRIGIDA (Seletor de ID) ---
 
 import {
   db,
@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   onSnapshot,
   Timestamp,
-  addDoc,
+  // addDoc, // Descomente se for usar a coleção 'notificacoes'
 } from "../../../assets/js/firebase-init.js";
 // import { deleteDoc } from "../../../assets/js/firebase-init.js"; // Se necessário
 
@@ -48,7 +48,7 @@ function formatarTipoSolicitacao(tipoInterno) {
 // Função principal de inicialização
 export function init(db_ignored, user, userData) {
   console.log(
-    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.MODIFICADA iniciado."
+    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.SELETOR-CORRIGIDO iniciado."
   );
   adminUser = userData;
 
@@ -62,7 +62,9 @@ export function init(db_ignored, user, userData) {
   const modalFooterActions = document.getElementById("modal-footer-actions");
   const modalCloseBtn = document.getElementById("modal-close-btn");
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
-  const tabContentContainer = document.querySelector(".tab-content-container");
+
+  // *** CORRIGIDO: O seletor estava usando classe (".") em vez de ID ("#") ***
+  const tabContentContainer = document.querySelector("#tab-content-container");
 
   // Configuração Abas
   function setupTabs() {
@@ -235,14 +237,13 @@ export function init(db_ignored, user, userData) {
     );
   }
 
-  // *** ALTERADO: loadStatusContratos (Task 2) ***
+  // *** loadStatusContratos (Incluindo botão de notificação) ***
   async function loadStatusContratos() {
     console.log("Carregando Status Contratos...");
     const tableBodyId = "table-body-status-contratos";
     const emptyStateId = "empty-state-status-contratos";
     const countBadgeId = "count-status-contratos";
-    // *** MODIFICADO (Task 2): Colspan atualizado para 5 (incluindo Ações) ***
-    const colspan = 5;
+    const colspan = 5; // Paciente, Profissional, Status, Atualização, Ações
 
     const tableBody = document.getElementById(tableBodyId);
     const emptyState = document.getElementById(emptyStateId);
@@ -259,9 +260,6 @@ export function init(db_ignored, user, userData) {
     countBadge.textContent = "0";
 
     try {
-      // Busca pacientes em PB (status 'em_atendimento_pb' ou 'cadastrar_horario_psicomanager')
-      // Firestore NÃO suporta OR em campos diferentes na mesma query.
-      // Solução: Fazer duas queries e juntar os resultados.
       const qPb = query(
         collection(dbInstance, "trilhaPaciente"),
         where("status", "==", "em_atendimento_pb")
@@ -277,27 +275,23 @@ export function init(db_ignored, user, userData) {
       ]);
 
       let pendingContracts = [];
-      const processedPacientes = new Set(); // Para evitar duplicar pacientes entre as queries
+      const processedPacientes = new Set();
 
       const processSnapshot = (snapshot) => {
         snapshot.forEach((doc) => {
           const pacienteId = doc.id;
-          if (processedPacientes.has(pacienteId)) return; // Já processou este paciente
+          if (processedPacientes.has(pacienteId)) return;
           processedPacientes.add(pacienteId);
 
           const pacienteData = doc.data();
 
-          // Verifica CADA atendimento PB ativo ('ativo' no statusAtendimento)
-          // IMPORTANTE: Ajuste 'statusAtendimento' se o nome do campo for diferente
           const atendimentosAtivos =
             pacienteData.atendimentosPB?.filter(
               (at) => at.statusAtendimento === "ativo"
             ) || [];
 
           atendimentosAtivos.forEach((atendimento) => {
-            // Se o contrato NÃO está assinado neste atendimento ativo
             if (!atendimento.contratoAssinado) {
-              // *** MODIFICADO (Task 2): Adicionado profissionalId ***
               pendingContracts.push({
                 pacienteId: pacienteId,
                 pacienteNome:
@@ -306,7 +300,7 @@ export function init(db_ignored, user, userData) {
                   atendimento.profissionalNome || "Profissional não encontrado",
                 profissionalId: atendimento.profissionalId || null, // Adicionado
                 statusContrato: "Pendente",
-                lastUpdate: pacienteData.lastUpdate, // Pega a última atualização do paciente
+                lastUpdate: pacienteData.lastUpdate,
               });
             }
           });
@@ -316,12 +310,10 @@ export function init(db_ignored, user, userData) {
       processSnapshot(pbSnapshot);
       processSnapshot(cadastrarSnapshot);
 
-      // Ordena por nome do paciente
       pendingContracts.sort((a, b) =>
         a.pacienteNome.localeCompare(b.pacienteNome)
       );
 
-      // Renderiza a tabela
       if (pendingContracts.length === 0) {
         tableBody.innerHTML = "";
         emptyState.style.display = "block";
@@ -334,8 +326,7 @@ export function init(db_ignored, user, userData) {
 
         pendingContracts.forEach((item) => {
           const dataAtualizacao = formatarData(item.lastUpdate);
-          const tr = document.createElement("tr"); // Cria elemento TR
-          // *** MODIFICADO (Task 2): Adicionado botão de notificação ***
+          const tr = document.createElement("tr");
           tr.innerHTML = `
                         <td>${item.pacienteNome}</td>
                         <td>${item.profissionalNome}</td>
@@ -352,7 +343,7 @@ export function init(db_ignored, user, userData) {
                             </button>
                         </td>
                       `;
-          tableBody.appendChild(tr); // Adiciona o TR ao tbody
+          tableBody.appendChild(tr);
         });
       }
     } catch (error) {
@@ -363,7 +354,7 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // *** Análise (Task 3/4): Esta função já está correta ***
+  // --- Correção (Task 3 e 4) - Esta função já está correta ---
   // Lê da coleção 'solicitacoes'.
   function loadExclusaoHorarios() {
     console.log(
@@ -378,31 +369,29 @@ export function init(db_ignored, user, userData) {
       7
     );
 
-    // Adiciona um listener extra para verificar se a coleção antiga tem dados (APENAS PARA DIAGNÓSTICO)
-    // REMOVA OU COMENTE ISSO APÓS A MIGRAÇÃO SER CONFIRMADA
+    // Verificação de diagnóstico (Opcional)
     const checkOldCollection = async () => {
       try {
-        const qOld = query(
-          collection(dbInstance, "solicitacoesExclusaoGrade"),
-          limit(1) // Importar 'limit' do firebase-init.js se for usar
-        );
-        const oldSnapshot = await getDocs(qOld);
-        if (!oldSnapshot.empty) {
-          console.warn(
-            "AVISO: Foram encontrados dados na coleção antiga 'solicitacoesExclusaoGrade'. Eles foram migrados para a coleção 'solicitacoes' com tipo 'exclusao_horario'?"
-          );
-        } else {
-          console.log(
-            "Coleção antiga 'solicitacoesExclusaoGrade' parece estar vazia ou não existe."
-          );
-        }
+        // 'limit' precisa ser importado do 'firebase-init.js'
+        // const qOld = query(
+        //   collection(dbInstance, "solicitacoesExclusaoGrade"),
+        //   limit(1)
+        // );
+        // const oldSnapshot = await getDocs(qOld);
+        // if (!oldSnapshot.empty) {
+        //   console.warn(
+        //     "AVISO: Foram encontrados dados na coleção antiga 'solicitacoesExclusaoGrade'. Eles foram migrados para a coleção 'solicitacoes' com tipo 'exclusao_horario'?"
+        //   );
+        // } else {
+        //   console.log(
+        //     "Coleção antiga 'solicitacoesExclusaoGrade' parece estar vazia ou não existe."
+        //   );
+        // }
       } catch (error) {
-        // Ignora erro se a coleção não existir
         if (
           error.code !== "permission-denied" &&
           error.code !== "unimplemented"
         ) {
-          // Evita logar erros esperados
           console.warn(
             "Não foi possível verificar a coleção antiga 'solicitacoesExclusaoGrade':",
             error.message
@@ -410,7 +399,7 @@ export function init(db_ignored, user, userData) {
         }
       }
     };
-    // checkOldCollection(); // Descomente para verificar a coleção antiga no console
+    // checkOldCollection();
   }
 
   // --- Funções de Renderização ---
@@ -634,9 +623,7 @@ export function init(db_ignored, user, userData) {
       }
       const solicitacaoData = docSnap.data();
 
-      // ** CORREÇÃO: Usar caminho relativo CORRETO para os modais **
-      // Assumindo: solicitacoes-admin.js está em /modulos/administrativo/js/
-      // e os modais estão em /modulos/administrativo/page/
+      // ** Caminho relativo CORRETO para os modais **
       let modalHtmlPath = `../page/`; // Caminho base a partir da pasta 'js' para a pasta 'page'
 
       switch (tipo) {
@@ -901,7 +888,7 @@ export function init(db_ignored, user, userData) {
     if (element) {
       element.textContent = value ?? "N/A"; // Usa ?? para tratar null/undefined
     } else {
-      // console.warn(`Elemento não encontrado para setText: ${selector}`); // Comentado para reduzir logs
+      // console.warn(`Elemento não encontrado para setText: ${selector}`);
     }
   }
   function setValueIfExists(selector, value) {
@@ -909,7 +896,7 @@ export function init(db_ignored, user, userData) {
     if (element) {
       element.value = value ?? ""; // Usa ?? para tratar null/undefined
     } else {
-      // console.warn(`Elemento não encontrado para setValue: ${selector}`); // Comentado
+      // console.warn(`Elemento não encontrado para setValue: ${selector}`);
     }
   }
 
@@ -1115,7 +1102,7 @@ export function init(db_ignored, user, userData) {
       );
 
       if (index === -1) {
-        // Tenta encontrar pelo ID do profissional se o atendimentoId falhar (fallback)
+        // Fallback
         const fallbackIndex = atendimentosPB.findIndex(
           (at) =>
             at.profissionalId === solicitacao.solicitanteId &&
@@ -1129,13 +1116,9 @@ export function init(db_ignored, user, userData) {
         console.warn(
           `Atendimento ID ${atendimentoId} não encontrado, usando fallback pelo profissionalId.`
         );
-        // Se usar fallback, precisa garantir que é o atendimento correto a ser alterado.
-        // Idealmente, o atendimentoId deveria estar sempre correto na solicitação.
-        // index = fallbackIndex; // Descomentar com cautela
         throw new Error(`Atendimento ID ${atendimentoId} não encontrado.`); // Mais seguro lançar erro
       }
 
-      // ATENÇÃO: Verifique o nome correto do campo ('horarioSessao' ou 'horarioSessoes')
       const nomeCampoHorario = "horarioSessoes"; // <<< AJUSTE AQUI SE NECESSÁRIO
 
       const horarioAtualizado = {
@@ -1199,7 +1182,7 @@ export function init(db_ignored, user, userData) {
       );
 
       if (index === -1) {
-        // Fallback (menos seguro)
+        // Fallback
         const fallbackIndex = atendimentosPB.findIndex(
           (at) =>
             at.profissionalId === solicitacao.solicitanteId &&
@@ -1213,11 +1196,9 @@ export function init(db_ignored, user, userData) {
         console.warn(
           `Atendimento ID ${atendimentoId} não encontrado para desfecho, usando fallback pelo profissionalId.`
         );
-        // index = fallbackIndex; // Descomentar com cautela
         throw new Error(`Atendimento ID ${atendimentoId} não encontrado.`);
       }
 
-      // ATENÇÃO: Verifique o nome correto do campo ('status' ou 'statusAtendimento')
       const nomeCampoStatusAtendimento = "status"; // <<< AJUSTE AQUI SE NECESSÁRIO
 
       let novoStatusAtendimento = "";
@@ -1242,21 +1223,12 @@ export function init(db_ignored, user, userData) {
           throw new Error(`Tipo de desfecho inválido: ${tipoDesfecho}`);
       }
 
-      // Marca o atendimento como concluído e adiciona detalhes do desfecho
       atendimentosPB[index][nomeCampoStatusAtendimento] = novoStatusAtendimento;
       atendimentosPB[index].desfecho = {
         ...detalhes, // Inclui motivo/encaminhamento
         aprovadoPor: adminUser.nome || "Admin",
         aprovadoEm: serverTimestamp(),
       };
-      // Remove horário apenas se realmente concluído (não apenas encaminhado continuando)
-      if (
-        novoStatusPaciente === "alta" ||
-        novoStatusPaciente === "desistencia" ||
-        novoStatusPaciente === "encaminhado_externo"
-      ) {
-        // delete atendimentosPB[index].horarioSessao; // Ou horarioSessoes
-      }
 
       const updateData = {
         atendimentosPB: atendimentosPB,
@@ -1299,11 +1271,10 @@ export function init(db_ignored, user, userData) {
       const novoStatus = "aguardando_reavaliacao";
       const statusAnterior = pacienteData.status;
 
-      // Verifica se já não está aguardando reavaliação para evitar sobrescrever statusAnterior
       if (pacienteData.status !== novoStatus) {
         await updateDoc(pacienteRef, {
           status: novoStatus,
-          statusAnteriorReavaliacao: statusAnterior, // Só atualiza se o status mudou
+          statusAnteriorReavaliacao: statusAnterior,
           solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
           lastUpdate: serverTimestamp(),
         });
@@ -1312,7 +1283,6 @@ export function init(db_ignored, user, userData) {
         );
       } else {
         await updateDoc(pacienteRef, {
-          // Apenas atualiza o timestamp da aprovação
           solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
           lastUpdate: serverTimestamp(),
         });
@@ -1320,8 +1290,6 @@ export function init(db_ignored, user, userData) {
           `Paciente ${pacienteId} já estava aguardando reavaliação. Timestamp de aprovação atualizado.`
         );
       }
-
-      // TODO: Notificar Serviço Social?
     } catch (error) {
       console.error(
         "Erro ao atualizar trilhaPaciente para reavaliação:",
@@ -1342,7 +1310,6 @@ export function init(db_ignored, user, userData) {
       `Confirmação de Inclusão/Alteração na Grade para Paciente ${solicitacao.pacienteId} registrada.`
     );
     alert("Confirmação de ação na grade registrada.");
-    // Nenhuma ação adicional na trilha é feita aqui por padrão.
   }
 
   // --- Lógica Específica Modal Exclusão Horário (Completa) ---
@@ -1356,22 +1323,21 @@ export function init(db_ignored, user, userData) {
       console.warn(
         "Elementos do formulário de exclusão (Sim/Não) não encontrados no modal."
       );
-      return; // Sai se não encontrar os elementos
+      return;
     }
 
     const toggleFields = () => {
-      // Garante que os campos existem antes de tentar mudar o display
       if (camposSim)
         camposSim.style.display = radioSim.checked ? "block" : "none";
       if (camposNao)
         camposNao.style.display = radioNao.checked ? "block" : "none";
     };
 
-    radioSim.removeEventListener("change", toggleFields); // Remove para evitar duplicados
+    radioSim.removeEventListener("change", toggleFields);
     radioNao.removeEventListener("change", toggleFields);
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
-    toggleFields(); // Define estado inicial
+    toggleFields();
   }
 
   async function handleSalvarExclusao(docId, solicitacaoData) {
@@ -1383,7 +1349,6 @@ export function init(db_ignored, user, userData) {
     saveButton.disabled = true;
     saveButton.innerHTML = `<span class="loading-spinner-small"></span> Salvando...`;
 
-    // Busca os valores DENTRO do modalBodyContent
     const foiExcluido = modalBodyContent.querySelector(
       'input[name="foiExcluido"]:checked'
     )?.value;
@@ -1412,8 +1377,7 @@ export function init(db_ignored, user, userData) {
           );
         statusFinal = "Concluída";
         try {
-          // Tenta criar data. Adiciona hora fixa para evitar problemas de fuso
-          const dateObj = new Date(dataExclusaoInput + "T12:00:00Z"); // Use UTC ou fuso local consistente
+          const dateObj = new Date(dataExclusaoInput + "T12:00:00Z");
           if (isNaN(dateObj.getTime())) throw new Error("Data inválida");
           adminFeedback.dataExclusao = Timestamp.fromDate(dateObj);
         } catch (dateError) {
@@ -1426,15 +1390,6 @@ export function init(db_ignored, user, userData) {
           `AÇÃO NECESSÁRIA: Excluir horários da grade para solicitação ${docId}. Horários:`,
           solicitacaoData.detalhes?.horariosParaExcluir
         );
-        // Adicionar chamada para Cloud Function aqui, se existir
-        // try {
-        //   const excluirHorarios = httpsCallable(functions, 'excluirHorariosGrade');
-        //   await excluirHorarios({ solicitacaoId: docId, horarios: solicitacaoData.detalhes?.horariosParaExcluir });
-        //   console.log("Chamada para excluir horários da grade enviada.");
-        // } catch (cfError) {
-        //    console.error("Erro ao chamar Cloud Function para excluir horários:", cfError);
-        //    alert("Atenção: Erro ao tentar executar a exclusão automática da grade. Verifique manualmente.");
-        // }
       } else {
         // nao
         if (!motivoRejeicao)
@@ -1457,13 +1412,12 @@ export function init(db_ignored, user, userData) {
     } catch (error) {
       console.error("Erro ao salvar resposta de exclusão:", error);
       alert(`Erro ao salvar: ${error.message}`);
-      // Garante que o botão seja reabilitado mesmo em caso de erro
       saveButton.disabled = false;
       saveButton.innerHTML = "Salvar Resposta (Exclusão)";
     }
   }
 
-  // *** ADICIONADO (Task 2): Nova função para notificar contrato ***
+  // --- Nova função para notificar contrato ---
   async function handleNotificarContrato(
     pacienteId,
     pacienteNome,
@@ -1483,13 +1437,10 @@ export function init(db_ignored, user, userData) {
       return;
     }
 
-    // **Ação:** Enviar uma notificação/mensagem.
-    // A implementação exata (ex: salvar na coleção 'notificacoes' ou 'mensagens')
-    // depende da arquitetura do seu app.
-
-    // **Exemplo de implementação (se você tiver 'notificacoes' e 'addDoc' importado):**
-
+    // **Exemplo de implementação (descomente quando a coleção 'notificacoes' estiver pronta):**
+    /*
     try {
+      // NOTE: 'addDoc' precisa ser importado da 'firebase-init.js' (linha 16)
       const notificacaoRef = collection(dbInstance, "notificacoes");
       await addDoc(notificacaoRef, {
         paraUsuarioId: profissionalId,
@@ -1499,17 +1450,17 @@ export function init(db_ignored, user, userData) {
         dataEnvio: serverTimestamp(),
         lida: false,
         pacienteId: pacienteId,
-        criadoPor: adminUser.uid || "N/A",
+        criadoPor: adminUser.uid || "N/A"
       });
-
       alert("Notificação enviada com sucesso!");
+
     } catch (error) {
       console.error("Erro ao enviar notificação de contrato:", error);
       alert(`Erro ao tentar enviar notificação: ${error.message}`);
     }
+    */
 
     // **Implementação Provisória (Placeholder):**
-    // Remova este bloco e descomente o bloco acima quando a coleção de notificações estiver pronta.
     console.warn(
       "Ação 'enviar mensagem' (handleNotificarContrato) executada, mas a lógica de envio (ex: addDoc para 'notificacoes') precisa ser implementada."
     );
@@ -1517,7 +1468,6 @@ export function init(db_ignored, user, userData) {
       `Notificação para ${profissionalNome} registrada (simulação). Implemente a lógica de envio em handleNotificarContrato no JS.`
     );
   }
-  // *** FIM DA NOVA FUNÇÃO (Task 2) ***
 
   // --- Funções do Modal (Genéricas - open/close) ---
   function openModal() {
@@ -1539,24 +1489,28 @@ export function init(db_ignored, user, userData) {
   loadDesfechosPB();
   loadReavaliacao();
   loadInclusaoAlteracaoGradePB();
-  loadStatusContratos(); // Implementado
-  loadExclusaoHorarios(); // Verificado
+  loadStatusContratos();
+  loadExclusaoHorarios();
 
-  // --- Listener de Evento Genérico (MODIFICADO para Task 2) ---
+  // --- Listener de Evento Genérico (Corrigido) ---
+
+  // Agora 'tabContentContainer' é encontrado corretamente (usando o ID)
   if (tabContentContainer) {
+    console.log(
+      "Listener de clique principal anexado com sucesso a #tab-content-container."
+    );
+
     tabContentContainer.addEventListener("click", async (e) => {
-      // Delegação de evento para botões com a classe específica
+      // 1. Delegação para botões "Processar"
       const button = e.target.closest(".btn-processar-solicitacao");
 
       if (button) {
-        // Previne comportamento padrão se for link ou outro elemento
         e.preventDefault();
-
         const docId = button.dataset.docId;
         const tipo = button.dataset.tipo;
 
         if (docId && tipo) {
-          console.log(`Botão processar clicado: ID=${docId}, Tipo=${tipo}`); // Log
+          console.log(`Botão processar clicado: ID=${docId}, Tipo=${tipo}`);
           openGenericSolicitacaoModal(docId, tipo);
         } else {
           console.error(
@@ -1567,7 +1521,7 @@ export function init(db_ignored, user, userData) {
         }
       }
 
-      // *** ADICIONADO (Task 2): Listener para o botão de notificar contrato ***
+      // 2. Delegação para botões "Notificar Contrato"
       const notificarButton = e.target.closest(".btn-notificar-contrato");
       if (notificarButton) {
         e.preventDefault();
@@ -1576,7 +1530,15 @@ export function init(db_ignored, user, userData) {
         const profissionalId = notificarButton.dataset.profissionalId;
         const profissionalNome = notificarButton.dataset.profissionalNome;
 
-        if (!profissionalId || profissionalId === "null") {
+        if (
+          !profissionalId ||
+          profissionalId === "null" ||
+          profissionalId === "undefined"
+        ) {
+          console.error(
+            "ID do Profissional nulo ou indefinido:",
+            notificarButton.dataset
+          );
           alert(
             "Erro: ID do profissional não encontrado. Não é possível notificar."
           );
@@ -1590,11 +1552,11 @@ export function init(db_ignored, user, userData) {
           profissionalNome
         );
       }
-      // *** FIM DO BLOCO ADICIONADO (Task 2) ***
     });
   } else {
+    // Este erro não deve mais ocorrer
     console.error(
-      "Container de conteúdo das abas não encontrado (ID: tab-content-container). Listener de clique não adicionado."
+      "FALHA CRÍTICA: Container de conteúdo das abas não encontrado (ID: #tab-content-container). Listener de clique não adicionado."
     );
   }
 
@@ -1607,7 +1569,6 @@ export function init(db_ignored, user, userData) {
 
   if (modal) {
     modal.addEventListener("click", (event) => {
-      // Fecha se clicar no overlay (fundo escuro)
       if (event.target === modal) {
         closeModal();
       }
