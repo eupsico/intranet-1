@@ -179,7 +179,7 @@
 
 /* Estilo quando expandido */
 .solicitacao-item-header.expanded .solicitacao-indicator {
-   /* transform: rotate(45deg); /* Rotaciona o '+' para parecer um 'x' ou pode mudar o content */
+   transform: rotate(45deg); /* Rotaciona o '+' para parecer um 'x' ou pode mudar o content */
 }
 
 /* Corpo de detalhes (inicialmente oculto) */
