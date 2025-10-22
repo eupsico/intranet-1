@@ -200,7 +200,6 @@ async function loadReavaliacaoData() {
                 <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
                 <td>${valorAtualFormatado}</td>
                 <td>
-                    {/* *** MODIFICADO: Link direto para fila-atendimento com pacienteId e solicitacaoId *** */}
                     <a href="#fila-atendimento/${pacienteId}/reavaliacao/${solicitacaoId}" class="action-button">
                         Realizar Reavaliação
                     </a>
