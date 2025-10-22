@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/dashboard.js
-// Versão: 2.1 (Atualiza links da grade e adiciona card "Minhas Solicitações")
+// --- VERSÃO MODIFICADA (Lê de 'solicitacoes') ---
 
 // 1. Importa todas as funções necessárias do nosso arquivo central de inicialização
 import {
@@ -272,7 +272,7 @@ export function init(user, userData) {
     }
   }
 
-  // --- NOVA FUNÇÃO ---
+  // --- FUNÇÃO MODIFICADA ---
   /**
    * Busca e renderiza o card "Minhas Solicitações"
    */
@@ -304,10 +304,11 @@ export function init(user, userData) {
     const umMesAtras = new Date();
     umMesAtras.setDate(umMesAtras.getDate() - 30);
 
-    // Query para todas as solicitações do usuário
+    // *** MODIFICADO: Query na coleção 'solicitacoes' com filtro de tipo ***
     const q = query(
-      collection(db, "solicitacoesExclusaoGrade"),
+      collection(db, "solicitacoes"), // Alterado de "solicitacoesExclusaoGrade"
       where("solicitanteId", "==", user.uid),
+      where("tipo", "==", "exclusao_horario"), // Adicionado filtro de tipo
       orderBy("dataSolicitacao", "desc")
     );
 
@@ -325,19 +326,22 @@ export function init(user, userData) {
 
       querySnapshot.forEach((doc) => {
         const sol = doc.data();
+        const detalhes = sol.detalhes || {}; // Acessa o objeto 'detalhes'
 
         const dataSol = sol.dataSolicitacao
           ? sol.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
           : "Data pendente";
 
-        const horarios = sol.horariosParaExcluir.map((h) => h.label).join(", ");
+        // *** MODIFICADO: Acessa 'horariosParaExcluir' dentro de 'detalhes' ***
+        const horarios =
+          detalhes.horariosParaExcluir?.map((h) => h.label).join(", ") || "N/A";
 
         // Define o status e o feedback do admin
         let statusHtml = "";
         let feedbackHtml = "";
 
         const statusClass = `status-${String(sol.status).toLowerCase()}`;
-        statusHtml = `<span class_ ="status-badge ${statusClass}">${sol.status}</span>`;
+        statusHtml = `<span class="status-badge ${statusClass}">${sol.status}</span>`; // Corrigido class_ para class
 
         if (sol.status === "Concluída" && sol.adminFeedback) {
           const dataExclusao = sol.adminFeedback.dataExclusao
@@ -361,11 +365,13 @@ export function init(user, userData) {
                         </div>
                         <div class="solicitacao-body">
                             <p><strong>Horários:</strong> ${horarios}</p>
-                            <p><strong>Motivo:</strong> ${sol.motivo}</p>
+                            <p><strong>Motivo:</strong> ${
+                              detalhes.motivo || "N/A"
+                            }</p> 
                             ${feedbackHtml}
                         </div>
                     </li>
-                `;
+                `; // *** MODIFICADO: Acessa 'motivo' dentro de 'detalhes' ***
 
         if (sol.status === "Pendente") {
           abertasHtml += itemHtml;
@@ -392,6 +398,7 @@ export function init(user, userData) {
       concluidasContent.innerHTML = "";
     }
   }
+  // --- FIM DA FUNÇÃO MODIFICADA ---
 
   /**
    * Função principal que inicializa a renderização do dashboard.
@@ -402,7 +409,7 @@ export function init(user, userData) {
 
     await fetchValoresConfig();
     await renderInfoCards();
-    // CHAMA A NOVA FUNÇÃO
+    // CHAMA A FUNÇÃO MODIFICADA
     renderMinhasSolicitacoes().catch(console.error);
 
     const gradesDocRef = doc(db, "administrativo", "grades"); // Sintaxe v9
