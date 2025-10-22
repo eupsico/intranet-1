@@ -45,8 +45,8 @@ export function initsocialPanel(user, userData) {
     },
     {
       id: "disponibilidade-agendamentos",
-      name: "Agendar Paciente",
-      roles: ["admin", "servico_social"],
+      name: "Disponibilidade",
+      roles: ["admin"],
       icon: icons.agendamentos,
     },
     {
