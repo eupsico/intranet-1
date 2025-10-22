@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// --- VERSÃO CORRIGIDA ---
+// --- VERSÃO MODIFICADA (Incluindo Botão Notificar Contrato) ---
 
 import {
   db,
@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   onSnapshot,
   Timestamp,
+  addDoc,
 } from "../../../assets/js/firebase-init.js";
 // import { deleteDoc } from "../../../assets/js/firebase-init.js"; // Se necessário
 
@@ -47,7 +48,7 @@ function formatarTipoSolicitacao(tipoInterno) {
 // Função principal de inicialização
 export function init(db_ignored, user, userData) {
   console.log(
-    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.CORRIGIDA iniciado."
+    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.MODIFICADA iniciado."
   );
   adminUser = userData;
 
@@ -234,13 +235,14 @@ export function init(db_ignored, user, userData) {
     );
   }
 
-  // *** ALTERADO: loadStatusContratos ***
+  // *** ALTERADO: loadStatusContratos (Task 2) ***
   async function loadStatusContratos() {
     console.log("Carregando Status Contratos...");
     const tableBodyId = "table-body-status-contratos";
     const emptyStateId = "empty-state-status-contratos";
     const countBadgeId = "count-status-contratos";
-    const colspan = 4; // Paciente, Profissional, Status Contrato, Última Atualização
+    // *** MODIFICADO (Task 2): Colspan atualizado para 5 (incluindo Ações) ***
+    const colspan = 5;
 
     const tableBody = document.getElementById(tableBodyId);
     const emptyState = document.getElementById(emptyStateId);
@@ -295,12 +297,14 @@ export function init(db_ignored, user, userData) {
           atendimentosAtivos.forEach((atendimento) => {
             // Se o contrato NÃO está assinado neste atendimento ativo
             if (!atendimento.contratoAssinado) {
+              // *** MODIFICADO (Task 2): Adicionado profissionalId ***
               pendingContracts.push({
                 pacienteId: pacienteId,
                 pacienteNome:
                   pacienteData.nomeCompleto || "Nome não encontrado",
                 profissionalNome:
                   atendimento.profissionalNome || "Profissional não encontrado",
+                profissionalId: atendimento.profissionalId || null, // Adicionado
                 statusContrato: "Pendente",
                 lastUpdate: pacienteData.lastUpdate, // Pega a última atualização do paciente
               });
@@ -331,13 +335,23 @@ export function init(db_ignored, user, userData) {
         pendingContracts.forEach((item) => {
           const dataAtualizacao = formatarData(item.lastUpdate);
           const tr = document.createElement("tr"); // Cria elemento TR
+          // *** MODIFICADO (Task 2): Adicionado botão de notificação ***
           tr.innerHTML = `
-                      <td>${item.pacienteNome}</td>
-                      <td>${item.profissionalNome}</td>
-                      <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
-                      <td>${dataAtualizacao}</td>
-                      {/* Adicionar coluna de Ações se necessário, ex: botão para reenviar link */}
-                   `;
+                        <td>${item.pacienteNome}</td>
+                        <td>${item.profissionalNome}</td>
+                        <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
+                        <td>${dataAtualizacao}</td>
+                        <td>
+                            <button class="action-button btn-notificar-contrato" 
+                                    data-paciente-id="${item.pacienteId}" 
+                                    data-paciente-nome="${item.pacienteNome}"
+                                    data-profissional-id="${item.profissionalId}"
+                                    data-profissional-nome="${item.profissionalNome}"
+                                    title="Notificar profissional sobre contrato pendente">
+                                Notificar
+                            </button>
+                        </td>
+                      `;
           tableBody.appendChild(tr); // Adiciona o TR ao tbody
         });
       }
@@ -349,8 +363,8 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // *** ALTERADO: loadExclusaoHorarios ***
-  // Lê da coleção 'solicitacoes'. Adiciona log se não encontrar, sugerindo verificar migração.
+  // *** Análise (Task 3/4): Esta função já está correta ***
+  // Lê da coleção 'solicitacoes'.
   function loadExclusaoHorarios() {
     console.log(
       "Verificando se há solicitações de exclusão na coleção 'solicitacoes'..."
@@ -370,7 +384,7 @@ export function init(db_ignored, user, userData) {
       try {
         const qOld = query(
           collection(dbInstance, "solicitacoesExclusaoGrade"),
-          limit(1)
+          limit(1) // Importar 'limit' do firebase-init.js se for usar
         );
         const oldSnapshot = await getDocs(qOld);
         if (!oldSnapshot.empty) {
@@ -401,7 +415,6 @@ export function init(db_ignored, user, userData) {
 
   // --- Funções de Renderização ---
 
-  // ** CORRIGIDO: Removido comentário **
   function renderNovasSessoesRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -1450,6 +1463,62 @@ export function init(db_ignored, user, userData) {
     }
   }
 
+  // *** ADICIONADO (Task 2): Nova função para notificar contrato ***
+  async function handleNotificarContrato(
+    pacienteId,
+    pacienteNome,
+    profissionalId,
+    profissionalNome
+  ) {
+    console.log(
+      `Notificando ${profissionalNome} (ID: ${profissionalId}) sobre contrato pendente do paciente ${pacienteNome} (ID: ${pacienteId})`
+    );
+
+    const confirmacao = confirm(
+      `Deseja realmente enviar uma notificação para ${profissionalNome} sobre o contrato pendente do paciente ${pacienteNome}?`
+    );
+
+    if (!confirmacao) {
+      console.log("Notificação cancelada pelo admin.");
+      return;
+    }
+
+    // **Ação:** Enviar uma notificação/mensagem.
+    // A implementação exata (ex: salvar na coleção 'notificacoes' ou 'mensagens')
+    // depende da arquitetura do seu app.
+
+    // **Exemplo de implementação (se você tiver 'notificacoes' e 'addDoc' importado):**
+
+    try {
+      const notificacaoRef = collection(dbInstance, "notificacoes");
+      await addDoc(notificacaoRef, {
+        paraUsuarioId: profissionalId,
+        tipo: "aviso_contrato_pendente",
+        titulo: "Contrato Terapêutico Pendente",
+        mensagem: `Olá, ${profissionalNome}. Por favor, verifique o envio do contrato terapêutico para assinatura do paciente ${pacienteNome}.`,
+        dataEnvio: serverTimestamp(),
+        lida: false,
+        pacienteId: pacienteId,
+        criadoPor: adminUser.uid || "N/A",
+      });
+
+      alert("Notificação enviada com sucesso!");
+    } catch (error) {
+      console.error("Erro ao enviar notificação de contrato:", error);
+      alert(`Erro ao tentar enviar notificação: ${error.message}`);
+    }
+
+    // **Implementação Provisória (Placeholder):**
+    // Remova este bloco e descomente o bloco acima quando a coleção de notificações estiver pronta.
+    console.warn(
+      "Ação 'enviar mensagem' (handleNotificarContrato) executada, mas a lógica de envio (ex: addDoc para 'notificacoes') precisa ser implementada."
+    );
+    alert(
+      `Notificação para ${profissionalNome} registrada (simulação). Implemente a lógica de envio em handleNotificarContrato no JS.`
+    );
+  }
+  // *** FIM DA NOVA FUNÇÃO (Task 2) ***
+
   // --- Funções do Modal (Genéricas - open/close) ---
   function openModal() {
     if (modal) modal.style.display = "flex";
@@ -1473,7 +1542,7 @@ export function init(db_ignored, user, userData) {
   loadStatusContratos(); // Implementado
   loadExclusaoHorarios(); // Verificado
 
-  // --- Listener de Evento Genérico ---
+  // --- Listener de Evento Genérico (MODIFICADO para Task 2) ---
   if (tabContentContainer) {
     tabContentContainer.addEventListener("click", async (e) => {
       // Delegação de evento para botões com a classe específica
@@ -1497,6 +1566,31 @@ export function init(db_ignored, user, userData) {
           alert("Erro: Não foi possível identificar a solicitação.");
         }
       }
+
+      // *** ADICIONADO (Task 2): Listener para o botão de notificar contrato ***
+      const notificarButton = e.target.closest(".btn-notificar-contrato");
+      if (notificarButton) {
+        e.preventDefault();
+        const pacienteId = notificarButton.dataset.pacienteId;
+        const pacienteNome = notificarButton.dataset.pacienteNome;
+        const profissionalId = notificarButton.dataset.profissionalId;
+        const profissionalNome = notificarButton.dataset.profissionalNome;
+
+        if (!profissionalId || profissionalId === "null") {
+          alert(
+            "Erro: ID do profissional não encontrado. Não é possível notificar."
+          );
+          return;
+        }
+
+        handleNotificarContrato(
+          pacienteId,
+          pacienteNome,
+          profissionalId,
+          profissionalNome
+        );
+      }
+      // *** FIM DO BLOCO ADICIONADO (Task 2) ***
     });
   } else {
     console.error(
