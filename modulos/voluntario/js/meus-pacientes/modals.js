@@ -1,5 +1,4 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/modals.js
-// --- VERSÃO CORRIGIDA: Reinclui abrirModalEncerramento e abrirModalHorariosPb ---
 // Alterado para criar solicitações (Novas Sessões, Alteração, Desfecho, Reavaliação) na coleção 'solicitacoes'
 
 import {

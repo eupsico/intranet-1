@@ -92,7 +92,7 @@ export function adicionarEventListenersGerais(user, userData, loadedData) {
         abrirModalHorariosPb(pacienteId, atendimentoId, dependencies);
         break;
       case "desfecho_pb":
-        abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento);
+        abrirModalDesfechoPb(dadosDoPaciente, meuAtendimento, dependencies);
         break;
       case "pdf_contrato":
         gerarPdfContrato(dadosDoPaciente, meuAtendimento);
