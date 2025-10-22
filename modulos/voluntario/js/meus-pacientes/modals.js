@@ -1,5 +1,6 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/modals.js
-// Alterado para criar solicitações na coleção 'solicitacoes'
+// --- VERSÃO CORRIGIDA: Reinclui abrirModalEncerramento e abrirModalHorariosPb ---
+// Alterado para criar solicitações (Novas Sessões, Alteração, Desfecho, Reavaliação) na coleção 'solicitacoes'
 
 import {
   db,
@@ -7,23 +8,22 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
-  httpsCallable,
-  functions,
-  collection, // Importado
+  httpsCallable, // Mantido para handleDesfechoPbSubmit original, se necessário reverter
+  functions, // Mantido para handleDesfechoPbSubmit original, se necessário reverter
+  collection,
   query,
   where,
   getDocs,
-  addDoc, // Importado
+  addDoc,
   Timestamp,
 } from "../../../../assets/js/firebase-init.js";
 
 // Variáveis de escopo do módulo para armazenar dados necessários nos submits
-let currentUserData = null; // Para armazenar userData (nome, uid)
-let currentPacienteData = null; // Para armazenar dados do paciente atual do modal
-let currentAtendimentoData = null; // Para armazenar dados do atendimento atual do modal
+let currentUserData = null;
+let currentPacienteData = null;
+let currentAtendimentoData = null;
 
-// --- Lógica do Modal de Mensagens (Sem alterações na lógica de salvar) ---
-// ... (código existente de abrirModalMensagens, preencherFormularioMensagem, formatarData, atualizarPreviewMensagem, handleMensagemSubmit) ...
+// --- Lógica do Modal de Mensagens ---
 let dadosParaMensagem = {};
 let templateOriginal = "";
 
@@ -317,15 +317,10 @@ export function abrirModalSolicitarSessoes(
   document.getElementById("solicitar-paciente-nome").value =
     paciente.nomeCompleto;
 
-  // Não precisamos mais guardar IDs no form se vamos pegar de current...Data
-  // document.getElementById("solicitar-paciente-id").value = paciente.id;
-  // document.getElementById("solicitar-atendimento-id").value = atendimento?.atendimentoId || "";
-
   const horarioSelect = document.getElementById("solicitar-horario");
   horarioSelect.innerHTML = "";
   for (let i = 7; i <= 21; i++) {
     const hora = `${String(i).padStart(2, "0")}:00`;
-    // horarioSelect.innerHTML += `<option value="${i}">${hora}</option>`; // Usa i como value
     horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`; // **CORREÇÃO: Usar a hora formatada como value**
   }
 
@@ -362,7 +357,6 @@ export function abrirModalSolicitarSessoes(
   tipoAtendimentoSelect.dispatchEvent(new Event("change"));
 }
 
-// *** ALTERADO: handleSolicitarSessoesSubmit para criar na coleção 'solicitacoes' ***
 export async function handleSolicitarSessoesSubmit(evento) {
   evento.preventDefault();
   const form = document.getElementById("solicitar-sessoes-form");
@@ -383,18 +377,14 @@ export async function handleSolicitarSessoesSubmit(evento) {
   try {
     // Coleta os dados do formulário e do contexto
     const solicitacaoData = {
-      tipo: "novas_sessoes", // Tipo da solicitação
-      status: "Pendente", // Status inicial
-      dataSolicitacao: serverTimestamp(), // Data/Hora atual
-      // Dados do solicitante (Voluntário)
+      tipo: "novas_sessoes",
+      status: "Pendente",
+      dataSolicitacao: serverTimestamp(),
       solicitanteId: currentUserData.uid,
       solicitanteNome: currentUserData.nome,
-      // Dados do Paciente
       pacienteId: currentPacienteData.id,
       pacienteNome: currentPacienteData.nomeCompleto,
-      // ID do atendimento PB atual (se houver)
       atendimentoId: currentAtendimentoData?.atendimentoId || null,
-      // Detalhes específicos da solicitação de Novas Sessões
       detalhes: {
         diaSemana: form.querySelector("#solicitar-dia-semana").value,
         horario: form.querySelector("#solicitar-horario").value,
@@ -402,10 +392,8 @@ export async function handleSolicitarSessoesSubmit(evento) {
         sala: form.querySelector("#solicitar-sala").value,
         dataInicioPreferencial: form.querySelector("#solicitar-data-inicio")
           .value,
-        // Adicionar justificativa se houver campo no formulário HTML
-        // justificativa: form.querySelector("#solicitar-justificativa")?.value || ""
       },
-      adminFeedback: null, // Campo para resposta do admin
+      adminFeedback: null,
     };
 
     // Salva na coleção 'solicitacoes'
@@ -427,42 +415,34 @@ export async function handleSolicitarSessoesSubmit(evento) {
     btnSubmit.textContent = "Enviar Solicitação";
   }
 }
-// *** FIM DA ALTERAÇÃO ***
 
 function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
   const dia = document.getElementById("solicitar-dia-semana").value;
-  // **CORREÇÃO: Pegar a hora formatada 'HH:MM' do value**
   const horarioCompleto = document.getElementById("solicitar-horario").value;
   const tipo = document.getElementById("solicitar-tipo-atendimento").value;
   const sala = document.getElementById("solicitar-sala").value;
   const feedbackDiv = document.getElementById("validacao-grade-feedback");
 
-  // **CORREÇÃO: Usar a hora completa 'HH:MM' como chave**
-  // A chave na grade parece ser HH-MM (ex: 08-00)
   const horaKey = horarioCompleto ? horarioCompleto.replace(":", "-") : null;
   let isOcupado = false;
 
   if (!horaKey) {
-    feedbackDiv.style.display = "none"; // Esconde se não tem hora selecionada
+    feedbackDiv.style.display = "none";
     return;
   }
 
   if (tipo === "online") {
-    // **CORREÇÃO: usar 'online' minúsculo**
     for (let i = 0; i < 6; i++) {
-      // Acessa a grade usando as chaves corretas
       if (dadosDaGrade?.online?.[dia]?.[horaKey]?.[`col${i}`]) {
         isOcupado = true;
         break;
       }
     }
   } else {
-    // Presencial
     const salaIndex = salasPresenciais?.indexOf(sala);
     if (
       salaIndex !== undefined &&
-      salaIndex !== -1 && // Verifica se salaIndex é válido
-      // Acessa a grade usando as chaves corretas
+      salaIndex !== -1 &&
       dadosDaGrade?.presencial?.[dia]?.[horaKey]?.[`col${salaIndex}`]
     ) {
       isOcupado = true;
@@ -471,13 +451,13 @@ function validarHorarioNaGrade(dadosDaGrade, salasPresenciais) {
 
   feedbackDiv.style.display = "block";
   if (isOcupado) {
-    feedbackDiv.className = "info-note exists"; // Mantém a classe 'exists'
+    feedbackDiv.className = "info-note exists";
     feedbackDiv.innerHTML =
-      "<strong>Atenção:</strong> Este horário já está preenchido na grade. <br>Sua solicitação será enviada mesmo assim para análise do administrativo."; // Mensagem ajustada
+      "<strong>Atenção:</strong> Este horário já está preenchido na grade. <br>Sua solicitação será enviada mesmo assim para análise do administrativo.";
   } else {
     feedbackDiv.className = "info-note success";
     feedbackDiv.innerHTML =
-      "<strong>Disponível:</strong> O horário selecionado parece livre na grade. A solicitação será enviada para análise do administrativo."; // Mensagem ajustada
+      "<strong>Disponível:</strong> O horário selecionado parece livre na grade. A solicitação será enviada para análise do administrativo.";
   }
 }
 
@@ -504,7 +484,7 @@ export function abrirModalAlterarHorario(
     currentUserData.nome;
 
   // Preenche dados atuais (se existirem)
-  const horarioAtual = atendimento?.horarioSessao || {};
+  const horarioAtual = atendimento?.horarioSessoes || {}; // **CORREÇÃO: Usar horarioSessoes** (Verificar se é esse mesmo o nome do campo)
   document.getElementById("alterar-dia-atual").value =
     horarioAtual.diaSemana || "N/A";
   document.getElementById("alterar-horario-atual").value =
@@ -542,7 +522,6 @@ export function abrirModalAlterarHorario(
       salaSelect.value = "Online";
     } else {
       if (salasPresenciais && salasPresenciais.length > 0) {
-        // salaSelect.value = salasPresenciais[0]; // Remove seleção automática
         salaSelect.value = ""; // Deixa vazio para forçar seleção
       } else {
         salaSelect.value = "";
@@ -554,7 +533,6 @@ export function abrirModalAlterarHorario(
   modal.style.display = "flex"; // Mostra o modal
 }
 
-// *** ALTERADO: handleAlterarHorarioSubmit para criar na coleção 'solicitacoes' ***
 export async function handleAlterarHorarioSubmit(evento) {
   evento.preventDefault();
   const form = document.getElementById("alterar-horario-form");
@@ -575,47 +553,43 @@ export async function handleAlterarHorarioSubmit(evento) {
     '<span class="loading-spinner-small"></span> Enviando...';
 
   try {
-    // Coleta dados antigos (já preenchidos no modal e armazenados em currentAtendimentoData)
-    const horarioAntigo = currentAtendimentoData?.horarioSessao || {};
+    // Coleta dados antigos
+    const horarioAntigo = currentAtendimentoData?.horarioSessoes || {}; // **CORREÇÃO: Usar horarioSessoes**
     const dadosAntigos = {
       dia: horarioAntigo.diaSemana || "N/A",
       horario: horarioAntigo.horario || "N/A",
       modalidade: horarioAntigo.tipoAtendimento || "N/A",
-      sala: horarioAntigo.salaAtendimento || "N/A", // Adicionar se existir
-      frequencia: horarioAntigo.frequencia || "N/A", // Adicionar se existir
+      sala: horarioAntigo.salaAtendimento || "N/A",
+      frequencia: horarioAntigo.frequencia || "N/A",
     };
 
-    // Coleta dados novos do formulário
+    // Coleta dados novos
     const dadosNovos = {
       dia: form.querySelector("#alterar-dia-semana").value,
       horario: form.querySelector("#alterar-horario").value,
       modalidade: form.querySelector("#alterar-tipo-atendimento").value,
       frequencia: form.querySelector("#alterar-frequencia").value,
       sala: form.querySelector("#alterar-sala").value,
-      dataInicio: form.querySelector("#alterar-data-inicio").value, // Data de início da alteração
-      alterarGrade: form.querySelector("#alterar-grade").value, // Solicita alteração na grade
+      dataInicio: form.querySelector("#alterar-data-inicio").value,
+      alterarGrade: form.querySelector("#alterar-grade").value,
     };
 
     // Prepara o objeto da solicitação
     const solicitacaoData = {
-      tipo: "alteracao_horario", // Tipo da solicitação
-      status: "Pendente", // Status inicial
-      dataSolicitacao: serverTimestamp(), // Data/Hora atual
-      // Dados do solicitante (Voluntário)
+      tipo: "alteracao_horario",
+      status: "Pendente",
+      dataSolicitacao: serverTimestamp(),
       solicitanteId: currentUserData.uid,
       solicitanteNome: currentUserData.nome,
-      // Dados do Paciente
       pacienteId: currentPacienteData.id,
       pacienteNome: currentPacienteData.nomeCompleto,
-      // ID do atendimento PB atual
       atendimentoId: currentAtendimentoData?.atendimentoId || null,
-      // Detalhes específicos da solicitação de alteração
       detalhes: {
         dadosAntigos: dadosAntigos,
         dadosNovos: dadosNovos,
-        justificativa: form.querySelector("#alterar-justificativa").value || "", // Justificativa opcional
+        justificativa: form.querySelector("#alterar-justificativa").value || "",
       },
-      adminFeedback: null, // Campo para resposta do admin
+      adminFeedback: null,
     };
 
     // Salva na coleção 'solicitacoes'
@@ -637,22 +611,19 @@ export async function handleAlterarHorarioSubmit(evento) {
     btnSubmit.textContent = "Enviar Solicitação de Alteração";
   }
 }
-// *** FIM DA ALTERAÇÃO ***
 
 // --- Lógica do Modal de Reavaliação ---
-
-// Variável para guardar a configuração da agenda e dados
 let currentReavaliacaoConfig = {};
 
 export async function abrirModalReavaliacao(
   paciente,
-  atendimento, // atendimento pode ser null, mas recebemos para consistência
-  { user, userData, systemConfigs } // Recebe user e userData
+  atendimento,
+  { user, userData, systemConfigs }
 ) {
-  // Armazena dados no escopo do módulo
-  currentUserData = userData; // user já está em userData? Se sim, ok. Senão, salvar user também.
+  // Armazena dados
+  currentUserData = userData;
   currentPacienteData = paciente;
-  currentAtendimentoData = atendimento; // Pode ser null
+  currentAtendimentoData = atendimento;
 
   const modal = document.getElementById("reavaliacao-modal");
   const form = document.getElementById("reavaliacao-form");
@@ -685,8 +656,8 @@ export async function abrirModalReavaliacao(
     "<p>Selecione uma data para ver os horários.</p>";
   dataSelecionadaInput.value = "";
 
-  // Preencher dados fixos (usa currentUserData)
-  document.getElementById("reavaliacao-paciente-id").value = paciente.id; // Mantém ID no form por segurança
+  // Preencher dados fixos
+  document.getElementById("reavaliacao-paciente-id").value = paciente.id;
   document.getElementById("reavaliacao-profissional-nome").value =
     currentUserData.nome;
   document.getElementById("reavaliacao-paciente-nome").value =
@@ -713,18 +684,16 @@ export async function abrirModalReavaliacao(
 
     // Mostrar formulário
     form.style.display = "block";
-    btnConfirmar.style.display = "block"; // Botão de submit agora é para a *solicitação*
+    btnConfirmar.style.display = "block";
 
     let agendasConfig = [];
     agendaSnapshot.forEach((doc) =>
       agendasConfig.push({ id: doc.id, ...doc.data() })
     );
 
-    // Salva configs (mantém, pode ser útil para preencher preferências no detalhes)
     currentReavaliacaoConfig = {
       agendas: agendasConfig,
       paciente: paciente,
-      // user: user, // Se user tiver mais dados que userData.uid
       userData: currentUserData,
     };
 
@@ -754,7 +723,7 @@ export async function abrirModalReavaliacao(
       );
     }
 
-    // Listeners (mantidos para seleção de preferência)
+    // Listeners
     tipoAtendimentoSelect.onchange = () => {
       horariosContainer.innerHTML =
         "<p>Selecione uma data para ver os horários.</p>";
@@ -769,7 +738,7 @@ export async function abrirModalReavaliacao(
           ?.classList.remove("selected");
         target.classList.add("selected");
         dataSelecionadaInput.value = target.dataset.data;
-        carregarHorariosReavaliacao(); // Carrega horários para seleção de preferência
+        carregarHorariosReavaliacao();
       }
     };
     horariosContainer.onclick = (e) => {
@@ -789,9 +758,7 @@ export async function abrirModalReavaliacao(
   }
 }
 
-// Renderizar Datas (mantida, útil para preferência)
 function renderizarDatasDisponiveis(modalidade) {
-  // ... (código igual) ...
   const datasContainer = document.getElementById(
     "reavaliacao-datas-disponiveis"
   );
@@ -803,14 +770,13 @@ function renderizarDatasDisponiveis(modalidade) {
 
   const { agendas } = currentReavaliacaoConfig;
 
-  // Filtra as agendas pela modalidade E agrupa por data (para remover duplicados)
   const datasDisponiveis = [
     ...new Set(
       agendas.filter((a) => a.modalidade === modalidade).map((a) => a.data)
     ),
   ];
 
-  datasDisponiveis.sort(); // Ordena as datas
+  datasDisponiveis.sort();
 
   if (datasDisponiveis.length === 0) {
     datasContainer.innerHTML =
@@ -818,10 +784,9 @@ function renderizarDatasDisponiveis(modalidade) {
     return;
   }
 
-  // Formata as datas para exibição
   const datasHtml = datasDisponiveis
     .map((dataISO) => {
-      const dataObj = new Date(dataISO + "T03:00:00"); // Ajuste de fuso
+      const dataObj = new Date(dataISO + "T03:00:00");
       const diaSemana = dataObj.toLocaleDateString("pt-BR", {
         weekday: "long",
       });
@@ -839,13 +804,11 @@ function renderizarDatasDisponiveis(modalidade) {
   datasContainer.innerHTML = datasHtml;
 }
 
-// Carregar Horários (mantida, útil para preferência)
 async function carregarHorariosReavaliacao() {
-  // ... (código igual) ...
   const modalidade = document.getElementById(
     "reavaliacao-tipo-atendimento"
   ).value;
-  const dataISO = document.getElementById("reavaliacao-data-selecionada").value; // Pega do input oculto
+  const dataISO = document.getElementById("reavaliacao-data-selecionada").value;
   const horariosContainer = document.getElementById(
     "reavaliacao-horarios-disponiveis"
   );
@@ -859,23 +822,18 @@ async function carregarHorariosReavaliacao() {
   horariosContainer.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // 1. Encontrar as configurações de agenda para esta data/modalidade
     const agendasDoDia = currentReavaliacaoConfig.agendas.filter(
       (a) => a.modalidade === modalidade && a.data === dataISO
     );
 
     if (agendasDoDia.length === 0) {
-      // Não lança erro, apenas informa que não há slots configurados
       horariosContainer.innerHTML =
         "<p>Nenhum horário configurado para este dia/modalidade.</p>";
-      // throw new Error("Configuração de agenda não encontrada para esta data.");
       return;
     }
 
-    // 2. Pegar todos os slots disponíveis de todas as assistentes
     let slotsDoDia = new Set();
     agendasDoDia.forEach((agenda) => {
-      // Lógica de 'inicio' e 'fim'
       const [hInicio, mInicio] = agenda.inicio.split(":").map(Number);
       const [hFim, mFim] = agenda.fim.split(":").map(Number);
       const inicioEmMinutos = hInicio * 60 + mInicio;
@@ -884,7 +842,7 @@ async function carregarHorariosReavaliacao() {
       for (
         let minutos = inicioEmMinutos;
         minutos < fimEmMinutos;
-        minutos += 30 // Assumindo slots de 30 min
+        minutos += 30
       ) {
         const hAtual = Math.floor(minutos / 60);
         const mAtual = minutos % 60;
@@ -903,24 +861,21 @@ async function carregarHorariosReavaliacao() {
       return;
     }
 
-    // 3. Buscar agendamentos existentes para marcar como ocupados
     const agendamentosQuery = query(
-      collection(db, "agendamentos"), // Coleção correta
+      collection(db, "agendamentos"),
       where("data", "==", dataISO),
-      where("tipo", "==", "reavaliacao"), // Filtra por tipo
-      where("modalidade", "==", modalidade), // Filtra por modalidade
-      where("status", "in", ["agendado", "confirmado"]) // Considera agendado ou confirmado como ocupado
+      where("tipo", "==", "reavaliacao"),
+      where("modalidade", "==", modalidade),
+      where("status", "in", ["agendado", "confirmado"])
     );
     const agendamentosSnapshot = await getDocs(agendamentosQuery);
     const horariosOcupados = new Set(
       agendamentosSnapshot.docs.map((doc) => doc.data().hora)
-    ); // Usa Set para busca rápida
+    );
 
-    // 4. Renderizar os slots
     let slotsHtml = "";
     slotsOrdenados.forEach((hora) => {
       if (horariosOcupados.has(hora)) {
-        // Verifica se está no Set
         slotsHtml += `<button type="button" class="slot-time disabled" disabled>${hora}</button>`;
       } else {
         slotsHtml += `<button type="button" class="slot-time" data-hora="${hora}">${hora}</button>`;
@@ -936,7 +891,6 @@ async function carregarHorariosReavaliacao() {
   }
 }
 
-// *** ALTERADO: handleReavaliacaoSubmit para criar na coleção 'solicitacoes' ***
 export async function handleReavaliacaoSubmit(evento) {
   evento.preventDefault();
   const modal = document.getElementById("reavaliacao-modal");
@@ -945,7 +899,6 @@ export async function handleReavaliacaoSubmit(evento) {
   btnConfirmar.textContent = "Enviando...";
 
   try {
-    // 1. Coletar dados do formulário e contexto
     const motivo = document.getElementById("reavaliacao-motivo").value;
     const valorAtual =
       document.getElementById("reavaliacao-valor-atual").value || "N/A";
@@ -960,59 +913,47 @@ export async function handleReavaliacaoSubmit(evento) {
     );
     const horaPref = selectedSlot ? selectedSlot.dataset.hora : null;
 
-    // 2. Validação Mínima (Motivo é obrigatório)
     if (!motivo) {
       throw new Error("Por favor, preencha o motivo da reavaliação.");
     }
 
-    // 3. Preparar objeto para salvar em "solicitacoes"
     const solicitacaoData = {
-      tipo: "reavaliacao", // Tipo da solicitação
-      status: "Pendente", // Status inicial
-      dataSolicitacao: serverTimestamp(), // Data/Hora atual
-      // Dados do solicitante (Voluntário)
-      solicitanteId: currentUserData.uid, // Usa o UID do usuário logado
+      tipo: "reavaliacao",
+      status: "Pendente",
+      dataSolicitacao: serverTimestamp(),
+      solicitanteId: currentUserData.uid,
       solicitanteNome: currentUserData.nome,
-      // Dados do Paciente
       pacienteId: currentPacienteData.id,
       pacienteNome: currentPacienteData.nomeCompleto,
-      // ID do atendimento PB atual (se houver)
       atendimentoId: currentAtendimentoData?.atendimentoId || null,
-      // Detalhes específicos da solicitação de reavaliação
       detalhes: {
         motivo: motivo,
         valorContribuicaoAtual: valorAtual,
-        // Informações de preferência de agendamento (opcional, mas útil para o admin)
         preferenciaAgendamento: {
           modalidade: modalidadePref || null,
           data: dataPref || null,
           hora: horaPref || null,
         },
       },
-      adminFeedback: null, // Campo para resposta do admin
+      adminFeedback: null,
     };
 
-    // 4. Salvar na coleção "solicitacoes"
     await addDoc(collection(db, "solicitacoes"), solicitacaoData);
 
     console.log("Solicitação de reavaliação criada:", solicitacaoData);
 
-    // 5. Sucesso - NÃO altera mais o status do paciente aqui
     alert(
       "Solicitação de reavaliação enviada com sucesso para o administrativo!"
     );
     modal.style.display = "none";
-    // location.reload(); // Não precisa recarregar a página aqui
   } catch (error) {
     console.error("Erro ao enviar solicitação de reavaliação:", error);
     alert(`Erro ao enviar solicitação: ${error.message}`);
   } finally {
-    // 6. Resetar botão
     btnConfirmar.disabled = false;
     btnConfirmar.textContent = "Enviar Solicitação";
   }
 }
-// *** FIM DA ALTERAÇÃO ***
 
 // --- Lógica do Modal de Desfecho PB ---
 
@@ -1021,11 +962,10 @@ export async function abrirModalDesfechoPb(
   atendimento,
   { userData }
 ) {
-  // Recebe userData
-  // Armazena dados no escopo do módulo
+  // Armazena dados
   currentUserData = userData;
   currentPacienteData = paciente;
-  currentAtendimentoData = atendimento; // Garante que temos o atendimento PB aqui
+  currentAtendimentoData = atendimento;
 
   const modal = document.getElementById("desfecho-pb-modal");
   const body = document.getElementById("desfecho-pb-modal-body");
@@ -1036,14 +976,13 @@ export async function abrirModalDesfechoPb(
   modal.style.display = "block";
 
   try {
-    // Usa currentAtendimentoData
     if (!currentAtendimentoData) {
       throw new Error(
         "Dados do atendimento específico (PB) não foram encontrados. Não é possível registrar o desfecho."
       );
     }
 
-    const response = await fetch("../page/form-atendimento-pb.html"); // Mantém o fetch do HTML
+    const response = await fetch("../page/form-atendimento-pb.html");
     if (!response.ok)
       throw new Error(
         "Arquivo do formulário de desfecho (form-atendimento-pb.html) não encontrado."
@@ -1053,25 +992,20 @@ export async function abrirModalDesfechoPb(
     footer.style.display = "flex";
 
     const form = body.querySelector("#form-atendimento-pb");
-    // Remove os data attributes se não forem mais necessários diretamente no form
-    // form.dataset.pacienteId = currentPacienteData.id;
-    // form.dataset.atendimentoId = currentAtendimentoData.atendimentoId;
 
-    // Preenche o formulário usando current...Data
     form.querySelector("#profissional-nome").value =
-      currentAtendimentoData.profissionalNome || currentUserData.nome; // Fallback para nome do user logado
+      currentAtendimentoData.profissionalNome || currentUserData.nome;
     form.querySelector("#paciente-nome").value =
       currentPacienteData.nomeCompleto;
     form.querySelector("#valor-contribuicao").value =
       currentPacienteData.valorContribuicao || "Não definido";
     form.querySelector("#data-inicio-atendimento").value =
-      currentAtendimentoData.horarioSessao?.dataInicio
+      currentAtendimentoData.horarioSessoes?.dataInicio // **CORREÇÃO: Usar horarioSessoes**
         ? new Date(
-            currentAtendimentoData.horarioSessao.dataInicio + "T03:00:00"
+            currentAtendimentoData.horarioSessoes.dataInicio + "T03:00:00"
           ).toLocaleDateString("pt-BR")
         : "N/A";
 
-    // Lógica dos campos condicionais (mantida)
     const desfechoSelect = form.querySelector("#desfecho-acompanhamento");
     const motivoContainer = form.querySelector(
       "#motivo-alta-desistencia-container"
@@ -1088,7 +1022,6 @@ export async function abrirModalDesfechoPb(
         : "none";
       encaminhamentoContainer.style.display =
         desfechoSelect.value === "Encaminhamento" ? "block" : "none";
-      // Torna campos required/not required dinamicamente
       form.querySelector("#motivo-alta-desistencia").required = [
         "Alta",
         "Desistencia",
@@ -1098,22 +1031,20 @@ export async function abrirModalDesfechoPb(
       form.querySelector("#motivo-encaminhamento").required =
         desfechoSelect.value === "Encaminhamento";
     });
-    // Dispara o change inicial para garantir o estado correto
     desfechoSelect.dispatchEvent(new Event("change"));
 
-    form.addEventListener("submit", handleDesfechoPbSubmit); // Mantém o listener
+    form.addEventListener("submit", handleDesfechoPbSubmit);
   } catch (error) {
     body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar modal:</b> ${error.message}</p>`;
-    footer.style.display = "flex"; // Mostra footer mesmo com erro para botão Cancelar
+    footer.style.display = "flex";
     console.error(error);
   }
 }
 
-// *** ALTERADO: handleDesfechoPbSubmit para criar na coleção 'solicitacoes' ***
 async function handleDesfechoPbSubmit(evento) {
   evento.preventDefault();
   const form = evento.target;
-  const modal = form.closest(".modal-overlay"); // Encontra o modal pai
+  const modal = form.closest(".modal-overlay");
   const botaoSalvar = modal.querySelector("#btn-salvar-desfecho-submit");
 
   botaoSalvar.disabled = true;
@@ -1123,7 +1054,6 @@ async function handleDesfechoPbSubmit(evento) {
     const desfechoTipo = form.querySelector("#desfecho-acompanhamento").value;
     if (!desfechoTipo) throw new Error("Selecione um tipo de desfecho.");
 
-    // Coleta detalhes com base no tipo
     let detalhesDesfecho = {};
     if (desfechoTipo === "Encaminhamento") {
       detalhesDesfecho = {
@@ -1135,7 +1065,6 @@ async function handleDesfechoPbSubmit(evento) {
           .value,
         relatoCaso: form.querySelector("#relato-caso").value || "",
       };
-      // Validação específica de encaminhamento
       if (
         !detalhesDesfecho.servicoEncaminhado ||
         !detalhesDesfecho.motivoEncaminhamento
@@ -1148,50 +1077,41 @@ async function handleDesfechoPbSubmit(evento) {
       detalhesDesfecho = {
         motivo: form.querySelector("#motivo-alta-desistencia").value,
       };
-      // Validação específica de alta/desistência
       if (!detalhesDesfecho.motivo) {
         throw new Error(`O motivo é obrigatório para ${desfechoTipo}.`);
       }
     }
-    // Adiciona data do desfecho (importante!)
-    const dataDesfechoInput = form.querySelector("#data-desfecho"); // Assumindo que existe um input com id="data-desfecho"
+    const dataDesfechoInput = form.querySelector("#data-desfecho");
     if (!dataDesfechoInput || !dataDesfechoInput.value) {
       throw new Error("A data do desfecho é obrigatória.");
     }
     detalhesDesfecho.dataDesfecho = dataDesfechoInput.value;
 
-    // Prepara o objeto da solicitação
     const solicitacaoData = {
-      tipo: "desfecho", // Tipo da solicitação
-      status: "Pendente", // Status inicial - Admin precisa confirmar/processar
-      dataSolicitacao: serverTimestamp(), // Data/Hora da submissão
-      // Dados do solicitante (Voluntário)
+      tipo: "desfecho",
+      status: "Pendente",
+      dataSolicitacao: serverTimestamp(),
       solicitanteId: currentUserData.uid,
       solicitanteNome: currentUserData.nome,
-      // Dados do Paciente
       pacienteId: currentPacienteData.id,
       pacienteNome: currentPacienteData.nomeCompleto,
-      // ID do atendimento PB
       atendimentoId: currentAtendimentoData?.atendimentoId || null,
-      // Detalhes específicos da solicitação de desfecho
       detalhes: {
         tipoDesfecho: desfechoTipo,
-        ...detalhesDesfecho, // Inclui os detalhes coletados (motivo ou dados de encaminhamento)
+        ...detalhesDesfecho,
         sessoesRealizadas:
-          form.querySelector("#quantidade-sessoes-realizadas")?.value || "N/A", // Adiciona qtd sessões se houver o campo
+          form.querySelector("#quantidade-sessoes-realizadas")?.value || "N/A",
         observacoesGerais:
-          form.querySelector("#observacoes-gerais")?.value || "", // Adiciona obs gerais se houver
+          form.querySelector("#observacoes-gerais")?.value || "",
       },
-      adminFeedback: null, // Campo para resposta do admin
+      adminFeedback: null,
     };
 
-    // Salva na coleção 'solicitacoes'
     await addDoc(collection(db, "solicitacoes"), solicitacaoData);
 
     console.log("Solicitação de desfecho criada:", solicitacaoData);
     alert("Registro de desfecho enviado com sucesso para o administrativo!");
     modal.style.display = "none";
-    // location.reload(); // Recarregar pode não ser necessário imediatamente
   } catch (error) {
     console.error("Erro ao enviar solicitação de desfecho:", error);
     alert(`Falha ao enviar: ${error.message}`);
@@ -1200,28 +1120,332 @@ async function handleDesfechoPbSubmit(evento) {
     botaoSalvar.textContent = "Salvar Desfecho";
   }
 }
-// *** FIM DA ALTERAÇÃO ***
 
-// --- Funções Submit Originais (Encerramento Plantão, Horários PB) ---
-// Mantidas caso ainda sejam usadas em algum fluxo, mas a lógica principal
-// de solicitação foi movida para as funções acima.
+// --- Funções Originais (Mantidas por enquanto) ---
 
+// *** FUNÇÃO REINCLUÍDA ***
+export async function abrirModalEncerramento(pacienteId, dadosDoPaciente) {
+  // Armazena dados no escopo do módulo
+  currentPacienteData = dadosDoPaciente; // Necessário para handleEncerramentoSubmit
+  // currentUserData já deve ter sido setado ao abrir outro modal ou no init da página
+
+  const modal = document.getElementById("encerramento-modal");
+  const form = document.getElementById("encerramento-form");
+  form.reset();
+  document.getElementById("paciente-id-modal").value = pacienteId; // Mantém ID no form para handleEncerramentoSubmit
+  document
+    .getElementById("motivo-nao-pagamento-container")
+    .classList.add("hidden");
+  const novaDisponibilidadeContainer = document.getElementById(
+    "nova-disponibilidade-container"
+  );
+  novaDisponibilidadeContainer.classList.add("hidden");
+  novaDisponibilidadeContainer.innerHTML = "";
+  const disponibilidadeEspecifica =
+    dadosDoPaciente.disponibilidadeEspecifica || [];
+  const textoDisponibilidade =
+    disponibilidadeEspecifica.length > 0
+      ? disponibilidadeEspecifica
+          .map((item) => {
+            const [periodo, hora] = item.split("_");
+            const periodoFormatado =
+              periodo.replace("-", " (").replace("-", " ") + ")";
+            return `${
+              periodoFormatado.charAt(0).toUpperCase() +
+              periodoFormatado.slice(1)
+            } ${hora}`;
+          })
+          .join(", ")
+      : "Nenhuma disponibilidade específica informada.";
+  document.getElementById("disponibilidade-atual").textContent =
+    textoDisponibilidade;
+  const pagamentoSelect = form.querySelector("#pagamento-contribuicao");
+  pagamentoSelect.onchange = () => {
+    document
+      .getElementById("motivo-nao-pagamento-container")
+      .classList.toggle("hidden", pagamentoSelect.value !== "nao");
+    document.getElementById("motivo-nao-pagamento").required =
+      pagamentoSelect.value === "nao";
+  };
+  const dispSelect = form.querySelector("#manter-disponibilidade");
+  dispSelect.onchange = async () => {
+    const mostrar = dispSelect.value === "nao";
+    novaDisponibilidadeContainer.classList.toggle("hidden", !mostrar);
+    if (mostrar && novaDisponibilidadeContainer.innerHTML.trim() === "") {
+      novaDisponibilidadeContainer.innerHTML =
+        '<div class="loading-spinner"></div>';
+      try {
+        // Ajuste no caminho do fetch relativo ao JS, não ao HTML
+        const response = await fetch(
+          "../../../public/fichas-de-inscricao.html" // Ajuste o caminho se necessário
+        );
+        const text = await response.text();
+        const parser = new DOMParser();
+        const docHtml = parser.parseFromString(text, "text/html");
+        const disponibilidadeHtml = docHtml.getElementById(
+          "disponibilidade-section"
+        ).innerHTML;
+        novaDisponibilidadeContainer.innerHTML = disponibilidadeHtml;
+      } catch (error) {
+        console.error("Erro ao carregar HTML da disponibilidade:", error);
+        novaDisponibilidadeContainer.innerHTML =
+          '<p class="alert alert-error">Erro ao carregar opções.</p>';
+      }
+    }
+  };
+  modal.style.display = "block"; // Usar 'block' ou 'flex' dependendo do CSS
+}
+
+// *** FUNÇÃO REINCLUÍDA ***
+export function abrirModalHorariosPb(pacienteId, atendimentoId, { userData }) {
+  // Armazena dados no escopo do módulo
+  currentUserData = userData;
+  // Busca paciente e atendimento se necessário, ou assume que já estão em current...Data
+  // Aqui, vamos confiar que handleHorariosPbSubmit buscará os dados frescos pelo ID
+  // currentPacienteData = ?; // Talvez não precise aqui se o submit busca pelo ID
+  // currentAtendimentoData = ?;
+
+  const modal = document.getElementById("horarios-pb-modal");
+  const form = document.getElementById("horarios-pb-form");
+  form.reset();
+  form.querySelector("#paciente-id-horarios-modal").value = pacienteId; // ID no form é necessário para o submit
+  form.querySelector("#atendimento-id-horarios-modal").value = atendimentoId; // ID no form é necessário para o submit
+  const motivoContainer = document.getElementById(
+    "motivo-nao-inicio-pb-container"
+  );
+  const continuacaoContainer = document.getElementById("form-continuacao-pb");
+  const desistenciaContainer = document.getElementById(
+    "motivo-desistencia-container"
+  );
+  const solicitacaoContainer = document.getElementById(
+    "detalhar-solicitacao-container"
+  );
+  motivoContainer.classList.add("hidden");
+  continuacaoContainer.classList.add("hidden");
+  desistenciaContainer.classList.add("hidden");
+  solicitacaoContainer.classList.add("hidden");
+  continuacaoContainer.innerHTML = ""; // Limpa formulário dinâmico
+  document.getElementById("motivo-desistencia-pb").required = false;
+  document.getElementById("detalhes-solicitacao-pb").required = false;
+  const iniciouRadio = form.querySelectorAll('input[name="iniciou-pb"]');
+  iniciouRadio.forEach((radio) => {
+    radio.onchange = () => {
+      const mostrarFormulario = radio.value === "sim" && radio.checked;
+      const mostrarMotivo = radio.value === "nao" && radio.checked;
+      continuacaoContainer.classList.toggle("hidden", !mostrarFormulario);
+      motivoContainer.classList.toggle("hidden", !mostrarMotivo);
+      if (mostrarFormulario) {
+        desistenciaContainer.classList.add("hidden");
+        solicitacaoContainer.classList.add("hidden");
+        document.getElementById("motivo-desistencia-pb").required = false; // Garante que não é required
+        document.getElementById("detalhes-solicitacao-pb").required = false; // Garante que não é required
+      }
+      if (mostrarFormulario && continuacaoContainer.innerHTML === "") {
+        continuacaoContainer.innerHTML = construirFormularioHorarios(
+          userData.nome // Usa o nome do userData passado
+        );
+      }
+      // Ajusta required dos campos dinâmicos
+      continuacaoContainer
+        .querySelectorAll("select, input, textarea")
+        .forEach((elemento) => {
+          // Apenas campos dentro do form dinâmico, exceto observações
+          if (elemento.id !== "observacoes-pb-horarios")
+            elemento.required = mostrarFormulario;
+        });
+    };
+  });
+  const motivoNaoInicioRadio = form.querySelectorAll(
+    'input[name="motivo-nao-inicio"]'
+  );
+  motivoNaoInicioRadio.forEach((radio) => {
+    radio.onchange = () => {
+      if (radio.checked) {
+        const eDesistiu = radio.value === "desistiu";
+        desistenciaContainer.classList.toggle("hidden", !eDesistiu);
+        solicitacaoContainer.classList.toggle("hidden", eDesistiu);
+        document.getElementById("motivo-desistencia-pb").required = eDesistiu;
+        document.getElementById("detalhes-solicitacao-pb").required =
+          !eDesistiu;
+
+        // Garante que campos do formulário de continuação não sejam required se 'Não iniciou'
+        continuacaoContainer
+          .querySelectorAll("select, input, textarea")
+          .forEach((elemento) => (elemento.required = false));
+      }
+    };
+  });
+  modal.style.display = "block"; // Usar 'block' ou 'flex' dependendo do CSS
+}
+
+// *** FUNÇÃO REINCLUÍDA *** (Helper para abrirModalHorariosPb)
+function construirFormularioHorarios(nomeProfissional) {
+  let horasOptions = "";
+  for (let i = 8; i <= 21; i++) {
+    const hora = `${String(i).padStart(2, "0")}:00`;
+    horasOptions += `<option value="${hora}">${hora}</option>`;
+  }
+  // TODO: Buscar salas da configuração do sistema (systemConfigs.listas.salasPresenciais)
+  const salas = [
+    "Christian Dunker",
+    "Leila Tardivo",
+    "Leonardo Abrahão",
+    "Karina Okajima Fukumitsu",
+    "Maria Célia Malaquias (Grupo)",
+    "Maria Júlia Kovacs",
+    "Online",
+  ];
+  let salasOptions = salas
+    .map((sala) => `<option value="${sala}">${sala}</option>`)
+    .join("");
+
+  // Adiciona required aos campos corretos
+  return `
+    <div class="form-group">
+      <label>Nome Profissional:</label>
+      <input type="text" value="${nomeProfissional}" class="form-control" readonly>
+    </div>
+    <div class="form-group">
+      <label for="dia-semana-pb">Dia da semana:*</label>
+      <select id="dia-semana-pb" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Segunda-feira">Segunda-feira</option>
+        <option value="Terça-feira">Terça-feira</option>
+        <option value="Quarta-feira">Quarta-feira</option>
+        <option value="Quinta-feira">Quinta-feira</option>
+        <option value="Sexta-feira">Sexta-feira</option>
+        <option value="Sábado">Sábado</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="horario-pb">Horário:*</label>
+      <select id="horario-pb" class="form-control" required>
+        <option value="">Selecione...</option>
+        ${horasOptions}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="tipo-atendimento-pb-voluntario">Tipo de atendimento:*</label>
+      <select id="tipo-atendimento-pb-voluntario" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Presencial">Presencial</option>
+        <option value="Online">Online</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="alterar-grade-pb">Alterar/Incluir na grade?*</label>
+      <select id="alterar-grade-pb" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="frequencia-atendimento-pb">Frequência:*</label>
+      <select id="frequencia-atendimento-pb" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Semanal">Semanal</option>
+        <option value="Quinzenal">Quinzenal</option>
+        <option value="Mensal">Mensal</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="sala-atendimento-pb">Sala:*</label>
+      <select id="sala-atendimento-pb" class="form-control" required>
+        <option value="">Selecione...</option>
+        ${salasOptions}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="data-inicio-sessoes">Data de início:*</label>
+      <input type="date" id="data-inicio-sessoes" class="form-control" required>
+    </div>
+    <div class="form-group">
+      <label for="observacoes-pb-horarios">Observações:</label>
+      <textarea id="observacoes-pb-horarios" rows="3" class="form-control"></textarea>
+    </div>
+  `;
+}
+
+// *** FUNÇÃO REINCLUÍDA *** (Submit do encerramento Plantão)
 export async function handleEncerramentoSubmit(evento, user, userData) {
-  // Esta função parece ser do Plantão, não PB. Mantida como está por enquanto.
+  // Esta função MODIFICA A TRILHA DIRETAMENTE - Mantida como está.
   evento.preventDefault();
   const form = evento.target;
   const botaoSalvar = form
     .closest(".modal")
     .querySelector('button[type="submit"]');
   botaoSalvar.disabled = true;
+  botaoSalvar.innerHTML =
+    '<span class="loading-spinner-small"></span> Salvando...'; // Add loading
+
   const pacienteId = document.getElementById("paciente-id-modal").value;
   const encaminhamentos = Array.from(
     form.querySelectorAll('input[name="encaminhamento"]:checked')
   ).map((cb) => cb.value);
 
+  // Busca dados atuais do paciente para a lógica de disponibilidade
+  let dadosDoPacienteAtual = null;
+  try {
+    const docRef = doc(db, "trilhaPaciente", pacienteId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      dadosDoPacienteAtual = docSnap.data();
+    } else {
+      throw new Error("Paciente não encontrado ao tentar salvar encerramento.");
+    }
+  } catch (error) {
+    console.error("Erro ao buscar dados do paciente:", error);
+    alert(`Erro ao buscar dados do paciente: ${error.message}`);
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+
+  // Validações
   if (encaminhamentos.length === 0) {
     alert("Selecione ao menos uma opção de encaminhamento.");
     botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar"; // Reset button text
+    return;
+  }
+  if (!form.querySelector("#data-encerramento").value) {
+    alert("A data de encerramento é obrigatória.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+  if (!form.querySelector("#quantidade-sessoes").value) {
+    alert("A quantidade de sessões é obrigatória.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+  if (!form.querySelector("#pagamento-contribuicao").value) {
+    alert("Informe se o pagamento foi efetuado.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+  if (
+    form.querySelector("#pagamento-contribuicao").value === "nao" &&
+    !form.querySelector("#motivo-nao-pagamento").value
+  ) {
+    alert("Informe o motivo do não pagamento.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+  if (!form.querySelector("#relato-encerramento").value) {
+    alert("O breve relato é obrigatório.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
+    return;
+  }
+  if (!form.querySelector("#manter-disponibilidade").value) {
+    alert("Informe sobre a disponibilidade do paciente.");
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar";
     return;
   }
 
@@ -1229,9 +1453,8 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     ? "alta"
     : encaminhamentos.includes("Desistência")
     ? "desistencia"
-    : "encaminhar_para_pb"; // Ou outro status dependendo do encaminhamento
+    : "encaminhar_para_pb";
 
-  // Coleta dados do formulário para o objeto 'encerramento'
   const encerramentoData = {
     responsavelId: user.uid,
     responsavelNome: userData.nome,
@@ -1240,37 +1463,46 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     sessoesRealizadas: form.querySelector("#quantidade-sessoes").value,
     pagamentoEfetuado: form.querySelector("#pagamento-contribuicao").value,
     motivoNaoPagamento:
-      form.querySelector("#motivo-nao-pagamento").value || null, // Garante null se vazio
+      form.querySelector("#motivo-nao-pagamento").value || null,
     relato: form.querySelector("#relato-encerramento").value,
-    encerradoEm: serverTimestamp(), // Adiciona timestamp do encerramento
+    encerradoEm: serverTimestamp(),
   };
 
-  // Prepara a atualização do documento do paciente
   let dadosParaAtualizar = {
     status: novoStatus,
-    "plantaoInfo.encerramento": encerramentoData, // Salva dentro de plantaoInfo
+    "plantaoInfo.encerramento": encerramentoData,
     lastUpdate: serverTimestamp(),
   };
 
-  // Lógica da disponibilidade (mantida)
   const manterDisp = form.querySelector("#manter-disponibilidade").value;
   if (manterDisp === "nao") {
     const checkboxes = form.querySelectorAll(
       '#nova-disponibilidade-container input[type="checkbox"]:checked'
     );
+    // Validação: Se selecionou 'Não', deve marcar novas disponibilidades
+    if (checkboxes.length === 0) {
+      alert(
+        "Se a disponibilidade mudou, por favor, selecione os novos horários disponíveis."
+      );
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = "Salvar";
+      return;
+    }
     dadosParaAtualizar.disponibilidadeEspecifica = Array.from(checkboxes).map(
       (cb) => cb.value
     );
   } else if (
     manterDisp === "sim" &&
-    !dadosDoPaciente.disponibilidadeEspecifica
+    !dadosDoPacienteAtual?.disponibilidadeEspecifica
   ) {
-    // Se era pra manter e não tinha nada, pode ser necessário buscar do cadastro original
+    // Usa dadosDoPacienteAtual
     console.warn(
       "Manter disponibilidade selecionado, mas não há dados anteriores."
     );
-    // Poderia buscar do 'users' ou 'inscricoes' se necessário, mas complexifica.
-    // Por ora, não faremos nada se for 'sim'.
+  } else if (manterDisp === "sim") {
+    // Se selecionou 'Sim', explicitamente mantém a disponibilidade existente
+    dadosParaAtualizar.disponibilidadeEspecifica =
+      dadosDoPacienteAtual.disponibilidadeEspecifica || [];
   }
 
   try {
@@ -1280,24 +1512,24 @@ export async function handleEncerramentoSubmit(evento, user, userData) {
     location.reload();
   } catch (error) {
     console.error("Erro ao salvar encerramento:", error);
-    alert("Erro ao salvar.");
+    alert(`Erro ao salvar: ${error.message}`); // Mensagem mais específica
   } finally {
     botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar"; // Reset button text
   }
 }
 
+// *** FUNÇÃO REINCLUÍDA *** (Submit do início PB / Horários)
 export async function handleHorariosPbSubmit(evento, user, userData) {
-  // Esta função parece ser para *confirmar* o início do PB e definir o horário,
-  // não para *solicitar* uma alteração posterior.
-  // A lógica de updateDoc para 'trilhaPaciente' parece correta para este fluxo.
-  // Mantida como está.
-
+  // Esta função MODIFICA A TRILHA DIRETAMENTE E CRIA SOLICITAÇÃO GRADE - Mantida como está.
   evento.preventDefault();
   const formulario = evento.target;
   const botaoSalvar = formulario
     .closest(".modal")
     .querySelector('button[type="submit"]');
   botaoSalvar.disabled = true;
+  botaoSalvar.innerHTML =
+    '<span class="loading-spinner-small"></span> Salvando...';
 
   const pacienteId = formulario.querySelector(
     "#paciente-id-horarios-modal"
@@ -1308,14 +1540,12 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
   const docRef = doc(db, "trilhaPaciente", pacienteId);
 
   try {
-    // Adicionado try/catch em volta de getDoc
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
       throw new Error("Paciente não encontrado!");
     }
 
     const dadosDoPaciente = docSnap.data();
-    // Usar || {} para segurança caso atendimentosPB não exista
     const atendimentos = dadosDoPaciente.atendimentosPB || [];
     const indiceDoAtendimento = atendimentos.findIndex(
       (at) => at.atendimentoId === atendimentoId
@@ -1335,10 +1565,9 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
     }
 
     let dadosParaAtualizar = {};
-    let novoStatusPaciente = dadosDoPaciente.status; // Mantém o status atual por padrão
+    let novoStatusPaciente = dadosDoPaciente.status;
 
     if (iniciou === "sim") {
-      // Coleta os dados do horário definido
       const horarioSessaoData = {
         responsavelId: user.uid,
         responsavelNome: userData.nome,
@@ -1354,10 +1583,9 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
         dataInicio: formulario.querySelector("#data-inicio-sessoes").value,
         observacoes:
           formulario.querySelector("#observacoes-pb-horarios").value || "",
-        definidoEm: serverTimestamp(), // Adiciona timestamp da definição do horário
+        definidoEm: serverTimestamp(),
       };
 
-      // Validação dos campos obrigatórios do horário
       if (
         !horarioSessaoData.diaSemana ||
         !horarioSessaoData.horario ||
@@ -1372,25 +1600,20 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
         );
       }
 
-      // Atualiza o objeto do atendimento específico
-      atendimentos[indiceDoAtendimento].horarioSessao = horarioSessaoData;
-      atendimentos[indiceDoAtendimento].status = "ativo"; // Marca o atendimento como ativo
+      atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData; // **CORREÇÃO: Usar horarioSessoes**
+      atendimentos[indiceDoAtendimento].statusAtendimento = "ativo"; // **CORREÇÃO: Usar statusAtendimento**
 
-      // Define o novo status do paciente
-      novoStatusPaciente = "em_atendimento_pb"; // Paciente agora está em atendimento PB
+      novoStatusPaciente = "em_atendimento_pb";
 
-      // Prepara a atualização
       dadosParaAtualizar = {
-        atendimentosPB: atendimentos, // Array atualizado
-        status: novoStatusPaciente, // Novo status geral do paciente
+        atendimentosPB: atendimentos,
+        status: novoStatusPaciente,
         lastUpdate: serverTimestamp(),
       };
 
-      // --- ADICIONAL: Criar solicitação para Alterar/Incluir na Grade? ---
-      // Se o voluntário pediu para alterar/incluir na grade, criamos uma solicitação para o admin
       if (horarioSessaoData.alterarGrade === "Sim") {
         const solicitacaoGradeData = {
-          tipo: "inclusao_alteracao_grade", // Novo tipo específico
+          tipo: "inclusao_alteracao_grade",
           status: "Pendente",
           dataSolicitacao: serverTimestamp(),
           solicitanteId: user.uid,
@@ -1398,9 +1621,7 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
           pacienteId: pacienteId,
           pacienteNome: dadosDoPaciente.nomeCompleto,
           atendimentoId: atendimentoId,
-          detalhes: {
-            ...horarioSessaoData, // Inclui todos os detalhes do horário definido
-          },
+          detalhes: { ...horarioSessaoData },
           adminFeedback: null,
         };
         try {
@@ -1408,7 +1629,6 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
           console.log("Solicitação para inclusão/alteração na grade criada.");
         } catch (gradeError) {
           console.error("Erro ao criar solicitação para grade:", gradeError);
-          // Não impede o fluxo principal, mas loga o erro.
           alert(
             "Atenção: Houve um erro ao gerar a solicitação para alteração da grade, por favor, notifique o administrativo manualmente."
           );
@@ -1430,25 +1650,25 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
         if (!motivoDescricao) {
           throw new Error("Por favor, descreva o motivo da desistência.");
         }
-        atendimentos[indiceDoAtendimento].status = "desistencia_antes_inicio"; // Status específico
+        atendimentos[indiceDoAtendimento].statusAtendimento =
+          "desistencia_antes_inicio"; // **CORREÇÃO: Usar statusAtendimento**
         atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp(); // Data da informação
-        novoStatusPaciente = "desistencia"; // Status geral do paciente
+        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp();
+        novoStatusPaciente = "desistencia";
       } else {
-        // "outra_modalidade" ou outro motivo que necessite reavaliação
         const detalhesSolicitacao = formulario.querySelector(
           "#detalhes-solicitacao-pb"
         ).value;
         if (!detalhesSolicitacao) {
           throw new Error("Por favor, detalhe a solicitação do paciente.");
         }
-        atendimentos[indiceDoAtendimento].status =
-          "solicitado_reencaminhamento"; // Status específico do atendimento
-        atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio; // Guarda o motivo selecionado
+        atendimentos[indiceDoAtendimento].statusAtendimento =
+          "solicitado_reencaminhamento"; // **CORREÇÃO: Usar statusAtendimento**
+        atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio;
         atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
-          detalhesSolicitacao; // Detalhes da solicitação
-        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp(); // Data da informação
-        novoStatusPaciente = "reavaliar_encaminhamento"; // Status geral do paciente
+          detalhesSolicitacao;
+        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp();
+        novoStatusPaciente = "reavaliar_encaminhamento";
       }
       dadosParaAtualizar = {
         atendimentosPB: atendimentos,
@@ -1457,97 +1677,31 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
       };
     }
 
-    // Atualiza o documento trilhaPaciente
     await updateDoc(docRef, dadosParaAtualizar);
 
     alert("Informações salvas com sucesso!");
     document.getElementById("horarios-pb-modal").style.display = "none";
     location.reload();
   } catch (error) {
-    // Captura erros do getDoc e das validações
     console.error("Erro ao salvar informações de Horários PB:", error);
     alert(`Erro ao salvar: ${error.message}`);
   } finally {
     botaoSalvar.disabled = false;
-    // Resetar texto do botão pode ser feito aqui se necessário
+    botaoSalvar.textContent = "Salvar"; // Reset button text
   }
 }
 
-// --- Funções Auxiliares e Fechamento de Modais (sem alterações) ---
-// ... (código existente para construirFormularioHorarios, fechar modais, etc.) ...
+// --- Fechamento de Modais ---
+// Listener genérico movido para events.js, mas manter funções pode ser útil se chamadas de outro lugar.
+// function fecharModal(modalId) {
+//   const modal = document.getElementById(modalId);
+//   if (modal) {
+//     modal.style.display = "none";
+//   }
+// }
 
-// Adiciona listeners genéricos para fechar modais
+// Adiciona listeners para fechar modais específicos (se o listener genérico não pegar)
 document.addEventListener("DOMContentLoaded", () => {
-  document
-    .querySelectorAll(
-      ".modal-overlay .modal-cancel-btn, .modal .close-button, [data-close-modal]"
-    )
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const modal = button.closest(".modal-overlay, .modal");
-        if (modal) {
-          modal.style.display = "none";
-        }
-      });
-    });
-
-  // Fechar ao clicar fora (para overlays)
-  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) {
-        overlay.style.display = "none";
-      }
-    });
-  });
-
-  // Adiciona listeners aos botões de submit dos modais que foram alterados
-  const btnConfirmarSolicitacao = document.getElementById(
-    "btn-confirmar-solicitacao"
-  );
-  if (btnConfirmarSolicitacao) {
-    btnConfirmarSolicitacao.addEventListener(
-      "click",
-      handleSolicitarSessoesSubmit
-    );
-  }
-
-  const btnConfirmarAlteracao = document.getElementById(
-    "btn-confirmar-alteracao-horario"
-  );
-  if (btnConfirmarAlteracao) {
-    btnConfirmarAlteracao.addEventListener("click", handleAlterarHorarioSubmit);
-  }
-
-  const btnConfirmarReavaliacao = document.getElementById(
-    "btn-confirmar-reavaliacao"
-  );
-  if (btnConfirmarReavaliacao) {
-    btnConfirmarReavaliacao.addEventListener("click", handleReavaliacaoSubmit);
-  }
-
-  // Listener para o submit do desfecho já está no form dentro de abrirModalDesfechoPb
-  // Listener para o submit do encerramento plantão (form="encerramento-form")
-  const formEncerramento = document.getElementById("encerramento-form");
-  if (formEncerramento) {
-    // Precisamos garantir que 'user' e 'userData' estejam disponíveis aqui
-    // Isso pode exigir buscar do auth state no momento do submit ou
-    // armazená-los globalmente/no módulo quando o usuário faz login.
-    // Assumindo que estão disponíveis via uma função `getCurrentAuthData()`:
-    // formEncerramento.addEventListener('submit', (e) => {
-    //    const { user, userData } = getCurrentAuthData(); // Função hipotética
-    //    handleEncerramentoSubmit(e, user, userData);
-    // });
-    // **COMENTADO POR ENQUANTO** - A chamada original pode estar em outro lugar (ex: events.js)
-  }
-
-  // Listener para o submit dos horários PB (form="horarios-pb-form")
-  const formHorariosPb = document.getElementById("horarios-pb-form");
-  if (formHorariosPb) {
-    // Mesma questão do 'user' e 'userData' que acima
-    // formHorariosPb.addEventListener('submit', (e) => {
-    //    const { user, userData } = getCurrentAuthData(); // Função hipotética
-    //    handleHorariosPbSubmit(e, user, userData);
-    // });
-    // **COMENTADO POR ENQUANTO** - A chamada original pode estar em outro lugar (ex: events.js)
-  }
+  // Exemplo: se houver botões específicos não cobertos pelo genérico
+  // document.getElementById('botao-fechar-especifico')?.addEventListener('click', () => fecharModal('meu-modal-especifico'));
 });
