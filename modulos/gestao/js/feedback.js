@@ -12,7 +12,7 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 const feedbackContainer = document.getElementById("feedback-container");
 

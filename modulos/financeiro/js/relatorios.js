@@ -7,7 +7,7 @@ import {
   doc,
   getDoc,
   getDocs,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 export function init(db) {
   if (!db) {

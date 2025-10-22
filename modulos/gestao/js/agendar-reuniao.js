@@ -6,7 +6,7 @@ import {
   collection,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 export function init() {
   console.log("[AGENDAR] Módulo Agendar Reunião iniciado.");

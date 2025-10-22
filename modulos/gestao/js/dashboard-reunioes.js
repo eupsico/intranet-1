@@ -7,7 +7,7 @@ import {
   query,
   orderBy,
   onSnapshot,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 let todasAsAtas = [];
 

@@ -2,7 +2,7 @@
 // Versão: 2.0 (Integrado com as Configurações do Sistema)
 
 import { functions, db } from "../../../assets/js/firebase-init.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+import { httpsCallable } from "../../../assets/js/firebase-init.js";
 import {
   collection,
   query,
@@ -12,7 +12,7 @@ import {
   deleteDoc,
   updateDoc,
   getDoc, // Adicionado
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 export function init(db_ignored, user, userData) {
   const usuariosCollectionRef = collection(db, "usuarios");

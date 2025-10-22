@@ -12,7 +12,7 @@ import {
   getDocs,
   onSnapshot,
   getDoc, // Adicionado
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "../../../assets/js/firebase-init.js";
 
 export function init(user, userData) {
   const gradeContent = document.getElementById("grade-content");
