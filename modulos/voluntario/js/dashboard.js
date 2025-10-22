@@ -141,7 +141,7 @@ export function init(user, userData) {
 
     summaryContainer.innerHTML = `
             <div class="summary-panel"> <h3>Meu Resumo</h3> <div id="summary-details-container">
-                <div class="summary-card"><h4>💰 Resumo Financeiro</h4><ul><li><span class="financeiro-horas">Total: <strong>${totalHoras}h</strong></span><span class="financeiro-valor">${valorFormatado}</span><small>Pagto até dia 10.</small></li></ul></div>
+                <div class="summary-card"><h4>💰 Resumo Financeiro</h4><ul><li><span class="financeiro-horas">Total: <strong>${totalHoras}h</strong></span><span class="financeiro-valor">${valorFormatado}</span><small>O pagamento deve ser realizado até dia 10 do mês corrente.</small></li></ul></div>
                 <div class="summary-card"><h4>🖥️ Grade Online (${horasOnline})</h4><ul>${
       agendamentosOnline.length > 0
         ? agendamentosOnline.join("")
