@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/actions.js
-// --- VERSÃO CORRIGIDA (Corrige erro em formatCurrency) ---
+// --- VERSÃO CORRIGIDA (Corrige erro em formatCurrency e ajusta margens) ---
 
 // (A função handleEnviarContrato foi removida daqui em versões anteriores)
 
@@ -11,7 +11,7 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const margin = 15;
+    const margin = 20; // <-- AJUSTE AQUI: Aumentado de 15 para 20
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const usableWidth = pageWidth - margin * 2;
@@ -159,7 +159,6 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
       // 2. Converte para string PRIMEIRO
       const stringValue = String(value);
       try {
-        stringValue;
         // 3. Tenta limpar e converter (agora stringValue é garantido ser string)
         const numericString = stringValue
           .replace(/[^\d,]/g, "")
