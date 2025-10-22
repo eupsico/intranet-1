@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// Versão 2.4 (Busca 'Alteração de Horário' diretamente da trilhaPaciente)
+// Versão 2.4.1-Debug (Adiciona logs para depurar busca na trilhaPaciente)
 
 import {
   db,
@@ -7,12 +7,12 @@ import {
   query,
   where,
   orderBy,
-  getDocs, // Usaremos getDocs em vez de onSnapshot para a busca na trilha
+  getDocs,
   doc,
   getDoc,
   updateDoc,
   serverTimestamp,
-  onSnapshot, // Mantido para outras abas
+  onSnapshot,
   Timestamp,
 } from "../../../assets/js/firebase-init.js";
 
@@ -22,11 +22,11 @@ let adminUser;
 // Função principal de inicialização do módulo
 export function init(db_ignored, user, userData) {
   console.log(
-    "Módulo solicitacoes-admin.js V2.4 (Buscando Alterações da Trilha) iniciado."
+    "Módulo solicitacoes-admin.js V2.4.1-Debug (Logs na Trilha) iniciado."
   );
   adminUser = userData;
 
-  // Elementos do DOM
+  // ... (Elementos do DOM e setupTabs permanecem iguais) ...
   const tabsContainer = document.querySelector(".tabs-container");
   const tabLinks = document.querySelectorAll(".tab-link");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -38,7 +38,6 @@ export function init(db_ignored, user, userData) {
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
   const tabContentContainer = document.querySelector(".tab-content-container");
 
-  // --- Lógica de Troca de Abas ---
   function setupTabs() {
     if (!tabsContainer) return;
     tabsContainer.addEventListener("click", (event) => {
@@ -56,7 +55,6 @@ export function init(db_ignored, user, userData) {
   }
 
   // --- FUNÇÃO HELPER GENÉRICA (Para coleções DEDICADAS) ---
-  // (Mantida para Exclusão Horários e outras futuras)
   function loadSolicitacoes(
     collectionName,
     tableBodyId,
@@ -133,15 +131,17 @@ export function init(db_ignored, user, userData) {
   // --- Implementação das funções de carregamento ---
 
   function loadNovasSessoes() {
-    // TODO: Implementar busca (pode usar loadSolicitacoes se tiver coleção dedicada)
+    // TODO: Implementar busca
   }
 
-  // --- INÍCIO DA ALTERAÇÃO V2.4 ---
+  // --- INÍCIO DA ALTERAÇÃO V2.4.1-Debug ---
   /**
-   * Carrega solicitações de alteração de horário buscando na trilhaPaciente
+   * Carrega solicitações de alteração de horário buscando na trilhaPaciente (COM LOGS)
    */
   async function loadAlteracoesHorario() {
-    console.log("Carregando alterações de horário da trilhaPaciente...");
+    console.log(
+      "DEBUG: Iniciando loadAlteracoesHorario (busca na trilhaPaciente)..."
+    ); // LOG
     const tableBody = document.getElementById("table-body-alteracoes-horario");
     const emptyState = document.getElementById(
       "empty-state-alteracoes-horario"
@@ -149,12 +149,12 @@ export function init(db_ignored, user, userData) {
     const countBadge = document.getElementById("count-alteracoes-horario");
 
     if (!tableBody || !emptyState || !countBadge) {
-      console.error("Elementos da tabela de alteração não encontrados.");
+      console.error("DEBUG: Elementos da tabela de alteração não encontrados.");
       return;
     }
 
     tableBody.innerHTML =
-      '<tr><td colspan="7">Buscando na Trilha do Paciente...</td></tr>'; // Feedback visual
+      '<tr><td colspan="8">Buscando na Trilha do Paciente...</td></tr>'; // Colspan 8
     emptyState.style.display = "none";
     countBadge.style.display = "none";
     countBadge.textContent = "0";
@@ -162,21 +162,49 @@ export function init(db_ignored, user, userData) {
     try {
       const q = query(collection(dbInstance, "trilhaPaciente"));
       const querySnapshot = await getDocs(q); // Busca todos os pacientes
+      console.log(
+        `DEBUG: Encontrados ${querySnapshot.size} documentos em trilhaPaciente.`
+      ); // LOG
 
       let pendingSolicitacoes = [];
+      let foundSolicitacoesCount = 0; // Contador para logs
 
       querySnapshot.forEach((doc) => {
         const pacienteData = doc.data();
         const pacienteId = doc.id;
-        const atendimentosPB = pacienteData.atendimentosPB || {};
+        const atendimentosPB = pacienteData.atendimentosPB; // Sem '|| {}' para logar se está ausente
+
+        // LOG para verificar se atendimentosPB existe
+        if (!atendimentosPB) {
+          // console.log(`DEBUG: Paciente ${pacienteId} (${pacienteData.nomeCompleto}) não possui o campo 'atendimentosPB'.`);
+          return; // Pula para o próximo paciente
+        } else {
+          // console.log(`DEBUG: Verificando atendimentosPB do paciente ${pacienteId} (${pacienteData.nomeCompleto})...`);
+        }
 
         // Itera sobre cada atendimento PB do paciente
         for (const atendimentoId in atendimentosPB) {
           const atendimento = atendimentosPB[atendimentoId];
           const solicitacao = atendimento.solicitacaoAlteracaoHorario; // Pega a solicitação dentro do atendimento
 
-          // Verifica se existe uma solicitação e se está pendente
-          if (solicitacao && solicitacao.status === "Pendente") {
+          // LOG para verificar se a solicitação existe dentro do atendimento
+          if (!solicitacao) {
+            // console.log(`DEBUG: Atendimento ${atendimentoId} do paciente ${pacienteId} não possui 'solicitacaoAlteracaoHorario'.`);
+            continue; // Pula para o próximo atendimento
+          }
+
+          foundSolicitacoesCount++; // Encontrou um objeto de solicitação
+          const statusSolicitacao = solicitacao.status; // Pega o status
+
+          // LOG para verificar o status
+          // console.log(`DEBUG: Paciente ${pacienteId}, Atendimento ${atendimentoId}: Encontrada solicitação com status [${statusSolicitacao}].`);
+
+          // Verifica se está pendente
+          if (statusSolicitacao === "Pendente") {
+            console.log(
+              `DEBUG: Paciente ${pacienteId}, Atendimento ${atendimentoId}: SOLICITAÇÃO PENDENTE ENCONTRADA!`,
+              solicitacao
+            ); // LOG DETALHADO DA SOLICITAÇÃO
             // Adiciona informações extras para renderização
             pendingSolicitacoes.push({
               ...solicitacao, // Dados originais da solicitação
@@ -194,6 +222,13 @@ export function init(db_ignored, user, userData) {
         }
       });
 
+      console.log(
+        `DEBUG: Total de ${foundSolicitacoesCount} objetos 'solicitacaoAlteracaoHorario' encontrados em todos os pacientes.`
+      ); // LOG
+      console.log(
+        `DEBUG: Total de ${pendingSolicitacoes.length} solicitações PENDENTES encontradas.`
+      ); // LOG
+
       // Ordena as solicitações pendentes pela data (mais novas primeiro)
       pendingSolicitacoes.sort(
         (a, b) =>
@@ -204,13 +239,17 @@ export function init(db_ignored, user, userData) {
       // Renderiza a tabela
       if (pendingSolicitacoes.length === 0) {
         tableBody.innerHTML = "";
-        emptyState.style.display = "block";
+        emptyState.style.display = "block"; // Mostra "Nenhuma solicitação encontrada"
         countBadge.style.display = "none";
+        console.log("DEBUG: Nenhuma solicitação PENDENTE para renderizar."); // LOG
       } else {
         tableBody.innerHTML = ""; // Limpa o "Buscando..."
         emptyState.style.display = "none";
         countBadge.textContent = pendingSolicitacoes.length;
         countBadge.style.display = "inline-block";
+        console.log(
+          `DEBUG: Renderizando ${pendingSolicitacoes.length} solicitações PENDENTES.`
+        ); // LOG
 
         pendingSolicitacoes.forEach((sol) => {
           const dataSol = sol.dataSolicitacao
@@ -219,22 +258,22 @@ export function init(db_ignored, user, userData) {
           const statusClass = `status-pendente`; // Sempre pendente aqui
 
           // Renderiza a linha da tabela (ajuste conforme necessário)
+          // Adicionei Coluna Paciente Nome
           const tr = `
               <tr>
                   <td>${dataSol}</td>
                   <td>${sol.solicitanteNome || "N/A"}</td>
-                  <td>${sol.pacienteNome}</td> 
-                  <td>${sol.dadosAntigos?.dia || "N/A"}, ${
-            sol.dadosAntigos?.horario || "N/A"
-          }</td>
+                  <td>${sol.pacienteNome}</td> <td>${
+            sol.dadosAntigos?.dia || "N/A"
+          }, ${sol.dadosAntigos?.horario || "N/A"}</td>
                   <td>${sol.dadosNovos?.dia || "N/A"}, ${
             sol.dadosNovos?.horario || "N/A"
           } (${sol.dadosNovos?.modalidade || "N/A"})</td>
                   <td class="motivo-cell">${sol.justificativa || "N/A"}</td>
                   <td><span class="status-badge ${statusClass}">Pendente</span></td>
                   <td>
-                      <button class="action-button btn-acao-alteracao-trilha" 
-                              data-paciente-id="${sol.pacienteId}" 
+                      <button class="action-button btn-acao-alteracao-trilha"
+                              data-paciente-id="${sol.pacienteId}"
                               data-atendimento-id="${sol.atendimentoId}"
                               data-trilha-path="${sol._trilhaPath}">
                           Processar
@@ -246,31 +285,31 @@ export function init(db_ignored, user, userData) {
         });
       }
     } catch (error) {
-      console.error("Erro ao buscar alterações na trilhaPaciente:", error);
-      tableBody.innerHTML = `<tr><td colspan="7" class="text-error">Erro ao carregar dados da Trilha do Paciente.</td></tr>`;
+      console.error("Erro ao buscar alterações na trilhaPaciente:", error); // LOG DE ERRO
+      tableBody.innerHTML = `<tr><td colspan="8" class="text-error">Erro ao carregar dados da Trilha do Paciente: ${error.message}</td></tr>`; // Colspan 8
       emptyState.style.display = "none";
       countBadge.style.display = "none";
     }
   }
-  // --- FIM DA ALTERAÇÃO V2.4 ---
+  // --- FIM DA ALTERAÇÃO V2.4.1-Debug ---
 
   function loadDesfechosPB() {
-    // TODO: Implementar busca (provavelmente na trilhaPaciente, buscando por status específico)
+    // TODO: Implementar busca
   }
 
   function loadStatusContratos() {
-    // TODO: Implementar busca (provavelmente na trilhaPaciente)
+    // TODO: Implementar busca
   }
 
   function loadExclusaoHorarios() {
-    // Mantém o uso da função genérica pois lê de coleção dedicada
+    // Mantém o uso da função genérica
     loadSolicitacoes(
       "solicitacoesExclusaoGrade",
       "table-body-exclusao-horarios",
       "empty-state-exclusao-horarios",
       "count-exclusao-horarios",
       (data, docId) => {
-        // Recebe docId aqui
+        // ... (renderRow para exclusão - sem alterações) ...
         const dataSol = data.dataSolicitacao
           ? data.dataSolicitacao.toDate().toLocaleDateString("pt-BR")
           : "N/A";
@@ -303,8 +342,9 @@ export function init(db_ignored, user, userData) {
     );
   }
 
-  // --- Funções do Modal (Específicas de Exclusão - Ajustadas para usar docId) ---
+  // --- Funções do Modal (Específicas de Exclusão - sem alterações V2.4) ---
   // (openExclusaoModal, setupModalFormLogic, handleSalvarExclusao)
+  // ... (código igual ao V2.4) ...
   async function openExclusaoModal(docId) {
     // Recebe docId diretamente
     try {
@@ -394,10 +434,11 @@ export function init(db_ignored, user, userData) {
       radioSim.addEventListener("change", toggleFields);
       radioNao.addEventListener("change", toggleFields);
       radioSim.setAttribute("data-listener-added", "true");
+      radioNao.setAttribute("data-listener-added", "true"); // Adicionado para garantir ambos
     }
     toggleFields(); // Chama para definir o estado inicial
   }
-  // (handleSalvarExclusao permanece igual, usando Timestamp importado)
+  // (handleSalvarExclusao permanece igual)
   async function handleSalvarExclusao(docId) {
     const saveButton = document.getElementById("btn-salvar-exclusao");
     saveButton.disabled = true;
@@ -479,22 +520,24 @@ export function init(db_ignored, user, userData) {
   }
   function closeModal() {
     if (modal) modal.style.display = "none";
-    modalBodyContent.innerHTML = "";
-    modalFooterActions
-      .querySelectorAll(".dynamic-action-btn")
-      .forEach((btn) => btn.remove());
-    modalTitle.textContent = "Detalhes da Solicitação";
+    if (modalBodyContent) modalBodyContent.innerHTML = ""; // Limpa conteúdo ao fechar
+    if (modalFooterActions)
+      modalFooterActions
+        .querySelectorAll(".dynamic-action-btn")
+        .forEach((btn) => btn.remove());
+    if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação";
   }
 
   // --- Inicialização ---
   setupTabs();
   loadNovasSessoes();
-  loadAlteracoesHorario(); // <-- AGORA BUSCA NA TRILHA
+  loadAlteracoesHorario(); // <-- AGORA BUSCA NA TRILHA COM LOGS
   loadDesfechosPB();
   loadStatusContratos();
   loadExclusaoHorarios(); // <-- Busca na coleção dedicada
 
-  // --- Listener de Evento Genérico (Ajustado para Alteração vindo da Trilha) ---
+  // --- Listener de Evento Genérico ---
+  // (código da V2.4 sem alterações) ...
   if (tabContentContainer) {
     tabContentContainer.addEventListener("click", async (e) => {
       // Botão de Exclusão (Lê da coleção dedicada)
