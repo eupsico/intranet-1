@@ -1,14 +1,39 @@
 <div class="view-container">
-    
+
     <div class="dashboard-section">
-        
         <h3><p>Seja bem-vindo(a)! Aqui estão algumas informações e avisos importantes para você.</p></h3>
     </div>
-    
+
     <div id="summary-panel-container">
         <div class="loading-spinner"></div>
     </div>
 
-    <div id="info-card-container">
+    <div class="dashboard-section" id="minhas-solicitacoes-section">
+        <div class="section-header">
+             <h2>Minhas Solicitações Recentes</h2>
         </div>
+        <div class="table-wrapper">
+             <table>
+                 <thead>
+                     <tr>
+                         <th>Tipo</th> {/* Nova Coluna */}
+                         <th>Paciente</th>
+                         <th>Status</th>
+                         <th>Data</th>
+                         {/* Adicionar <th>Ações</th> se quiser botões */}
+                     </tr>
+                 </thead>
+                 <tbody id="dashboard-solicitacoes-tbody">
+                     {/* Linhas serão inseridas pelo JS */}
+                 </tbody>
+             </table>
+        </div>
+        <div id="dashboard-solicitacoes-empty" class="empty-state" style="display: none; padding-top: 15px;">
+            <p>Você não possui solicitações recentes.</p>
+        </div>
+         {/* Link opcional para ver todas as solicitações */}
+         </div>
+    <div id="info-card-container">
+        {/* Avisos Gerais renderizados pelo JS */}
+    </div>
 </div>
