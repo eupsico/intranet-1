@@ -1,5 +1,5 @@
 // Arquivo: /modulos/servico-social/js/fila-atendimento.js
-// --- VERSÃO CORRIGIDA FINAL (Carrega SOLICITAÇÃO para Reavaliação) ---
+// --- VERSÃO COM DEBUG COMPLETA (sem abreviações) ---
 
 import {
   db,
@@ -22,13 +22,13 @@ let currentUserData = null;
  * Determina se é Triagem ou Reavaliação com base na URL Hash.
  */
 export function init(user, userData, trilhaId) {
+  console.log(`fila-atendimento.js: init executado com trilhaId: ${trilhaId}`); // Log inicial
   currentUserData = userData; // Salva os dados do usuário logado
 
   const hashParts = window.location.hash.substring(1).split("/");
   // Exemplo Triagem: #fila-atendimento/paciente123
   // Exemplo Reavaliação: #fila-atendimento/paciente123/reavaliacao/solicitacao456 (Usa ID da SOLICITAÇÃO)
-  const isReavaliacao =
-    hashParts.length === 4 && hashParts[2] === "reavaliacao";
+  const isReavaliacao = hashParts.length >= 3 && hashParts[2] === "reavaliacao"; // Ajuste para >=3
   const solicitacaoId = isReavaliacao ? hashParts[3] : null; // Pega o ID da SOLICITAÇÃO
 
   const formTitle = document.getElementById("form-title");
@@ -129,7 +129,7 @@ async function carregarDadosPaciente(trilhaId) {
         .join("");
     };
 
-    // Gera o HTML com os dados do paciente
+    // Renderiza os detalhes do paciente
     patientDetailsContainer.innerHTML = `
             <div class="patient-info-group"><strong>Nome:</strong><p>${
               data.nomeCompleto || "N/A"
@@ -198,8 +198,7 @@ async function carregarDadosPaciente(trilhaId) {
             )}</ul></div>
             <div class="patient-info-group"><strong>Queixa Principal (Triagem):</strong><p>${
               data.queixaPrincipal || "Aguardando triagem"
-            }</p></div>
-        `;
+            }</p></div>`;
   } catch (error) {
     console.error("Erro ao carregar dados do paciente:", error);
     patientDetailsContainer.innerHTML = `<p class="error-message">Erro ao carregar dados do paciente: ${error.message}</p>`;
@@ -237,10 +236,14 @@ function formatarDisponibilidadeEspecifica(disponibilidade) {
   return html || "Nenhum horário detalhado informado.";
 }
 
-// --- Lógica Específica do Formulário de Triagem (mantida como estava) ---
+// --- Lógica Específica do Formulário de Triagem ---
 function setupTriagemForm(user, userData, trilhaId) {
   const triagemForm = document.getElementById("triagem-form");
-  if (!triagemForm) return; // Verifica se o form existe
+  if (!triagemForm) {
+    console.error("#triagem-form não encontrado.");
+    return;
+  }
+  // Define elementos e listeners
   const statusSelect = document.getElementById("triagem-status");
   const valorContribuicaoInput = document.getElementById("valor-contribuicao");
   const ampliarDisponibilidadeSelect = document.getElementById(
@@ -263,10 +266,23 @@ function setupTriagemForm(user, userData, trilhaId) {
         novaDisponibilidadeContainer
       )
     );
-  triagemForm.addEventListener("submit", (e) =>
+
+  // Remove listener antigo antes de adicionar um novo para evitar duplicação
+  const formClone = triagemForm.cloneNode(true);
+  triagemForm.parentNode.replaceChild(formClone, triagemForm);
+  formClone.addEventListener("submit", (e) =>
     handleSalvarTriagem(e, user, userData, trilhaId)
-  );
+  ); // Adiciona listener ao clone
+
   loadQueixaTriagem(trilhaId);
+  updateTriagemConditionalFields(); // Chama para definir estado inicial
+  // Verifica se os elementos existem antes de chamar toggleNovaDisponibilidade
+  if (ampliarDisponibilidadeSelect && novaDisponibilidadeContainer) {
+    toggleNovaDisponibilidade(
+      ampliarDisponibilidadeSelect,
+      novaDisponibilidadeContainer
+    ); // Chama para definir estado inicial
+  }
 }
 async function loadQueixaTriagem(trilhaId) {
   try {
@@ -321,28 +337,84 @@ function updateTriagemConditionalFields() {
     selectedValue === "nao_realizada" || selectedValue === "desistiu";
 }
 function toggleNovaDisponibilidade(selectElement, containerElement) {
+  if (!selectElement || !containerElement) return;
   if (selectElement.value === "sim") {
     containerElement.style.display = "block";
     if (containerElement.innerHTML.trim() === "") {
-      containerElement.innerHTML = `...`;
-      /* Gera o HTML da disponibilidade */ containerElement
+      // Gera o HTML da disponibilidade
+      containerElement.innerHTML = `
+                <h3 class="form-section-title">Nova Disponibilidade de Horário</h3>
+                <div class="form-group">
+                    <label>Opção de horário(s) para atendimento:</label>
+                    <div class="horarios-options-container">
+                        <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="manha-sabado"> Manhã (Sábado)</label></div>
+                    </div>
+                </div>
+                <div id="horarios-especificos-container">
+                    <div id="container-manha-semana" class="horario-detalhe-container" style="display:none;"></div>
+                    <div id="container-tarde-semana" class="horario-detalhe-container" style="display:none;"></div>
+                    <div id="container-noite-semana" class="horario-detalhe-container" style="display:none;"></div>
+                    <div id="container-manha-sabado" class="horario-detalhe-container" style="display:none;"></div>
+                </div>`;
+      // Adiciona listeners aos checkboxes gerais
+      containerElement
         .querySelectorAll('input[name="horario"]')
         .forEach((checkbox) => {
           checkbox.addEventListener("change", (e) => {
-            /* Lógica para mostrar/esconder detalhes */
+            const periodo = e.target.value;
+            const containerHorarios = containerElement.querySelector(
+              `#container-${periodo}`
+            );
+            if (containerHorarios) {
+              if (e.target.checked) {
+                gerarHorariosEspecificos(periodo, containerHorarios);
+                containerHorarios.style.display = "block";
+              } else {
+                containerHorarios.innerHTML = "";
+                containerHorarios.style.display = "none";
+              }
+            }
           });
         });
     }
   } else {
     containerElement.style.display = "none";
-    containerElement.innerHTML = "";
+    containerElement.innerHTML = ""; // Limpa para evitar IDs duplicados
   }
 }
 function gerarHorariosEspecificos(periodo, container) {
-  /* ... Lógica para gerar checkboxes de hora ... */
-}
-async function handleSalvarTriagem(evento, user, userData, trilhaId) {
-  /* ... Lógica original para salvar triagem ... */
+  let horarios = [],
+    label = "";
+  switch (periodo) {
+    case "manha-semana":
+      label = "Manhã (Seg-Sex):";
+      for (let i = 8; i < 12; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "tarde-semana":
+      label = "Tarde (Seg-Sex):";
+      for (let i = 12; i < 18; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "noite-semana":
+      label = "Noite (Seg-Sex):";
+      for (let i = 18; i < 21; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+    case "manha-sabado":
+      label = "Manhã (Sábado):";
+      for (let i = 8; i < 13; i++)
+        horarios.push(`${String(i).padStart(2, "0")}:00`);
+      break;
+  }
+  let html = `<label>${label}</label><div class="horario-detalhe-grid">`;
+  horarios.forEach((hora) => {
+    html += `<div><label><input type="checkbox" name="horario-especifico" value="${periodo}_${hora}"> ${hora}</label></div>`;
+  });
+  container.innerHTML = html + `</div>`;
 }
 function resetConditionalFieldsTriagem() {
   const camposEncaminhado = document.getElementById("campos-encaminhado");
@@ -362,31 +434,192 @@ function resetConditionalFieldsTriagem() {
   if (observacaoTextarea) observacaoTextarea.required = false;
 }
 
-// --- Lógica Específica do Formulário de Reavaliação ---
+// *** FUNÇÃO handleSalvarTriagem COM DEBUG ***
+async function handleSalvarTriagem(evento, user, userData, trilhaId) {
+  console.log("handleSalvarTriagem: Iniciada para trilhaId:", trilhaId); // Log 1: Iniciou
+  evento.preventDefault(); // Impede o envio padrão
+  console.log("handleSalvarTriagem: preventDefault() chamado."); // Log 2: Verificou preventDefault
 
-/**
- * Carrega os dados da SOLICITAÇÃO de reavaliação e preenche o formulário.
- */
+  const triagemForm = evento.target;
+  if (!triagemForm) {
+    console.error("Erro: formulário não encontrado no evento.");
+    return;
+  }
+
+  // Garante que temos todos os elementos necessários
+  const statusSelect = document.getElementById("triagem-status");
+  const valorContribuicaoInput = document.getElementById("valor-contribuicao");
+  const criteriosTextarea = document.getElementById("criterios-valor");
+  const observacaoTextarea = document.getElementById("observacao-geral");
+  const ampliarDisponibilidadeSelect = document.getElementById(
+    "ampliar-disponibilidade"
+  );
+  const novaDisponibilidadeContainer = document.getElementById(
+    "nova-disponibilidade-container"
+  );
+  const modalidadeSelect = document.getElementById("modalidade-atendimento");
+  const preferenciaSelect = document.getElementById("preferencia-genero");
+  const queixaInput = document.getElementById("queixa-paciente");
+
+  // Validação extra manual
+  const statusValue = statusSelect ? statusSelect.value : null;
+  console.log("handleSalvarTriagem: Status selecionado:", statusValue); // Log 3: Status
+
+  if (!statusValue) {
+    alert("Selecione o status da triagem.");
+    return;
+  }
+
+  if (statusValue === "encaminhado") {
+    const valorRaw = valorContribuicaoInput ? valorContribuicaoInput.value : "";
+    const criteriosValue = criteriosTextarea
+      ? criteriosTextarea.value.trim()
+      : "";
+    // Converte valor BRL para número
+    const valorNumerico =
+      parseFloat(valorRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+    console.log(
+      `handleSalvarTriagem: Encaminhado - ValorRaw: ${valorRaw}, ValorNum: ${valorNumerico}, Criterios: ${criteriosValue}`
+    ); // Log 4: Dados encaminhado
+    if (isNaN(valorNumerico) || valorNumerico <= 0 || !criteriosValue) {
+      alert(
+        'Os campos "Valor da contribuição" (maior que zero) e "Critérios" são obrigatórios.'
+      );
+      return;
+    }
+  } else if (statusValue === "nao_realizada" || statusValue === "desistiu") {
+    const obsValue = observacaoTextarea ? observacaoTextarea.value.trim() : "";
+    console.log(
+      `handleSalvarTriagem: ${statusValue} - Observacao: ${obsValue}`
+    ); // Log 5: Dados não realizada/desistiu
+    if (!obsValue) {
+      alert('O campo "Observação" é obrigatório para este status.');
+      return;
+    }
+  }
+
+  const saveButton = triagemForm.querySelector('button[type="submit"]');
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = "Salvando...";
+  }
+
+  try {
+    console.log("handleSalvarTriagem: Dentro do try, antes de preparar dados."); // Log 6: Entrou no Try
+    const trilhaDocRef = doc(db, "trilhaPaciente", trilhaId);
+    let dadosParaSalvar = {
+      lastUpdate: serverTimestamp(),
+      assistenteSocialTriagem: { uid: user.uid, nome: userData.nome },
+    };
+
+    if (statusValue === "encaminhado") {
+      // Converte valor BRL para número ao salvar
+      const valorNumerico =
+        parseFloat(
+          valorContribuicaoInput.value.replace(/[^\d,]/g, "").replace(",", ".")
+        ) || 0;
+      dadosParaSalvar = {
+        ...dadosParaSalvar,
+        status: "encaminhar_para_plantao", // Status correto para encaminhar
+        valorContribuicao: valorNumerico,
+        criteriosValor: criteriosTextarea ? criteriosTextarea.value : null,
+        modalidadeAtendimento: modalidadeSelect ? modalidadeSelect.value : null,
+        preferenciaAtendimento: preferenciaSelect
+          ? preferenciaSelect.value
+          : null,
+        queixaPrincipal: queixaInput ? queixaInput.value : null,
+        // Garante que o histórico seja um array antes de adicionar
+        historicoContribuicao: [
+          ...(Array.isArray(userData.historicoContribuicao)
+            ? userData.historicoContribuicao
+            : []), // Pega histórico anterior se existir
+          {
+            valor: valorNumerico,
+            data: Timestamp.now(), // Usar Timestamp.now()
+            motivo: "Triagem",
+            responsavelId: currentUserData.uid,
+            responsavelNome: currentUserData.nome,
+          },
+        ],
+      };
+
+      // Coleta nova disponibilidade apenas se "Sim" foi selecionado
+      if (
+        ampliarDisponibilidadeSelect &&
+        ampliarDisponibilidadeSelect.value === "sim" &&
+        novaDisponibilidadeContainer
+      ) {
+        dadosParaSalvar.disponibilidadeGeral = Array.from(
+          novaDisponibilidadeContainer.querySelectorAll(
+            'input[name="horario"]:checked'
+          )
+        ).map((cb) => cb.parentElement?.textContent?.trim() || "");
+        dadosParaSalvar.disponibilidadeEspecifica = Array.from(
+          novaDisponibilidadeContainer.querySelectorAll(
+            'input[name="horario-especifico"]:checked'
+          )
+        ).map((cb) => cb.value);
+      }
+    } else if (statusValue === "desistiu") {
+      dadosParaSalvar = {
+        ...dadosParaSalvar,
+        status: "desistencia",
+        desistenciaMotivo: `Desistiu na etapa de triagem. Motivo: ${
+          observacaoTextarea ? observacaoTextarea.value : "N/A"
+        }`,
+      };
+    } else {
+      // nao_realizada
+      dadosParaSalvar.status = "inscricao_documentos"; // Volta para inscrição
+      dadosParaSalvar.statusTriagem = statusValue; // Guarda o status específico da triagem
+      dadosParaSalvar.observacoesTriagem = observacaoTextarea
+        ? observacaoTextarea.value
+        : null;
+    }
+
+    console.log(
+      "handleSalvarTriagem: Dados para salvar:",
+      JSON.stringify(dadosParaSalvar, null, 2)
+    ); // Log 7: Dados a salvar (formatado)
+    console.log("handleSalvarTriagem: Chamando updateDoc..."); // Log 8: Antes do update
+    await updateDoc(trilhaDocRef, dadosParaSalvar);
+    console.log("handleSalvarTriagem: updateDoc concluído com sucesso."); // Log 9: Depois do update
+
+    alert("Ficha de triagem salva com sucesso! O paciente foi atualizado.");
+    console.log("handleSalvarTriagem: Redirecionando para #agendamentos-view"); // Log 10: Antes do redirect
+    window.location.hash = "#agendamentos-view";
+  } catch (error) {
+    console.error("Erro CRÍTICO ao salvar a triagem:", error); // Log 11: Erro
+    alert(
+      `Ocorreu um erro ao salvar a ficha: ${error.message}. Verifique o console.`
+    );
+  } finally {
+    console.log("handleSalvarTriagem: Bloco finally executado."); // Log 12: Finally
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = "Salvar Triagem";
+    }
+  }
+}
+// --- FIM DA FUNÇÃO handleSalvarTriagem ---
+
+// --- Lógica Específica do Formulário de Reavaliação ---
 async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
   const loadingInfo = document.getElementById("reavaliacao-loading-info");
   const formReavaliacao = document.getElementById("reavaliacao-ss-form");
   if (!loadingInfo || !formReavaliacao) {
-    console.error("Elementos do formulário de reavaliação não encontrados.");
+    console.error("Elementos do form de reavaliação não encontrados.");
     return;
   }
   loadingInfo.style.display = "block";
-
   try {
-    // Busca dados da SOLICITAÇÃO
     const solicitacaoRef = doc(db, "solicitacoes", solicitacaoId);
     const solicitacaoSnap = await getDoc(solicitacaoRef);
     if (!solicitacaoSnap.exists()) {
-      throw new Error("Solicitação de reavaliação não encontrada."); // Mensagem correta
+      throw new Error("Solicitação de reavaliação não encontrada.");
     }
     const solicitacaoData = solicitacaoSnap.data();
     const detalhes = solicitacaoData.detalhes || {};
-
-    // Preenche informações da solicitação no formulário
     const pacienteNomeEl = document.getElementById(
       "reavaliacao-modal-paciente-nome"
     );
@@ -397,7 +630,6 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
       "reavaliacao-modal-valor-atual"
     );
     const motivoEl = document.getElementById("reavaliacao-modal-motivo");
-
     if (pacienteNomeEl)
       pacienteNomeEl.textContent = solicitacaoData.pacienteNome || "-";
     if (profissionalNomeEl)
@@ -409,8 +641,6 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
       : "-";
     if (valorAtualEl) valorAtualEl.textContent = valorAtualFormatado;
     if (motivoEl) motivoEl.textContent = detalhes.motivo || "-";
-
-    // Preenche IDs nos campos hidden
     const agendamentoIdInput = document.getElementById(
       "reavaliacao-agendamento-id"
     );
@@ -420,51 +650,39 @@ async function carregarDadosReavaliacao(solicitacaoId, pacienteId) {
     const pacienteIdInput = document.getElementById(
       "reavaliacao-paciente-id-ss"
     );
-
-    if (agendamentoIdInput) agendamentoIdInput.value = ""; // Não há agendamento PREEXISTENTE
-    if (solicitacaoIdInput) solicitacaoIdInput.value = solicitacaoId; // Guarda o ID da solicitação
-    if (pacienteIdInput) pacienteIdInput.value = pacienteId; // Confirma o ID do paciente
+    if (agendamentoIdInput) agendamentoIdInput.value = "";
+    if (solicitacaoIdInput) solicitacaoIdInput.value = solicitacaoId;
+    if (pacienteIdInput) pacienteIdInput.value = pacienteId;
   } catch (error) {
-    console.error(
-      "Erro ao carregar dados da solicitação de reavaliação:",
-      error
-    );
-    alert(`Erro ao carregar dados: ${error.message}`);
-    formReavaliacao.innerHTML = `<p class="alert alert-error">Não foi possível carregar os dados da solicitação.</p>`; // Mostra erro no form
+    console.error("Erro ao carregar dados da solicitação:", error);
+    alert(`Erro: ${error.message}`);
+    formReavaliacao.innerHTML = `<p class="alert alert-error">Não foi possível carregar.</p>`;
   } finally {
-    loadingInfo.style.display = "none"; // Esconde o spinner
+    loadingInfo.style.display = "none";
   }
 }
-
-/**
- * Configura os listeners do formulário de reavaliação.
- */
 function setupReavaliacaoFormListeners(solicitacaoId, pacienteId) {
   const form = document.getElementById("reavaliacao-ss-form");
   if (!form) {
-    console.error("Formulário #reavaliacao-ss-form não encontrado.");
+    console.error("#reavaliacao-ss-form não encontrado.");
     return;
   }
   const realizadaSelect = form.querySelector("#reavaliacao-realizada");
-
   if (realizadaSelect) {
     realizadaSelect.addEventListener(
       "change",
       updateReavaliacaoConditionalFields
     );
   } else {
-    console.warn("Select #reavaliacao-realizada não encontrado.");
+    console.warn("#reavaliacao-realizada não encontrado.");
   }
-
-  // Passa null para agendamentoId, pois estamos vindo da solicitação
-  form.addEventListener("submit", (e) =>
+  const formClone = form.cloneNode(true);
+  form.parentNode.replaceChild(formClone, form);
+  formClone.addEventListener("submit", (e) =>
     handleSalvarReavaliacaoSS(e, null, solicitacaoId, pacienteId)
   );
+  updateReavaliacaoConditionalFields();
 }
-
-/**
- * Controla a exibição dos campos condicionais no formulário de reavaliação.
- */
 function updateReavaliacaoConditionalFields() {
   const realizadaSelect = document.getElementById("reavaliacao-realizada");
   const naoRealizadaFields = document.getElementById(
@@ -474,9 +692,7 @@ function updateReavaliacaoConditionalFields() {
     "reavaliacao-sim-realizada-fields"
   );
   if (!realizadaSelect || !naoRealizadaFields || !simRealizadaFields) return;
-
   const selecionado = realizadaSelect.value;
-
   naoRealizadaFields.style.display = "none";
   simRealizadaFields.style.display = "none";
   naoRealizadaFields
@@ -485,7 +701,6 @@ function updateReavaliacaoConditionalFields() {
   simRealizadaFields
     .querySelectorAll("input, textarea")
     .forEach((el) => (el.required = false));
-
   if (selecionado === "sim") {
     simRealizadaFields.style.display = "block";
     simRealizadaFields
@@ -498,10 +713,6 @@ function updateReavaliacaoConditionalFields() {
       .forEach((el) => (el.required = true));
   }
 }
-
-/**
- * Reseta os campos condicionais da reavaliação para o estado inicial.
- */
 function resetConditionalFieldsReavaliacao() {
   const naoRealizadaFields = document.getElementById(
     "reavaliacao-nao-realizada-fields"
@@ -511,7 +722,6 @@ function resetConditionalFieldsReavaliacao() {
   );
   if (naoRealizadaFields) naoRealizadaFields.style.display = "none";
   if (simRealizadaFields) simRealizadaFields.style.display = "none";
-
   const motivoNao = document.getElementById("reavaliacao-motivo-nao");
   const reagendado = document.getElementById("reavaliacao-reagendado");
   const novoValor = document.getElementById("reavaliacao-novo-valor");
@@ -521,10 +731,6 @@ function resetConditionalFieldsReavaliacao() {
   if (novoValor) novoValor.required = false;
   if (criterios) criterios.required = false;
 }
-
-/**
- * Salva os dados da reavaliação (Serviço Social). Atualiza a Solicitação e a Trilha.
- */
 async function handleSalvarReavaliacaoSS(
   evento,
   agendamentoId,
@@ -537,52 +743,40 @@ async function handleSalvarReavaliacaoSS(
   if (!btnSalvar) return;
   btnSalvar.disabled = true;
   btnSalvar.textContent = "Salvando...";
-
   const realizada = form.querySelector("#reavaliacao-realizada")?.value;
-
   try {
-    const isFromSolicitacao = !!solicitacaoId; // Verifica se viemos de uma solicitação
+    const isFromSolicitacao = !!solicitacaoId;
     const solicitacaoRef = isFromSolicitacao
       ? doc(db, "solicitacoes", solicitacaoId)
       : null;
-    // const agendamentoRef = agendamentoId ? doc(db, "agendamentos", agendamentoId) : null; // Referência se fosse de agendamento
     const pacienteRef = doc(db, "trilhaPaciente", pacienteId);
-
     const pacienteSnap = await getDoc(pacienteRef);
     if (!pacienteSnap.exists())
       throw new Error(`Paciente ${pacienteId} não encontrado.`);
     const pacienteDataAtual = pacienteSnap.data();
     const statusDeRetorno =
-      pacienteDataAtual.statusAnteriorReavaliacao || "encaminhar_para_plantao"; // Status para restaurar
-
+      pacienteDataAtual.statusAnteriorReavaliacao || "encaminhar_para_plantao";
     let dadosPacienteUpdate = {
       status: statusDeRetorno,
       statusAnteriorReavaliacao: null,
       lastUpdate: serverTimestamp(),
     };
     let dadosSolicitacaoUpdate = null;
-    // let dadosAgendamentoUpdate = null; // Se precisasse atualizar agendamento
-
     if (realizada === "sim") {
       const novoValorInput = form.querySelector("#reavaliacao-novo-valor");
       const criterios = form.querySelector("#reavaliacao-criterios")?.value;
-      // Trata vírgula e ponto para valor
       const valorString = novoValorInput
         ? novoValorInput.value.replace(",", ".")
         : "0";
       const novoValor = parseFloat(valorString);
-
       if (
         isNaN(novoValor) ||
         novoValor <= 0 ||
         !criterios ||
         !criterios.trim()
       ) {
-        throw new Error(
-          "Preencha o novo valor (maior que zero) e os critérios."
-        );
+        throw new Error("Preencha novo valor (>0) e critérios.");
       }
-
       const novoRegistroHistorico = {
         valor: novoValor,
         data: Timestamp.now(),
@@ -594,17 +788,12 @@ async function handleSalvarReavaliacaoSS(
         ...(pacienteDataAtual.historicoContribuicao || []),
         novoRegistroHistorico,
       ];
-
-      // Atualiza paciente com novo valor e histórico
       dadosPacienteUpdate.valorContribuicao = novoValor;
       dadosPacienteUpdate.historicoContribuicao = novoHistorico;
-
       if (isFromSolicitacao) {
-        // Atualiza a SOLICITAÇÃO original para Concluída
         dadosSolicitacaoUpdate = {
           status: "Concluída",
           adminFeedback: {
-            // Simula um feedback do SS
             statusFinal: "Concluída",
             mensagemAdmin: `Realizada por ${
               currentUserData.nome
@@ -618,20 +807,15 @@ async function handleSalvarReavaliacaoSS(
           lastUpdate: serverTimestamp(),
         };
       }
-      // else if (agendamentoRef) { /* Atualizaria agendamento */ }
-
-      // Atualiza Paciente (SEMPRE que for realizada)
       await updateDoc(pacienteRef, dadosPacienteUpdate);
     } else if (realizada === "nao") {
       const motivoNao = form.querySelector("#reavaliacao-motivo-nao")?.value;
       const reagendado = form.querySelector("#reavaliacao-reagendado")?.value;
       if (!motivoNao || !motivoNao.trim() || !reagendado)
-        throw new Error("Preencha o motivo e se foi reagendado.");
-
+        throw new Error("Preencha motivo e se reagendado.");
       if (isFromSolicitacao) {
-        // Atualiza a SOLICITAÇÃO original
         dadosSolicitacaoUpdate = {
-          status: reagendado === "sim" ? "Pendente" : "NaoRealizada", // Mantém Pendente ou marca como não realizada
+          status: reagendado === "sim" ? "Pendente" : "NaoRealizada",
           adminFeedback: {
             statusFinal: reagendado === "sim" ? "Pendente" : "NaoRealizada",
             mensagemAdmin: `Não realizada por ${
@@ -649,35 +833,24 @@ async function handleSalvarReavaliacaoSS(
           },
           lastUpdate: serverTimestamp(),
         };
-
-        // Restaura status do paciente SÓ SE NÃO for reagendado
         if (reagendado === "nao") {
           await updateDoc(pacienteRef, dadosPacienteUpdate);
         } else {
-          // Se reagendar, paciente continua 'aguardando_reavaliacao' no Firebase (até ser agendado de novo)
-          // Apenas atualiza o lastUpdate para refletir a tentativa
           await updateDoc(pacienteRef, { lastUpdate: serverTimestamp() });
-          // Importante: A solicitação volta a ser 'Pendente' (feito acima) para reaparecer na lista
         }
       }
-      // else if (agendamentoRef) { /* Atualizaria agendamento */ }
     } else {
       throw new Error("Selecione se a reavaliação foi realizada.");
     }
-
-    // Executa a atualização da solicitação, se houver
     if (dadosSolicitacaoUpdate && solicitacaoRef) {
       await updateDoc(solicitacaoRef, dadosSolicitacaoUpdate);
-      console.log("Solicitação original atualizada:", solicitacaoId);
+      console.log("Solicitação atualizada:", solicitacaoId);
     }
-    // Executa a atualização do agendamento, se houver
-    // if (dadosAgendamentoUpdate && agendamentoRef) { ... }
-
-    alert("Reavaliação salva com sucesso!");
-    window.location.hash = "#agendamentos-view"; // Volta para a lista
+    alert("Reavaliação salva!");
+    window.location.hash = "#agendamentos-view";
   } catch (error) {
     console.error("Erro ao salvar reavaliação:", error);
-    alert(`Erro ao salvar: ${error.message}`);
+    alert(`Erro: ${error.message}`);
   } finally {
     btnSalvar.disabled = false;
     btnSalvar.textContent = "Salvar Reavaliação";
