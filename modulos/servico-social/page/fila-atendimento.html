@@ -1,6 +1,6 @@
 <div class="view-container">
     <button id="btn-voltar-lista" class="action-button secondary" style="margin-bottom: 20px;">&larr; Voltar para a Lista</button>
-    
+
     <div class="triagem-grid">
         <div class="patient-data-column">
             <h3>Dados Completos da Inscrição</h3>
@@ -10,107 +10,168 @@
         </div>
 
         <div class="triagem-form-column">
-            <h3 id="form-title">Formulário de Triagem</h3>
-            <form id="triagem-form">
-                <div class="form-group">
-                    <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
-                    <select id="triagem-status" name="triagem-status" class="form-control" required>
-                        <option value="">Selecione o status...</option>
-                        <option value="encaminhado">Sim, encaminhado para plantão.</option>
-                        <option value="nao_realizada">Não (informar motivo)</option>
-                        <option value="desistiu">Sim, paciente desistiu</option>
-                    </select>
-                </div>
+            <h3 id="form-title">Formulário</h3>
 
-                <div id="campos-encaminhado" class="conditional-fields" style="display: none;">
-                    <div class="form-group">
-                        <label for="valor-contribuicao">Valor contribuição (R$): <span class="required-asterisk">*</span></label>
-                        <input type="text" id="valor-contribuicao" name="valor-contribuicao" class="form-control" placeholder="R$ 0,00" required>
+            {/* Formulário de Triagem */}
+            <form id="triagem-form">
+
+                {/* --- NOVO: Resumo do Paciente (Triagem) --- */}
+                <fieldset>
+                    <legend>Resumo do Paciente</legend>
+                    <div class="form-row cols-2">
+                         <div class="form-group">
+                             <label>Renda Individual:</label>
+                             <p id="triagem-resumo-renda-individual">-</p>
+                         </div>
+                         <div class="form-group">
+                             <label>Renda Familiar:</label>
+                             <p id="triagem-resumo-renda-familiar">-</p>
+                         </div>
                     </div>
-                     <div class="form-group">
-                        <label for="criterios-valor">Critérios utilizados para definição do valor: <span class="required-asterisk">*</span></label>
-                        <textarea id="criterios-valor" name="criterios-valor" rows="4" class="form-control" placeholder="Em caso de isenção, informe para quando deve ser marcada a reavaliação." required></textarea>
+                     <div class="form-row cols-2">
+                         <div class="form-group">
+                             <label>Moradia:</label>
+                             <p id="triagem-resumo-moradia">-</p>
+                         </div>
+                         <div class="form-group">
+                             <label>Pessoas na Moradia:</label>
+                             <p id="triagem-resumo-pessoas-moradia">-</p>
+                         </div>
                     </div>
-                    <hr>
-                    <p><strong>Confirmar disponibilidade do paciente:</strong></p>
+                </fieldset>
+                {/* --- FIM NOVO --- */}
+
+                <fieldset>
+                     <legend>Registro da Triagem</legend>
                     <div class="form-group">
-                        <label for="modalidade-atendimento">Prefere atendimento na modalidade:</label>
-                        <select id="modalidade-atendimento" name="modalidade-atendimento" class="form-control">
-                            <option value="Presencial">Presencial</option>
-                            <option value="Online">Online</option>
-                            <option value="Qualquer">Qualquer modalidade</option>
+                        <label for="triagem-status">A triagem foi realizada? <span class="required-asterisk">*</span></label>
+                        <select id="triagem-status" name="triagem-status" class="form-control" required>
+                            <option value="">Selecione o status...</option>
+                            <option value="encaminhado">Sim, encaminhado para plantão.</option>
+                            <option value="nao_realizada">Não (informar motivo)</option>
+                            <option value="desistiu">Sim, paciente desistiu</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="preferencia-genero">Prefere ser atendido por:</label>
-                        <select id="preferencia-genero" name="preferencia-genero" class="form-control">
-                            <option value="Mulher">Mulher</option>
-                            <option value="Homem">Homem</option>
-                            <option value="Indiferente">Indiferente</option>
-                        </select>
-                    </div>
-                    <hr>
-                    <p><strong>Ampliar disponibilidade:</strong></p>
-                    <div class="form-group">
-                        <p>Quanto maior a disponibilidade, mais rápido o paciente é chamado para o atendimento.</p>
-                        <label for="ampliar-disponibilidade">Deseja ampliar a disponibilidade?</label>
-                        <select id="ampliar-disponibilidade" name="ampliar-disponibilidade" class="form-control">
-                            <option value="nao">Não</option>
-                            <option value="sim">Sim</option>
-                        </select>
-                    </div>
-                    <div id="nova-disponibilidade-container" class="conditional-fields" style="display: none;">
+
+                    {/* Campos Condicionais (Encaminhado) */}
+                    <div id="campos-encaminhado" class="conditional-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="valor-contribuicao">Valor contribuição (R$): <span class="required-asterisk">*</span></label>
+                            {/* Input já estava como text e tinha a formatação */}
+                            <input type="text" id="valor-contribuicao" name="valor-contribuicao" class="form-control" placeholder="R$ 0,00" required>
+                        </div>
+                         <div class="form-group">
+                            <label for="criterios-valor">Critérios utilizados para definição do valor: <span class="required-asterisk">*</span></label>
+                            <textarea id="criterios-valor" name="criterios-valor" rows="4" class="form-control" placeholder="Em caso de isenção, informe para quando deve ser marcada a reavaliação." required></textarea>
                         </div>
                         <hr>
-                    <div class="form-group">
-                        <label for="queixa-paciente">Queixa principal do paciente (resumo):</label>
-                        <textarea id="queixa-paciente" name="queixa-paciente" rows="4" class="form-control"></textarea>
+                        <p><strong>Confirmar disponibilidade do paciente:</strong></p>
+                        <div class="form-group">
+                            <label for="modalidade-atendimento">Prefere atendimento na modalidade:</label>
+                            <select id="modalidade-atendimento" name="modalidade-atendimento" class="form-control">
+                                <option value="Presencial">Presencial</option>
+                                <option value="Online">Online</option>
+                                <option value="Qualquer">Qualquer modalidade</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="preferencia-genero">Prefere ser atendido por:</label>
+                            <select id="preferencia-genero" name="preferencia-genero" class="form-control">
+                                <option value="Mulher">Mulher</option>
+                                <option value="Homem">Homem</option>
+                                <option value="Indiferente">Indiferente</option>
+                            </select>
+                        </div>
+                        <hr>
+                        <p><strong>Ampliar disponibilidade:</strong></p>
+                        <div class="form-group">
+                            <p>Quanto maior a disponibilidade, mais rápido o paciente é chamado para o atendimento.</p>
+                            <label for="ampliar-disponibilidade">Deseja ampliar a disponibilidade?</label>
+                            <select id="ampliar-disponibilidade" name="ampliar-disponibilidade" class="form-control">
+                                <option value="nao">Não</option>
+                                <option value="sim">Sim</option>
+                            </select>
+                        </div>
+                        <div id="nova-disponibilidade-container" class="conditional-fields" style="display: none;">
+                            {/* Conteúdo gerado via JS */}
+                        </div>
+                        <hr>
+                        <div class="form-group">
+                            <label for="queixa-paciente">Queixa principal do paciente (resumo):</label>
+                            <textarea id="queixa-paciente" name="queixa-paciente" rows="4" class="form-control"></textarea>
+                        </div>
                     </div>
-                </div>
 
-                <div id="campos-observacao" class="conditional-fields" style="display: none;">
-                    <div class="form-group">
-                        <label for="observacao-geral">Observação: <span class="required-asterisk">*</span></label>
-                        <textarea id="observacao-geral" name="observacao-geral" rows="4" class="form-control" placeholder="Informe o motivo da não realização ou desistência." required></textarea>
+                    {/* Campos Condicionais (Não Realizada / Desistiu) */}
+                    <div id="campos-observacao" class="conditional-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="observacao-geral">Observação: <span class="required-asterisk">*</span></label>
+                            <textarea id="observacao-geral" name="observacao-geral" rows="4" class="form-control" placeholder="Informe o motivo da não realização ou desistência." required></textarea>
+                        </div>
                     </div>
-                </div>
+                </fieldset>
 
                 <div class="button-bar" style="margin-top: 20px;">
                     <button type="submit" class="action-button">Salvar Triagem</button>
                 </div>
             </form>
-            
+
+            {/* Formulário de Reavaliação */}
             <form id="reavaliacao-ss-form" style="display: none;">
                 <input type="hidden" id="reavaliacao-agendamento-id">
-                <input type="hidden" id="reavaliacao-paciente-id-ss"> 
+                <input type="hidden" id="reavaliacao-paciente-id-ss">
+                <input type="hidden" id="reavaliacao-solicitacao-id-ss">
 
                 <fieldset>
-                    <legend>Informações da Solicitação</legend>
+                    <legend>Informações da Solicitação e Paciente</legend>
                     <div id="reavaliacao-loading-info" class="loading-spinner" style="display: none; position: absolute; top: 10px; right: 10px;"></div>
                     <div class="form-row cols-2">
                          <div class="form-group">
-                            <label>Paciente</label>
-                            <p id="reavaliacao-modal-paciente-nome">-</p>
-                        </div>
+                             <label>Paciente</label>
+                             <p id="reavaliacao-modal-paciente-nome">-</p>
+                         </div>
                          <div class="form-group">
-                            <label>Solicitado Por</label>
-                            <p id="reavaliacao-modal-profissional-nome">-</p>
-                        </div>
+                             <label>Solicitado Por</label>
+                             <p id="reavaliacao-modal-profissional-nome">-</p>
+                         </div>
                     </div>
                      <div class="form-row cols-2">
                          <div class="form-group">
-                            <label>Valor Contribuição Atual</label>
-                            <p id="reavaliacao-modal-valor-atual">-</p>
-                        </div>
-                        <div class="form-group">
-                            <label>Motivo da Reavaliação (informado pelo profissional)</label>
-                            <p id="reavaliacao-modal-motivo">-</p>
-                        </div>
+                             <label>Valor Contribuição Atual</label>
+                             <p id="reavaliacao-modal-valor-atual">-</p>
+                         </div>
+                         <div class="form-group">
+                             <label>Motivo da Reavaliação (Profissional)</label>
+                             <p id="reavaliacao-modal-motivo">-</p>
+                         </div>
                     </div>
+                    {/* --- NOVO: Resumo do Paciente (Reavaliação) --- */}
+                    <hr style="margin: 15px 0;">
+                     <div class="form-row cols-2">
+                         <div class="form-group">
+                             <label>Renda Individual:</label>
+                             <p id="reavaliacao-resumo-renda-individual">-</p>
+                         </div>
+                         <div class="form-group">
+                             <label>Renda Familiar:</label>
+                             <p id="reavaliacao-resumo-renda-familiar">-</p>
+                         </div>
+                    </div>
+                     <div class="form-row cols-2">
+                         <div class="form-group">
+                             <label>Moradia:</label>
+                             <p id="reavaliacao-resumo-moradia">-</p>
+                         </div>
+                         <div class="form-group">
+                             <label>Pessoas na Moradia:</label>
+                             <p id="reavaliacao-resumo-pessoas-moradia">-</p>
+                         </div>
+                    </div>
+                     {/* --- FIM NOVO --- */}
                 </fieldset>
 
                 <fieldset>
-                    <legend>Registro da Reavaliação</legend>
+                     <legend>Registro da Reavaliação</legend>
                     <div class="form-group required">
                         <label for="reavaliacao-realizada">A reavaliação foi realizada?</label>
                         <select id="reavaliacao-realizada" class="form-control" required>
@@ -120,26 +181,29 @@
                         </select>
                     </div>
 
+                    {/* Campos Condicionais (Não Realizada) */}
                     <div id="reavaliacao-nao-realizada-fields" style="display: none;">
                         <div class="form-group required">
                             <label for="reavaliacao-motivo-nao">Motivo (Não Realizada):</label>
                             <textarea id="reavaliacao-motivo-nao" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="form-group required">
-                            <label for="reavaliacao-reagendado">Foi reagendado?</label>
+                            <label for="reavaliacao-reagendado">Precisa reagendar?</label>
                              <select id="reavaliacao-reagendado" class="form-control">
-                                <option value="">Selecione...</option>
-                                <option value="sim">Sim</option>
-                                <option value="nao">Não</option>
-                            </select>
-                            <small>Se 'Sim', o agendamento permanecerá na lista. Se 'Não', será removido.</small>
+                                 <option value="">Selecione...</option>
+                                 <option value="sim">Sim</option>
+                                 <option value="nao">Não</option>
+                             </select>
+                            <small>Se 'Sim', a solicitação voltará para a lista de pendentes. Se 'Não', o paciente voltará ao status anterior.</small>
                         </div>
                     </div>
 
+                    {/* Campos Condicionais (Sim Realizada) */}
                     <div id="reavaliacao-sim-realizada-fields" style="display: none;">
                         <div class="form-group required">
                             <label for="reavaliacao-novo-valor">Valor da Nova Contribuição (R$):</label>
-                            <input type="number" step="0.01" id="reavaliacao-novo-valor" class="form-control" placeholder="Ex: 60.00">
+                            {/* --- MODIFICADO: type="text" para formatação --- */}
+                            <input type="text" id="reavaliacao-novo-valor" class="form-control" placeholder="R$ 0,00">
                         </div>
                          <div class="form-group required">
                             <label for="reavaliacao-criterios">Critérios utilizados para definição do valor:</label>
@@ -147,11 +211,11 @@
                         </div>
                     </div>
                 </fieldset>
-                
+
                 <div class="button-bar" style="margin-top: 20px;">
                     <button type="submit" class="action-button" id="btn-salvar-reavaliacao-ss">Salvar Reavaliação</button>
                 </div>
             </form>
-            </div>
+        </div>
     </div>
 </div>
