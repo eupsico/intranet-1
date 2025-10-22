@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/actions.js
-// --- VERSÃO CORRIGIDA (Corrige erro em formatCurrency e ajusta margens) ---
+// --- VERSÃO CORRIGIDA (Opção 1: Alinhamento à Esquerda e Margens Simétricas) ---
 
 // (A função handleEnviarContrato foi removida daqui em versões anteriores)
 
@@ -11,10 +11,16 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const margin = 20; // <-- AJUSTE AQUI: Aumentado de 15 para 20
+    const margin = 20; // Mantido em 20
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+
+    // --- INÍCIO DA CORREÇÃO 1 (Margens Simétricas) ---
+    // Removemos o buffer de -10 para que a largura útil use apenas as margens.
+    // (210mm - 40mm de margem = 170mm de largura útil)
     const usableWidth = pageWidth - margin * 2;
+    // --- FIM DA CORREÇÃO 1 ---
+
     let cursorY = 15; // Início do conteúdo abaixo do topo
 
     // Função interna para carregar imagem como Base64
@@ -54,7 +60,10 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
         style = "normal",
         spaceBefore = 0,
         spaceAfter = 5, // Espaço padrão após parágrafos
-        align = "justify", // Justificar por padrão
+        // --- INÍCIO DA CORREÇÃO 2 (Bug do Justify) ---
+        // Alterado de "justify" para "left" para evitar o estouro da margem.
+        align = "left",
+        // --- FIM DA CORREÇÃO 2 ---
         isListItem = false,
       } = options;
 
@@ -66,7 +75,16 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
       const cleanText = text.replace(/\s+/g, " ").trim();
       if (!cleanText) return; // Pula se estiver vazio após limpar
 
-      const lines = doc.splitTextToSize(cleanText, usableWidth);
+      let textMargin = margin;
+      let currentUsableWidth = usableWidth; // Agora é 170mm
+
+      if (isListItem) {
+        const indent = 4; // Espaço da indentação
+        textMargin = margin + indent; // 24
+        currentUsableWidth = usableWidth - indent; // 166
+      }
+
+      const lines = doc.splitTextToSize(cleanText, currentUsableWidth);
       const textHeight = doc.getTextDimensions(lines).h;
 
       // Verifica se precisa adicionar nova página ANTES de adicionar o texto
@@ -75,12 +93,18 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
         cursorY = margin + 10; // Adiciona margem superior na nova página
       }
 
+      // (Mantém a correção anterior de forçar o maxWidth)
+      const textOptions = {
+        align: align,
+        maxWidth: currentUsableWidth, // Força a largura máxima na renderização
+      };
+
       // Adiciona marcador para itens de lista
       if (isListItem) {
-        doc.text("•", margin, cursorY); // Marcador
-        doc.text(lines, margin + 4, cursorY, { align: align }); // Texto indentado
+        doc.text("•", margin, cursorY); // Marcador (na margem principal)
+        doc.text(lines, textMargin, cursorY, textOptions); // Texto (na margem indentada)
       } else {
-        doc.text(lines, margin, cursorY, { align: align });
+        doc.text(lines, textMargin, cursorY, textOptions); // Texto normal (textMargin = margin)
       }
 
       cursorY += textHeight + spaceAfter;
@@ -145,7 +169,8 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
           // Verifica se o pai é <ol> para numeração (simplificado aqui como bullet)
           addTextSection(text, { size: 10, spaceAfter: 2, isListItem: true });
         } else if (tagName === "p") {
-          addTextSection(text, { size: 10, spaceAfter: 5 }); // Parágrafo padrão
+          // Parágrafos agora usarão o alinhamento padrão (left) definido na função
+          addTextSection(text, { size: 10, spaceAfter: 5 });
         }
         // Ignora tags não mapeadas (como <ul>, <ol> em si)
       });
@@ -216,13 +241,18 @@ export async function gerarPdfContrato(pacienteData, meuAtendimento) {
       // Desenha o retângulo em volta dos dados adicionados
       // A altura é calculada pela diferença entre a posição atual e a inicial
       doc.setDrawColor(180, 180, 180); // Cor cinza claro para a borda
+
+      // --- INÍCIO DA CORREÇÃO (Largura da Caixa) ---
+      // A largura da caixa deve ser a nova usableWidth (170) + 4mm de padding (2mm de cada lado)
       doc.rect(
         margin - 2,
         boxStartY - 4,
-        usableWidth + 4,
+        usableWidth + 4, // Corrigido: 170 + 4 = 174mm
         cursorY - boxStartY,
         "S"
       );
+      // --- FIM DA CORREÇÃO ---
+
       cursorY += 5; // Espaço após a caixa
     };
 
