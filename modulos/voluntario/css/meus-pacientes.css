@@ -2,7 +2,7 @@
 
 /* --- ESTRUTURA GERAL E CABEÇALHO --- */
 .view-header {
-    margin-bottom: 15px;
+  margin-bottom: 15px;
 }
 .view-header h2 {
     color: var(--cor-primaria);
