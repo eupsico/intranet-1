@@ -1,6 +1,6 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
 // --- VERSÃO MODIFICADA PARA NOVAS SESSÕES (Corrigida) ---
-// *** ALTERAÇÃO: Adicionado campo condicional 'Número de Sessões' ***
+// *** ALTERAÇÃO: Adicionado campo condicional 'Número de Sessões' e verificações de segurança ***
 
 import {
   db,
@@ -246,7 +246,7 @@ export async function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Implementação das funções de carregamento (mantidas) ---
+  // --- Implementação das funções de carregamento ---
   function loadNovasSessoes() {
     loadSolicitacoesPorTipo(
       "novas_sessoes",
@@ -277,6 +277,11 @@ export async function init(db_ignored, user, userData) {
       8
     );
   }
+
+  // As funções abaixo (loadReavaliacao, loadInclusaoAlteracaoGradePB)
+  // não têm tabelas correspondentes no HTML fornecido (solicitacoes-admin.html),
+  // então elas irão falhar ou não fazer nada se os IDs não existirem.
+
   function loadReavaliacao() {
     loadSolicitacoesPorTipo(
       "reavaliacao",
@@ -296,7 +301,8 @@ export async function init(db_ignored, user, userData) {
       renderInclusaoAlteracaoGradePBRow,
       10
     );
-  } // Colspan ajustado para 10
+  }
+
   function loadExclusaoHorarios() {
     loadSolicitacoesPorTipo(
       "exclusao_horario",
@@ -330,11 +336,7 @@ export async function init(db_ignored, user, userData) {
 
     try {
       // Query mais eficiente: buscar apenas pacientes com atendimentosPB
-      const qCombined = query(
-        collection(dbInstance, "trilhaPaciente")
-        // Adicionar where('atendimentosPB', '!=', null) se o array puder ser null/undefined
-        // where('status', 'in', ['em_atendimento_pb', 'cadastrar_horario_psicomanager']) // Filtrar status se necessário performance
-      );
+      const qCombined = query(collection(dbInstance, "trilhaPaciente"));
       const snapshot = await getDocs(qCombined);
 
       let pendingContracts = [];
@@ -649,7 +651,7 @@ export async function init(db_ignored, user, userData) {
       const response = await fetch(modalHtmlPath);
       if (!response.ok)
         throw new Error(
-          `Falha ao carregar o HTML do modal (${response.statusText}).`
+          `Falha ao carregar o HTML do modal (${response.statusText}). Caminho: ${modalHtmlPath}`
         );
 
       modalBodyContent.innerHTML = await response.text();
@@ -698,6 +700,13 @@ export async function init(db_ignored, user, userData) {
             "#modal-ns-data-inicio",
             formatarData(detalhes.dataInicioPreferencial)
           );
+          // ***** NOVO: Preenche a recorrência solicitada *****
+          setTextContentIfExists(
+            "#modal-ns-recorrencia",
+            detalhes.recorrenciaSolicitada || "N/A"
+          ); // (Aguardando este campo vir do detalhe-paciente)
+          // *************************************************
+
           // Preenche campo readonly do profissional no novo form
           setValueIfExists("#admin-ag-profissional-nome", data.solicitanteNome);
           // Carrega as salas no dropdown
@@ -1135,7 +1144,7 @@ export async function init(db_ignored, user, userData) {
         // É necessário o ID do profissional (solicitanteId)
         await atualizarGradeDoProfissional(
           solicitacao.solicitanteId, // ID do profissional
-          novosDados.dia.toLowerCase(), // 'segunda', 'terca', etc. (Convertido para minúsculo)
+          novosDados.dia, // 'segunda', 'terca', etc. (Vem como 'Segunda-feira')
           novosDados.horario, // 'HH:MM'
           novosDados.modalidade, // 'Online' ou 'Presencial'
           novosDados.sala, // Nome da sala ou 'Online'
@@ -1300,7 +1309,7 @@ export async function init(db_ignored, user, userData) {
     try {
       await atualizarGradeDoProfissional(
         solicitanteId,
-        detalhes.diaSemana.toLowerCase(), // 'segunda', 'terca', etc. (Convertido para minúsculo)
+        detalhes.diaSemana, // 'Segunda-feira', etc.
         detalhes.horario, // 'HH:MM'
         detalhes.modalidade || detalhes.tipoAtendimento, // Usar um dos dois
         detalhes.salaAtendimento,
@@ -1552,8 +1561,8 @@ export async function init(db_ignored, user, userData) {
   loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
-  // loadReavaliacao(); // Chamada removida pois a aba não existe no HTML
-  // loadInclusaoAlteracaoGradePB(); // Chamada removida pois a aba não existe no HTML
+  // loadReavaliacao(); // Aba não existe
+  // loadInclusaoAlteracaoGradePB(); // Aba não existe
   loadStatusContratos();
   loadExclusaoHorarios();
 
@@ -1698,7 +1707,7 @@ export async function init(db_ignored, user, userData) {
       calcularHoraFim(); // Calcula hora fim inicial
     }
     if (solicitacaoData.detalhes?.modalidade) {
-      // Ajusta para 'Online' ou 'Presencial'
+      // Ajusta para 'Online' ou 'Presencial' (capitalizado)
       const modalidade =
         solicitacaoData.detalhes.modalidade.charAt(0).toUpperCase() +
         solicitacaoData.detalhes.modalidade.slice(1).toLowerCase();
@@ -1719,13 +1728,29 @@ export async function init(db_ignored, user, userData) {
           `Sala solicitada "${salaSolicitada}" não encontrada no dropdown.`
         );
         // Deixa como "Selecione..." ou seleciona Online se for o caso
-        if (solicitacaoData.detalhes.modalidade === "Online") {
+        if (solicitacaoData.detalhes.modalidade.toLowerCase() === "online") {
           salaSelect.value = "Online";
         }
       }
-    } else if (solicitacaoData.detalhes?.modalidade === "Online") {
+    } else if (
+      solicitacaoData.detalhes?.modalidade.toLowerCase() === "online"
+    ) {
       salaSelect.value = "Online"; // Garante Online se modalidade for Online
     }
+
+    // ***** NOVO: Pré-preenche a recorrência se ela vier da solicitação *****
+    if (solicitacaoData.detalhes?.recorrenciaSolicitada) {
+      const recorrenciaSolicitada =
+        solicitacaoData.detalhes.recorrenciaSolicitada.toLowerCase(); // ex: 'semanal'
+      if (
+        recorrenciaSelect.querySelector(
+          `option[value="${recorrenciaSolicitada}"]`
+        )
+      ) {
+        recorrenciaSelect.value = recorrenciaSolicitada;
+      }
+    }
+    // *******************************************************************
 
     // 2. Listener para Hora Início -> Calcular Hora Fim
     horaInicioInput.addEventListener("change", calcularHoraFim);
@@ -1904,6 +1929,13 @@ export async function init(db_ignored, user, userData) {
     const formAgendamento = modalBodyContent.querySelector(
       "#admin-agendamento-form"
     );
+    // Verificar se o form foi encontrado
+    if (!formAgendamento) {
+      console.error("Formulário de agendamento não encontrado no modal.");
+      alert("Erro interno: Formulário de agendamento não encontrado.");
+      return;
+    }
+
     const mensagemAdminInput = formAgendamento.querySelector(
       "#admin-ag-message-text"
     );
@@ -1992,6 +2024,18 @@ export async function init(db_ignored, user, userData) {
           mensagemAdmin: mensagemAdmin, // Mensagem opcional
         };
 
+        // Validação extra para número de sessões
+        if (
+          recorrencia !== "unica" &&
+          (isNaN(agendamentoAdmin.numeroSessoes) ||
+            agendamentoAdmin.numeroSessoes < 1 ||
+            agendamentoAdmin.numeroSessoes > 52)
+        ) {
+          throw new Error(
+            `Número de sessões inválido: ${agendamentoAdmin.numeroSessoes}. Deve ser um número entre 1 e 52.`
+          );
+        }
+
         // 3. Validar a grade novamente (verificação final)
         validarGradeAdmin(); // Roda a validação para atualizar a mensagem
         const feedbackDiv = formAgendamento.querySelector(
@@ -2066,6 +2110,7 @@ export async function init(db_ignored, user, userData) {
             dataInicio: agendamentoAdmin.dataInicio,
             horaInicio: agendamentoAdmin.horaInicio,
             recorrencia: agendamentoAdmin.recorrencia,
+            numeroSessoes: agendamentoAdmin.numeroSessoes, // Salva o número de sessões
             tipoSessao: agendamentoAdmin.tipoSessao,
             sala: agendamentoAdmin.sala,
             sessoesCriadas: sessoesCriadasIds.length, // Quantidade
@@ -2104,7 +2149,7 @@ export async function init(db_ignored, user, userData) {
   // --- Função para ATUALIZAR A GRADE do profissional ---
   async function atualizarGradeDoProfissional(
     profissionalId,
-    diaSemana, // 'segunda', 'terca', etc
+    diaSemana, // 'segunda', 'terca', 'Segunda-feira', etc
     horario, // 'HH:MM'
     tipo,
     sala,
@@ -2122,12 +2167,29 @@ export async function init(db_ignored, user, userData) {
       "Quinta-feira": "quinta",
       "Sexta-feira": "sexta",
       Sábado: "sabado",
+      domingo: "domingo", // Adiciona os que já são minúsculos
+      segunda: "segunda",
+      terca: "terca",
+      quarta: "quarta",
+      quinta: "quinta",
+      sexta: "sexta",
+      sabado: "sabado",
     };
     // Garante que o diaSemana está no formato 'segunda', 'terca', etc.
-    const diaChave = diasMapReverso[diaSemana] || diaSemana.toLowerCase();
+    const diaChave = diasMapReverso[diaSemana] || diaSemana?.toLowerCase();
+    if (!diaChave) {
+      throw new Error(
+        `Dia da semana inválido fornecido para atualizar grade: ${diaSemana}`
+      );
+    }
+    const horaChave = horario?.replace(":", "-"); // HH-MM
+    if (!horaChave) {
+      throw new Error(
+        `Horário inválido fornecido para atualizar grade: ${horario}`
+      );
+    }
 
     const gradeRef = doc(dbInstance, "administrativo", "grades");
-    const horaKey = horario.replace(":", "-"); // HH-MM
 
     const slotData = {
       ocupado: true,
@@ -2138,7 +2200,7 @@ export async function init(db_ignored, user, userData) {
       atualizadoEm: serverTimestamp(),
     };
 
-    const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaKey}`;
+    const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`;
 
     try {
       await updateDoc(gradeRef, {
@@ -2178,6 +2240,7 @@ export async function init(db_ignored, user, userData) {
   }
 
   // --- Função para CRIAR SESSÕES recorrentes ---
+  // *** CORRIGIDA PARA LIDAR COM dataInicio/horaInicio POSSIVELMENTE UNDEFINED E USAR numeroSessoes ***
   async function criarSessoesRecorrentes(agendamento) {
     console.log("Iniciando criação de sessões:", agendamento);
     const {
@@ -2193,15 +2256,23 @@ export async function init(db_ignored, user, userData) {
       sala,
     } = agendamento;
 
+    // ***** CORREÇÃO: Validar data e hora de início *****
+    const dataInicioStr = dataInicio || "";
+    const horaInicioStr = horaInicio || "";
+
     if (
       !pacienteId ||
       !atendimentoId ||
-      !dataInicio ||
-      !horaInicio ||
+      !dataInicioStr || // Usa a string verificada
+      !horaInicioStr || // Usa a string verificada
       !recorrencia
     ) {
-      throw new Error("Dados insuficientes para criar sessões.");
+      console.error("Dados insuficientes para criar sessões:", agendamento);
+      throw new Error(
+        "Dados insuficientes para criar sessões. Verifique data, hora e recorrência."
+      );
     }
+    // *************************************************
 
     const sessoesRef = collection(
       dbInstance,
@@ -2212,16 +2283,24 @@ export async function init(db_ignored, user, userData) {
     const batch = writeBatch(dbInstance);
     const sessoesCriadasIds = [];
 
-    // Corrige fuso horário: Assume que dataInicio e horaInicio estão em horário local (Brasília)
-    // Converte para um objeto Date que representa corretamente esse horário
-    const [ano, mes, dia] = dataInicio.split("-").map(Number);
-    const [hora, minuto] = horaInicio.split(":").map(Number);
-    // Cria a data no fuso local (América/Sao_Paulo = -03:00)
-    // Nota: Isso ainda pode ser arriscado se o servidor/admin estiver em fuso diferente
-    // Uma abordagem mais robusta usaria a data YYYY-MM-DD e a hora HH:MM
-    // e construiria o Timestamp com base nisso.
-    // Vamos usar a data/hora local do admin:
-    let dataAtual = new Date(ano, mes - 1, dia, hora, minuto);
+    // Constrói a data inicial de forma robusta
+    let dataAtual;
+    try {
+      const [ano, mes, dia] = dataInicioStr.split("-").map(Number);
+      const [hora, minuto] = horaInicioStr.split(":").map(Number);
+      dataAtual = new Date(ano, mes - 1, dia, hora, minuto); // JS usa mês 0-11
+      if (isNaN(dataAtual.getTime())) throw new Error("Data ou hora inválida");
+    } catch (e) {
+      console.error(
+        "Erro ao parsear data/hora:",
+        dataInicioStr,
+        horaInicioStr,
+        e
+      );
+      throw new Error(
+        `Data (${dataInicioStr}) ou Hora (${horaInicioStr}) inválida.`
+      );
+    }
 
     // --- Lógica de Recorrência ---
     // ***** NOVO: Usa o número de sessões vindo do agendamento *****
@@ -2242,7 +2321,7 @@ export async function init(db_ignored, user, userData) {
     // **********************************************************
 
     for (let i = 0; i < sessoesParaCriar; i++) {
-      // Verifica se a data é válida
+      // Verifica se a data é válida (já verificado na inicialização, mas checa de novo)
       if (isNaN(dataAtual.getTime())) {
         console.error(
           "Data inválida encontrada durante a criação de sessões:",
@@ -2352,7 +2431,10 @@ export async function init(db_ignored, user, userData) {
   // Função auxiliar para obter dia da semana ('segunda', 'terca', etc.) a partir de 'AAAA-MM-DD'
   function obterDiaDaSemana(dataString) {
     try {
+      // ***** CORREÇÃO: Adiciona verificação de string vazia/nula *****
+      if (!dataString) throw new Error("string de data está vazia ou nula");
       const dataObj = new Date(dataString + "T12:00:00");
+      if (isNaN(dataObj.getTime())) throw new Error("Data inválida"); // Verifica se a data é válida
       const diaIndex = dataObj.getDay();
       const diasMap = [
         "domingo",
@@ -2365,7 +2447,12 @@ export async function init(db_ignored, user, userData) {
       ];
       return diasMap[diaIndex];
     } catch (e) {
-      console.error("Erro ao obter dia da semana:", e);
+      console.error(
+        "Erro ao obter dia da semana:",
+        e,
+        "Data String:",
+        dataString
+      );
       return "invalido";
     }
   }
@@ -2381,6 +2468,7 @@ export async function init(db_ignored, user, userData) {
       console.warn("Dados insuficientes para limpar horário da grade.");
       return;
     }
+
     // Mapear nomes completos para chaves
     const diasMapReverso = {
       "Segunda-feira": "segunda",
@@ -2389,12 +2477,26 @@ export async function init(db_ignored, user, userData) {
       "Quinta-feira": "quinta",
       "Sexta-feira": "sexta",
       Sábado: "sabado",
-      Domingo: "domingo",
+      domingo: "domingo",
+      segunda: "segunda",
+      terca: "terca",
+      quarta: "quarta",
+      quinta: "quinta",
+      sexta: "sexta",
+      sabado: "sabado",
     };
     const diaChave =
       diasMapReverso[horarioInfo.diaSemana] ||
-      horarioInfo.diaSemana.toLowerCase();
-    const horaChave = horarioInfo.horario.replace(":", "-");
+      horarioInfo.diaSemana?.toLowerCase();
+    const horaChave = horarioInfo.horario?.replace(":", "-");
+
+    if (!diaChave || !horaChave) {
+      console.warn(
+        `Dados insuficientes para limpar horário: ${diaChave}, ${horaChave}`
+      );
+      return;
+    }
+
     const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`;
 
     console.warn(
@@ -2475,8 +2577,8 @@ export async function init(db_ignored, user, userData) {
   loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
-  // loadReavaliacao(); // Aba não existe no HTML
-  // loadInclusaoAlteracaoGradePB(); // Aba não existe no HTML
+  // loadReavaliacao(); // Aba não existe
+  // loadInclusaoAlteracaoGradePB(); // Aba não existe
   loadStatusContratos();
   loadExclusaoHorarios();
 
