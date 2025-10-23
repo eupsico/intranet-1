@@ -1,61 +1,88 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/ui.js
 
-// --- CORREÇÃO NA FUNÇÃO calcularIdade ---
-// Esta função é mantida, pois pode ser usada por outros módulos,
-// embora não seja mais usada pela 'criarCardPaciente' nesta página.
+// Função calcularIdade mantida como antes...
 export function calcularIdade(dataNascimento) {
-  // Retorna "N/A" se a data for inválida, nula ou vazia
   if (
     !dataNascimento ||
     typeof dataNascimento !== "string" ||
     dataNascimento.trim() === ""
   ) {
     return "N/A";
-  } // Tenta criar uma data. Se for inválida, retorna "N/A"
-
-  const nasc = new Date(dataNascimento + "T00:00:00"); // Adiciona T00:00:00 para consistência
+  }
+  const nasc = new Date(dataNascimento + "T00:00:00");
   if (isNaN(nasc.getTime())) {
     console.warn("Formato de dataNascimento inválido:", dataNascimento);
-    return "N/A"; // Retorna N/A em vez de "Data inválida"
+    return "N/A";
   }
-
   const hoje = new Date();
   let idade = hoje.getFullYear() - nasc.getFullYear();
   const m = hoje.getMonth() - nasc.getMonth();
   if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
     idade--;
-  } // Retorna "N/A" se a idade calculada for negativa (data futura?)
+  }
   return idade >= 0 ? `${idade} anos` : "N/A";
 }
-// --- FIM DA CORREÇÃO ---
 
 /**
  * REFATORAÇÃO:
- * A função 'criarAccordionPaciente' foi substituída por 'criarCardPaciente'.
- * Esta nova função gera um link (<a>) em vez de um accordion expansível.
- * Todo o conteúdo detalhado e botões de ação foram removidos,
- * pois agora eles pertencerão à página 'detalhe-paciente.html'.
+ * Cria uma linha de tabela (<tr>) para um paciente com Nome (link), Telefone, Email e Status.
  */
-export function criarCardPaciente(paciente, atendimentoPB = null) {
+export function criarLinhaPacienteTabela(paciente, atendimentoPB = null) {
   // Define a URL para a nova página de detalhes do paciente.
-  // Usamos o roteador da aplicação (parâmetros 'p' e 's') e passamos o ID.
-  const urlDetalhePaciente = `?p=voluntario&s=detalhe-paciente&id=${paciente.id}`; // O 'atendimentoId' ainda é necessário caso a página de detalhes precise // saber qual atendimento específico (em caso de múltiplos) está sendo visualizado. // Adicionamos como um data attribute no link para referência, se necessário, // ou pode ser adicionado à URL. Por simplicidade, vamos mantê-lo aqui.
+  const urlDetalhePaciente = `?p=voluntario&s=detalhe-paciente&id=${paciente.id}`;
 
+  // Atendimento ID pode ser útil na página de detalhes, mantido como data attribute no link
   const atendimentoIdAttr = atendimentoPB
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
 
+  // Obter dados para as colunas
+  const nomeCompleto = paciente.nomeCompleto || "Nome não disponível";
+  const telefone = paciente.telefoneCelular || "Não informado";
+  const email = paciente.email || "Não informado"; // Assumindo que o campo 'email' existe no objeto paciente
+  const statusPaciente = paciente.status || "desconhecido";
+
+  // --- Lógica de Status (similar à versão anterior, mas simplificada para o badge) ---
+  let displayStatus = statusPaciente.replace(/_/g, " ") || "Desconhecido"; // Texto para exibir
+  let displayStatusClass = statusPaciente; // Classe CSS
+
+  // Caso especial: Aguardando Contrato (somente se não for plantão)
+  if (
+    statusPaciente !== "em_atendimento_plantao" &&
+    atendimentoPB &&
+    !atendimentoPB.contratoAssinado
+  ) {
+    displayStatus = "Aguardando Contrato";
+    displayStatusClass = "aguardando_contrato"; // Pode usar o mesmo estilo de 'aguardando_info_horarios'
+  }
+  // Formata o texto do status para exibição (Ex: 'Em Atendimento Pb' -> 'Em Atendimento (PB)')
+  const mapaStatusTexto = {
+    em_atendimento_plantao: "Em Atendimento (Plantão)",
+    aguardando_info_horarios: "Aguardando Horários (PB)",
+    cadastrar_horario_psicomanager: "Horários Informados (PB)",
+    em_atendimento_pb: "Em Atendimento (PB)",
+    aguardando_contrato: "Aguardando Contrato", // Texto do caso especial
+    alta: "Alta",
+    desistencia: "Desistência",
+    encaminhado_grupo: "Encaminhado p/ Grupo",
+    encaminhado_parceiro: "Encaminhado p/ Parceiro",
+  };
+  displayStatus =
+    mapaStatusTexto[displayStatusClass] ||
+    displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1); // Usa mapa ou capitaliza
+
   return `
-            <a href="${urlDetalhePaciente}" class="paciente-card" data-id="${
-    paciente.id
-  }" ${atendimentoIdAttr}>
-              <div class="card-info">
-                  <span class="nome">${paciente.nomeCompleto}</span>
-                  <span class="telefone">${
-    paciente.telefoneCelular || "Telefone não informado"
-  }</span>
-              </div>
-              <span class="card-icon">&rarr;</span>
-      </a>
-  `;
+        <tr>
+            <td>
+                <a href="${urlDetalhePaciente}" data-id="${paciente.id}" ${atendimentoIdAttr}>
+                    ${nomeCompleto}
+                </a>
+            </td>
+            <td>${telefone}</td>
+            <td>${email}</td>
+            <td>
+                <span class="status-badge ${displayStatusClass}">${displayStatus}</span>
+            </td>
+        </tr>
+    `;
 }
