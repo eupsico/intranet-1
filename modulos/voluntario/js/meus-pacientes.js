@@ -23,5 +23,5 @@ export async function init(user, userData) {
   }
 
   // Chama a função inicializadora do módulo de dados, passando o tbody como container
-  await initializeMeusPacientes(user, userData, tableBody); // <<<--- CORREÇÃO AQUI (passa tableBody)
+  await initializeMeusPacientes(user, userData); // <<<--- CORREÇÃO AQUI (passa tableBody)
 }
