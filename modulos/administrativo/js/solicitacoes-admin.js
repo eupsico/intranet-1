@@ -1,5 +1,6 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
 // --- VERSÃO MODIFICADA PARA NOVAS SESSÕES (Corrigida) ---
+// *** ALTERAÇÃO: Adicionado campo condicional 'Número de Sessões' ***
 
 import {
   db,
@@ -279,9 +280,9 @@ export async function init(db_ignored, user, userData) {
   function loadReavaliacao() {
     loadSolicitacoesPorTipo(
       "reavaliacao",
-      "table-body-reavaliacao",
-      "empty-state-reavaliacao",
-      "count-reavaliacao",
+      "table-body-reavaliacao", // ID da tabela não existe no HTML fornecido
+      "empty-state-reavaliacao", // ID não existe
+      "count-reavaliacao", // ID não existe
       renderReavaliacaoRow,
       8
     );
@@ -289,9 +290,9 @@ export async function init(db_ignored, user, userData) {
   function loadInclusaoAlteracaoGradePB() {
     loadSolicitacoesPorTipo(
       "inclusao_alteracao_grade",
-      "table-body-inclusao-grade-pb",
-      "empty-state-inclusao-grade-pb",
-      "count-inclusao-grade-pb",
+      "table-body-inclusao-grade-pb", // ID da tabela não existe no HTML fornecido
+      "empty-state-inclusao-grade-pb", // ID não existe
+      "count-inclusao-grade-pb", // ID não existe
       renderInclusaoAlteracaoGradePBRow,
       10
     );
@@ -389,18 +390,18 @@ export async function init(db_ignored, user, userData) {
           const dataAtualizacao = formatarData(item.lastUpdate);
           const tr = document.createElement("tr");
           tr.innerHTML = `
-                            <td>${item.pacienteNome}</td>
-                            <td>${item.profissionalNome}</td>
-                            <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
-                            <td>${dataAtualizacao}</td>
-                            <td>
-                                <button class="action-button btn-notificar-contrato"
-                                        data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
-                                        data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
-                                        title="Notificar profissional sobre contrato pendente via WhatsApp">
-                                    Notificar
-                                </button>
-                            </td>`;
+                        <td>${item.pacienteNome}</td>
+                        <td>${item.profissionalNome}</td>
+                        <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
+                        <td>${dataAtualizacao}</td>
+                        <td>
+                            <button class="action-button btn-notificar-contrato"
+                                    data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
+                                    data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
+                                    title="Notificar profissional sobre contrato pendente via WhatsApp">
+                                Notificar
+                            </button>
+                        </td>`;
           tableBody.appendChild(tr);
         });
       }
@@ -553,25 +554,25 @@ export async function init(db_ignored, user, userData) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-                <td>${dataSol}</td>
-                <td>${data.solicitanteNome || "N/A"}</td>
-                <td>${data.pacienteNome || "N/A"}</td>
-                <td>${detalhes.diaSemana || "N/A"}</td>
-                <td>${detalhes.horario || "N/A"}</td>
-                <td>${
-                  detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
-                }</td>
-                <td>${detalhes.salaAtendimento || "N/A"}</td>
-                <td>${dataInicioFormatada}</td>
-                <td><span class="status-badge ${statusClass}">${
+                  <td>${dataSol}</td>
+                  <td>${data.solicitanteNome || "N/A"}</td>
+                  <td>${data.pacienteNome || "N/A"}</td>
+                  <td>${detalhes.diaSemana || "N/A"}</td>
+                  <td>${detalhes.horario || "N/A"}</td>
+                  <td>${
+                    detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
+                  }</td>
+                  <td>${detalhes.salaAtendimento || "N/A"}</td>
+                  <td>${dataInicioFormatada}</td>
+                  <td><span class="status-badge ${statusClass}">${
       data.status
     }</span></td>
-                <td>
-                    <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">
-                        ${data.status === "Pendente" ? "Processar" : "Ver"}
-                    </button>
-                </td>
-            `;
+                  <td>
+                      <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">
+                          ${data.status === "Pendente" ? "Processar" : "Ver"}
+                      </button>
+                  </td>
+              `;
     return tr;
   }
 
@@ -1134,7 +1135,7 @@ export async function init(db_ignored, user, userData) {
         // É necessário o ID do profissional (solicitanteId)
         await atualizarGradeDoProfissional(
           solicitacao.solicitanteId, // ID do profissional
-          novosDados.dia, // 'segunda', 'terca', etc.
+          novosDados.dia.toLowerCase(), // 'segunda', 'terca', etc. (Convertido para minúsculo)
           novosDados.horario, // 'HH:MM'
           novosDados.modalidade, // 'Online' ou 'Presencial'
           novosDados.sala, // Nome da sala ou 'Online'
@@ -1299,8 +1300,8 @@ export async function init(db_ignored, user, userData) {
     try {
       await atualizarGradeDoProfissional(
         solicitanteId,
-        detalhes.diaSemana,
-        detalhes.horario,
+        detalhes.diaSemana.toLowerCase(), // 'segunda', 'terca', etc. (Convertido para minúsculo)
+        detalhes.horario, // 'HH:MM'
         detalhes.modalidade || detalhes.tipoAtendimento, // Usar um dos dois
         detalhes.salaAtendimento,
         pacienteId,
@@ -1551,8 +1552,8 @@ export async function init(db_ignored, user, userData) {
   loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
-  loadReavaliacao();
-  loadInclusaoAlteracaoGradePB();
+  // loadReavaliacao(); // Chamada removida pois a aba não existe no HTML
+  // loadInclusaoAlteracaoGradePB(); // Chamada removida pois a aba não existe no HTML
   loadStatusContratos();
   loadExclusaoHorarios();
 
@@ -1676,6 +1677,18 @@ export async function init(db_ignored, user, userData) {
       "#modal-solicitante-id"
     ); // Pega ID do profissional
 
+    // ***** NOVOS SELETORES *****
+    const recorrenciaSelect = formAgendamento.querySelector(
+      "#admin-ag-recorrencia"
+    );
+    const quantidadeContainer = formAgendamento.querySelector(
+      "#admin-ag-quantidade-container"
+    );
+    const quantidadeInput = formAgendamento.querySelector(
+      "#admin-ag-quantidade"
+    );
+    // ***************************
+
     // 1. Preencher valores com base na solicitação (se existirem)
     if (solicitacaoData.detalhes?.dataInicioPreferencial) {
       dataInicioInput.value = solicitacaoData.detalhes.dataInicioPreferencial;
@@ -1685,7 +1698,13 @@ export async function init(db_ignored, user, userData) {
       calcularHoraFim(); // Calcula hora fim inicial
     }
     if (solicitacaoData.detalhes?.modalidade) {
-      tipoSessaoSelect.value = solicitacaoData.detalhes.modalidade; // 'Online' ou 'Presencial'
+      // Ajusta para 'Online' ou 'Presencial'
+      const modalidade =
+        solicitacaoData.detalhes.modalidade.charAt(0).toUpperCase() +
+        solicitacaoData.detalhes.modalidade.slice(1).toLowerCase();
+      if (tipoSessaoSelect.querySelector(`option[value="${modalidade}"]`)) {
+        tipoSessaoSelect.value = modalidade;
+      }
     }
     if (solicitacaoData.detalhes?.sala) {
       // Tenta selecionar a sala solicitada, se existir no dropdown
@@ -1748,7 +1767,29 @@ export async function init(db_ignored, user, userData) {
       // Valida a grade sempre que o tipo ou sala mudar
       validarGradeAdmin();
     }
-    ajustarSala(); // Chama para estado inicial
+
+    // ***** NOVA LÓGICA: Listener para Recorrência -> Mostrar/Ocultar Quantidade *****
+    if (recorrenciaSelect && quantidadeContainer && quantidadeInput) {
+      recorrenciaSelect.addEventListener("change", toggleQuantidadeSessoes);
+
+      function toggleQuantidadeSessoes() {
+        const recorrencia = recorrenciaSelect.value;
+        if (
+          recorrencia === "semanal" ||
+          recorrencia === "quinzenal" ||
+          recorrencia === "mensal"
+        ) {
+          quantidadeContainer.style.display = "block";
+          quantidadeInput.required = true;
+        } else {
+          // 'unica' ou ''
+          quantidadeContainer.style.display = "none";
+          quantidadeInput.required = false;
+        }
+      }
+      toggleQuantidadeSessoes(); // Chama para estado inicial
+    }
+    // **************************************************************************
 
     // 4. Listeners para validar grade ao mudar campos relevantes
     const camposValidacao = [
@@ -1758,9 +1799,12 @@ export async function init(db_ignored, user, userData) {
       salaSelect,
     ];
     camposValidacao.forEach((input) => {
-      input.addEventListener("change", validarGradeAdmin);
+      if (input) input.addEventListener("change", validarGradeAdmin);
     });
-    validarGradeAdmin(); // Valida no carregamento inicial
+
+    // Chama as lógicas iniciais
+    ajustarSala();
+    validarGradeAdmin();
   }
 
   // Valida se o horário escolhido pelo admin está na grade do profissional
@@ -1911,12 +1955,21 @@ export async function init(db_ignored, user, userData) {
       if (novoStatus === "Aprovada") {
         // 1. Validar o formulário de agendamento do admin
         if (!formAgendamento.checkValidity()) {
+          // Força a validação do HTML5 a mostrar os campos inválidos
+          formAgendamento.reportValidity();
           throw new Error(
             "Preencha todos os campos obrigatórios (*) do agendamento."
           );
         }
 
         // 2. Coletar dados do agendamento definido pelo admin
+        const recorrencia = formAgendamento.querySelector(
+          "#admin-ag-recorrencia"
+        ).value;
+        const numeroSessoesInput = formAgendamento.querySelector(
+          "#admin-ag-quantidade"
+        );
+
         const agendamentoAdmin = {
           profissionalId: solicitacaoData.solicitanteId,
           profissionalNome: solicitacaoData.solicitanteNome,
@@ -1927,8 +1980,12 @@ export async function init(db_ignored, user, userData) {
             .value,
           horaInicio: formAgendamento.querySelector("#admin-ag-hora-inicio")
             .value,
-          recorrencia: formAgendamento.querySelector("#admin-ag-recorrencia")
-            .value,
+          recorrencia: recorrencia,
+          // ***** NOVO: Coleta o número de sessões *****
+          numeroSessoes:
+            recorrencia === "unica"
+              ? 1
+              : parseInt(numeroSessoesInput.value, 10) || 1, // Pega o valor ou default 1
           tipoSessao: formAgendamento.querySelector("#admin-ag-tipo-sessao")
             .value,
           sala: formAgendamento.querySelector("#admin-ag-sala").value,
@@ -1936,8 +1993,6 @@ export async function init(db_ignored, user, userData) {
         };
 
         // 3. Validar a grade novamente (verificação final)
-        // A função validarGradeAdmin já consulta dadosDaGradeAdmin
-        // Precisamos saber se o horário precisa ser inserido ou não
         validarGradeAdmin(); // Roda a validação para atualizar a mensagem
         const feedbackDiv = formAgendamento.querySelector(
           "#agendamento-feedback"
@@ -1988,7 +2043,9 @@ export async function init(db_ignored, user, userData) {
         }
 
         // 5. Criar as sessões na subcoleção do paciente
-        console.log("Criando sessões recorrentes...");
+        console.log(
+          `Criando ${agendamentoAdmin.numeroSessoes} sessões recorrentes...`
+        );
         const sessoesCriadasIds = await criarSessoesRecorrentes(
           agendamentoAdmin
         );
@@ -2005,7 +2062,6 @@ export async function init(db_ignored, user, userData) {
           dataResolucao: serverTimestamp(),
           adminNome: adminUser.nome || "Admin",
           adminId: adminUser.uid || "N/A",
-          // Adicionar detalhes do agendamento feito?
           agendamentoRealizado: {
             dataInicio: agendamentoAdmin.dataInicio,
             horaInicio: agendamentoAdmin.horaInicio,
@@ -2024,7 +2080,9 @@ export async function init(db_ignored, user, userData) {
         );
 
         alert(
-          `Solicitação ${novoStatus.toLowerCase()} e sessões agendadas com sucesso!`
+          `Solicitação ${novoStatus.toLowerCase()} e ${
+            sessoesCriadasIds.length
+          } sessões agendadas com sucesso!`
         );
         closeModal();
       }
@@ -2046,8 +2104,8 @@ export async function init(db_ignored, user, userData) {
   // --- Função para ATUALIZAR A GRADE do profissional ---
   async function atualizarGradeDoProfissional(
     profissionalId,
-    diaSemana,
-    horario,
+    diaSemana, // 'segunda', 'terca', etc
+    horario, // 'HH:MM'
     tipo,
     sala,
     pacienteId,
@@ -2056,35 +2114,39 @@ export async function init(db_ignored, user, userData) {
     console.log(
       `Atualizando grade: Prof=${profissionalId}, Dia=${diaSemana}, Hora=${horario}, Tipo=${tipo}, Sala=${sala}`
     );
+    // Mapear nomes completos para chaves (se necessário)
+    const diasMapReverso = {
+      "Segunda-feira": "segunda",
+      "Terça-feira": "terca",
+      "Quarta-feira": "quarta",
+      "Quinta-feira": "quinta",
+      "Sexta-feira": "sexta",
+      Sábado: "sabado",
+    };
+    // Garante que o diaSemana está no formato 'segunda', 'terca', etc.
+    const diaChave = diasMapReverso[diaSemana] || diaSemana.toLowerCase();
+
     const gradeRef = doc(dbInstance, "administrativo", "grades");
     const horaKey = horario.replace(":", "-"); // HH-MM
 
-    // Estrutura do objeto para a grade (pode ser ajustada conforme necessidade)
     const slotData = {
       ocupado: true,
       tipo: tipo, // 'Online' ou 'Presencial'
       local: sala, // Nome da sala ou 'Online'
       pacienteId: pacienteId,
       pacienteNome: pacienteNome,
-      // Adicionar mais infos se necessário (ex: timestamp da atualização)
       atualizadoEm: serverTimestamp(),
     };
 
-    // Monta o caminho para o campo específico a ser atualizado usando notação de ponto
-    // Ex: profissionais.USER_ID.horarios.segunda.09-00
-    const fieldPath = `profissionais.${profissionalId}.horarios.${diaSemana}.${horaKey}`;
+    const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaKey}`;
 
     try {
-      // Usar setDoc com merge: true ou updateDoc
-      // updateDoc é geralmente preferido para atualizar campos existentes
       await updateDoc(gradeRef, {
         [fieldPath]: slotData, // Usa a variável fieldPath como chave
       });
       console.log("Grade atualizada com sucesso para o horário:", fieldPath);
     } catch (error) {
       console.error("Erro ao atualizar a grade do profissional:", error);
-      // Verificar se o erro é porque o caminho não existe (documento/mapas pais)
-      // Nesse caso, talvez seja necessário criar os mapas pais primeiro
       if (
         error.code === "not-found" ||
         error.message.includes("No document to update")
@@ -2092,15 +2154,12 @@ export async function init(db_ignored, user, userData) {
         console.warn(
           "Documento da grade ou caminho do profissional/dia não existe. Tentando criar com setDoc + merge."
         );
-        // Tentar criar/mesclar os campos necessários
         try {
-          // Cria o objeto aninhado necessário
           const updateData = {};
           updateData[
-            `profissionais.${profissionalId}.horarios.${diaSemana}.${horaKey}`
+            `profissionais.${profissionalId}.horarios.${diaChave}.${horaKey}`
           ] = slotData;
 
-          // setDoc com merge: true cria os campos/documentos se não existirem
           await setDoc(gradeRef, updateData, { merge: true });
           console.log(
             "Grade criada/mesclada com sucesso para o horário:",
@@ -2129,6 +2188,7 @@ export async function init(db_ignored, user, userData) {
       dataInicio,
       horaInicio,
       recorrencia,
+      numeroSessoes, // ***** NOVO: Recebe o número de sessões *****
       tipoSessao,
       sala,
     } = agendamento;
@@ -2151,19 +2211,37 @@ export async function init(db_ignored, user, userData) {
     );
     const batch = writeBatch(dbInstance);
     const sessoesCriadasIds = [];
-    let dataAtual = new Date(dataInicio + `T${horaInicio}:00`); // Data/Hora da primeira sessão
+
+    // Corrige fuso horário: Assume que dataInicio e horaInicio estão em horário local (Brasília)
+    // Converte para um objeto Date que representa corretamente esse horário
+    const [ano, mes, dia] = dataInicio.split("-").map(Number);
+    const [hora, minuto] = horaInicio.split(":").map(Number);
+    // Cria a data no fuso local (América/Sao_Paulo = -03:00)
+    // Nota: Isso ainda pode ser arriscado se o servidor/admin estiver em fuso diferente
+    // Uma abordagem mais robusta usaria a data YYYY-MM-DD e a hora HH:MM
+    // e construiria o Timestamp com base nisso.
+    // Vamos usar a data/hora local do admin:
+    let dataAtual = new Date(ano, mes - 1, dia, hora, minuto);
 
     // --- Lógica de Recorrência ---
-    // Definir quantas sessões criar (ex: 4 para semanal/quinzenal, 1 para única, 1 para mensal?)
-    // Ou criar por um período (ex: próximos 3 meses)? Vamos criar 4 por padrão para semanal/quinzenal.
-    let numeroSessoes = 1;
-    if (recorrencia === "semanal" || recorrencia === "quinzenal") {
-      numeroSessoes = 4; // Criar 4 sessões futuras
-    } else if (recorrencia === "mensal") {
-      numeroSessoes = 2; // Criar para 2 meses? Ajustar conforme regra
+    // ***** NOVO: Usa o número de sessões vindo do agendamento *****
+    let sessoesParaCriar = 1; // Padrão se for 'unica'
+    if (recorrencia !== "unica") {
+      sessoesParaCriar = parseInt(numeroSessoes, 10);
+      if (
+        isNaN(sessoesParaCriar) ||
+        sessoesParaCriar < 1 ||
+        sessoesParaCriar > 52
+      ) {
+        // Limite de 52 (1 ano semanal)
+        throw new Error(
+          `Número de sessões inválido: ${numeroSessoes}. Deve ser um número entre 1 e 52.`
+        );
+      }
     }
+    // **********************************************************
 
-    for (let i = 0; i < numeroSessoes; i++) {
+    for (let i = 0; i < sessoesParaCriar; i++) {
       // Verifica se a data é válida
       if (isNaN(dataAtual.getTime())) {
         console.error(
@@ -2179,8 +2257,6 @@ export async function init(db_ignored, user, userData) {
         profissionalId: profissionalId,
         profissionalNome: profissionalNome,
         atendimentoId: atendimentoId, // Vincula à PB específica
-        // dataHora: Timestamp.fromDate(dataAtual), // Campo principal de data/hora
-        // **CORREÇÃO IMPORTANTE:** Firestore espera Timestamp, não Date.
         dataHora: Timestamp.fromDate(new Date(dataAtual)), // Armazena como Timestamp
         recorrencia: recorrencia, // Guarda a recorrência usada
         tipoSessao: tipoSessao, // Presencial / Online
@@ -2215,8 +2291,6 @@ export async function init(db_ignored, user, userData) {
       console.log("Batch de criação de sessões concluído.");
 
       // -- ATUALIZAR TRILHA DO PACIENTE --
-      // Idealmente, atualizar o status do paciente e talvez o atendimentoPB
-      // para refletir que as sessões foram agendadas.
       const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
       const pacienteSnap = await getDoc(pacienteRef);
       if (pacienteSnap.exists()) {
@@ -2307,17 +2381,39 @@ export async function init(db_ignored, user, userData) {
       console.warn("Dados insuficientes para limpar horário da grade.");
       return;
     }
+    // Mapear nomes completos para chaves
+    const diasMapReverso = {
+      "Segunda-feira": "segunda",
+      "Terça-feira": "terca",
+      "Quarta-feira": "quarta",
+      "Quinta-feira": "quinta",
+      "Sexta-feira": "sexta",
+      Sábado: "sabado",
+      Domingo: "domingo",
+    };
+    const diaChave =
+      diasMapReverso[horarioInfo.diaSemana] ||
+      horarioInfo.diaSemana.toLowerCase();
+    const horaChave = horarioInfo.horario.replace(":", "-");
+    const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`;
+
     console.warn(
-      `AÇÃO NECESSÁRIA (IMPLEMENTAR): Limpar grade para Prof=${profissionalId}, Dia=${horarioInfo.diaSemana}, Hora=${horarioInfo.horario}`
+      `AÇÃO NECESSÁRIA (IMPLEMENTAR): Limpar grade para Prof=${profissionalId}, Path=${fieldPath}`
     );
-    // 1. Mapear diaSemana ('Segunda-feira') para a chave da grade ('segunda')
-    // 2. Formatar horário ('HH:MM') para a chave da grade ('HH-MM')
-    // 3. Montar o fieldPath: `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`
-    // 4. Usar updateDoc(gradeRef, { [fieldPath]: deleteField() }) ou setar para null/objeto vazio
-    //    Importante: Verificar como a grade é lida para saber qual a melhor forma de 'limpar'
-    //    Se for usado apenas para marcar 'ocupado: false', então:
-    //    await updateDoc(gradeRef, { [`${fieldPath}.ocupado`]: false, [`${fieldPath}.pacienteId`]: null, ... });
-    //    Se for para remover o campo inteiro, precisa de mais cuidado ou usar deleteField().
+    // IMPLEMENTAÇÃO SUGESTIVA (setar para null):
+    try {
+      const gradeRef = doc(dbInstance, "administrativo", "grades");
+      await updateDoc(gradeRef, {
+        [fieldPath]: null, // Ou deleteField() se usar SDK Admin
+      });
+      console.log(`Horário ${fieldPath} limpo da grade (setado para null).`);
+    } catch (error) {
+      console.error(`Erro ao limpar horário ${fieldPath} da grade:`, error);
+      // Não lançar erro aqui para não travar o fluxo de desfecho
+      alert(
+        `Atenção: O desfecho foi salvo, mas houve um erro ao limpar o horário ${horarioInfo.diaSemana} ${horarioInfo.horario} da grade. Avise o(a) ${adminUser.nome}.`
+      );
+    }
   }
 
   // --- Função para EXCLUIR HORÁRIOS DA GRADE ---
@@ -2379,8 +2475,8 @@ export async function init(db_ignored, user, userData) {
   loadNovasSessoes();
   loadAlteracoesHorario();
   loadDesfechosPB();
-  loadReavaliacao();
-  loadInclusaoAlteracaoGradePB();
+  // loadReavaliacao(); // Aba não existe no HTML
+  // loadInclusaoAlteracaoGradePB(); // Aba não existe no HTML
   loadStatusContratos();
   loadExclusaoHorarios();
 
