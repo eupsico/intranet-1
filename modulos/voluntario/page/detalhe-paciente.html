@@ -1,154 +1,211 @@
 <div class="container-fluid" id="detalhe-paciente-view">
 
-<div class="detalhe-paciente-header">
+    <div class="detalhe-paciente-header">
         <h2 id="paciente-nome-header">Carregando...</h2>
         <a href="#meus-pacientes" class="action-button secondary-button">&larr; Voltar para Meus Pacientes</a>
     </div>
- 
-    <div class="paciente-info-bar" id="paciente-info-bar-container">
-        <div class="info-item"><span class="label">Status</span><span class="value" id="info-status">...</span></div>
-        <div class="info-item"><span class="label">Idade</span><span class="value" id="info-idade">...</span></div>
-        <div class="info-item"><span class="label">Telefone</span><span class="value" id="info-telefone">...</span></div>
-        <div class="info-item"><span class="label">Desde</span><span class="value" id="info-data-encaminhamento">...</span></div>
-        <div class="info-item"><span class="label">Pendências</span><span class="value" id="info-pendencias">...</span></div>
-    </div>
 
-    <div class="detalhe-paciente-layout">
-        <form id="form-info-pessoais">
-            <fieldset>
-                <legend>INFORMAÇÕES PESSOAIS</legend>
-                <div class="form-grid cols-2">
-                    <div class="form-group">
-                        <label for="dp-nome-completo">Nome completo</label>
-                        <input type="text" id="dp-nome-completo" class="form-control" readonly> </div>
-                    <div class="form-group">
-                        <label for="dp-telefone">Telefone</label>
-                        <input type="text" id="dp-telefone" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-data-nascimento">Data de Nascimento</label>
-                        <input type="date" id="dp-data-nascimento" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-cpf">CPF</label>
-                        <input type="text" id="dp-cpf" class="form-control" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-responsavel-nome">Nome do Responsável (se aplicável)</label>
-                        <input type="text" id="dp-responsavel-nome" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-contato-emergencia-nome">Contato de Emergência (Nome)</label>
-                        <input type="text" id="dp-contato-emergencia-nome" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-contato-emergencia-telefone">Contato de Emergência (Telefone)</label>
-                        <input type="text" id="dp-contato-emergencia-telefone" class="form-control">
-                    </div>
-                </div>
-                <div class="button-bar" style="margin-top: 20px;">
-                    <button type="submit" class="action-button" id="btn-salvar-info-pessoais">Salvar Alterações Pessoais</button>
-                </div>
-            </fieldset>
-        </form>
-
-        <form id="form-info-financeiras">
-            <fieldset>
-                <legend>INFORMAÇÕES FINANCEIRAS</legend>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="dp-valor-contribuicao">Valor da Contribuição Mensal (R$)</label>
-                        <input type="number" id="dp-valor-contribuicao" class="form-control" placeholder="0.00" step="0.01">
-                    </div>
-                    <div class="button-bar" style="margin-top: 20px;">
-                        <button type="submit" class="action-button" id="btn-salvar-info-financeiras">Salvar Contribuição</button>
-                    </div>
-                </div>
-            </fieldset>
-        </form>
-    </div>
-
-    <div class="tabs-container">
-        <button class="tab-link active" data-tab="tab-sessoes">Sessões</button>
-        <button class="tab-link" data-tab="tab-acompanhamento">Acompanhamento Clínico</button>
-        <button class="tab-link" data-tab="tab-prontuario">Prontuário Psicológico</button>
-    </div>
-
-    <div id="tab-sessoes" class="tab-content active">
-        <div class="session-list" id="session-list-container">
-            <div class="session-list-placeholder" id="session-list-placeholder" style="display: none;">
-                <p>Nenhuma sessão encontrada para este paciente.</p>
-            </div>
-            <div class="loading-spinner" id="session-list-loading"></div>
+    <div class="action-buttons-container main-actions">
+        <button id="btn-abrir-modal-mensagem" class="action-button">Enviar Mensagem</button>
+        <button id="btn-abrir-modal-solicitar-sessoes" class="action-button">Solicitar Novas Sessões</button>
+        <button id="btn-abrir-modal-alterar-horario" class="action-button">Alterar Horário</button>
+        <button id="btn-abrir-modal-reavaliacao" class="action-button secondary-button">Solicitar Reavaliação</button>
+        <button id="btn-abrir-modal-desfecho-pb" class="action-button danger-button">Registrar Desfecho PB</button>
+        <button id="btn-abrir-modal-encerramento-plantao" class="action-button danger-button">Registrar Encerramento Plantão</button>
+        <button id="btn-abrir-modal-horarios-pb" class="action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
         </div>
-    </div>
+    <div class="detalhe-paciente-main-layout">
 
-    <div id="tab-acompanhamento" class="tab-content">
-        <form id="acompanhamento-clinico-form">
-            <fieldset>
-                <legend>Acompanhamento Clínico</legend>
+        <div class="detalhe-paciente-forms-column">
 
-                <div class="form-group">
-                    <label for="ac-avaliacao-demanda">AVALIAÇÃO DA DEMANDA (QUEIXA DO PACIENTE)</label>
-                    <p class="field-description">(Explicação: Descreva a queixa principal trazida pelo paciente no início do tratamento.)</p>
-                    <textarea id="ac-avaliacao-demanda" rows="6" class="form-control"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="ac-definicao-objetivos">DEFINIÇÃO DE OBJETIVOS DO TRATAMENTO (PLANOS DE TRATAMENTO)</label>
-                    <p class="field-description">(Explicação: Liste os objetivos acordados com o paciente para o processo terapêutico.)</p>
-                    <textarea id="ac-definicao-objetivos" rows="6" class="form-control"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="ac-diagnostico">DIAGNÓSTICO</label>
-                    <p class="field-description">(Explicação: Informe o diagnóstico (se houver), conforme CID ou DSM.)</p>
-                    <textarea id="ac-diagnostico" rows="6" class="form-control"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="ac-registro-encerramento">REGISTRO DE ENCERRAMENTO</label>
-                    <p class="field-description">(Explicação: Deve ser utilizado em caso de alta, desistência ou encaminhamento, descrevendo o motivo e o desfecho do processo.)</p>
-                    <textarea id="ac-registro-encerramento" rows="6" class="form-control"></textarea>
-                </div>
-
-                <div class="button-bar">
-                    <button type="submit" class="action-button" id="btn-salvar-acompanhamento">Salvar Acompanhamento Clínico</button>
-                </div>
-            </fieldset>
-        </form>
-    </div>
-
-    <div id="tab-prontuario" class="tab-content">
-        <div class="prontuario-generator-layout">
-            <form id="form-gerar-prontuario">
+            <form id="form-info-pessoais">
                 <fieldset>
-                    <legend>Gerar Prontuário em PDF</legend>
-                    <p>Selecione as informações que devem constar no prontuário:</p>
-                    <div class="checkbox-grid">
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_pessoais" checked> Informações Pessoais</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_financeiras" checked> Informações Financeiras</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_demanda" checked> Avaliação da Demanda</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_objetivos" checked> Objetivos do Tratamento</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_diagnostico" checked> Diagnóstico</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_encerramento" checked> Registro de Encerramento</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_lista" checked> Lista de Sessões (Datas e Status)</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_evolucao" checked> Ficha Evolução (de todas as sessões)</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_prof" checked> Campo Compartilhado (Profissionais)</label>
-                        <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_admin" checked> Campo Compartilhado (Admin)</label>
+                    <legend>INFORMAÇÕES PESSOAIS</legend>
+
+                    <div class="info-group readonly-group">
+                         <div class="form-group readonly">
+                            <label>Status Atual:</label>
+                            <span id="dp-status-atual" class="readonly-value status-badge">--</span>
+                         </div>
+                         <div class="form-group readonly">
+                            <label>Idade:</label>
+                            <span id="dp-idade" class="readonly-value">--</span>
+                         </div>
+                         <div class="form-group readonly">
+                            <label>Desde (Encaminhamento):</label>
+                            <span id="dp-desde" class="readonly-value">--</span>
+                         </div>
+                    </div>
+                    <div class="form-grid cols-1"> <div class="form-group">
+                            <label for="dp-nome-completo">Nome completo</label>
+                            <input type="text" id="dp-nome-completo" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="dp-telefone">Telefone</label>
+                            <input type="text" id="dp-telefone" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="dp-data-nascimento">Data de Nascimento</label>
+                            <input type="date" id="dp-data-nascimento" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="dp-cpf">CPF</label>
+                            <input type="text" id="dp-cpf" class="form-control" readonly>
+                        </div>
+                    </div>
+
+                    <div class="sub-legend">Endereço</div>
+                     <div class="form-grid cols-2"> <div class="form-group grid-col-span-2"> <label for="dp-endereco-logradouro">Logradouro:</label>
+                            <input type="text" id="dp-endereco-logradouro" class="form-control" placeholder="Rua, Av...">
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-endereco-numero">Número:</label>
+                            <input type="text" id="dp-endereco-numero" class="form-control" >
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-endereco-complemento">Complemento:</label>
+                            <input type="text" id="dp-endereco-complemento" class="form-control">
+                         </div>
+                          <div class="form-group">
+                            <label for="dp-endereco-bairro">Bairro:</label>
+                            <input type="text" id="dp-endereco-bairro" class="form-control">
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-endereco-cidade">Cidade:</label>
+                            <input type="text" id="dp-endereco-cidade" class="form-control">
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-endereco-estado">Estado:</label>
+                            <input type="text" id="dp-endereco-estado" class="form-control" maxlength="2"> </div>
+                         <div class="form-group">
+                            <label for="dp-endereco-cep">CEP:</label>
+                            <input type="text" id="dp-endereco-cep" class="form-control" placeholder="00000-000">
+                         </div>
+                    </div>
+                    <div class="sub-legend">Contatos</div>
+                      <div class="form-grid cols-1"> <div class="form-group">
+                            <label for="dp-responsavel-nome">Nome do Responsável (se aplicável)</label>
+                            <input type="text" id="dp-responsavel-nome" class="form-control">
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-contato-emergencia-nome">Contato de Emergência (Nome)</label>
+                            <input type="text" id="dp-contato-emergencia-nome" class="form-control">
+                         </div>
+                         <div class="form-group">
+                            <label for="dp-contato-emergencia-telefone">Contato de Emergência (Telefone)</label>
+                            <input type="text" id="dp-contato-emergencia-telefone" class="form-control">
+                         </div>
+                    </div>
+
+                    <div class="button-bar" style="margin-top: 20px;">
+                        <button type="submit" class="action-button" id="btn-salvar-info-pessoais">Salvar Alterações Pessoais</button>
                     </div>
                 </fieldset>
             </form>
-            <div class="prontuario-generator-actions">
-                <p>O documento será gerado em formato PDF e incluirá os dados do profissional e do paciente.</p>
-                <button type="button" class="action-button" id="btn-gerar-prontuario-pdf">Gerar PDF</button>
-            </div>
-        </div>
-    </div>
-</div>
 
+            <form id="form-info-financeiras">
+                <fieldset>
+                    <legend>INFORMAÇÕES FINANCEIRAS</legend>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="dp-valor-contribuicao">Valor da Contribuição Mensal (R$)</label>
+                            <input type="text" id="dp-valor-contribuicao" class="form-control" placeholder="Ex: 50,00">
+                        </div>
+                        <div class="button-bar" style="margin-top: 20px;">
+                            <button type="submit" class="action-button" id="btn-salvar-info-financeiras">Salvar Contribuição</button>
+                        </div>
+                    </div>
+                </fieldset>
+            </form>
 
-<div id="anotacoes-sessao-modal" class="modal-overlay" style="display: none;">
+             <div id="pendencias-section">
+                <fieldset>
+                    <legend>PENDÊNCIAS <span id="pendencias-count-badge" class="badge" style="display: none;">0</span></legend>
+                     <div id="pendencias-loading" style="display: none;"><div class="loading-spinner"></div> Verificando pendências...</div>
+                     <ul id="pendencias-list" class="pendencias-list-items">
+                         </ul>
+                     <div id="pendencias-placeholder" style="display: none; text-align: center; padding: 15px;">Nenhuma pendência encontrada.</div>
+                </fieldset>
+             </div>
+             </div> <div class="detalhe-paciente-tabs-column">
+            <div class="tabs-container vertical-tabs"> <button class="tab-link active" data-tab="tab-sessoes">Sessões</button>
+                <button class="tab-link" data-tab="tab-acompanhamento">Acompanhamento Clínico</button>
+                <button class="tab-link" data-tab="tab-prontuario">Prontuário Psicológico</button>
+                 </div>
+
+            <div class="tabs-content-container">
+                <div id="tab-sessoes" class="tab-content active">
+                    <div class="session-list" id="session-list-container">
+                        <div class="session-list-placeholder" id="session-list-placeholder" style="display: none;">
+                            <p>Nenhuma sessão encontrada para este paciente.</p>
+                        </div>
+                        <div class="loading-spinner" id="session-list-loading"></div>
+                    </div>
+                </div>
+
+                <div id="tab-acompanhamento" class="tab-content">
+                    <form id="acompanhamento-clinico-form">
+                        <fieldset>
+                            <legend>Acompanhamento Clínico</legend>
+
+                            <div class="form-group">
+                                <label for="ac-avaliacao-demanda">AVALIAÇÃO DA DEMANDA (QUEIXA DO PACIENTE)</label>
+                                <p class="field-description">(Explicação: Descreva a queixa principal trazida pelo paciente no início do tratamento.)</p>
+                                <textarea id="ac-avaliacao-demanda" rows="6" class="form-control"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ac-definicao-objetivos">DEFINIÇÃO DE OBJETIVOS DO TRATAMENTO (PLANOS DE TRATAMENTO)</label>
+                                <p class="field-description">(Explicação: Liste os objetivos acordados com o paciente para o processo terapêutico.)</p>
+                                <textarea id="ac-definicao-objetivos" rows="6" class="form-control"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ac-diagnostico">DIAGNÓSTICO</label>
+                                <p class="field-description">(Explicação: Informe o diagnóstico (se houver), conforme CID ou DSM.)</p>
+                                <textarea id="ac-diagnostico" rows="6" class="form-control"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ac-registro-encerramento">REGISTRO DE ENCERRAMENTO</label>
+                                <p class="field-description">(Explicação: Deve ser utilizado em caso de alta, desistência ou encaminhamento, descrevendo o motivo e o desfecho do processo.)</p>
+                                <textarea id="ac-registro-encerramento" rows="6" class="form-control"></textarea>
+                            </div>
+
+                            <div class="button-bar">
+                                <button type="submit" class="action-button" id="btn-salvar-acompanhamento">Salvar Acompanhamento Clínico</button>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+
+                <div id="tab-prontuario" class="tab-content">
+                    <div class="prontuario-generator-layout">
+                        <form id="form-gerar-prontuario">
+                            <fieldset>
+                                <legend>Gerar Prontuário em PDF</legend>
+                                <p>Selecione as informações que devem constar no prontuário:</p>
+                                <div class="checkbox-grid">
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_pessoais" checked> Informações Pessoais</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_financeiras" checked> Informações Financeiras</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_demanda" checked> Avaliação da Demanda</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_objetivos" checked> Objetivos do Tratamento</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_diagnostico" checked> Diagnóstico</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_encerramento" checked> Registro de Encerramento</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_lista" checked> Lista de Sessões (Datas e Status)</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_evolucao" checked> Ficha Evolução (de todas as sessões)</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_prof" checked> Campo Compartilhado (Profissionais)</label>
+                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_admin" checked> Campo Compartilhado (Admin)</label>
+                                </div>
+                            </fieldset>
+                        </form>
+                        <div class="prontuario-generator-actions">
+                            <p>O documento será gerado em formato PDF e incluirá os dados do profissional e do paciente.</p>
+                            <button type="button" class="action-button" id="btn-gerar-prontuario-pdf">Gerar PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div> </div> </div> </div> <div id="anotacoes-sessao-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <form id="anotacoes-sessao-form">
             <div class="modal-header">
@@ -190,7 +247,6 @@
     </div>
 </div>
 
-
 <div id="solicitar-sessoes-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <div class="modal-header"> <h2 class="modal-title-text">Solicitar Novas Sessões</h2>
@@ -219,23 +275,23 @@
                     <div class="form-grid cols-3"> <div class="form-group">
                             <label for="solicitar-dia-semana">Dia da Sessão</label>
                             <select id="solicitar-dia-semana" class="form-control" required>
-                                <option value="segunda">Segunda-feira</option>
-                                <option value="terca">Terça-feira</option>
-                                <option value="quarta">Quarta-feira</option>
-                                <option value="quinta">Quinta-feira</option>
-                                <option value="sexta">Sexta-feira</option>
-                                <option value="sabado">Sábado</option>
+                                <option value="">Selecione...</option> <option value="Segunda-feira">Segunda-feira</option>
+                                <option value="Terça-feira">Terça-feira</option>
+                                <option value="Quarta-feira">Quarta-feira</option>
+                                <option value="Quinta-feira">Quinta-feira</option>
+                                <option value="Sexta-feira">Sexta-feira</option>
+                                <option value="Sábado">Sábado</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="solicitar-horario">Horário</label>
                             <select id="solicitar-horario" class="form-control" required>
-                            </select>
+                                </select>
                         </div>
                         <div class="form-group">
                             <label for="solicitar-tipo-atendimento">Tipo de Atendimento</label>
                             <select id="solicitar-tipo-atendimento" class="form-control" required>
-                                <option value="online">Online</option>
+                                <option value="">Selecione...</option> <option value="online">Online</option>
                                 <option value="presencial">Presencial</option>
                             </select>
                         </div>
@@ -248,7 +304,7 @@
                             <label for="solicitar-sala">Sala de Atendimento</label>
                             <select id="solicitar-sala" class="form-control" required>
                                 <option value="Online">Online</option>
-                            </select>
+                                </select>
                         </div>
                     </div>
                 </fieldset>
@@ -335,14 +391,13 @@
                 <div id="lista-modelos-mensagem" class="message-templates-list"></div>
             </div>
             <div id="mensagem-formulario-view" style="display: none;">
-                <button id="btn-voltar-selecao" class="action-button secondary-button" style="margin-bottom: 20px;">&larr; Voltar para Modelos</button>
+                <button type="button" id="btn-voltar-selecao" class="action-button secondary-button" style="margin-bottom: 20px;">&larr; Voltar para Modelos</button>
                 <form id="mensagem-dynamic-form">
                     <h3 id="mensagem-form-title" style="color: var(--cor-primaria); margin-top: 0;"></h3>
                     <div id="mensagem-dynamic-form-container" class="dynamic-form-fields"></div>
                     <div class="output-area" style="margin-top: 20px;">
                         <label>Pré-visualização da Mensagem:</label>
-                        <textarea readonly id="output-mensagem-preview"></textarea>
-                    </div>
+                        <textarea readonly id="output-mensagem-preview" rows="5"></textarea> </div>
                 </form>
             </div>
         </div>
@@ -406,24 +461,24 @@
                 <fieldset>
                     <legend>Nova Configuração da Sessão</legend>
                     <div class="form-grid cols-3"> <div class="form-group">
-                            <label for="alterar-dia-semana">Selecione o novo dia da sessão:</label>
+                            <label for="alterar-dia-semana">Selecione o novo dia da sessão:*</label>
                             <select id="alterar-dia-semana" class="form-control" required>
                                 <option value="">Selecione...</option>
-                                <option value="segunda">Segunda-feira</option>
-                                <option value="terca">Terça-feira</option>
-                                <option value="quarta">Quarta-feira</option>
-                                <option value="quinta">Quinta-feira</option>
-                                <option value="sexta">Sexta-feira</option>
-                                <option value="sabado">Sábado</option>
+                                <option value="Segunda-feira">Segunda-feira</option>
+                                <option value="Terça-feira">Terça-feira</option>
+                                <option value="Quarta-feira">Quarta-feira</option>
+                                <option value="Quinta-feira">Quinta-feira</option>
+                                <option value="Sexta-feira">Sexta-feira</option>
+                                <option value="Sábado">Sábado</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="alterar-horario">Selecione o novo horário da sessão:</label>
+                            <label for="alterar-horario">Selecione o novo horário da sessão:*</label>
                             <select id="alterar-horario" class="form-control" required>
-                            </select>
+                                </select>
                         </div>
                          <div class="form-group">
-                            <label for="alterar-tipo-atendimento">Selecione o novo tipo de atendimento:</label>
+                            <label for="alterar-tipo-atendimento">Selecione o novo tipo de atendimento:*</label>
                             <select id="alterar-tipo-atendimento" class="form-control" required>
                                 <option value="">Selecione...</option>
                                 <option value="Online">Online</option>
@@ -432,7 +487,7 @@
                         </div>
                     </div>
                     <div class="form-grid cols-2"> <div class="form-group">
-                            <label for="alterar-frequencia">O atendimento será realizado:</label>
+                            <label for="alterar-frequencia">O atendimento será realizado:*</label>
                             <select id="alterar-frequencia" class="form-control" required>
                                 <option value="">Selecione...</option>
                                 <option value="Semanal">Semanal</option>
@@ -441,15 +496,15 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="alterar-data-inicio">Informe a partir de qual data:</label>
+                            <label for="alterar-data-inicio">Informe a partir de qual data:*</label>
                             <input type="date" id="alterar-data-inicio" class="form-control" required>
                         </div>
                     </div>
                      <div class="form-grid cols-2"> <div class="form-group">
-                            <label for="alterar-sala">Selecione abaixo a sala:</label>
+                            <label for="alterar-sala">Selecione abaixo a sala:*</label>
                             <select id="alterar-sala" class="form-control" required>
                                 <option value="Online">Online</option>
-                            </select>
+                                </select>
                         </div>
                         <div class="form-group">
                             <label for="alterar-grade">Alterar/Incluir na grade?</label>
@@ -516,8 +571,7 @@
 
                 <form id="reavaliacao-form" style="display: none;">
                     <input type="hidden" id="reavaliacao-paciente-id">
-
-                    <fieldset>
+                    <input type="hidden" id="reavaliacao-atendimento-id"> <fieldset>
                         <legend>Dados da Solicitação</legend>
                         <div class="form-grid cols-2"> <div class="form-group">
                                 <label>Nome do Profissional</label>
@@ -530,7 +584,7 @@
                          </div>
                          <div class="form-grid cols-2"> <div class="form-group">
                                 <label for="reavaliacao-valor-atual">Valor da Contribuição Atual (R$)</label>
-                                <input type="number" id="reavaliacao-valor-atual" class="form-control" placeholder="Ex: 50.00" step="0.01">
+                                <input type="text" id="reavaliacao-valor-atual" class="form-control" placeholder="Ex: 50,00">
                             </div>
                             <div class="form-group">
                                 <label for="reavaliacao-motivo">Qual o motivo da reavaliação?</label>
