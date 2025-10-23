@@ -1,27 +1,19 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes.js
-// Versão: 9.3 (Corrigido para usar tbody da tabela)
+// Confirme que está assim:
 
 import { initializeMeusPacientes } from "./meus-pacientes/data.js";
 
 export async function init(user, userData) {
-  // O container onde as LINHAS (<tr>) dos pacientes serão renderizadas
-  // Mudamos do 'pacientes-list-container' para o 'tbody' da tabela.
-  const tableBody = document.getElementById("pacientes-table-body"); // <<<--- CORREÇÃO AQUI
-
-  if (!tableBody) {
-    // A mensagem de erro agora reflete o ID correto que está faltando
-    console.error(
-      "Container da tabela de pacientes (tbody) não encontrado. (ID: pacientes-table-body)" // <<<--- CORREÇÃO NA MENSAGEM
-    );
-    // Opcional: Exibir erro na área principal se o tbody não for encontrado
-    const contentArea = document.getElementById("content-area"); // Ou o ID da área principal
-    if (contentArea) {
+  console.log("meus-pacientes.js: Iniciando com user ID:", user?.uid); // Log Adicional
+  if (!user || !user.uid) {
+    console.error("meus-pacientes.js: Objeto user inválido recebido.");
+    // Exibir erro ou tratar adequadamente
+    const contentArea = document.getElementById("content-area");
+    if (contentArea)
       contentArea.innerHTML =
-        '<p class="alert alert-error">Erro interno: A estrutura da tabela de pacientes está incompleta.</p>';
-    }
+        '<p class="alert alert-error">Erro: Falha na autenticação ao carregar pacientes.</p>';
     return;
   }
-
-  // Chama a função inicializadora do módulo de dados, passando o tbody como container
-  await initializeMeusPacientes(user, userData); // <<<--- CORREÇÃO AQUI (passa tableBody)
+  // Chama initializeMeusPacientes, que agora busca o tableBody internamente
+  await initializeMeusPacientes(user, userData); // Passa user e userData
 }
