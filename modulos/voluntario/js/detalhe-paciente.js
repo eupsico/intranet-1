@@ -1,6 +1,6 @@
 // Arquivo: /modulos/voluntario/js/detalhe-paciente.js
 // Responsável pela lógica da página de detalhes do paciente.
-// *** CORREÇÃO: Corrigida atribuição inválida em handleSalvarAnotacoes ***
+// *** ALTERAÇÕES: Removida info bar, adicionado endereço, criada seção de pendências, adicionados botões de ação ***
 
 import {
   db,
@@ -24,6 +24,7 @@ let userDataGlobal = null; // Informações do usuário logado
 let systemConfigsGlobal = null; // Configurações do sistema (textos, listas)
 let salasPresenciaisGlobal = []; // Lista de salas
 let dadosDaGradeGlobal = {}; // Dados da grade geral
+let sessoesCarregadas = []; // ***** NOVO: Armazena sessões carregadas *****
 
 // --- Inicialização da Página ---
 export async function init(user, userData, pacienteId) {
@@ -52,7 +53,6 @@ export async function init(user, userData, pacienteId) {
     await Promise.all([
       carregarDadosPaciente(pacienteIdGlobal),
       carregarSystemConfigs(), // Carrega configs e salas
-      // loadGradeData() // Carrega a grade (se necessário aqui, ou passar do userData)
     ]);
 
     if (!pacienteDataGlobal) {
@@ -60,9 +60,17 @@ export async function init(user, userData, pacienteId) {
     }
 
     // Popular a interface
-    renderizarCabecalhoInfoBar();
-    preencherFormularios();
-    await carregarSessoes(); // Carrega e renderiza a lista de sessões
+    // renderizarCabecalhoInfoBar(); // Removido - Info bar não existe mais
+    // Apenas preenche o nome no header principal
+    const nomeHeader = document.getElementById("paciente-nome-header");
+    if (nomeHeader) {
+      nomeHeader.textContent =
+        pacienteDataGlobal.nomeCompleto || "Nome não encontrado";
+    }
+
+    preencherFormularios(); // Agora preenche mais campos
+    await carregarSessoes(); // Precisa carregar antes de checar pendências de sessão
+    renderizarPendencias(); // ***** NOVO: Chama a função de pendências *****
 
     // Adicionar Event Listeners
     adicionarEventListenersGerais();
@@ -151,37 +159,34 @@ async function carregarSessoes() {
   loading.style.display = "block";
   placeholder.style.display = "none";
   container.querySelectorAll(".session-item").forEach((item) => item.remove()); // Limpa lista antiga
+  sessoesCarregadas = []; // ***** NOVO: Limpa antes de carregar *****
 
   try {
-    // --- DEFINIR A QUERY CORRETA PARA BUSCAR SESSÕES ---
-    // Exemplo: Buscar da subcoleção 'sessoes' dentro do documento do paciente
     const sessoesRef = collection(
       db,
       "trilhaPaciente",
       pacienteIdGlobal,
       "sessoes"
     );
-    // Ordenar da mais recente para a mais antiga (ajustar campo 'dataHora' se necessário)
     const q = query(sessoesRef, orderBy("dataHora", "desc"));
     const querySnapshot = await getDocs(q);
 
-    const sessoes = [];
     querySnapshot.forEach((doc) => {
-      sessoes.push({ id: doc.id, ...doc.data() });
+      // ***** NOVO: Armazena na variável global *****
+      sessoesCarregadas.push({ id: doc.id, ...doc.data() });
     });
 
-    console.log("Sessões carregadas:", sessoes);
+    console.log("Sessões carregadas:", sessoesCarregadas);
 
-    if (sessoes.length === 0) {
+    if (sessoesCarregadas.length === 0) {
       placeholder.style.display = "block";
     } else {
-      renderizarSessoes(sessoes);
+      renderizarSessoes(sessoesCarregadas); // Renderiza usando a variável global
     }
   } catch (error) {
     console.error("Erro ao carregar sessões:", error);
-    // Exibir erro dentro do container, mas sem quebrar a página inteira
     container.innerHTML = `<p class="alert alert-error">Erro ao carregar sessões: ${error.message}</p>`;
-    placeholder.style.display = "none"; // Esconde placeholder se deu erro
+    placeholder.style.display = "none";
   } finally {
     loading.style.display = "none";
   }
@@ -189,93 +194,93 @@ async function carregarSessoes() {
 
 // --- Funções de Renderização ---
 
-function renderizarCabecalhoInfoBar() {
-  if (!pacienteDataGlobal) return;
-
-  document.getElementById("paciente-nome-header").textContent =
-    pacienteDataGlobal.nomeCompleto || "Nome não encontrado";
-
-  const infoBar = document.getElementById("paciente-info-bar-container");
-  // Verificar se infoBar existe antes de tentar acessar seus filhos
-  if (!infoBar) {
-    console.error(
-      "Container da barra de informações ('paciente-info-bar-container') não encontrado."
-    );
-    return;
-  }
-
-  const status = pacienteDataGlobal.status || "desconhecido";
-  const idade = calcularIdade(pacienteDataGlobal.dataNascimento); // Requer a função calcularIdade
-  const telefone = pacienteDataGlobal.telefoneCelular || "Não informado";
-  // Ajustar dataEncaminhamento para pegar a data correta (plantao OU PB)
-  const dataEncaminhamentoRaw =
-    pacienteDataGlobal.plantaoInfo?.dataEncaminhamento ||
-    pacienteDataGlobal.atendimentosPB?.[0]?.dataEncaminhamento; // Simplificado, pode precisar de mais lógica
-  const dataEncaminhamento = dataEncaminhamentoRaw
-    ? new Date(dataEncaminhamentoRaw + "T03:00:00").toLocaleDateString("pt-BR")
-    : "N/A";
-  const pendencias = "Verificar"; // Placeholder - Adicionar lógica para buscar pendências
-
-  // Usar textContent para segurança e verificar se o elemento existe
-  const setInfoText = (id, text) => {
-    const element = infoBar.querySelector(`#${id}`);
-    if (element) {
-      element.textContent = text;
-    } else {
-      console.warn(`Elemento #${id} não encontrado na info bar.`);
-    }
-  };
-
-  setInfoText("info-status", formatarStatus(status)); // Função auxiliar para formatar
-  setInfoText("info-idade", idade);
-  setInfoText("info-telefone", telefone);
-  setInfoText("info-data-encaminhamento", dataEncaminhamento);
-  setInfoText("info-pendencias", pendencias);
-
-  // Adicionar classe ao status badge se necessário
-  const statusBadge = infoBar.querySelector("#info-status");
-  if (statusBadge) {
-    statusBadge.className = `value status-badge ${status}`; // Adiciona classe CSS baseada no status
-  }
-}
+// Removida renderizarCabecalhoInfoBar
 
 function preencherFormularios() {
   if (!pacienteDataGlobal) return;
 
-  // Função auxiliar para preencher valor
-  const setInputValue = (id, value) => {
+  // Função auxiliar para preencher valor (input ou span)
+  const setElementValue = (id, value, isSpan = false) => {
     const element = document.getElementById(id);
     if (element) {
-      element.value = value || ""; // Define como string vazia se for null/undefined
+      if (isSpan) {
+        element.textContent = value || "--"; // Usa '--' para spans vazios
+      } else {
+        // Formata valor monetário para exibição se for o campo de contribuição
+        if (id === "dp-valor-contribuicao" && typeof value === "number") {
+          element.value = value.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        } else {
+          element.value = value || "";
+        }
+      }
     } else {
       console.warn(`Elemento #${id} não encontrado para preenchimento.`);
     }
   };
 
-  // Informações Pessoais
-  setInputValue("dp-nome-completo", pacienteDataGlobal.nomeCompleto);
-  setInputValue("dp-telefone", pacienteDataGlobal.telefoneCelular);
-  setInputValue("dp-data-nascimento", pacienteDataGlobal.dataNascimento);
-  setInputValue("dp-cpf", pacienteDataGlobal.cpf);
-  setInputValue("dp-responsavel-nome", pacienteDataGlobal.responsavel?.nome);
-  setInputValue(
+  // === Aba: Informações Pessoais ===
+  const status = pacienteDataGlobal.status || "desconhecido";
+  setElementValue("dp-status-atual", formatarStatus(status), true);
+  // Atualiza a classe do span de status
+  const statusSpan = document.getElementById("dp-status-atual");
+  if (statusSpan)
+    statusSpan.className = `readonly-value status-badge ${status}`;
+
+  setElementValue(
+    "dp-idade",
+    calcularIdade(pacienteDataGlobal.dataNascimento),
+    true
+  );
+
+  const dataEncaminhamentoRaw =
+    pacienteDataGlobal.plantaoInfo?.dataEncaminhamento ||
+    pacienteDataGlobal.atendimentosPB?.[0]?.dataEncaminhamento;
+  const dataEncaminhamento = dataEncaminhamentoRaw
+    ? new Date(dataEncaminhamentoRaw + "T03:00:00").toLocaleDateString("pt-BR")
+    : "--";
+  setElementValue("dp-desde", dataEncaminhamento, true);
+
+  setElementValue("dp-nome-completo", pacienteDataGlobal.nomeCompleto); // Input readonly
+  setElementValue("dp-telefone", pacienteDataGlobal.telefoneCelular); // Input editável
+  setElementValue("dp-data-nascimento", pacienteDataGlobal.dataNascimento); // Input editável
+  setElementValue("dp-cpf", pacienteDataGlobal.cpf); // Input readonly
+
+  // Endereço (Supondo que os dados estão em pacienteDataGlobal.endereco)
+  const endereco = pacienteDataGlobal.endereco || {};
+  setElementValue("dp-endereco-logradouro", endereco.logradouro);
+  setElementValue("dp-endereco-numero", endereco.numero);
+  setElementValue("dp-endereco-complemento", endereco.complemento);
+  setElementValue("dp-endereco-bairro", endereco.bairro);
+  setElementValue("dp-endereco-cidade", endereco.cidade);
+  setElementValue("dp-endereco-estado", endereco.estado);
+  setElementValue("dp-endereco-cep", endereco.cep);
+
+  // Contatos
+  setElementValue("dp-responsavel-nome", pacienteDataGlobal.responsavel?.nome);
+  setElementValue(
     "dp-contato-emergencia-nome",
     pacienteDataGlobal.contatoEmergencia?.nome
   );
-  setInputValue(
+  setElementValue(
     "dp-contato-emergencia-telefone",
     pacienteDataGlobal.contatoEmergencia?.telefone
   );
 
-  // Informações Financeiras
-  setInputValue("dp-valor-contribuicao", pacienteDataGlobal.valorContribuicao);
+  // === Aba: Informações Financeiras ===
+  setElementValue(
+    "dp-valor-contribuicao",
+    pacienteDataGlobal.valorContribuicao
+  ); // Formatado pela função auxiliar
 
-  // Acompanhamento Clínico
+  // === Aba: Acompanhamento Clínico ===
   const acompanhamento = pacienteDataGlobal.acompanhamentoClinico || {};
-  setInputValue("ac-avaliacao-demanda", acompanhamento.avaliacaoDemanda);
-  setInputValue("ac-definicao-objetivos", acompanhamento.definicaoObjetivos);
-  setInputValue("ac-diagnostico", acompanhamento.diagnostico);
-  setInputValue(
+  setElementValue("ac-avaliacao-demanda", acompanhamento.avaliacaoDemanda);
+  setElementValue("ac-definicao-objetivos", acompanhamento.definicaoObjetivos);
+  setElementValue("ac-diagnostico", acompanhamento.diagnostico);
+  setElementValue(
     "ac-registro-encerramento",
     acompanhamento.registroEncerramento
   );
@@ -357,6 +362,156 @@ function renderizarSessoes(sessoes) {
   });
 }
 
+// ***** NOVA FUNÇÃO: renderizarPendencias *****
+async function renderizarPendencias() {
+  const listEl = document.getElementById("pendencias-list");
+  const loadingEl = document.getElementById("pendencias-loading");
+  const placeholderEl = document.getElementById("pendencias-placeholder");
+  const badgeEl = document.getElementById("pendencias-count-badge");
+
+  if (!listEl || !loadingEl || !placeholderEl || !badgeEl) {
+    console.error("Elementos da seção de pendências não encontrados.");
+    return;
+  }
+
+  listEl.innerHTML = ""; // Limpa lista
+  loadingEl.style.display = "block";
+  placeholderEl.style.display = "none";
+  badgeEl.style.display = "none";
+  badgeEl.textContent = "0";
+
+  const pendencias = [];
+
+  try {
+    if (!pacienteDataGlobal || !userDataGlobal) {
+      // Verifica userDataGlobal também
+      throw new Error(
+        "Dados do paciente ou do usuário não disponíveis para verificar pendências."
+      );
+    }
+
+    // 1. Verificar Contrato PB (apenas se houver atendimento PB e for do user logado)
+    const meuAtendimentoPB = pacienteDataGlobal.atendimentosPB?.find(
+      (at) =>
+        at.profissionalId === userDataGlobal.uid &&
+        ["ativo", "aguardando_horarios"].includes(at.statusAtendimento) // Considera ativo ou aguardando
+    );
+    if (meuAtendimentoPB && !meuAtendimentoPB.contratoAssinado) {
+      pendencias.push({
+        texto: "⚠️ Falta assinar/enviar o contrato de Psicoterapia Breve.",
+        tipo: "warning",
+      });
+    }
+
+    // 2. Verificar Aniversário (Ex: nos próximos 7 dias)
+    if (pacienteDataGlobal.dataNascimento) {
+      try {
+        const hoje = new Date();
+        // Garante que a data está no formato YYYY-MM-DD antes de adicionar T00:00:00
+        const dataNascStr = pacienteDataGlobal.dataNascimento.split("T")[0];
+        const nasc = new Date(dataNascStr + "T00:00:00");
+
+        if (!isNaN(nasc.getTime())) {
+          const diaNasc = nasc.getDate();
+          const mesNasc = nasc.getMonth();
+          const anoAtual = hoje.getFullYear();
+
+          // Verifica aniversário neste ano e no próximo (para pegar virada do ano)
+          for (let ano of [anoAtual, anoAtual + 1]) {
+            const proximoAniversario = new Date(ano, mesNasc, diaNasc);
+            // Ignora aniversários passados neste loop
+            if (proximoAniversario < hoje && ano === anoAtual) continue;
+
+            const diffTempo = proximoAniversario.getTime() - hoje.getTime();
+            const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+
+            if (diffDias >= 0 && diffDias <= 7) {
+              // Se for hoje ou nos próximos 7 dias
+              const dataFormatada = `${String(diaNasc).padStart(
+                2,
+                "0"
+              )}/${String(mesNasc + 1).padStart(2, "0")}`;
+              const texto =
+                diffDias === 0
+                  ? `🎂 Aniversário HOJE (${dataFormatada})!`
+                  : `🎂 Aniversário próximo: ${dataFormatada} (em ${diffDias} dias).`;
+              pendencias.push({ texto: texto, tipo: "info" });
+              break; // Encontrou um, não precisa checar o próximo ano
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Erro ao verificar aniversário:", e);
+      }
+    }
+
+    // 3. Verificar Sessões Pendentes (Status e Anotações) - Usa sessoesCarregadas
+    const hoje = new Date();
+    // Zera a hora para comparar apenas a data
+    hoje.setHours(0, 0, 0, 0);
+    // Considera sessões dos últimos X dias + futuras pendentes
+    const dataLimitePassado = new Date(
+      hoje.getTime() - 30 * 24 * 60 * 60 * 1000
+    ); // Ex: 30 dias atrás
+
+    sessoesCarregadas.forEach((sessao) => {
+      const dataHoraSessao = sessao.dataHora?.toDate
+        ? sessao.dataHora.toDate()
+        : null;
+      if (!dataHoraSessao) return; // Pula sessões sem data
+
+      // Zera a hora da sessão para comparar apenas a data
+      const dataSessao = new Date(dataHoraSessao);
+      dataSessao.setHours(0, 0, 0, 0);
+
+      // Verifica sessões passadas (nos últimos 30 dias)
+      if (dataSessao < hoje && dataSessao >= dataLimitePassado) {
+        const dataFormatada = dataHoraSessao.toLocaleDateString("pt-BR");
+
+        // Pendência de Status (Presente/Ausente) para sessões passadas
+        if (sessao.status === "pendente") {
+          pendencias.push({
+            texto: `🚨 Sessão de ${dataFormatada} sem registro de presença/ausência.`,
+            tipo: "error",
+          });
+        }
+
+        // Pendência de Anotações (Ficha Evolução) - Apenas se presente/ausente
+        if (
+          sessao.status !== "pendente" &&
+          (!sessao.anotacoes || !sessao.anotacoes.fichaEvolucao)
+        ) {
+          pendencias.push({
+            texto: `📝 Sessão de ${dataFormatada} (${sessao.status}) sem registro de anotações (Ficha Evolução).`,
+            tipo: "warning",
+          });
+        }
+      }
+    });
+
+    // Renderizar a lista
+    if (pendencias.length > 0) {
+      pendencias.forEach((p) => {
+        const li = document.createElement("li");
+        li.className = `pendencia-item ${p.tipo}`; // Usa a classe de tipo (warning, info, error)
+        // Usar textContent para segurança
+        li.textContent = p.texto;
+        listEl.appendChild(li);
+      });
+      badgeEl.textContent = pendencias.length;
+      badgeEl.style.display = "inline-block";
+    } else {
+      placeholderEl.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Erro ao verificar pendências:", error);
+    listEl.innerHTML = `<li class="pendencia-item error">Erro ao carregar pendências: ${error.message}</li>`;
+  } finally {
+    loadingEl.style.display = "none";
+  }
+}
+// ******************************************
+
 // --- Manipuladores de Eventos Gerais ---
 
 function adicionarEventListenersGerais() {
@@ -409,6 +564,13 @@ function adicionarEventListenersGerais() {
 function handleTabClick(event) {
   const clickedTab = event.currentTarget; // Usar currentTarget para garantir que é o link
   const targetTabId = clickedTab.dataset.tab;
+  const targetContent = document.getElementById(targetTabId);
+
+  // Verifica se o conteúdo alvo existe
+  if (!targetContent) {
+    console.warn(`Conteúdo da aba "${targetTabId}" não encontrado.`);
+    return;
+  }
 
   // Remove 'active' das outras abas e conteúdos
   document
@@ -420,13 +582,15 @@ function handleTabClick(event) {
 
   // Adiciona 'active' à aba clicada e ao conteúdo correspondente
   clickedTab.classList.add("active");
-  document.getElementById(targetTabId)?.classList.add("active");
+  targetContent.classList.add("active");
 }
 
 async function handleSalvarInfoPessoais(event) {
   event.preventDefault();
   const form = event.target;
-  const button = form.querySelector('button[type="submit"]');
+  const button = form.querySelector("#btn-salvar-info-pessoais"); // ID específico do botão
+  if (!button) return; // Sai se o botão não for encontrado
+
   button.disabled = true;
   button.innerHTML = '<span class="loading-spinner-small"></span> Salvando...';
 
@@ -434,22 +598,36 @@ async function handleSalvarInfoPessoais(event) {
     const dataToUpdate = {
       telefoneCelular: form.querySelector("#dp-telefone")?.value || null,
       dataNascimento: form.querySelector("#dp-data-nascimento")?.value || null,
-      // CPF e Nome não são editáveis aqui
       "responsavel.nome":
         form.querySelector("#dp-responsavel-nome")?.value || null,
       "contatoEmergencia.nome":
         form.querySelector("#dp-contato-emergencia-nome")?.value || null,
       "contatoEmergencia.telefone":
         form.querySelector("#dp-contato-emergencia-telefone")?.value || null,
+      // Endereço (usando notação de ponto)
+      "endereco.logradouro":
+        form.querySelector("#dp-endereco-logradouro")?.value || null,
+      "endereco.numero":
+        form.querySelector("#dp-endereco-numero")?.value || null,
+      "endereco.complemento":
+        form.querySelector("#dp-endereco-complemento")?.value || null,
+      "endereco.bairro":
+        form.querySelector("#dp-endereco-bairro")?.value || null,
+      "endereco.cidade":
+        form.querySelector("#dp-endereco-cidade")?.value || null,
+      "endereco.estado":
+        form.querySelector("#dp-endereco-estado")?.value || null,
+      "endereco.cep": form.querySelector("#dp-endereco-cep")?.value || null,
+      // --- Fim Endereço ---
       lastUpdate: serverTimestamp(),
     };
 
     const docRef = doc(db, "trilhaPaciente", pacienteIdGlobal);
     await updateDoc(docRef, dataToUpdate);
     alert("Informações pessoais atualizadas com sucesso!");
-    // Opcional: Recarregar dados ou apenas atualizar a UI localmente
+
     await carregarDadosPaciente(pacienteIdGlobal); // Recarrega
-    renderizarCabecalhoInfoBar(); // Re-renderiza info bar
+    preencherFormularios(); // Re-preenche o formulário com dados atualizados
   } catch (error) {
     console.error("Erro ao salvar informações pessoais:", error);
     alert(`Erro ao salvar: ${error.message}`);
@@ -462,8 +640,10 @@ async function handleSalvarInfoPessoais(event) {
 async function handleSalvarInfoFinanceiras(event) {
   event.preventDefault();
   const form = event.target;
-  const button = form.querySelector('button[type="submit"]');
+  const button = form.querySelector("#btn-salvar-info-financeiras"); // ID específico
   const inputValor = form.querySelector("#dp-valor-contribuicao");
+  if (!button || !inputValor) return; // Verifica se elementos existem
+
   button.disabled = true;
   button.innerHTML = '<span class="loading-spinner-small"></span> Salvando...';
 
@@ -505,7 +685,9 @@ async function handleSalvarInfoFinanceiras(event) {
 async function handleSalvarAcompanhamento(event) {
   event.preventDefault();
   const form = event.target;
-  const button = form.querySelector('button[type="submit"]');
+  const button = form.querySelector("#btn-salvar-acompanhamento"); // ID específico
+  if (!button) return;
+
   button.disabled = true;
   button.innerHTML = '<span class="loading-spinner-small"></span> Salvando...';
 
@@ -571,8 +753,9 @@ async function handlePresencaAusenciaClick(sessaoId, novoStatus, button) {
       },
     });
     console.log(`Status da sessão ${sessaoId} atualizado para ${novoStatus}`);
-    // Recarregar a lista de sessões para refletir a mudança
+    // Recarregar a lista de sessões para refletir a mudança e as pendências
     await carregarSessoes();
+    renderizarPendencias(); // Re-renderiza pendências
   } catch (error) {
     console.error(`Erro ao atualizar status da sessão ${sessaoId}:`, error);
     alert(`Erro ao marcar ${novoStatus}: ${error.message}`);
@@ -592,7 +775,14 @@ async function handleAbrirAnotacoes(sessaoId) {
   }
 
   form.reset();
-  form.querySelector("#anotacoes-sessao-id").value = sessaoId;
+  // Garante que o ID oculto existe antes de setar
+  const sessaoIdInput = form.querySelector("#anotacoes-sessao-id");
+  if (!sessaoIdInput) {
+    console.error("Input hidden #anotacoes-sessao-id não encontrado.");
+    alert("Erro interno no modal de anotações.");
+    return;
+  }
+  sessaoIdInput.value = sessaoId;
 
   // Mostrar loading enquanto busca dados
   const fieldsSelectors = [
@@ -659,7 +849,7 @@ async function handleSalvarAnotacoes(event) {
   event.preventDefault();
   const form = event.target;
   const button = form.querySelector("#btn-salvar-anotacoes");
-  const sessaoId = form.querySelector("#anotacoes-sessao-id").value;
+  const sessaoId = form.querySelector("#anotacoes-sessao-id")?.value; // Acesso seguro
   const modal = document.getElementById("anotacoes-sessao-modal");
 
   if (!sessaoId) {
@@ -711,7 +901,6 @@ async function handleSalvarAnotacoes(event) {
     alert("Anotações salvas com sucesso!");
     modal.style.display = "none";
 
-    // --- CORREÇÃO APLICADA AQUI ---
     // Atualizar o botão na lista de sessões para "Ver/Editar Anotações" se necessário
     const sessaoItem = document.querySelector(
       `.session-item[data-sessao-id="${sessaoId}"]`
@@ -724,7 +913,9 @@ async function handleSalvarAnotacoes(event) {
         btnAnotacoes.textContent = "Ver/Editar Anotações";
       }
     }
-    // --- FIM DA CORREÇÃO ---
+    // Re-renderiza pendências após salvar anotações
+    await carregarSessoes(); // Recarrega sessões para garantir dados atualizados
+    renderizarPendencias();
   } catch (error) {
     console.error(`Erro ao salvar anotações da sessão ${sessaoId}:`, error);
     alert(`Erro ao salvar anotações: ${error.message}`);
@@ -1326,7 +1517,7 @@ function abrirModalSolicitarSessoes(/* Usa globais */) {
 
   const horarioSelect = document.getElementById("solicitar-horario");
   if (horarioSelect) {
-    horarioSelect.innerHTML = ""; // Limpa opções
+    horarioSelect.innerHTML = "<option value=''>Selecione...</option>"; // Adiciona Selecione
     for (let i = 7; i <= 21; i++) {
       const hora = `${String(i).padStart(2, "0")}:00`;
       horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
@@ -1827,8 +2018,8 @@ async function abrirModalReavaliacao(/* Usa globais */) {
   if (valorAtualEl)
     valorAtualEl.value =
       pacienteDataGlobal.valorContribuicao != null
-        ? String(pacienteDataGlobal.valorContribuicao)
-        : ""; // Converter para string
+        ? String(pacienteDataGlobal.valorContribuicao).replace(".", ",") // Formata com vírgula para exibição
+        : "";
 
   modal.style.display = "flex";
 
@@ -2158,7 +2349,10 @@ async function handleReavaliacaoSubmit(evento) {
     );
 
     const motivo = motivoEl?.value || "";
-    const valorAtual = valorAtualEl?.value || "N/A";
+    // Ler valor com vírgula e converter para número
+    const valorAtualStr = valorAtualEl?.value || "0";
+    const valorAtualNum = parseFloat(valorAtualStr.replace(",", ".")) || 0; // Converte para número
+
     const modalidadePref = modalidadePrefEl?.value || null;
     const dataPref = dataPrefEl?.value || null;
     const horaPref = selectedSlot ? selectedSlot.dataset.hora : null;
@@ -2186,7 +2380,7 @@ async function handleReavaliacaoSubmit(evento) {
       atendimentoId: atendimentoId, // Usa ID do atendimento ativo (se houver)
       detalhes: {
         motivo: motivo,
-        valorContribuicaoAtual: valorAtual,
+        valorContribuicaoAtual: valorAtualNum, // Salva como número
         preferenciaAgendamento: {
           modalidade: modalidadePref,
           data: dataPref,
@@ -2255,9 +2449,6 @@ async function abrirModalDesfechoPb(/* Usa globais */) {
 
   try {
     // Busca o HTML do formulário
-    // Ajustar o caminho relativo ao JS, não ao HTML original
-    // Assumindo que detalhe-paciente.html está em /modulos/voluntario/page/
-    // E form-atendimento-pb.html também está lá
     const response = await fetch("./form-atendimento-pb.html"); // Caminho relativo CORRETO
     if (!response.ok)
       throw new Error(
@@ -2289,8 +2480,8 @@ async function abrirModalDesfechoPb(/* Usa globais */) {
     if (valorContEl)
       valorContEl.value =
         pacienteDataGlobal.valorContribuicao != null
-          ? String(pacienteDataGlobal.valorContribuicao)
-          : "Não definido"; // Converter para string
+          ? String(pacienteDataGlobal.valorContribuicao).replace(".", ",") // Formata com vírgula
+          : "Não definido";
 
     const dataInicioRaw = atendimentoAtivo.horarioSessoes?.dataInicio; // Usa horarioSessoes
     const dataInicioEl = form.querySelector("#data-inicio-atendimento");
@@ -2441,7 +2632,9 @@ async function handleDesfechoPbSubmit(evento) {
     modal.style.display = "none";
     // Recarregar dados do paciente pode ser necessário para atualizar status/UI
     await carregarDadosPaciente(pacienteIdGlobal);
-    renderizarCabecalhoInfoBar();
+    // renderizarCabecalhoInfoBar(); // Não existe mais
+    preencherFormularios(); // Re-preenche forms
+    renderizarPendencias(); // Re-renderiza pendências
   } catch (error) {
     console.error("Erro ao enviar solicitação de desfecho:", error);
     alert(`Falha ao enviar: ${error.message}`);
@@ -2740,7 +2933,9 @@ async function handleEncerramentoSubmit(evento, userUid, userData) {
     modal.style.display = "none";
     // Recarregar dados da página
     await carregarDadosPaciente(pacienteIdGlobal);
-    renderizarCabecalhoInfoBar(); // Atualiza o status na barra
+    // renderizarCabecalhoInfoBar(); // Removido
+    preencherFormularios(); // Re-preenche forms
+    renderizarPendencias(); // Re-renderiza pendências
     // Opcional: recarregar a página inteira: location.reload();
   } catch (error) {
     console.error("Erro ao salvar encerramento:", error);
@@ -3222,7 +3417,9 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
     modal.style.display = "none";
     // Recarregar dados da página
     await carregarDadosPaciente(pacienteIdGlobal);
-    renderizarCabecalhoInfoBar();
+    // renderizarCabecalhoInfoBar(); // Removido
+    preencherFormularios(); // Re-preenche forms
+    renderizarPendencias(); // Re-renderiza pendências
     await carregarSessoes(); // Recarrega sessões também, se aplicável
   } catch (error) {
     console.error("Erro ao salvar informações de Horários PB:", error);
