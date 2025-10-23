@@ -1,5 +1,6 @@
 // Arquivo: /modulos/voluntario/js/detalhe-paciente.js
 // Responsável pela lógica da página de detalhes do paciente.
+// *** CORREÇÃO: Ajustada a função init para receber pacienteId como argumento ***
 
 import {
     db,
@@ -16,7 +17,7 @@ import {
     Timestamp,
     // functions, // Removido, pois httpsCallable não é mais usado diretamente aqui
     // httpsCallable, // Removido
-} from "../../../assets/js/firebase-init.js";
+} from "../../../assets/js/firebase-init.js"; // Caminho já estava correto
 
 // --- Variáveis Globais do Módulo ---
 let pacienteIdGlobal = null;
@@ -27,18 +28,24 @@ let salasPresenciaisGlobal = []; // Lista de salas
 let dadosDaGradeGlobal = {}; // Dados da grade geral
 
 // --- Inicialização da Página ---
-export async function init(user, userData) {
+// *** CORREÇÃO: Adicionado 'pacienteId' como terceiro argumento ***
+export async function init(user, userData, pacienteId) {
     console.log("Inicializando detalhe-paciente.js");
     userDataGlobal = userData; // Armazena dados do usuário logado
 
-    // Extrair ID do paciente da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    pacienteIdGlobal = urlParams.get('id');
+    // *** CORREÇÃO: Usar o 'pacienteId' recebido como argumento ***
+    pacienteIdGlobal = pacienteId;
 
     if (!pacienteIdGlobal) {
-        console.error("ID do paciente não encontrado na URL.");
-        document.getElementById('detalhe-paciente-view').innerHTML = '<p class="alert alert-error">Erro: ID do paciente não fornecido.</p>';
-        return;
+        console.error("ID do paciente não foi passado para a função init.");
+        // Tenta pegar da URL como fallback, mas idealmente não deveria precisar
+        const urlParams = new URLSearchParams(window.location.search);
+        pacienteIdGlobal = urlParams.get('id');
+        if (!pacienteIdGlobal) {
+           document.getElementById('detalhe-paciente-view').innerHTML = '<p class="alert alert-error">Erro: ID do paciente não fornecido.</p>';
+           return;
+        }
+         console.warn("ID do paciente obtido da URL como fallback:", pacienteIdGlobal);
     }
 
     try {
@@ -182,8 +189,8 @@ function renderizarCabecalhoInfoBar() {
     // Ajustar dataEncaminhamento para pegar a data correta (plantao OU PB)
      const dataEncaminhamentoRaw = pacienteDataGlobal.plantaoInfo?.dataEncaminhamento || pacienteDataGlobal.atendimentosPB?.[0]?.dataEncaminhamento; // Simplificado, pode precisar de mais lógica
      const dataEncaminhamento = dataEncaminhamentoRaw
-        ? new Date(dataEncaminhamentoRaw + 'T03:00:00').toLocaleDateString('pt-BR')
-        : 'N/A';
+       ? new Date(dataEncaminhamentoRaw + 'T03:00:00').toLocaleDateString('pt-BR')
+       : 'N/A';
     const pendencias = 'Verificar'; // Placeholder - Adicionar lógica para buscar pendências
 
     // Usar textContent para segurança
@@ -375,10 +382,10 @@ async function handleSalvarInfoFinanceiras(event) {
 
     try {
         const novoValor = form.querySelector('#dp-valor-contribuicao').value;
-        const valorNumerico = parseFloat(novoValor);
+        const valorNumerico = parseFloat(novoValor.replace(',', '.')); // Tenta converter com vírgula
 
         if (isNaN(valorNumerico) || valorNumerico < 0) {
-             throw new Error("Valor da contribuição inválido.");
+             throw new Error("Valor da contribuição inválido. Use números e, opcionalmente, vírgula ou ponto para centavos.");
         }
 
         const dataToUpdate = {
@@ -531,9 +538,9 @@ async function handleSalvarAnotacoes(event) {
             anotacoes: anotacoesData,
             anotacoesAtualizadasEm: serverTimestamp(),
              anotacoesAtualizadasPor: { // Opcional
-                id: userDataGlobal.uid,
-                nome: userDataGlobal.nome
-            }
+                 id: userDataGlobal.uid,
+                 nome: userDataGlobal.nome
+             }
         });
 
         alert("Anotações salvas com sucesso!");
@@ -618,6 +625,8 @@ function formatarStatus(status) {
         encaminhado_grupo: "Encaminhado p/ Grupo",
         encaminhado_parceiro: "Encaminhado p/ Parceiro",
         // Adicionar outros status conforme necessário
+         encaminhar_para_pb: "Encaminhado para PB",
+         reavaliar_encaminhamento: "Reavaliar Encaminhamento",
     };
     return mapa[status] || status.replace(/_/g, " ") || "Desconhecido";
 }
@@ -627,23 +636,23 @@ function formatarStatus(status) {
 function adicionarEventListenersModais() {
      // Listener global para fechar modais pelo botão Cancelar/Fechar ou clique fora
      document.body.addEventListener("click", function (e) {
-        // Botão Cancelar ou Fechar (X)
-        if (
-          e.target.matches(".modal-cancel-btn") ||
-          e.target.closest(".modal-cancel-btn") ||
-          e.target.matches(".close-button") || // Adiciona listener para spans com classe close-button
-          e.target.closest(".close-button")
-        ) {
-          const modalAberto = e.target.closest(".modal-overlay, .modal");
-          if (modalAberto) {
-            modalAberto.style.display = "none";
-          }
-        }
-         // Clique fora do modal-content
-        if (e.target.matches(".modal-overlay")) {
-             e.target.style.display = "none";
-        }
-      });
+         // Botão Cancelar ou Fechar (X)
+         if (
+           e.target.matches(".modal-cancel-btn") ||
+           e.target.closest(".modal-cancel-btn") ||
+           e.target.matches(".close-button") || // Adiciona listener para spans com classe close-button
+           e.target.closest(".close-button")
+         ) {
+           const modalAberto = e.target.closest(".modal-overlay, .modal");
+           if (modalAberto) {
+             modalAberto.style.display = "none";
+           }
+         }
+          // Clique fora do modal-content
+         if (e.target.matches(".modal-overlay")) {
+              e.target.style.display = "none";
+         }
+     });
 
     // Submits dos Modais
     document.getElementById('btn-confirmar-solicitacao')?.addEventListener('click', handleSolicitarSessoesSubmit);
@@ -659,14 +668,15 @@ function adicionarEventListenersModais() {
     // Submit do desfecho é adicionado dinamicamente em abrirModalDesfechoPb
 
     // -- Adicionar AQUI os event listeners para ABRIR os modais ---
-    // Exemplo: Botão para abrir modal de solicitar sessões (se existir um botão específico na página)
-    // document.getElementById('btn-abrir-solicitar-sessoes')?.addEventListener('click', () => {
-    //      // Precisa garantir que pacienteDataGlobal e currentAtendimentoData estejam corretos
-    //      const atendimentoPB = pacienteDataGlobal?.atendimentosPB?.find(at => at.statusAtendimento === 'ativo'); // Exemplo de como pegar atendimento ativo
-    //      abrirModalSolicitarSessoes(pacienteDataGlobal, atendimentoPB, { userData: userDataGlobal, salasPresenciais: salasPresenciaisGlobal, dadosDaGrade: dadosDaGradeGlobal });
-    // });
-    // Repetir para os outros botões que abrem modais (Reavaliação, Alterar Horário, etc.)
-     // Adicionar os botões correspondentes no HTML se necessário.
+     // Adicionar listeners aos botões PRINCIPAIS da página que ABREM os modais
+     document.getElementById('btn-abrir-modal-mensagem')?.addEventListener('click', abrirModalMensagens);
+     document.getElementById('btn-abrir-modal-solicitar-sessoes')?.addEventListener('click', abrirModalSolicitarSessoes);
+     document.getElementById('btn-abrir-modal-alterar-horario')?.addEventListener('click', abrirModalAlterarHorario);
+     document.getElementById('btn-abrir-modal-reavaliacao')?.addEventListener('click', abrirModalReavaliacao);
+     document.getElementById('btn-abrir-modal-desfecho-pb')?.addEventListener('click', abrirModalDesfechoPb);
+     document.getElementById('btn-abrir-modal-encerramento-plantao')?.addEventListener('click', abrirModalEncerramento);
+     document.getElementById('btn-abrir-modal-horarios-pb')?.addEventListener('click', abrirModalHorariosPb); // Para aguardando_info_horarios
+
 
 }
 
@@ -689,7 +699,9 @@ function abrirModalMensagens(/* Não precisa de params, usa globais */) {
         return;
     }
      // Pega o atendimento ativo (exemplo, ajustar se necessário)
-    const atendimentoAtivo = pacienteDataGlobal.atendimentosPB?.find(at => at.statusAtendimento === 'ativo') || pacienteDataGlobal.plantaoInfo; // Ajustar lógica se necessário
+     // Prioriza PB ativo, depois plantão ativo
+     const atendimentoAtivo = pacienteDataGlobal.atendimentosPB?.find(at => at.statusAtendimento === 'ativo') ||
+                              (pacienteDataGlobal.status === 'em_atendimento_plantao' ? pacienteDataGlobal.plantaoInfo : null);
 
 
     const modal = document.getElementById("enviar-mensagem-modal");
@@ -775,47 +787,47 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
             if (userData.profissao) campoElemento.value = userData.profissao;
             break;
          case "dia": case "diasemana":
-             novoLabel = "Selecione o dia de atendimento:";
-             campoElemento = document.createElement("select");
-             const dias = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-             campoElemento.innerHTML = "<option value=''>Selecione...</option>";
-             dias.forEach(dia => campoElemento.innerHTML += `<option value="${dia}">${dia}</option>`);
-             break;
+            novoLabel = "Selecione o dia de atendimento:";
+            campoElemento = document.createElement("select");
+            const dias = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+            campoElemento.innerHTML = "<option value=''>Selecione...</option>";
+            dias.forEach(dia => campoElemento.innerHTML += `<option value="${dia}">${dia}</option>`);
+            break;
          case "mod": case "modalidade":
-             novoLabel = "Selecione a modalidade:";
-             campoElemento = document.createElement("select");
-             campoElemento.innerHTML = "<option value=''>Selecione...</option><option value='Presencial'>Presencial</option><option value='Online'>Online</option>";
-             break;
+            novoLabel = "Selecione a modalidade:";
+            campoElemento = document.createElement("select");
+            campoElemento.innerHTML = "<option value=''>Selecione...</option><option value='Presencial'>Presencial</option><option value='Online'>Online</option>";
+            break;
          case "data": case "datainicio":
-             novoLabel = "Informe a data de inicio da terapia:";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "date";
-             break;
+            novoLabel = "Informe a data de inicio da terapia:";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "date";
+            break;
          case "hora": case "horario":
-             novoLabel = "Informe a hora da sessão:";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "time";
-             break;
+            novoLabel = "Informe a hora da sessão:";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "time";
+            break;
          case "v": case "valor":
-             novoLabel = "Preencha o valor da sessão:";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "text"; // Manter texto para R$ XX,YY
-             break;
+            novoLabel = "Preencha o valor da sessão:";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "text"; // Manter texto para R$ XX,YY
+            break;
          case "px": case "pix":
-             novoLabel = "Informe seu PIX:";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "text";
-             break;
+            novoLabel = "Informe seu PIX:";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "text";
+            break;
          case "m":
-             novoLabel = "Informe o Mês de referência (ex: Janeiro):";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "text";
-             break;
+            novoLabel = "Informe o Mês de referência (ex: Janeiro):";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "text";
+            break;
          case "d":
-             novoLabel = "Informe o Dia do vencimento (ex: 10):";
-             campoElemento = document.createElement("input");
-             campoElemento.type = "text";
-             break;
+            novoLabel = "Informe o Dia do vencimento (ex: 10):";
+            campoElemento = document.createElement("input");
+            campoElemento.type = "text";
+            break;
           default:
             novoLabel = `Preencha o campo "${labelText}":`;
             campoElemento = document.createElement("input");
@@ -859,7 +871,8 @@ function atualizarPreviewMensagem() { // Usa dados globais
 
     if (templateOriginalGlobal.includes("{contractUrl}") && atendimento) {
         // Assume que atendimentoId existe no objeto atendimento
-        const atendimentoIdParaLink = atendimento.atendimentoId || atendimento.plantaoInfo?.id; // Ajustar conforme necessário
+        // Tenta pegar de PB ou Plantão
+        const atendimentoIdParaLink = atendimento.atendimentoId || atendimento.id; // plantaoInfo pode ter 'id'
         if (atendimentoIdParaLink) {
              const contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${atendimentoIdParaLink}`;
              mensagemAtualizada = mensagemAtualizada.replace(/{contractUrl}/g, contractUrl);
@@ -945,10 +958,11 @@ function abrirModalSolicitarSessoes(/* Usa globais */) {
 
     const tipoAtendimentoSelect = document.getElementById("solicitar-tipo-atendimento");
     tipoAtendimentoSelect.onchange = () => {
-        const tipo = tipoAtendimentoSelect.value;
+        const tipo = tipoAtendimentoSelect.value.toLowerCase(); // Comparar em minúsculo
         const salaSelectEl = document.getElementById("solicitar-sala");
         salaSelectEl.disabled = tipo === "online";
         if (tipo === "online") salaSelectEl.value = "Online";
+        else if (salaSelectEl.value === "Online") salaSelectEl.value = ""; // Limpa se mudou pra presencial
         validarHorarioNaGrade(/* Usa globais */); // Chama a função global
     };
     tipoAtendimentoSelect.dispatchEvent(new Event('change')); // Dispara para estado inicial
@@ -967,8 +981,8 @@ async function handleSolicitarSessoesSubmit(evento) {
     const atendimentoId = form.querySelector('#solicitar-atendimento-id').value;
 
     if (!pacienteId || !atendimentoId) {
-         alert("Erro: IDs do paciente ou atendimento não encontrados no formulário.");
-         return;
+          alert("Erro: IDs do paciente ou atendimento não encontrados no formulário.");
+          return;
     }
 
 
@@ -1033,14 +1047,14 @@ function validarHorarioNaGrade(/* Não precisa params, usa globais */) {
     }
 
     // Usa dadosDaGradeGlobal e salasPresenciaisGlobal
-    if (tipo === "online") {
+    if (tipo.toLowerCase() === "online") { // Comparar em minúsculo
         for (let i = 0; i < 6; i++) { // Assumindo 6 colunas online
             if (dadosDaGradeGlobal?.online?.[dia]?.[horaKey]?.[`col${i}`]) {
                 isOcupado = true;
                 break;
             }
         }
-    } else {
+    } else { // Presencial
         const salaIndex = salasPresenciaisGlobal?.indexOf(sala);
         if (salaIndex !== undefined && salaIndex !== -1 &&
             dadosDaGradeGlobal?.presencial?.[dia]?.[horaKey]?.[`col${salaIndex}`]) {
@@ -1114,10 +1128,13 @@ function abrirModalAlterarHorario(/* Usa globais */) {
         salaSelect.disabled = tipo === "Online";
         if (tipo === "Online") {
             salaSelect.value = "Online";
-        } else if (salasPresenciaisGlobal.length > 0) {
+        } else if (salasPresenciaisGlobal.length > 0 && salaSelect.value === "Online") {
              salaSelect.value = ""; // Força seleção se presencial e houver salas
-        } else {
-             salaSelect.value = ""; // Mantém vazio se não houver salas presenciais
+        } else if (salasPresenciaisGlobal.length === 0 && tipo !== "Online") {
+             // Se presencial mas não há salas, talvez desabilitar a opção presencial? Ou mostrar erro?
+             console.warn("Modo presencial selecionado, mas não há salas configuradas.");
+             salaSelect.value = "";
+             salaSelect.disabled = true; // Desabilita sala se não há opções
         }
     };
     tipoAtendimentoSelect.dispatchEvent(new Event('change'));
@@ -1137,9 +1154,9 @@ async function handleAlterarHorarioSubmit(evento) {
     const atendimentoId = form.querySelector('#alterar-atendimento-id').value;
 
      if (!pacienteId || !atendimentoId) {
-         alert("Erro: IDs do paciente ou atendimento não encontrados no formulário.");
-         return;
-    }
+          alert("Erro: IDs do paciente ou atendimento não encontrados no formulário.");
+          return;
+     }
       // Pega o atendimento ativo para dados antigos (pode buscar novamente se preferir)
      const atendimentoAtivo = pacienteDataGlobal?.atendimentosPB?.find(at => at.atendimentoId === atendimentoId);
      if (!atendimentoAtivo) {
@@ -1244,6 +1261,7 @@ async function abrirModalReavaliacao(/* Usa globais */) {
 
     // Preencher dados fixos e ID oculto
     form.querySelector("#reavaliacao-paciente-id").value = pacienteIdGlobal;
+    form.querySelector("#reavaliacao-atendimento-id").value = atendimentoAtivo?.atendimentoId || ''; // Guarda ID se houver
     document.getElementById("reavaliacao-profissional-nome").value = userDataGlobal.nome;
     document.getElementById("reavaliacao-paciente-nome").value = pacienteDataGlobal.nomeCompleto;
     document.getElementById("reavaliacao-valor-atual").value = pacienteDataGlobal.valorContribuicao || "";
@@ -1260,7 +1278,9 @@ async function abrirModalReavaliacao(/* Usa globais */) {
         const agendaSnapshot = await getDocs(agendaQuery);
 
         if (agendaSnapshot.empty) {
+            msgSemAgenda.textContent = "Não há agenda de reavaliação disponível no momento."; // Mensagem mais clara
             msgSemAgenda.style.display = "block";
+            msgSemAgenda.className = "alert alert-warning"; // Usa classes do design system
             return;
         }
 
@@ -1322,7 +1342,7 @@ async function abrirModalReavaliacao(/* Usa globais */) {
         console.error("Erro ao abrir modal de reavaliação:", error);
         msgSemAgenda.textContent = "Erro ao carregar a agenda de reavaliação. Tente novamente.";
         msgSemAgenda.style.display = "block";
-         msgSemAgenda.className = "alert alert-error"; // Usar classes do design system
+         msgSemAgenda.className = "alert alert-error"; // Usa classes do design system
          form.style.display = "none"; // Esconde form se deu erro
          btnConfirmar.style.display = "none";
     }
@@ -1441,13 +1461,12 @@ async function handleReavaliacaoSubmit(evento) {
     const btnConfirmar = document.getElementById("btn-confirmar-reavaliacao");
 
     const pacienteId = form.querySelector('#reavaliacao-paciente-id').value;
+    const atendimentoId = form.querySelector('#reavaliacao-atendimento-id').value || null; // Pega do form (pode ser null)
+
     if (!pacienteId) {
          alert("Erro: ID do paciente não encontrado no formulário.");
          return;
     }
-     // Pega o atendimento ativo (pode ser null se não houver)
-     const atendimentoAtivo = pacienteDataGlobal?.atendimentosPB?.find(at => at.statusAtendimento === 'ativo');
-
 
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = "Enviando...";
@@ -1464,9 +1483,9 @@ async function handleReavaliacaoSubmit(evento) {
             throw new Error("Por favor, preencha o motivo da reavaliação.");
         }
          if (!dataPref || !horaPref) {
-             console.warn("Data ou hora da reavaliação não selecionada.");
-             // Decidir se é obrigatório ou não. Se for, descomentar:
-             // throw new Error("Por favor, selecione uma data e um horário para a reavaliação.");
+              console.warn("Data ou hora da reavaliação não selecionada.");
+              // Decidir se é obrigatório ou não. Se for, descomentar:
+              // throw new Error("Por favor, selecione uma data e um horário para a reavaliação.");
          }
 
 
@@ -1478,7 +1497,7 @@ async function handleReavaliacaoSubmit(evento) {
             solicitanteNome: userDataGlobal.nome, // Usa global
             pacienteId: pacienteId, // Usa do form
             pacienteNome: form.querySelector("#reavaliacao-paciente-nome").value, // Usa do form
-            atendimentoId: atendimentoAtivo?.atendimentoId || null, // Usa ID do atendimento ativo (se houver)
+            atendimentoId: atendimentoId, // Usa ID do atendimento ativo (se houver)
             detalhes: {
                 motivo: motivo,
                 valorContribuicaoAtual: valorAtual,
@@ -1530,8 +1549,10 @@ async function abrirModalDesfechoPb(/* Usa globais */) {
     try {
         // Busca o HTML do formulário
         // Ajustar o caminho relativo ao JS, não ao HTML original
-        const response = await fetch("./page/form-atendimento-pb.html"); // Assumindo que está na mesma pasta que detalhe-paciente.html
-        if (!response.ok) throw new Error("Arquivo do formulário de desfecho (form-atendimento-pb.html) não encontrado.");
+        // Assumindo que detalhe-paciente.html está em /modulos/voluntario/page/
+        // E form-atendimento-pb.html também está lá
+        const response = await fetch("./form-atendimento-pb.html"); // Caminho relativo CORRETO
+        if (!response.ok) throw new Error(`Arquivo do formulário de desfecho (./form-atendimento-pb.html) não encontrado. Status: ${response.status}`);
 
         body.innerHTML = await response.text();
         footer.style.display = "flex";
@@ -1539,8 +1560,9 @@ async function abrirModalDesfechoPb(/* Usa globais */) {
         const form = body.querySelector("#form-atendimento-pb");
         if (!form) throw new Error("Formulário #form-atendimento-pb não encontrado no HTML carregado.");
 
-
-        // Preencher dados fixos
+        // Preencher dados fixos (incluindo IDs ocultos)
+        form.querySelector('#desfecho-paciente-id').value = pacienteIdGlobal;
+        form.querySelector('#desfecho-atendimento-id').value = atendimentoAtivo.atendimentoId;
         form.querySelector("#profissional-nome").value = atendimentoAtivo.profissionalNome || userDataGlobal.nome;
         form.querySelector("#paciente-nome").value = pacienteDataGlobal.nomeCompleto;
         form.querySelector("#valor-contribuicao").value = pacienteDataGlobal.valorContribuicao || "Não definido";
@@ -1593,10 +1615,12 @@ async function handleDesfechoPbSubmit(evento) {
     const modal = form.closest(".modal-overlay");
     const botaoSalvar = modal.querySelector("#btn-salvar-desfecho-submit");
 
-     // Pega o atendimento ativo (pode buscar novamente se preferir mais segurança)
-     const atendimentoAtivo = pacienteDataGlobal?.atendimentosPB?.find(at => at.statusAtendimento === 'ativo');
-     if (!atendimentoAtivo) {
-          alert("Erro: Atendimento ativo não encontrado para registrar desfecho.");
+     // IDs do form
+     const pacienteId = form.querySelector('#desfecho-paciente-id').value;
+     const atendimentoId = form.querySelector('#desfecho-atendimento-id').value;
+
+     if (!pacienteId || !atendimentoId || pacienteId !== pacienteIdGlobal) {
+          alert("Erro: Inconsistência nos IDs do formulário.");
           return;
      }
 
@@ -1613,7 +1637,8 @@ async function handleDesfechoPbSubmit(evento) {
                 servicoEncaminhado: form.querySelector("#encaminhado-para").value,
                 motivoEncaminhamento: form.querySelector("#motivo-encaminhamento").value,
                 demandaPaciente: form.querySelector("#demanda-paciente").value || "",
-                continuaAtendimentoEuPsico: form.querySelector("#continua-atendimento").value, // Campo estava faltando? Adicionar no HTML se necessário
+                // Verificar se o campo 'continua-atendimento' existe no HTML e pegar o valor
+                continuaAtendimentoEuPsico: form.querySelector("#continua-atendimento")?.value || 'Não informado',
                 relatoCaso: form.querySelector("#relato-caso").value || "",
             };
             if (!detalhesDesfecho.servicoEncaminhado || !detalhesDesfecho.motivoEncaminhamento) {
@@ -1640,9 +1665,9 @@ async function handleDesfechoPbSubmit(evento) {
             dataSolicitacao: serverTimestamp(),
             solicitanteId: userDataGlobal.uid, // Usa global
             solicitanteNome: userDataGlobal.nome, // Usa global
-            pacienteId: pacienteIdGlobal, // Usa global
-            pacienteNome: pacienteDataGlobal.nomeCompleto, // Usa global
-            atendimentoId: atendimentoAtivo.atendimentoId, // Usa do atendimento ativo
+            pacienteId: pacienteId, // Usa do form
+            pacienteNome: form.querySelector("#paciente-nome").value, // Usa do form
+            atendimentoId: atendimentoId, // Usa do form
             detalhes: {
                 tipoDesfecho: desfechoTipo,
                 ...detalhesDesfecho,
@@ -1717,14 +1742,18 @@ function abrirModalEncerramento(/* Usa globais */) {
         if (mostrar && novaDisponibilidadeContainer.innerHTML.trim() === '') {
             novaDisponibilidadeContainer.innerHTML = '<div class="loading-spinner"></div>';
             try {
-                // Ajustar caminho se necessário
+                // Ajustar caminho se necessário - relativo ao detalhe-paciente.html
                 const response = await fetch("../../../public/fichas-de-inscricao.html");
+                if (!response.ok) throw new Error(`Erro ${response.status} ao buscar fichas-de-inscricao.html`);
                 const text = await response.text();
                 const parser = new DOMParser();
                 const docHtml = parser.parseFromString(text, 'text/html');
                 const disponibilidadeHtml = docHtml.getElementById('disponibilidade-section')?.innerHTML;
                 if(disponibilidadeHtml){
                      novaDisponibilidadeContainer.innerHTML = disponibilidadeHtml;
+                     // Adicionar required aos checkboxes se 'nao' for selecionado
+                     novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.required = true);
+
                 } else {
                      throw new Error("Seção de disponibilidade não encontrada no arquivo HTML.");
                 }
@@ -1733,6 +1762,9 @@ function abrirModalEncerramento(/* Usa globais */) {
                 console.error("Erro ao carregar HTML da disponibilidade:", error);
                 novaDisponibilidadeContainer.innerHTML = '<p class="alert alert-error">Erro ao carregar opções.</p>';
             }
+        } else if (!mostrar) {
+             // Remover required dos checkboxes se 'sim' for selecionado
+             novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.required = false);
         }
     };
     // Resetar estado inicial dos listeners
@@ -1770,7 +1802,8 @@ async function handleEncerramentoSubmit(evento, userUid, userData) { // Recebe u
      if (!form.querySelector("#pagamento-contribuicao").value) { alert("Informe se o pagamento foi efetuado."); botaoSalvar.disabled=false; botaoSalvar.textContent="Salvar"; return; }
      if (form.querySelector("#pagamento-contribuicao").value === "nao" && !form.querySelector("#motivo-nao-pagamento").value) { alert("Informe o motivo do não pagamento."); botaoSalvar.disabled=false; botaoSalvar.textContent="Salvar"; return; }
      if (!form.querySelector("#relato-encerramento").value) { alert("O breve relato é obrigatório."); botaoSalvar.disabled=false; botaoSalvar.textContent="Salvar"; return; }
-     if (!form.querySelector("#manter-disponibilidade").value) { alert("Informe sobre a disponibilidade."); botaoSalvar.disabled=false; botaoSalvar.textContent="Salvar"; return; }
+     const manterDispValue = form.querySelector("#manter-disponibilidade").value;
+     if (!manterDispValue) { alert("Informe sobre a disponibilidade."); botaoSalvar.disabled=false; botaoSalvar.textContent="Salvar"; return; }
 
 
     // Busca dados atuais do paciente para disponibilidade (necessário aqui)
@@ -1793,8 +1826,8 @@ async function handleEncerramentoSubmit(evento, userUid, userData) { // Recebe u
 
 
     let novoStatus = encaminhamentos.includes('Alta') ? 'alta'
-                   : encaminhamentos.includes('Desistência') ? 'desistencia'
-                   : 'encaminhar_para_pb'; // Ou outra lógica se encaminhar para grupo/parceiro
+                      : encaminhamentos.includes('Desistência') ? 'desistencia'
+                      : 'encaminhar_para_pb'; // Ou outra lógica se encaminhar para grupo/parceiro
 
     const encerramentoData = {
         responsavelId: userUid, // Usa ID recebido
@@ -1814,8 +1847,7 @@ async function handleEncerramentoSubmit(evento, userUid, userData) { // Recebe u
         lastUpdate: serverTimestamp(),
     };
 
-    const manterDisp = form.querySelector("#manter-disponibilidade").value;
-    if (manterDisp === 'nao') {
+    if (manterDispValue === 'nao') {
         const checkboxes = form.querySelectorAll('#nova-disponibilidade-container input[type="checkbox"]:checked');
         if (checkboxes.length === 0) {
             alert("Se a disponibilidade mudou, por favor, selecione os novos horários disponíveis.");
@@ -1864,9 +1896,12 @@ function abrirModalHorariosPb(/* Usa globais */) {
           // return;
      }
       // Encontrar o atendimento PB que está aguardando horários
-     const atendimentoPbAguardando = pacienteDataGlobal.atendimentosPB?.find(at => at.statusAtendimento === 'aguardando_horarios'); // Ajustar status se necessário
+      // Precisa checar se o profissionalId no atendimento corresponde ao user logado
+     const atendimentoPbAguardando = pacienteDataGlobal.atendimentosPB?.find(
+         at => at.profissionalId === userDataGlobal.uid && at.statusAtendimento === 'aguardando_horarios' // Checa ID e Status
+     );
      if (!atendimentoPbAguardando) {
-          alert("Não foi encontrado um atendimento PB aguardando definição de horários para este paciente.");
+          alert("Não foi encontrado um atendimento PB aguardando definição de horários atribuído a você para este paciente.");
           return;
      }
 
@@ -1905,8 +1940,8 @@ function abrirModalHorariosPb(/* Usa globais */) {
                  document.getElementById("detalhes-solicitacao-pb").required = false;
 
                  if (continuacaoContainer.innerHTML === "") {
-                    // Passar salas para a função que constrói o form
-                    continuacaoContainer.innerHTML = construirFormularioHorarios(userDataGlobal.nome, salasPresenciaisGlobal);
+                     // Passar salas para a função que constrói o form
+                     continuacaoContainer.innerHTML = construirFormularioHorarios(userDataGlobal.nome, salasPresenciaisGlobal);
                  }
                  // Ajusta required dos campos dinâmicos
                   continuacaoContainer.querySelectorAll("select, input, textarea").forEach(el => {
@@ -1917,11 +1952,11 @@ function abrirModalHorariosPb(/* Usa globais */) {
                  // Garante que campos do formulário de continuação não sejam required
                   continuacaoContainer.querySelectorAll("select, input, textarea").forEach(el => el.required = false);
                  // Resetar os radios de motivo 'não iniciou' para evitar estado inconsistente
-                 form.querySelectorAll('input[name="motivo-nao-inicio"]').forEach(r => r.checked = false);
-                 desistenciaContainer.classList.add('hidden');
-                 solicitacaoContainer.classList.add('hidden');
-                 document.getElementById("motivo-desistencia-pb").required = false;
-                 document.getElementById("detalhes-solicitacao-pb").required = false;
+                  form.querySelectorAll('input[name="motivo-nao-inicio"]').forEach(r => r.checked = false);
+                  desistenciaContainer.classList.add('hidden');
+                  solicitacaoContainer.classList.add('hidden');
+                  document.getElementById("motivo-desistencia-pb").required = false;
+                  document.getElementById("detalhes-solicitacao-pb").required = false;
 
             }
         };
@@ -2026,20 +2061,24 @@ function construirFormularioHorarios(nomeProfissional, salasDisponiveis = []) {
     </div>
     <script>
       // Adiciona listener para desabilitar sala se online (dentro do HTML dinâmico)
-      const tipoSelect = document.getElementById('tipo-atendimento-pb-voluntario');
-      const salaSelect = document.getElementById('sala-atendimento-pb');
-      if(tipoSelect && salaSelect) {
-            tipoSelect.addEventListener('change', () => {
-                 const isOnline = tipoSelect.value === 'Online';
-                 salaSelect.disabled = isOnline;
-                 if (isOnline) salaSelect.value = 'Online';
-                 else if (salaSelect.value === 'Online') salaSelect.value = ''; // Limpa se mudou pra presencial
-            });
-            // Trigger inicial
-            const isOnlineInitial = tipoSelect.value === 'Online';
-            salaSelect.disabled = isOnlineInitial;
-            if (isOnlineInitial) salaSelect.value = 'Online';
-      }
+      // É importante que este script execute APÓS os elementos serem adicionados ao DOM
+      (function() {
+          const tipoSelect = document.getElementById('tipo-atendimento-pb-voluntario');
+          const salaSelect = document.getElementById('sala-atendimento-pb');
+          if(tipoSelect && salaSelect) {
+               const handleChange = () => {
+                    const isOnline = tipoSelect.value === 'Online';
+                    salaSelect.disabled = isOnline;
+                    if (isOnline) salaSelect.value = 'Online';
+                    else if (salaSelect.value === 'Online') salaSelect.value = ''; // Limpa se mudou pra presencial
+               };
+               tipoSelect.addEventListener('change', handleChange);
+               // Trigger inicial
+               handleChange();
+          } else {
+               console.error("Não foi possível adicionar listener dinâmico para tipo/sala no form de horários PB");
+          }
+      })();
     </script>
   `;
 }
@@ -2111,10 +2150,10 @@ async function handleHorariosPbSubmit(evento, userUid, userData) { // Recebe use
             }
              // Validação Sala vs Tipo Atendimento
              if (horarioSessaoData.tipoAtendimento === 'Online' && horarioSessaoData.salaAtendimento !== 'Online') {
-                   throw new Error("Para atendimento Online, a sala deve ser 'Online'.");
+                 throw new Error("Para atendimento Online, a sala deve ser 'Online'.");
              }
              if (horarioSessaoData.tipoAtendimento === 'Presencial' && horarioSessaoData.salaAtendimento === 'Online') {
-                    throw new Error("Para atendimento Presencial, selecione uma sala física.");
+                  throw new Error("Para atendimento Presencial, selecione uma sala física.");
              }
 
 
