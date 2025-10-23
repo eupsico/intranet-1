@@ -9,7 +9,6 @@ import {
   where,
   getDocs,
 } from "../../../../assets/js/firebase-init.js";
-// Import atualizado para 'criarLinhaPacienteTabela'
 import { criarLinhaPacienteTabela } from "./ui.js";
 
 // Variáveis de escopo mantidas
@@ -17,7 +16,7 @@ let systemConfigs = null;
 let dadosDaGrade = {};
 let salasPresenciais = [];
 
-// Funções loadSystemConfigs e loadGradeData mantidas como antes...
+// Funções loadSystemConfigs e loadGradeData mantidas
 async function loadSystemConfigs() {
   // ... (código mantido sem alterações) ...
   if (systemConfigs) return;
@@ -44,15 +43,19 @@ async function loadGradeData() {
     const gradeSnap = await getDoc(gradeRef);
     if (gradeSnap.exists()) {
       dadosDaGrade = gradeSnap.data();
+    } else {
+      console.warn("Documento da grade administrativo/grades não encontrado."); // Adiciona log
+      dadosDaGrade = {};
     }
   } catch (error) {
     console.error("Erro ao carregar dados da grade:", error);
+    dadosDaGrade = {};
   }
 }
 
-async function carregarMeusPacientes(user, container) {
-  // 'container' é a div.table-section
-  const tableBody = document.getElementById("pacientes-table-body"); // Seleciona o tbody
+// --- Função carregarMeusPacientes MODIFICADA ---
+async function carregarMeusPacientes(user, tableBody) {
+  // Recebe tableBody diretamente
   const emptyState = document.getElementById("empty-state-pacientes");
 
   if (!tableBody || !emptyState) {
@@ -66,17 +69,20 @@ async function carregarMeusPacientes(user, container) {
     return;
   }
 
-  tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;"><div class="loading-spinner"></div> Carregando pacientes...</td></tr>`; // Colspan 4
+  tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center;"><div class="loading-spinner"></div> Carregando pacientes...</td></tr>`;
   emptyState.style.display = "none";
 
   try {
-    console.log(`Buscando pacientes para o usuário: ${user.uid}`); // Log
+    console.log(`Buscando pacientes para o usuário: ${user.uid}`);
 
+    // Query Plantão (sem alterações)
     const queryPlantao = query(
       collection(db, "trilhaPaciente"),
       where("plantaoInfo.profissionalId", "==", user.uid),
       where("status", "==", "em_atendimento_plantao")
     );
+
+    // Query PB (sem alterações na query em si)
     const queryPb = query(
       collection(db, "trilhaPaciente"),
       where("profissionaisPB_ids", "array-contains", user.uid),
@@ -92,63 +98,70 @@ async function carregarMeusPacientes(user, container) {
       getDocs(queryPb),
     ]);
 
-    console.log(`Resultados Plantão: ${plantaoSnapshot.size} encontrados.`); // Log
-    console.log(`Resultados PB (geral): ${pbSnapshot.size} encontrados.`); // Log
+    console.log(`Resultados Plantão: ${plantaoSnapshot.size} encontrados.`);
+    console.log(`Resultados PB (geral): ${pbSnapshot.size} encontrados.`);
 
     const pacientesMap = new Map();
 
+    // Processa Plantão (sem alterações)
     plantaoSnapshot.forEach((doc) => {
       const data = doc.data();
-      console.log(`Paciente Plantão encontrado: ${doc.id}`, data); // Log
+      console.log(`[Plantão] Processando paciente: ${doc.id}`, data);
       pacientesMap.set(doc.id, {
         id: doc.id,
         nomeCompleto: data.nomeCompleto,
         telefoneCelular: data.telefoneCelular,
-        email: data.email,
-        status: data.status,
+        email: data.email, // Garante email
+        status: data.status, // Usa status principal
         dataNascimento: data.dataNascimento,
-        atendimentosPB: data.atendimentosPB,
-        meuAtendimentoPB: null,
+        atendimentosPB: data.atendimentosPB, // Inclui array completo
+        meuAtendimentoPB: null, // Placeholder
       });
     });
 
+    // Processa PB (LÓGICA AJUSTADA)
     pbSnapshot.forEach((doc) => {
       const data = doc.data();
-      const meuAtendimento = data.atendimentosPB?.find(
-        (at) =>
-          at.profissionalId === user.uid && at.statusAtendimento === "ativo"
+      console.log(`[PB] Verificando paciente: ${doc.id}`, data);
+
+      // Tenta encontrar o atendimento específico deste profissional, *independente do statusAtendimento*
+      const meuAtendimentoEncontrado = data.atendimentosPB?.find(
+        (at) => at.profissionalId === user.uid
       );
 
-      if (meuAtendimento) {
-        console.log(
-          `Paciente PB encontrado com atendimento ativo: ${doc.id}`,
-          data
-        ); // Log
-        const pacienteExistente = pacientesMap.get(doc.id);
-        pacientesMap.set(doc.id, {
-          ...(pacienteExistente || {
-            id: doc.id,
-            nomeCompleto: data.nomeCompleto,
-            telefoneCelular: data.telefoneCelular,
-            email: data.email,
-            status: data.status,
-            dataNascimento: data.dataNascimento,
-            atendimentosPB: data.atendimentosPB,
-          }),
-          meuAtendimentoPB: meuAtendimento,
+      // A query já garante que o user.uid está em profissionaisPB_ids.
+      // Adicionamos/atualizamos o paciente no Map, mesmo que meuAtendimentoEncontrado seja undefined
+      // ou não esteja 'ativo', pois o profissional está vinculado e o status GERAL do paciente é relevante.
+      const pacienteExistente = pacientesMap.get(doc.id);
+
+      // *** AJUSTE PRINCIPAL: Adiciona/Atualiza SEMPRE que a query PB retornar, ***
+      // *** passando o atendimento encontrado (mesmo que não ativo) para a UI. ***
+      pacientesMap.set(doc.id, {
+        // Usa dados existentes (do plantão) ou os atuais se for a primeira vez
+        ...(pacienteExistente || {
+          id: doc.id,
+          nomeCompleto: data.nomeCompleto,
+          telefoneCelular: data.telefoneCelular,
+          email: data.email,
           status: data.status,
-        });
-      } else {
-        console.log(
-          `Paciente PB encontrado (${doc.id}, ${data.nomeCompleto}), mas SEM atendimento ATIVO para ${user.uid}. Verificando se já está no Map via Plantão.`
-        ); // Log
-      }
+          dataNascimento: data.dataNascimento,
+          atendimentosPB: data.atendimentosPB,
+        }),
+        // Guarda o atendimento específico encontrado (pode ser undefined se algo estranho ocorrer)
+        meuAtendimentoPB: meuAtendimentoEncontrado || null,
+        // Garante que o status principal (da trilha) está correto
+        status: data.status,
+      });
+      console.log(
+        `[PB] Paciente ${doc.id} adicionado/atualizado no Map. Atendimento específico:`,
+        meuAtendimentoEncontrado
+      );
     });
 
     const pacientes = Array.from(pacientesMap.values());
     console.log(
       `Total de pacientes únicos a serem exibidos: ${pacientes.length}`
-    ); // Log
+    );
 
     pacientes.sort((a, b) =>
       (a.nomeCompleto || "").localeCompare(b.nomeCompleto || "")
@@ -157,12 +170,13 @@ async function carregarMeusPacientes(user, container) {
     const pacientesHtml = pacientes
       .map((paciente) => {
         try {
+          // Passa o objeto paciente e o atendimento específico encontrado (pode ser null ou não ativo)
           return criarLinhaPacienteTabela(paciente, paciente.meuAtendimentoPB);
         } catch (renderError) {
           console.error(
             `Erro ao renderizar linha para paciente ${paciente.id}:`,
             renderError
-          ); // Log de erro
+          );
           return `<tr><td colspan="4">Erro ao renderizar paciente ${
             paciente.nomeCompleto || paciente.id
           }</td></tr>`;
@@ -171,25 +185,37 @@ async function carregarMeusPacientes(user, container) {
       .join("");
 
     if (pacientesHtml === "") {
-      console.log("Nenhum paciente encontrado para exibir."); // Log
+      console.log("Nenhum paciente encontrado para exibir após processamento."); // Mensagem mais específica
       tableBody.innerHTML = "";
       emptyState.style.display = "block";
     } else {
       emptyState.style.display = "none";
       tableBody.innerHTML = pacientesHtml;
-      console.log("Tabela de pacientes preenchida."); // Log
+      console.log("Tabela de pacientes preenchida.");
     }
   } catch (error) {
-    console.error("Erro crítico em carregarMeusPacientes:", error); // Log de erro
+    console.error("Erro crítico em carregarMeusPacientes:", error);
     tableBody.innerHTML = `<tr><td colspan="4"><p class="alert alert-error">Ocorreu um erro ao carregar seus pacientes: ${error.message}</p></td></tr>`;
     emptyState.style.display = "none";
   }
 }
 
-// Função principal exportada mantida
-export async function initializeMeusPacientes(user, userData, container) {
+// Função principal exportada - AJUSTADA para passar tableBody
+export async function initializeMeusPacientes(
+  user,
+  userData /* REMOVIDO container */
+) {
+  // Acha o tableBody aqui ou assume que ele é passado pelo meus-pacientes.js
+  const tableBody = document.getElementById("pacientes-table-body");
+  if (!tableBody) {
+    console.error(
+      "initializeMeusPacientes: Elemento #pacientes-table-body não encontrado."
+    );
+    return;
+  }
+
   await loadSystemConfigs();
   await loadGradeData();
-  // Passa o container (div.table-section) para a função carregar
-  await carregarMeusPacientes(user, container);
+  // Passa tableBody diretamente para carregarMeusPacientes
+  await carregarMeusPacientes(user, tableBody);
 }
