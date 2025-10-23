@@ -51,11 +51,11 @@
              <div class="form-grid cols-2"> <div class="form-group">
                     <label>Profissional:</label>
                     <input type="text" id="admin-ag-profissional-nome" class="form-control" readonly>
-                 </div>
+                </div>
                  <div class="form-group">
                     <label for="admin-ag-data-inicio">Data de início das sessões? *</label>
                     <input type="date" id="admin-ag-data-inicio" class="form-control" required>
-                 </div>
+                </div>
             </div>
              <div class="form-grid cols-3"> <div class="form-group">
                     <label for="admin-ag-hora-inicio">Horário Início *</label>
@@ -72,7 +72,15 @@
                          <option value="quinzenal">Quinzenalmente</option>
                          <option value="mensal">Mensalmente</option>
                      </select>
-                 </div>
+                </div>
+             </div>
+             
+             <div class="form-grid cols-1">
+                <div class="form-group" id="admin-ag-quantidade-container" style="display: none; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+                    <label for="admin-ag-quantidade">Número de Sessões a Gerar? *</label>
+                    <input type="number" id="admin-ag-quantidade" class="form-control" value="4" min="1" max="52" style="width: 100px;">
+                    <p class="field-description" style="margin-top: 5px;">Informe quantas sessões (ex: 4 para um mês) devem ser criadas com base na recorrência selecionada.</p>
+                </div>
              </div>
              <div class="form-grid cols-2"> <div class="form-group">
                      <label for="admin-ag-tipo-sessao">As sessões serão: *</label>
@@ -81,14 +89,14 @@
                          <option value="Presencial">Presencial</option>
                          <option value="Online">Online</option>
                      </select>
-                 </div>
+                </div>
                  <div class="form-group">
                      <label for="admin-ag-sala">Qual sala:</label>
                      <select id="admin-ag-sala" class="form-control" required>
                          <option value="">Carregando salas...</option>
                          </select>
-                 </div>
-             </div>
+                </div>
+            </div>
              <div id="agendamento-feedback" class="info-note" style="display: none; margin-top: 15px;"></div>
         </fieldset>
 
