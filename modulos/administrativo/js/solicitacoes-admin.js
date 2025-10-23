@@ -1,5 +1,5 @@
 // Arquivo: /modulos/administrativo/js/solicitacoes-admin.js
-// --- VERSÃO FINAL COMPLETA (WhatsApp implementado) ---
+// --- VERSÃO MODIFICADA PARA NOVAS SESSÕES (Corrigida) ---
 
 import {
   db,
@@ -8,17 +8,21 @@ import {
   where,
   orderBy,
   getDocs,
-  doc, // Necessário para buscar o telefone
-  getDoc, // Necessário para buscar o telefone
+  doc,
+  getDoc,
   updateDoc,
+  setDoc, // Para atualizar a grade
+  addDoc, // Para criar sessões
   serverTimestamp,
   onSnapshot,
   Timestamp,
-  // addDoc, // Se fosse usar a coleção 'notificacoes'
+  writeBatch, // Para criar múltiplas sessões atomicamente
 } from "../../../assets/js/firebase-init.js";
 
 let dbInstance = db;
 let adminUser;
+let dadosDaGradeAdmin = {}; // Variável global para armazenar dados da grade
+let salasPresenciaisAdmin = []; // Variável global para salas
 
 // --- Funções Auxiliares ---
 function formatarData(timestamp) {
@@ -28,6 +32,24 @@ function formatarData(timestamp) {
       month: "2-digit",
       year: "numeric",
     });
+  }
+  // Tenta converter string YYYY-MM-DD
+  if (typeof timestamp === "string" && /^\d{4}-\d{2}-\d{2}$/.test(timestamp)) {
+    try {
+      // Adiciona T03:00:00 para tentar ajustar fuso local (Brasília) se a data original não tiver hora
+      const date = new Date(timestamp + "T03:00:00");
+      // Verifica se a data é válida antes de formatar
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+    } catch (e) {
+      console.warn("Erro ao formatar data string:", timestamp, e);
+      // Ignora erro e retorna N/A
+    }
   }
   return "N/A";
 }
@@ -44,14 +66,60 @@ function formatarTipoSolicitacao(tipoInterno) {
   return mapaTipos[tipoInterno] || tipoInterno;
 }
 
+// Função para carregar dados da grade (chamada no init)
+async function loadGradeDataAdmin() {
+  try {
+    const gradeRef = doc(dbInstance, "administrativo", "grades");
+    const gradeSnap = await getDoc(gradeRef);
+    if (gradeSnap.exists()) {
+      dadosDaGradeAdmin = gradeSnap.data();
+      console.log("Dados da grade carregados para admin.");
+    } else {
+      console.warn(
+        "Documento da grade (administrativo/grades) não encontrado."
+      );
+      dadosDaGradeAdmin = {};
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados da grade para admin:", error);
+    dadosDaGradeAdmin = {};
+  }
+}
+
+// Função para carregar salas (chamada no init ou ao abrir modal)
+async function carregarSalasDoFirebase() {
+  if (salasPresenciaisAdmin.length > 0) return; // Já carregou
+  try {
+    const configRef = doc(dbInstance, "configuracoesSistema", "geral");
+    const docSnap = await getDoc(configRef);
+    if (docSnap.exists() && docSnap.data().listas?.salasPresenciais) {
+      salasPresenciaisAdmin = docSnap.data().listas.salasPresenciais;
+      console.log("Salas presenciais carregadas:", salasPresenciaisAdmin);
+    } else {
+      console.warn(
+        "Lista de salas presenciais não encontrada nas configurações."
+      );
+      salasPresenciaisAdmin = [];
+    }
+  } catch (error) {
+    console.error("Erro ao carregar salas:", error);
+    salasPresenciaisAdmin = [];
+  }
+}
+
 // Função principal de inicialização
-export function init(db_ignored, user, userData) {
+export async function init(db_ignored, user, userData) {
+  // Adicionado async
   console.log(
-    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.WHATSAPP iniciado."
+    "Módulo solicitacoes-admin.js (Coleção Central 'solicitacoes') V.NOVAS_SESSOES iniciado."
   );
   adminUser = userData;
 
-  // Seletores DOM
+  // Carregar dados da grade e salas no início
+  await loadGradeDataAdmin();
+  await carregarSalasDoFirebase();
+
+  // --- Seletores DOM (mantidos) ---
   const tabsContainer = document.querySelector(".tabs-container");
   const tabLinks = document.querySelectorAll(".tab-link");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -63,7 +131,7 @@ export function init(db_ignored, user, userData) {
   const modalCancelBtn = document.getElementById("modal-cancel-btn");
   const tabContentContainer = document.querySelector("#tab-content-container");
 
-  // Configuração Abas
+  // --- Configuração Abas (mantida) ---
   function setupTabs() {
     if (!tabsContainer) return;
     tabsContainer.addEventListener("click", (event) => {
@@ -80,12 +148,13 @@ export function init(db_ignored, user, userData) {
         console.warn(`Conteúdo da aba não encontrado para ID: ${targetTabId}`);
       }
     });
+    // Ativa a primeira aba por padrão se nenhuma estiver ativa
     if (tabLinks.length > 0 && !document.querySelector(".tab-link.active")) {
       tabLinks[0].click();
     }
   }
 
-  // --- Função Genérica: Carregar Solicitações da Coleção Central ---
+  // --- Função Genérica: Carregar Solicitações (mantida) ---
   function loadSolicitacoesPorTipo(
     tipoSolicitacao,
     tableBodyId,
@@ -139,9 +208,16 @@ export function init(db_ignored, user, userData) {
               const docId = doc.id;
               const tr = renderRowFunction(data, docId);
               if (tr instanceof Node) {
+                // Garante que é um elemento DOM
                 tableBody.appendChild(tr);
               } else {
-                tableBody.innerHTML += tr; // Fallback
+                console.warn("Função renderRow não retornou um Node:", tr);
+                // Tentar adicionar como string (fallback)
+                try {
+                  tableBody.innerHTML += tr;
+                } catch (e) {
+                  console.error("Falha ao adicionar linha como string:", e);
+                }
               }
             });
           }
@@ -156,7 +232,8 @@ export function init(db_ignored, user, userData) {
           countBadge.style.display = "none";
         }
       );
-      // TODO: Gerenciar unsubscribe
+      // TODO: Gerenciar unsubscribe quando a página/módulo for descarregado
+      // Ex: armazenar unsubscribes em um array e chamar unsubscribe() para cada um
     } catch (error) {
       console.error(
         `Falha ao construir query para [${tipoSolicitacao}]:`,
@@ -168,7 +245,7 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Implementação das funções de carregamento ---
+  // --- Implementação das funções de carregamento (mantidas) ---
   function loadNovasSessoes() {
     loadSolicitacoesPorTipo(
       "novas_sessoes",
@@ -216,10 +293,19 @@ export function init(db_ignored, user, userData) {
       "empty-state-inclusao-grade-pb",
       "count-inclusao-grade-pb",
       renderInclusaoAlteracaoGradePBRow,
-      9
+      10
+    );
+  } // Colspan ajustado para 10
+  function loadExclusaoHorarios() {
+    loadSolicitacoesPorTipo(
+      "exclusao_horario",
+      "table-body-exclusao-horarios",
+      "empty-state-exclusao-horarios",
+      "count-exclusao-horarios",
+      renderExclusaoHorarioRow,
+      7
     );
   }
-
   async function loadStatusContratos() {
     console.log("Carregando Status Contratos...");
     const tableBodyId = "table-body-status-contratos";
@@ -242,49 +328,49 @@ export function init(db_ignored, user, userData) {
     countBadge.textContent = "0";
 
     try {
-      const qPb = query(
-        collection(dbInstance, "trilhaPaciente"),
-        where("status", "==", "em_atendimento_pb")
+      // Query mais eficiente: buscar apenas pacientes com atendimentosPB
+      const qCombined = query(
+        collection(dbInstance, "trilhaPaciente")
+        // Adicionar where('atendimentosPB', '!=', null) se o array puder ser null/undefined
+        // where('status', 'in', ['em_atendimento_pb', 'cadastrar_horario_psicomanager']) // Filtrar status se necessário performance
       );
-      const qCadastrar = query(
-        collection(dbInstance, "trilhaPaciente"),
-        where("status", "==", "cadastrar_horario_psicomanager")
-      );
-      const [pbSnapshot, cadastrarSnapshot] = await Promise.all([
-        getDocs(qPb),
-        getDocs(qCadastrar),
-      ]);
-      let pendingContracts = [];
-      const processedPacientes = new Set();
+      const snapshot = await getDocs(qCombined);
 
-      const processSnapshot = (snapshot) => {
-        snapshot.forEach((doc) => {
-          const pacienteId = doc.id;
-          if (processedPacientes.has(pacienteId)) return;
-          processedPacientes.add(pacienteId);
-          const pacienteData = doc.data();
-          const atendimentosAtivos =
-            pacienteData.atendimentosPB?.filter(
-              (at) => at.statusAtendimento === "ativo"
-            ) || [];
-          atendimentosAtivos.forEach((atendimento) => {
-            if (!atendimento.contratoAssinado) {
-              pendingContracts.push({
-                pacienteId: pacienteId,
-                pacienteNome:
-                  pacienteData.nomeCompleto || "Nome não encontrado",
-                profissionalNome:
-                  atendimento.profissionalNome || "Profissional não encontrado",
-                profissionalId: atendimento.profissionalId || null,
-                statusContrato: "Pendente",
-                lastUpdate: pacienteData.lastUpdate,
-              });
-            }
-          });
+      let pendingContracts = [];
+      snapshot.forEach((doc) => {
+        const pacienteId = doc.id;
+        const pacienteData = doc.data();
+
+        // Verificar se o status é relevante (opcional, mas bom para performance)
+        if (
+          !["em_atendimento_pb", "cadastrar_horario_psicomanager"].includes(
+            pacienteData.status
+          )
+        ) {
+          return; // Pula paciente se não estiver em um status relevante
+        }
+
+        const atendimentosAtivos =
+          pacienteData.atendimentosPB?.filter(
+            (at) => at.statusAtendimento === "ativo"
+          ) || [];
+
+        atendimentosAtivos.forEach((atendimento) => {
+          if (!atendimento.contratoAssinado) {
+            pendingContracts.push({
+              pacienteId: pacienteId,
+              pacienteNome: pacienteData.nomeCompleto || "Nome não encontrado",
+              profissionalNome:
+                atendimento.profissionalNome || "Profissional não encontrado",
+              profissionalId: atendimento.profissionalId || null,
+              statusContrato: "Pendente",
+              lastUpdate: pacienteData.lastUpdate, // Para ordenação ou info
+            });
+          }
         });
-      };
-      processSnapshot(pbSnapshot);
-      processSnapshot(cadastrarSnapshot);
+      });
+
+      // Ordenar por nome do paciente
       pendingContracts.sort((a, b) =>
         a.pacienteNome.localeCompare(b.pacienteNome)
       );
@@ -298,22 +384,23 @@ export function init(db_ignored, user, userData) {
         emptyState.style.display = "none";
         countBadge.textContent = pendingContracts.length;
         countBadge.style.display = "inline-block";
+
         pendingContracts.forEach((item) => {
           const dataAtualizacao = formatarData(item.lastUpdate);
           const tr = document.createElement("tr");
           tr.innerHTML = `
-                        <td>${item.pacienteNome}</td>
-                        <td>${item.profissionalNome}</td>
-                        <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
-                        <td>${dataAtualizacao}</td>
-                        <td>
-                            <button class="action-button btn-notificar-contrato"
-                                    data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
-                                    data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
-                                    title="Notificar profissional sobre contrato pendente via WhatsApp">
-                                Notificar
-                            </button>
-                        </td>`;
+                            <td>${item.pacienteNome}</td>
+                            <td>${item.profissionalNome}</td>
+                            <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
+                            <td>${dataAtualizacao}</td>
+                            <td>
+                                <button class="action-button btn-notificar-contrato"
+                                        data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
+                                        data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
+                                        title="Notificar profissional sobre contrato pendente via WhatsApp">
+                                    Notificar
+                                </button>
+                            </td>`;
           tableBody.appendChild(tr);
         });
       }
@@ -325,46 +412,35 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  function loadExclusaoHorarios() {
-    console.log(
-      "Carregando solicitações de exclusão da coleção 'solicitacoes'..."
-    );
-    loadSolicitacoesPorTipo(
-      "exclusao_horario",
-      "table-body-exclusao-horarios",
-      "empty-state-exclusao-horarios",
-      "count-exclusao-horarios",
-      renderExclusaoHorarioRow,
-      7
-    );
-  }
-
-  // --- Funções de Renderização ---
+  // --- Funções de Renderização (mantidas) ---
   function renderNovasSessoesRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const dataInicioFormatada = detalhes.dataInicioPreferencial
-      ? formatarData(
-          Timestamp.fromDate(
-            new Date(detalhes.dataInicioPreferencial + "T03:00:00")
-          )
-        )
+      ? formatarData(detalhes.dataInicioPreferencial)
       : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
-      detalhes.diaSemana || "N/A"
-    }, ${detalhes.horario || "N/A"} (${
+    tr.innerHTML = `
+            <td>${dataSol}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${data.pacienteNome || "N/A"}</td>
+            <td>${detalhes.diaSemana || "N/A"}, ${detalhes.horario || "N/A"} (${
       detalhes.modalidade || "N/A"
-    })</td><td>${dataInicioFormatada}</td><td><span class="status-badge ${statusClass}">${
+    })</td>
+            <td>${dataInicioFormatada}</td>
+            <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="novas_sessoes">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+            <td>
+                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="novas_sessoes">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        `;
     return tr;
   }
   function renderAlteracaoHorarioRow(data, docId) {
@@ -373,109 +449,132 @@ export function init(db_ignored, user, userData) {
     const novos = detalhes.dadosNovos || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const dataInicioNova = novos.dataInicio
-      ? formatarData(
-          Timestamp.fromDate(new Date(novos.dataInicio + "T03:00:00"))
-        )
+      ? formatarData(novos.dataInicio)
       : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${data.pacienteNome || "N/A"}</td><td>${antigos.dia || "N/A"}, ${
-      antigos.horario || "N/A"
-    } (${antigos.modalidade || "N/A"})</td><td>${novos.dia || "N/A"}, ${
-      novos.horario || "N/A"
-    } (${
+    tr.innerHTML = `
+            <td>${dataSol}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${data.pacienteNome || "N/A"}</td>
+            <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
+      antigos.modalidade || "N/A"
+    })</td>
+            <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
       novos.modalidade || "N/A"
-    })</td><td>${dataInicioNova}</td><td class="motivo-cell">${
-      detalhes.justificativa || "N/A"
-    }</td><td><span class="status-badge ${statusClass}">${
+    })</td>
+             <td>${dataInicioNova}</td>
+            <td class="motivo-cell">${detalhes.justificativa || "N/A"}</td>
+            <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+            <td>
+                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        `;
     return tr;
   }
   function renderDesfechoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const dataDesf = detalhes.dataDesfecho
-      ? formatarData(
-          Timestamp.fromDate(new Date(detalhes.dataDesfecho + "T03:00:00"))
-        )
+      ? formatarData(detalhes.dataDesfecho)
       : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${dataDesf}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
-      detalhes.tipoDesfecho || "N/A"
-    }</td><td class="motivo-cell">${
-      detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
-    }</td><td><span class="status-badge ${statusClass}">${
+    tr.innerHTML = `
+            <td>${dataSol}</td>
+             <td>${dataDesf}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${data.pacienteNome || "N/A"}</td>
+            <td>${detalhes.tipoDesfecho || "N/A"}</td>
+            <td class="motivo-cell">${
+              detalhes.motivo || detalhes.motivoEncaminhamento || "N/A"
+            }</td>
+            <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="desfecho">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+            <td>
+                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="desfecho">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        `;
     return tr;
   }
   function renderReavaliacaoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const pref = detalhes.preferenciaAgendamento || {};
     const dataSol = formatarData(data.dataSolicitacao);
-    const dataPrefFormatada = pref.data
-      ? formatarData(Timestamp.fromDate(new Date(pref.data + "T03:00:00")))
-      : "N/A";
+    const dataPrefFormatada = pref.data ? formatarData(pref.data) : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
-      detalhes.valorContribuicaoAtual || "N/A"
-    }</td><td class="motivo-cell">${
-      detalhes.motivo || "N/A"
-    }</td><td>${dataPrefFormatada} ${pref.hora || ""} (${
+    tr.innerHTML = `
+            <td>${dataSol}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${data.pacienteNome || "N/A"}</td>
+            <td>${detalhes.valorContribuicaoAtual || "N/A"}</td>
+            <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
+             <td>${dataPrefFormatada} ${pref.hora || ""} (${
       pref.modalidade || "N/A"
-    })</td><td><span class="status-badge ${statusClass}">${
+    })</td>
+            <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="reavaliacao">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+            <td>
+                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="reavaliacao">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        `;
     return tr;
   }
   function renderInclusaoAlteracaoGradePBRow(data, docId) {
+    // Colspan 10 (9 colunas de dados + 1 ações)
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
     const dataInicioFormatada = detalhes.dataInicio
-      ? formatarData(
-          Timestamp.fromDate(new Date(detalhes.dataInicio + "T03:00:00"))
-        )
+      ? formatarData(detalhes.dataInicio)
       : "N/A";
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${data.pacienteNome || "N/A"}</td><td>${
-      detalhes.diaSemana || "N/A"
-    }</td><td>${detalhes.horario || "N/A"}</td><td>${
-      detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
-    }</td><td>${
-      detalhes.salaAtendimento || "N/A"
-    }</td><td>${dataInicioFormatada}</td><td><span class="status-badge ${statusClass}">${
+    tr.innerHTML = `
+                <td>${dataSol}</td>
+                <td>${data.solicitanteNome || "N/A"}</td>
+                <td>${data.pacienteNome || "N/A"}</td>
+                <td>${detalhes.diaSemana || "N/A"}</td>
+                <td>${detalhes.horario || "N/A"}</td>
+                <td>${
+                  detalhes.modalidade || detalhes.tipoAtendimento || "N/A"
+                }</td>
+                <td>${detalhes.salaAtendimento || "N/A"}</td>
+                <td>${dataInicioFormatada}</td>
+                <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+                <td>
+                    <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="inclusao_alteracao_grade">
+                        ${data.status === "Pendente" ? "Processar" : "Ver"}
+                    </button>
+                </td>
+            `;
     return tr;
   }
+
   function renderExclusaoHorarioRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -484,37 +583,44 @@ export function init(db_ignored, user, userData) {
     const statusClass = `status-${String(
       data.status || "pendente"
     ).toLowerCase()}`;
+
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${dataSol}</td><td>${
-      data.solicitanteNome || "N/A"
-    }</td><td>${
-      detalhes.totalHorariosAtual ?? "N/A"
-    }</td><td>${horariosLabels}</td><td class="motivo-cell">${
-      detalhes.motivo || "N/A"
-    }</td><td><span class="status-badge ${statusClass}">${
+    tr.innerHTML = `
+            <td>${dataSol}</td>
+            <td>${data.solicitanteNome || "N/A"}</td>
+            <td>${detalhes.totalHorariosAtual ?? "N/A"}</td>
+            <td>${horariosLabels}</td>
+            <td class="motivo-cell">${detalhes.motivo || "N/A"}</td>
+            <td><span class="status-badge ${statusClass}">${
       data.status
-    }</span></td><td><button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="exclusao_horario">${
-      data.status === "Pendente" ? "Processar" : "Ver"
-    }</button></td>`;
+    }</span></td>
+            <td>
+                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="exclusao_horario">
+                    ${data.status === "Pendente" ? "Processar" : "Ver"}
+                </button>
+            </td>
+        `;
     return tr;
   }
 
-  // --- Lógica do Modal Genérico ---
+  // --- Lógica do Modal Genérico (Ajustada para novas sessões) ---
   async function openGenericSolicitacaoModal(docId, tipo) {
     console.log(`Abrindo modal para ${tipo}, ID: ${docId}`);
     modalTitle.textContent = `Processar Solicitação (${formatarTipoSolicitacao(
       tipo
     )})`;
     modalBodyContent.innerHTML = '<div class="loading-spinner"></div>';
-    modalFooterActions.innerHTML = "";
-    modalFooterActions.appendChild(modalCancelBtn);
+    modalFooterActions.innerHTML = ""; // Limpa botões
+    modalFooterActions.appendChild(modalCancelBtn); // Adiciona Cancelar
     openModal();
+
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) throw new Error("Solicitação não encontrada!");
-      const solicitacaoData = docSnap.data();
-      let modalHtmlPath = `../page/`;
+      const solicitacaoData = { id: docSnap.id, ...docSnap.data() }; // Inclui ID
+
+      let modalHtmlPath = `../page/`; // Caminho relativo ao JS
       switch (tipo) {
         case "novas_sessoes":
           modalHtmlPath += "modal-novas-sessoes.html";
@@ -537,32 +643,49 @@ export function init(db_ignored, user, userData) {
         default:
           throw new Error(`Tipo de solicitação desconhecido: ${tipo}`);
       }
+
       console.log("Tentando carregar modal de:", modalHtmlPath);
       const response = await fetch(modalHtmlPath);
       if (!response.ok)
         throw new Error(
           `Falha ao carregar o HTML do modal (${response.statusText}).`
         );
+
       modalBodyContent.innerHTML = await response.text();
+
+      // Preenche os campos COMUNS e específicos
       preencherCamposModal(tipo, solicitacaoData);
+
+      // Configura os botões e lógica específica (Aprovar/Rejeitar/Salvar)
       configurarAcoesModal(docId, tipo, solicitacaoData);
+
+      // Adiciona lógica JS específica APÓS carregar o HTML do modal
+      if (tipo === "novas_sessoes") {
+        setupModalLogicNovasSessoes(solicitacaoData); // Configura listeners do novo form
+      } else if (tipo === "exclusao_horario") {
+        setupModalFormLogicExclusao(); // Configura listeners do form de exclusão
+      }
     } catch (error) {
       console.error("Erro ao abrir modal genérico:", error);
       modalBodyContent.innerHTML = `<p class="alert alert-error">Erro ao carregar detalhes: ${error.message}</p>`;
-      modalFooterActions.innerHTML = "";
-      modalFooterActions.appendChild(modalCancelBtn);
+      modalFooterActions.innerHTML = ""; // Limpa botões se deu erro
+      modalFooterActions.appendChild(modalCancelBtn); // Deixa só o Cancelar
     }
   }
 
-  // --- Funções Auxiliares do Modal ---
+  // --- Funções Auxiliares do Modal (Ajustada para novas sessões) ---
   function preencherCamposModal(tipo, data) {
     const detalhes = data.detalhes || {};
+
+    // Campos comuns
     setTextContentIfExists("#modal-solicitante-nome", data.solicitanteNome);
+    setValueIfExists("#modal-solicitante-id", data.solicitanteId); // Guarda ID do solicitante
     setTextContentIfExists("#modal-paciente-nome", data.pacienteNome);
     setTextContentIfExists(
       "#modal-data-solicitacao",
       formatarData(data.dataSolicitacao)
     );
+
     try {
       switch (tipo) {
         case "novas_sessoes":
@@ -572,14 +695,12 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists("#modal-ns-sala", detalhes.sala);
           setTextContentIfExists(
             "#modal-ns-data-inicio",
-            detalhes.dataInicioPreferencial
-              ? formatarData(
-                  Timestamp.fromDate(
-                    new Date(detalhes.dataInicioPreferencial + "T03:00:00")
-                  )
-                )
-              : "N/A"
+            formatarData(detalhes.dataInicioPreferencial)
           );
+          // Preenche campo readonly do profissional no novo form
+          setValueIfExists("#admin-ag-profissional-nome", data.solicitanteNome);
+          // Carrega as salas no dropdown
+          carregarSalasDropdownAdmin(); // Chama função para popular o select
           break;
         case "alteracao_horario":
           const antigos = detalhes.dadosAntigos || {};
@@ -597,11 +718,7 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists("#modal-ah-sala-nova", novos.sala);
           setTextContentIfExists(
             "#modal-ah-data-inicio-nova",
-            novos.dataInicio
-              ? formatarData(
-                  Timestamp.fromDate(new Date(novos.dataInicio + "T03:00:00"))
-                )
-              : "N/A"
+            formatarData(novos.dataInicio)
           );
           setTextContentIfExists("#modal-ah-alterar-grade", novos.alterarGrade);
           setTextContentIfExists(
@@ -613,13 +730,7 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists("#modal-df-tipo", detalhes.tipoDesfecho);
           setTextContentIfExists(
             "#modal-df-data",
-            detalhes.dataDesfecho
-              ? formatarData(
-                  Timestamp.fromDate(
-                    new Date(detalhes.dataDesfecho + "T03:00:00")
-                  )
-                )
-              : "N/A"
+            formatarData(detalhes.dataDesfecho)
           );
           setTextContentIfExists(
             "#modal-df-sessoes",
@@ -666,11 +777,7 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists("#modal-rv-pref-modalidade", pref.modalidade);
           setTextContentIfExists(
             "#modal-rv-pref-data",
-            pref.data
-              ? formatarData(
-                  Timestamp.fromDate(new Date(pref.data + "T03:00:00"))
-                )
-              : ""
+            formatarData(pref.data)
           );
           setTextContentIfExists("#modal-rv-pref-hora", pref.hora);
           break;
@@ -685,13 +792,7 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists("#modal-ig-frequencia", detalhes.frequencia);
           setTextContentIfExists(
             "#modal-ig-data-inicio",
-            detalhes.dataInicio
-              ? formatarData(
-                  Timestamp.fromDate(
-                    new Date(detalhes.dataInicio + "T03:00:00")
-                  )
-                )
-              : "N/A"
+            formatarData(detalhes.dataInicio)
           );
           setTextContentIfExists("#modal-ig-obs", detalhes.observacoes);
           break;
@@ -699,7 +800,7 @@ export function init(db_ignored, user, userData) {
           setTextContentIfExists(
             "#modal-solicitante-nome",
             data.solicitanteNome
-          );
+          ); // Repetido, mas ok
           setTextContentIfExists("#modal-solicitante-motivo", detalhes.motivo);
           const horariosList = document.getElementById("modal-horarios-list");
           if (horariosList) {
@@ -724,6 +825,8 @@ export function init(db_ignored, user, userData) {
       );
       modalBodyContent.innerHTML += `<p class="alert alert-error">Erro interno ao exibir detalhes.</p>`;
     }
+
+    // Exibir feedback anterior (mantido)
     if (data.adminFeedback && data.status !== "Pendente") {
       const feedback = data.adminFeedback;
       const feedbackContainer = document.getElementById(
@@ -745,40 +848,103 @@ export function init(db_ignored, user, userData) {
             "Sem mensagem."
         );
       }
+      // Desabilitar inputs/textareas da resposta se já foi respondido
       modalBodyContent
-        .querySelectorAll("input:not([type=hidden]), select, textarea")
+        .querySelectorAll(
+          "#admin-agendamento-section input:not([type=hidden]), #admin-agendamento-section select, #admin-agendamento-section textarea"
+        )
+        .forEach((el) => (el.disabled = true));
+      modalBodyContent
+        .querySelectorAll("#modal-admin-message-group textarea")
+        .forEach((el) => (el.disabled = true)); // Para outros tipos
+      // Para exclusão
+      modalBodyContent
+        .querySelectorAll(
+          'input[name="foiExcluido"], #dataExclusao, #mensagemAdmin, #motivoRejeicao'
+        )
         .forEach((el) => (el.disabled = true));
     } else {
       const feedbackContainer = document.getElementById(
         "modal-admin-feedback-view"
       );
       if (feedbackContainer) feedbackContainer.style.display = "none";
+      // Habilitar campos se for pendente
+      modalBodyContent
+        .querySelectorAll(
+          "#admin-agendamento-section input:not([type=hidden]), #admin-agendamento-section select, #admin-agendamento-section textarea"
+        )
+        .forEach((el) => (el.disabled = false));
+      modalBodyContent
+        .querySelectorAll("#modal-admin-message-group textarea")
+        .forEach((el) => (el.disabled = false));
+      // Para exclusão
+      modalBodyContent
+        .querySelectorAll(
+          'input[name="foiExcluido"], #dataExclusao, #mensagemAdmin, #motivoRejeicao'
+        )
+        .forEach((el) => (el.disabled = false));
+      // Reaplicar lógica de habilitação da sala em novas sessões
+      const tipoSessaoSelect = modalBodyContent.querySelector(
+        "#admin-ag-tipo-sessao"
+      );
+      if (tipoSessaoSelect) tipoSessaoSelect.dispatchEvent(new Event("change")); // Dispara change para ajustar estado inicial
+      // Ajustar estado inicial para exclusão
+      if (tipo === "exclusao_horario") {
+        setupModalFormLogicExclusao(); // Garante que a lógica de show/hide seja aplicada
+      }
     }
   }
+  // --- Funções auxiliares para preencher/setar valor (mantidas) ---
   function setTextContentIfExists(selector, value) {
     const element = modalBodyContent.querySelector(selector);
+    // Usa ?? 'N/A' para tratar null e undefined como 'N/A'
     if (element) element.textContent = value ?? "N/A";
+    else console.warn(`Elemento não encontrado para setText: ${selector}`);
   }
   function setValueIfExists(selector, value) {
     const element = modalBodyContent.querySelector(selector);
+    // Usa ?? '' para tratar null e undefined como string vazia
     if (element) element.value = value ?? "";
+    else console.warn(`Elemento não encontrado para setValue: ${selector}`);
   }
 
-  // --- Configura Ações e Handlers do Modal ---
+  // --- Configura Ações e Handlers do Modal (Ajustada para novas sessões) ---
   function configurarAcoesModal(docId, tipo, data) {
-    modalFooterActions.innerHTML = "";
-    modalFooterActions.appendChild(modalCancelBtn);
+    modalFooterActions.innerHTML = ""; // Limpa
+    modalFooterActions.appendChild(modalCancelBtn); // Adiciona Cancelar
+
     if (data.status === "Pendente") {
-      if (tipo === "exclusao_horario") {
+      if (tipo === "novas_sessoes") {
+        // Botões específicos para Novas Sessões
+        const approveButtonNs = document.createElement("button");
+        approveButtonNs.type = "button";
+        approveButtonNs.id = "btn-aprovar-novas-sessoes";
+        approveButtonNs.className = "action-button success dynamic-action-btn";
+        approveButtonNs.textContent = "Aprovar e Agendar";
+        approveButtonNs.onclick = () =>
+          handleNovasSessoesAction(docId, "Aprovada", data); // Chama handler específico
+        modalFooterActions.appendChild(approveButtonNs);
+
+        const rejectButtonNs = document.createElement("button");
+        rejectButtonNs.type = "button";
+        rejectButtonNs.id = "btn-rejeitar-novas-sessoes";
+        rejectButtonNs.className = "action-button error dynamic-action-btn";
+        rejectButtonNs.textContent = "Rejeitar";
+        rejectButtonNs.onclick = () =>
+          handleNovasSessoesAction(docId, "Rejeitada", data); // Chama handler específico
+        modalFooterActions.appendChild(rejectButtonNs);
+      } else if (tipo === "exclusao_horario") {
+        // Botão Salvar para Exclusão
         const saveButton = document.createElement("button");
         saveButton.type = "button";
         saveButton.id = "btn-salvar-exclusao";
         saveButton.className = "action-button dynamic-action-btn";
         saveButton.textContent = "Salvar Resposta (Exclusão)";
-        saveButton.onclick = () => handleSalvarExclusao(docId, data);
+        saveButton.onclick = () => handleSalvarExclusao(docId, data); // Handler específico de exclusão
         modalFooterActions.appendChild(saveButton);
-        setupModalFormLogicExclusao();
+        // setupModalFormLogicExclusao() é chamado após preencher os campos
       } else {
+        // Botões Genéricos Aprovar/Rejeitar para os outros tipos
         const approveButton = document.createElement("button");
         approveButton.type = "button";
         approveButton.id = "btn-aprovar-solicitacao";
@@ -787,6 +953,7 @@ export function init(db_ignored, user, userData) {
         approveButton.onclick = () =>
           handleGenericSolicitacaoAction(docId, tipo, "Aprovada", data);
         modalFooterActions.appendChild(approveButton);
+
         const rejectButton = document.createElement("button");
         rejectButton.type = "button";
         rejectButton.id = "btn-rejeitar-solicitacao";
@@ -795,6 +962,8 @@ export function init(db_ignored, user, userData) {
         rejectButton.onclick = () =>
           handleGenericSolicitacaoAction(docId, tipo, "Rejeitada", data);
         modalFooterActions.appendChild(rejectButton);
+
+        // Mostra campo de mensagem genérico (se existir no HTML carregado)
         const adminMessageGroup = document.getElementById(
           "modal-admin-message-group"
         );
@@ -803,36 +972,16 @@ export function init(db_ignored, user, userData) {
           const adminMessageText = adminMessageGroup.querySelector(
             "#admin-message-text"
           );
-          if (adminMessageText) adminMessageText.value = "";
+          if (adminMessageText) adminMessageText.value = ""; // Limpa
         } else {
-          console.warn("#modal-admin-message-group não encontrado.");
+          // console.warn("#modal-admin-message-group não encontrado para tipo:", tipo);
+          // Isso é esperado para novas_sessoes e exclusao, que têm seus próprios campos
         }
       }
     } else {
-      if (tipo === "exclusao_horario" && data.adminFeedback) {
-        const feedback = data.adminFeedback || {};
-        const foiExcluidoValue = feedback.foiExcluido
-          ? String(feedback.foiExcluido)
-          : null;
-        if (foiExcluidoValue) {
-          const radioToCheck = modalBodyContent.querySelector(
-            `input[name="foiExcluido"][value="${foiExcluidoValue}"]`
-          );
-          if (radioToCheck) radioToCheck.checked = true;
-        }
-        setValueIfExists(
-          "#dataExclusao",
-          feedback.dataExclusao
-            ? feedback.dataExclusao.toDate().toISOString().split("T")[0]
-            : ""
-        );
-        setValueIfExists("#mensagemAdmin", feedback.mensagemAdmin);
-        setValueIfExists("#motivoRejeicao", feedback.motivoRejeicao);
-        setupModalFormLogicExclusao();
-        modalBodyContent
-          .querySelectorAll("input:not([type=hidden]), select, textarea")
-          .forEach((el) => (el.disabled = true));
-      }
+      // Se não está Pendente (já foi respondido)
+      // Nenhum botão de ação, apenas o Cancelar já adicionado
+      // Esconde o grupo de mensagem genérico se existir
       const adminMessageGroup = document.getElementById(
         "modal-admin-message-group"
       );
@@ -840,21 +989,25 @@ export function init(db_ignored, user, userData) {
     }
   }
 
+  // --- Handler GENÉRICO para Aprovar/Rejeitar (NÃO usado para novas_sessoes e exclusao) ---
   async function handleGenericSolicitacaoAction(
     docId,
     tipo,
     novoStatus,
     solicitacaoData
   ) {
-    const mensagemAdminInput = document.getElementById("admin-message-text");
+    const mensagemAdminInput = document.getElementById("admin-message-text"); // Campo genérico
     const mensagemAdmin = mensagemAdminInput
       ? mensagemAdminInput.value.trim()
       : "";
+
     if (novoStatus === "Rejeitada" && !mensagemAdmin) {
       alert("Forneça o motivo da rejeição.");
       mensagemAdminInput?.focus();
       return;
     }
+
+    // Desabilitar botões e mostrar loading
     const approveButton = document.getElementById("btn-aprovar-solicitacao");
     const rejectButton = document.getElementById("btn-rejeitar-solicitacao");
     if (approveButton) approveButton.disabled = true;
@@ -866,22 +1019,27 @@ export function init(db_ignored, user, userData) {
     );
     if (clickedButton)
       clickedButton.innerHTML = `<span class="loading-spinner-small"></span> Processando...`;
+
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
       const adminFeedback = {
         statusFinal: novoStatus,
-        mensagemAdmin: mensagemAdmin,
+        mensagemAdmin: mensagemAdmin, // Usa o campo genérico
         dataResolucao: serverTimestamp(),
         adminNome: adminUser.nome || "Admin",
         adminId: adminUser.uid || "N/A",
       };
+
       await updateDoc(docRef, {
         status: novoStatus,
         adminFeedback: adminFeedback,
       });
+
       console.log(
         `Solicitação ${docId} (${tipo}) atualizada para ${novoStatus}.`
       );
+
+      // Executar ações pós-aprovação
       if (novoStatus === "Aprovada") {
         console.log("Executando ações pós-aprovação para:", tipo);
         switch (tipo) {
@@ -897,10 +1055,14 @@ export function init(db_ignored, user, userData) {
           case "inclusao_alteracao_grade":
             await processarAprovacaoInclusaoGrade(solicitacaoData);
             break;
+          // Não inclui novas_sessoes e exclusao aqui
           default:
-            console.log(`Nenhuma ação pós-aprovação para tipo: ${tipo}`);
+            console.log(
+              `Nenhuma ação pós-aprovação genérica para tipo: ${tipo}`
+            );
         }
       }
+
       alert(`Solicitação ${novoStatus.toLowerCase()} com sucesso!`);
       closeModal();
     } catch (error) {
@@ -909,6 +1071,7 @@ export function init(db_ignored, user, userData) {
         error
       );
       alert(`Erro ao processar: ${error.message}`);
+      // Reabilitar botões
       if (approveButton) approveButton.disabled = false;
       if (rejectButton) rejectButton.disabled = false;
       if (clickedButton)
@@ -917,39 +1080,44 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Funções de Processamento Pós-Aprovação ---
+  // --- Funções de Processamento Pós-Aprovação (mantidas) ---
   async function processarAprovacaoAlteracaoHorario(solicitacao) {
     console.log("Processando aprovação: Alteração de Horário", solicitacao);
     const { pacienteId, atendimentoId, detalhes } = solicitacao;
     const novosDados = detalhes.dadosNovos;
     if (!pacienteId || !atendimentoId || !novosDados)
       throw new Error("Dados incompletos para processar alteração.");
+
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
         throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
-      const atendimentosPB = pacienteData.atendimentosPB || [];
+      const atendimentosPB = [...(pacienteData.atendimentosPB || [])]; // Cria cópia
       const index = atendimentosPB.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
+
       if (index === -1)
         throw new Error(
           `Atendimento ID ${atendimentoId} não encontrado no paciente ${pacienteId}.`
         );
-      const nomeCampoHorario = "horarioSessoes"; // Ajuste se necessário
+
+      const nomeCampoHorario = "horarioSessoes"; // Assumindo este nome
       const horarioAtualizado = {
-        ...(atendimentosPB[index][nomeCampoHorario] || {}),
+        ...(atendimentosPB[index][nomeCampoHorario] || {}), // Preserva dados existentes
         diaSemana: novosDados.dia,
         horario: novosDados.horario,
         tipoAtendimento: novosDados.modalidade,
         frequencia: novosDados.frequencia,
         salaAtendimento: novosDados.sala,
-        dataInicio: novosDados.dataInicio,
-        ultimaAlteracaoAprovadaEm: serverTimestamp(),
+        dataInicio: novosDados.dataInicio, // A data de início pode precisar ser validada/ajustada
+        ultimaAlteracaoAprovadaEm: serverTimestamp(), // Rastreia aprovação
       };
+
       atendimentosPB[index][nomeCampoHorario] = horarioAtualizado;
+
       await updateDoc(pacienteRef, {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
@@ -957,13 +1125,34 @@ export function init(db_ignored, user, userData) {
       console.log(
         `Horário atualizado na trilha para paciente ${pacienteId}, atendimento ${atendimentoId}.`
       );
-      if (novosDados.alterarGrade === "Sim")
-        console.warn(
-          `AÇÃO NECESSÁRIA: Atualizar grade manualmente para ${pacienteId}.`
+
+      // --- Ação na Grade ---
+      if (novosDados.alterarGrade === "Sim") {
+        console.log(
+          `Tentando atualizar grade para profissional ${solicitacao.solicitanteId}`
         );
+        // É necessário o ID do profissional (solicitanteId)
+        await atualizarGradeDoProfissional(
+          solicitacao.solicitanteId, // ID do profissional
+          novosDados.dia, // 'segunda', 'terca', etc.
+          novosDados.horario, // 'HH:MM'
+          novosDados.modalidade, // 'Online' ou 'Presencial'
+          novosDados.sala, // Nome da sala ou 'Online'
+          pacienteId, // ID do paciente para registrar na grade
+          pacienteData.nomeCompleto || solicitacao.pacienteNome // Nome do paciente
+        );
+        console.log(
+          `Grade atualizada (ou tentativa realizada) para ${solicitacao.solicitanteNome}.`
+        );
+      } else {
+        console.log("Alteração na grade não solicitada.");
+      }
     } catch (error) {
-      console.error("Erro ao atualizar trilha:", error);
-      throw new Error(`Falha ao atualizar dados do paciente: ${error.message}`);
+      console.error("Erro ao atualizar trilha ou grade:", error);
+      // Lançar erro para que a mensagem de falha geral seja exibida
+      throw new Error(
+        `Falha ao atualizar dados do paciente ou grade: ${error.message}`
+      );
     }
   }
   async function processarAprovacaoDesfecho(solicitacao) {
@@ -972,23 +1161,27 @@ export function init(db_ignored, user, userData) {
     const { tipoDesfecho, dataDesfecho } = detalhes;
     if (!pacienteId || !atendimentoId || !tipoDesfecho || !dataDesfecho)
       throw new Error("Dados incompletos para desfecho.");
+
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
         throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
-      const atendimentosPB = pacienteData.atendimentosPB || [];
+      const atendimentosPB = [...(pacienteData.atendimentosPB || [])]; // Copia
       const index = atendimentosPB.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
+
       if (index === -1)
         throw new Error(
           `Atendimento ID ${atendimentoId} não encontrado no paciente ${pacienteId}.`
         );
-      const nomeCampoStatusAtendimento = "statusAtendimento"; // Ajuste se necessário
+
+      const nomeCampoStatusAtendimento = "statusAtendimento";
       let novoStatusAtendimento = "";
-      let novoStatusPaciente = pacienteData.status;
+      let novoStatusPaciente = pacienteData.status; // Mantém o status atual por padrão
+
       switch (tipoDesfecho) {
         case "Alta":
           novoStatusAtendimento = "concluido_alta";
@@ -1000,30 +1193,56 @@ export function init(db_ignored, user, userData) {
           break;
         case "Encaminhamento":
           novoStatusAtendimento = "concluido_encaminhamento";
-          if (detalhes.continuaAtendimentoEuPsico === "Não")
-            novoStatusPaciente = "encaminhado_externo";
+          // Muda status do paciente apenas se ele NÃO continuar na EuPsico
+          if (detalhes.continuaAtendimentoEuPsico === "Não") {
+            // Poderia ser um status mais específico como 'encaminhado_externo' se existir
+            novoStatusPaciente = "encaminhado_externo"; // Ou manter 'alta'/'desistencia' dependendo do fluxo?
+          } else {
+            // Se continua, o status geral do paciente pode precisar de outra lógica
+            // Talvez voltar para 'aguardando_vaga' ou outro? Depende da regra.
+            // Por ora, se continua, não muda o status GERAL do paciente aqui.
+            novoStatusPaciente = pacienteData.status;
+          }
           break;
         default:
           throw new Error(`Tipo de desfecho inválido: ${tipoDesfecho}`);
       }
+
+      // Atualiza o atendimento específico
       atendimentosPB[index][nomeCampoStatusAtendimento] = novoStatusAtendimento;
+      // Armazena todos os detalhes do desfecho no atendimento
       atendimentosPB[index].desfecho = {
-        ...detalhes,
+        ...detalhes, // Inclui motivo, serviço encaminhado, etc.
         aprovadoPor: adminUser.nome || "Admin",
         aprovadoEm: serverTimestamp(),
       };
+
       const updateData = {
         atendimentosPB: atendimentosPB,
         lastUpdate: serverTimestamp(),
       };
-      if (novoStatusPaciente !== pacienteData.status)
+      // Atualiza o status GERAL do paciente SOMENTE se ele mudou
+      if (novoStatusPaciente !== pacienteData.status) {
         updateData.status = novoStatusPaciente;
+      }
+
       await updateDoc(pacienteRef, updateData);
       console.log(
         `Desfecho registrado na trilha para ${pacienteId}. Status Paciente: ${
           updateData.status || pacienteData.status
         }`
       );
+
+      // AÇÃO NECESSÁRIA PÓS-DESFECHO: Liberar horário na grade?
+      const horarioParaLiberar = atendimentosPB[index].horarioSessoes;
+      const profissionalId = atendimentosPB[index].profissionalId;
+      if (horarioParaLiberar && profissionalId) {
+        console.warn(
+          `AÇÃO NECESSÁRIA: Liberar horário na grade para ${profissionalId}: ${horarioParaLiberar.diaSemana}, ${horarioParaLiberar.horario}, ${horarioParaLiberar.tipoAtendimento}, ${horarioParaLiberar.salaAtendimento}`
+        );
+        // Implementar a chamada para a função que limpa a grade aqui
+        await limparHorarioGrade(profissionalId, horarioParaLiberar);
+      }
     } catch (error) {
       console.error("Erro ao atualizar trilha:", error);
       throw new Error(`Falha ao registrar desfecho: ${error.message}`);
@@ -1033,33 +1252,36 @@ export function init(db_ignored, user, userData) {
     console.log("Processando aprovação: Reavaliação", solicitacao);
     const { pacienteId } = solicitacao;
     if (!pacienteId) throw new Error("ID do Paciente faltando.");
+
     const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
     try {
       const pacienteSnap = await getDoc(pacienteRef);
       if (!pacienteSnap.exists())
         throw new Error(`Paciente ${pacienteId} não encontrado.`);
       const pacienteData = pacienteSnap.data();
-      const novoStatus = "aguardando_reavaliacao";
-      const statusAnterior = pacienteData.status;
+
+      const novoStatus = "aguardando_reavaliacao"; // Status para indicar que o SS precisa agendar
+      const statusAnterior = pacienteData.status; // Guarda o status atual
+
+      const updateData = {
+        lastUpdate: serverTimestamp(),
+        solicitacaoReavaliacaoAprovadaEm: serverTimestamp(), // Marca quando foi aprovado
+      };
+
+      // Atualiza o status principal apenas se for diferente, e guarda o anterior
       if (pacienteData.status !== novoStatus) {
-        await updateDoc(pacienteRef, {
-          status: novoStatus,
-          statusAnteriorReavaliacao: statusAnterior,
-          solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
-          lastUpdate: serverTimestamp(),
-        });
+        updateData.status = novoStatus;
+        updateData.statusAnteriorReavaliacao = statusAnterior; // Campo para guardar o status anterior
         console.log(
           `Status do paciente ${pacienteId} -> ${novoStatus}. Status anterior (${statusAnterior}) salvo.`
         );
       } else {
-        await updateDoc(pacienteRef, {
-          solicitacaoReavaliacaoAprovadaEm: serverTimestamp(),
-          lastUpdate: serverTimestamp(),
-        });
         console.log(
           `Paciente ${pacienteId} já aguardava reavaliação. Timestamp atualizado.`
         );
       }
+
+      await updateDoc(pacienteRef, updateData);
     } catch (error) {
       console.error("Erro ao atualizar trilha:", error);
       throw new Error(
@@ -1069,37 +1291,75 @@ export function init(db_ignored, user, userData) {
   }
   async function processarAprovacaoInclusaoGrade(solicitacao) {
     console.log("Processando aprovação: Inclusão/Alt. Grade", solicitacao);
-    console.log(
-      `Confirmação registrada para Paciente ${solicitacao.pacienteId || "N/A"}.`
-    );
-    // alert("Confirmação registrada. Realize a alteração manualmente na grade.");
+    // Aqui, a ação principal é atualizar a grade. A solicitação é apenas uma confirmação.
+    const { solicitanteId, pacienteId, pacienteNome, detalhes } = solicitacao;
+    if (!solicitanteId || !detalhes) {
+      throw new Error("Dados incompletos para processar inclusão na grade.");
+    }
+    try {
+      await atualizarGradeDoProfissional(
+        solicitanteId,
+        detalhes.diaSemana,
+        detalhes.horario,
+        detalhes.modalidade || detalhes.tipoAtendimento, // Usar um dos dois
+        detalhes.salaAtendimento,
+        pacienteId,
+        pacienteNome
+      );
+      console.log(
+        `Grade atualizada (ou tentativa realizada) para ${solicitacao.solicitanteNome} via aprovação de solicitação.`
+      );
+      // Não precisa alterar a trilha do paciente aqui, pois isso já foi feito
+      // quando o voluntário informou os horários no modal dele.
+    } catch (error) {
+      console.error("Erro ao atualizar a grade via aprovação:", error);
+      throw new Error(
+        `Falha ao atualizar a grade: ${error.message}. A solicitação foi marcada como 'Aprovada', mas a grade pode não ter sido atualizada.`
+      );
+    }
   }
 
-  // --- Lógica Específica Modal Exclusão Horário ---
+  // --- Lógica Específica Modal Exclusão Horário (mantida) ---
   function setupModalFormLogicExclusao() {
     const radioSim = modalBodyContent.querySelector("#radioExcluidoSim");
     const radioNao = modalBodyContent.querySelector("#radioExcluidoNao");
     const camposSim = modalBodyContent.querySelector("#campos-feedback-sim");
     const camposNao = modalBodyContent.querySelector("#campos-feedback-nao");
+
     if (!radioSim || !radioNao || !camposSim || !camposNao) {
-      console.warn("Elementos do form de exclusão não encontrados.");
+      console.warn(
+        "Elementos do form de exclusão não encontrados no HTML carregado."
+      );
       return;
     }
+
     const toggleFields = () => {
+      // Garante que os containers existem antes de tentar acessar style
       if (camposSim)
         camposSim.style.display = radioSim.checked ? "block" : "none";
       if (camposNao)
         camposNao.style.display = radioNao.checked ? "block" : "none";
+
+      // Ajustar 'required' dinamicamente
+      const dataExclusaoInput = camposSim?.querySelector("#dataExclusao");
+      const mensagemAdminInput = camposSim?.querySelector("#mensagemAdmin");
+      const motivoRejeicaoInput = camposNao?.querySelector("#motivoRejeicao");
+
+      if (dataExclusaoInput) dataExclusaoInput.required = radioSim.checked;
+      if (mensagemAdminInput) mensagemAdminInput.required = radioSim.checked;
+      if (motivoRejeicaoInput) motivoRejeicaoInput.required = radioNao.checked;
     };
+
     radioSim.addEventListener("change", toggleFields);
     radioNao.addEventListener("change", toggleFields);
-    toggleFields();
+    toggleFields(); // Chama para estado inicial
   }
   async function handleSalvarExclusao(docId, solicitacaoData) {
     const saveButton = document.getElementById("btn-salvar-exclusao");
     if (!saveButton) return;
     saveButton.disabled = true;
     saveButton.innerHTML = `<span class="loading-spinner-small"></span> Salvando...`;
+
     const foiExcluido = modalBodyContent.querySelector(
       'input[name="foiExcluido"]:checked'
     )?.value;
@@ -1109,57 +1369,87 @@ export function init(db_ignored, user, userData) {
       modalBodyContent.querySelector("#mensagemAdmin")?.value;
     const motivoRejeicao =
       modalBodyContent.querySelector("#motivoRejeicao")?.value;
+
     try {
-      if (!foiExcluido) throw new Error("Selecione 'Sim' ou 'Não'.");
+      if (!foiExcluido)
+        throw new Error(
+          "Selecione se o(s) horário(s) foi(ram) excluído(s) da grade ('Sim' ou 'Não')."
+        );
+
       let statusFinal = "";
       const adminFeedback = {
-        foiExcluido: foiExcluido,
+        foiExcluido: foiExcluido, // 'sim' ou 'nao'
         dataResolucao: serverTimestamp(),
         adminNome: adminUser.nome || "Admin",
         adminId: adminUser.uid || "N/A",
+        dataExclusao: null, // Inicializa como null
+        mensagemAdmin: null,
+        motivoRejeicao: null,
       };
+
       if (foiExcluido === "sim") {
         if (!dataExclusaoInput || !mensagemAdmin)
-          throw new Error("Para 'Sim', data e mensagem são obrigatórias.");
+          throw new Error(
+            "Para 'Sim', a data da exclusão e uma mensagem para o voluntário são obrigatórias."
+          );
         statusFinal = "Concluída";
         try {
-          const dateObj = new Date(dataExclusaoInput + "T12:00:00Z");
+          // Converte a data para Timestamp do Firebase
+          const dateObj = new Date(dataExclusaoInput + "T12:00:00Z"); // Adiciona hora para evitar problemas de fuso
           if (isNaN(dateObj.getTime())) throw new Error("Data inválida");
           adminFeedback.dataExclusao = Timestamp.fromDate(dateObj);
         } catch (dateError) {
-          throw new Error("Data inválida (AAAA-MM-DD).");
+          throw new Error("Formato da data inválido. Use AAAA-MM-DD.");
         }
         adminFeedback.mensagemAdmin = mensagemAdmin;
-        console.warn(
-          `AÇÃO NECESSÁRIA: Excluir horários manualmente para ${docId}. Horários:`,
-          solicitacaoData.detalhes?.horariosParaExcluir
-        );
+
+        // --- AÇÃO NA GRADE ---
+        const horariosParaExcluir =
+          solicitacaoData.detalhes?.horariosParaExcluir || [];
+        if (horariosParaExcluir.length > 0) {
+          console.log(
+            `Tentando excluir horários da grade para ${solicitacaoData.solicitanteNome}...`
+          );
+          await excluirHorariosDaGrade(
+            solicitacaoData.solicitanteId,
+            horariosParaExcluir
+          );
+          console.log("Exclusão da grade concluída (ou tentativa realizada).");
+        } else {
+          console.warn(
+            "Nenhum horário especificado para exclusão na solicitação:",
+            docId
+          );
+        }
       } else {
+        // foiExcluido === 'nao'
         if (!motivoRejeicao)
-          throw new Error("Para 'Não', o motivo é obrigatório.");
+          throw new Error("Para 'Não', o motivo da rejeição é obrigatório.");
         statusFinal = "Rejeitada";
         adminFeedback.motivoRejeicao = motivoRejeicao;
       }
+
       const docRef = doc(dbInstance, "solicitacoes", docId);
       await updateDoc(docRef, {
         status: statusFinal,
         adminFeedback: adminFeedback,
       });
+
       console.log(
         `Solicitação de exclusão ${docId} atualizada para ${statusFinal}`
       );
-      alert("Resposta salva!");
+      alert("Resposta salva com sucesso!");
       closeModal();
     } catch (error) {
       console.error("Erro ao salvar exclusão:", error);
       alert(`Erro: ${error.message}`);
+    } finally {
       saveButton.disabled = false;
       saveButton.innerHTML = "Salvar Resposta (Exclusão)";
     }
   }
 
-  // --- Função para Notificar Contrato Pendente via WhatsApp ---
-  // *** MODIFICADO: Implementa lógica do WhatsApp ***
+  // --- Função para Notificar Contrato (mantida) ---
   async function handleNotificarContrato(
     pacienteId,
     pacienteNome,
@@ -1189,26 +1479,38 @@ export function init(db_ignored, user, userData) {
       }
 
       const userData = userDocSnap.data();
-      let telefone = userData.contato; // Assumindo campo 'telefone'
+      // Tentar múltiplos campos de telefone
+      let telefone = userData.contato || userData.telefone || userData.celular; // Adicionar outros campos se houver
 
       if (!telefone) {
         throw new Error(`Telefone não cadastrado para ${profissionalNome}.`);
       }
 
-      // 2. Limpar e formatar o número (remover não-dígitos, garantir código do país 55)
-      let numeroLimpo = telefone.replace(/\D/g, "");
+      // 2. Limpar e formatar o número
+      let numeroLimpo = String(telefone).replace(/\D/g, ""); // Garante que é string
       if (numeroLimpo.length === 10 || numeroLimpo.length === 11) {
-        // Formato nacional (DDD + numero)
-        numeroLimpo = "55" + numeroLimpo; // Adiciona 55 se não tiver
+        // Formato nacional
+        numeroLimpo = "55" + numeroLimpo;
       } else if (
         numeroLimpo.startsWith("55") &&
         (numeroLimpo.length === 12 || numeroLimpo.length === 13)
       ) {
-        // Já está no formato internacional correto
+        // Já está no formato internacional
       } else {
-        throw new Error(
-          `Formato de telefone inválido para ${profissionalNome}: ${telefone}`
-        );
+        // Tenta adicionar 55 mesmo se o formato for incerto (última tentativa)
+        if (!numeroLimpo.startsWith("55")) {
+          numeroLimpo = "55" + numeroLimpo;
+          console.warn(
+            `Formato de telefone incerto para ${profissionalNome}, adicionando 55: ${telefone} -> ${numeroLimpo}`
+          );
+        }
+        // Validação final de comprimento pode ser adicionada aqui se necessário
+        if (numeroLimpo.length < 12) {
+          // 55 + DDD (2) + Numero (min 8)
+          throw new Error(
+            `Formato de telefone inválido ou incompleto para ${profissionalNome}: ${telefone}`
+          );
+        }
       }
 
       // 3. Montar a mensagem
@@ -1230,20 +1532,21 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Funções Genéricas do Modal (Abrir/Fechar) ---
+  // --- Funções Genéricas do Modal (Abrir/Fechar - mantidas) ---
   function openModal() {
     if (modal) modal.style.display = "flex";
   }
   function closeModal() {
     if (modal) modal.style.display = "none";
-    if (modalBodyContent) modalBodyContent.innerHTML = "";
-    if (modalFooterActions) modalFooterActions.innerHTML = "";
+    if (modalBodyContent) modalBodyContent.innerHTML = ""; // Limpa conteúdo
+    if (modalFooterActions) modalFooterActions.innerHTML = ""; // Limpa ações
+    // Readiciona o botão cancelar ao footer (importante!)
     if (modalCancelBtn && modalFooterActions)
       modalFooterActions.appendChild(modalCancelBtn);
-    if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação";
+    if (modalTitle) modalTitle.textContent = "Detalhes da Solicitação"; // Reseta título
   }
 
-  // --- Inicialização ---
+  // --- Inicialização (mantida) ---
   setupTabs();
   loadNovasSessoes();
   loadAlteracoesHorario();
@@ -1253,7 +1556,7 @@ export function init(db_ignored, user, userData) {
   loadStatusContratos();
   loadExclusaoHorarios();
 
-  // --- Listener de Evento Principal (Delegação de Eventos) ---
+  // --- Listener de Evento Principal (Delegação - mantido) ---
   if (tabContentContainer) {
     console.log(
       "Listener de clique principal anexado a #tab-content-container."
@@ -1276,6 +1579,7 @@ export function init(db_ignored, user, userData) {
           alert("Erro: Não foi possível identificar a solicitação.");
         }
       }
+
       // Botões "Notificar Contrato"
       const notificarButton = e.target.closest(".btn-notificar-contrato");
       if (notificarButton) {
@@ -1284,6 +1588,7 @@ export function init(db_ignored, user, userData) {
         const pacienteNome = notificarButton.dataset.pacienteNome;
         const profissionalId = notificarButton.dataset.profissionalId;
         const profissionalNome = notificarButton.dataset.profissionalNome;
+
         if (
           !profissionalId ||
           profissionalId === "null" ||
@@ -1298,20 +1603,21 @@ export function init(db_ignored, user, userData) {
           pacienteNome,
           profissionalId,
           profissionalNome
-        ); // Chama a nova função
+        ); // Chama a função
       }
     });
   } else {
     console.error("FALHA CRÍTICA: #tab-content-container não encontrado.");
   }
 
-  // --- Event Listeners do Modal (Fechar/Cancelar) ---
+  // --- Event Listeners do Modal (Fechar/Cancelar - mantidos) ---
   if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
   else console.warn("Botão fechar modal (X) não encontrado.");
   if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
   else console.warn("Botão cancelar modal não encontrado.");
   if (modal) {
     modal.addEventListener("click", (event) => {
+      // Fecha se clicar no overlay (fundo escuro), mas não no content
       if (event.target === modal) closeModal();
     });
   } else {
@@ -1319,4 +1625,832 @@ export function init(db_ignored, user, userData) {
       "Elemento modal principal #solicitacao-details-modal não encontrado."
     );
   }
-} // Fim da função init
+
+  // --- Funções Adicionais para Novas Sessões ---
+
+  // Popula o dropdown de salas no modal
+  function carregarSalasDropdownAdmin() {
+    const salaSelect = modalBodyContent.querySelector("#admin-ag-sala");
+    if (!salaSelect) {
+      console.warn(
+        "Dropdown de sala (#admin-ag-sala) não encontrado no modal."
+      );
+      return;
+    }
+    salaSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa e adiciona padrão
+    salaSelect.innerHTML += '<option value="Online">Online</option>';
+    salasPresenciaisAdmin.forEach((sala) => {
+      // Garante que não duplique 'Online' e que a sala não seja vazia
+      if (sala && sala !== "Online") {
+        salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
+      }
+    });
+    // Pré-selecionar 'Online' se for o caso (será feito no setupModalLogic)
+  }
+
+  // Configura listeners e lógica inicial do form de agendamento do admin
+  function setupModalLogicNovasSessoes(solicitacaoData) {
+    const formAgendamento = modalBodyContent.querySelector(
+      "#admin-agendamento-form"
+    );
+    if (!formAgendamento) {
+      console.error(
+        "Formulário #admin-agendamento-form não encontrado no modal."
+      );
+      return;
+    }
+
+    const dataInicioInput = formAgendamento.querySelector(
+      "#admin-ag-data-inicio"
+    );
+    const horaInicioInput = formAgendamento.querySelector(
+      "#admin-ag-hora-inicio"
+    );
+    const horaFimInput = formAgendamento.querySelector("#admin-ag-hora-fim");
+    const tipoSessaoSelect = formAgendamento.querySelector(
+      "#admin-ag-tipo-sessao"
+    );
+    const salaSelect = formAgendamento.querySelector("#admin-ag-sala");
+    const feedbackDiv = formAgendamento.querySelector("#agendamento-feedback");
+    const solicitanteIdInput = modalBodyContent.querySelector(
+      "#modal-solicitante-id"
+    ); // Pega ID do profissional
+
+    // 1. Preencher valores com base na solicitação (se existirem)
+    if (solicitacaoData.detalhes?.dataInicioPreferencial) {
+      dataInicioInput.value = solicitacaoData.detalhes.dataInicioPreferencial;
+    }
+    if (solicitacaoData.detalhes?.horario) {
+      horaInicioInput.value = solicitacaoData.detalhes.horario;
+      calcularHoraFim(); // Calcula hora fim inicial
+    }
+    if (solicitacaoData.detalhes?.modalidade) {
+      tipoSessaoSelect.value = solicitacaoData.detalhes.modalidade; // 'Online' ou 'Presencial'
+    }
+    if (solicitacaoData.detalhes?.sala) {
+      // Tenta selecionar a sala solicitada, se existir no dropdown
+      const salaSolicitada = solicitacaoData.detalhes.sala;
+      const optionExists = Array.from(salaSelect.options).some(
+        (opt) => opt.value === salaSolicitada
+      );
+      if (optionExists) {
+        salaSelect.value = salaSolicitada;
+      } else {
+        console.warn(
+          `Sala solicitada "${salaSolicitada}" não encontrada no dropdown.`
+        );
+        // Deixa como "Selecione..." ou seleciona Online se for o caso
+        if (solicitacaoData.detalhes.modalidade === "Online") {
+          salaSelect.value = "Online";
+        }
+      }
+    } else if (solicitacaoData.detalhes?.modalidade === "Online") {
+      salaSelect.value = "Online"; // Garante Online se modalidade for Online
+    }
+
+    // 2. Listener para Hora Início -> Calcular Hora Fim
+    horaInicioInput.addEventListener("change", calcularHoraFim);
+
+    function calcularHoraFim() {
+      const horaInicio = horaInicioInput.value;
+      if (horaInicio) {
+        try {
+          const [horas, minutos] = horaInicio.split(":").map(Number);
+          const dataInicio = new Date();
+          dataInicio.setHours(horas, minutos, 0, 0);
+          dataInicio.setMinutes(dataInicio.getMinutes() + 50); // Adiciona 50 minutos
+          const horaFim = dataInicio.toTimeString().substring(0, 5);
+          horaFimInput.value = horaFim;
+        } catch (e) {
+          console.error("Erro ao calcular hora fim:", e);
+          horaFimInput.value = ""; // Limpa se der erro
+        }
+      } else {
+        horaFimInput.value = ""; // Limpa se hora início estiver vazia
+      }
+    }
+
+    // 3. Listener para Tipo Sessão -> Habilitar/Ajustar Sala
+    tipoSessaoSelect.addEventListener("change", ajustarSala);
+
+    function ajustarSala() {
+      const tipoSelecionado = tipoSessaoSelect.value;
+      const isOnline = tipoSelecionado === "Online";
+      salaSelect.disabled = isOnline;
+      if (isOnline) {
+        salaSelect.value = "Online"; // Força 'Online'
+      } else {
+        // Se era 'Online', limpa para forçar seleção (ou mantém se já era outra sala)
+        if (salaSelect.value === "Online") {
+          salaSelect.value = "";
+        }
+      }
+      // Valida a grade sempre que o tipo ou sala mudar
+      validarGradeAdmin();
+    }
+    ajustarSala(); // Chama para estado inicial
+
+    // 4. Listeners para validar grade ao mudar campos relevantes
+    const camposValidacao = [
+      dataInicioInput,
+      horaInicioInput,
+      tipoSessaoSelect,
+      salaSelect,
+    ];
+    camposValidacao.forEach((input) => {
+      input.addEventListener("change", validarGradeAdmin);
+    });
+    validarGradeAdmin(); // Valida no carregamento inicial
+  }
+
+  // Valida se o horário escolhido pelo admin está na grade do profissional
+  function validarGradeAdmin() {
+    const feedbackDiv = modalBodyContent.querySelector("#agendamento-feedback");
+    if (!feedbackDiv) return; // Sai se o elemento não existe
+
+    const profissionalId = modalBodyContent.querySelector(
+      "#modal-solicitante-id"
+    )?.value; // ID do profissional que solicitou
+    const dataInicio = modalBodyContent.querySelector(
+      "#admin-ag-data-inicio"
+    )?.value;
+    const horaInicio = modalBodyContent.querySelector(
+      "#admin-ag-hora-inicio"
+    )?.value;
+    const tipoSessao = modalBodyContent.querySelector(
+      "#admin-ag-tipo-sessao"
+    )?.value;
+    const sala = modalBodyContent.querySelector("#admin-ag-sala")?.value;
+
+    feedbackDiv.style.display = "none"; // Esconde por padrão
+
+    if (!profissionalId || !dataInicio || !horaInicio || !tipoSessao || !sala) {
+      // console.log("Campos insuficientes para validar grade.");
+      return; // Não valida se faltar dados essenciais
+    }
+
+    // Determinar o dia da semana a partir da data de início
+    let diaSemana = "";
+    try {
+      const dataObj = new Date(dataInicio + "T12:00:00"); // Usa meio dia para evitar problemas de fuso
+      const diaIndex = dataObj.getDay(); // 0 (Dom) a 6 (Sáb)
+      const diasMap = [
+        "domingo",
+        "segunda",
+        "terca",
+        "quarta",
+        "quinta",
+        "sexta",
+        "sabado",
+      ];
+      diaSemana = diasMap[diaIndex];
+      if (diaSemana === "domingo") {
+        feedbackDiv.innerHTML =
+          "<strong>Atenção:</strong> Não há grade aos domingos.";
+        feedbackDiv.className = "info-note alert alert-warning";
+        feedbackDiv.style.display = "block";
+        return; // Não valida domingo
+      }
+    } catch (e) {
+      console.error("Data de início inválida:", dataInicio, e);
+      feedbackDiv.innerHTML = "<strong>Erro:</strong> Data de início inválida.";
+      feedbackDiv.className = "info-note alert alert-error";
+      feedbackDiv.style.display = "block";
+      return;
+    }
+
+    const horaKey = horaInicio.replace(":", "-"); // Formato HH-MM
+    let horarioJaExisteNaGrade = false;
+
+    // Verifica na grade GLOBAL (dadosDaGradeAdmin) se o PROFISSIONAL já tem esse horário
+    const gradeDoProfissional =
+      dadosDaGradeAdmin?.profissionais?.[profissionalId]?.horarios;
+
+    if (
+      gradeDoProfissional &&
+      gradeDoProfissional[diaSemana] &&
+      gradeDoProfissional[diaSemana][horaKey]
+    ) {
+      // Horário existe na grade do profissional, verificar se tipo/sala batem
+      const slotGrade = gradeDoProfissional[diaSemana][horaKey];
+      if (tipoSessao === "Online" && slotGrade.tipo === "Online") {
+        horarioJaExisteNaGrade = true;
+      } else if (
+        tipoSessao === "Presencial" &&
+        slotGrade.tipo === "Presencial" &&
+        slotGrade.local === sala
+      ) {
+        horarioJaExisteNaGrade = true;
+      }
+    }
+
+    feedbackDiv.style.display = "block";
+    if (horarioJaExisteNaGrade) {
+      feedbackDiv.innerHTML =
+        "<strong>OK:</strong> Horário já cadastrado na grade deste profissional.";
+      feedbackDiv.className = "info-note alert alert-success";
+    } else {
+      feedbackDiv.innerHTML = `<strong>Atenção:</strong> Este horário (${diaSemana}, ${horaInicio}, ${tipoSessao}, ${sala}) <strong>NÃO</strong> está na grade atual do profissional. <strong>Ele será inserido na grade</strong> ao aprovar.`;
+      feedbackDiv.className = "info-note alert alert-warning";
+    }
+  }
+
+  // --- Handler específico para APROVAR/REJEITAR Novas Sessões ---
+  async function handleNovasSessoesAction(docId, novoStatus, solicitacaoData) {
+    const formAgendamento = modalBodyContent.querySelector(
+      "#admin-agendamento-form"
+    );
+    const mensagemAdminInput = formAgendamento.querySelector(
+      "#admin-ag-message-text"
+    );
+    const mensagemAdmin = mensagemAdminInput
+      ? mensagemAdminInput.value.trim()
+      : "";
+
+    // Botões
+    const approveButton = document.getElementById("btn-aprovar-novas-sessoes");
+    const rejectButton = document.getElementById("btn-rejeitar-novas-sessoes");
+    if (approveButton) approveButton.disabled = true;
+    if (rejectButton) rejectButton.disabled = true;
+    const clickedButton = document.getElementById(
+      novoStatus === "Aprovada"
+        ? "btn-aprovar-novas-sessoes"
+        : "btn-rejeitar-novas-sessoes"
+    );
+    if (clickedButton)
+      clickedButton.innerHTML = `<span class="loading-spinner-small"></span> Processando...`;
+
+    try {
+      // --- Lógica de Rejeição ---
+      if (novoStatus === "Rejeitada") {
+        if (!mensagemAdmin) {
+          throw new Error("Forneça o motivo da rejeição.");
+        }
+        // Apenas atualiza a solicitação
+        const docRef = doc(dbInstance, "solicitacoes", docId);
+        const adminFeedback = {
+          statusFinal: novoStatus,
+          mensagemAdmin: mensagemAdmin,
+          dataResolucao: serverTimestamp(),
+          adminNome: adminUser.nome || "Admin",
+          adminId: adminUser.uid || "N/A",
+        };
+        await updateDoc(docRef, {
+          status: novoStatus,
+          adminFeedback: adminFeedback,
+        });
+        console.log(
+          `Solicitação ${docId} (Novas Sessões) atualizada para ${novoStatus}.`
+        );
+        alert(`Solicitação ${novoStatus.toLowerCase()} com sucesso!`);
+        closeModal();
+        return; // Termina aqui para rejeição
+      }
+
+      // --- Lógica de Aprovação ---
+      if (novoStatus === "Aprovada") {
+        // 1. Validar o formulário de agendamento do admin
+        if (!formAgendamento.checkValidity()) {
+          throw new Error(
+            "Preencha todos os campos obrigatórios (*) do agendamento."
+          );
+        }
+
+        // 2. Coletar dados do agendamento definido pelo admin
+        const agendamentoAdmin = {
+          profissionalId: solicitacaoData.solicitanteId,
+          profissionalNome: solicitacaoData.solicitanteNome,
+          pacienteId: solicitacaoData.pacienteId,
+          pacienteNome: solicitacaoData.pacienteNome,
+          atendimentoId: solicitacaoData.atendimentoId, // ID do atendimento PB
+          dataInicio: formAgendamento.querySelector("#admin-ag-data-inicio")
+            .value,
+          horaInicio: formAgendamento.querySelector("#admin-ag-hora-inicio")
+            .value,
+          recorrencia: formAgendamento.querySelector("#admin-ag-recorrencia")
+            .value,
+          tipoSessao: formAgendamento.querySelector("#admin-ag-tipo-sessao")
+            .value,
+          sala: formAgendamento.querySelector("#admin-ag-sala").value,
+          mensagemAdmin: mensagemAdmin, // Mensagem opcional
+        };
+
+        // 3. Validar a grade novamente (verificação final)
+        // A função validarGradeAdmin já consulta dadosDaGradeAdmin
+        // Precisamos saber se o horário precisa ser inserido ou não
+        validarGradeAdmin(); // Roda a validação para atualizar a mensagem
+        const feedbackDiv = formAgendamento.querySelector(
+          "#agendamento-feedback"
+        );
+        const precisaInserirNaGrade = feedbackDiv.textContent.includes(
+          "será inserido na grade"
+        );
+
+        // 4. Inserir na grade, SE necessário
+        if (precisaInserirNaGrade) {
+          console.log("Tentando inserir/atualizar horário na grade...");
+          let diaSemanaGrade = "";
+          try {
+            const dataObj = new Date(agendamentoAdmin.dataInicio + "T12:00:00");
+            const diaIndex = dataObj.getDay();
+            const diasMap = [
+              "domingo",
+              "segunda",
+              "terca",
+              "quarta",
+              "quinta",
+              "sexta",
+              "sabado",
+            ];
+            diaSemanaGrade = diasMap[diaIndex];
+          } catch (e) {
+            throw new Error(
+              "Data de início inválida para determinar dia da semana."
+            );
+          }
+
+          await atualizarGradeDoProfissional(
+            agendamentoAdmin.profissionalId,
+            diaSemanaGrade, // 'segunda', 'terca', etc.
+            agendamentoAdmin.horaInicio, // 'HH:MM'
+            agendamentoAdmin.tipoSessao, // 'Online' ou 'Presencial'
+            agendamentoAdmin.sala, // Nome da sala ou 'Online'
+            agendamentoAdmin.pacienteId,
+            agendamentoAdmin.pacienteNome
+          );
+          console.log(
+            "Inserção/atualização na grade concluída (ou tentativa)."
+          );
+        } else {
+          console.log(
+            "Horário já existe na grade, não será inserido/alterado."
+          );
+        }
+
+        // 5. Criar as sessões na subcoleção do paciente
+        console.log("Criando sessões recorrentes...");
+        const sessoesCriadasIds = await criarSessoesRecorrentes(
+          agendamentoAdmin
+        );
+        console.log(
+          `Sessões criadas (${sessoesCriadasIds.length}):`,
+          sessoesCriadasIds
+        );
+
+        // 6. Atualizar a solicitação para "Aprovada"
+        const docRef = doc(dbInstance, "solicitacoes", docId);
+        const adminFeedbackAprovacao = {
+          statusFinal: novoStatus,
+          mensagemAdmin: mensagemAdmin,
+          dataResolucao: serverTimestamp(),
+          adminNome: adminUser.nome || "Admin",
+          adminId: adminUser.uid || "N/A",
+          // Adicionar detalhes do agendamento feito?
+          agendamentoRealizado: {
+            dataInicio: agendamentoAdmin.dataInicio,
+            horaInicio: agendamentoAdmin.horaInicio,
+            recorrencia: agendamentoAdmin.recorrencia,
+            tipoSessao: agendamentoAdmin.tipoSessao,
+            sala: agendamentoAdmin.sala,
+            sessoesCriadas: sessoesCriadasIds.length, // Quantidade
+          },
+        };
+        await updateDoc(docRef, {
+          status: novoStatus,
+          adminFeedback: adminFeedbackAprovacao,
+        });
+        console.log(
+          `Solicitação ${docId} (Novas Sessões) atualizada para ${novoStatus}.`
+        );
+
+        alert(
+          `Solicitação ${novoStatus.toLowerCase()} e sessões agendadas com sucesso!`
+        );
+        closeModal();
+      }
+    } catch (error) {
+      console.error(
+        `Erro ao ${novoStatus.toLowerCase()} solicitação ${docId} (Novas Sessões):`,
+        error
+      );
+      alert(`Erro ao processar: ${error.message}`);
+      // Reabilitar botões
+      if (approveButton) approveButton.disabled = false;
+      if (rejectButton) rejectButton.disabled = false;
+      if (clickedButton)
+        clickedButton.textContent =
+          novoStatus === "Aprovada" ? "Aprovar e Agendar" : "Rejeitar";
+    }
+  }
+
+  // --- Função para ATUALIZAR A GRADE do profissional ---
+  async function atualizarGradeDoProfissional(
+    profissionalId,
+    diaSemana,
+    horario,
+    tipo,
+    sala,
+    pacienteId,
+    pacienteNome
+  ) {
+    console.log(
+      `Atualizando grade: Prof=${profissionalId}, Dia=${diaSemana}, Hora=${horario}, Tipo=${tipo}, Sala=${sala}`
+    );
+    const gradeRef = doc(dbInstance, "administrativo", "grades");
+    const horaKey = horario.replace(":", "-"); // HH-MM
+
+    // Estrutura do objeto para a grade (pode ser ajustada conforme necessidade)
+    const slotData = {
+      ocupado: true,
+      tipo: tipo, // 'Online' ou 'Presencial'
+      local: sala, // Nome da sala ou 'Online'
+      pacienteId: pacienteId,
+      pacienteNome: pacienteNome,
+      // Adicionar mais infos se necessário (ex: timestamp da atualização)
+      atualizadoEm: serverTimestamp(),
+    };
+
+    // Monta o caminho para o campo específico a ser atualizado usando notação de ponto
+    // Ex: profissionais.USER_ID.horarios.segunda.09-00
+    const fieldPath = `profissionais.${profissionalId}.horarios.${diaSemana}.${horaKey}`;
+
+    try {
+      // Usar setDoc com merge: true ou updateDoc
+      // updateDoc é geralmente preferido para atualizar campos existentes
+      await updateDoc(gradeRef, {
+        [fieldPath]: slotData, // Usa a variável fieldPath como chave
+      });
+      console.log("Grade atualizada com sucesso para o horário:", fieldPath);
+    } catch (error) {
+      console.error("Erro ao atualizar a grade do profissional:", error);
+      // Verificar se o erro é porque o caminho não existe (documento/mapas pais)
+      // Nesse caso, talvez seja necessário criar os mapas pais primeiro
+      if (
+        error.code === "not-found" ||
+        error.message.includes("No document to update")
+      ) {
+        console.warn(
+          "Documento da grade ou caminho do profissional/dia não existe. Tentando criar com setDoc + merge."
+        );
+        // Tentar criar/mesclar os campos necessários
+        try {
+          // Cria o objeto aninhado necessário
+          const updateData = {};
+          updateData[
+            `profissionais.${profissionalId}.horarios.${diaSemana}.${horaKey}`
+          ] = slotData;
+
+          // setDoc com merge: true cria os campos/documentos se não existirem
+          await setDoc(gradeRef, updateData, { merge: true });
+          console.log(
+            "Grade criada/mesclada com sucesso para o horário:",
+            fieldPath
+          );
+        } catch (setError) {
+          console.error("Erro ao tentar criar/mesclar a grade:", setError);
+          throw new Error(
+            `Falha ao criar/atualizar a grade: ${setError.message}`
+          ); // Lança erro para o handler principal
+        }
+      } else {
+        throw new Error(`Falha ao atualizar a grade: ${error.message}`); // Lança outros erros
+      }
+    }
+  }
+
+  // --- Função para CRIAR SESSÕES recorrentes ---
+  async function criarSessoesRecorrentes(agendamento) {
+    console.log("Iniciando criação de sessões:", agendamento);
+    const {
+      pacienteId,
+      profissionalId,
+      profissionalNome,
+      atendimentoId,
+      dataInicio,
+      horaInicio,
+      recorrencia,
+      tipoSessao,
+      sala,
+    } = agendamento;
+
+    if (
+      !pacienteId ||
+      !atendimentoId ||
+      !dataInicio ||
+      !horaInicio ||
+      !recorrencia
+    ) {
+      throw new Error("Dados insuficientes para criar sessões.");
+    }
+
+    const sessoesRef = collection(
+      dbInstance,
+      "trilhaPaciente",
+      pacienteId,
+      "sessoes"
+    );
+    const batch = writeBatch(dbInstance);
+    const sessoesCriadasIds = [];
+    let dataAtual = new Date(dataInicio + `T${horaInicio}:00`); // Data/Hora da primeira sessão
+
+    // --- Lógica de Recorrência ---
+    // Definir quantas sessões criar (ex: 4 para semanal/quinzenal, 1 para única, 1 para mensal?)
+    // Ou criar por um período (ex: próximos 3 meses)? Vamos criar 4 por padrão para semanal/quinzenal.
+    let numeroSessoes = 1;
+    if (recorrencia === "semanal" || recorrencia === "quinzenal") {
+      numeroSessoes = 4; // Criar 4 sessões futuras
+    } else if (recorrencia === "mensal") {
+      numeroSessoes = 2; // Criar para 2 meses? Ajustar conforme regra
+    }
+
+    for (let i = 0; i < numeroSessoes; i++) {
+      // Verifica se a data é válida
+      if (isNaN(dataAtual.getTime())) {
+        console.error(
+          "Data inválida encontrada durante a criação de sessões:",
+          dataAtual
+        );
+        throw new Error(`Data de início inválida: ${dataInicio}`);
+      }
+
+      const novaSessaoRef = doc(sessoesRef); // Gera ID automático
+      const sessaoData = {
+        pacienteId: pacienteId,
+        profissionalId: profissionalId,
+        profissionalNome: profissionalNome,
+        atendimentoId: atendimentoId, // Vincula à PB específica
+        // dataHora: Timestamp.fromDate(dataAtual), // Campo principal de data/hora
+        // **CORREÇÃO IMPORTANTE:** Firestore espera Timestamp, não Date.
+        dataHora: Timestamp.fromDate(new Date(dataAtual)), // Armazena como Timestamp
+        recorrencia: recorrencia, // Guarda a recorrência usada
+        tipoSessao: tipoSessao, // Presencial / Online
+        sala: sala,
+        status: "pendente", // Status inicial
+        criadoEm: serverTimestamp(),
+        criadoPor: {
+          // Quem agendou
+          id: adminUser.uid,
+          nome: adminUser.nome,
+        },
+        anotacoes: null, // Campo para futuras anotações
+      };
+      batch.set(novaSessaoRef, sessaoData);
+      sessoesCriadasIds.push(novaSessaoRef.id);
+
+      // Calcula a próxima data
+      if (recorrencia === "semanal") {
+        dataAtual.setDate(dataAtual.getDate() + 7);
+      } else if (recorrencia === "quinzenal") {
+        dataAtual.setDate(dataAtual.getDate() + 14);
+      } else if (recorrencia === "mensal") {
+        dataAtual.setMonth(dataAtual.getMonth() + 1);
+      } else {
+        // 'unica'
+        break; // Sai do loop após a primeira
+      }
+    }
+
+    try {
+      await batch.commit();
+      console.log("Batch de criação de sessões concluído.");
+
+      // -- ATUALIZAR TRILHA DO PACIENTE --
+      // Idealmente, atualizar o status do paciente e talvez o atendimentoPB
+      // para refletir que as sessões foram agendadas.
+      const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
+      const pacienteSnap = await getDoc(pacienteRef);
+      if (pacienteSnap.exists()) {
+        const pacienteData = pacienteSnap.data();
+        const atendimentosPB = [...(pacienteData.atendimentosPB || [])];
+        const index = atendimentosPB.findIndex(
+          (at) => at.atendimentoId === atendimentoId
+        );
+        if (index !== -1) {
+          // Atualiza o objeto horarioSessoes dentro do atendimento específico
+          const horarioSessaoAdmin = {
+            responsavelId: adminUser.uid,
+            responsavelNome: adminUser.nome,
+            diaSemana: obterDiaDaSemana(agendamento.dataInicio), // Função auxiliar necessária
+            horario: agendamento.horaInicio,
+            tipoAtendimento: agendamento.tipoSessao,
+            frequencia: agendamento.recorrencia,
+            salaAtendimento: agendamento.sala,
+            dataInicio: agendamento.dataInicio, // Data da primeira sessão criada
+            definidoEm: serverTimestamp(),
+            // O campo 'alterarGrade' não se aplica aqui diretamente
+          };
+          atendimentosPB[index].horarioSessoes = horarioSessaoAdmin;
+          // O status do atendimento já deve ser 'ativo', definido pelo voluntário
+
+          const updateTrilha = {
+            atendimentosPB: atendimentosPB,
+            // O status geral do paciente deve ser 'em_atendimento_pb'
+            status: "em_atendimento_pb",
+            lastUpdate: serverTimestamp(),
+          };
+          await updateDoc(pacienteRef, updateTrilha);
+          console.log(
+            "Trilha do paciente atualizada com informações do agendamento."
+          );
+        } else {
+          console.warn(
+            `Atendimento PB ${atendimentoId} não encontrado na trilha para atualizar horário.`
+          );
+        }
+      } else {
+        console.warn(
+          `Paciente ${pacienteId} não encontrado para atualizar trilha após criar sessões.`
+        );
+      }
+
+      return sessoesCriadasIds;
+    } catch (error) {
+      console.error(
+        "Erro ao commitar batch de sessões ou atualizar trilha:",
+        error
+      );
+      throw new Error(
+        `Falha ao criar sessões no banco de dados: ${error.message}`
+      );
+    }
+  }
+
+  // Função auxiliar para obter dia da semana ('segunda', 'terca', etc.) a partir de 'AAAA-MM-DD'
+  function obterDiaDaSemana(dataString) {
+    try {
+      const dataObj = new Date(dataString + "T12:00:00");
+      const diaIndex = dataObj.getDay();
+      const diasMap = [
+        "domingo",
+        "segunda",
+        "terca",
+        "quarta",
+        "quinta",
+        "sexta",
+        "sabado",
+      ];
+      return diasMap[diaIndex];
+    } catch (e) {
+      console.error("Erro ao obter dia da semana:", e);
+      return "invalido";
+    }
+  }
+
+  // --- Função para LIMPAR HORÁRIO NA GRADE (Placeholder) ---
+  async function limparHorarioGrade(profissionalId, horarioInfo) {
+    if (
+      !profissionalId ||
+      !horarioInfo ||
+      !horarioInfo.diaSemana ||
+      !horarioInfo.horario
+    ) {
+      console.warn("Dados insuficientes para limpar horário da grade.");
+      return;
+    }
+    console.warn(
+      `AÇÃO NECESSÁRIA (IMPLEMENTAR): Limpar grade para Prof=${profissionalId}, Dia=${horarioInfo.diaSemana}, Hora=${horarioInfo.horario}`
+    );
+    // 1. Mapear diaSemana ('Segunda-feira') para a chave da grade ('segunda')
+    // 2. Formatar horário ('HH:MM') para a chave da grade ('HH-MM')
+    // 3. Montar o fieldPath: `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`
+    // 4. Usar updateDoc(gradeRef, { [fieldPath]: deleteField() }) ou setar para null/objeto vazio
+    //    Importante: Verificar como a grade é lida para saber qual a melhor forma de 'limpar'
+    //    Se for usado apenas para marcar 'ocupado: false', então:
+    //    await updateDoc(gradeRef, { [`${fieldPath}.ocupado`]: false, [`${fieldPath}.pacienteId`]: null, ... });
+    //    Se for para remover o campo inteiro, precisa de mais cuidado ou usar deleteField().
+  }
+
+  // --- Função para EXCLUIR HORÁRIOS DA GRADE ---
+  async function excluirHorariosDaGrade(profissionalId, horariosParaExcluir) {
+    if (
+      !profissionalId ||
+      !horariosParaExcluir ||
+      horariosParaExcluir.length === 0
+    ) {
+      console.warn("Dados insuficientes para excluir horários da grade.");
+      return;
+    }
+    console.log(
+      `Excluindo ${horariosParaExcluir.length} horários da grade para ${profissionalId}...`
+    );
+    const gradeRef = doc(dbInstance, "administrativo", "grades");
+    const updates = {};
+    let hasError = false;
+
+    horariosParaExcluir.forEach((horarioInfo) => {
+      // horarioInfo.path deve ser algo como 'segunda.09-00' ou similar
+      const pathParts = horarioInfo.path?.split(".");
+      if (pathParts && pathParts.length === 2) {
+        const diaChave = pathParts[0];
+        const horaChave = pathParts[1];
+        const fieldPath = `profissionais.${profissionalId}.horarios.${diaChave}.${horaChave}`;
+        // Para remover o campo, idealmente usar FieldValue.delete() do SDK Admin (server-side).
+        // No client-side, podemos setar para null ou um objeto vazio para indicar remoção.
+        // Setar para null é mais simples.
+        updates[fieldPath] = null; // Ou {} se preferir objeto vazio
+        console.log(`Marcado para remoção (null): ${fieldPath}`);
+      } else {
+        console.error("Path inválido no horário para excluir:", horarioInfo);
+        hasError = true; // Marca que houve erro, mas continua tentando os outros
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      try {
+        await updateDoc(gradeRef, updates);
+        console.log("Horários marcados como null na grade.");
+      } catch (error) {
+        console.error("Erro ao tentar excluir horários da grade:", error);
+        // Lança o erro para que a função handleSalvarExclusao possa tratá-lo
+        throw new Error(`Falha ao excluir horários da grade: ${error.message}`);
+      }
+    } else if (hasError) {
+      // Se houve erro nos paths mas nenhum update foi gerado
+      throw new Error(
+        "Formato inválido nos caminhos dos horários para exclusão."
+      );
+    } else {
+      console.warn("Nenhum horário válido encontrado para excluir da grade.");
+    }
+  }
+
+  // --- Inicialização e Listeners (Final) ---
+  setupTabs();
+  loadNovasSessoes();
+  loadAlteracoesHorario();
+  loadDesfechosPB();
+  loadReavaliacao();
+  loadInclusaoAlteracaoGradePB();
+  loadStatusContratos();
+  loadExclusaoHorarios();
+
+  // --- Listener de Evento Principal (Delegação - mantido) ---
+  if (tabContentContainer) {
+    console.log(
+      "Listener de clique principal anexado a #tab-content-container."
+    );
+    tabContentContainer.addEventListener("click", async (e) => {
+      // Botões "Processar"
+      const processarButton = e.target.closest(".btn-processar-solicitacao");
+      if (processarButton) {
+        e.preventDefault();
+        const docId = processarButton.dataset.docId;
+        const tipo = processarButton.dataset.tipo;
+        if (docId && tipo) {
+          console.log(`Processar: ID=${docId}, Tipo=${tipo}`);
+          openGenericSolicitacaoModal(docId, tipo);
+        } else {
+          console.error(
+            "Dados incompletos no botão processar:",
+            processarButton.dataset
+          );
+          alert("Erro: Não foi possível identificar a solicitação.");
+        }
+      }
+
+      // Botões "Notificar Contrato"
+      const notificarButton = e.target.closest(".btn-notificar-contrato");
+      if (notificarButton) {
+        e.preventDefault();
+        const pacienteId = notificarButton.dataset.pacienteId;
+        const pacienteNome = notificarButton.dataset.pacienteNome;
+        const profissionalId = notificarButton.dataset.profissionalId;
+        const profissionalNome = notificarButton.dataset.profissionalNome;
+
+        if (
+          !profissionalId ||
+          profissionalId === "null" ||
+          profissionalId === "undefined"
+        ) {
+          console.error("ID Profissional inválido:", notificarButton.dataset);
+          alert("Erro: ID do profissional não encontrado.");
+          return;
+        }
+        handleNotificarContrato(
+          pacienteId,
+          pacienteNome,
+          profissionalId,
+          profissionalNome
+        ); // Chama a função
+      }
+    });
+  } else {
+    console.error("FALHA CRÍTICA: #tab-content-container não encontrado.");
+  }
+
+  // --- Event Listeners do Modal (Fechar/Cancelar - mantidos) ---
+  if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
+  else console.warn("Botão fechar modal (X) não encontrado.");
+  if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
+  else console.warn("Botão cancelar modal não encontrado.");
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      // Fecha se clicar no overlay (fundo escuro), mas não no content
+      if (event.target === modal) closeModal();
+    });
+  } else {
+    console.error(
+      "Elemento modal principal #solicitacao-details-modal não encontrado."
+    );
+  }
+} // --- FIM DA FUNÇÃO INIT ---
