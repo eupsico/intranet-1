@@ -1,4 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/ui.js
+// Versão com correção de Roteamento (Hash) e Linha Clicável
 
 // Função calcularIdade mantida como antes...
 export function calcularIdade(dataNascimento) {
@@ -26,12 +27,18 @@ export function calcularIdade(dataNascimento) {
 /**
  * REFATORAÇÃO:
  * Cria uma linha de tabela (<tr>) para um paciente com Nome (link), Telefone, Email e Status.
+ *
+ * *** CORREÇÕES APLICADAS ***
+ * 1. A linha inteira (<tr>) agora é clicável.
+ * 2. O link usa o roteamento por HASH (#) para navegar para detalhe-paciente,
+ * corrigindo o bug que redirecionava ao dashboard.
  */
 export function criarLinhaPacienteTabela(paciente, atendimentoPB = null) {
-  // Define a URL para a nova página de detalhes do paciente.
-  const urlDetalhePaciente = `?p=voluntario&s=detalhe-paciente&id=${paciente.id}`;
+  // --- CORREÇÃO 1: Mudar a URL para usar o HASH (#) em vez de parâmetros (?)
+  // Isso garante que o roteador interno (portal-voluntario.js) seja usado.
+  const urlDetalhePaciente = `#detalhe-paciente/${paciente.id}`;
 
-  // Atendimento ID pode ser útil na página de detalhes, mantido como data attribute no link
+  // Atendimento ID pode ser útil na página de detalhes, mantido como data attribute na linha
   const atendimentoIdAttr = atendimentoPB
     ? `data-atendimento-id="${atendimentoPB.atendimentoId}"`
     : "";
@@ -42,7 +49,7 @@ export function criarLinhaPacienteTabela(paciente, atendimentoPB = null) {
   const email = paciente.email || "Não informado"; // Assumindo que o campo 'email' existe no objeto paciente
   const statusPaciente = paciente.status || "desconhecido";
 
-  // --- Lógica de Status (similar à versão anterior, mas simplificada para o badge) ---
+  // --- Lógica de Status (Inalterada) ---
   let displayStatus = statusPaciente.replace(/_/g, " ") || "Desconhecido"; // Texto para exibir
   let displayStatusClass = statusPaciente; // Classe CSS
 
@@ -71,12 +78,12 @@ export function criarLinhaPacienteTabela(paciente, atendimentoPB = null) {
     mapaStatusTexto[displayStatusClass] ||
     displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1); // Usa mapa ou capitaliza
 
+  // --- CORREÇÃO 2: Aplicar o clique na linha (<tr>) e remover o link (<a>) do nome
+  // Adicionado style="cursor: pointer;" e o onclick="window.location.hash=..."
   return `
-        <tr>
+        <tr style="cursor: pointer;" onclick="window.location.hash='${urlDetalhePaciente}'" data-id="${paciente.id}" ${atendimentoIdAttr}>
             <td>
-                <a href="${urlDetalhePaciente}" data-id="${paciente.id}" ${atendimentoIdAttr}>
-                    ${nomeCompleto}
-                </a>
+                ${nomeCompleto}
             </td>
             <td>${telefone}</td>
             <td>${email}</td>
