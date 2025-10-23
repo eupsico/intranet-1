@@ -1,13 +1,24 @@
 <div class="container-fluid" id="meus-pacientes-view">
-    <div class="view-header">
-        <h2>Meus Pacientes</h2>
-        <p class="description-box">Abaixo estão listados seus pacientes em atendimento. Clique em um paciente para ver os detalhes e ações disponíveis.</p>
-    </div>
+    <div class="view-header">
+        <h2>Meus Pacientes</h2>
+        <p class="description-box">Abaixo estão listados seus pacientes em atendimento. Clique no nome de um paciente para ver os detalhes.</p>
+    </div>
 
-       <div id="pacientes-list-container" class="pacientes-list-container">
-    </div>
+    <div class="table-section"> <table id="pacientes-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>E-mail</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="pacientes-table-body">
+                </tbody>
+        </table>
+    </div>
 
-    <div id="empty-state-pacientes" style="display:none;">
-        <p>Nenhum paciente encontrado.</p>
-    </div>
+    <div id="empty-state-pacientes" style="display:none;">
+        <p>Nenhum paciente encontrado.</p>
+    </div>
 </div>
