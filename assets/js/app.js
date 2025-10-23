@@ -275,13 +275,108 @@ document.addEventListener("DOMContentLoaded", function () {
         const pageTitleContainer = document.getElementById(
           "page-title-container"
         );
-        if (pageTitleContainer) {
+        // Define um título padrão inicial
+        if (pageTitleContainer)
           pageTitleContainer.innerHTML = "<h1>Intranet EuPsico</h1>";
+
+        // Verifica se há parâmetros p= e s= na URL atual
+        const urlParams = new URLSearchParams(window.location.search);
+        const moduloParam = urlParams.get("p");
+        const secaoParam = urlParams.get("s");
+
+        const contentArea = document.getElementById("content-area"); // Área onde o conteúdo será carregado
+        if (!contentArea) {
+          console.error(
+            "Elemento #content-area não encontrado no HTML principal."
+          );
+          return; // Não pode carregar conteúdo sem a área designada
         }
-        const module = await import(
-          "../../modulos/voluntario/js/portal-voluntario.js"
-        );
-        module.init(user, userData);
+        contentArea.innerHTML = '<div class="loading-spinner"></div>'; // Mostra loading
+
+        if (moduloParam && secaoParam) {
+          // Se p= e s= existem, tenta carregar o HTML e JS do submódulo específico
+          console.log(`Carregando submódulo: ${moduloParam}/${secaoParam}`);
+          try {
+            // 1. Carrega o HTML da seção na #content-area
+            //    O caminho é relativo ao portal-voluntario.html
+            const htmlPath = `./page/${secaoParam}.html`;
+            console.log("Tentando carregar HTML:", htmlPath);
+            const response = await fetch(htmlPath);
+            if (!response.ok) {
+              throw new Error(
+                `Arquivo HTML da seção '${secaoParam}' não encontrado (${response.status})`
+              );
+            }
+            contentArea.innerHTML = await response.text();
+            console.log(`HTML de ${secaoParam}.html carregado.`);
+
+            // Atualiza o título da página se houver h2 no conteúdo carregado
+            const pageTitleElement = contentArea.querySelector("h2");
+            if (pageTitleContainer && pageTitleElement) {
+              pageTitleContainer.innerHTML = `<h1>${pageTitleElement.textContent}</h1>`;
+              // Poderia adicionar subtítulo se houver <p> relevante
+            }
+
+            // 2. Importa e executa o JS do submódulo
+            //    O caminho é relativo ao app.js
+            const jsPath = `../../modulos/${moduloParam}/js/${secaoParam}.js`;
+            console.log("Tentando importar JS:", jsPath);
+            const module = await import(jsPath);
+
+            // Chama a função 'init' exportada pelo submódulo
+            if (module && typeof module.init === "function") {
+              await module.init(user, userData); // Passa user e userData
+              console.log(`Submódulo ${secaoParam}.js inicializado.`);
+            } else {
+              console.warn(
+                `Módulo ${jsPath} não exporta a função 'init'. A página pode não ser interativa.`
+              );
+              // Não lança erro, mas avisa que o JS pode não ter inicializado
+            }
+          } catch (error) {
+            console.error(
+              `Erro ao carregar submódulo ${moduloParam}/${secaoParam}:`,
+              error
+            );
+            contentArea.innerHTML = `<p class="alert alert-error">Erro ao carregar a seção '${secaoParam}'. Verifique o console para detalhes.</p>`;
+            if (pageTitleContainer)
+              pageTitleContainer.innerHTML = `<h1>Erro</h1>`;
+          }
+        } else {
+          // Se não há p= e s=, carrega o dashboard padrão do voluntário
+          console.log("Carregando dashboard padrão do voluntário...");
+          try {
+            // Caminho relativo ao portal-voluntario.html
+            const dashboardHtmlPath = "./page/view-dashboard-voluntario.html";
+            const response = await fetch(dashboardHtmlPath);
+            if (!response.ok) {
+              throw new Error(
+                `Arquivo HTML do dashboard não encontrado (${response.status})`
+              );
+            }
+            contentArea.innerHTML = await response.text();
+
+            // Caminho relativo ao app.js
+            const dashboardJsPath =
+              "../../modulos/voluntario/js/view-dashboard-voluntario.js";
+            const module = await import(dashboardJsPath);
+            if (module && typeof module.init === "function") {
+              await module.init(user, userData);
+              console.log("Dashboard do voluntário inicializado.");
+              if (pageTitleContainer)
+                pageTitleContainer.innerHTML = `<h1>Dashboard</h1><p>Visão geral das suas atividades.</p>`;
+            } else {
+              console.warn(
+                `Módulo ${dashboardJsPath} não exporta a função 'init'.`
+              );
+            }
+          } catch (error) {
+            console.error("Erro ao carregar dashboard do voluntário:", error);
+            contentArea.innerHTML = `<p class="alert alert-error">Erro ao carregar o dashboard. Verifique o console para detalhes.</p>`;
+            if (pageTitleContainer)
+              pageTitleContainer.innerHTML = `<h1>Erro</h1>`;
+          }
+        }
       },
     };
 
