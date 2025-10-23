@@ -1,0 +1,367 @@
+/* Arquivo: /modulos/voluntario/css/detalhe-paciente.css */
+
+/* --- CABEÇALHO DA PÁGINA --- */
+.detalhe-paciente-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.detalhe-paciente-header h2 {
+    color: var(--cor-primaria);
+    margin: 0;
+    font-size: 1.8em;
+    word-break: break-word; /* Para nomes de pacientes longos */
+}
+/* O botão de voltar usará as classes: "action-button secondary-button" do design-system */
+
+
+/* --- BARRA DE INFO RÁPIDA (Abaixo do H2 - Imagem 1) --- */
+.paciente-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px 25px; /* 15px vertical, 25px horizontal */
+    background-color: var(--cor-fundo-box);
+    padding: 15px 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 25px;
+}
+.info-item {
+    font-size: 0.9em;
+    min-width: 120px; /* Garante algum espaçamento */
+}
+.info-item .label {
+    display: block;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    font-size: 0.85em;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+.info-item .value {
+    color: var(--cor-texto-principal);
+    font-weight: 500;
+    font-size: 1.05em;
+}
+
+/* Status Badge (Reutilizado do design-system e meus-pacientes.css) */
+.info-item .value.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: white;
+}
+/* Cores do Status Badge (pode ser globalizado no design-system) */
+.status-badge.em_atendimento_plantao, 
+.status-badge.em_atendimento_pb,
+.status-badge.status-concluída { 
+    background-color: var(--cor-sucesso); 
+}
+.status-badge.aguardando_info_horarios, 
+.status-badge.aguardando_contrato,
+.status-badge.status-pendente { 
+    background-color: var(--cor-alerta); 
+    color: #212529; 
+}
+.status-badge.status-rejeitada,
+.status-badge.desistencia {
+    background-color: var(--cor-erro);
+}
+.status-badge.alta {
+    background-color: var(--cor-secundaria);
+}
+
+
+/* --- LAYOUT PRINCIPAL (Info Pessoal / Financeira - Imagem 1) --- */
+.detalhe-paciente-layout {
+    display: grid;
+    /* 2fr 1fr significa que a primeira coluna é 2x maior que a segunda */
+    grid-template-columns: 2fr 1fr; 
+    gap: 30px;
+    margin-bottom: 30px;
+}
+/* Os fieldsets, legends e form-groups são estilizados 
+   pelo design-system.css
+*/
+.form-grid {
+    display: grid;
+    gap: 15px 20px;
+}
+.form-grid.cols-2 {
+    /* minmax(200px, 1fr) cria colunas responsivas */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.form-grid .form-group {
+    margin-bottom: 0; /* Remove a margem do form-group quando em grid */
+}
+
+
+/* --- ABAS (Sessões, Acompanhamento, Prontuário) --- */
+/* Classes .tabs-container, .tab-link, .tab-content 
+   são estilizadas pelo design-system.css
+*/
+
+
+/* --- ABA SESSÕES (Imagem 2) --- */
+.session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.session-item {
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.session-info {
+    display: flex;
+    gap: 25px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+/* Reutiliza .info-item da barra de info */
+.session-info .info-item {
+    font-size: 1em;
+    min-width: auto;
+}
+.session-info .info-item .label {
+     font-size: 0.9em;
+}
+
+.session-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Botões de Presença/Ausência */
+.btn-presenca, .btn-ausencia {
+    padding: 8px 15px;
+    border: 1px solid;
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+.btn-presenca {
+    background-color: transparent;
+    color: var(--cor-sucesso);
+    border-color: var(--cor-sucesso);
+}
+.btn-presenca:hover, .btn-presenca.active {
+    background-color: var(--cor-sucesso);
+    color: white;
+}
+.btn-ausencia {
+    background-color: transparent;
+    color: var(--cor-erro);
+    border-color: var(--cor-erro);
+}
+.btn-ausencia:hover, .btn-ausencia.active {
+    background-color: var(--cor-erro);
+    color: white;
+}
+
+/* Estado "Realizada" (quando presença/ausência já foi marcada) */
+.session-item.status-realizada .session-info .value.status-presenca {
+    color: var(--cor-sucesso);
+    font-weight: 600;
+}
+.session-item.status-realizada .session-info .value.status-ausente {
+    color: var(--cor-erro);
+    font-weight: 600;
+}
+.session-item.status-realizada .session-actions .btn-presenca,
+.session-item.status-realizada .session-actions .btn-ausencia {
+    display: none; /* Esconde botões se já foi marcada */
+}
+.session-item.status-pendente .info-item .value.status {
+    color: var(--cor-texto-secundario);
+    font-style: italic;
+}
+/* Placeholder para lista vazia */
+.session-list-placeholder {
+    text-align: center;
+    padding: 30px;
+    color: var(--cor-texto-secundario);
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+}
+
+
+/* --- ABA ACOMPANHAMENTO CLÍNICO E MODAL DE ANOTAÇÕES (Imagens 3 e 4) --- */
+
+/* Descrição solicitada abaixo do label */
+.field-description {
+    font-size: 0.85em;
+    color: var(--cor-texto-secundario);
+    margin-top: -8px; /* Puxa para perto do label */
+    margin-bottom: 10px;
+    padding-left: 2px;
+    line-height: 1.4;
+    font-style: italic;
+}
+.field-description strong { /* Para "Atenção:" */
+    color: var(--cor-erro);
+    font-weight: 600;
+}
+
+#acompanhamento-clinico-form .form-group textarea {
+    min-height: 150px;
+}
+
+
+/* --- ABA PRONTUÁRIO PSICOLÓGICO (Imagem 7) --- */
+.prontuario-generator-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px; /* Opções na esquerda, coluna de ação na direita */
+    gap: 30px;
+}
+.prontuario-generator-actions {
+    background-color: var(--cor-fundo-box);
+    padding: 20px 25px;
+    border-radius: var(--borda-radius);
+    height: fit-content; /* Para alinhar com o topo do fieldset */
+}
+.prontuario-generator-actions p {
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 20px;
+}
+.prontuario-generator-actions .action-button {
+    width: 100%; /* Botão ocupa toda a largura */
+}
+/* O .checkbox-grid é estilizado pelo design-system.css
+   Apenas ajustamos o espaçamento se necessário
+*/
+.prontuario-generator-layout .checkbox-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+
+/* --- ESTILOS DE MODAIS (Movidos de meus-pacientes.css) --- */
+/* .modal-overlay, .modal-content, .modal-header, .modal-body, .modal-footer
+   são primariamente estilizados pelo design-system.css
+*/
+.modal-content.large {
+    max-width: 850px;
+}
+
+/* Estilos específicos de modais que estavam em meus-pacientes.css */
+.message-templates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.message-templates-list button {
+    width: 100%;
+    text-align: left;
+    padding: 12px 15px;
+    font-size: 1em;
+    /* Recomendação: Adicionar classes .action-button .secondary-button no HTML */
+}
+
+/* Feedback de validação (ex: modal de solicitar sessões) */
+#validacao-grade-feedback {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: var(--borda-radius);
+    border-left-width: 5px;
+    border-left-style: solid;
+}
+/* Estas classes dependem de --cor-alerta-fundo, etc. 
+   Se não estiverem no design-system, usar as classes .alert do design-system */
+#validacao-grade-feedback.exists {
+    background-color: #fff3cd; /* Fallback para var(--cor-alerta-fundo) */
+    border-left-color: var(--cor-alerta);
+    color: #856404; /* Fallback para var(--cor-alerta-texto) */
+}
+#validacao-grade-feedback.success {
+    background-color: #d4edda; /* Fallback para var(--cor-sucesso-fundo) */
+    border-left-color: var(--cor-sucesso);
+    color: #155724; /* Fallback para var(--cor-sucesso-texto) */
+}
+
+.dynamic-form-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+.output-area {
+    margin-top: 20px;
+}
+.output-area label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.output-area textarea {
+    width: 100%;
+    min-height: 120px;
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.9em;
+    resize: vertical;
+}
+.reavaliacao-info { /* Para o valor da contribuição no modal de reavaliação */
+    font-size: 0.8em;
+    color: var(--cor-texto-secundario);
+    margin-left: 5px;
+    display: block; /* Para ficar abaixo do valor */
+}
+.hidden {
+    display: none;
+}
+
+
+/* --- RESPONSIVIDADE --- */
+@media (max-width: 900px) {
+    .detalhe-paciente-layout {
+        grid-template-columns: 1fr; /* Coluna única em telas menores */
+ }
+    .prontuario-generator-layout {
+        grid-template-columns: 1fr; /* Coluna única */
+    }
+    .prontuario-generator-actions {
+        order: -1; /* Move a caixa de ação para cima no mobile */
+    }
+}
+
+@media (max-width: 600px) {
+    .form-grid.cols-2 {
+        grid-template-columns: 1fr; /* Coluna única */
+    }
+    .session-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .session-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .detalhe-paciente-header {
+         justify-content: flex-start;
+    }
+    .detalhe-paciente-header h2 {
+         font-size: 1.5em;
+    }
+    .paciente-info-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
