@@ -9,8 +9,9 @@ import {
   where,
   getDocs,
 } from "../../../../assets/js/firebase-init.js";
-import { criarAccordionPaciente } from "./ui.js";
-import { adicionarEventListenersGerais } from "./events.js";
+// Import atualizado de 'criarAccordionPaciente' para 'criarCardPaciente'
+import { criarCardPaciente } from "./ui.js";
+// Import de 'adicionarEventListenersGerais' removido, pois não é mais necessário.
 
 // Variáveis de escopo do módulo para armazenar os dados carregados
 let systemConfigs = null;
@@ -48,6 +49,7 @@ async function loadGradeData() {
 }
 
 async function carregarMeusPacientes(user, container) {
+  // ID do container foi atualizado para 'pacientes-list-container' no HTML
   container.innerHTML = '<div class="loading-spinner"></div>';
   try {
     const queryPlantao = query(
@@ -79,17 +81,15 @@ async function carregarMeusPacientes(user, container) {
         pacientes.push({ ...pacienteData, meuAtendimentoPB: meuAtendimento });
     });
 
-    pacientes.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
+    pacientes.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto)); // Variável 'accordionsHtml' renomeada para 'pacientesHtml' // Função 'criarAccordionPaciente' atualizada para 'criarCardPaciente'
 
-    const accordionsHtml = pacientes
-      .map((paciente) =>
-        criarAccordionPaciente(paciente, paciente.meuAtendimentoPB)
-      )
+    const pacientesHtml = pacientes
+      .map((paciente) => criarCardPaciente(paciente, paciente.meuAtendimentoPB))
       .join("");
 
     document.getElementById("empty-state-pacientes").style.display =
-      accordionsHtml === "" ? "block" : "none";
-    container.innerHTML = accordionsHtml;
+      pacientesHtml === "" ? "block" : "none";
+    container.innerHTML = pacientesHtml;
   } catch (error) {
     console.error("Erro crítico em carregarMeusPacientes:", error);
     container.innerHTML = `<p class="alert alert-error">Ocorreu um erro ao carregar seus pacientes.</p>`;
@@ -100,12 +100,5 @@ async function carregarMeusPacientes(user, container) {
 export async function initializeMeusPacientes(user, userData, container) {
   await loadSystemConfigs();
   await loadGradeData();
-  await carregarMeusPacientes(user, container);
-
-  // Passa os dados carregados para o módulo de eventos
-  adicionarEventListenersGerais(user, userData, {
-    systemConfigs,
-    dadosDaGrade,
-    salasPresenciais,
-  });
+  await carregarMeusPacientes(user, container); // A chamada para 'adicionarEventListenersGerais' foi removida. // Os novos 'paciente-card' são links (<a>) e não requerem JS para navegação. // Toda a lógica de eventos (modais, etc.) foi movida para a nova página de detalhes.
 }
