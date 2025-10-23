@@ -1,6 +1,6 @@
 // Arquivo: /modulos/voluntario/js/detalhe-paciente.js
 // Responsável pela lógica da página de detalhes do paciente.
-// *** CORREÇÃO: Removido <script> interno de construirFormularioHorarios e aplicado listener externamente ***
+// *** CORREÇÃO: Corrigida atribuição inválida em handleSalvarAnotacoes ***
 
 import {
   db,
@@ -717,8 +717,10 @@ async function handleSalvarAnotacoes(event) {
       `.session-item[data-sessao-id="${sessaoId}"]`
     );
     if (sessaoItem) {
+      // Verifica se encontrou o item da sessão
       const btnAnotacoes = sessaoItem.querySelector(".btn-anotacoes");
       if (btnAnotacoes) {
+        // Verifica se encontrou o botão
         btnAnotacoes.textContent = "Ver/Editar Anotações";
       }
     }
@@ -727,8 +729,11 @@ async function handleSalvarAnotacoes(event) {
     console.error(`Erro ao salvar anotações da sessão ${sessaoId}:`, error);
     alert(`Erro ao salvar anotações: ${error.message}`);
   } finally {
-    button.disabled = false;
-    button.textContent = "Salvar Anotações";
+    // Garante que o botão só é reabilitado se ainda existir
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Salvar Anotações";
+    }
   }
 }
 
@@ -852,13 +857,27 @@ function adicionarEventListenersModais() {
 
   // Submits dos Modais (usando event delegation no body para garantir que existam)
   document.body.addEventListener("click", async (e) => {
-    if (e.target.matches("#btn-confirmar-solicitacao")) {
+    // Usar .closest() para pegar o botão mesmo que clique em um ícone dentro dele
+    const btnSolicitarSessoes = e.target.closest("#btn-confirmar-solicitacao");
+    const btnEnviarWhatsapp = e.target.closest("#btn-gerar-enviar-whatsapp");
+    const btnAlterarHorario = e.target.closest(
+      "#btn-confirmar-alteracao-horario"
+    );
+    const btnConfirmarReavaliacao = e.target.closest(
+      "#btn-confirmar-reavaliacao"
+    );
+
+    if (btnSolicitarSessoes) {
+      e.preventDefault(); // Prevenir submit padrão se for type="submit"
       await handleSolicitarSessoesSubmit(e);
-    } else if (e.target.matches("#btn-gerar-enviar-whatsapp")) {
+    } else if (btnEnviarWhatsapp) {
+      e.preventDefault();
       handleMensagemSubmit(); // Não é async
-    } else if (e.target.matches("#btn-confirmar-alteracao-horario")) {
+    } else if (btnAlterarHorario) {
+      e.preventDefault();
       await handleAlterarHorarioSubmit(e);
-    } else if (e.target.matches("#btn-confirmar-reavaliacao")) {
+    } else if (btnConfirmarReavaliacao) {
+      e.preventDefault();
       await handleReavaliacaoSubmit(e);
     }
     // Outros botões de submit podem ser adicionados aqui se necessário
@@ -906,15 +925,6 @@ function adicionarEventListenersModais() {
     ?.addEventListener("click", abrirModalHorariosPb); // Para aguardando_info_horarios
 }
 
-// Colar AQUI as funções adaptadas de modals.js:
-// - abrirModalMensagens, preencherFormularioMensagem, atualizarPreviewMensagem, handleMensagemSubmit
-// - abrirModalSolicitarSessoes, handleSolicitarSessoesSubmit, validarHorarioNaGrade
-// - abrirModalAlterarHorario, handleAlterarHorarioSubmit
-// - abrirModalReavaliacao, renderizarDatasDisponiveis, carregarHorariosReavaliacao, handleReavaliacaoSubmit
-// - abrirModalDesfechoPb, handleDesfechoPbSubmit (ajustar dependências)
-// - abrirModalEncerramento, handleEncerramentoSubmit (já adaptados)
-// - abrirModalHorariosPb, construirFormularioHorarios, handleHorariosPbSubmit (já adaptados)
-
 // --- Lógica do Modal de Mensagens (Adaptada) ---
 let dadosParaMensagemGlobal = {}; // Usar uma variável global separada para mensagens
 let templateOriginalGlobal = "";
@@ -930,8 +940,10 @@ function abrirModalMensagens(/* Não precisa de params, usa globais */) {
   // Prioriza PB ativo, depois plantão ativo
   const atendimentoAtivo =
     pacienteDataGlobal.atendimentosPB?.find(
-      (at) => at.statusAtendimento === "ativo"
-    ) ||
+      (at) =>
+        at.profissionalId === userDataGlobal.uid &&
+        at.statusAtendimento === "ativo"
+    ) || // Checa ID prof
     (pacienteDataGlobal.status === "em_atendimento_plantao"
       ? pacienteDataGlobal.plantaoInfo
       : null);
@@ -1730,7 +1742,7 @@ async function abrirModalReavaliacao(/* Usa globais */) {
     (at) =>
       at.profissionalId === userDataGlobal.uid &&
       at.statusAtendimento === "ativo"
-  ); // Checa ID do prof logado
+  ); // Checa ID prof
 
   const modal = document.getElementById("reavaliacao-modal");
   if (!modal) {
@@ -1813,7 +1825,10 @@ async function abrirModalReavaliacao(/* Usa globais */) {
   if (pacNomeEl) pacNomeEl.value = pacienteDataGlobal.nomeCompleto;
   const valorAtualEl = document.getElementById("reavaliacao-valor-atual");
   if (valorAtualEl)
-    valorAtualEl.value = pacienteDataGlobal.valorContribuicao || "";
+    valorAtualEl.value =
+      pacienteDataGlobal.valorContribuicao != null
+        ? String(pacienteDataGlobal.valorContribuicao)
+        : ""; // Converter para string
 
   modal.style.display = "flex";
 
@@ -2891,7 +2906,7 @@ function abrirModalHorariosPb(/* Usa globais */) {
   modal.style.display = "flex"; // Usar flex
 }
 
-// *** CORREÇÃO: Removido <script> interno e listener será aplicado externamente ***
+// construirFormularioHorarios: Removido <script> interno
 function construirFormularioHorarios(nomeProfissional, salasDisponiveis = []) {
   let horasOptions = "";
   for (let i = 8; i <= 21; i++) {
@@ -2976,7 +2991,7 @@ function construirFormularioHorarios(nomeProfissional, salasDisponiveis = []) {
   `; // Fim do HTML retornado (sem o <script>)
 }
 
-// handleHorariosPbSubmit: Lógica mantida, usa globais userDataGlobal e IDs do form.
+// handleHorariosPbSubmit: Adicionado listener para tipo/sala
 async function handleHorariosPbSubmit(evento, userUid, userData) {
   // Recebe user e userData
   evento.preventDefault();
@@ -3058,7 +3073,11 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
             if (isOnline) salaSelect.value = "Online";
             // Não limpa se mudar pra presencial aqui, deixa o usuário escolher
           };
-          tipoSelect.addEventListener("change", handleChange);
+          // Adiciona o listener APENAS se não existir ainda (evita duplicação)
+          if (!tipoSelect.hasAttribute("data-listener-added")) {
+            tipoSelect.addEventListener("change", handleChange);
+            tipoSelect.setAttribute("data-listener-added", "true");
+          }
           handleChange(); // Aplica estado inicial lido do form
         }
       }
