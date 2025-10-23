@@ -2,256 +2,60 @@
 
 /* --- ESTRUTURA GERAL E CABEÇALHO --- */
 .view-header {
-    margin-bottom: 15px;
+    margin-bottom: 15px;
 }
 .view-header h2 {
-    color: var(--cor-primaria);
-    margin-bottom: 3px;
+    color: var(--cor-primaria);
+    margin-bottom: 3px;
 }
 
-
-/* --- ESTILOS DO ACORDEÃO --- */
-.accordion-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+/* --- ESTILOS DO NOVO CARD DE PACIENTE (Substitui o Accordion) --- */
+.pacientes-list-container { /* ID foi alterado no HTML */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.paciente-accordion {
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    overflow: hidden;
-    background-color: var(--cor-surface);
-    transition: box-shadow 0.2s ease;
+.paciente-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-surface);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    color: var(--cor-texto-principal);
 }
-.paciente-accordion:hover {
-    box-shadow: var(--sombra-suave);
+.paciente-card:hover {
+    box-shadow: var(--sombra-padrao);
+    border-color: var(--cor-primaria);
+    text-decoration: none;
+    background-color: var(--cor-fundo);
 }
-.accordion-header {
-    background-color: transparent;
-    padding: 5px 5px;
-    width: 100%;
-    border: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+.paciente-card .card-info .nome {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--cor-primaria);
 }
-.accordion-header.active, .accordion-header:hover {
-    background-color: var(--cor-fundo);
+.paciente-card .card-info .telefone {
+    font-size: 0.9em;
+    color: var(--cor-texto-secundario);
+    margin-top: 2px;
+    display: block;
 }
-.header-info {
-    text-align: left;
+.paciente-card .card-icon {
+    font-size: 1.8em;
+    font-weight: 300;
+    color: var(--cor-primaria);
+    transition: transform 0.2s ease;
 }
-.header-info .nome {
-    font-size: 1.2em;
-    font-weight: 600;
-    color: var(--cor-primaria);
-}
-.header-info .telefone {
-    font-size: 0.9em;
-    color: var(--cor-texto-secundario);
-    margin-top: 2px;
-}
-.accordion-icon {
-    font-size: 1.8em;
-    font-weight: 300;
-    color: var(--cor-primaria);
-    transition: transform 0.3s ease;
-}
-.accordion-header.active .accordion-icon {
-    transform: rotate(45deg);
-}
-.accordion-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease-out, padding 0.4s ease-out;
-    padding: 0 20px;
-}
-.accordion-content-inner {
-    padding: 20px 0;
-    border-top: 1px solid var(--cor-borda);
+.paciente-card:hover .card-icon {
+    transform: translateX(5px);
 }
 
-/* --- DETALHES DENTRO DO ACORDEÃO --- */
-.patient-details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 15px 25px;
-    margin-bottom: 20px;
-}
-.detail-item {
-    font-size: 0.95em;
-}
-.detail-item .label {
-    display: block;
-    font-weight: 600;
-    color: var(--cor-texto-secundario);
-    font-size: 0.9em;
-    margin-bottom: 3px;
-    text-transform: uppercase;
-}
-.detail-item .value {
-    color: var(--cor-texto-principal);
-}
-.detail-item .value.status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 15px;
-    font-size: 0.85em;
-    font-weight: 500;
-    color: white;
-}
-.status-badge.em_atendimento_plantao, .status-badge.em_atendimento_pb { background-color: #28a745; }
-.status-badge.aguardando_info_horarios, .status-badge.aguardando_contrato { background-color: #ffc107; color: #212529; }
-.card-actions {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--cor-borda);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-/* --- MODAL DE MENSAGENS --- */
-.message-templates-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.message-templates-list button {
-    width: 100%;
-    text-align: left;
-    padding: 12px 15px;
-    font-size: 1em;
-}
-
-
-/* --- MODAL DE SOLICITAÇÃO --- */
-.modal-content.large {
-    max-width: 850px;
-}
-#solicitar-sessoes-form fieldset {
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-#solicitar-sessoes-form legend {
-    font-weight: 600;
-    color: var(--cor-primaria);
-    padding: 0 10px;
-    font-size: 1.1em;
-}
-#validacao-grade-feedback {
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: var(--borda-radius);
-    border-left-width: 5px;
-    border-left-style: solid;
-}
-#validacao-grade-feedback.exists {
-    background-color: var(--cor-alerta-fundo);
-    border-left-color: var(--cor-alerta);
-    color: var(--cor-alerta-texto);
-}
-#validacao-grade-feedback.success {
-    background-color: var(--cor-sucesso-fundo);
-    border-left-color: var(--cor-sucesso);
-    color: var(--cor-sucesso-texto);
-}
-
-/* --- ESTILOS GERAIS PARA MODAIS --- */
-.modal-overlay, .modal {
-    display: none;
-    position: fixed;
-    z-index: 1050;
-    left: 0; top: 0;
-    width: 100%; height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-}
-.modal-content {
-    background-color: var(--cor-fundo);
-    margin: 5% auto;
-    padding: 25px;
-    border-radius: var(--borda-radius);
-    width: 90%;
-    max-width: 700px;
-    box-shadow: var(--sombra-modal);
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-}
-.modal-body {
-    overflow-y: auto;
-    padding-right: 15px;
-}
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--cor-borda);
-    padding-bottom: 15px;
-    margin-bottom: 20px;
-}
-.modal-header .modal-title-text {
-    color: var(--cor-primaria);
-    font-size: 1.5em;
-    margin: 0;
-}
-
-.hidden { display: none; }
-
-/* --- FORMULÁRIO DINÂMICO --- */
-.dynamic-form-fields {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-}
-#mensagem-formulario-view h3 {
-    color: var(--cor-primaria);
-    margin-top: 0;
-    margin-bottom: 20px;
-}
-.output-area {
-    margin-top: 20px;
-}
-.output-area label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-.output-area textarea {
-    width: 100%;
-    min-height: 120px;
-    background-color: var(--cor-fundo);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    padding: 10px;
-    font-family: monospace;
-    font-size: 0.9em;
-    resize: vertical;
-}
-.modal-content .modal-header {
-    background-color: transparent; /* Remove o fundo azul */
-    border-bottom: none; /* Remove a linha separadora se não for desejada */
-    padding-bottom: 0;
-    margin-bottom: 10px; /* Reduz o espaçamento inferior */
-}
-
-.modal-content .modal-header h3 {
-    color: var(--cor-primaria); /* Garante que o texto seja azul */
-    font-size: 1.5em; /* Mantém o tamanho do título padrão */
-}
-@media (max-width: 600px) {
-  #mensagem-dynamic-form-container.dynamic-form-fields {
-    grid-template-columns: 1fr; /* Muda para uma única coluna */
-  }
-}
-.reavaliacao-info {
-    font-size: 0.8em;
-    color: var(--cor-texto-secundario);
-    margin-left: 5px;
-    display: block; /* Para ficar abaixo do valor */
-}
+/* Todos os estilos de .paciente-accordion, .accordion-header, .accordion-content,
+   .patient-details-grid, .detail-item, .card-actions, e todos os MODAIS 
+   foram removidos deste arquivo. Eles serão movidos para 
+   'detalhe-paciente.css' (os detalhes e modais) ou são
+   substituídos por '.paciente-card' (o accordion).
+*/
