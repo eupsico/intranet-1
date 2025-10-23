@@ -2,60 +2,87 @@
 
 /* --- ESTRUTURA GERAL E CABEÇALHO --- */
 .view-header {
-  margin-bottom: 15px;
+    margin-bottom: 15px;
 }
 .view-header h2 {
-    color: var(--cor-primaria);
-    margin-bottom: 3px;
+    color: var(--cor-primaria);
+    margin-bottom: 3px;
 }
 
-/* --- ESTILOS DO NOVO CARD DE PACIENTE (Substitui o Accordion) --- */
-.pacientes-list-container { /* ID foi alterado no HTML */
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.paciente-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    background-color: var(--cor-surface);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-    color: var(--cor-texto-principal);
-}
-.paciente-card:hover {
-    box-shadow: var(--sombra-padrao);
-    border-color: var(--cor-primaria);
-    text-decoration: none;
-    background-color: var(--cor-fundo);
-}
-.paciente-card .card-info .nome {
-    font-size: 1.2em;
-    font-weight: 600;
-    color: var(--cor-primaria);
-}
-.paciente-card .card-info .telefone {
-    font-size: 0.9em;
-    color: var(--cor-texto-secundario);
-    margin-top: 2px;
-    display: block;
-}
-.paciente-card .card-icon {
-    font-size: 1.8em;
-    font-weight: 300;
-    color: var(--cor-primaria);
-    transition: transform 0.2s ease;
-}
-.paciente-card:hover .card-icon {
-    transform: translateX(5px);
+/* --- ESTILOS DA TABELA DE PACIENTES --- */
+/* A classe .table-section do design-system já fornece borda, sombra, etc. */
+
+#pacientes-table {
+    width: 100%;
+    border-collapse: collapse; /* Garante que as bordas das células se unam */
 }
 
-/* Todos os estilos de .paciente-accordion, .accordion-header, .accordion-content,
-   .patient-details-grid, .detail-item, .card-actions, e todos os MODAIS 
-   foram removidos deste arquivo. Eles serão movidos para 
-   'detalhe-paciente.css' (os detalhes e modais) ou são
-   substituídos por '.paciente-card' (o accordion).
-*/
+/* Reduzir padding para diminuir espaçamento vertical */
+#pacientes-table th,
+#pacientes-table td {
+    padding: 8px 12px; /* Reduzido de 12px 15px (padrão design-system) */
+    text-align: left;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: middle; /* Alinha o conteúdo verticalmente */
+}
+
+/* Estilo para cabeçalho (reutiliza padrão design-system) */
+#pacientes-table thead th {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto-principal);
+    font-size: 0.9em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Hover na linha (reutiliza padrão design-system) */
+#pacientes-table tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+/* Estilo para o link dentro da célula do nome */
+#pacientes-table td a {
+    color: var(--cor-primaria);
+    font-weight: 600;
+    text-decoration: none;
+    display: block; /* Faz o link ocupar toda a célula para facilitar o clique */
+    padding: 8px 12px; /* Adiciona padding interno ao link (igual ao da célula) */
+    margin: -8px -12px; /* Anula o padding da célula para o link preencher */
+}
+#pacientes-table td a:hover {
+    text-decoration: underline;
+}
+
+/* Estilos para Status Badge (podem ser movidos para design-system.css se usados globalmente) */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    white-space: nowrap; /* Evita que o texto quebre */
+}
+/* Cores (ajustar conforme necessário) */
+.status-badge.em_atendimento_plantao,
+.status-badge.em_atendimento_pb { background-color: var(--cor-sucesso); } /* Verde */
+.status-badge.aguardando_info_horarios,
+.status-badge.cadastrar_horario_psicomanager,
+.status-badge.aguardando_contrato { background-color: var(--cor-alerta); color: #333; } /* Amarelo */
+.status-badge.alta { background-color: var(--cor-secundaria); } /* Azul */
+.status-badge.desistencia { background-color: var(--cor-erro); } /* Vermelho */
+.status-badge.encaminhado_grupo,
+.status-badge.encaminhado_parceiro { background-color: #6c757d; } /* Cinza */
+/* Adicionar outros status se necessário */
+.status-badge.desconhecido { background-color: #adb5bd; color: #333;}
+
+
+/* Remover estilos antigos de .paciente-card e .pacientes-list-container */
+/* .pacientes-list-container { ... } */
+/* .paciente-card { ... } */
+/* .paciente-card:hover { ... } */
+/* .paciente-card .card-info .nome { ... } */
+/* .paciente-card .card-info .telefone { ... } */
+/* .paciente-card .card-icon { ... } */
+/* .paciente-card:hover .card-icon { ... } */
