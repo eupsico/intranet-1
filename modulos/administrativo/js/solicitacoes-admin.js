@@ -2241,6 +2241,8 @@ export async function init(db_ignored, user, userData) {
 
   // --- Função para CRIAR SESSÕES recorrentes ---
   // *** CORRIGIDA PARA LIDAR COM dataInicio/horaInicio POSSIVELMENTE UNDEFINED E USAR numeroSessoes ***
+  // --- Função para CRIAR SESSÕES recorrentes ---
+  // *** CORRIGIDA PARA LIDAR COM dataInicio/horaInicio POSSIVELMENTE UNDEFINED E USAR numeroSessoes ***
   async function criarSessoesRecorrentes(agendamento) {
     console.log("Iniciando criação de sessões:", agendamento);
     const {
@@ -2389,7 +2391,11 @@ export async function init(db_ignored, user, userData) {
             frequencia: agendamento.recorrencia,
             salaAtendimento: agendamento.sala,
             dataInicio: agendamento.dataInicio, // Data da primeira sessão criada
-            definidoEm: serverTimestamp(),
+            //
+            // *** LINHA CORRIGIDA ***
+            //
+            definidoEm: Timestamp.now(), // CORREÇÃO: Usar Timestamp.now() (cliente) em vez de serverTimestamp() dentro de array
+            //
             // O campo 'alterarGrade' não se aplica aqui diretamente
           };
           atendimentosPB[index].horarioSessoes = horarioSessaoAdmin;
