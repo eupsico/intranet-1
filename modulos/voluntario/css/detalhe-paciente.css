@@ -376,6 +376,94 @@ MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
         gap: 12px;
     }
 }
+
+/* =============================================================================
+ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
+=============================================================================
+*/
+/* Garante que a classe .horizontal-tabs funcione se não estiver no design-system */
+.tabs-container.horizontal-tabs {
+    display: flex;
+    flex-direction: row; /* Abas lado a lado */
+    border-bottom: 2px solid var(--cor-borda); /* Linha abaixo das abas */
+    margin-bottom: 20px; /* Espaçamento antes do conteúdo */
+    flex-wrap: nowrap; /* Impede que as abas quebrem linha */
+    overflow-x: auto; /* Permite rolagem horizontal se as abas não couberem */
+}
+
+.tabs-container.horizontal-tabs .tab-link {
+    padding: 10px 18px;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: var(--cor-texto-secundario);
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent; /* Borda inferior inativa */
+    cursor: pointer;
+    margin-bottom: -2px; /* Alinha com a borda inferior do container */
+    transition: all 0.2s ease;
+    white-space: nowrap; /* Impede que o texto da aba quebre linha */
+}
+
+.tabs-container.horizontal-tabs .tab-link:hover {
+    color: var(--cor-primaria);
+    background-color: var(--cor-fundo-box);
+}
+
+.tabs-container.horizontal-tabs .tab-link.active {
+    color: var(--cor-primaria);
+    border-bottom: 3px solid var(--cor-primaria); /* Borda inferior ativa */
+    font-weight: 600;
+}
+/* Aplica Flexbox vertical ao container do conteúdo do modal */
+.modal-content.flex-layout {
+    display: flex;
+    flex-direction: column;
+    /* Define uma altura máxima baseada na altura da viewport (tela) */
+    /* vh = viewport height. 85vh = 85% da altura da tela */
+    /* calc(100vh - 100px) -> Altura da tela menos 100px para margens */
+    max-height: calc(100vh - 100px); 
+    /* Você pode ajustar o valor (100px) conforme necessário */
+    height: auto; /* Permite que seja menor se o conteúdo for pequeno */
+    overflow: hidden; /* Garante que o conteúdo não vaze do modal-content */
+}
+
+/* O header não cresce nem encolhe */
+.modal-content.flex-layout .modal-header {
+    flex-shrink: 0;
+}
+
+/* O body ocupa o espaço restante e permite rolagem interna */
+.modal-content.flex-layout .modal-body {
+    flex-grow: 1; /* Faz o corpo crescer para preencher o espaço */
+    overflow-y: auto; /* Adiciona rolagem vertical APENAS ao corpo, se necessário */
+    min-height: 100px; /* Altura mínima para evitar que fique muito pequeno */
+}
+
+/* O footer não cresce nem encolhe */
+.modal-content.flex-layout .modal-footer {
+    flex-shrink: 0;
+}
+
+/* Ajuste fino para telas menores (mobile) */
+@media (max-width: 600px) {
+    .modal-content.flex-layout {
+        /* Reduz a margem em telas menores para aproveitar mais espaço */
+        max-height: calc(100vh - 40px); 
+    }
+    /* Reduzir padding do body em telas pequenas se necessário */
+    /* .modal-content.flex-layout .modal-body {
+        padding: 15px; 
+    } */
+}
+/* Oculta conteúdo da aba inativa (pode já existir no design-system) */
+/* (Estilos específicos para o container de abas do modal) */
+#anotacoes-tabs-content .tab-content {
+    display: none;
+}
+#anotacoes-tabs-content .tab-content.active {
+    display: block;
+}
 .dropdown-container {
     position: relative; /* Necessário para posicionar o menu dropdown */
     display: inline-block; /* Para ficar na mesma linha dos outros botões */
@@ -446,50 +534,113 @@ MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
     border-radius: 0; 
     margin: 0;
 }
-/* =============================================================================
-ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
-=============================================================================
-*/
-/* Garante que a classe .horizontal-tabs funcione se não estiver no design-system */
-.tabs-container.horizontal-tabs {
+.accordion-container {
     display: flex;
-    flex-direction: row; /* Abas lado a lado */
-    border-bottom: 2px solid var(--cor-borda); /* Linha abaixo das abas */
-    margin-bottom: 20px; /* Espaçamento antes do conteúdo */
-    flex-wrap: nowrap; /* Impede que as abas quebrem linha */
-    overflow-x: auto; /* Permite rolagem horizontal se as abas não couberem */
+    flex-direction: column;
+    gap: 15px; /* Espaço entre os itens do acordeão */
+    margin-bottom: 20px; /* Espaço abaixo do último item */
 }
 
-.tabs-container.horizontal-tabs .tab-link {
-    padding: 10px 18px;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: var(--cor-texto-secundario);
-    background-color: transparent;
+.accordion-item fieldset { /* Garante que fieldset dentro do item não tenha margem extra */
+    margin-bottom: 0;
+    border: none; /* Remove borda padrão do fieldset se houver */
+    padding: 0; /* Remove padding padrão do fieldset se houver */
+}
+
+.accordion-header {
+    padding: 0; /* Remove padding padrão da legend */
+    border-bottom: 1px solid var(--cor-borda); /* Linha separadora */
+    margin-bottom: 0; /* Remove margem inferior da legend */
+}
+
+.accordion-button {
+    display: flex;
+    justify-content: space-between; /* Alinha texto à esquerda, ícone à direita */
+    align-items: center;
+    width: 100%;
+    padding: 12px 15px; /* Espaçamento interno */
+    background-color: var(--cor-fundo-box); /* Fundo sutil */
     border: none;
-    border-bottom: 3px solid transparent; /* Borda inferior inativa */
     cursor: pointer;
-    margin-bottom: -2px; /* Alinha com a borda inferior do container */
-    transition: all 0.2s ease;
-    white-space: nowrap; /* Impede que o texto da aba quebre linha */
-}
-
-.tabs-container.horizontal-tabs .tab-link:hover {
-    color: var(--cor-primaria);
-    background-color: var(--cor-fundo-box);
-}
-
-.tabs-container.horizontal-tabs .tab-link.active {
-    color: var(--cor-primaria);
-    border-bottom: 3px solid var(--cor-primaria); /* Borda inferior ativa */
+    font-size: 1.1em; /* Tamanho da fonte do título */
     font-weight: 600;
+    color: var(--cor-primaria); /* Cor do título */
+    text-align: left;
+    transition: background-color 0.2s ease;
 }
 
-/* Oculta conteúdo da aba inativa (pode já existir no design-system) */
-/* (Estilos específicos para o container de abas do modal) */
-#anotacoes-tabs-content .tab-content {
+.accordion-button:hover {
+    background-color: var(--cor-fundo-hover);
+}
+
+.accordion-icon {
+    font-size: 0.9em;
+    transition: transform 0.3s ease; /* Animação suave da seta */
+    margin-left: 10px;
+}
+
+/* Estilo para quando o acordeão está fechado */
+.accordion-item:not(.open) .accordion-content {
+    display: none; /* Oculta o conteúdo */
+}
+
+/* Gira o ícone quando o acordeão está aberto */
+.accordion-item.open .accordion-icon {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    padding: 20px 15px; /* Espaçamento interno do conteúdo */
+    background-color: var(--cor-fundo); /* Fundo ligeiramente diferente para o conteúdo */
+    border-top: none; /* Garante que não haja borda dupla com a legend */
+    /* Animação suave (opcional) - pode requerer ajuste de altura em JS */
+    /* transition: max-height 0.3s ease-out, padding 0.3s ease-out; */
+    /* overflow: hidden; */
+}
+.info-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Cria 3 colunas de largura igual */
+    gap: 15px 20px; /* Espaçamento entre linhas e colunas */
+    margin-bottom: 20px; /* Espaço antes do próximo grupo de campos */
+}
+
+/* Ajustes nos inputs readonly dentro do grid */
+.info-summary-grid .form-group.readonly label {
+    margin-bottom: 4px; /* Menor espaço entre label e input */
+    font-size: 0.9em; /* Tamanho da label um pouco menor */
+    color: var(--cor-texto-secundario);
+}
+
+.info-summary-grid .form-group.readonly .form-control[readonly] {
+    background-color: var(--cor-fundo-box); /* Fundo sutil para destacar */
+    border: 1px solid var(--cor-borda-leve); /* Borda mais leve */
+    font-weight: 500;
+    color: var(--cor-texto-principal);
+    cursor: default; /* Remove cursor de texto */
+    padding: 8px 12px; /* Ajusta padding se necessário */
+}
+
+/* Estilo especial para o input de status se precisar herdar cores do badge */
+.info-summary-grid .form-group.readonly .status-badge-input {
+    /* Por padrão, apenas texto. Cores serão adicionadas via JS se necessário */
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Esconde os spans originais (já definido no HTML, mas reforça aqui) */
+.info-summary-grid .readonly-value {
     display: none;
 }
-#anotacoes-tabs-content .tab-content.active {
-    display: block;
+
+/* Responsividade para o grid de resumo (opcional, mas recomendado) */
+@media (max-width: 768px) {
+    .info-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Colunas automáticas */
+    }
+}
+
+@media (max-width: 480px) {
+    .info-summary-grid {
+        grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
+    }
 }
