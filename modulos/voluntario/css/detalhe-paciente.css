@@ -419,13 +419,8 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
 .modal-content.flex-layout {
     display: flex;
     flex-direction: column;
-    /* Define uma altura máxima baseada na altura da viewport (tela) */
-    /* vh = viewport height. 85vh = 85% da altura da tela */
-    /* calc(100vh - 100px) -> Altura da tela menos 100px para margens */
     max-height: calc(100vh - 100px); 
-    /* Você pode ajustar o valor (100px) conforme necessário */
-    height: auto; /* Permite que seja menor se o conteúdo for pequeno */
-    overflow: hidden; /* Garante que o conteúdo não vaze do modal-content */
+    overflow: hidden; 
 }
 
 /* O header não cresce nem encolhe */
