@@ -440,7 +440,7 @@ async function renderizarPendencias() {
     const meuAtendimentoPB = pacienteDataGlobal.atendimentosPB?.find(
       (at) =>
         at.profissionalId === userDataGlobal.uid &&
-        ["ativo", "aguardando_horarios"].includes(at.statusAtendimento) // Considera ativo ou aguardando
+        ["ativo", "aguardando_info_horarios"].includes(at.statusAtendimento) // Considera ativo ou aguardando
     );
     if (meuAtendimentoPB && !meuAtendimentoPB.contratoAssinado) {
       pendencias.push({
@@ -3273,7 +3273,7 @@ function abrirModalHorariosPb(/* Usa globais */) {
   const atendimentoPbAguardando = pacienteDataGlobal.atendimentosPB?.find(
     (at) =>
       at.profissionalId === userDataGlobal.uid &&
-      at.statusAtendimento === "aguardando_horarios" // Checa ID e Status
+      at.statusAtendimento === "aguardando_info_horarios" // Checa ID e Status
   );
   if (!atendimentoPbAguardando) {
     alert(
