@@ -3271,13 +3271,13 @@ function abrirModalHorariosPb(/* Usa globais */) {
   }
   // Encontrar o atendimento PB que está aguardando horários E pertence ao user logado
   const atendimentoPbAguardando = pacienteDataGlobal.atendimentosPB?.find(
-    (at) =>
-      at.profissionalId === userDataGlobal.uid &&
-      at.statusAtendimento === "aguardando_info_horarios" // Checa ID e Status
+    (at) => at.profissionalId === userDataGlobal.uid
   );
+
+  // Se não houver NENHUM atendimento para este profissional, aí sim é um erro.
   if (!atendimentoPbAguardando) {
     alert(
-      "Não foi encontrado um atendimento PB aguardando definição de horários atribuído a você para este paciente."
+      "Não foi encontrado um atendimento PB atribuído a você para este paciente."
     );
     return;
   }
