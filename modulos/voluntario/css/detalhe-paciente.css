@@ -376,7 +376,76 @@ MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
         gap: 12px;
     }
 }
+.dropdown-container {
+    position: relative; /* Necessário para posicionar o menu dropdown */
+    display: inline-block; /* Para ficar na mesma linha dos outros botões */
+}
 
+.dropdown-toggle .dropdown-arrow {
+    margin-left: 8px; /* Espaço entre o texto e a seta */
+    font-size: 0.8em; /* Tamanho da seta */
+    transition: transform 0.2s ease-in-out; /* Animação da seta */
+}
+
+/* Gira a seta quando o dropdown está ativo */
+.dropdown-container.active .dropdown-toggle .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    display: none; /* Escondido por padrão */
+    position: absolute; /* Posicionamento relativo ao container */
+    top: 100%; /* Abaixo do botão */
+    right: 0; /* Alinhado à direita do botão */
+    background-color: var(--cor-fundo-box);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 250px; /* Largura mínima do menu */
+    z-index: 10; /* Para ficar sobre outros elementos */
+    padding: 8px 0; /* Espaçamento interno vertical */
+    margin-top: 4px; /* Pequeno espaço entre o botão e o menu */
+}
+
+/* Mostra o menu quando o container tem a classe 'active' (será controlada por JS) */
+.dropdown-container.active .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    display: block; /* Ocupa toda a largura */
+    width: 100%;
+    padding: 10px 20px;
+    text-align: left;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--cor-texto-principal); /* Cor padrão do texto */
+    white-space: nowrap; /* Evita quebra de linha */
+}
+
+.dropdown-item:hover {
+    background-color: var(--cor-fundo-hover); /* Cor de fundo no hover */
+    color: var(--cor-primaria); /* Cor do texto no hover */
+}
+
+/* Ajusta as cores específicas dos botões dentro do dropdown */
+.dropdown-item.secondary-button { color: var(--cor-texto-secundario); }
+.dropdown-item.secondary-button:hover { color: var(--cor-secundaria-hover); background-color: var(--cor-fundo-hover); }
+
+.dropdown-item.danger-button { color: var(--cor-erro); }
+.dropdown-item.danger-button:hover { color: var(--cor-erro-hover); background-color: var(--cor-fundo-hover); } /* Mantém fundo padrão no hover */
+
+.dropdown-item.special-button { color: var(--cor-especial); } /* Assumindo que existe --cor-especial */
+.dropdown-item.special-button:hover { color: var(--cor-especial-hover); background-color: var(--cor-fundo-hover); } /* Assumindo que existe --cor-especial-hover */
+
+/* Remove estilos de botão padrão se necessário (caso herde algo indesejado) */
+.dropdown-item.action-button {
+    /* Reseta estilos se action-button adicionar algo indesejado para itens de menu */
+    border-radius: 0; 
+    margin: 0;
+}
 /* =============================================================================
 ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
 =============================================================================
