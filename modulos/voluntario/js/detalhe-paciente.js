@@ -199,13 +199,24 @@ async function carregarSessoes() {
 function preencherFormularios() {
   if (!pacienteDataGlobal) return;
 
-  // Função auxiliar para preencher valor (input ou span)
-  const setElementValue = (id, value, isSpan = false) => {
-    const element = document.getElementById(id);
+  // Função auxiliar para preencher valor (input ou span) - Modificada para inputs readonly
+  const setElementValue = (
+    id,
+    value,
+    isInputReadOnly = false,
+    targetElement = document
+  ) => {
+    const element = targetElement.getElementById(id); // Procura dentro do targetElement (padrão document)
     if (element) {
-      if (isSpan) {
-        element.textContent = value || "--"; // Usa '--' para spans vazios
-      } else {
+      if (element.tagName === "SPAN") {
+        // Se for SPAN (usado em alguns lugares ainda)
+        element.textContent = value || "--";
+      } else if (
+        element.tagName === "INPUT" ||
+        element.tagName === "TEXTAREA" ||
+        element.tagName === "SELECT"
+      ) {
+        // Se for campo de formulário
         // Formata valor monetário para exibição se for o campo de contribuição
         if (id === "dp-valor-contribuicao" && typeof value === "number") {
           element.value = value.toLocaleString("pt-BR", {
@@ -215,6 +226,29 @@ function preencherFormularios() {
         } else {
           element.value = value || "";
         }
+        // Se for readonly, também atualiza textContent para alguns casos visuais se necessário (ex: status)
+        if (isInputReadOnly) {
+          // Para o status, copia as classes do span oculto para o input
+          if (id === "dp-status-atual-input") {
+            const statusSpan = document.getElementById("dp-status-atual"); // Pega o span oculto
+            if (statusSpan) {
+              // Limpa classes antigas de status antes de adicionar a nova
+              element.className = "form-control status-badge-input"; // Reseta para classe base
+              // Adiciona as classes relevantes do span (exceto readonly-value e status-badge base)
+              statusSpan.classList.forEach((cls) => {
+                if (cls !== "readonly-value" && cls !== "status-badge") {
+                  element.classList.add(cls);
+                }
+              });
+              // Define o texto do input como o texto formatado do status
+              element.value = statusSpan.textContent || "--";
+            } else {
+              element.value = value || "--"; // Fallback se span não existir
+            }
+          } else {
+            element.value = value || "--"; // Para outros inputs readonly
+          }
+        }
       }
     } else {
       console.warn(`Elemento #${id} não encontrado para preenchimento.`);
@@ -223,17 +257,24 @@ function preencherFormularios() {
 
   // === Aba: Informações Pessoais ===
   const status = pacienteDataGlobal.status || "desconhecido";
-  setElementValue("dp-status-atual", formatarStatus(status), true);
-  // Atualiza a classe do span de status
+
+  // -- Alteração para preencher Input Readonly de Status --
+  // 1. Preenche o SPAN oculto primeiro (para ter o texto formatado e as classes CSS)
+  setElementValue("dp-status-atual", formatarStatus(status), true); // Preenche o span oculto
   const statusSpan = document.getElementById("dp-status-atual");
   if (statusSpan)
-    statusSpan.className = `readonly-value status-badge ${status}`;
+    statusSpan.className = `readonly-value status-badge ${status}`; // Aplica classe ao span
 
-  setElementValue(
-    "dp-idade",
-    calcularIdade(pacienteDataGlobal.dataNascimento),
-    true
-  );
+  // 2. Chama setElementValue para o INPUT, passando 'true' (isInputReadOnly)
+  // O valor passado aqui não importa tanto, pois a função pegará do span formatado
+  setElementValue("dp-status-atual-input", formatarStatus(status), true);
+  // -- Fim Alteração Status --
+
+  // -- Alteração para preencher Input Readonly de Idade --
+  const idadeCalculada = calcularIdade(pacienteDataGlobal.dataNascimento);
+  setElementValue("dp-idade", idadeCalculada, true); // Preenche o span oculto
+  setElementValue("dp-idade-input", idadeCalculada, true); // Preenche o input readonly
+  // -- Fim Alteração Idade --
 
   const dataEncaminhamentoRaw =
     pacienteDataGlobal.plantaoInfo?.dataEncaminhamento ||
@@ -241,12 +282,16 @@ function preencherFormularios() {
   const dataEncaminhamento = dataEncaminhamentoRaw
     ? new Date(dataEncaminhamentoRaw + "T03:00:00").toLocaleDateString("pt-BR")
     : "--";
-  setElementValue("dp-desde", dataEncaminhamento, true);
 
-  setElementValue("dp-nome-completo", pacienteDataGlobal.nomeCompleto); // Input readonly
+  // -- Alteração para preencher Input Readonly de Desde --
+  setElementValue("dp-desde", dataEncaminhamento, true); // Preenche o span oculto
+  setElementValue("dp-desde-input", dataEncaminhamento, true); // Preenche o input readonly
+  // -- Fim Alteração Desde --
+
+  setElementValue("dp-nome-completo", pacienteDataGlobal.nomeCompleto); // Input readonly (já era input)
   setElementValue("dp-telefone", pacienteDataGlobal.telefoneCelular); // Input editável
   setElementValue("dp-data-nascimento", pacienteDataGlobal.dataNascimento); // Input editável
-  setElementValue("dp-cpf", pacienteDataGlobal.cpf); // Input readonly
+  setElementValue("dp-cpf", pacienteDataGlobal.cpf); // Input readonly (já era input)
 
   // Endereço (Supondo que os dados estão em pacienteDataGlobal.endereco)
   const endereco = pacienteDataGlobal.endereco || {};
@@ -515,8 +560,10 @@ async function renderizarPendencias() {
 // --- Manipuladores de Eventos Gerais ---
 
 function adicionarEventListenersGerais() {
-  // Abas
-  const tabLinks = document.querySelectorAll(".tab-link");
+  // Abas Principais (Sessões, Acompanhamento, Prontuário)
+  const tabLinks = document.querySelectorAll(
+    ".detalhe-paciente-tabs-column .tab-link" // Selecionador mais específico para as abas principais
+  );
   tabLinks.forEach((link) => {
     link.addEventListener("click", handleTabClick);
   });
@@ -559,28 +606,117 @@ function adicionarEventListenersGerais() {
   document
     .getElementById("btn-gerar-prontuario-pdf")
     ?.addEventListener("click", handleGerarProntuarioPDF);
+
+  // Listener para Acordeão (Info Pessoal/Financeira)
+  const accordionContainer = document.querySelector(".accordion-container");
+  if (accordionContainer) {
+    accordionContainer.addEventListener("click", (event) => {
+      const button = event.target.closest(".accordion-button");
+      if (button) {
+        const accordionItem = button.closest(".accordion-item");
+        if (accordionItem) {
+          handleAccordionToggle(accordionItem);
+        }
+      }
+    });
+  } else {
+    console.warn(
+      "Container do acordeão (.accordion-container) não encontrado."
+    );
+  }
+  const btnMaisAcoes = document.getElementById("btn-mais-acoes");
+  if (btnMaisAcoes) {
+    btnMaisAcoes.addEventListener("click", (event) => {
+      event.stopPropagation(); // Impede que o clique feche imediatamente o menu (ver listener global)
+      toggleDropdown(btnMaisAcoes.closest(".dropdown-container"));
+    });
+  } else {
+    console.warn("Botão Dropdown (#btn-mais-acoes) não encontrado.");
+  }
 }
 
+// =============================================================================
+// ADIÇÃO: Função para controlar o Acordeão
+// =============================================================================
+function handleAccordionToggle(accordionItem) {
+  if (!accordionItem) return;
+
+  const isOpen = accordionItem.classList.contains("open");
+  const icon = accordionItem.querySelector(".accordion-icon");
+  accordionItem.classList.toggle("open");
+
+  if (icon) {
+    icon.innerHTML = accordionItem.classList.contains("open")
+      ? "&#9660;"
+      : "&#9654;"; // Seta para baixo ou direita
+  }
+}
+/**
+ * Alterna a visibilidade (classe 'active') de um menu dropdown.
+ * @param {HTMLElement} dropdownContainer O elemento .dropdown-container.
+ */
+function toggleDropdown(dropdownContainer) {
+  if (!dropdownContainer) return;
+  // Fecha outros dropdowns abertos antes de abrir/fechar o atual
+  document
+    .querySelectorAll(".dropdown-container.active")
+    .forEach((otherContainer) => {
+      if (otherContainer !== dropdownContainer) {
+        otherContainer.classList.remove("active");
+      }
+    });
+  // Alterna o estado do dropdown clicado
+  dropdownContainer.classList.toggle("active");
+}
+
+/**
+ * Fecha todos os menus dropdown ativos se o clique ocorrer fora deles.
+ * @param {Event} event O evento de clique global.
+ */
+function closeDropdownOnClickOutside(event) {
+  // Encontra todos os dropdowns ativos
+  document
+    .querySelectorAll(".dropdown-container.active")
+    .forEach((container) => {
+      // Verifica se o clique foi FORA do container atual
+      if (!container.contains(event.target)) {
+        container.classList.remove("active");
+      }
+    });
+}
 function handleTabClick(event) {
-  const clickedTab = event.currentTarget; // Usar currentTarget para garantir que é o link
+  // ... (código da função handleTabClick - sem alterações nesta parte)
+  const clickedTab = event.currentTarget;
   const targetTabId = clickedTab.dataset.tab;
   const targetContent = document.getElementById(targetTabId);
+  const parentTabsContainer = clickedTab.closest(".tabs-container");
+  if (!parentTabsContainer || !targetContent) return;
 
-  // Verifica se o conteúdo alvo existe
-  if (!targetContent) {
-    console.warn(`Conteúdo da aba "${targetTabId}" não encontrado.`);
-    return;
-  }
-
-  // Remove 'active' das outras abas e conteúdos
-  document
+  parentTabsContainer
     .querySelectorAll(".tab-link.active")
     .forEach((tab) => tab.classList.remove("active"));
-  document
-    .querySelectorAll(".tab-content.active")
-    .forEach((content) => content.classList.remove("active"));
 
-  // Adiciona 'active' à aba clicada e ao conteúdo correspondente
+  let contentContainer = null;
+  if (parentTabsContainer.id === "anotacoes-tabs-nav") {
+    contentContainer = document.getElementById("anotacoes-tabs-content");
+  } else if (parentTabsContainer.classList.contains("vertical-tabs")) {
+    contentContainer = parentTabsContainer.nextElementSibling;
+  }
+
+  if (contentContainer) {
+    contentContainer
+      .querySelectorAll(".tab-content.active")
+      .forEach((content) => content.classList.remove("active"));
+  } else {
+    const contentPrefix = targetTabId.split("-")[0];
+    document
+      .querySelectorAll(`.tab-content[id^="${contentPrefix}-"]`)
+      .forEach((content) => content.classList.remove("active"));
+    console.warn(
+      "Não foi possível determinar o container de conteúdo para as abas."
+    );
+  }
+
   clickedTab.classList.add("active");
   targetContent.classList.add("active");
 }
@@ -1023,32 +1159,70 @@ function formatarStatus(status) {
 // --- LÓGICA DOS MODAIS (Adaptada de modals.js) ---
 
 function adicionarEventListenersModais() {
-  // Listener global para fechar modais pelo botão Cancelar/Fechar ou clique fora
+  // Listener global para fechar modais E dropdowns
   document.body.addEventListener("click", function (e) {
-    // Botão Cancelar ou Fechar (X)
+    let closeModal = false;
+    let clickedInsideModalContent = false;
+    let clickedInsideDropdown = false; // Flag para dropdown
+
+    // Verifica clique em botão de fechar/cancelar modal
     if (
       e.target.matches(".modal-cancel-btn") ||
       e.target.closest(".modal-cancel-btn") ||
-      e.target.matches(".close-button") || // Adiciona listener para spans com classe close-button
+      e.target.matches(".close-button") ||
       e.target.closest(".close-button")
     ) {
-      // Achar o modal mais próximo que está visível
+      closeModal = true;
+    }
+
+    // Verifica se o clique foi dentro do conteúdo de um modal aberto
+    if (e.target.closest(".modal-content")) {
+      clickedInsideModalContent = true;
+    }
+
+    // =========================================================================
+    // ALTERAÇÃO: Verifica se o clique foi dentro de um dropdown
+    // =========================================================================
+    if (e.target.closest(".dropdown-container")) {
+      clickedInsideDropdown = true;
+    }
+    // =========================================================================
+    // FIM DA ALTERAÇÃO
+    // =========================================================================
+
+    // Fecha Modal se necessário
+    // Alterado para verificar se o clique foi no overlay E NÃO dentro do conteúdo
+    if (
+      closeModal ||
+      (e.target.matches(".modal-overlay[style*='display: flex']") &&
+        !clickedInsideModalContent)
+    ) {
       const modalAberto = e.target.closest(
-        ".modal-overlay[style*='display: flex'], .modal[style*='display: flex']"
+        ".modal-overlay[style*='display: flex']"
       );
       if (modalAberto) {
-        modalAberto.style.display = "none";
+        // Verifica se o clique foi num item de dropdown DENTRO do modal antes de fechar
+        // (assim o modal não fecha ao clicar num item do dropdown dentro dele)
+        if (!e.target.closest(".dropdown-item")) {
+          // Adicionada verificação
+          modalAberto.style.display = "none";
+        }
       }
     }
-    // Clique fora do modal-content (apenas se o target for o overlay)
-    if (e.target.matches(".modal-overlay[style*='display: flex']")) {
-      e.target.style.display = "none";
+
+    // =============================================================================
+    // ADIÇÃO/ALTERAÇÃO: Chama a função para fechar dropdowns se o clique foi fora deles
+    // =============================================================================
+    if (!clickedInsideDropdown) {
+      closeDropdownOnClickOutside(e);
     }
+    // =============================================================================
+    // FIM DA ADIÇÃO/ALTERAÇÃO
+    // =============================================================================
   });
 
-  // Submits dos Modais (usando event delegation no body para garantir que existam)
+  // Submits dos Modais (mantido igual, apenas reformatado para clareza)
   document.body.addEventListener("click", async (e) => {
-    // Usar .closest() para pegar o botão mesmo que clique em um ícone dentro dele
     const btnSolicitarSessoes = e.target.closest("#btn-confirmar-solicitacao");
     const btnEnviarWhatsapp = e.target.closest("#btn-gerar-enviar-whatsapp");
     const btnAlterarHorario = e.target.closest(
@@ -1059,11 +1233,11 @@ function adicionarEventListenersModais() {
     );
 
     if (btnSolicitarSessoes) {
-      e.preventDefault(); // Prevenir submit padrão se for type="submit"
+      e.preventDefault();
       await handleSolicitarSessoesSubmit(e);
     } else if (btnEnviarWhatsapp) {
       e.preventDefault();
-      handleMensagemSubmit(); // Não é async
+      handleMensagemSubmit();
     } else if (btnAlterarHorario) {
       e.preventDefault();
       await handleAlterarHorarioSubmit(e);
@@ -1071,28 +1245,24 @@ function adicionarEventListenersModais() {
       e.preventDefault();
       await handleReavaliacaoSubmit(e);
     }
-    // Outros botões de submit podem ser adicionados aqui se necessário
   });
 
-  // Submit dos forms (ligados diretamente aos forms)
+  // Submit dos forms (mantido igual)
   document
     .getElementById("encerramento-form")
     ?.addEventListener("submit", (e) =>
       handleEncerramentoSubmit(e, userDataGlobal?.uid, userDataGlobal)
-    ); // Passa user e userData
+    );
   document
     .getElementById("horarios-pb-form")
     ?.addEventListener("submit", (e) =>
       handleHorariosPbSubmit(e, userDataGlobal?.uid, userDataGlobal)
-    ); // Passa user e userData
+    );
   document
     .getElementById("anotacoes-sessao-form")
     ?.addEventListener("submit", handleSalvarAnotacoes);
-  // Submit do desfecho é adicionado dinamicamente em abrirModalDesfechoPb
 
-  // -- Adicionar AQUI os event listeners para ABRIR os modais ---
-  // Adicionar listeners aos botões PRINCIPAIS da página que ABREM os modais
-  // Estes precisam existir no HTML de detalhe-paciente.html
+  // Botões que ABREM os modais (mantido igual)
   document
     .getElementById("btn-abrir-modal-mensagem")
     ?.addEventListener("click", abrirModalMensagens);
@@ -1113,20 +1283,19 @@ function adicionarEventListenersModais() {
     ?.addEventListener("click", abrirModalEncerramento);
   document
     .getElementById("btn-abrir-modal-horarios-pb")
-    ?.addEventListener("click", abrirModalHorariosPb); // Para aguardando_info_horarios
+    ?.addEventListener("click", abrirModalHorariosPb);
+
+  // Listener para abas do Modal de Anotações (mantido igual)
   const anotacoesModalBody = document.querySelector(
     "#anotacoes-sessao-modal .modal-body"
   );
   if (anotacoesModalBody) {
     anotacoesModalBody.addEventListener("click", (event) => {
-      // Verifica se o clique foi em um link de aba dentro do container de navegação correto
       const clickedTabLink = event.target.closest(
         "#anotacoes-tabs-nav .tab-link"
       );
       if (clickedTabLink && !clickedTabLink.classList.contains("active")) {
-        // Evita reprocessar aba já ativa
-        // Chama a função genérica handleTabClick (que agora trata abas de containers diferentes)
-        handleTabClick({ currentTarget: clickedTabLink }); // Simula o evento como se viesse diretamente do link
+        handleTabClick({ currentTarget: clickedTabLink });
       }
     });
   } else {
