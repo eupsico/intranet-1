@@ -3270,12 +3270,12 @@ function abrirModalHorariosPb(/* Usa globais */) {
     // Permitir abrir mesmo assim? Sim.
   }
   // Encontrar o atendimento PB que está aguardando horários E pertence ao user logado
-  const atendimentoPbAguardando = pacienteDataGlobal.atendimentosPB?.find(
+  const atendimentoPbDoUsuario = pacienteDataGlobal.atendimentosPB?.find(
     (at) => at.profissionalId === userDataGlobal.uid
   );
 
   // Se não houver NENHUM atendimento para este profissional, aí sim é um erro.
-  if (!atendimentoPbAguardando) {
+  if (!atendimentoPbDoUsuario) {
     alert(
       "Não foi encontrado um atendimento PB atribuído a você para este paciente."
     );
@@ -3297,7 +3297,7 @@ function abrirModalHorariosPb(/* Usa globais */) {
   const pacIdInput = form.querySelector("#paciente-id-horarios-modal");
   if (pacIdInput) pacIdInput.value = pacienteIdGlobal;
   const atendIdInput = form.querySelector("#atendimento-id-horarios-modal");
-  if (atendIdInput) atendIdInput.value = atendimentoPbAguardando.atendimentoId; // Usa ID do atendimento encontrado
+  if (atendIdInput) atendIdInput.value = atendimentoPbDoUsuario.atendimentoId; // Usa ID do atendimento encontrado
 
   // Resetar visibilidade dos containers
   const motivoContainer = document.getElementById(
