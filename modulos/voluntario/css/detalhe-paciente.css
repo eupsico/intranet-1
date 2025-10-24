@@ -644,3 +644,119 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
         grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
     }
 }
+
+/* =============================================================================
+   ADIÇÃO: Menu Hamburger de Ações do Paciente
+   =============================================================================
+*/
+
+/* O container principal agora age como um container de dropdown */
+.action-buttons-container.main-actions {
+    position: relative; /* Para ancorar o menu */
+    display: flex;
+    justify-content: flex-end; /* Alinha o botão à direita */
+    margin-bottom: 20px;
+}
+
+/* Botão de Toggle (O Hamburger) */
+.hamburger-toggle-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.hamburger-icon {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 24px;
+    height: 20px;
+    justify-content: center;
+}
+
+.hamburger-icon div {
+    width: 100%;
+    height: 3px;
+    background-color: var(--cor-primaria); /* Cor do ícone */
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Animação do ícone para 'X' quando ativo */
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(2) {
+    opacity: 0;
+}
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* O Conteúdo do Menu (Dropdown) */
+.hamburger-menu-content {
+    display: none; /* Escondido por padrão */
+    position: absolute; /* Posicionamento */
+    top: 100%; /* Abaixo do botão */
+    right: 0; /* Alinhado à direita */
+    min-width: 280px; /* Largura do menu */
+    background-color: var(--cor-fundo-box);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 100; /* Sobrepor outros elementos */
+    padding: 8px 0;
+    margin-top: 4px;
+}
+
+/* Mostra o menu quando o container está ativo */
+.action-buttons-container.main-actions.active .hamburger-menu-content {
+    display: block;
+}
+
+/* Itens dentro do menu */
+.hamburger-menu-item {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    text-align: left;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--cor-texto-principal);
+    white-space: nowrap;
+    border-radius: 0; /* Reseta o radius dos action-button */
+    margin: 0; /* Reseta margem dos action-button */
+}
+
+.hamburger-menu-item:hover {
+    background-color: var(--cor-fundo-hover);
+    color: var(--cor-primaria);
+}
+
+/* Estilos de cores (reutilizando o padrão do dropdown anterior) */
+.hamburger-menu-item.secondary-button { color: var(--cor-texto-secundario); }
+.hamburger-menu-item.secondary-button:hover { color: var(--cor-secundaria-hover); background-color: var(--cor-fundo-hover); }
+
+.hamburger-menu-item.danger-button { color: var(--cor-erro); }
+.hamburger-menu-item.danger-button:hover { color: var(--cor-erro-hover); background-color: var(--cor-fundo-hover); }
+
+.hamburger-menu-item.special-button { color: var(--cor-especial, var(--cor-primaria)); } /* Fallback para cor especial */
+.hamburger-menu-item.special-button:hover { color: var(--cor-especial-hover, var(--cor-primaria-hover)); background-color: var(--cor-fundo-hover); }
+
+/* Ajuste de responsividade (sobrescreve o @media (max-width: 600px) .session-actions) */
+@media (max-width: 600px) {
+    .action-buttons-container.main-actions {
+        justify-content: flex-start; /* Alinha à esquerda no mobile */
+    }
+    .hamburger-toggle-button {
+        width: 100%;
+        justify-content: space-between; /* Texto à esquerda, ícone à direita */
+    }
+    .hamburger-menu-content {
+        width: 100%; /* Ocupa a largura toda */
+    }
+}

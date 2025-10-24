@@ -624,6 +624,7 @@ function adicionarEventListenersGerais() {
       "Container do acordeão (.accordion-container) não encontrado."
     );
   }
+  /*
   const btnMaisAcoes = document.getElementById("btn-mais-acoes");
   if (btnMaisAcoes) {
     btnMaisAcoes.addEventListener("click", (event) => {
@@ -632,6 +633,23 @@ function adicionarEventListenersGerais() {
     });
   } else {
     console.warn("Botão Dropdown (#btn-mais-acoes) não encontrado.");
+  }
+*/
+  const btnPacienteActions = document.getElementById(
+    "btn-paciente-actions-toggle"
+  );
+  if (btnPacienteActions) {
+    btnPacienteActions.addEventListener("click", (event) => {
+      event.stopPropagation(); // Impede o closeOnClickOutside
+      const menuContainer = btnPacienteActions.closest(
+        ".action-buttons-container.main-actions"
+      );
+      togglePacienteActionsMenu(menuContainer);
+    });
+  } else {
+    console.warn(
+      "Botão do menu de ações do paciente (#btn-paciente-actions-toggle) não encontrado."
+    );
   }
 }
 
@@ -670,13 +688,45 @@ function toggleDropdown(dropdownContainer) {
 }
 
 /**
- * Fecha todos os menus dropdown ativos se o clique ocorrer fora deles.
+ * Alterna a visibilidade (classe 'active') do menu de ações do paciente.
+ * @param {HTMLElement} menuContainer O elemento .action-buttons-container.main-actions.
+ */
+function togglePacienteActionsMenu(menuContainer) {
+  if (!menuContainer) return;
+
+  // Fecha outros dropdowns abertos (o antigo)
+  document
+    .querySelectorAll(".dropdown-container.active")
+    .forEach((otherContainer) => {
+      if (otherContainer !== menuContainer) {
+        // Evita fechar a si mesmo se tiver ambas as classes
+        otherContainer.classList.remove("active");
+      }
+    });
+
+  // Alterna o estado do menu de ações
+  menuContainer.classList.toggle("active");
+}
+
+/**
+ * Fecha todos os menus dropdown (antigos e novo menu de ações) ativos
+ * se o clique ocorrer fora deles.
  * @param {Event} event O evento de clique global.
  */
 function closeDropdownOnClickOutside(event) {
-  // Encontra todos os dropdowns ativos
+  // 1. Fecha dropdowns antigos (baseados em .dropdown-container)
   document
     .querySelectorAll(".dropdown-container.active")
+    .forEach((container) => {
+      // Verifica se o clique foi FORA do container atual
+      if (!container.contains(event.target)) {
+        container.classList.remove("active");
+      }
+    });
+
+  // 2. Fecha o NOVO menu de ações do paciente
+  document
+    .querySelectorAll(".action-buttons-container.main-actions.active")
     .forEach((container) => {
       // Verifica se o clique foi FORA do container atual
       if (!container.contains(event.target)) {
@@ -1183,7 +1233,10 @@ function adicionarEventListenersModais() {
     // =========================================================================
     // ALTERAÇÃO: Verifica se o clique foi dentro de um dropdown
     // =========================================================================
-    if (e.target.closest(".dropdown-container")) {
+    if (
+      e.target.closest(".dropdown-container") ||
+      e.target.closest(".action-buttons-container.main-actions")
+    ) {
       clickedInsideDropdown = true;
     }
     // =========================================================================

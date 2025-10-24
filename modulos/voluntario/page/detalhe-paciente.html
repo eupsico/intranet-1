@@ -6,21 +6,25 @@
     </div>
 
 <div class="action-buttons-container main-actions">
-        <button id="btn-abrir-modal-mensagem" class="action-button">Enviar Mensagem</button>
-        <button id="btn-abrir-modal-solicitar-sessoes" class="action-button">Solicitar Novas Sessões</button>
-        <button id="btn-abrir-modal-alterar-horario" class="action-button">Alterar Horário</button>
-
-        <div class="dropdown-container">
-            <button id="btn-mais-acoes" class="action-button secondary-button dropdown-toggle">
-                Mais Ações <span class="dropdown-arrow">&#9662;</span> </button>
-            <div class="dropdown-menu" id="dropdown-menu-acoes">
-                <button id="btn-abrir-modal-reavaliacao" class="dropdown-item action-button secondary-button">Solicitar Reavaliação</button>
-                <button id="btn-abrir-modal-desfecho-pb" class="dropdown-item action-button danger-button">Registrar Desfecho PB</button>
-                <button id="btn-abrir-modal-encerramento-plantao" class="dropdown-item action-button danger-button">Registrar Encerramento Plantão</button>
-                <button id="btn-abrir-modal-horarios-pb" class="dropdown-item action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
-            </div>
+    <button id="btn-paciente-actions-toggle" class="action-button hamburger-toggle-button">
+        <span>Ações do Paciente</span>
+        <div class="hamburger-icon">
+            <div></div>
+            <div></div>
+            <div></div>
         </div>
+    </button>
+
+    <div id="paciente-actions-menu" class="hamburger-menu-content">
+        <button id="btn-abrir-modal-mensagem" class="hamburger-menu-item action-button">Enviar Mensagem</button>
+        <button id="btn-abrir-modal-solicitar-sessoes" class="hamburger-menu-item action-button">Solicitar Novas Sessões</button>
+        <button id="btn-abrir-modal-alterar-horario" class="hamburger-menu-item action-button">Alterar Horário</button>
+        <button id="btn-abrir-modal-reavaliacao" class="hamburger-menu-item action-button secondary-button">Solicitar Reavaliação</button>
+        <button id="btn-abrir-modal-horarios-pb" class="hamburger-menu-item action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
+        <button id="btn-abrir-modal-desfecho-pb" class="hamburger-menu-item action-button danger-button">Registrar Desfecho PB</button>
+        <button id="btn-abrir-modal-encerramento-plantao" class="hamburger-menu-item action-button danger-button">Registrar Encerramento Plantão</button>
     </div>
+</div>
 
         <div class="detalhe-paciente-forms-column">
 
