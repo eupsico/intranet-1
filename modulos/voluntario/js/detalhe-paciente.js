@@ -440,7 +440,7 @@ async function renderizarPendencias() {
     const meuAtendimentoPB = pacienteDataGlobal.atendimentosPB?.find(
       (at) =>
         at.profissionalId === userDataGlobal.uid &&
-        ["ativo", "aguardando_info_horarios"].includes(at.statusAtendimento) // Considera ativo ou aguardando
+        ["ativo", "aguardando_horarios"].includes(at.statusAtendimento) // Considera ativo ou aguardando
     );
     if (meuAtendimentoPB && !meuAtendimentoPB.contratoAssinado) {
       pendencias.push({
