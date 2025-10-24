@@ -599,29 +599,6 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
     margin-bottom: 20px; /* Espaço antes do próximo grupo de campos */
 }
 
-/* Ajustes nos inputs readonly dentro do grid */
-.info-summary-grid .form-group.readonly label {
-    margin-bottom: 4px; /* Menor espaço entre label e input */
-    font-size: 0.9em; /* Tamanho da label um pouco menor */
-    color: var(--cor-texto-secundario);
-}
-
-.info-summary-grid .form-group.readonly .form-control[readonly] {
-    background-color: var(--cor-fundo-box); /* Fundo sutil para destacar */
-    border: 1px solid var(--cor-borda-leve); /* Borda mais leve */
-    font-weight: 500;
-    color: var(--cor-texto-principal);
-    cursor: default; /* Remove cursor de texto */
-    padding: 8px 12px; /* Ajusta padding se necessário */
-}
-
-/* Estilo especial para o input de status se precisar herdar cores do badge */
-.info-summary-grid .form-group.readonly .status-badge-input {
-    /* Por padrão, apenas texto. Cores serão adicionadas via JS se necessário */
-    text-align: center;
-    font-weight: bold;
-}
-
 /* Esconde os spans originais (já definido no HTML, mas reforça aqui) */
 .info-summary-grid .readonly-value {
     display: none;
@@ -812,4 +789,55 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
     border-color: var(--cor-borda-leve);
     cursor: not-allowed;
     text-decoration: line-through;
+}
+#form-info-pessoais .form-control[readonly] {
+    background-color: var(--cor-fundo-box); /* Cor de fundo cinza */
+    border: 1px solid var(--cor-borda-leve); /* Borda mais leve */
+    font-weight: 600; /* Texto em negrito (bold) */
+    color: var(--cor-texto-principal);
+    cursor: default;
+}
+
+/* 2. Garante que o input de Status (que tem classes de badge) 
+     mantenha o alinhamento central e o negrito.
+*/
+#form-info-pessoais .status-badge-input[readonly] {
+    text-align: center;
+    font-weight: 600; /* Reforça o negrito */
+}
+
+/* 3. Ajusta o grid de resumo (info-summary-grid) para ter 2 colunas.
+     (Ajustando a classe que já existia no HTML).
+*/
+.info-summary-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 480px) {
+    .info-summary-grid.cols-3 {
+        grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
+    }
+}
+
+
+/* 4. Define o novo grid de 4 colunas (cols-4)
+*/
+.form-grid.cols-4 {
+    display: grid;
+    gap: 15px 20px;
+    /* Cria 4 colunas em telas largas */
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Media queries para responsividade do cols-4 */
+@media (max-width: 900px) {
+     .form-grid.cols-4 {
+        /* 2 colunas em tablets */
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+     }
+}
+
+@media (max-width: 480px) {
+     .form-grid.cols-4 {
+        grid-template-columns: 1fr; /* 1 coluna em mobile */
+     }
 }
