@@ -571,8 +571,13 @@ function adicionarEventListenersGerais() {
 
   // Forms Editáveis
   document
-    .getElementById("form-info-pessoais")
-    ?.addEventListener("submit", handleSalvarInfoPessoais);
+    .getElementById("btn-salvar-info-pessoais")
+    ?.addEventListener("click", handleSalvarDadosPessoaisEEndereco); // Chama a nova função
+  document
+    .getElementById("btn-salvar-endereco")
+    ?.addEventListener("click", handleSalvarDadosPessoaisEEndereco); // Chama a mesma nova função
+
+  // Listeners para Financeiro e Acompanhamento (mantidos)
   document
     .getElementById("form-info-financeiras")
     ?.addEventListener("submit", handleSalvarInfoFinanceiras);
@@ -772,19 +777,39 @@ function handleTabClick(event) {
   targetContent.classList.add("active");
 }
 
-async function handleSalvarInfoPessoais(event) {
-  event.preventDefault();
-  const form = event.target;
-  const button = form.querySelector("#btn-salvar-info-pessoais"); // ID específico do botão
-  if (!button) return; // Sai se o botão não for encontrado
+async function handleSalvarDadosPessoaisEEndereco(event) {
+  event.preventDefault(); // Previne qualquer comportamento padrão do botão
+  const button = event.currentTarget; // O botão que foi clicado
+  const form = document.getElementById("form-info-pessoais"); // Pega o formulário pai
 
+  if (!form || !button) {
+    console.error(
+      "Formulário ou botão não encontrado ao salvar dados pessoais/endereço."
+    );
+    return;
+  }
+
+  const originalButtonText = button.textContent; // Guarda o texto original do botão clicado
   button.disabled = true;
   button.innerHTML = '<span class="loading-spinner-small"></span> Salvando...';
 
+  // Desabilita o outro botão de salvar também, se existir
+  const otherButtonId =
+    button.id === "btn-salvar-info-pessoais"
+      ? "btn-salvar-endereco"
+      : "btn-salvar-info-pessoais";
+  const otherButton = document.getElementById(otherButtonId);
+  if (otherButton) {
+    otherButton.disabled = true;
+  }
+
   try {
+    // Coleta TODOS os dados do formulário
     const dataToUpdate = {
+      // Informações Pessoais (exceto readonly como nome, cpf, idade)
       telefoneCelular: form.querySelector("#dp-telefone")?.value || null,
       dataNascimento: form.querySelector("#dp-data-nascimento")?.value || null,
+      // Contatos (usando notação de ponto)
       "responsavel.nome":
         form.querySelector("#dp-responsavel-nome")?.value || null,
       "contatoEmergencia.nome":
@@ -805,22 +830,30 @@ async function handleSalvarInfoPessoais(event) {
       "endereco.estado":
         form.querySelector("#dp-endereco-estado")?.value || null,
       "endereco.cep": form.querySelector("#dp-endereco-cep")?.value || null,
-      // --- Fim Endereço ---
+      // Timestamp da última atualização
       lastUpdate: serverTimestamp(),
     };
 
+    // Salva no Firestore
     const docRef = doc(db, "trilhaPaciente", pacienteIdGlobal);
     await updateDoc(docRef, dataToUpdate);
-    alert("Informações pessoais atualizadas com sucesso!");
+    alert("Informações pessoais e de endereço atualizadas com sucesso!");
 
-    await carregarDadosPaciente(pacienteIdGlobal); // Recarrega
-    preencherFormularios(); // Re-preenche o formulário com dados atualizados
+    // Recarrega os dados do paciente para garantir consistência
+    await carregarDadosPaciente(pacienteIdGlobal);
+    // Re-preenche o formulário com dados atualizados (opcional, mas bom para feedback)
+    preencherFormularios();
   } catch (error) {
-    console.error("Erro ao salvar informações pessoais:", error);
+    console.error("Erro ao salvar informações pessoais e de endereço:", error);
     alert(`Erro ao salvar: ${error.message}`);
   } finally {
+    // Reabilita o botão clicado
     button.disabled = false;
-    button.textContent = "Salvar Alterações Pessoais";
+    button.textContent = originalButtonText;
+    // Reabilita o outro botão
+    if (otherButton) {
+      otherButton.disabled = false;
+    }
   }
 }
 
