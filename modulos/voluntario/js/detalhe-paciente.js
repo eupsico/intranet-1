@@ -1114,6 +1114,26 @@ function adicionarEventListenersModais() {
   document
     .getElementById("btn-abrir-modal-horarios-pb")
     ?.addEventListener("click", abrirModalHorariosPb); // Para aguardando_info_horarios
+  const anotacoesModalBody = document.querySelector(
+    "#anotacoes-sessao-modal .modal-body"
+  );
+  if (anotacoesModalBody) {
+    anotacoesModalBody.addEventListener("click", (event) => {
+      // Verifica se o clique foi em um link de aba dentro do container de navegação correto
+      const clickedTabLink = event.target.closest(
+        "#anotacoes-tabs-nav .tab-link"
+      );
+      if (clickedTabLink && !clickedTabLink.classList.contains("active")) {
+        // Evita reprocessar aba já ativa
+        // Chama a função genérica handleTabClick (que agora trata abas de containers diferentes)
+        handleTabClick({ currentTarget: clickedTabLink }); // Simula o evento como se viesse diretamente do link
+      }
+    });
+  } else {
+    console.warn(
+      "Corpo do modal de anotações (#anotacoes-sessao-modal .modal-body) não encontrado para adicionar listener de abas."
+    );
+  }
 }
 
 // --- Lógica do Modal de Mensagens (Adaptada) ---
@@ -1211,7 +1231,6 @@ function abrirModalMensagens(/* Não precisa de params, usa globais */) {
     if (btnWhatsapp) btnWhatsapp.style.display = "none";
   };
 }
-
 function preencherFormularioMensagem(templateKey, templateTitle) {
   const { systemConfigs, userData } = dadosParaMensagemGlobal; // Usa dados globais da mensagem
 
