@@ -326,9 +326,9 @@
                     </div>
                 </fieldset>
 
-                <fieldset>
+<fieldset>
                     <legend>Detalhes da Nova Sessão</legend>
-                    <div class="form-grid cols-3"> <div class="form-group">
+                    <div class="form-grid cols-4"> <div class="form-group">
                             <label for="solicitar-dia-semana">Dia da Sessão</label>
                             <select id="solicitar-dia-semana" class="form-control" required>
                                 <option value="">Selecione...</option> <option value="Segunda-feira">Segunda-feira</option>
@@ -349,6 +349,15 @@
                             <select id="solicitar-tipo-atendimento" class="form-control" required>
                                 <option value="">Selecione...</option> <option value="online">Online</option>
                                 <option value="presencial">Presencial</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="solicitar-frequencia">Frequência</label>
+                            <select id="solicitar-frequencia" class="form-control" required>
+                                <option value="">Selecione...</option>
+                                <option value="Semanal">Semanal</option>
+                                <option value="Quinzenal">Quinzenal</option>
+                                <option value="Mensal">Mensal</option>
                             </select>
                         </div>
                     </div>
@@ -514,9 +523,9 @@
                     </div>
                 </fieldset>
 
-                <fieldset>
+<fieldset>
                     <legend>Nova Configuração da Sessão</legend>
-                    <div class="form-grid cols-3"> <div class="form-group">
+                    <div class="form-grid cols-4"> <div class="form-group">
                             <label for="alterar-dia-semana">Selecione o novo dia da sessão:*</label>
                             <select id="alterar-dia-semana" class="form-control" required>
                                 <option value="">Selecione...</option>
@@ -541,8 +550,7 @@
                                 <option value="Presencial">Presencial</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-grid cols-2"> <div class="form-group">
+                        <div class="form-group">
                             <label for="alterar-frequencia">O atendimento será realizado:*</label>
                             <select id="alterar-frequencia" class="form-control" required>
                                 <option value="">Selecione...</option>
@@ -551,6 +559,8 @@
                                 <option value="Mensal">Mensal</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="form-grid cols-1"> 
                         <div class="form-group">
                             <label for="alterar-data-inicio">Informe a partir de qual data:*</label>
                             <input type="date" id="alterar-data-inicio" class="form-control" required>

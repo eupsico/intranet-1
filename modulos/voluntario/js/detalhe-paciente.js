@@ -69,6 +69,7 @@ export async function init(user, userData, pacienteId) {
     }
 
     preencherFormularios(); // Agora preenche mais campos
+    atualizarVisibilidadeBotoesAcao(pacienteDataGlobal.status);
     await carregarSessoes(); // Precisa carregar antes de checar pendências de sessão
     renderizarPendencias(); // ***** NOVO: Chama a função de pendências *****
 
@@ -1138,11 +1139,73 @@ function handleGerarProntuarioPDF() {
       ", "
     )}\n\n(Lógica de geração do PDF ainda não implementada)`
   );
-
-  // --- LÓGICA DE GERAÇÃO DO PDF ---
-  // (Mantida como comentário)
+}
+/**
+ * Define a visibilidade de um botão de ação.
+ * @param {string} id - O ID do elemento botão (ex: 'btn-abrir-modal-mensagem')
+ * @param {boolean} isVisible - true para mostrar, false para ocultar
+ */
+function setButtonVisibility(id, isVisible) {
+  const btn = document.getElementById(id);
+  if (btn) {
+    // No menu hamburger, os botões são .hamburger-menu-item
+    // O estilo de exibição padrão para eles é 'block'
+    btn.style.display = isVisible ? "block" : "none";
+  } else {
+    console.warn(
+      `Botão de ação #${id} não encontrado para definir visibilidade.`
+    );
+  }
 }
 
+/**
+ * Controla quais botões de ação são exibidos com base no status do paciente.
+ * @param {string} status - O status atual do paciente (ex: 'em_atendimento_pb')
+ */
+function atualizarVisibilidadeBotoesAcao(status) {
+  console.log("Atualizando visibilidade dos botões para o status:", status);
+
+  // Define a visibilidade padrão (oculta todos primeiro, exceto o básico)
+  setButtonVisibility("btn-abrir-modal-mensagem", true); // Sempre visível
+  setButtonVisibility("btn-abrir-modal-solicitar-sessoes", false);
+  setButtonVisibility("btn-abrir-modal-alterar-horario", false);
+  setButtonVisibility("btn-abrir-modal-reavaliacao", true); // Quase sempre visível
+  setButtonVisibility("btn-abrir-modal-desfecho-pb", false);
+  setButtonVisibility("btn-abrir-modal-encerramento-plantao", false);
+  setButtonVisibility("btn-abrir-modal-horarios-pb", false);
+
+  switch (status) {
+    case "em_atendimento_pb":
+      // Solicitação 1: (PB) Mostrar Mensagem, Solicitar Sessões, Alterar Horário, Reavaliação, Desfecho PB
+      setButtonVisibility("btn-abrir-modal-solicitar-sessoes", true);
+      setButtonVisibility("btn-abrir-modal-alterar-horario", true);
+      setButtonVisibility("btn-abrir-modal-desfecho-pb", true);
+      break;
+
+    case "aguardando_info_horarios":
+      // Solicitação 2 e 3: (Aguardando) Mostrar Mensagem, Reavaliação, Informar Horários
+      setButtonVisibility("btn-abrir-modal-horarios-pb", true);
+      // Oculta os outros (já feito no padrão, exceto Reavaliação e Mensagem)
+      setButtonVisibility("btn-abrir-modal-solicitar-sessoes", false); // Garante
+      setButtonVisibility("btn-abrir-modal-alterar-horario", false); // Garante
+      setButtonVisibility("btn-abrir-modal-encerramento-plantao", false); // Garante
+      break;
+
+    case "em_atendimento_plantao":
+      // Solicitação 4: (Plantão) Mostrar Mensagem, Reavaliação, Solicitar Novas Sessões, Registrar Encerramento Plantão
+      setButtonVisibility("btn-abrir-modal-solicitar-sessoes", true);
+      setButtonVisibility("btn-abrir-modal-encerramento-plantao", true);
+      break;
+
+    default:
+      // Para outros status (ex: 'alta', 'desistencia'), mantém o padrão
+      // (Apenas "Enviar Mensagem" e "Solicitar Reavaliação" visíveis)
+      console.log(
+        `Status "${status}" não tem regras de botões personalizadas. Usando padrão.`
+      );
+      break;
+  }
+}
 // --- Funções Auxiliares ---
 
 function calcularIdade(dataNascimento) {
@@ -1857,6 +1920,7 @@ async function handleSolicitarSessoesSubmit(evento) {
         horario: form.querySelector("#solicitar-horario")?.value || null,
         modalidade:
           form.querySelector("#solicitar-tipo-atendimento")?.value || null,
+        frequencia: form.querySelector("#solicitar-frequencia")?.value || null, // <-- LINHA ADICIONADA
         sala: form.querySelector("#solicitar-sala")?.value || null,
         dataInicioPreferencial:
           form.querySelector("#solicitar-data-inicio")?.value || null,
@@ -3177,6 +3241,7 @@ async function handleEncerramentoSubmit(evento, userUid, userData) {
     // renderizarCabecalhoInfoBar(); // Removido
     preencherFormularios(); // Re-preenche forms
     renderizarPendencias(); // Re-renderiza pendências
+    atualizarVisibilidadeBotoesAcao(pacienteDataGlobal.status);
     // Opcional: recarregar a página inteira: location.reload();
   } catch (error) {
     console.error("Erro ao salvar encerramento:", error);
@@ -3662,6 +3727,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
     preencherFormularios(); // Re-preenche forms
     renderizarPendencias(); // Re-renderiza pendências
     await carregarSessoes(); // Recarrega sessões também, se aplicável
+    atualizarVisibilidadeBotoesAcao(pacienteDataGlobal.status);
   } catch (error) {
     console.error("Erro ao salvar informações de Horários PB:", error);
     alert(`Erro ao salvar: ${error.message}`);

@@ -765,3 +765,51 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
     */
     min-height: 0; 
 }
+/* =============================================================================
+   ADIÇÃO: Estilos para Slots de Agendamento (Reavaliação)
+   =============================================================================
+*/
+.slots-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.slots-container p {
+    width: 100%;
+    font-style: italic;
+    color: var(--cor-texto-secundario);
+}
+
+.slot-time {
+    padding: 8px 15px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    background-color: var(--cor-fundo-box);
+    color: var(--cor-primaria);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.slot-time:hover {
+    background-color: var(--cor-fundo-hover);
+    border-color: var(--cor-primaria);
+}
+
+.slot-time.selected {
+    background-color: var(--cor-primaria);
+    color: white;
+    border-color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.slot-time.disabled,
+.slot-time:disabled {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto-secundario);
+    border-color: var(--cor-borda-leve);
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
