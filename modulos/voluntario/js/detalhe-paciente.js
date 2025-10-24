@@ -62,11 +62,11 @@ export async function init(user, userData, pacienteId) {
     // Popular a interface
     // renderizarCabecalhoInfoBar(); // Removido - Info bar não existe mais
     // Apenas preenche o nome no header principal
-    const nomeHeader = document.getElementById("paciente-nome-header");
+    /* const nomeHeader = document.getElementById("paciente-nome-header");
     if (nomeHeader) {
       nomeHeader.textContent =
         pacienteDataGlobal.nomeCompleto || "Nome não encontrado";
-    }
+    }*/
 
     preencherFormularios(); // Agora preenche mais campos
     atualizarVisibilidadeBotoesAcao(pacienteDataGlobal.status);

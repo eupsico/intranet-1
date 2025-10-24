@@ -649,8 +649,8 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
 .action-buttons-container.main-actions {
     position: relative; /* Para ancorar o menu */
     display: flex;
-    justify-content: flex-end; /* Alinha o botão à direita */
-    margin-bottom: 20px;
+    /* justify-content: flex-end;  <-- REMOVIDO (o header pai controla) */
+    /* margin-bottom: 20px;       <-- REMOVIDO (o header pai controla) */
 }
 
 /* Botão de Toggle (O Hamburger) */

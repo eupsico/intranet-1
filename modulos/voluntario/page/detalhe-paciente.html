@@ -1,31 +1,29 @@
 <div class="container-fluid" id="detalhe-paciente-view">
 
     <div class="detalhe-paciente-header">
-        <h2 id="paciente-nome-header">Carregando...</h2>
         <a href="#meus-pacientes" class="action-button secondary-button">&larr; Voltar para Meus Pacientes</a>
-    </div>
-
-<div class="action-buttons-container main-actions">
-    <button id="btn-paciente-actions-toggle" class="action-button hamburger-toggle-button">
-        <span>Gerenciar Atendimento</span>
-        <div class="hamburger-icon">
-            <div></div>
-            <div></div>
-            <div></div>
+        
+        <div class="action-buttons-container main-actions">
+            <button id="btn-paciente-actions-toggle" class="action-button hamburger-toggle-button">
+                <span>Gerenciar Atendimento</span> <div class="hamburger-icon">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </button>
+        
+            <div id="paciente-actions-menu" class="hamburger-menu-content">
+                <button id="btn-abrir-modal-mensagem" class="hamburger-menu-item action-button">Enviar Mensagem</button>
+                <button id="btn-abrir-modal-solicitar-sessoes" class="hamburger-menu-item action-button">Solicitar Novas Sessões</button>
+                <button id="btn-abrir-modal-alterar-horario" class="hamburger-menu-item action-button">Alterar Horário</button>
+                <button id="btn-abrir-modal-reavaliacao" class="hamburger-menu-item action-button secondary-button">Solicitar Reavaliação</button>
+                <button id="btn-abrir-modal-horarios-pb" class="hamburger-menu-item action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
+                <button id="btn-abrir-modal-desfecho-pb" class="hamburger-menu-item action-button danger-button">Registrar Desfecho PB</button>
+                <button id="btn-abrir-modal-encerramento-plantao" class="hamburger-menu-item action-button danger-button">Registrar Encerramento Plantão</button>
+            </div>
         </div>
-    </button>
-
-    <div id="paciente-actions-menu" class="hamburger-menu-content">
-        <button id="btn-abrir-modal-mensagem" class="hamburger-menu-item action-button">Enviar Mensagem</button>
-        <button id="btn-abrir-modal-solicitar-sessoes" class="hamburger-menu-item action-button">Solicitar Novas Sessões</button>
-        <button id="btn-abrir-modal-alterar-horario" class="hamburger-menu-item action-button">Alterar Horário</button>
-        <button id="btn-abrir-modal-reavaliacao" class="hamburger-menu-item action-button secondary-button">Solicitar Reavaliação</button>
-        <button id="btn-abrir-modal-horarios-pb" class="hamburger-menu-item action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
-        <button id="btn-abrir-modal-desfecho-pb" class="hamburger-menu-item action-button danger-button">Registrar Desfecho PB</button>
-        <button id="btn-abrir-modal-encerramento-plantao" class="hamburger-menu-item action-button danger-button">Registrar Encerramento Plantão</button>
     </div>
-</div>
-
+    <div class="detalhe-paciente-forms-column">
         <div class="detalhe-paciente-forms-column">
 
             <div class="accordion-container"> <form id="form-info-pessoais">
@@ -44,20 +42,20 @@
                                 <span id="dp-status-atual" class="readonly-value status-badge" style="display: none;">--</span> 
                             </div>
                             <div class="form-group readonly">
-                                <label for="dp-idade-input">Idade:</label>
-                                <input type="text" id="dp-idade-input" class="form-control" readonly>
-                                <span id="dp-idade" class="readonly-value" style="display: none;">--</span>
-                            </div>
-                            <div class="form-group readonly">
                                 <label for="dp-desde-input">Desde (Encaminhamento):</label>
                                 <input type="text" id="dp-desde-input" class="form-control" readonly>
                                 <span id="dp-desde" class="readonly-value" style="display: none;">--</span>
                             </div>
-                        </div>
-                        <div class="form-grid cols-1">
                             <div class="form-group">
                                 <label for="dp-nome-completo">Nome completo</label>
                                 <input type="text" id="dp-nome-completo" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="form-grid cols-1">
+                            <div class="form-group readonly">
+                                <label for="dp-idade-input">Idade:</label>
+                                <input type="text" id="dp-idade-input" class="form-control" readonly>
+                                <span id="dp-idade" class="readonly-value" style="display: none;">--</span>
                             </div>
                             <div class="form-group">
                                 <label for="dp-telefone">Telefone</label>
