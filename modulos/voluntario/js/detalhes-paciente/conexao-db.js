@@ -16,7 +16,7 @@ import {
   Timestamp,
   writeBatch,
   deleteDoc,
-} from "../../../assets/js/firebase-init.js";
+} from "../../../../assets/js/firebase-init.js";
 
 // Reexporta tudo para ser usado por outros módulos de 'detalhes-paciente'
 export {
