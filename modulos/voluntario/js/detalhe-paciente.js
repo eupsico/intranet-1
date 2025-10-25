@@ -1831,7 +1831,7 @@ function abrirModalSolicitarSessoes(/* Usa globais */) {
   // Pega o atendimento ativo (exemplo, ajustar se necessário)
   const atendimentoAtivo = pacienteDataGlobal.atendimentosPB?.find(
     (at) =>
-      at.profissionalId === userDataGlobal.uid &&
+      // at.profissionalId === userDataGlobal.uid &&
       at.statusAtendimento === "ativo"
   ); // Checa ID do prof logado
   if (!atendimentoAtivo) {
