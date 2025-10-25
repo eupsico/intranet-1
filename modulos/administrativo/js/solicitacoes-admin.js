@@ -2239,201 +2239,241 @@ export async function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Função para CRIAR SESSÕES recorrentes ---
-  // *** CORRIGIDA PARA LIDAR COM dataInicio/horaInicio POSSIVELMENTE UNDEFINED E USAR numeroSessoes ***
-  // --- Função para CRIAR SESSÕES recorrentes ---
-  // *** CORRIGIDA PARA LIDAR COM dataInicio/horaInicio POSSIVELMENTE UNDEFINED E USAR numeroSessoes ***
-  async function criarSessoesRecorrentes(agendamento) {
-    console.log("Iniciando criação de sessões:", agendamento);
-    const {
-      pacienteId,
-      profissionalId,
-      profissionalNome,
-      atendimentoId,
-      dataInicio,
-      horaInicio,
-      recorrencia,
-      numeroSessoes, // ***** NOVO: Recebe o número de sessões *****
-      tipoSessao,
-      sala,
-    } = agendamento;
+  // handleHorariosPbSubmit: Adicionado listener para tipo/sala
+  async function handleHorariosPbSubmit(evento, userUid, userData) {
+    // Recebe user e userData
+    evento.preventDefault();
+    const formulario = evento.target;
+    const modal = formulario.closest(".modal-overlay"); // Achar o overlay
+    const botaoSalvar = modal?.querySelector('button[type="submit"]'); // Acesso seguro
 
-    // ***** CORREÇÃO: Validar data e hora de início *****
-    const dataInicioStr = dataInicio || "";
-    const horaInicioStr = horaInicio || "";
-
-    if (
-      !pacienteId ||
-      !atendimentoId ||
-      !dataInicioStr || // Usa a string verificada
-      !horaInicioStr || // Usa a string verificada
-      !recorrencia
-    ) {
-      console.error("Dados insuficientes para criar sessões:", agendamento);
-      throw new Error(
-        "Dados insuficientes para criar sessões. Verifique data, hora e recorrência."
-      );
-    }
-    // *************************************************
-
-    const sessoesRef = collection(
-      dbInstance,
-      "trilhaPaciente",
-      pacienteId,
-      "sessoes"
-    );
-    const batch = writeBatch(dbInstance);
-    const sessoesCriadasIds = [];
-
-    // Constrói a data inicial de forma robusta
-    let dataAtual;
-    try {
-      const [ano, mes, dia] = dataInicioStr.split("-").map(Number);
-      const [hora, minuto] = horaInicioStr.split(":").map(Number);
-      dataAtual = new Date(ano, mes - 1, dia, hora, minuto); // JS usa mês 0-11
-      if (isNaN(dataAtual.getTime())) throw new Error("Data ou hora inválida");
-    } catch (e) {
+    if (!formulario || !modal || !botaoSalvar || !userUid || !userData) {
       console.error(
-        "Erro ao parsear data/hora:",
-        dataInicioStr,
-        horaInicioStr,
-        e
+        "Elementos do modal de horários PB ou dados do usuário ausentes."
       );
-      throw new Error(
-        `Data (${dataInicioStr}) ou Hora (${horaInicioStr}) inválida.`
-      );
+      alert("Erro interno ao salvar horários.");
+      return;
     }
 
-    // --- Lógica de Recorrência ---
-    // ***** NOVO: Usa o número de sessões vindo do agendamento *****
-    let sessoesParaCriar = 1; // Padrão se for 'unica'
-    if (recorrencia !== "unica") {
-      sessoesParaCriar = parseInt(numeroSessoes, 10);
-      if (
-        isNaN(sessoesParaCriar) ||
-        sessoesParaCriar < 1 ||
-        sessoesParaCriar > 52
-      ) {
-        // Limite de 52 (1 ano semanal)
-        throw new Error(
-          `Número de sessões inválido: ${numeroSessoes}. Deve ser um número entre 1 e 52.`
-        );
-      }
+    botaoSalvar.disabled = true;
+    botaoSalvar.innerHTML =
+      '<span class="loading-spinner-small"></span> Salvando...';
+
+    const pacienteId = formulario.querySelector(
+      "#paciente-id-horarios-modal"
+    )?.value;
+    const atendimentoId = formulario.querySelector(
+      "#atendimento-id-horarios-modal"
+    )?.value;
+
+    if (!pacienteId || !atendimentoId || pacienteId !== pacienteIdGlobal) {
+      console.error("Inconsistência de IDs no modal de horários PB!");
+      alert("Erro interno. Recarregue a página.");
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = "Salvar";
+      return;
     }
-    // **********************************************************
-
-    for (let i = 0; i < sessoesParaCriar; i++) {
-      // Verifica se a data é válida (já verificado na inicialização, mas checa de novo)
-      if (isNaN(dataAtual.getTime())) {
-        console.error(
-          "Data inválida encontrada durante a criação de sessões:",
-          dataAtual
-        );
-        throw new Error(`Data de início inválida: ${dataInicio}`);
-      }
-
-      const novaSessaoRef = doc(sessoesRef); // Gera ID automático
-      const sessaoData = {
-        pacienteId: pacienteId,
-        profissionalId: profissionalId,
-        profissionalNome: profissionalNome,
-        atendimentoId: atendimentoId, // Vincula à PB específica
-        dataHora: Timestamp.fromDate(new Date(dataAtual)), // Armazena como Timestamp
-        recorrencia: recorrencia, // Guarda a recorrência usada
-        tipoSessao: tipoSessao, // Presencial / Online
-        sala: sala,
-        status: "pendente", // Status inicial
-        criadoEm: serverTimestamp(),
-        criadoPor: {
-          // Quem agendou
-          id: adminUser.uid,
-          nome: adminUser.nome,
-        },
-        anotacoes: null, // Campo para futuras anotações
-      };
-      batch.set(novaSessaoRef, sessaoData);
-      sessoesCriadasIds.push(novaSessaoRef.id);
-
-      // Calcula a próxima data
-      if (recorrencia === "semanal") {
-        dataAtual.setDate(dataAtual.getDate() + 7);
-      } else if (recorrencia === "quinzenal") {
-        dataAtual.setDate(dataAtual.getDate() + 14);
-      } else if (recorrencia === "mensal") {
-        dataAtual.setMonth(dataAtual.getMonth() + 1);
-      } else {
-        // 'unica'
-        break; // Sai do loop após a primeira
-      }
-    }
+    const docRef = doc(db, "trilhaPaciente", pacienteId);
 
     try {
-      await batch.commit();
-      console.log("Batch de criação de sessões concluído.");
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
 
-      // -- ATUALIZAR TRILHA DO PACIENTE --
-      const pacienteRef = doc(dbInstance, "trilhaPaciente", pacienteId);
-      const pacienteSnap = await getDoc(pacienteRef);
-      if (pacienteSnap.exists()) {
-        const pacienteData = pacienteSnap.data();
-        const atendimentosPB = [...(pacienteData.atendimentosPB || [])];
-        const index = atendimentosPB.findIndex(
-          (at) => at.atendimentoId === atendimentoId
+      const dadosDoPaciente = docSnap.data();
+      const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])]; // Cria cópia
+      const indiceDoAtendimento = atendimentos.findIndex(
+        (at) => at.atendimentoId === atendimentoId
+      );
+
+      if (indiceDoAtendimento === -1) {
+        throw new Error("Atendimento não encontrado para este paciente!");
+      }
+
+      const iniciou = formulario.querySelector(
+        'input[name="iniciou-pb"]:checked'
+      )?.value;
+      if (!iniciou)
+        throw new Error(
+          "Por favor, selecione se o paciente iniciou o atendimento."
         );
-        if (index !== -1) {
-          // Atualiza o objeto horarioSessoes dentro do atendimento específico
-          const horarioSessaoAdmin = {
-            responsavelId: adminUser.uid,
-            responsavelNome: adminUser.nome,
-            diaSemana: obterDiaDaSemana(agendamento.dataInicio), // Função auxiliar necessária
-            horario: agendamento.horaInicio,
-            tipoAtendimento: agendamento.tipoSessao,
-            frequencia: agendamento.recorrencia,
-            salaAtendimento: agendamento.sala,
-            dataInicio: agendamento.dataInicio, // Data da primeira sessão criada
-            //
-            // *** LINHA CORRIGIDA ***
-            //
-            definidoEm: Timestamp.now(), // CORREÇÃO: Usar Timestamp.now() (cliente) em vez de serverTimestamp() dentro de array
-            //
-            // O campo 'alterarGrade' não se aplica aqui diretamente
-          };
-          atendimentosPB[index].horarioSessoes = horarioSessaoAdmin;
-          // O status do atendimento já deve ser 'ativo', definido pelo voluntário
 
-          const updateTrilha = {
-            atendimentosPB: atendimentosPB,
-            // O status geral do paciente deve ser 'em_atendimento_pb'
-            status: "em_atendimento_pb",
-            lastUpdate: serverTimestamp(),
-          };
-          await updateDoc(pacienteRef, updateTrilha);
-          console.log(
-            "Trilha do paciente atualizada com informações do agendamento."
+      let dadosParaAtualizar = {};
+      let novoStatusPaciente = dadosDoPaciente.status;
+      let horarioSessaoDataParaSolicitacao = null; // Para a solicitação
+
+      if (iniciou === "sim") {
+        // *** IMPORTANTE: Adicionar listener para tipo/sala AGORA que o form existe ***
+        const continuacaoContainer = document.getElementById(
+          "form-continuacao-pb"
+        );
+        if (continuacaoContainer) {
+          const tipoSelect = continuacaoContainer.querySelector(
+            "#tipo-atendimento-pb-voluntario"
           );
+          const salaSelect = continuacaoContainer.querySelector(
+            "#sala-atendimento-pb"
+          );
+          if (tipoSelect && salaSelect) {
+            const handleChange = () => {
+              const isOnline = tipoSelect.value === "Online";
+              salaSelect.disabled = isOnline;
+              if (isOnline) salaSelect.value = "Online"; // Não limpa se mudar pra presencial aqui, deixa o usuário escolher
+            }; // Adiciona o listener APENAS se não existir ainda (evita duplicação)
+            if (!tipoSelect.hasAttribute("data-listener-added")) {
+              tipoSelect.addEventListener("change", handleChange);
+              tipoSelect.setAttribute("data-listener-added", "true");
+            }
+            handleChange(); // Aplica estado inicial lido do form
+          }
+        }
+
+        const horarioSessaoData = {
+          responsavelId: userUid,
+          responsavelNome: userData.nome,
+          diaSemana: formulario.querySelector("#dia-semana-pb")?.value || null,
+          horario: formulario.querySelector("#horario-pb")?.value || null,
+          tipoAtendimento:
+            formulario.querySelector("#tipo-atendimento-pb-voluntario")
+              ?.value || null,
+          alterarGrade:
+            formulario.querySelector("#alterar-grade-pb")?.value || null,
+          frequencia:
+            formulario.querySelector("#frequencia-atendimento-pb")?.value ||
+            null,
+          salaAtendimento:
+            formulario.querySelector("#sala-atendimento-pb")?.value || null,
+          dataInicio:
+            formulario.querySelector("#data-inicio-sessoes")?.value || null,
+          observacoes:
+            formulario.querySelector("#observacoes-pb-horarios")?.value || "",
+          definidoEm: Timestamp.now(), // (Usa Timestamp.now() por estar em array)
+        }; // Validação dos campos do formulário dinâmico
+
+        if (
+          !horarioSessaoData.diaSemana ||
+          !horarioSessaoData.horario ||
+          !horarioSessaoData.tipoAtendimento ||
+          !horarioSessaoData.alterarGrade ||
+          !horarioSessaoData.frequencia ||
+          !horarioSessaoData.salaAtendimento ||
+          !horarioSessaoData.dataInicio
+        ) {
+          throw new Error(
+            "Preencha todos os detalhes do horário obrigatórios (*)."
+          );
+        } // Validação Sala vs Tipo Atendimento
+        if (
+          horarioSessaoData.tipoAtendimento === "Online" &&
+          horarioSessaoData.salaAtendimento !== "Online"
+        ) {
+          throw new Error("Para atendimento Online, a sala deve ser 'Online'.");
+        }
+        if (
+          horarioSessaoData.tipoAtendimento === "Presencial" &&
+          horarioSessaoData.salaAtendimento === "Online"
+        ) {
+          throw new Error(
+            "Para atendimento Presencial, selecione uma sala física."
+          );
+        } // Salva os dados do horário para criar a solicitação
+
+        horarioSessaoDataParaSolicitacao = horarioSessaoData; // Atualiza o atendimento específico na cópia do array
+
+        atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData;
+        atendimentos[indiceDoAtendimento].statusAtendimento =
+          "horarios_informados";
+        novoStatusPaciente = "cadastrar_horario_psicomanager"; // Objeto de atualização para a trilha (SEM dataCadastroPsicomanager)
+
+        dadosParaAtualizar = {
+          atendimentosPB: atendimentos,
+          status: novoStatusPaciente,
+          lastUpdate: serverTimestamp(),
+        };
+      } else {
+        // iniciou === "nao"
+        const motivoNaoInicio = formulario.querySelector(
+          'input[name="motivo-nao-inicio"]:checked'
+        )?.value;
+        if (!motivoNaoInicio)
+          throw new Error("Por favor, selecione o motivo do não início.");
+
+        if (motivoNaoInicio === "desistiu") {
+          const motivoDescricao =
+            formulario.querySelector("#motivo-desistencia-pb")?.value || "";
+          if (!motivoDescricao)
+            throw new Error("Por favor, descreva o motivo da desistência.");
+
+          atendimentos[indiceDoAtendimento].statusAtendimento =
+            "desistencia_antes_inicio";
+          atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
+          atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now();
+          novoStatusPaciente = "desistencia";
         } else {
-          console.warn(
-            `Atendimento PB ${atendimentoId} não encontrado na trilha para atualizar horário.`
+          // outra_modalidade
+          const detalhesSolicitacao =
+            formulario.querySelector("#detalhes-solicitacao-pb")?.value || "";
+          if (!detalhesSolicitacao)
+            throw new Error("Por favor, detalhe a solicitação do paciente.");
+
+          atendimentos[indiceDoAtendimento].statusAtendimento =
+            "solicitado_reencaminhamento";
+          atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio;
+          atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
+            detalhesSolicitacao;
+          atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now();
+          novoStatusPaciente = "reavaliar_encaminhamento";
+        }
+        dadosParaAtualizar = {
+          atendimentosPB: atendimentos,
+          status: novoStatusPaciente,
+          lastUpdate: serverTimestamp(),
+        };
+      } // Atualiza a trilha do paciente
+
+      await updateDoc(docRef, dadosParaAtualizar); // Gera solicitação para admin CADASTRAR as sessões // SE 'iniciou' == 'sim' E os dados do horário foram capturados
+
+      if (iniciou === "sim" && horarioSessaoDataParaSolicitacao) {
+        const solicitacaoCadastroData = {
+          tipo: "novas_sessoes", // Cria a solicitação de "Novas Sessões"
+          status: "Pendente",
+          dataSolicitacao: serverTimestamp(),
+          solicitanteId: userUid,
+          solicitanteNome: userData.nome,
+          pacienteId: pacienteId,
+          pacienteNome: dadosDoPaciente.nomeCompleto,
+          atendimentoId: atendimentoId,
+          detalhes: { ...horarioSessaoDataParaSolicitacao },
+          adminFeedback: null,
+        };
+        try {
+          await addDoc(collection(db, "solicitacoes"), solicitacaoCadastroData);
+          console.log("Solicitação de 'novas sessões' (para cadastro) criada.");
+        } catch (gradeError) {
+          console.error(
+            "Erro ao criar solicitação de 'novas sessões':",
+            gradeError
+          );
+          alert(
+            "Atenção: Houve um erro ao gerar a solicitação para o admin, por favor, notifique o administrativo manualmente."
           );
         }
-      } else {
-        console.warn(
-          `Paciente ${pacienteId} não encontrado para atualizar trilha após criar sessões.`
-        );
       }
 
-      return sessoesCriadasIds;
+      alert("Informações salvas com sucesso!");
+      modal.style.display = "none"; // Recarregar dados da página
+      await carregarDadosPaciente(pacienteIdGlobal);
+      preencherFormularios(); // Re-preenche forms
+      renderizarPendencias(); // Re-renderiza pendências
+      await carregarSessoes(); // Recarrega sessões também, se aplicável
+      atualizarVisibilidadeBotoesAcao(pacienteDataGlobal.status);
     } catch (error) {
-      console.error(
-        "Erro ao commitar batch de sessões ou atualizar trilha:",
-        error
-      );
-      throw new Error(
-        `Falha ao criar sessões no banco de dados: ${error.message}`
-      );
+      console.error("Erro ao salvar informações de Horários PB:", error);
+      alert(`Erro ao salvar: ${error.message}`);
+    } finally {
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = "Salvar";
     }
   }
-
   // Função auxiliar para obter dia da semana ('segunda', 'terca', etc.) a partir de 'AAAA-MM-DD'
   function obterDiaDaSemana(dataString) {
     try {
