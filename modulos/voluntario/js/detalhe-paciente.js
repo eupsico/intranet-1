@@ -1,13 +1,14 @@
 // Arquivo: modulos/voluntario/js/detalhe-paciente.js
 // Controlador principal para a página de detalhes do paciente.
-// Versão: Corrigida (UI updates fora do rAF inicial)
+// Versão: Corrigida (UI updates fora do rAF inicial e removido import de loading inexistente)
 
 // Importações de Módulos
 import * as estado from "./detalhes-paciente/estado.js";
 import * as carregador from "./detalhes-paciente/carregador-dados.js";
 import * as interfaceUI from "./detalhes-paciente/interface.js";
 import * as eventos from "./detalhes-paciente/configurar-eventos.js";
-import { showLoading, hideLoading } from "../../../assets/js/app.js"; // Para feedback visual
+// Removida a importação de showLoading/hideLoading, pois não existem em app.js
+// import { showLoading, hideLoading } from "../../../assets/js/app.js";
 
 // Inicialização e Orquestração
 // =============================================================================
@@ -31,16 +32,15 @@ export async function init(user, userData, pacienteId) {
 
   // 3. Carregar Dados e Configurar UI
   try {
-    showLoading(); // Mostra feedback visual de carregamento
+    // Removida a chamada showLoading();
 
     console.log("Iniciando carregamento de dados essenciais...");
     await carregador.carregarDadosEssenciais(pacienteId);
     console.log("Dados essenciais carregados.");
 
-    // --- CORREÇÃO APLICADA ---
+    // --- CORREÇÃO APLICADA ANTERIORMENTE ---
     // A função 'init' já é chamada dentro de um setTimeout(0) pelo portal-voluntario.js (v4.3),
     // o que deve dar tempo suficiente para o DOM ser construído antes destas chamadas.
-    // Removemos o requestAnimationFrame problemático daqui.
 
     console.log("Configurando UI e Listeners...");
 
@@ -80,7 +80,7 @@ export async function init(user, userData, pacienteId) {
       contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Erro ao carregar os dados do paciente. Tente novamente mais tarde.</p><p><small>${error.message}</small></p></div>`;
     }
   } finally {
-    hideLoading(); // Esconde o feedback visual, aconteça o que acontecer
+    // Removida a chamada hideLoading();
     console.log("Inicialização de detalhe-paciente finalizada.");
   }
 }
