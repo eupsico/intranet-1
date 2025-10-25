@@ -1,14 +1,13 @@
 // Arquivo: modulos/voluntario/js/detalhe-paciente.js
 // Controlador principal para a página de detalhes do paciente.
-// Versão: Corrigida (UI updates fora do rAF inicial e removido import de loading inexistente)
+// Versão: Corrigida (Chamadas corretas para carregador-dados.js)
 
 // Importações de Módulos
 import * as estado from "./detalhes-paciente/estado.js";
 import * as carregador from "./detalhes-paciente/carregador-dados.js";
 import * as interfaceUI from "./detalhes-paciente/interface.js";
 import * as eventos from "./detalhes-paciente/configurar-eventos.js";
-// Removida a importação de showLoading/hideLoading, pois não existem em app.js
-// import { showLoading, hideLoading } from "../../../assets/js/app.js";
+// Funções de loading foram removidas na correção anterior
 
 // Inicialização e Orquestração
 // =============================================================================
@@ -24,29 +23,40 @@ export async function init(user, userData, pacienteId) {
   console.log("Inicializando detalhe-paciente.js (Controlador)");
 
   // 1. Resetar o estado global específico desta página
-  estado.resetEstado();
+  estado.resetEstado(); // Chamada corrigida na etapa anterior
 
   // 2. Armazenar dados essenciais no estado
   estado.setUserDataGlobal(userData);
   estado.setUserGlobal(user);
+  // Armazena o ID do paciente também, pois carregador.carregarSessoes() pode precisar
+  estado.setPacienteIdGlobal(pacienteId);
 
   // 3. Carregar Dados e Configurar UI
   try {
-    // Removida a chamada showLoading();
+    // showLoading(); // Removido
 
     console.log("Iniciando carregamento de dados essenciais...");
-    await carregador.carregarDadosEssenciais(pacienteId);
-    console.log("Dados essenciais carregados.");
 
-    // --- CORREÇÃO APLICADA ANTERIORMENTE ---
-    // A função 'init' já é chamada dentro de um setTimeout(0) pelo portal-voluntario.js (v4.3),
-    // o que deve dar tempo suficiente para o DOM ser construído antes destas chamadas.
+    // --- CORREÇÃO APLICADA ---
+    // Chamar as funções de carregamento corretas do módulo 'carregador'
+    await carregador.carregarDadosPaciente(pacienteId); // Carrega dados do paciente
+    await carregador.carregarSystemConfigs(); // Carrega configs e grade
+    // --- FIM DA CORREÇÃO ---
+
+    // Verifica se o paciente foi realmente carregado antes de continuar
+    if (!estado.pacienteDataGlobal) {
+      throw new Error(
+        `Paciente com ID ${pacienteId} não encontrado ou falha ao carregar.`
+      );
+    }
+
+    console.log("Dados essenciais carregados.");
 
     console.log("Configurando UI e Listeners...");
 
     // Preenche os formulários com os dados carregados
     console.log("Chamando preencherFormularios...");
-    interfaceUI.preencherFormularios(); // Deve encontrar os elementos agora
+    interfaceUI.preencherFormularios();
 
     // Atualiza a visibilidade dos botões com base no status
     console.log("Chamando atualizarVisibilidadeBotoesAcao...");
@@ -56,7 +66,8 @@ export async function init(user, userData, pacienteId) {
 
     // Carrega e renderiza as sessões e pendências
     console.log("Chamando carregarSessoes...");
-    await carregador.carregarSessoes(pacienteId); // Carrega dados das sessões
+    // A função carregarSessoes usa estado.pacienteIdGlobal internamente
+    await carregador.carregarSessoes(); // Carrega dados das sessões
     console.log("Sessões carregadas. Renderizando...");
     interfaceUI.renderizarSessoes(); // Desenha a lista de sessões
     interfaceUI.renderizarPendencias(); // Desenha a lista de pendências
@@ -68,7 +79,6 @@ export async function init(user, userData, pacienteId) {
     console.log("Event listeners adicionados.");
 
     console.log("Página de detalhes do paciente inicializada com sucesso.");
-    // --- FIM DA CORREÇÃO ---
   } catch (error) {
     console.error(
       "Erro fatal durante a inicialização de detalhe-paciente:",
@@ -80,7 +90,7 @@ export async function init(user, userData, pacienteId) {
       contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Erro ao carregar os dados do paciente. Tente novamente mais tarde.</p><p><small>${error.message}</small></p></div>`;
     }
   } finally {
-    // Removida a chamada hideLoading();
+    // hideLoading(); // Removido
     console.log("Inicialização de detalhe-paciente finalizada.");
   }
 }
