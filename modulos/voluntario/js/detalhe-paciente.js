@@ -3600,9 +3600,8 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
       );
 
     let dadosParaAtualizar = {};
-    let novoStatusPaciente = dadosDoPaciente.status;
-    let gerarSolicitacaoGrade = false;
-    let horarioSessaoDataParaSolicitacao = null; // Para a solicitação da grade
+    let novoStatusPaciente = dadosDoPaciente.status; // let gerarSolicitacaoGrade = false; // Removido
+    let horarioSessaoDataParaSolicitacao = null; // Para a solicitação
 
     if (iniciou === "sim") {
       // *** IMPORTANTE: Adicionar listener para tipo/sala AGORA que o form existe ***
@@ -3648,7 +3647,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
           formulario.querySelector("#data-inicio-sessoes")?.value || null,
         observacoes:
           formulario.querySelector("#observacoes-pb-horarios")?.value || "",
-        definidoEm: Timestamp.now(), // <<< CORREÇÃO APLICADA AQUI
+        definidoEm: Timestamp.now(), // <<< CORREÇÃO (serverTimestamp -> Timestamp.now)
       }; // Validação dos campos do formulário dinâmico
 
       if (
@@ -3677,23 +3676,20 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         throw new Error(
           "Para atendimento Presencial, selecione uma sala física."
         );
-      } // Atualiza o atendimento específico na cópia do array
+      } // *** INÍCIO DA ALTERAÇÃO 1 (Salvar dados para solicitação) *** // Salva os dados do horário para criar a solicitação depois do update
 
+      horarioSessaoDataParaSolicitacao = horarioSessaoData; // *** FIM DA ALTERAÇÃO 1 *** // Atualiza o atendimento específico na cópia do array
       atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData;
       atendimentos[indiceDoAtendimento].statusAtendimento =
-        "horarios_informados";
-      novoStatusPaciente = "cadastrar_horario_psicomanager";
+        "horarios_informados"; // (Corrigido na etapa anterior)
+      novoStatusPaciente = "cadastrar_horario_psicomanager"; // (Corrigido na etapa anterior) // *** INÍCIO DA ALTERAÇÃO 2 (Adicionar data de cadastro) ***
 
       dadosParaAtualizar = {
         atendimentosPB: atendimentos,
-        status: novoStatusPaciente,
+        status: novoStatusPaciente, // Adiciona o timestamp para "Data do Cadastro na Psicomanager"
+        dataCadastroPsicomanager: serverTimestamp(),
         lastUpdate: serverTimestamp(),
-      };
-
-      if (horarioSessaoData.alterarGrade === "Sim") {
-        gerarSolicitacaoGrade = true;
-        horarioSessaoDataParaSolicitacao = horarioSessaoData;
-      }
+      }; // *** FIM DA ALTERAÇÃO 2 ***
     } else {
       // iniciou === "nao"
       const motivoNaoInicio = formulario.querySelector(
@@ -3711,7 +3707,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         atendimentos[indiceDoAtendimento].statusAtendimento =
           "desistencia_antes_inicio";
         atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // <<< CORREÇÃO APLICADA AQUI
+        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // (Corrigido na etapa anterior)
         novoStatusPaciente = "desistencia"; // Atualiza status geral do paciente
       } else {
         // outra_modalidade
@@ -3725,7 +3721,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio;
         atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
           detalhesSolicitacao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // <<< CORREÇÃO APLICADA AQUI
+        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // (Corrigido na etapa anterior)
         novoStatusPaciente = "reavaliar_encaminhamento"; // Atualiza status geral
       }
       dadosParaAtualizar = {
@@ -3735,11 +3731,12 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
       };
     } // Atualiza a trilha do paciente
 
-    await updateDoc(docRef, dadosParaAtualizar); // Gera solicitação para grade SE necessário (após sucesso da atualização principal)
+    await updateDoc(docRef, dadosParaAtualizar); // *** INÍCIO DA ALTERAÇÃO 3 (Lógica da Solicitação) *** // Gera solicitação para admin CADASTRAR as sessões // SE 'iniciou' == 'sim' E os dados do horário foram capturados
 
-    if (gerarSolicitacaoGrade && horarioSessaoDataParaSolicitacao) {
-      const solicitacaoGradeData = {
-        tipo: "inclusao_alteracao_grade", // Ou um tipo mais específico se preferir
+    if (iniciou === "sim" && horarioSessaoDataParaSolicitacao) {
+      const solicitacaoCadastroData = {
+        // Variável renomeada para clareza
+        tipo: "novas_sessoes", // Alterado para "Novas Sessões" (conforme solicitado)
         status: "Pendente",
         dataSolicitacao: serverTimestamp(),
         solicitanteId: userUid,
@@ -3751,16 +3748,18 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         adminFeedback: null,
       };
       try {
-        await addDoc(collection(db, "solicitacoes"), solicitacaoGradeData);
-        console.log("Solicitação para inclusão/alteração na grade criada.");
+        await addDoc(collection(db, "solicitacoes"), solicitacaoCadastroData);
+        console.log("Solicitação de 'novas sessões' (para cadastro) criada.");
       } catch (gradeError) {
-        console.error("Erro ao criar solicitação para grade:", gradeError); // Informa o usuário, mas não reverte a atualização da trilha
+        console.error(
+          "Erro ao criar solicitação de 'novas sessões':",
+          gradeError
+        ); // Informa o usuário, mas não reverte a atualização da trilha
         alert(
-          "Atenção: Houve um erro ao gerar a solicitação para alteração da grade, por favor, notifique o administrativo manualmente."
+          "Atenção: Houve um erro ao gerar a solicitação para o admin, por favor, notifique o administrativo manualmente."
         );
       }
-    }
-
+    } // *** FIM DA ALTERAÇÃO 3 ***
     alert("Informações salvas com sucesso!");
     modal.style.display = "none"; // Recarregar dados da página
     await carregarDadosPaciente(pacienteIdGlobal); // renderizarCabecalhoInfoBar(); // Removido
@@ -3772,7 +3771,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
     console.error("Erro ao salvar informações de Horários PB:", error);
     alert(`Erro ao salvar: ${error.message}`);
   } finally {
-    botaoSalvar.disabled = false;
+    d: false;
     botaoSalvar.textContent = "Salvar";
   }
 }
