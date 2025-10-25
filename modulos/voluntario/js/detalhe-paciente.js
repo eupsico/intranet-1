@@ -3457,90 +3457,217 @@ function abrirModalHorariosPb(/* Usa globais */) {
 }
 
 // construirFormularioHorarios: Removido <script> interno
-function construirFormularioHorarios(nomeProfissional, salasDisponiveis = []) {
-  let horasOptions = "";
-  for (let i = 8; i <= 21; i++) {
-    const hora = `${String(i).padStart(2, "0")}:00`;
-    horasOptions += `<option value="${hora}">${hora}</option>`;
+async function abrirModalHorariosPb(/* Usa globais */) {
+  if (!pacienteDataGlobal || !userDataGlobal) {
+    alert("Dados necessários não carregados.");
+    return;
   }
 
-  let salasOptions = '<option value="Online">Online</option>'; // Online sempre primeiro
-  (salasDisponiveis || []).forEach((sala) => {
-    // Garante que é array
-    if (sala && sala !== "Online") {
-      // Evita duplicar Online
-      salasOptions += `<option value="${sala}">${sala}</option>`;
-    }
+  // Busca o atendimento PB relevante para este profissional
+  const atendimentoPbDoUsuario = pacienteDataGlobal.atendimentosPB?.find(
+    (at) =>
+      at.profissionalId === userDataGlobal.uid &&
+      // Permite abrir se estiver aguardando OU se o admin reabriu por algum motivo,
+      // ou se já está ativo mas talvez precise alterar (embora haja outro modal para isso,
+      // manter 'ativo' aqui pode ser um fallback). Evita abrir se já concluído.
+      [
+        "aguardando_info_horarios",
+        "horarios_informados",
+        "ativo",
+        "solicitado_reencaminhamento",
+      ].includes(at.statusAtendimento) &&
+      !at.statusAtendimento.startsWith("concluido_") &&
+      at.statusAtendimento !== "desistencia_antes_inicio"
+  );
+
+  if (!atendimentoPbDoUsuario) {
+    alert(
+      "Não foi encontrado um atendimento PB atribuído a você (que necessite desta ação) para este paciente."
+    );
+    return;
+  }
+
+  const modal = document.getElementById("horarios-pb-modal");
+  const form = document.getElementById("horarios-pb-form");
+  const pacienteIdInput = form.querySelector("#paciente-id-horarios-modal");
+  const atendimentoIdInput = form.querySelector(
+    "#atendimento-id-horarios-modal"
+  ); // Containers dinâmicos
+
+  const motivoNaoInicioContainer = document.getElementById(
+    "motivo-nao-inicio-pb-container"
+  );
+  const formContinuacaoContainer = document.getElementById(
+    "form-continuacao-pb"
+  ); // Para form Novas Sessões
+  const motivoDesistenciaContainer = document.getElementById(
+    "motivo-desistencia-container"
+  ); // Para motivo desistência
+  const formAlteracaoContainer = document.getElementById("form-alteracao-pb"); // Para form Alterar Horário
+
+  const btnSalvarHorarios = modal.querySelector('button[type="submit"]'); // Verifica se TODOS os containers existem
+
+  if (
+    !modal ||
+    !form ||
+    !pacienteIdInput ||
+    !atendimentoIdInput ||
+    !motivoNaoInicioContainer ||
+    !formContinuacaoContainer ||
+    !motivoDesistenciaContainer ||
+    !formAlteracaoContainer ||
+    !btnSalvarHorarios
+  ) {
+    console.error(
+      "Elementos essenciais do modal Horários PB (incluindo #form-alteracao-pb) não encontrados."
+    );
+    alert(
+      "Erro ao abrir o modal. Verifique o HTML se #form-alteracao-pb existe."
+    );
+    return;
+  } // --- Reset Inicial ---
+
+  form.reset();
+  pacienteIdInput.value = pacienteIdGlobal;
+  atendimentoIdInput.value = atendimentoPbDoUsuario.atendimentoId; // Oculta todos os containers condicionais
+  [
+    motivoNaoInicioContainer,
+    formContinuacaoContainer,
+    motivoDesistenciaContainer,
+    formAlteracaoContainer,
+  ].forEach((el) => (el.style.display = "none")); // Limpa o conteúdo dos containers que carregam forms externos
+  formContinuacaoContainer.innerHTML = "";
+  formAlteracaoContainer.innerHTML = ""; // Limpa requireds de todos os elementos potencialmente carregados ou do form base
+  form.querySelectorAll("[required]").forEach((el) => (el.required = false));
+  // Garante que o radio 'iniciou-pb' seja obrigatório
+  form
+    .querySelectorAll('input[name="iniciou-pb"]')
+    .forEach((r) => (r.required = true));
+
+  // Define o estado do botão salvar
+  btnSalvarHorarios.disabled = false;
+  btnSalvarHorarios.textContent = "Salvar";
+
+  // Remove listeners antigos para evitar duplicação (importante ao reabrir modal)
+  // Clonar e substituir é uma forma eficaz de remover todos os listeners JS
+  form
+    .querySelectorAll(
+      'input[name="iniciou-pb"], input[name="motivo-nao-inicio"]'
+    )
+    .forEach((radio) => {
+      const clone = radio.cloneNode(true);
+      // Adiciona required de volta se for 'iniciou-pb'
+      if (clone.name === "iniciou-pb") clone.required = true;
+      radio.parentNode.replaceChild(clone, radio);
+    }); // --- Listeners Principais (Recriados após clonagem) ---
+
+  const radiosIniciou = form.querySelectorAll('input[name="iniciou-pb"]');
+  radiosIniciou.forEach((radio) => {
+    radio.addEventListener("change", async () => {
+      // Limpa containers dinâmicos e requireds antes de mostrar o correto
+      formContinuacaoContainer.style.display = "none";
+      formContinuacaoContainer.innerHTML = "";
+      motivoNaoInicioContainer.style.display = "none";
+      motivoDesistenciaContainer.style.display = "none";
+      motivoDesistenciaContainer.querySelector(
+        "#motivo-desistencia-pb"
+      ).required = false;
+      formAlteracaoContainer.style.display = "none";
+      formAlteracaoContainer.innerHTML = "";
+      form
+        .querySelectorAll("#form-alteracao-pb [required]")
+        .forEach((el) => (el.required = false));
+      // Reseta requireds gerais do form principal (motivos)
+      form
+        .querySelectorAll(
+          'input[name="motivo-nao-inicio"], #motivo-desistencia-pb'
+        )
+        .forEach((el) => (el.required = false));
+
+      if (radio.value === "sim" && radio.checked) {
+        formContinuacaoContainer.style.display = "block";
+        formContinuacaoContainer.innerHTML =
+          '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
+        try {
+          // ** Verifique se este caminho está correto em relação ao detalhe-paciente.html **
+          // Assume que o HTML está na mesma pasta ou subpasta 'partials/' ou similar
+          const response = await fetch("./modal-content-novas-sessoes.html"); // AJUSTE AQUI SE NECESSÁRIO
+          if (!response.ok)
+            throw new Error(
+              `Erro ${response.status} ao buscar ./modal-content-novas-sessoes.html`
+            );
+          formContinuacaoContainer.innerHTML = await response.text();
+          // Configura a lógica JS específica DESTE formulário carregado
+          setupFormLogicNovasSessoes(
+            formContinuacaoContainer,
+            atendimentoPbDoUsuario
+          );
+        } catch (error) {
+          console.error("Erro ao carregar form Novas Sessões:", error);
+          formContinuacaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
+        }
+      } else if (radio.value === "nao" && radio.checked) {
+        motivoNaoInicioContainer.style.display = "block";
+        // Reseta radios de motivo e torna-os required
+        form
+          .querySelectorAll('input[name="motivo-nao-inicio"]')
+          .forEach((r) => {
+            r.checked = false;
+            r.required = true; // Torna a escolha do motivo obrigatória
+          });
+      }
+    });
   });
 
-  // Adiciona required aos campos corretos
-  return `
-    <div class="form-group">
-      <label>Nome Profissional:</label>
-      <input type="text" value="${nomeProfissional}" class="form-control" readonly>
-    </div>
-    <div class="form-group">
-      <label for="dia-semana-pb">Dia da semana:*</label>
-      <select id="dia-semana-pb" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Segunda-feira">Segunda-feira</option>
-        <option value="Terça-feira">Terça-feira</option>
-        <option value="Quarta-feira">Quarta-feira</option>
-        <option value="Quinta-feira">Quinta-feira</option>
-        <option value="Sexta-feira">Sexta-feira</option>
-        <option value="Sábado">Sábado</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="horario-pb">Horário:*</label>
-      <select id="horario-pb" class="form-control" required>
-        <option value="">Selecione...</option>
-        ${horasOptions}
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="tipo-atendimento-pb-voluntario">Tipo de atendimento:*</label>
-      <select id="tipo-atendimento-pb-voluntario" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Presencial">Presencial</option>
-        <option value="Online">Online</option>
-      </select>
-    </div>
-     <div class="form-group">
-        <label for="sala-atendimento-pb">Sala:*</label>
-        <select id="sala-atendimento-pb" class="form-control" required>
-            <option value="">Selecione...</option>
-            ${salasOptions}
-        </select>
-    </div>
-    <div class="form-group">
-      <label for="alterar-grade-pb">Alterar/Incluir na grade?*</label>
-      <select id="alterar-grade-pb" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Sim">Sim</option>
-        <option value="Não">Não</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="frequencia-atendimento-pb">Frequência:*</label>
-      <select id="frequencia-atendimento-pb" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Semanal">Semanal</option>
-        <option value="Quinzenal">Quinzenal</option>
-        <option value="Mensal">Mensal</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="data-inicio-sessoes">Data de início:*</label>
-      <input type="date" id="data-inicio-sessoes" class="form-control" required>
-    </div>
-    <div class="form-group">
-      <label for="observacoes-pb-horarios">Observações:</label>
-      <textarea id="observacoes-pb-horarios" rows="3" class="form-control"></textarea>
-    </div>
-  `; // Fim do HTML retornado (sem o <script>)
-}
+  const radiosMotivoNaoInicio = form.querySelectorAll(
+    'input[name="motivo-nao-inicio"]'
+  );
+  radiosMotivoNaoInicio.forEach((radio) => {
+    radio.addEventListener("change", async () => {
+      // Limpa containers específicos do 'Não' e seus requireds
+      motivoDesistenciaContainer.style.display = "none";
+      motivoDesistenciaContainer.querySelector(
+        "#motivo-desistencia-pb"
+      ).required = false;
+      formAlteracaoContainer.style.display = "none";
+      formAlteracaoContainer.innerHTML = "";
+      form
+        .querySelectorAll("#form-alteracao-pb [required]")
+        .forEach((el) => (el.required = false));
 
+      if (radio.value === "desistiu" && radio.checked) {
+        motivoDesistenciaContainer.style.display = "block";
+        motivoDesistenciaContainer.querySelector(
+          "#motivo-desistencia-pb"
+        ).required = true;
+      } else if (radio.value === "outra_modalidade" && radio.checked) {
+        formAlteracaoContainer.style.display = "block";
+        formAlteracaoContainer.innerHTML =
+          '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
+        try {
+          // ** Verifique se este caminho está correto em relação ao detalhe-paciente.html **
+          // Assume que o HTML está na mesma pasta ou subpasta 'partials/' ou similar
+          const response = await fetch("./modal-content-alterar-horario.html"); // AJUSTE AQUI SE NECESSÁRIO
+          if (!response.ok)
+            throw new Error(
+              `Erro ${response.status} ao buscar ./modal-content-alterar-horario.html`
+            );
+          formAlteracaoContainer.innerHTML = await response.text();
+          // Configura a lógica JS específica DESTE formulário carregado
+          setupFormLogicAlterarHorario(
+            formAlteracaoContainer,
+            atendimentoPbDoUsuario
+          );
+        } catch (error) {
+          console.error("Erro ao carregar form Alterar Horário:", error);
+          formAlteracaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
+        }
+      }
+    });
+  });
+
+  modal.style.display = "flex";
+}
 // handleHorariosPbSubmit: Adicionado listener para tipo/sala
 async function handleHorariosPbSubmit(evento, userUid, userData) {
   // Recebe user e userData
