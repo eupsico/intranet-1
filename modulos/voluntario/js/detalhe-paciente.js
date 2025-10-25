@@ -3687,7 +3687,6 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
       dadosParaAtualizar = {
         atendimentosPB: atendimentos,
         status: novoStatusPaciente, // Adiciona o timestamp para "Data do Cadastro na Psicomanager"
-        dataCadastroPsicomanager: serverTimestamp(),
         lastUpdate: serverTimestamp(),
       }; // *** FIM DA ALTERAÇÃO 2 ***
     } else {
