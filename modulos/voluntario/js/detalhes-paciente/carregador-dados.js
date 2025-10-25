@@ -21,6 +21,7 @@ import * as estado from "./estado.js"; // Importa o módulo de estado
  * @param {string} pacienteId - O ID do paciente a ser carregado.
  */
 export async function carregarDadosPaciente(pacienteId) {
+  console.log(">>> Buscando paciente com ID:", pacienteId);
   try {
     const docRef = doc(db, "trilhaPaciente", pacienteId);
     const docSnap = await getDoc(docRef);

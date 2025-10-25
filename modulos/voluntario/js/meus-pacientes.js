@@ -4,6 +4,7 @@
 import { initializeMeusPacientes } from "./meus-pacientes/data.js";
 
 export async function init(user, userData) {
+  console.log(">>> Entrou em init()", { user, userData, pacienteId });
   console.log("meus-pacientes.js: Iniciando com user ID:", user?.uid); // Log Adicional
   if (!user || !user.uid) {
     console.error("meus-pacientes.js: Objeto user inválido recebido.");

@@ -43,6 +43,9 @@ export async function init(user, userData, pacienteId) {
     ]);
 
     if (!estado.pacienteDataGlobal) {
+      console.error(
+        ">>> Dados do paciente NULOS antes de preencher formulários."
+      );
       throw new Error("Paciente não encontrado no banco de dados.");
     } // Preenche os formulários com os dados carregados
 

@@ -85,6 +85,7 @@ export function atualizarVisibilidadeBotoesAcao(status) {
  * Preenche os formulários da página com os dados do paciente do estado.
  */
 export function preencherFormularios() {
+  console.log(">>> Entrou em preencherFormularios()");
   if (!estado.pacienteDataGlobal) {
     console.warn(
       "preencherFormularios chamado sem dados do paciente no estado."
