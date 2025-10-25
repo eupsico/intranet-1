@@ -209,9 +209,15 @@ function initPortal(user, userData) {
 
     contentArea.innerHTML = '<div class="loading-spinner"></div>';
 
-    const htmlPath = `./${viewId}.html`;
+    // --- MODIFICAÇÃO INICIADA ---
+    // Alterei os caminhos para buscar da pasta correta 'page'
+    const htmlPath = `./page/${viewId}.html`;
     const jsPath = `../js/${viewId}.js`;
-    const cssPath = `../css/${viewId}.css`; // Define o caminho do CSS
+    const cssPath = `../css/${viewId}.css`;
+
+    // Log de debug para verificar o caminho
+    console.log(`[DEBUG] Tentando carregar HTML de: ${htmlPath}`);
+    // --- MODIFICAÇÃO FINALIZADA ---
 
     try {
       // Carrega o CSS da view de forma dinâmica e correta
@@ -221,7 +227,13 @@ function initPortal(user, userData) {
       if (!response.ok)
         throw new Error(`Arquivo HTML não encontrado: ${htmlPath}`);
 
-      contentArea.innerHTML = await response.text();
+      // --- MODIFICAÇÃO INICIADA ---
+      const html = await response.text();
+      // Log de debug para verificar o conteúdo do HTML
+      console.log(`[DEBUG] HTML recebido para a view '${viewId}':`, html);
+
+      contentArea.innerHTML = html;
+      // --- MODIFICAÇÃO FINALIZADA ---
 
       // O 'import' do JS continua igual
       const viewModule = await import(jsPath);
