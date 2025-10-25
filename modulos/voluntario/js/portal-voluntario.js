@@ -81,9 +81,8 @@ onAuthStateChanged(auth, async (user) => {
 function initPortal(user, userData) {
   console.log("[initPortal] Iniciando portal para:", userData.nome);
   const contentArea = document.getElementById("content-area");
-  const sidebarMenu = document.getElementById("sidebar-menu");
+  const sidebarMenu = document.getElementById("sidebar-menu"); // Definições de ícones (COMPLETO)
 
-  // Definições de ícones (COMPLETO)
   const icons = {
     dashboard:
       '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -106,9 +105,8 @@ function initPortal(user, userData) {
     painelSupervisor:
       '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
     plantao: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81 .7A2 2 0 0 1 22 16.92z"/></svg>`,
-  };
+  }; // Definição das Views (COMPLETO)
 
-  // Definição das Views (COMPLETO)
   const views = [
     {
       id: "dashboard",
@@ -164,9 +162,8 @@ function initPortal(user, userData) {
       icon: icons.gestao,
       roles: ["todos"],
     },
-  ];
+  ]; // Adiciona Painel Supervisor condicionalmente
 
-  // Adiciona Painel Supervisor condicionalmente
   const funcoes = userData.funcoes || [];
   if (funcoes.includes("supervisor") || funcoes.includes("admin")) {
     views.splice(4, 0, {
@@ -176,9 +173,8 @@ function initPortal(user, userData) {
       icon: icons.painelSupervisor,
       roles: ["supervisor", "admin"],
     });
-  }
+  } /** Constrói o menu lateral */
 
-  /** Constrói o menu lateral */
   function buildSidebarMenu() {
     if (!sidebarMenu) {
       console.error(
@@ -187,14 +183,14 @@ function initPortal(user, userData) {
       return;
     }
     sidebarMenu.innerHTML = `
-            <li>
-                <a href="../../../index.html" class="back-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    <span>Voltar à Intranet</span>
-                </a>
-            </li>
-            <li class="menu-separator"></li>
-        `;
+            <li>
+                <a href="../../../index.html" class="back-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span>Voltar à Intranet</span>
+                </a>
+            </li>
+            <li class="menu-separator"></li>
+        `;
 
     const userRoles = userData.funcoes || [];
     views.forEach((view) => {
@@ -203,18 +199,17 @@ function initPortal(user, userData) {
         view.roles.some((role) => userRoles.includes(role));
       if (hasPermission) {
         sidebarMenu.innerHTML += `
-                <li>
-                    <a href="#${view.id}" data-view="${view.id}">
-                        ${view.icon}
-                        <span>${view.name}</span>
-                    </a>
-                </li>`;
+                <li>
+                    <a href="#${view.id}" data-view="${view.id}">
+                        ${view.icon}
+                        <span>${view.name}</span>
+                    </a>
+                </li>`;
       }
     });
     console.log("[buildSidebarMenu] Menu construído.");
-  }
+  } /** Carrega um arquivo CSS dinamicamente */
 
-  /** Carrega um arquivo CSS dinamicamente */
   function loadCss(path) {
     if (!document.querySelector(`link[href="${path}"]`)) {
       const link = document.createElement("link");
@@ -225,11 +220,8 @@ function initPortal(user, userData) {
     } else {
       console.log(`[loadCss] CSS já existe: ${path}`);
     }
-  }
+  } // ========================================================== // FUNÇÃO loadView LIMPA (SEM LOGS INTERNOS EXCESSIVOS) // ==========================================================
 
-  // ==========================================================
-  // FUNÇÃO loadView LIMPA (SEM LOGS INTERNOS EXCESSIVOS)
-  // ==========================================================
   async function loadView(viewId, param = null) {
     if (!sidebarMenu || !contentArea) {
       console.error(
@@ -239,25 +231,18 @@ function initPortal(user, userData) {
     }
     console.log(
       `[loadView] Iniciando carregamento para view: ${viewId}, Param: ${param}`
-    );
+    ); // Marca o link ativo no menu
 
-    // Marca o link ativo no menu
     sidebarMenu
       .querySelectorAll("a")
       .forEach((link) => link.classList.remove("active"));
     const activeLink = sidebarMenu.querySelector(`a[data-view="${viewId}"]`);
     if (activeLink) activeLink.classList.add("active");
 
-    contentArea.innerHTML = '<div class="loading-spinner"></div> Carregando...'; // Mostra loading
+    contentArea.innerHTML = '<div class="loading-spinner"></div> Carregando...'; // Mostra loading // --- Definição dos Caminhos ---
 
-    // --- Definição dos Caminhos ---
-    const htmlPath = `./${viewId}.html`;
-    // <<< PASSO 2: AJUSTE ESTE CAMINHO SE NECESSÁRIO >>>
-    // Este caminho DEVE ser correto para que `import()` encontre o JS da view
-    // Ex: Se portal-voluntario.js está em /js/ e detalhe-paciente.js também:
-    const jsPath = `./${viewId}.js`;
-    // Ex: Se portal-voluntario.js está em /js/ e detalhe-paciente.js está em /modulos/voluntario/js/
-    // const jsPath = `../modulos/voluntario/js/${viewId}.js`;
+    const htmlPath = `./${viewId}.html`; // <<< PASSO 2: AJUSTE ESTE CAMINHO SE NECESSÁRIO >>> // Este caminho DEVE ser correto para que `import()` encontre o JS da view // Ex: Se portal-voluntario.js está em /js/ e detalhe-paciente.js também:
+    const jsPath = `./${viewId}.js`; // Ex: Se portal-voluntario.js está em /js/ e detalhe-paciente.js está em /modulos/voluntario/js/ // const jsPath = `../modulos/voluntario/js/${viewId}.js`;
     const cssPath = `../css/${viewId}.css`; // Relativo à pasta 'page'
 
     console.log(
@@ -266,23 +251,21 @@ function initPortal(user, userData) {
 
     try {
       // Carrega CSS
-      loadCss(cssPath);
+      loadCss(cssPath); // Carrega HTML
 
-      // Carrega HTML
       const response = await fetch(htmlPath);
       if (!response.ok)
         throw new Error(
           `Arquivo HTML não encontrado: ${htmlPath} (Status: ${response.status})`
         );
       contentArea.innerHTML = await response.text();
-      console.log(`[loadView] HTML ${htmlPath} carregado.`);
+      console.log(`[loadView] HTML ${htmlPath} carregado.`); // <<< INÍCIO DA CORREÇÃO >>> // Espera o DOM ser atualizado pelo navegador antes de importar e executar o JS. // Isso resolve a condição de corrida (race condition).
 
-      // Tenta importar o módulo JS dinamicamente
+      await new Promise((resolve) => setTimeout(resolve, 0)); // <<< FIM DA CORREÇÃO >>> // Tenta importar o módulo JS dinamicamente
       console.log(`[loadView] Tentando importar ${jsPath}...`);
       const viewModule = await import(jsPath); // <<< Ponto onde o SyntaxError pode ser lançado durante a importação
-      console.log(`[loadView] Módulo ${jsPath} importado com sucesso.`);
+      console.log(`[loadView] Módulo ${jsPath} importado com sucesso.`); // Executa a função init se existir
 
-      // Executa a função init se existir
       if (viewModule && typeof viewModule.init === "function") {
         console.log(`[loadView] Chamando init() de ${viewId}...`);
         await viewModule.init(user, userData, param); // <<< Ponto onde o SyntaxError pode ser lançado durante a execução do init
@@ -295,9 +278,8 @@ function initPortal(user, userData) {
       console.error(
         `[loadView] ERRO CAPTURADO ao carregar ou executar view '${viewId}':`,
         error
-      ); // Log crucial do erro
+      ); // Log crucial do erro // Tratamento de erro (mantido da versão anterior)
 
-      // Tratamento de erro (mantido da versão anterior)
       if (
         error instanceof TypeError &&
         (error.message.includes("dynamically imported module") ||
@@ -322,12 +304,7 @@ function initPortal(user, userData) {
         contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Ocorreu um erro inesperado (${error.name}) ao carregar ou executar o script desta página (${viewId}.js). Verifique o console para detalhes técnicos.</p></div>`;
       }
     }
-  }
-  // ==========================================================
-  // FIM DA FUNÇÃO loadView LIMPA
-  // ==========================================================
-
-  /** Configura elementos do layout principal */
+  } /** Configura elementos do layout principal */ // ========================================================== // FIM DA FUNÇÃO loadView LIMPA // ==========================================================
   function setupLayout() {
     const userPhoto = document.getElementById("user-photo-header");
     if (userPhoto) {
@@ -360,9 +337,8 @@ function initPortal(user, userData) {
             alert("Erro ao tentar sair. Tente novamente.");
           });
         });
-    }
+    } // Lógica do Sidebar Toggle
 
-    // Lógica do Sidebar Toggle
     const layoutContainer = document.querySelector(".layout-container");
     const toggleButton = document.getElementById("sidebar-toggle");
     const overlay = document.getElementById("menu-overlay");
@@ -375,30 +351,48 @@ function initPortal(user, userData) {
     }
 
     const handleToggle = () => {
-      /* ... (código handleToggle mantido igual) ... */
-    };
+      const isCollapsed =
+        layoutContainer.classList.contains("sidebar-collapsed");
+      layoutContainer.classList.toggle("sidebar-collapsed"); // Em telas maiores, salva a preferência
 
-    // Aplica estado inicial no desktop
+      if (window.innerWidth > 768) {
+        localStorage.setItem("sidebarCollapsed", !isCollapsed);
+      } // Em telas menores, mostra/esconde o overlay
+
+      if (window.innerWidth <= 768) {
+        layoutContainer.classList.toggle("sidebar-mobile-open");
+      }
+    }; // Aplica estado inicial no desktop
+
     if (window.innerWidth > 768) {
-      /* ... (lógica localStorage mantida igual) ... */
-    }
+      const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+      if (isCollapsed) {
+        layoutContainer.classList.add("sidebar-collapsed");
+      }
+    } // Adiciona listeners (removendo antigos)
 
-    // Adiciona listeners (removendo antigos)
     toggleButton.removeEventListener("click", handleToggle);
     toggleButton.addEventListener("click", handleToggle);
     overlay.removeEventListener("click", handleToggle);
     overlay.addEventListener("click", handleToggle);
 
     const handleMobileMenuLinkClick = (e) => {
-      /* ... (código handleMobileMenuLinkClick mantido igual) ... */
+      // Verifica se está em modo mobile e se o clique foi em um link (A)
+      if (
+        window.innerWidth <= 768 &&
+        e.target.closest("a") &&
+        layoutContainer.classList.contains("sidebar-mobile-open")
+      ) {
+        // Fecha o menu mobile
+        layoutContainer.classList.remove("sidebar-mobile-open");
+      }
     };
     sidebarMenu.removeEventListener("click", handleMobileMenuLinkClick);
     sidebarMenu.addEventListener("click", handleMobileMenuLinkClick);
 
     console.log("[setupLayout] Layout configurado.");
-  }
+  } /** Função principal que configura e inicia o roteamento */
 
-  /** Função principal que configura e inicia o roteamento */
   function start() {
     console.log("[start] Configurando portal...");
     buildSidebarMenu();
@@ -433,8 +427,7 @@ function initPortal(user, userData) {
 
     console.log("[start] Chamando handleHashChange inicial.");
     handleHashChange(); // Carrega a view inicial
-  }
+  } // Inicia o processo
 
-  // Inicia o processo
   start();
 } // Fim da função initPortal
