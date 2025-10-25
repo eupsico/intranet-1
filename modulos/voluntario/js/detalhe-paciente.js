@@ -666,13 +666,29 @@ function handleAccordionToggle(accordionItem) {
   if (!accordionItem) return;
 
   const isOpen = accordionItem.classList.contains("open");
-  const icon = accordionItem.querySelector(".accordion-icon");
+  const container = accordionItem.closest(".accordion-container"); // 1. Pega o container pai
+
+  // 2. Fecha todos os outros itens no mesmo container
+  if (container) {
+    container.querySelectorAll(".accordion-item").forEach((item) => {
+      // Se não for o item que foi clicado
+      if (item !== accordionItem) {
+        item.classList.remove("open");
+        const icon = item.querySelector(".accordion-icon");
+        if (icon) icon.innerHTML = "&#9654;"; // Seta para direita
+      }
+    });
+  }
+
+  // 3. Alterna o estado (toggle) apenas do item clicado
+  // Se estava fechado, ele será aberto. Se estava aberto, será fechado (pois o loop acima não o afetou).
   accordionItem.classList.toggle("open");
+  const icon = accordionItem.querySelector(".accordion-icon");
 
   if (icon) {
     icon.innerHTML = accordionItem.classList.contains("open")
-      ? "&#9660;"
-      : "&#9654;"; // Seta para baixo ou direita
+      ? "&#9660;" // Seta para baixo
+      : "&#9654;"; // Seta para direita
   }
 }
 /**
