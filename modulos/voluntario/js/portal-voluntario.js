@@ -259,7 +259,7 @@ function initPortal(user, userData) {
           `Arquivo HTML não encontrado: ${htmlPath} (Status: ${response.status})`
         );
       contentArea.innerHTML = await response.text();
-      console.log(`[loadView] HTML ${htmlPath} carregado.`); // <<< INÍCIO DA CORREÇÃO >>> // Espera o DOM ser atualizado pelo navegador antes de importar e executar o JS. // Isso resolve a condição de corrida (race condition).
+      console.log(`[loadView] HTML ${htmlPath} carregado.`); // <<< INÍCIO DA CORREÇÃO (Problema do Loop) >>> // Espera o DOM ser atualizado pelo navegador antes de importar e executar o JS. // Isso resolve a condição de corrida (race condition).
 
       await new Promise((resolve) => setTimeout(resolve, 0)); // <<< FIM DA CORREÇÃO >>> // Tenta importar o módulo JS dinamicamente
       console.log(`[loadView] Tentando importar ${jsPath}...`);
@@ -302,6 +302,7 @@ function initPortal(user, userData) {
       } else {
         // Erro inesperado (como o SyntaxError)
         contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Ocorreu um erro inesperado (${error.name}) ao carregar ou executar o script desta página (${viewId}.js). Verifique o console para detalhes técnicos.</p></div>`;
+        Am;
       }
     }
   } /** Configura elementos do layout principal */ // ========================================================== // FIM DA FUNÇÃO loadView LIMPA // ==========================================================
@@ -415,6 +416,7 @@ function initPortal(user, userData) {
       const viewId = hashParts[0];
       const param = hashParts.length > 1 ? hashParts.slice(1).join("/") : null;
 
+      nbsp;
       console.log(
         `[handleHashChange] Carregando view: ${viewId}, Param: ${param}`
       );
