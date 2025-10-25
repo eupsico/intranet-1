@@ -2771,7 +2771,7 @@ async function abrirModalDesfechoPb(/* Usa globais */) {
   // Pega o atendimento ativo
   const atendimentoAtivo = pacienteDataGlobal.atendimentosPB?.find(
     (at) =>
-      at.profissionalId === userDataGlobal.uid &&
+      // at.profissionalId === userDataGlobal.uid &&
       at.statusAtendimento === "ativo"
   ); // Checa ID prof
   if (!atendimentoAtivo) {
