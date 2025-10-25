@@ -1,139 +1,367 @@
-// Arquivo: /modulos/voluntario/js/detalhe-paciente.js
-// Responsável por orquestrar a inicialização da página de detalhes do paciente.
-// *** ALTERAÇÕES: Lógica modularizada na pasta 'detalhes-paciente/' e uso de requestAnimationFrame ***
+// Arquivo: /modulos/voluntario/js/portal-voluntario.js
+// Versão: 4.2 (Solução Robusta com Promise.all e requestAnimationFrame)
 
-import * as estado from "./detalhes-paciente/estado.js";
-import * as carregador from "./detalhes-paciente/carregador-dados.js";
-import * as interfaceUI from "./detalhes-paciente/interface.js";
-import * as eventos from "./detalhes-paciente/configurar-eventos.js";
+// 1. Importa as funções necessárias do nosso arquivo central de inicialização
+import {
+  auth,
+  db,
+  onAuthStateChanged,
+  doc,
+  getDoc,
+  updateDoc,
+} from "../../../assets/js/firebase-init.js";
 
-// --- Inicialização da Página ---
-export async function init(user, userData, pacienteId) {
-  console.log("Inicializando detalhe-paciente.js (Controlador)");
-  const viewContainer = document.getElementById("detalhe-paciente-view"); // Container principal da view
+/**
+ * Verifica se a foto do usuário no Google é diferente da salva no banco de dados
+ * e atualiza se necessário.
+ * @param {object} user - O objeto de usuário do Firebase Auth.
+ * @param {object} userData - Os dados do usuário vindos do Firestore.
+ */
+async function updateUserPhotoOnLogin(user, userData) {
+  const firestorePhotoUrl = userData.fotoUrl || "";
+  const googlePhotoUrl = user.photoURL || "";
 
-  // Mostra um loading inicial
-  if (viewContainer) {
-    viewContainer.innerHTML =
-      '<div class="loading-spinner"></div> Carregando dados do paciente...';
+  // Atualiza a foto apenas se a URL do Google existir e for diferente da que está no banco
+  if (googlePhotoUrl && firestorePhotoUrl !== googlePhotoUrl) {
+    try {
+      const userDocRef = doc(db, "usuarios", user.uid);
+      await updateDoc(userDocRef, { fotoUrl: googlePhotoUrl });
+      // Atualiza o objeto local para refletir a mudança imediatamente
+      userData.fotoUrl = googlePhotoUrl;
+    } catch (error) {
+      console.error("Erro ao atualizar a foto do usuário:", error);
+    }
+  }
+}
+
+// 2. Ouve as mudanças no estado de autenticação usando a nova sintaxe
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    // Cria a referência ao documento do usuário com a nova sintaxe
+    const userDocRef = doc(db, "usuarios", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      await updateUserPhotoOnLogin(user, userData);
+      initPortal(user, userData); // Inicia o portal com os dados do usuário
+    } else {
+      console.error("Documento do usuário não encontrado no Firestore.");
+      window.location.href = "../../../index.html";
+    }
   } else {
-    console.error(
-      "Erro Crítico: Container da view #detalhe-paciente-view não encontrado no DOM inicial."
-    );
-    // Se o container principal não existe, não há onde renderizar nada.
-    return;
+    // Se não houver usuário, redireciona para a página de login
+    window.location.href = "../../../index.html";
+  }
+});
+
+/**
+ * Inicializa todo o portal do voluntário, construindo o menu e carregando a view inicial.
+ * @param {object} user - O objeto de usuário autenticado do Firebase.
+ * @param {object} userData - Os dados do usuário do Firestore.
+ */
+function initPortal(user, userData) {
+  const contentArea = document.getElementById("content-area");
+  const sidebarMenu = document.getElementById("sidebar-menu");
+
+  const icons = {
+    dashboard:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    perfil:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    pacientes:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',
+    voluntarios:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    supervisao:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    comprovantes:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>',
+    recursos:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    solicitacoes:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>',
+    gestao:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    painelSupervisor:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    plantao: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81 .7A2 2 0 0 1 22 16.92z"/></svg>`,
+  };
+
+  const views = [
+    {
+      id: "dashboard",
+      name: "Dashboard",
+      icon: icons.dashboard,
+      roles: ["todos"],
+    },
+    {
+      id: "meu-perfil",
+      name: "Meu Perfil",
+      icon: icons.perfil,
+      roles: ["todos"],
+    },
+    {
+      id: "meus-pacientes",
+      name: "Meus Pacientes",
+      icon: icons.pacientes,
+      roles: ["atendimento"],
+    },
+    {
+      id: "voluntarios",
+      name: "Voluntários",
+      icon: icons.voluntarios,
+      roles: ["todos"],
+    },
+    {
+      id: "supervisao",
+      name: "Supervisão",
+      icon: icons.supervisao,
+      roles: ["todos"],
+    },
+    {
+      id: "envio_comprovantes",
+      name: "Enviar Comprovante",
+      icon: icons.comprovantes,
+      roles: ["todos"],
+    },
+    {
+      id: "recursos",
+      name: "Recursos do Voluntário",
+      icon: icons.recursos,
+      roles: ["todos"],
+    },
+    {
+      id: "plantao-psicologico",
+      name: "Guia do Plantão",
+      icon: icons.plantao,
+      roles: ["todos"],
+    },
+    {
+      id: "gestao",
+      name: "Nossa Gestão",
+      icon: icons.gestao,
+      roles: ["todos"],
+    },
+  ];
+
+  const funcoes = userData.funcoes || [];
+  if (funcoes.includes("supervisor") || funcoes.includes("admin")) {
+    views.splice(4, 0, {
+      id: "painel-supervisor",
+      name: "Painel Supervisor",
+      icon: icons.painelSupervisor,
+      roles: ["supervisor", "admin"],
+    });
   }
 
-  estado.setUserDataGlobal(userData); // Armazena dados do usuário logado
+  function buildSidebarMenu() {
+    if (!sidebarMenu) return;
+    sidebarMenu.innerHTML = `
+            <li>
+                <a href="../../../index.html" class="back-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    <span>Voltar à Intranet</span>
+                </a>
+            </li>
+            <li class="menu-separator"></li>
+        `;
 
-  // Valida e define o ID do paciente
-  let id = pacienteId;
-  if (!id) {
-    console.warn(
-      "ID do paciente não foi passado diretamente para init(). Tentando obter da URL."
-    );
-    const urlParams = new URLSearchParams(window.location.search);
-    id = urlParams.get("id");
-    if (!id) {
-      // Se ainda não tem ID, exibe erro e para a execução
-      const errorMsg =
-        '<p class="alert alert-error">Erro: ID do paciente não fornecido na URL.</p>';
-      if (viewContainer) viewContainer.innerHTML = errorMsg;
-      else console.error(errorMsg); // Fallback se o container sumir
-      return; // Interrompe a função init
-    }
-    console.log("ID do paciente obtido da URL:", id);
-  }
-  estado.setPacienteIdGlobal(id);
+    const userRoles = userData.funcoes || [];
 
-  try {
-    // Carrega dados essenciais PRIMEIRO (paciente e configurações/grade)
-    console.log("Iniciando carregamento de dados essenciais...");
-    await Promise.all([
-      carregador.carregarDadosPaciente(estado.pacienteIdGlobal),
-      carregador.carregarSystemConfigs(), // Carrega configs, salas e grade
-    ]);
-    console.log("Dados essenciais carregados.");
-
-    // Verifica se os dados do paciente foram carregados com sucesso
-    if (!estado.pacienteDataGlobal) {
-      // Se o paciente não foi encontrado, joga um erro específico
-      throw new Error(
-        `Paciente com ID ${estado.pacienteIdGlobal} não encontrado no banco de dados.`
-      );
-    }
-
-    // --- AGUARDA O PRÓXIMO FRAME PARA MANIPULAR O DOM ---
-    // Isso é crucial porque o HTML da view foi inserido por innerHTML
-    // na função loadView, e o navegador precisa de um ciclo para processá-lo.
-    console.log(
-      "Solicitando próximo frame de animação para renderizar UI e adicionar listeners..."
-    );
-    requestAnimationFrame(async () => {
-      // Este bloco de código será executado logo antes da próxima repintura do navegador
-      console.log(
-        "[RAF] Frame iniciado. Tentando configurar UI e Listeners..."
-      );
-      try {
-        // Nova verificação: Garante que o container da view ainda está presente
-        if (!document.getElementById("detalhe-paciente-view")) {
-          console.error(
-            "[RAF] Container #detalhe-paciente-view desapareceu antes da renderização da UI."
-          );
-          return; // Impede a continuação se o container sumiu
-        }
-
-        // 1. Preenche os formulários com os dados do paciente (já carregados no 'estado')
-        console.log("[RAF] Chamando preencherFormularios...");
-        interfaceUI.preencherFormularios();
-
-        // 2. Atualiza a visibilidade dos botões de ação com base no status do paciente
-        console.log("[RAF] Chamando atualizarVisibilidadeBotoesAcao...");
-        interfaceUI.atualizarVisibilidadeBotoesAcao(
-          estado.pacienteDataGlobal.status
-        );
-
-        // 3. Carrega os dados das sessões (requer outra chamada ao Firestore)
-        console.log("[RAF] Chamando carregarSessoes...");
-        await carregador.carregarSessoes(); // Atualiza estado.sessoesCarregadas
-        console.log("[RAF] Sessões carregadas. Renderizando...");
-
-        // 4. Renderiza a lista de sessões e as pendências na UI
-        interfaceUI.renderizarSessoes(); // Usa estado.sessoesCarregadas
-        interfaceUI.renderizarPendencias(); // Usa dados do paciente e sessões carregadas
-        console.log("[RAF] Sessões e Pendências renderizadas.");
-
-        // 5. Adiciona os event listeners aos elementos HTML que agora devem existir no DOM
-        console.log("[RAF] Chamando adicionarEventListeners...");
-        eventos.adicionarEventListenersGerais();
-        eventos.adicionarEventListenersModais();
-        console.log("[RAF] Event listeners adicionados.");
-
-        console.log(
-          "Página de detalhes do paciente inicializada com sucesso (dentro do requestAnimationFrame)."
-        );
-      } catch (uiError) {
-        // Captura erros que podem ocorrer durante a manipulação da UI ou adição de listeners
-        console.error(
-          "[RAF] Erro durante a inicialização da UI ou Listeners:",
-          uiError
-        );
-        if (viewContainer) {
-          // Adiciona a mensagem de erro ao container, tentando preservar o que já foi renderizado
-          viewContainer.innerHTML += `<p class="alert alert-error" style="margin-top: 20px;">Erro ao configurar a interface: ${uiError.message}</p>`;
-        }
+    views.forEach((view) => {
+      const hasPermission =
+        view.roles.includes("todos") ||
+        view.roles.some((role) => userRoles.includes(role));
+      if (hasPermission) {
+        sidebarMenu.innerHTML += `
+                    <li>
+                        <a href="#${view.id}" data-view="${view.id}">
+                            ${view.icon}
+                            <span>${view.name}</span>
+                        </a>
+                    </li>`;
       }
-    }); // Fim do requestAnimationFrame
-  } catch (dataLoadError) {
-    // Captura erros que ocorrem DURANTE o carregamento inicial dos dados (antes do RAF)
-    // Ex: Paciente não encontrado, erro ao carregar configs, erro de permissão Firestore
-    console.error(
-      "Erro fatal durante o carregamento inicial de dados (Paciente/Configs):",
-      dataLoadError
-    );
-    // Exibe a mensagem de erro diretamente no container da view, substituindo o loading
-    const errorMsg = `<p class="alert alert-error">Erro Crítico ao carregar dados essenciais do paciente: ${dataLoadError.message}</p>`;
-    if (viewContainer) viewContainer.innerHTML = errorMsg;
-    else console.error(errorMsg); // Fallback se o container sumir
+    });
   }
-} // Fim da função init
+  function loadCss(path) {
+    // Verifica se o CSS já não foi carregado para evitar duplicatas
+    if (!document.querySelector(`link[href="${path}"]`)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = path;
+      document.head.appendChild(link);
+    }
+  }
+
+  // --- NOVA FUNÇÃO HELPER ---
+  /**
+   * Retorna uma Promise que resolve no próximo frame de animação.
+   * Isso garante que o DOM teve tempo de ser "pintado" pelo navegador.
+   */
+  function waitForPaint() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+  // --- FIM DA FUNÇÃO HELPER ---
+
+  // --- FUNÇÃO loadView MODIFICADA (Versão Robusta) ---
+  async function loadView(viewId, param = null) {
+    if (!sidebarMenu || !contentArea) return;
+
+    // Remove a classe 'active' de todos os links antes de adicionar na correta
+    sidebarMenu.querySelectorAll("a").forEach((link) => {
+      link.classList.remove("active");
+    });
+    // Adiciona a classe 'active' ao link clicado
+    const activeLink = sidebarMenu.querySelector(`a[data-view="${viewId}"]`);
+    if (activeLink) {
+      activeLink.classList.add("active");
+    }
+
+    contentArea.innerHTML = '<div class="loading-spinner"></div>';
+
+    const htmlPath = `./${viewId}.html`;
+    const jsPath = `../js/${viewId}.js`;
+    const cssPath = `../css/${viewId}.css`;
+
+    try {
+      // 1. Carrega o CSS
+      loadCss(cssPath);
+
+      // 2. Carrega o HTML e o Módulo JS em paralelo
+      const [htmlResponse, viewModule] = await Promise.all([
+        fetch(htmlPath),
+        import(jsPath).catch((err) => {
+          // Captura o erro se o *script* não existir (o que é normal)
+          console.log(
+            `Nenhum módulo JS encontrado ou necessário para a view '${viewId}'.`
+          );
+          return null; // Retorna nulo para que o Promise.all continue
+        }),
+      ]);
+
+      // 3. Verifica a resposta do HTML
+      if (!htmlResponse.ok) {
+        throw new Error(`Arquivo HTML não encontrado: ${htmlPath}`);
+      }
+      const html = await htmlResponse.text();
+
+      // 4. Injeta o HTML
+      contentArea.innerHTML = html;
+
+      // 5. [A CHAVE] Espera o navegador pintar o DOM
+      await waitForPaint();
+
+      // 6. Agora que o DOM está 100% pronto, inicializa o script
+      if (viewModule && typeof viewModule.init === "function") {
+        viewModule.init(user, userData, param);
+      }
+    } catch (error) {
+      // Captura erros (principalmente do fetch de HTML ou do init)
+      if (error.message.includes("HTML não encontrado")) {
+        console.error(`Erro ao carregar a view ${viewId}:`, error);
+        contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Erro Crítico: A página <strong>${viewId}.html</strong> não foi encontrada.</p></div>`;
+      } else {
+        console.error(
+          `Ocorreu um erro inesperado ao carregar ou inicializar a view '${viewId}':`,
+          error
+        );
+        contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Ocorreu um erro inesperado ao carregar esta página.</p></div>`;
+      }
+    }
+  }
+  // --- FIM DA FUNÇÃO loadView MODIFICADA ---
+
+  function setupLayout() {
+    const userPhoto = document.getElementById("user-photo-header");
+    if (userPhoto) {
+      userPhoto.src =
+        userData.fotoUrl || "../../../assets/img/avatar-padrao.png";
+      userPhoto.onerror = () => {
+        userPhoto.src = "../../../assets/img/avatar-padrao.png";
+      };
+    }
+
+    const userGreeting = document.getElementById("user-greeting");
+    if (userGreeting && userData.nome) {
+      const firstName = userData.nome.split(" ")[0];
+      const hour = new Date().getHours();
+      const greeting =
+        hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+      userGreeting.textContent = `${greeting}, ${firstName}!`;
+    }
+
+    const logoutButton = document.getElementById("logout-button-dashboard");
+    if (logoutButton) {
+      logoutButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        auth.signOut();
+      });
+    }
+
+    const layoutContainer = document.querySelector(".layout-container");
+    const toggleButton = document.getElementById("sidebar-toggle");
+    const overlay = document.getElementById("menu-overlay");
+
+    if (!layoutContainer || !toggleButton || !overlay) return;
+
+    const handleToggle = () => {
+      const isMobile = window.innerWidth <= 768;
+      const sidebar = document.querySelector(".sidebar");
+      if (isMobile) {
+        sidebar.classList.toggle("is-visible");
+        layoutContainer.classList.toggle("mobile-menu-open");
+      } else {
+        const currentlyCollapsed =
+          layoutContainer.classList.toggle("sidebar-collapsed");
+        localStorage.setItem("sidebarCollapsed", currentlyCollapsed);
+        toggleButton.setAttribute(
+          "title",
+          currentlyCollapsed ? "Expandir menu" : "Recolher menu"
+        );
+      }
+    };
+
+    if (window.innerWidth > 768) {
+      const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+      if (isCollapsed) {
+        layoutContainer.classList.add("sidebar-collapsed");
+        toggleButton.setAttribute("title", "Expandir menu");
+      } else {
+        toggleButton.setAttribute("title", "Recolher menu");
+      }
+    }
+
+    toggleButton.addEventListener("click", handleToggle);
+    overlay.addEventListener("click", handleToggle);
+    sidebarMenu.addEventListener("click", (e) => {
+      if (window.innerWidth <= 768 && e.target.closest("a")) {
+        handleToggle();
+      }
+    });
+  }
+
+  function start() {
+    buildSidebarMenu();
+    setupLayout();
+
+    const handleHashChange = () => {
+      let hash = window.location.hash.substring(1);
+      if (!hash) {
+        const firstLink = sidebarMenu.querySelector("a[data-view]");
+        hash = firstLink ? firstLink.dataset.view : "dashboard";
+        window.location.hash = hash; // Adiciona o hash padrão à URL
+        return; // O evento hashchange será disparado novamente
+      }
+      const [viewId, param] = hash.split("/");
+      loadView(viewId, param);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    handleHashChange(); // Carrega a view inicial
+  }
+
+  start();
+}
