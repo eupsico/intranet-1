@@ -3680,8 +3680,9 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
       } // Atualiza o atendimento específico na cópia do array
 
       atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData;
-      atendimentos[indiceDoAtendimento].statusAtendimento = "ativo";
-      novoStatusPaciente = "em_atendimento_pb";
+      atendimentos[indiceDoAtendimento].statusAtendimento =
+        "horarios_informados";
+      novoStatusPaciente = "cadastrar_horario_psicomanager";
 
       dadosParaAtualizar = {
         atendimentosPB: atendimentos,
