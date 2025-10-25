@@ -211,7 +211,7 @@ function initPortal(user, userData) {
 
     // --- MODIFICAÇÃO INICIADA ---
     // Alterei os caminhos para buscar da pasta correta 'page'
-    const htmlPath = `./page/${viewId}.html`;
+    const htmlPath = `./${viewId}.html`;
     const jsPath = `../js/${viewId}.js`;
     const cssPath = `../css/${viewId}.css`;
 
