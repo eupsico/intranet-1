@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/portal-voluntario.js
-// Versão: 4.0 (Atualizado para a sintaxe modular do Firebase v9)
+// Versão: 4.1 (Corrigido o problema de Race Condition no loadView)
 
 // 1. Importa as funções necessárias do nosso arquivo central de inicialização
 import {
@@ -194,6 +194,7 @@ function initPortal(user, userData) {
     }
   }
 
+  // --- FUNÇÃO loadView MODIFICADA ---
   async function loadView(viewId, param = null) {
     if (!sidebarMenu || !contentArea) return;
 
@@ -209,56 +210,69 @@ function initPortal(user, userData) {
 
     contentArea.innerHTML = '<div class="loading-spinner"></div>';
 
-    // --- MODIFICAÇÃO INICIADA ---
-    // Alterei os caminhos para buscar da pasta correta 'page'
     const htmlPath = `./${viewId}.html`;
     const jsPath = `../js/${viewId}.js`;
     const cssPath = `../css/${viewId}.css`;
 
-    // Log de debug para verificar o caminho
-    console.log(`[DEBUG] Tentando carregar HTML de: ${htmlPath}`);
-    // --- MODIFICAÇÃO FINALIZADA ---
+    let html = ""; // Variável para armazenar o HTML
 
     try {
-      // Carrega o CSS da view de forma dinâmica e correta
+      // --- Bloco 1: Carregar HTML e CSS ---
       loadCss(cssPath);
-
       const response = await fetch(htmlPath);
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`Arquivo HTML não encontrado: ${htmlPath}`);
-
-      // --- MODIFICAÇÃO INICIADA ---
-      const html = await response.text();
-      // Log de debug para verificar o conteúdo do HTML
-      console.log(`[DEBUG] HTML recebido para a view '${viewId}':`, html);
-
-      contentArea.innerHTML = html;
-      // --- MODIFICAÇÃO FINALIZADA ---
-
-      // O 'import' do JS continua igual
-      const viewModule = await import(jsPath);
-      if (viewModule && typeof viewModule.init === "function") {
-        viewModule.init(user, userData, param);
       }
-    } catch (error) {
-      if (
-        error.message.includes("Failed to fetch dynamically imported module")
-      ) {
-        console.log(
-          `Nenhum módulo JS encontrado ou necessário para a view '${viewId}'.`
-        );
-      } else if (error.message.includes("HTML não encontrado")) {
-        console.error(`Erro ao carregar a view ${viewId}:`, error);
+      html = await response.text(); // Armazena o HTML
+    } catch (htmlError) {
+      // Apanha erros APENAS do fetch/HTML
+      console.error(`Erro ao carregar o HTML da view ${viewId}:`, htmlError);
+      if (htmlError.message.includes("HTML não encontrado")) {
         contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Erro Crítico: A página <strong>${viewId}.html</strong> não foi encontrada.</p></div>`;
       } else {
-        console.error(
-          `Ocorreu um erro inesperado ao carregar a view '${viewId}':`,
-          error
-        );
         contentArea.innerHTML = `<div class="view-container"><p class="alert alert-error">Ocorreu um erro inesperado ao carregar esta página.</p></div>`;
       }
+      return; // Para a execução se o HTML falhar
     }
+
+    // --- Bloco 2: Injetar HTML e Carregar Script ---
+    // Se o HTML foi carregado com sucesso:
+
+    // 1. Injeta o HTML no DOM
+    contentArea.innerHTML = html;
+
+    // 2. [A SOLUÇÃO] Espera o DOM ser atualizado
+    // Move a importação do script para um setTimeout(0)
+    // Isso coloca a execução do script no final da fila de eventos,
+    // dando tempo ao navegador para construir o DOM a partir do innerHTML.
+    setTimeout(async () => {
+      try {
+        const viewModule = await import(jsPath);
+        if (viewModule && typeof viewModule.init === "function") {
+          viewModule.init(user, userData, param);
+        }
+      } catch (jsError) {
+        // Apanha erros APENAS do import/init do JS
+        if (
+          jsError.message.includes(
+            "Failed to fetch dynamically imported module"
+          )
+        ) {
+          console.log(
+            `Nenhum módulo JS encontrado ou necessário para a view '${viewId}'.`
+          );
+        } else {
+          console.error(
+            `Ocorreu um erro inesperado ao INICIALIZAR o script da view '${viewId}':`,
+            jsError
+          );
+          // Opcional: Adicionar um erro visual sem apagar o HTML
+          // contentArea.insertAdjacentHTML('afterbegin', `<p class="alert alert-error">Ocorreu um erro ao carregar os scripts desta página.</p>`);
+        }
+      }
+    }, 0); // O delay de 0ms é a chave.
   }
+  // --- FIM DA FUNÇÃO loadView MODIFICADA ---
 
   function setupLayout() {
     const userPhoto = document.getElementById("user-photo-header");
