@@ -10,6 +10,13 @@ import * as eventos from "./detalhes-paciente/configurar-eventos.js";
 // --- Inicialização da Página ---
 export async function init(user, userData, pacienteId) {
   console.log("Inicializando detalhe-paciente.js (Controlador)");
+  const viewContainer = document.getElementById("detalhe-paciente-view"); // Container principal da view
+
+  // Mostra um loading inicial (opcional, mas bom para UX)
+  if (viewContainer)
+    viewContainer.innerHTML =
+      '<div class="loading-spinner"></div> Carregando dados do paciente...';
+
   estado.setUserDataGlobal(userData); // Armazena dados do usuário logado // Valida e define o ID do paciente
 
   let id = pacienteId;
@@ -18,8 +25,10 @@ export async function init(user, userData, pacienteId) {
     const urlParams = new URLSearchParams(window.location.search);
     id = urlParams.get("id");
     if (!id) {
-      document.getElementById("detalhe-paciente-view").innerHTML =
+      const errorMsg =
         '<p class="alert alert-error">Erro: ID do paciente não fornecido.</p>';
+      if (viewContainer) viewContainer.innerHTML = errorMsg;
+      else console.error(errorMsg); // Fallback se o container não existir
       return;
     }
     console.warn("ID do paciente obtido da URL como fallback:", id);
@@ -28,28 +37,49 @@ export async function init(user, userData, pacienteId) {
 
   try {
     // Carregar dados essenciais em paralelo
-    // Note que carregarSystemConfigs agora também carrega a grade internamente
     await Promise.all([
       carregador.carregarDadosPaciente(estado.pacienteIdGlobal),
-      carregador.carregarSystemConfigs(),
+      carregador.carregarSystemConfigs(), // Carrega configs, salas e grade
     ]);
 
     if (!estado.pacienteDataGlobal) {
       throw new Error("Paciente não encontrado no banco de dados.");
-    } // --- Popular a interface --- // (Estas funções serão movidas para interface.js no próximo passo) // Por enquanto, vamos assumir que elas existem globalmente ou serão importadas // preencherFormularios(); // atualizarVisibilidadeBotoesAcao(estado.pacienteDataGlobal.status); // Carregar sessões e pendências
+    } // Preenche os formulários com os dados carregados
 
-    await carregador.carregarSessoes(); // Precisa carregar antes de checar pendências // renderizarPendencias(); // Será movida para interface.js // --- Adicionar Event Listeners --- // (Estas funções serão movidas para configurar-eventos.js no próximo passo) // adicionarEventListenersGerais(); // adicionarEventListenersModais(); // --- PLACEHOLDERS PARA AS PRÓXIMAS ETAPAS --- // Chamadas às funções que estarão em interface.js e configurar-eventos.js // Aguardando a criação desses módulos para descomentar e ajustar as chamadas
-    console.warn(
-      "Aguardando módulos interface.js e configurar-eventos.js para completar a inicialização da UI e eventos."
-    );
+    // --- Renderização Inicial da UI ---
+    // (Assumindo que o HTML base da página já existe e só precisa ser preenchido)
+    // Se a view inteira fosse carregada dinamicamente, seria feito aqui.
+
+    // Esconde o loading inicial (se houver) - Adicione ID ao seu elemento de loading se necessário
+    // const initialLoading = document.getElementById('initial-page-loading');
+    // if (initialLoading) initialLoading.style.display = 'none';
+
+    interfaceUI.preencherFormularios();
+
+    // Atualiza quais botões de ação devem estar visíveis
+    interfaceUI.atualizarVisibilidadeBotoesAcao(
+      estado.pacienteDataGlobal.status
+    ); // Carrega as sessões (isso atualiza o estado.sessoesCarregadas)
+
+    await carregador.carregarSessoes();
+
+    // Renderiza a lista de sessões e as pendências AGORA que os dados foram carregados
+    interfaceUI.renderizarSessoes(); // Usa estado.sessoesCarregadas
+    interfaceUI.renderizarPendencias(); // Usa estado.pacienteDataGlobal e estado.sessoesCarregadas // --- Adicionar Event Listeners ---
+
+    // Adiciona todos os listeners para formulários, botões, modais, etc.
+    eventos.adicionarEventListenersGerais();
+    eventos.adicionarEventListenersModais();
+
+    console.log("Página de detalhes do paciente inicializada com sucesso.");
   } catch (error) {
-    console.error("Erro ao inicializar página de detalhes do paciente:", error);
-    document.getElementById(
-      "detalhe-paciente-view"
-    ).innerHTML = `<p class="alert alert-error">Erro ao carregar dados do paciente: ${error.message}</p>`;
+    console.error(
+      "Erro fatal ao inicializar página de detalhes do paciente:",
+      error
+    );
+    const errorMsg = `<p class="alert alert-error">Erro ao carregar dados do paciente: ${error.message}</p>`;
+    if (viewContainer)
+      viewContainer.innerHTML = errorMsg; // Exibe erro no container principal
+    else console.error(errorMsg);
   }
 }
-
-// TODO: Remover as funções que serão movidas para os outros módulos (preencherFormularios, carregarSessoes, etc.)
-// A função init acima será ajustada para chamar as funções importadas dos módulos corretos (ui, listeners)
-// quando estes forem criados.
