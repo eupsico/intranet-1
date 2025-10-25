@@ -404,35 +404,64 @@ function initPortal(user, userData) {
     buildSidebarMenu();
     setupLayout();
 
-    const handleHashChange = () => {
-      console.log("[handleHashChange] Hash mudou:", window.location.hash);
-      let hash = window.location.hash.substring(1);
+    let currentViewId = null; // Variável para rastrear a view atual
 
+    const handleHashChange = async () => {
+      // Tornar async para poder usar await em loadView
+      console.log("[handleHashChange] Hash atual:", window.location.hash);
+      let hash = window.location.hash.substring(1); // Remove o '#' inicial
+
+      // Define a view padrão se o hash estiver vazio
       if (!hash) {
         const firstLink = sidebarMenu?.querySelector("a[data-view]");
-        hash = firstLink ? firstLink.dataset.view : "dashboard";
-        console.log(`[handleHashChange] Hash vazio, definindo para: ${hash}`);
-        history.replaceState(null, "", `#${hash}`); // Atualiza URL sem disparar evento de novo
-        loadView(hash, null); // Chama loadView diretamente aqui
-        return; // Evita chamar loadView duas vezes
+        hash = firstLink ? firstLink.dataset.view : "dashboard"; // Usa a primeira view ou dashboard
+        console.log(
+          `[handleHashChange] Hash vazio, definindo para: ${hash} usando replaceState`
+        );
+        // --- CORREÇÃO DO LOOP ---
+        // Usa history.replaceState para mudar a URL sem disparar hashchange E sem adicionar ao histórico
+        history.replaceState(null, "", `#${hash}`);
+        // Como replaceState não dispara o evento, chamamos loadView diretamente aqui
+        viewId = hash; // Define viewId diretamente
+        param = null; // Sem parâmetro para a view padrão
+        console.log(
+          `[handleHashChange] Chamando loadView diretamente para view padrão: ${viewId}`
+        );
+        // Não retorna, executa o loadView abaixo
       }
 
+      // Separa viewId e param (parâmetro pode conter '/')
       const hashParts = hash.split("/");
-      const viewId = hashParts[0];
-      const param = hashParts.length > 1 ? hashParts.slice(1).join("/") : null;
+      const viewId = hashParts[0]; // Primeira parte é a view
+      const param = hashParts.length > 1 ? hashParts.slice(1).join("/") : null; // O resto é o parâmetro
+
+      // --- OTIMIZAÇÃO: Evita recarregar a mesma view ---
+      if (viewId === currentViewId) {
+        console.log(
+          `[handleHashChange] View '${viewId}' já está carregada. Ignorando.`
+        );
+        // Poderíamos adicionar lógica aqui para *atualizar* a view se o *param* mudou,
+        // mas por enquanto, apenas ignoramos se a viewId for a mesma.
+        return;
+      }
 
       console.log(
-        `[handleHashChange] Carregando view: ${viewId}, Param: ${param}`
+        `[handleHashChange] Carregando nova view: ${viewId}, Param: ${param}`
       );
-      loadView(viewId, param);
-    };
+      await loadView(viewId, param); // Chama a função para carregar a view e seu JS (agora com await)
+      currentViewId = viewId; // Atualiza a view atual *depois* de carregar com sucesso
+    }; // Fim de handleHashChange
 
-    window.removeEventListener("hashchange", handleHashChange); // Garante remoção
+    // Adiciona o listener para mudanças futuras no hash
+    window.removeEventListener("hashchange", handleHashChange); // Garante remoção prévia
     window.addEventListener("hashchange", handleHashChange);
     console.log("[start] Adicionou listener hashchange.");
 
-    console.log("[start] Chamando handleHashChange inicial.");
-    handleHashChange(); // Carrega a view inicial
+    // Carrega a view inicial baseada no hash JÁ PRESENTE na URL (ou define um padrão se necessário)
+    console.log(
+      "[start] Chamando handleHashChange inicial para carregar view."
+    );
+    handleHashChange(); // Chama uma vez para carregar a view inicial
   }
 
   // Inicia o processo
