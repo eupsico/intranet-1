@@ -1686,7 +1686,6 @@ export async function init(db_ignored, user, userData) {
       "#modal-solicitante-id"
     ); // Pega ID do profissional
 
-    // ***** NOVOS SELETORES *****
     const recorrenciaSelect = formAgendamento.querySelector(
       "#admin-ag-recorrencia"
     );
@@ -1696,28 +1695,41 @@ export async function init(db_ignored, user, userData) {
     const quantidadeInput = formAgendamento.querySelector(
       "#admin-ag-quantidade"
     );
-    // ***************************
 
-    // 1. Preencher valores com base na solicitação (se existirem)
-    if (solicitacaoData.detalhes?.dataInicioPreferencial) {
-      dataInicioInput.value = solicitacaoData.detalhes.dataInicioPreferencial;
+    // *** INÍCIO DA CORREÇÃO ***
+    // Garante que detalhes existe antes de tentar acessá-lo
+    const detalhes = solicitacaoData.detalhes || {}; // 1. Preencher valores com base na solicitação (se existirem)
+    // *** FIM DA CORREÇÃO ***
+
+    if (detalhes.dataInicioPreferencial) {
+      // Usa a variável 'detalhes' segura
+      dataInicioInput.value = detalhes.dataInicioPreferencial;
     }
-    if (solicitacaoData.detalhes?.horario) {
-      horaInicioInput.value = solicitacaoData.detalhes.horario;
+    if (detalhes.horario) {
+      // Usa a variável 'detalhes' segura
+      horaInicioInput.value = detalhes.horario;
       calcularHoraFim(); // Calcula hora fim inicial
     }
-    if (solicitacaoData.detalhes?.modalidade) {
-      // Ajusta para 'Online' ou 'Presencial' (capitalizado)
-      const modalidade =
-        solicitacaoData.detalhes.modalidade.charAt(0).toUpperCase() +
-        solicitacaoData.detalhes.modalidade.slice(1).toLowerCase();
-      if (tipoSessaoSelect.querySelector(`option[value="${modalidade}"]`)) {
-        tipoSessaoSelect.value = modalidade;
+    // *** INÍCIO DA CORREÇÃO ***
+    // Verifica se a modalidade existe antes de usá-la
+    if (detalhes.modalidade && typeof detalhes.modalidade === "string") {
+      // Ajusta para 'Online' ou 'Presencial' (capitalizado) de forma segura
+      const modalidadeFormatada =
+        detalhes.modalidade.charAt(0).toUpperCase() +
+        detalhes.modalidade.slice(1).toLowerCase(); // toLowerCase seguro aqui
+      if (
+        tipoSessaoSelect.querySelector(`option[value="${modalidadeFormatada}"]`)
+      ) {
+        tipoSessaoSelect.value = modalidadeFormatada;
       }
     }
-    if (solicitacaoData.detalhes?.sala) {
+    // *** FIM DA CORREÇÃO ***
+
+    // *** INÍCIO DA CORREÇÃO ***
+    // Verifica se a sala existe antes de usá-la
+    if (detalhes.sala) {
       // Tenta selecionar a sala solicitada, se existir no dropdown
-      const salaSolicitada = solicitacaoData.detalhes.sala;
+      const salaSolicitada = detalhes.sala;
       const optionExists = Array.from(salaSelect.options).some(
         (opt) => opt.value === salaSolicitada
       );
@@ -1726,33 +1738,44 @@ export async function init(db_ignored, user, userData) {
       } else {
         console.warn(
           `Sala solicitada "${salaSolicitada}" não encontrada no dropdown.`
-        );
-        // Deixa como "Selecione..." ou seleciona Online se for o caso
-        if (solicitacaoData.detalhes.modalidade.toLowerCase() === "online") {
+        ); // Deixa como "Selecione..." ou seleciona Online se for o caso
+        // Verifica modalidade de forma segura antes de comparar com toLowerCase
+        if (
+          detalhes.modalidade &&
+          typeof detalhes.modalidade === "string" &&
+          detalhes.modalidade.toLowerCase() === "online"
+        ) {
           salaSelect.value = "Online";
         }
       }
+      // Garante Online se modalidade for Online (verificação segura)
     } else if (
-      solicitacaoData.detalhes?.modalidade.toLowerCase() === "online"
+      detalhes.modalidade &&
+      typeof detalhes.modalidade === "string" &&
+      detalhes.modalidade.toLowerCase() === "online"
     ) {
-      salaSelect.value = "Online"; // Garante Online se modalidade for Online
+      salaSelect.value = "Online";
     }
+    // *** FIM DA CORREÇÃO ***
 
-    // ***** NOVO: Pré-preenche a recorrência se ela vier da solicitação *****
-    if (solicitacaoData.detalhes?.recorrenciaSolicitada) {
-      const recorrenciaSolicitada =
-        solicitacaoData.detalhes.recorrenciaSolicitada.toLowerCase(); // ex: 'semanal'
+    // *** INÍCIO DA CORREÇÃO ***
+    // Pré-preenche a recorrência de forma segura
+    if (
+      detalhes.recorrenciaSolicitada &&
+      typeof detalhes.recorrenciaSolicitada === "string"
+    ) {
+      const recorrenciaSolicitadaLower =
+        detalhes.recorrenciaSolicitada.toLowerCase(); // toLowerCase seguro aqui
       if (
         recorrenciaSelect.querySelector(
-          `option[value="${recorrenciaSolicitada}"]`
+          `option[value="${recorrenciaSolicitadaLower}"]`
         )
       ) {
-        recorrenciaSelect.value = recorrenciaSolicitada;
+        recorrenciaSelect.value = recorrenciaSolicitadaLower;
       }
-    }
-    // *******************************************************************
+    } // 2. Listener para Hora Início -> Calcular Hora Fim
+    // *** FIM DA CORREÇÃO ***
 
-    // 2. Listener para Hora Início -> Calcular Hora Fim
     horaInicioInput.addEventListener("change", calcularHoraFim);
 
     function calcularHoraFim() {
@@ -1772,9 +1795,8 @@ export async function init(db_ignored, user, userData) {
       } else {
         horaFimInput.value = ""; // Limpa se hora início estiver vazia
       }
-    }
+    } // 3. Listener para Tipo Sessão -> Habilitar/Ajustar Sala
 
-    // 3. Listener para Tipo Sessão -> Habilitar/Ajustar Sala
     tipoSessaoSelect.addEventListener("change", ajustarSala);
 
     function ajustarSala() {
@@ -1788,12 +1810,10 @@ export async function init(db_ignored, user, userData) {
         if (salaSelect.value === "Online") {
           salaSelect.value = "";
         }
-      }
-      // Valida a grade sempre que o tipo ou sala mudar
+      } // Valida a grade sempre que o tipo ou sala mudar
       validarGradeAdmin();
-    }
+    } // NOVA LÓGICA: Listener para Recorrência -> Mostrar/Ocultar Quantidade
 
-    // ***** NOVA LÓGICA: Listener para Recorrência -> Mostrar/Ocultar Quantidade *****
     if (recorrenciaSelect && quantidadeContainer && quantidadeInput) {
       recorrenciaSelect.addEventListener("change", toggleQuantidadeSessoes);
 
@@ -1813,10 +1833,8 @@ export async function init(db_ignored, user, userData) {
         }
       }
       toggleQuantidadeSessoes(); // Chama para estado inicial
-    }
-    // **************************************************************************
+    } // 4. Listeners para validar grade ao mudar campos relevantes
 
-    // 4. Listeners para validar grade ao mudar campos relevantes
     const camposValidacao = [
       dataInicioInput,
       horaInicioInput,
@@ -1825,9 +1843,8 @@ export async function init(db_ignored, user, userData) {
     ];
     camposValidacao.forEach((input) => {
       if (input) input.addEventListener("change", validarGradeAdmin);
-    });
+    }); // Chama as lógicas iniciais
 
-    // Chama as lógicas iniciais
     ajustarSala();
     validarGradeAdmin();
   }
