@@ -3620,10 +3620,8 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
           const handleChange = () => {
             const isOnline = tipoSelect.value === "Online";
             salaSelect.disabled = isOnline;
-            if (isOnline) salaSelect.value = "Online";
-            // Não limpa se mudar pra presencial aqui, deixa o usuário escolher
-          };
-          // Adiciona o listener APENAS se não existir ainda (evita duplicação)
+            if (isOnline) salaSelect.value = "Online"; // Não limpa se mudar pra presencial aqui, deixa o usuário escolher
+          }; // Adiciona o listener APENAS se não existir ainda (evita duplicação)
           if (!tipoSelect.hasAttribute("data-listener-added")) {
             tipoSelect.addEventListener("change", handleChange);
             tipoSelect.setAttribute("data-listener-added", "true");
@@ -3650,10 +3648,9 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
           formulario.querySelector("#data-inicio-sessoes")?.value || null,
         observacoes:
           formulario.querySelector("#observacoes-pb-horarios")?.value || "",
-        definidoEm: serverTimestamp(),
-      };
+        definidoEm: Timestamp.now(), // <<< CORREÇÃO APLICADA AQUI
+      }; // Validação dos campos do formulário dinâmico
 
-      // Validação dos campos do formulário dinâmico
       if (
         !horarioSessaoData.diaSemana ||
         !horarioSessaoData.horario ||
@@ -3666,8 +3663,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         throw new Error(
           "Preencha todos os detalhes do horário obrigatórios (*)."
         );
-      }
-      // Validação Sala vs Tipo Atendimento
+      } // Validação Sala vs Tipo Atendimento
       if (
         horarioSessaoData.tipoAtendimento === "Online" &&
         horarioSessaoData.salaAtendimento !== "Online"
@@ -3681,9 +3677,8 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         throw new Error(
           "Para atendimento Presencial, selecione uma sala física."
         );
-      }
+      } // Atualiza o atendimento específico na cópia do array
 
-      // Atualiza o atendimento específico na cópia do array
       atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData;
       atendimentos[indiceDoAtendimento].statusAtendimento = "ativo";
       novoStatusPaciente = "em_atendimento_pb";
@@ -3715,7 +3710,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         atendimentos[indiceDoAtendimento].statusAtendimento =
           "desistencia_antes_inicio";
         atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp();
+        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // <<< CORREÇÃO APLICADA AQUI
         novoStatusPaciente = "desistencia"; // Atualiza status geral do paciente
       } else {
         // outra_modalidade
@@ -3729,7 +3724,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoNaoInicio;
         atendimentos[indiceDoAtendimento].solicitacaoReencaminhamento =
           detalhesSolicitacao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm = serverTimestamp();
+        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now(); // <<< CORREÇÃO APLICADA AQUI
         novoStatusPaciente = "reavaliar_encaminhamento"; // Atualiza status geral
       }
       dadosParaAtualizar = {
@@ -3737,12 +3732,10 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         status: novoStatusPaciente,
         lastUpdate: serverTimestamp(),
       };
-    }
+    } // Atualiza a trilha do paciente
 
-    // Atualiza a trilha do paciente
-    await updateDoc(docRef, dadosParaAtualizar);
+    await updateDoc(docRef, dadosParaAtualizar); // Gera solicitação para grade SE necessário (após sucesso da atualização principal)
 
-    // Gera solicitação para grade SE necessário (após sucesso da atualização principal)
     if (gerarSolicitacaoGrade && horarioSessaoDataParaSolicitacao) {
       const solicitacaoGradeData = {
         tipo: "inclusao_alteracao_grade", // Ou um tipo mais específico se preferir
@@ -3760,8 +3753,7 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
         await addDoc(collection(db, "solicitacoes"), solicitacaoGradeData);
         console.log("Solicitação para inclusão/alteração na grade criada.");
       } catch (gradeError) {
-        console.error("Erro ao criar solicitação para grade:", gradeError);
-        // Informa o usuário, mas não reverte a atualização da trilha
+        console.error("Erro ao criar solicitação para grade:", gradeError); // Informa o usuário, mas não reverte a atualização da trilha
         alert(
           "Atenção: Houve um erro ao gerar a solicitação para alteração da grade, por favor, notifique o administrativo manualmente."
         );
@@ -3769,10 +3761,8 @@ async function handleHorariosPbSubmit(evento, userUid, userData) {
     }
 
     alert("Informações salvas com sucesso!");
-    modal.style.display = "none";
-    // Recarregar dados da página
-    await carregarDadosPaciente(pacienteIdGlobal);
-    // renderizarCabecalhoInfoBar(); // Removido
+    modal.style.display = "none"; // Recarregar dados da página
+    await carregarDadosPaciente(pacienteIdGlobal); // renderizarCabecalhoInfoBar(); // Removido
     preencherFormularios(); // Re-preenche forms
     renderizarPendencias(); // Re-renderiza pendências
     await carregarSessoes(); // Recarrega sessões também, se aplicável
