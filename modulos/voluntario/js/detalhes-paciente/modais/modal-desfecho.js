@@ -30,9 +30,7 @@ export async function abrirModalDesfechoPb() {
     return;
   }
   const atendimentoAtivo = estado.pacienteDataGlobal.atendimentosPB?.find(
-    (at) =>
-      at.profissionalId === estado.userDataGlobal.uid &&
-      at.statusAtendimento === "ativo"
+    (at) => at.profissionalId === estado.userDataGlobal.uid
   );
   if (!atendimentoAtivo) {
     alert(
