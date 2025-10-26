@@ -81,6 +81,14 @@ export function abrirModalMensagens() {
   if (previewTextarea) previewTextarea.value = ""; // Popula a lista de modelos disponíveis a partir das configurações do sistema
 
   const templates = estado.systemConfigsGlobal?.textos || {};
+
+  // --- NOVO LOG DE DEBUG ---
+  console.log(
+    "DEBUG: Conteúdo de estado.systemConfigsGlobal.textos:",
+    templates
+  );
+  // -------------------------
+
   const chavesTemplates = Object.keys(templates).filter((key) =>
     key.startsWith("msg_")
   ); // Filtra chaves que começam com 'msg_' (convenção)
