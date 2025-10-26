@@ -261,9 +261,7 @@ export function abrirModalAlterarHorario() {
 
   // Encontra o atendimento PB ativo para o usuário logado
   const atendimentoAtivo = estado.pacienteDataGlobal.atendimentosPB?.find(
-    (at) =>
-      at.profissionalId === estado.userDataGlobal.uid &&
-      at.statusAtendimento === "ativo"
+    (at) => at.profissionalId === estado.userDataGlobal.uid
   );
   if (!atendimentoAtivo) {
     alert(
