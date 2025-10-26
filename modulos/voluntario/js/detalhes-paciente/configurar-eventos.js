@@ -5,8 +5,7 @@ import * as handlers from "./manipuladores.js";
 import * as interfaceUI from "./interface.js";
 import * as estado from "./estado.js"; // Pode ser necessário para alguns handlers delegados
 
-// --- Importação dos Handlers de Modais (PLACEHOLDERS) ---
-// Estas importações serão descomentadas/ajustadas quando os módulos dos modais forem criados.
+// --- Importação dos Handlers de Modais ---
 import {
   handleAbrirAnotacoes,
   handleSalvarAnotacoes,
@@ -24,7 +23,9 @@ import {
   handleDesfechoPbSubmit,
   abrirModalEncerramento,
   handleEncerramentoSubmit,
-} from "./modais/modal-desfecho.js";
+  abrirModalEncaminhamentoPb, // ADICIONADO: Nova função de abertura de Encaminhamento
+  handleEncaminhamentoPbSubmit, // ADICIONADO: Novo handler de submit de Encaminhamento
+} from "./modais/modal-desfecho.js"; // Módulo que agora contém a lógica de Desfecho e Encaminhamento
 import {
   abrirModalHorariosPb,
   handleHorariosPbSubmit,
@@ -137,6 +138,7 @@ export function adicionarEventListenersModais() {
     "btn-abrir-modal-desfecho-pb": abrirModalDesfechoPb,
     "btn-abrir-modal-encerramento-plantao": abrirModalEncerramento,
     "btn-abrir-modal-horarios-pb": abrirModalHorariosPb, // Novo fluxo
+    "btn-abrir-modal-encaminhamento-pb": abrirModalEncaminhamentoPb, // ADICIONADO NOVO BOTÃO
   };
 
   Object.entries(modalOpeners).forEach(([buttonId, openFunction]) => {
@@ -149,17 +151,14 @@ export function adicionarEventListenersModais() {
     } else {
       console.warn(`Botão ${buttonId} para abrir modal não encontrado.`);
     }
-  }); // --- Submits dos Forms DENTRO dos Modais --- // Usamos delegação no body para forms que são carregados dinamicamente (Desfecho PB)
+  }); // --- Submits dos Forms DENTRO dos Modais --- // Usamos delegação no body para forms que são carregados dinamicamente (Desfecho PB) // ou para simplificar.
 
-  // ou para simplificar.
   document.body.removeEventListener("submit", handleModalFormSubmit); // Evita duplicatas
-  document.body.addEventListener("submit", handleModalFormSubmit);
+  document.body.addEventListener("submit", handleModalFormSubmit); // Adiciona listener para cliques em botões específicos dentro dos modais legados (delegação no body)
 
-  // Adiciona listener para cliques em botões específicos dentro dos modais legados (delegação no body)
   document.body.removeEventListener("click", handleModalButtonClick); // Evita duplicatas
-  document.body.addEventListener("click", handleModalButtonClick);
+  document.body.addEventListener("click", handleModalButtonClick); // Listener específico para abas DENTRO do modal de anotações (se ele já existir no HTML inicial)
 
-  // Listener específico para abas DENTRO do modal de anotações (se ele já existir no HTML inicial)
   const anotacoesModalBody = document.querySelector(
     "#anotacoes-sessao-modal .modal-body"
   );
@@ -218,8 +217,7 @@ function handleGlobalClick(e) {
  * Handler delegado para submits de forms DENTRO de modais.
  */
 async function handleModalFormSubmit(e) {
-  const form = e.target;
-  // Mapeia IDs de forms para suas funções de submit
+  const form = e.target; // Mapeia IDs de forms para suas funções de submit
   const formSubmitHandlers = {
     "anotacoes-sessao-form": handleSalvarAnotacoes,
     "encerramento-form": (ev) =>
@@ -234,11 +232,9 @@ async function handleModalFormSubmit(e) {
         estado.userDataGlobal?.uid,
         estado.userDataGlobal
       ), // Precisa passar dados do user
-    "form-atendimento-pb": handleDesfechoPbSubmit, // Carregado dinamicamente
-    "reavaliacao-form": handleReavaliacaoSubmit, // Adicionado
-    // Forms dos modais legados (se eles usarem submit e não click no botão)
-    // "solicitar-sessoes-form": handleSolicitarSessoesSubmit, // Se fosse submit
-    // "alterar-horario-form": handleAlterarHorarioSubmit, // Se fosse submit
+    "form-atendimento-pb": handleDesfechoPbSubmit, // Desfecho (Alta/Desistência)
+    "form-encaminhamento-pb": handleEncaminhamentoPbSubmit, // NOVO HANDLER: Encaminhamento
+    "reavaliacao-form": handleReavaliacaoSubmit, // Adicionado // Forms dos modais legados (se eles usarem submit e não click no botão) // "solicitar-sessoes-form": handleSolicitarSessoesSubmit, // Se fosse submit // "alterar-horario-form": handleAlterarHorarioSubmit, // Se fosse submit
   };
 
   if (form.id in formSubmitHandlers) {
@@ -246,8 +242,7 @@ async function handleModalFormSubmit(e) {
     try {
       await formSubmitHandlers[form.id](e); // Chama o handler específico
     } catch (error) {
-      console.error(`Erro no submit do form ${form.id}:`, error);
-      // Poderia mostrar uma mensagem genérica de erro aqui se o handler não o fizer
+      console.error(`Erro no submit do form ${form.id}:`, error); // Poderia mostrar uma mensagem genérica de erro aqui se o handler não o fizer
     }
   }
 }
@@ -257,18 +252,15 @@ async function handleModalFormSubmit(e) {
  */
 async function handleModalButtonClick(e) {
   const button = e.target.closest("button");
-  if (!button) return;
+  if (!button) return; // Verifica se o clique foi DENTRO do modal Horarios PB para ignorar botões legados que podem ter o mesmo ID
 
-  // Verifica se o clique foi DENTRO do modal Horarios PB para ignorar botões legados que podem ter o mesmo ID
   const isInHorariosPbModal = !!button.closest("#horarios-pb-modal");
   if (isInHorariosPbModal) return; // Ignora cliques nos botões se estiverem dentro do modal Horários PB (que usa submit)
 
   const buttonClickHandlers = {
     "btn-confirmar-solicitacao": handleSolicitarSessoesSubmit, // Legado
     "btn-confirmar-alteracao-horario": handleAlterarHorarioSubmit, // Legado
-    "btn-gerar-enviar-whatsapp": handleMensagemSubmit,
-    // O submit de reavaliação foi movido para handleModalFormSubmit
-    // "btn-confirmar-reavaliacao": handleReavaliacaoSubmit,
+    "btn-gerar-enviar-whatsapp": handleMensagemSubmit, // O submit de reavaliação foi movido para handleModalFormSubmit // "btn-confirmar-reavaliacao": handleReavaliacaoSubmit,
   };
 
   if (button.id in buttonClickHandlers) {
