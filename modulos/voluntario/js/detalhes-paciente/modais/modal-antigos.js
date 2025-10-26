@@ -26,7 +26,9 @@ export function abrirModalSolicitarSessoes() {
   const atendimentoAtivo = estado.pacienteDataGlobal.atendimentosPB?.find(
     (at) =>
       at.profissionalId === estado.userDataGlobal.uid &&
-      at.statusAtendimento === "ativo"
+      (at.statusAtendimento === "ativo" ||
+        at.statusAtendimento === "em_atendimento_pb" ||
+        at.statusAtendimento === "em_andamento") // CORREÇÃO APLICADA: Incluindo status que representam o "Em Atendimento (PB)"
   );
 
   if (!atendimentoAtivo) {
