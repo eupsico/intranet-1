@@ -1,4 +1,5 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-mensagens.js
+
 // Lógica para o modal de seleção e envio de mensagens via WhatsApp.
 
 import * as estado from "../estado.js"; // Acesso ao estado global (paciente, user, configs)
@@ -53,15 +54,22 @@ export function abrirModalMensagens() {
     return;
   } // Pega o atendimento ativo (PB ou Plantão) relevante para o usuário logado
 
+  // --- CORREÇÃO APLICADA AQUI ---
   const atendimentoAtivo =
     estado.pacienteDataGlobal.atendimentosPB?.find(
       (at) =>
         at.profissionalId === estado.userDataGlobal.uid &&
-        at.statusAtendimento === "ativo"
+        // Incluído status que ainda precisam do contrato, além do "ativo"
+        ["ativo", "aguardando_horarios", "horarios_informados"].includes(
+          at.statusAtendimento
+        )
     ) ||
     (estado.pacienteDataGlobal.status === "em_atendimento_plantao"
       ? estado.pacienteDataGlobal.plantaoInfo // Assume que plantaoInfo contém a estrutura necessária
-      : null); // Armazena os dados atuais para uso nas funções internas deste módulo
+      : null);
+  // --- FIM DA CORREÇÃO ---
+
+  // Armazena os dados atuais para uso nas funções internas deste módulo
 
   dadosParaMensagem = {
     paciente: estado.pacienteDataGlobal,
@@ -75,21 +83,15 @@ export function abrirModalMensagens() {
   listaModelos.innerHTML = ""; // Limpa lista antiga
   selecaoView.style.display = "block";
   formularioView.style.display = "none";
-  btnWhatsapp.style.display = "none";
-  // Limpa preview anterior (importante ao reabrir)
+  btnWhatsapp.style.display = "none"; // Limpa preview anterior (importante ao reabrir)
   const previewTextarea = document.getElementById("output-mensagem-preview");
   if (previewTextarea) previewTextarea.value = ""; // Popula a lista de modelos disponíveis a partir das configurações do sistema
 
-  const templates = estado.systemConfigsGlobal?.textos || {};
+  const templates = estado.systemConfigsGlobal?.textos || {}; // --- LINHA CORRIGIDA --- // Agora, usamos todas as chaves do objeto que têm um valor de string (que são os modelos), // removendo a necessidade do prefixo "msg_".
 
-  // --- LINHA CORRIGIDA ---
-  // Agora, usamos todas as chaves do objeto que têm um valor de string (que são os modelos),
-  // removendo a necessidade do prefixo "msg_".
   const chavesTemplates = Object.keys(templates).filter(
     (key) => typeof templates[key] === "string"
-  );
-  // --- FIM DA CORREÇÃO ---
-
+  ); // --- FIM DA CORREÇÃO ---
   if (chavesTemplates.length === 0) {
     listaModelos.innerHTML =
       '<li class="info-note">Nenhum modelo de mensagem configurado no sistema (com prefixo "msg_").</li>';
@@ -172,9 +174,8 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     "{t}",
     "{saudacao}",
     "{contractUrl}",
-  ];
+  ]; // Variável para rastrear se algum campo foi adicionado
 
-  // Variável para rastrear se algum campo foi adicionado
   let camposAdicionados = false;
 
   variaveisUnicas.forEach((variavelPlaceholder) => {
@@ -290,15 +291,13 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
     campoElemento.dataset.variavel = variavelPlaceholder; // Guarda o placeholder original ({variavel})
     campoElemento.required = true; // Torna todos os campos dinâmicos obrigatórios por padrão // Adiciona listener para atualizar o preview em tempo real
 
-    campoElemento.addEventListener("input", atualizarPreviewMensagem); // Chama função interna
+    campoElemento.addEventListener("input", atualizarPreviewMensagem); // Chama função interna // Adiciona ao DOM
 
-    // Adiciona ao DOM
     formGroup.appendChild(label);
     formGroup.appendChild(campoElemento);
     formContainer.appendChild(formGroup);
-  });
+  }); // Se nenhum campo dinâmico foi adicionado, exibe uma mensagem
 
-  // Se nenhum campo dinâmico foi adicionado, exibe uma mensagem
   if (!camposAdicionados) {
     const info = document.createElement("p");
     info.className = "info-note";
@@ -312,8 +311,6 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   formularioView.style.display = "block";
   btnWhatsapp.style.display = "inline-block"; // Mostra o botão de enviar
 }
-
-// Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-mensagens.js
 
 /**
  * Atualiza o textarea de preview da mensagem com base nos valores dos campos.
@@ -412,8 +409,7 @@ export function handleMensagemSubmit() {
   if (!mensagem) {
     alert("Não foi possível gerar o link: A mensagem está vazia.");
     return;
-  }
-  // Verifica se ainda existem placeholders não preenchidos na mensagem final
+  } // Verifica se ainda existem placeholders não preenchidos na mensagem final
   if (/{[a-zA-Z0-9_]+}/.test(mensagem)) {
     alert(
       "Atenção: A mensagem ainda contém variáveis não preenchidas (ex: {variavel}). Por favor, preencha todos os campos obrigatórios."
