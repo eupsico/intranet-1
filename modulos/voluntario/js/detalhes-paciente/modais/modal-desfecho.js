@@ -132,17 +132,15 @@ export async function abrirModalDesfechoPb() {
       );
     } else {
       const updateFormVisibility = () => {
-        const value = desfechoSelect.value;
-        // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
-        const isAltaDesistencia = ["Alta", "Desistência"].includes(value);
+        const value = desfechoSelect.value; // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+        const isAltaDesistencia = ["Alta", "Desistencia"].includes(value);
         const isEncaminhamento = value === "Encaminhamento";
 
         motivoContainer.style.display = isAltaDesistencia ? "block" : "none";
         encaminhamentoContainer.style.display = isEncaminhamento
           ? "block"
-          : "none";
+          : "none"; // Ajusta required dos campos condicionais
 
-        // Ajusta required dos campos condicionais
         const motivoInput = form.querySelector("#motivo-alta-desistencia");
         if (motivoInput) motivoInput.required = isAltaDesistencia;
 
@@ -151,15 +149,11 @@ export async function abrirModalDesfechoPb() {
 
         const motivoEncInput = form.querySelector("#motivo-encaminhamento");
         if (motivoEncInput) motivoEncInput.required = isEncaminhamento;
-      };
+      }; // CORREÇÃO #2: Removida a lógica de clonagem desnecessária que pode estar quebrando o listener. // O listener de 'change' é anexado diretamente ao select.
 
-      // Adiciona listener para o select (clona para remover listeners antigos se houver)
-      const cloneSelect = desfechoSelect.cloneNode(true);
-      desfechoSelect.parentNode.replaceChild(cloneSelect, desfechoSelect);
-      cloneSelect.addEventListener("change", updateFormVisibility);
+      desfechoSelect.addEventListener("change", updateFormVisibility);
       updateFormVisibility(); // Chama uma vez para o estado inicial
-    } // O listener de submit para '#form-atendimento-pb' já está configurado
-    // globalmente em 'configurar-eventos.js' usando delegação no body.
+    } // O listener de submit para '#form-atendimento-pb' já está configurado // globalmente em 'configurar-eventos.js' usando delegação no body.
   } catch (error) {
     console.error(
       "Erro ao carregar ou configurar modal de desfecho PB:",
@@ -212,11 +206,9 @@ export async function handleDesfechoPbSubmit(evento) {
     alert("A data do desfecho é obrigatória.");
     dataDesfechoInput?.focus();
     return;
-  }
-  // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar
-  // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+  } // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
   if (
-    ["Alta", "Desistência"].includes(desfechoTipo) &&
+    ["Alta", "Desistencia"].includes(desfechoTipo) &&
     !form.querySelector("#motivo-alta-desistencia")?.value
   ) {
     alert("O motivo é obrigatório para Alta ou Desistência.");
@@ -249,8 +241,7 @@ export async function handleDesfechoPbSubmit(evento) {
         continuaAtendimentoEuPsico:
           form.querySelector("#continua-atendimento")?.value || "Não informado",
         relatoCaso: form.querySelector("#relato-caso")?.value || "",
-      };
-      // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+      }; // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
     } else if (["Alta", "Desistencia"].includes(desfechoTipo)) {
       detalhesDesfecho = {
         motivo: form.querySelector("#motivo-alta-desistencia")?.value || null,
@@ -292,10 +283,8 @@ export async function handleDesfechoPbSubmit(evento) {
     );
 
     alert("Registro de desfecho enviado com sucesso para o administrativo!");
-    modal.style.display = "none"; // --- Atualiza UI após sucesso ---
+    modal.style.display = "none"; // --- Atualiza UI após sucesso --- // É importante recarregar os dados do paciente, pois o status dele PODE ter mudado // (dependendo da ação do admin ao processar a solicitação, mas recarregar é mais seguro)
 
-    // É importante recarregar os dados do paciente, pois o status dele PODE ter mudado
-    // (dependendo da ação do admin ao processar a solicitação, mas recarregar é mais seguro)
     await carregador.carregarDadosPaciente(pacienteId);
     await carregador.carregarSessoes(); // Recarrega sessões (pode ser relevante)
     interfaceUI.preencherFormularios(); // Re-renderiza forms com novo status/dados
@@ -370,8 +359,7 @@ export function abrirModalEncerramento() {
 
   motivoNaoPagContainer.classList.add("hidden");
   novaDisponibilidadeContainer.classList.add("hidden");
-  novaDisponibilidadeContainer.innerHTML = ""; // Limpa conteúdo carregado anteriormente
-  // Garante que campos carregados dinamicamente não fiquem 'required' inicialmente
+  novaDisponibilidadeContainer.innerHTML = ""; // Limpa conteúdo carregado anteriormente // Garante que campos carregados dinamicamente não fiquem 'required' inicialmente
   novaDisponibilidadeContainer
     .querySelectorAll("[required]")
     .forEach((el) => (el.required = false));
@@ -399,11 +387,8 @@ export function abrirModalEncerramento() {
           })
           .join(", ")
       : "Nenhuma disponibilidade específica informada.";
-  dispAtualEl.textContent = textoDisponibilidade; // --- Configura Listeners Internos do Modal ---
+  dispAtualEl.textContent = textoDisponibilidade; // --- Configura Listeners Internos do Modal --- // Clonar/Substituir para remover listeners antigos e evitar duplicação // Listener para Pagamento -> Motivo Não Pagamento
 
-  // Clonar/Substituir para remover listeners antigos e evitar duplicação
-
-  // Listener para Pagamento -> Motivo Não Pagamento
   const clonePagamento = pagamentoSelect.cloneNode(true);
   pagamentoSelect.parentNode.replaceChild(clonePagamento, pagamentoSelect);
   clonePagamento.addEventListener("change", (e) => {
@@ -423,8 +408,7 @@ export function abrirModalEncerramento() {
     novaDisponibilidadeContainer.classList.toggle(
       "hidden",
       !mostrarNovosHorarios
-    );
-    // Limpa requireds antigos dentro do container
+    ); // Limpa requireds antigos dentro do container
     novaDisponibilidadeContainer
       .querySelectorAll("[required]")
       .forEach((el) => (el.required = false)); // Se for para mostrar e ainda não foi carregado
@@ -455,23 +439,14 @@ export function abrirModalEncerramento() {
 
         if (disponibilidadeSection) {
           novaDisponibilidadeContainer.innerHTML =
-            disponibilidadeSection.innerHTML;
-          // Adiciona validação para garantir que pelo menos um checkbox seja marcado
+            disponibilidadeSection.innerHTML; // Adiciona validação para garantir que pelo menos um checkbox seja marcado
           const checkboxes = novaDisponibilidadeContainer.querySelectorAll(
             'input[type="checkbox"]'
           );
           if (checkboxes.length > 0) {
             // Adiciona um listener ao form (ou container) para validar os checkboxes no submit
             // Ou marca todos como required=true e confia na validação do browser (mais simples)
-            checkboxes.forEach((cb) => (cb.required = true)); // Torna obrigatório selecionar pelo menos um
-            // Para validação customizada (requer mais código):
-            // form.addEventListener('submit', function validateCheckboxes(event) {
-            //     const checked = novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]:checked').length > 0;
-            //     if (!checked && cloneDispSelect.value === 'nao') {
-            //         alert("Selecione ao menos um horário na nova disponibilidade.");
-            //         event.preventDefault();
-            //     }
-            // }, { once: true }); // Adiciona uma vez para evitar múltiplos listeners
+            checkboxes.forEach((cb) => (cb.required = true)); // Torna obrigatório selecionar pelo menos um // Para validação customizada (requer mais código): // form.addEventListener('submit', function validateCheckboxes(event) { //     const checked = novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]:checked').length > 0; //     if (!checked && cloneDispSelect.value === 'nao') { //         alert("Selecione ao menos um horário na nova disponibilidade."); //         event.preventDefault(); //     } // }, { once: true }); // Adiciona uma vez para evitar múltiplos listeners
           }
         } else {
           throw new Error(
@@ -571,9 +546,8 @@ export async function handleEncerramentoSubmit(evento, userUid, userData) {
     alert("Informe se a disponibilidade do paciente deve ser mantida.");
     manterDispSelect.focus();
     return;
-  }
+  } // Valida checkboxes de disponibilidade se 'nao' foi selecionado
 
-  // Valida checkboxes de disponibilidade se 'nao' foi selecionado
   const novaDisponibilidadeContainer = document.getElementById(
     "nova-disponibilidade-container"
   );
@@ -585,8 +559,7 @@ export async function handleEncerramentoSubmit(evento, userUid, userData) {
   ) {
     alert(
       "Se a disponibilidade mudou, por favor, selecione os novos horários disponíveis."
-    );
-    // Tenta focar no primeiro checkbox para guiar o usuário
+    ); // Tenta focar no primeiro checkbox para guiar o usuário
     novaDisponibilidadeContainer
       .querySelector('input[type="checkbox"]')
       ?.focus();
@@ -617,9 +590,7 @@ export async function handleEncerramentoSubmit(evento, userUid, userData) {
     else if (encaminhamentos.includes("Desistência"))
       novoStatus = "desistencia";
     else if (encaminhamentos.includes("Atendimento Psicológico"))
-      novoStatus = "encaminhar_para_pb"; // Indica fluxo para PB // Monta o objeto com os dados do encerramento
-    // Adicionar mais lógica se houver outros encaminhamentos com status específicos
-
+      novoStatus = "encaminhar_para_pb"; // Indica fluxo para PB // Monta o objeto com os dados do encerramento // Adicionar mais lógica se houver outros encaminhamentos com status específicos
     const encerramentoData = {
       responsavelId: userUid,
       responsavelNome: userData.nome,
@@ -647,8 +618,7 @@ export async function handleEncerramentoSubmit(evento, userUid, userData) {
     alert("Encerramento do Plantão salvo com sucesso!");
     modal.style.display = "none"; // --- Atualiza UI após sucesso ---
 
-    await carregador.carregarDadosPaciente(pacienteId); // Recarrega para obter novo status
-    // Não precisa recarregar sessões aqui, pois o plantão geralmente não tem sessões futuras na subcoleção
+    await carregador.carregarDadosPaciente(pacienteId); // Recarrega para obter novo status // Não precisa recarregar sessões aqui, pois o plantão geralmente não tem sessões futuras na subcoleção
     interfaceUI.preencherFormularios(); // Re-renderiza forms com novo status
     interfaceUI.renderizarPendencias(); // Re-calcula pendências
     interfaceUI.atualizarVisibilidadeBotoesAcao(
