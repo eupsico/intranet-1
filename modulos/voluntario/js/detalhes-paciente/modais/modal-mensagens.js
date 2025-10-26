@@ -265,10 +265,27 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
         break;
       case "m":
       case "mes": // Adicionando alias mais claro
-        novoLabel = "Informe o Mês de referência (ex: Janeiro):";
-        campoElemento = document.createElement("input");
-        campoElemento.type = "text";
-        campoElemento.placeholder = "Nome do mês";
+        novoLabel = "Informe o Mês de referência:";
+        campoElemento = document.createElement("select"); // ALTERADO PARA SELECT
+        const meses = [
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
+        ];
+        campoElemento.innerHTML = '<option value="">Selecione...</option>';
+        meses.forEach(
+          (mes) =>
+            (campoElemento.innerHTML += `<option value="${mes}">${mes}</option>`)
+        );
         break;
       case "d":
       case "diavencimento": // Alias mais claro
