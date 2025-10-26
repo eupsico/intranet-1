@@ -23,124 +23,126 @@
             </div>
         </div>
     </div>
+    
     <div class="detalhe-paciente-forms-column">
         
-
-            <div class="accordion-container">
-        <form id="form-info-pessoais">
-
-        <fieldset class="accordion-item open">
-            <legend class="accordion-header">
-                <button type="button" class="accordion-button">
-                    INFORMAÇÕES PESSOAIS
-                    <span class="accordion-icon">&#9660;</span> </button>
-            </legend>
-            <div class="accordion-content">
-
-                <div class="info-summary-grid cols-3">
-                    <div class="form-group">
-                        <label for="dp-nome-completo">Nome completo</label>
-                        <input type="text" id="dp-nome-completo" class="form-control" readonly>
-                    </div>
-                    <div class="form-group readonly">
-                        <label for="dp-status-atual-input">Status Atual:</label>
-                        <input type="text" id="dp-status-atual-input" class="form-control status-badge-input" readonly>
-                        <span id="dp-status-atual" class="readonly-value status-badge" style="display: none;">--</span>
-                    </div>
-                    <div class="form-group readonly">
-                        <label for="dp-desde-input">Desde (Encaminhamento):</label>
-                        <input type="text" id="dp-desde-input" class="form-control" readonly>
-                        <span id="dp-desde" class="readonly-value" style="display: none;">--</span>
-                    </div>
-                </div>
-
-                <div class="form-grid cols-4">
-                    <div class="form-group readonly">
-                        <label for="dp-idade-input">Idade:</label>
-                        <input type="text" id="dp-idade-input" class="form-control" readonly>
-                        <span id="dp-idade" class="readonly-value" style="display: none;">--</span>
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-telefone">Telefone</label>
-                        <input type="text" id="dp-telefone" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-data-nascimento">Data de Nascimento</label>
-                        <input type="date" id="dp-data-nascimento" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-cpf">CPF</label>
-                        <input type="text" id="dp-cpf" class="form-control" readonly>
-                    </div>
-                </div>
-
-                <div class="sub-legend">Contatos</div>
-                <div class="form-grid cols-1">
-                    <div class="form-group">
-                        <label for="dp-responsavel-nome">Nome do Responsável (se aplicável)</label>
-                        <input type="text" id="dp-responsavel-nome" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-contato-emergencia-nome">Contato de Emergência (Nome)</label>
-                        <input type="text" id="dp-contato-emergencia-nome" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-contato-emergencia-telefone">Contato de Emergência (Telefone)</label>
-                        <input type="text" id="dp-contato-emergencia-telefone" class="form-control">
-                    </div>
-                </div>
-
-                <div class="button-bar" style="margin-top: 20px;">
-                    <button type="submit" class="action-button" id="btn-salvar-info-pessoais">Salvar Alterações Pessoais</button>
-                </div>
-
-            </div> 
-        </fieldset> 
-        <fieldset class="accordion-item"> <legend class="accordion-header">
-                <button type="button" class="accordion-button">
-                    ENDEREÇO
-                    <span class="accordion-icon">&#9654;</span> </button>
-            </legend>
-            <div class="accordion-content">
-
-                <div class="form-grid cols-2">
-                    <div class="form-group grid-col-span-2">
-                        <label for="dp-endereco-logradouro">Logradouro:</label>
-                        <input type="text" id="dp-endereco-logradouro" class="form-control" placeholder="Rua, Av...">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-numero">Número:</label>
-                        <input type="text" id="dp-endereco-numero" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-complemento">Complemento:</label>
-                        <input type="text" id="dp-endereco-complemento" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-bairro">Bairro:</label>
-                        <input type="text" id="dp-endereco-bairro" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-cidade">Cidade:</label>
-                        <input type="text" id="dp-endereco-cidade" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-estado">Estado:</label>
-                        <input type="text" id="dp-endereco-estado" class="form-control" maxlength="2">
-                    </div>
-                    <div class="form-group">
-                        <label for="dp-endereco-cep">CEP:</label>
-                        <input type="text" id="dp-endereco-cep" class="form-control" placeholder="00000-000">
-                    </div>
-             <div class="button-bar" style="margin-top: 20px;">
-                    <button type="button" class="action-button" id="btn-salvar-endereco">Salvar Endereço</button> 
-                </div>
-                </div>
-                </div> 
-
-                </div> 
-        </fieldset> 
-        </form>
+        <div class="accordion-container">
+            
+            <form id="form-info-pessoais">
+        
+                <fieldset class="accordion-item open">
+                    <legend class="accordion-header">
+                        <button type="button" class="accordion-button">
+                            INFORMAÇÕES PESSOAIS
+                            <span class="accordion-icon">&#9660;</span> </button>
+                    </legend>
+                    <div class="accordion-content">
+        
+                        <div class="info-summary-grid cols-3">
+                            <div class="form-group">
+                                <label for="dp-nome-completo">Nome completo</label>
+                                <input type="text" id="dp-nome-completo" class="form-control" readonly>
+                            </div>
+                            <div class="form-group readonly">
+                                <label for="dp-status-atual-input">Status Atual:</label>
+                                <input type="text" id="dp-status-atual-input" class="form-control status-badge-input" readonly>
+                                <span id="dp-status-atual" class="readonly-value status-badge" style="display: none;">--</span>
+                            </div>
+                            <div class="form-group readonly">
+                                <label for="dp-desde-input">Desde (Encaminhamento):</label>
+                                <input type="text" id="dp-desde-input" class="form-control" readonly>
+                                <span id="dp-desde" class="readonly-value" style="display: none;">--</span>
+                            </div>
+                        </div>
+        
+                        <div class="form-grid cols-4">
+                            <div class="form-group readonly">
+                                <label for="dp-idade-input">Idade:</label>
+                                <input type="text" id="dp-idade-input" class="form-control" readonly>
+                                <span id="dp-idade" class="readonly-value" style="display: none;">--</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-telefone">Telefone</label>
+                                <input type="text" id="dp-telefone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-data-nascimento">Data de Nascimento</label>
+                                <input type="date" id="dp-data-nascimento" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-cpf">CPF</label>
+                                <input type="text" id="dp-cpf" class="form-control" readonly>
+                            </div>
+                        </div>
+        
+                        <div class="sub-legend">Contatos</div>
+                        <div class="form-grid cols-1">
+                            <div class="form-group">
+                                <label for="dp-responsavel-nome">Nome do Responsável (se aplicável)</label>
+                                <input type="text" id="dp-responsavel-nome" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-contato-emergencia-nome">Contato de Emergência (Nome)</label>
+                                <input type="text" id="dp-contato-emergencia-nome" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-contato-emergencia-telefone">Contato de Emergência (Telefone)</label>
+                                <input type="text" id="dp-contato-emergencia-telefone" class="form-control">
+                            </div>
+                        </div>
+        
+                        <div class="button-bar" style="margin-top: 20px;">
+                            <button type="submit" class="action-button" id="btn-salvar-info-pessoais">Salvar Alterações Pessoais</button>
+                        </div>
+        
+                    </div> 
+                </fieldset> 
+        
+                <fieldset class="accordion-item"> 
+                    <legend class="accordion-header">
+                        <button type="button" class="accordion-button">
+                            ENDEREÇO
+                            <span class="accordion-icon">&#9654;</span> </button>
+                    </legend>
+                    <div class="accordion-content">
+        
+                        <div class="form-grid cols-2">
+                            <div class="form-group grid-col-span-2">
+                                <label for="dp-endereco-logradouro">Logradouro:</label>
+                                <input type="text" id="dp-endereco-logradouro" class="form-control" placeholder="Rua, Av...">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-numero">Número:</label>
+                                <input type="text" id="dp-endereco-numero" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-complemento">Complemento:</label>
+                                <input type="text" id="dp-endereco-complemento" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-bairro">Bairro:</label>
+                                <input type="text" id="dp-endereco-bairro" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-cidade">Cidade:</label>
+                                <input type="text" id="dp-endereco-cidade" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-estado">Estado:</label>
+                                <input type="text" id="dp-endereco-estado" class="form-control" maxlength="2">
+                            </div>
+                            <div class="form-group">
+                                <label for="dp-endereco-cep">CEP:</label>
+                                <input type="text" id="dp-endereco-cep" class="form-control" placeholder="00000-000">
+                            </div>
+                            <div class="button-bar" style="margin-top: 20px;">
+                                <button type="button" class="action-button" id="btn-salvar-endereco">Salvar Endereço</button> 
+                            </div>
+                        </div>
+                    </div> 
+                </fieldset> 
+                </form>
+            
             <form id="form-info-financeiras">
                 <fieldset class="accordion-item"> 
                     <legend class="accordion-header">
@@ -158,36 +160,18 @@
                                 <button type="submit" class="action-button" id="btn-salvar-info-financeiras">Salvar Contribuição</button>
                             </div>
                         </div>
-                    </div> </fieldset>
-            </form>
-            </div> <div id="pendencias-section">
-                <fieldset>
-                    <legend>PENDÊNCIAS <span id="pendencias-count-badge" class="badge" style="display: none;">0</span></legend>
-                     <div id="pendencias-loading" style="display: none;"><div class="loading-spinner"></div> Verificando pendências...</div>
-                     <ul id="pendencias-list" class="pendencias-list-items">
-                         </ul>
-                     <div id="pendencias-placeholder" style="display: none; text-align: center; padding: 15px;">Nenhuma pendência encontrada.</div>
+                    </div> 
                 </fieldset>
-             </div>
-        </div>
-             </div> <div class="detalhe-paciente-tabs-column">
-            <div class="tabs-container vertical-tabs"> <button class="tab-link active" data-tab="tab-sessoes">Sessões</button>
-                <button class="tab-link" data-tab="tab-acompanhamento">Acompanhamento Clínico</button>
-                <button class="tab-link" data-tab="tab-prontuario">Prontuário Psicológico</button>
-                 </div>
-
-            <div class="tabs-content-container">
-                <div id="tab-sessoes" class="tab-content active">
-                    <div class="session-list" id="session-list-container">
-                        <div class="session-list-placeholder" id="session-list-placeholder" style="display: none;">
-                            <p>Nenhuma sessão encontrada para este paciente.</p>
-                        </div>
-                        <div class="loading-spinner" id="session-list-loading"></div>
-                    </div>
-                </div>
-
-                <div id="tab-acompanhamento" class="tab-content">
-                    <form id="acompanhamento-clinico-form">
+            </form>
+            
+            <form id="acompanhamento-clinico-form">
+                <fieldset class="accordion-item"> 
+                    <legend class="accordion-header">
+                        <button type="button" class="accordion-button">
+                            ACOMPANHAMENTO CLÍNICO
+                            <span class="accordion-icon">&#9654;</span> </button>
+                    </legend>
+                    <div class="accordion-content">
                         <fieldset>
                             <legend>Acompanhamento Clínico</legend>
 
@@ -219,36 +203,63 @@
                                 <button type="submit" class="action-button" id="btn-salvar-acompanhamento">Salvar Acompanhamento Clínico</button>
                             </div>
                         </fieldset>
-                    </form>
-                </div>
+                    </div> 
+                </fieldset>
+            </form>
+            
+        </div> 
+        <div id="pendencias-section">
+            <fieldset>
+                <legend>PENDÊNCIAS <span id="pendencias-count-badge" class="badge" style="display: none;">0</span></legend>
+                <div id="pendencias-loading" style="display: none;"><div class="loading-spinner"></div> Verificando pendências...</div>
+                <ul id="pendencias-list" class="pendencias-list-items">
+                </ul>
+                <div id="pendencias-placeholder" style="display: none; text-align: center; padding: 15px;">Nenhuma pendência encontrada.</div>
+            </fieldset>
+        </div>
+        
+    </div> <div class="detalhe-paciente-tabs-column">
+        <div class="tabs-container vertical-tabs"> 
+            <button class="tab-link active" data-tab="tab-sessoes">Sessões</button>
+            <button class="tab-link" data-tab="tab-prontuario">Prontuário Psicológico</button>
+            </div>
 
-                <div id="tab-prontuario" class="tab-content">
-                    <div class="prontuario-generator-layout">
-                        <form id="form-gerar-prontuario">
-                            <fieldset>
-                                <legend>Gerar Prontuário em PDF</legend>
-                                <p>Selecione as informações que devem constar no prontuário:</p>
-                                <div class="checkbox-grid">
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_pessoais" checked> Informações Pessoais</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_financeiras" checked> Informações Financeiras</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_demanda" checked> Avaliação da Demanda</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_objetivos" checked> Objetivos do Tratamento</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_diagnostico" checked> Diagnóstico</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_encerramento" checked> Registro de Encerramento</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_lista" checked> Lista de Sessões (Datas e Status)</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_evolucao" checked> Ficha Evolução (de todas as sessões)</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_prof" checked> Campo Compartilhado (Profissionais)</label>
-                                    <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_admin" checked> Campo Compartilhado (Admin)</label>
-                                </div>
-                            </fieldset>
-                        </form>
-                        <div class="prontuario-generator-actions">
-                            <p>O documento será gerado em formato PDF e incluirá os dados do profissional e do paciente.</p>
-                            <button type="button" class="action-button" id="btn-gerar-prontuario-pdf">Gerar PDF</button>
-                        </div>
+        <div class="tabs-content-container">
+            <div id="tab-sessoes" class="tab-content active">
+                <div class="session-list" id="session-list-container">
+                    <div class="session-list-placeholder" id="session-list-placeholder" style="display: none;">
+                        <p>Nenhuma sessão encontrada para este paciente.</p>
+                    </div>
+                    <div class="loading-spinner" id="session-list-loading"></div>
+                </div>
+            </div>
+
+            <div id="tab-prontuario" class="tab-content">
+                <div class="prontuario-generator-layout">
+                    <form id="form-gerar-prontuario">
+                        <fieldset>
+                            <legend>Gerar Prontuário em PDF</legend>
+                            <p>Selecione as informações que devem constar no prontuário:</p>
+                            <div class="checkbox-grid">
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_pessoais" checked> Informações Pessoais</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="info_financeiras" checked> Informações Financeiras</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_demanda" checked> Avaliação da Demanda</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_objetivos" checked> Objetivos do Tratamento</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_diagnostico" checked> Diagnóstico</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="ac_encerramento" checked> Registro de Encerramento</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_lista" checked> Lista de Sessões (Datas e Status)</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_evolucao" checked> Ficha Evolução (de todas as sessões)</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_prof" checked> Campo Compartilhado (Profissionais)</label>
+                                <label class="form-check"><input type="checkbox" class="form-check-input" name="prontuario-item" value="sessoes_compartilhado_admin" checked> Campo Compartilhado (Admin)</label>
+                            </div>
+                        </fieldset>
+                    </form>
+                    <div class="prontuario-generator-actions">
+                        <p>O documento será gerado em formato PDF e incluirá os dados do profissional e do paciente.</p>
+                        <button type="button" class="action-button" id="btn-gerar-prontuario-pdf">Gerar PDF</button>
                     </div>
                 </div>
-            </div> 
+            </div>
         </div> 
     </div> 
 </div>
@@ -259,7 +270,7 @@
             <div class="modal-header">
                 <h2 class="modal-title-text">Anotações da Sessão</h2>
                 <span class="close-button modal-cancel-btn">&times;</span>
-            </div>         
+            </div> 	 	
             <div class="modal-body"> 
                 <input type="hidden" id="anotacoes-sessao-id">
 
@@ -310,6 +321,7 @@
         </form>
     </div>
 </div>
+
 <div id="solicitar-sessoes-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content large">
         <div class="modal-header"> <h2 class="modal-title-text">Solicitar Novas Sessões</h2>
@@ -376,7 +388,7 @@
                             <label for="solicitar-sala">Sala de Atendimento</label>
                             <select id="solicitar-sala" class="form-control" required>
                                 <option value="Online">Online</option>
-                                 </select>
+                                </select>
                         </div>
                     </div>
                 </fieldset>
@@ -458,7 +470,7 @@
                 </div>
                 <div id="motivo-desistencia-container" class="form-group hidden"><label for="motivo-desistencia-pb">Descreva o motivo da desistência:</label><textarea id="motivo-desistencia-pb" rows="3" class="form-control"></textarea></div>
                <div id="form-alteracao-pb" class="hidden"></div>
-               
+                
                 <div id="form-continuacao-pb" class="hidden"></div>
             </form>
         </div>
@@ -561,7 +573,7 @@
                         <div class="form-group">
                             <label for="alterar-horario">Selecione o novo horário da sessão:*</label>
                             <select id="alterar-horario" class="form-control" required>
-                                 </select>
+                            </select>
                         </div>
                          <div class="form-group">
                             <label for="alterar-tipo-atendimento">Selecione o novo tipo de atendimento:*</label>
@@ -591,7 +603,7 @@
                             <label for="alterar-sala">Selecione abaixo a sala:*</label>
                             <select id="alterar-sala" class="form-control" required>
                                 <option value="Online">Online</option>
-                                 </select>
+                                </select>
                         </div>
                         <div class="form-group">
                             <label for="alterar-grade">Alterar/Incluir na grade?</label>
@@ -644,7 +656,7 @@
                                 <li>Comprovante de endereço (dos últimos 3 meses);</li>
                                 <li>Comprovante de renda (dos últimos 3 meses);</li>
                                 <li>Caso não tenha carteira assinada ou renda, será necessário redigir uma carta de próprio punho com a declaração da renda familiar.</li>
-                             </ul>
+                            </ul>
                         </li>
                         <li><strong>O administrativo entrará em contato para confirmar.</strong> (Para que isso aconteça, é fundamental preencher o formulário de notificação).</li>
                     </ol>
@@ -668,8 +680,8 @@
                                 <label>Nome do Paciente</label>
                                 <input type="text" id="reavaliacao-paciente-nome" class="form-control" readonly>
                             </div>
-                         </div>
-                         <div class="form-grid cols-2"> <div class="form-group">
+                          </div>
+                          <div class="form-grid cols-2"> <div class="form-group">
                                 <label for="reavaliacao-valor-atual">Valor da Contribuição Atual (R$)</label>
                                 <input type="text" id="reavaliacao-valor-atual" class="form-control" placeholder="Ex: 50,00">
                             </div>
@@ -677,7 +689,7 @@
                                 <label for="reavaliacao-motivo">Qual o motivo da reavaliação?</label>
                                 <textarea id="reavaliacao-motivo" class="form-control" rows="3" required placeholder="Descreva o motivo..."></textarea>
                             </div>
-                         </div>
+                          </div>
                     </fieldset>
 
                     <fieldset>
