@@ -15,6 +15,58 @@ import * as estado from "../estado.js"; // Shared state
 import * as carregador from "../carregador-dados.js"; // To reload data
 import * as interfaceUI from "../interface.js"; // To update UI
 
+// --- Lógica de Geração de Horários (Copiada de fichas-de-inscricao.js) ---
+
+/**
+ * Gera os checkboxes de horários específicos para um determinado período.
+ * @param {string} periodo - O período selecionado (ex: 'manha-semana').
+ * @param {HTMLElement} container - O elemento onde os checkboxes detalhados serão injetados.
+ */
+function gerarHorarios(periodo, container) {
+  let horarios = [],
+    label = "";
+  switch (periodo) {
+    case "manha-semana":
+      label = "Manhã (Seg-Sex):";
+      for (let i = 8; i < 12; i++) horarios.push(`${i}:00`);
+      break;
+    case "tarde-semana":
+      label = "Tarde (Seg-Sex):";
+      for (let i = 12; i < 18; i++) horarios.push(`${i}:00`);
+      break;
+    case "noite-semana":
+      label = "Noite (Seg-Sex):";
+      for (let i = 18; i < 21; i++) horarios.push(`${i}:00`);
+      break;
+    case "manha-sabado":
+      label = "Manhã (Sábado):";
+      for (let i = 8; i < 13; i++) horarios.push(`${i}:00`);
+      break;
+  }
+  let html = `<label>${label}</label><div class="horario-detalhe-grid">`;
+  horarios.forEach((hora) => {
+    // O valor (value) deve ter o nome 'horario-encaminhamento-especifico' para não colidir com outros forms
+    html += `<div><label><input type="checkbox" name="horario-encaminhamento-especifico" value="${periodo}_${hora}"> ${hora}</label></div>`;
+  });
+  container.innerHTML = html + `</div>`;
+}
+
+/**
+ * Handler de evento 'change' para os checkboxes de horário (encaminhamento).
+ * @param {Event} e - Evento de mudança.
+ */
+function handleHorarioChangeEncaminhamento(e) {
+  const periodo = e.target.value; // O container deve ter o ID gerado (container-manha-semana, etc.)
+  const container = document.getElementById(`container-${periodo}`);
+  if (e.target.checked) {
+    gerarHorarios(periodo, container);
+    container.classList.remove("hidden-section");
+  } else {
+    container.innerHTML = "";
+    container.classList.add("hidden-section");
+  }
+}
+
 // --- Lógica do Modal de Desfecho PB ---
 
 /**
@@ -125,6 +177,7 @@ export async function abrirModalDesfechoPb() {
     const encaminhamentoContainer = form.querySelector(
       "#encaminhamento-container"
     );
+    const desfechoPbModal = document.getElementById("desfecho-pb-modal");
 
     if (!desfechoSelect || !motivoContainer || !encaminhamentoContainer) {
       console.warn(
@@ -132,7 +185,7 @@ export async function abrirModalDesfechoPb() {
       );
     } else {
       const updateFormVisibility = () => {
-        const value = desfechoSelect.value; // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+        const value = desfechoSelect.value; // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
         const isAltaDesistencia = ["Alta", "Desistencia"].includes(value);
         const isEncaminhamento = value === "Encaminhamento";
 
@@ -149,7 +202,26 @@ export async function abrirModalDesfechoPb() {
 
         const motivoEncInput = form.querySelector("#motivo-encaminhamento");
         if (motivoEncInput) motivoEncInput.required = isEncaminhamento;
-      }; // CORREÇÃO #2: Removida a lógica de clonagem desnecessária que pode estar quebrando o listener. // O listener de 'change' é anexado diretamente ao select.
+
+        // Se a seção de Encaminhamento for ativada, inicializa os listeners de horário
+        if (isEncaminhamento) {
+          // Inicializa listeners para a seção de horários apenas se for encaminhamento
+          desfechoPbModal
+            .querySelectorAll('input[name="horario"]')
+            .forEach((checkbox) => {
+              // Remove listeners antigos para evitar duplicação (Embora a correção anterior removesse o cloneNode,
+              // é bom ter certeza que os listeners não serão duplicados no modal. Reutilizar o modal pode causar isso)
+              checkbox.removeEventListener(
+                "change",
+                handleHorarioChangeEncaminhamento
+              );
+              checkbox.addEventListener(
+                "change",
+                handleHorarioChangeEncaminhamento
+              );
+            });
+        }
+      }; // CORREÇÃO: Remoção da lógica de clonagem desnecessária para garantir que o listener seja registrado corretamente.
 
       desfechoSelect.addEventListener("change", updateFormVisibility);
       updateFormVisibility(); // Chama uma vez para o estado inicial
@@ -206,7 +278,7 @@ export async function handleDesfechoPbSubmit(evento) {
     alert("A data do desfecho é obrigatória.");
     dataDesfechoInput?.focus();
     return;
-  } // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+  } // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
   if (
     ["Alta", "Desistencia"].includes(desfechoTipo) &&
     !form.querySelector("#motivo-alta-desistencia")?.value
@@ -223,6 +295,24 @@ export async function handleDesfechoPbSubmit(evento) {
     alert("Para Encaminhamento, o serviço e o motivo são obrigatórios.");
     form.querySelector("#encaminhado-para")?.focus(); // Foca no primeiro campo
     return;
+  }
+  // Valida horários de encaminhamento se for o caso
+  let disponibilidadeEspecifica = [];
+  if (desfechoTipo === "Encaminhamento") {
+    const checkboxesEspecificos = form.querySelectorAll(
+      'input[name="horario-encaminhamento-especifico"]:checked'
+    );
+    if (checkboxesEspecificos.length === 0) {
+      alert(
+        "Para Encaminhamento, é obrigatório selecionar ao menos um horário detalhado na disponibilidade."
+      );
+      // Tenta focar no primeiro checkbox de horário para guiar o usuário
+      form.querySelector('input[name="horario"]')?.focus();
+      return;
+    }
+    disponibilidadeEspecifica = Array.from(checkboxesEspecificos).map(
+      (cb) => cb.value
+    );
   }
 
   botaoSalvar.disabled = true;
@@ -241,7 +331,9 @@ export async function handleDesfechoPbSubmit(evento) {
         continuaAtendimentoEuPsico:
           form.querySelector("#continua-atendimento")?.value || "Não informado",
         relatoCaso: form.querySelector("#relato-caso")?.value || "",
-      }; // CORREÇÃO #1: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+        // Adiciona a disponibilidade específica coletada
+        disponibilidadeParaEncaminhamento: disponibilidadeEspecifica,
+      }; // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
     } else if (["Alta", "Desistencia"].includes(desfechoTipo)) {
       detalhesDesfecho = {
         motivo: form.querySelector("#motivo-alta-desistencia")?.value || null,
