@@ -1,7 +1,8 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/manipuladores.js
 // Contém os handlers para submits de formulários principais e ações da lista de sessões.
 
-import { doc, updateDoc, serverTimestamp, getDoc } from "./conexao-db.js"; // Funções do Firestore
+// CORREÇÃO: Adicionada a importação do 'db'
+import { db, doc, updateDoc, serverTimestamp, getDoc } from "./conexao-db.js"; // Funções do Firestore
 import * as estado from "./estado.js"; // Acesso ao estado global
 import * as carregador from "./carregador-dados.js"; // Para recarregar dados após salvar
 import * as interfaceUI from "./interface.js"; // Para atualizar a UI após salvar
