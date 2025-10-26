@@ -313,6 +313,8 @@ function preencherFormularioMensagem(templateKey, templateTitle) {
   btnWhatsapp.style.display = "inline-block"; // Mostra o botão de enviar
 }
 
+// Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-mensagens.js
+
 /**
  * Atualiza o textarea de preview da mensagem com base nos valores dos campos.
  * Substitui as variáveis fixas e as dinâmicas (dos inputs/selects).
@@ -342,15 +344,20 @@ function atualizarPreviewMensagem() {
     .replace(/{saudacao}/g, saudacao); // Substitui {saudacao} // Lógica para substituir {contractUrl} (Link do Contrato)
 
   if (templateOriginal.includes("{contractUrl}")) {
-    let contractUrl = "[Link do Contrato Indisponível]"; // Valor padrão // Verifica se temos paciente, atendimento e IDs necessários
-    if (paciente?.id && atendimento?.atendimentoId) {
+    let contractUrl = "[Link do Contrato Indisponível]"; // Valor padrão
+
+    // Tenta obter o ID do atendimento, priorizando 'atendimentoId', mas usando 'id' como fallback
+    const idAtendimentoValido = atendimento?.atendimentoId || atendimento?.id;
+
+    // A condição de geração do link é: ter ID do paciente E um ID de atendimento válido
+    if (paciente?.id && idAtendimentoValido) {
       // Constrói a URL - **IMPORTANTE: Verifique se este caminho está correto**
-      contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${atendimento.atendimentoId}`;
+      contractUrl = `${window.location.origin}/public/contrato-terapeutico.html?id=${paciente.id}&atendimentoId=${idAtendimentoValido}`;
     } else {
       console.warn(
         "Não foi possível gerar link do contrato: ID do paciente ou atendimento ausente.",
         paciente?.id,
-        atendimento?.atendimentoId
+        idAtendimentoValido
       );
     }
     mensagemAtualizada = mensagemAtualizada.replace(
@@ -368,10 +375,8 @@ function atualizarPreviewMensagem() {
 
     if (input.type === "date" && valor) {
       valor = formatarDataParaTexto(valor); // Usa a função utilitária
-    }
+    } // Cria Regex para substituir *todas* as ocorrências do placeholder // Escapa caracteres especiais no placeholder para segurança na Regex
 
-    // Cria Regex para substituir *todas* as ocorrências do placeholder
-    // Escapa caracteres especiais no placeholder para segurança na Regex
     const placeholderRegex = new RegExp(
       placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
       "g"
