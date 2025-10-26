@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-desfecho.js
-// Lógica para os modais de Desfecho PB e Encerramento do Plantão.
+// Lógica para os modais de Desfecho PB, Encaminhamento PB e Encerramento do Plantão.
 
 import {
   db,
@@ -67,11 +67,246 @@ function handleHorarioChangeEncaminhamento(e) {
   }
 }
 
-// --- Lógica do Modal de Desfecho PB ---
+// --- Lógica do Novo Modal de Encaminhamento PB ---
+
+/**
+ * Abre o novo modal para Solicitar Encaminhamento de um atendimento PB ativo.
+ * Carrega dinamicamente o formulário form-encaminhamento-pb.html.
+ */
+export async function abrirModalEncaminhamentoPb() {
+  if (!estado.pacienteDataGlobal || !estado.userDataGlobal) {
+    alert(
+      "Dados necessários para abrir o modal de encaminhamento não estão carregados."
+    );
+    return;
+  }
+  const atendimentoAtivo = estado.pacienteDataGlobal.atendimentosPB?.find(
+    (at) => at.profissionalId === estado.userDataGlobal.uid
+  );
+  if (!atendimentoAtivo) {
+    alert(
+      "Não há um atendimento de Psicoterapia Breve ativo atribuído a você para solicitar encaminhamento."
+    );
+    return;
+  }
+
+  const modal = document.getElementById("encaminhamento-pb-modal");
+  const body = document.getElementById("encaminhamento-pb-modal-body");
+  const footer = document.getElementById("encaminhamento-pb-modal-footer");
+
+  if (!modal || !body || !footer) {
+    console.error(
+      "Elementos essenciais do modal de encaminhamento PB não encontrados."
+    );
+    alert("Erro ao abrir modal: estrutura interna inválida.");
+    return;
+  }
+
+  body.innerHTML =
+    '<div class="loading-spinner"></div> Carregando formulário...';
+  footer.style.display = "none";
+  modal.style.display = "flex";
+
+  try {
+    // --- Carrega o HTML do novo formulário ---
+    const response = await fetch("./form-encaminhamento-pb.html");
+    if (!response.ok) {
+      throw new Error(
+        `Arquivo do formulário de encaminhamento (form-encaminhamento-pb.html) não encontrado.`
+      );
+    }
+    body.innerHTML = await response.text();
+    footer.style.display = "flex";
+
+    const form = body.querySelector("#form-encaminhamento-pb");
+    if (!form) {
+      throw new Error("Formulário #form-encaminhamento-pb não encontrado.");
+    } // --- Preenche dados fixos no formulário carregado ---
+
+    const pacIdInput = form.querySelector("#encaminhamento-paciente-id");
+    if (pacIdInput) pacIdInput.value = estado.pacienteIdGlobal;
+    const atendIdInput = form.querySelector("#encaminhamento-atendimento-id");
+    if (atendIdInput) atendIdInput.value = atendimentoAtivo.atendimentoId;
+
+    const profNomeEl = form.querySelector("#profissional-nome");
+    if (profNomeEl)
+      profNomeEl.value =
+        atendimentoAtivo.profissionalNome || estado.userDataGlobal.nome || "";
+    const pacNomeEl = form.querySelector("#paciente-nome");
+    if (pacNomeEl)
+      pacNomeEl.value = estado.pacienteDataGlobal.nomeCompleto || "";
+    const valorContEl = form.querySelector("#valor-contribuicao");
+    if (valorContEl) {
+      const valor = estado.pacienteDataGlobal.valorContribuicao;
+      valorContEl.value =
+        typeof valor === "number"
+          ? valor.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "Não definido";
+    } // --- Configura lógica de Horários ---
+
+    modal.querySelectorAll('input[name="horario"]').forEach((checkbox) => {
+      checkbox.removeEventListener("change", handleHorarioChangeEncaminhamento);
+      checkbox.addEventListener("change", handleHorarioChangeEncaminhamento); // Garante que nenhum container detalhado esteja visível na abertura
+      const container = document.getElementById(`container-${checkbox.value}`);
+      if (container) {
+        container.innerHTML = "";
+        container.classList.add("hidden-section");
+      }
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao carregar ou configurar modal de encaminhamento PB:",
+      error
+    );
+    body.innerHTML = `<p class="alert alert-error"><b>Erro ao carregar formulário:</b> ${error.message}</p>`;
+    footer.style.display = "flex";
+  }
+}
+
+/**
+ * Handler para o submit do novo formulário de encaminhamento PB.
+ * Cria uma solicitação de encaminhamento para o administrativo.
+ * @param {Event} evento - O evento de submit do formulário '#form-encaminhamento-pb'.
+ */
+export async function handleEncaminhamentoPbSubmit(evento) {
+  evento.preventDefault();
+  const form = evento.target;
+  const modal = form.closest("#encaminhamento-pb-modal.modal-overlay");
+  const botaoSalvar = modal?.querySelector("#btn-salvar-encaminhamento-submit");
+
+  if (!form || !modal || !botaoSalvar) {
+    console.error(
+      "Elementos do modal de encaminhamento não encontrados durante o submit."
+    );
+    alert("Erro interno ao enviar encaminhamento. Recarregue a página.");
+    return;
+  }
+
+  const pacienteId = form.querySelector("#encaminhamento-paciente-id")?.value;
+  const atendimentoId = form.querySelector(
+    "#encaminhamento-atendimento-id"
+  )?.value;
+
+  if (!pacienteId || !atendimentoId || pacienteId !== estado.pacienteIdGlobal) {
+    alert(
+      "Erro: Inconsistência nos IDs do formulário de encaminhamento. Recarregue a página."
+    );
+    return;
+  }
+
+  const encParaInput = form.querySelector("#encaminhado-para");
+  const motivoEncInput = form.querySelector("#motivo-encaminhamento");
+  const dataEncaminhamentoInput = form.querySelector("#data-encaminhamento");
+
+  // Validação de campos obrigatórios
+  if (!encParaInput?.value) {
+    alert("O serviço para encaminhamento é obrigatório.");
+    encParaInput.focus();
+    return;
+  }
+  if (!motivoEncInput?.value.trim()) {
+    alert("O motivo do encaminhamento é obrigatório.");
+    motivoEncInput.focus();
+    return;
+  }
+  if (!dataEncaminhamentoInput?.value) {
+    alert("A data da solicitação é obrigatória.");
+    dataEncaminhamentoInput.focus();
+    return;
+  }
+
+  // Validação de horários de encaminhamento
+  const checkboxesEspecificos = form.querySelectorAll(
+    'input[name="horario-encaminhamento-especifico"]:checked'
+  );
+  if (checkboxesEspecificos.length === 0) {
+    alert(
+      "É obrigatório selecionar ao menos um horário detalhado na disponibilidade para o encaminhamento."
+    );
+    form.querySelector('input[name="horario"]')?.focus();
+    return;
+  }
+  const disponibilidadeParaEncaminhamento = Array.from(
+    checkboxesEspecificos
+  ).map((cb) => cb.value);
+
+  botaoSalvar.disabled = true;
+  botaoSalvar.textContent = "Enviando...";
+
+  try {
+    const detalhesEncaminhamento = {
+      servicoEncaminhado: encParaInput.value,
+      motivoEncaminhamento: motivoEncInput.value.trim(),
+      demandaPaciente: form.querySelector("#demanda-paciente")?.value || "",
+      continuaAtendimentoEuPsico:
+        form.querySelector("#continua-atendimento")?.value || "Não informado",
+      relatoCaso: form.querySelector("#relato-caso")?.value || "",
+      sessoesRealizadas:
+        form.querySelector("#quantidade-sessoes-realizadas")?.value || "N/A",
+      observacoesGerais: form.querySelector("#observacoes-gerais")?.value || "",
+      disponibilidadeParaEncaminhamento: disponibilidadeParaEncaminhamento,
+    };
+
+    const solicitacaoData = {
+      tipo: "encaminhamento", // NOVO TIPO: para a nova fila
+      status: "Pendente",
+      dataSolicitacao: serverTimestamp(),
+      solicitanteId: estado.userDataGlobal.uid,
+      solicitanteNome: estado.userDataGlobal.nome,
+      pacienteId: pacienteId,
+      pacienteNome:
+        estado.pacienteDataGlobal?.nomeCompleto ||
+        form.querySelector("#paciente-nome")?.value ||
+        "",
+      atendimentoId: atendimentoId,
+      detalhes: {
+        dataEncaminhamento: dataEncaminhamentoInput.value,
+        ...detalhesEncaminhamento,
+      },
+      adminFeedback: null,
+    };
+
+    const docRef = await addDoc(
+      collection(db, "solicitacoes"),
+      solicitacaoData
+    );
+    console.log(
+      "Solicitação de encaminhamento PB criada com ID:",
+      docRef.id,
+      solicitacaoData
+    );
+
+    alert(
+      "Solicitação de encaminhamento enviada com sucesso para o administrativo!"
+    );
+    modal.style.display = "none";
+
+    // --- Atualiza UI após sucesso ---
+    await carregador.carregarDadosPaciente(pacienteId);
+    await carregador.carregarSessoes();
+    interfaceUI.preencherFormularios();
+    interfaceUI.renderizarPendencias();
+    interfaceUI.renderizarSessoes();
+    interfaceUI.atualizarVisibilidadeBotoesAcao(
+      estado.pacienteDataGlobal?.status || "desconhecido"
+    );
+  } catch (error) {
+    console.error("Erro ao enviar solicitação de encaminhamento PB:", error);
+    alert(`Falha ao enviar solicitação de encaminhamento: ${error.message}`);
+  } finally {
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Enviar Solicitação";
+  }
+}
+
+// --- Lógica do Modal de Desfecho PB (REVISADA) ---
 
 /**
  * Abre o modal para registrar o desfecho de um atendimento PB ativo.
- * Carrega dinamicamente o formulário HTML.
+ * ***OBS: Agora só trata Alta e Desistência. Encaminhamento foi movido.***
  */
 export async function abrirModalDesfechoPb() {
   // Verifica dados essenciais e se há um atendimento PB ativo para o usuário logado
@@ -174,58 +409,27 @@ export async function abrirModalDesfechoPb() {
     const motivoContainer = form.querySelector(
       "#motivo-alta-desistencia-container"
     );
-    const encaminhamentoContainer = form.querySelector(
-      "#encaminhamento-container"
-    );
-    const desfechoPbModal = document.getElementById("desfecho-pb-modal");
 
-    if (!desfechoSelect || !motivoContainer || !encaminhamentoContainer) {
+    // O elemento 'encaminhamentoContainer' e sua lógica foram removidos,
+    // pois a opção de Encaminhamento não existe mais neste modal.
+
+    if (!desfechoSelect || !motivoContainer) {
       console.warn(
-        "Elementos de controle condicional (desfecho, motivo, encaminhamento) não encontrados no form carregado."
+        "Elementos de controle condicional (desfecho, motivo) não encontrados no form carregado."
       );
     } else {
       const updateFormVisibility = () => {
-        const value = desfechoSelect.value; // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+        const value = desfechoSelect.value; // Apenas Alta e Desistencia são válidos aqui.
         const isAltaDesistencia = ["Alta", "Desistencia"].includes(value);
-        const isEncaminhamento = value === "Encaminhamento";
 
-        motivoContainer.style.display = isAltaDesistencia ? "block" : "none";
-        encaminhamentoContainer.style.display = isEncaminhamento
-          ? "block"
-          : "none"; // Ajusta required dos campos condicionais
-
+        motivoContainer.style.display = isAltaDesistencia ? "block" : "none"; // Garante que campos de motivo sejam obrigatórios apenas para Alta/Desistência
         const motivoInput = form.querySelector("#motivo-alta-desistencia");
         if (motivoInput) motivoInput.required = isAltaDesistencia;
-
-        const encParaInput = form.querySelector("#encaminhado-para");
-        if (encParaInput) encParaInput.required = isEncaminhamento;
-
-        const motivoEncInput = form.querySelector("#motivo-encaminhamento");
-        if (motivoEncInput) motivoEncInput.required = isEncaminhamento;
-
-        // Se a seção de Encaminhamento for ativada, inicializa os listeners de horário
-        if (isEncaminhamento) {
-          // Inicializa listeners para a seção de horários apenas se for encaminhamento
-          desfechoPbModal
-            .querySelectorAll('input[name="horario"]')
-            .forEach((checkbox) => {
-              // Remove listeners antigos para evitar duplicação (Embora a correção anterior removesse o cloneNode,
-              // é bom ter certeza que os listeners não serão duplicados no modal. Reutilizar o modal pode causar isso)
-              checkbox.removeEventListener(
-                "change",
-                handleHorarioChangeEncaminhamento
-              );
-              checkbox.addEventListener(
-                "change",
-                handleHorarioChangeEncaminhamento
-              );
-            });
-        }
-      }; // CORREÇÃO: Remoção da lógica de clonagem desnecessária para garantir que o listener seja registrado corretamente.
+      };
 
       desfechoSelect.addEventListener("change", updateFormVisibility);
       updateFormVisibility(); // Chama uma vez para o estado inicial
-    } // O listener de submit para '#form-atendimento-pb' já está configurado // globalmente em 'configurar-eventos.js' usando delegação no body.
+    }
   } catch (error) {
     console.error(
       "Erro ao carregar ou configurar modal de desfecho PB:",
@@ -239,7 +443,7 @@ export async function abrirModalDesfechoPb() {
 /**
  * Handler para o submit do formulário de desfecho PB (carregado dinamicamente).
  * Cria uma solicitação de desfecho para o administrativo.
- * @param {Event} evento - O evento de submit do formulário '#form-atendimento-pb'.
+ * ***OBS: Removida a lógica de Encaminhamento.***
  */
 export async function handleDesfechoPbSubmit(evento) {
   evento.preventDefault();
@@ -270,7 +474,7 @@ export async function handleDesfechoPbSubmit(evento) {
   const dataDesfechoInput = form.querySelector("#data-desfecho");
 
   if (!desfechoTipo) {
-    alert("Selecione o tipo de desfecho.");
+    alert("Selecione o tipo de desfecho (Alta ou Desistência).");
     desfechoSelect?.focus();
     return;
   }
@@ -278,7 +482,7 @@ export async function handleDesfechoPbSubmit(evento) {
     alert("A data do desfecho é obrigatória.");
     dataDesfechoInput?.focus();
     return;
-  } // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+  } // Validação de Alta/Desistência
   if (
     ["Alta", "Desistencia"].includes(desfechoTipo) &&
     !form.querySelector("#motivo-alta-desistencia")?.value
@@ -287,58 +491,19 @@ export async function handleDesfechoPbSubmit(evento) {
     form.querySelector("#motivo-alta-desistencia")?.focus();
     return;
   }
-  if (
-    desfechoTipo === "Encaminhamento" &&
-    (!form.querySelector("#encaminhado-para")?.value ||
-      !form.querySelector("#motivo-encaminhamento")?.value)
-  ) {
-    alert("Para Encaminhamento, o serviço e o motivo são obrigatórios.");
-    form.querySelector("#encaminhado-para")?.focus(); // Foca no primeiro campo
-    return;
-  }
-  // Valida horários de encaminhamento se for o caso
-  let disponibilidadeEspecifica = [];
-  if (desfechoTipo === "Encaminhamento") {
-    const checkboxesEspecificos = form.querySelectorAll(
-      'input[name="horario-encaminhamento-especifico"]:checked'
-    );
-    if (checkboxesEspecificos.length === 0) {
-      alert(
-        "Para Encaminhamento, é obrigatório selecionar ao menos um horário detalhado na disponibilidade."
-      );
-      // Tenta focar no primeiro checkbox de horário para guiar o usuário
-      form.querySelector('input[name="horario"]')?.focus();
-      return;
-    }
-    disponibilidadeEspecifica = Array.from(checkboxesEspecificos).map(
-      (cb) => cb.value
-    );
-  }
 
   botaoSalvar.disabled = true;
   botaoSalvar.textContent = "Enviando...";
 
   try {
-    // Coleta detalhes com base no tipo de desfecho
-    let detalhesDesfecho = {};
-    if (desfechoTipo === "Encaminhamento") {
-      detalhesDesfecho = {
-        servicoEncaminhado:
-          form.querySelector("#encaminhado-para")?.value || null,
-        motivoEncaminhamento:
-          form.querySelector("#motivo-encaminhamento")?.value || null,
-        demandaPaciente: form.querySelector("#demanda-paciente")?.value || "",
-        continuaAtendimentoEuPsico:
-          form.querySelector("#continua-atendimento")?.value || "Não informado",
-        relatoCaso: form.querySelector("#relato-caso")?.value || "",
-        // Adiciona a disponibilidade específica coletada
-        disponibilidadeParaEncaminhamento: disponibilidadeEspecifica,
-      }; // CORREÇÃO: Padronizando para 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
-    } else if (["Alta", "Desistencia"].includes(desfechoTipo)) {
+    // Coleta detalhes de Alta ou Desistência
+    let detalhesDesfecho = {}; // Não precisamos mais do IF para Encaminhamento aqui.
+    if (["Alta", "Desistencia"].includes(desfechoTipo)) {
       detalhesDesfecho = {
         motivo: form.querySelector("#motivo-alta-desistencia")?.value || null,
       };
-    } // Adiciona data do desfecho coletada
+    }
+
     detalhesDesfecho.dataDesfecho = dataDesfechoInput.value; // Monta o objeto da solicitação
 
     const solicitacaoData = {
@@ -354,8 +519,8 @@ export async function handleDesfechoPbSubmit(evento) {
         "",
       atendimentoId: atendimentoId, // ID do atendimento PB específico
       detalhes: {
-        tipoDesfecho: desfechoTipo, // Alta, Desistencia, Encaminhamento
-        ...detalhesDesfecho, // Inclui motivo ou detalhes de encaminhamento
+        tipoDesfecho: desfechoTipo, // Alta, Desistencia
+        ...detalhesDesfecho, // Inclui motivo
         sessoesRealizadas:
           form.querySelector("#quantidade-sessoes-realizadas")?.value || "N/A",
         observacoesGerais:
@@ -375,7 +540,7 @@ export async function handleDesfechoPbSubmit(evento) {
     );
 
     alert("Registro de desfecho enviado com sucesso para o administrativo!");
-    modal.style.display = "none"; // --- Atualiza UI após sucesso --- // É importante recarregar os dados do paciente, pois o status dele PODE ter mudado // (dependendo da ação do admin ao processar a solicitação, mas recarregar é mais seguro)
+    modal.style.display = "none"; // --- Atualiza UI após sucesso ---
 
     await carregador.carregarDadosPaciente(pacienteId);
     await carregador.carregarSessoes(); // Recarrega sessões (pode ser relevante)
