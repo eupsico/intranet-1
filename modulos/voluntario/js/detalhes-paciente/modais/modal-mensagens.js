@@ -82,16 +82,13 @@ export function abrirModalMensagens() {
 
   const templates = estado.systemConfigsGlobal?.textos || {};
 
-  // --- NOVO LOG DE DEBUG ---
-  console.log(
-    "DEBUG: Conteúdo de estado.systemConfigsGlobal.textos:",
-    templates
+  // --- LINHA CORRIGIDA ---
+  // Agora, usamos todas as chaves do objeto que têm um valor de string (que são os modelos),
+  // removendo a necessidade do prefixo "msg_".
+  const chavesTemplates = Object.keys(templates).filter(
+    (key) => typeof templates[key] === "string"
   );
-  // -------------------------
-
-  const chavesTemplates = Object.keys(templates).filter((key) =>
-    key.startsWith("msg_")
-  ); // Filtra chaves que começam com 'msg_' (convenção)
+  // --- FIM DA CORREÇÃO ---
 
   if (chavesTemplates.length === 0) {
     listaModelos.innerHTML =
@@ -100,7 +97,7 @@ export function abrirModalMensagens() {
     chavesTemplates.forEach((key) => {
       // Formata a chave para um título legível
       const title = key
-        .replace(/^msg_/, "") // Remove o prefixo
+        .replace(/^msg_/, "") // Mantido para compatibilidade, caso algum modelo use
         .replace(/([A-Z])/g, " $1") // Espaço antes de maiúsculas
         .replace(/_/g, " ") // Underscore para espaço
         .replace(/^./, (str) => str.toUpperCase()); // Capitaliza início
