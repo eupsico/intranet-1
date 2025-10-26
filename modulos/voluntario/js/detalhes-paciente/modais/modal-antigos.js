@@ -24,11 +24,7 @@ export function abrirModalSolicitarSessoes() {
 
   // Encontra o atendimento PB ativo para o usuário logado
   const atendimentoAtivo = estado.pacienteDataGlobal.atendimentosPB?.find(
-    (at) =>
-      at.profissionalId === estado.userDataGlobal.uid &&
-      (at.statusAtendimento === "ativo" ||
-        at.statusAtendimento === "em_atendimento_pb" ||
-        at.statusAtendimento === "em_andamento") // CORREÇÃO APLICADA: Incluindo status que representam o "Em Atendimento (PB)"
+    (at) => at.profissionalId === estado.userDataGlobal.uid
   );
 
   if (!atendimentoAtivo) {
