@@ -1,4 +1,7 @@
 <form id="form-atendimento-pb" class="form-layout" novalidate>
+    <input type="hidden" id="desfecho-paciente-id">
+    <input type="hidden" id="desfecho-atendimento-id">
+    
     <fieldset>
         <legend>Informações do Atendimento</legend>
         <div class="form-row cols-2">
@@ -56,7 +59,7 @@
                     <option value="Grupo Questões de peso">Grupo Questões de peso</option>
                     <option value="Grupo Funcional">Grupo Funcional</option>
                     <option value="Grupo Envelhecimento Ativo">Grupo Envelhecimento Ativo</option>
-                     <option value="Grupo Reexista">Grupo Reexista</option>
+                    <option value="Grupo Reexista">Grupo Reexista</option>
                     <option value="Outro">Outro (especificar no motivo)</option>
                 </select>
             </div>
@@ -64,11 +67,11 @@
                 <label for="motivo-encaminhamento">Motivo do Encaminhamento:</label>
                 <textarea id="motivo-encaminhamento" rows="3" class="form-control" placeholder="Descreva o motivo do encaminhamento..."></textarea>
             </div>
-             <div class="form-group">
+            <div class="form-group">
                 <label for="demanda-paciente">Demanda do Paciente:</label>
                 <textarea id="demanda-paciente" rows="3" class="form-control" placeholder="Qual a demanda específica do paciente?"></textarea>
             </div>
-             <div class="form-group">
+            <div class="form-group">
                 <label for="continua-atendimento">Paciente continua em atendimento com você?</label>
                 <select id="continua-atendimento" class="form-control">
                     <option value="Sim">Sim</option>
@@ -78,6 +81,25 @@
             <div class="form-group">
                 <label for="relato-caso">Breve relato do caso:</label>
                 <textarea id="relato-caso" rows="5" class="form-control" placeholder="Apresente um breve resumo do caso para o profissional que irá recebê-lo."></textarea>
+            </div>
+            
+            <div id="disponibilidade-section">
+                <h3 class="form-section-title">Disponibilidade de Horário para Encaminhamento</h3>
+                <div class="form-group">
+                    <label>Opção de horário(s) para o novo atendimento: <span class="required-asterisk">*</span></label>
+                    <div class="horarios-options-container">
+                        <div><label><input type="checkbox" name="horario" value="manha-semana"> Manhã (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="tarde-semana"> Tarde (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="noite-semana"> Noite (Durante a semana)</label></div>
+                        <div><label><input type="checkbox" name="horario" value="manha-sabado"> Manhã (Sábado)</label></div>
+                    </div>
+                </div>
+                <div id="horarios-especificos-container">
+                    <div id="container-manha-semana" class="horario-detalhe-container hidden-section"></div>
+                    <div id="container-tarde-semana" class="horario-detalhe-container hidden-section"></div>
+                    <div id="container-noite-semana" class="horario-detalhe-container hidden-section"></div>
+                    <div id="container-manha-sabado" class="horario-detalhe-container hidden-section"></div>
+                </div>
             </div>
             <div class="form-group">
                 <label for="quantidade-sessoes-realizadas">Quantidade de Sessões Realizadas (PB):</label>
@@ -89,5 +111,4 @@
             </div>
         </div>
     </fieldset>
-
-    </form>
+</form>
