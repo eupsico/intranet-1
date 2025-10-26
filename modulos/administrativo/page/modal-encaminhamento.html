@@ -1,0 +1,86 @@
+<div class="solicitacao-detalhes-container">
+    <input type="hidden" id="modal-solicitante-id">
+    
+    <fieldset>
+        <legend>Dados da Solicitação</legend>
+        <div class="detail-grid cols-2">
+            <div class="detail-item">
+                <label>Profissional Solicitante:</label>
+                <span id="modal-solicitante-nome"></span>
+            </div>
+            <div class="detail-item">
+                <label>Paciente:</label>
+                <span id="modal-paciente-nome"></span>
+            </div>
+            <div class="detail-item">
+                <label>Data da Solicitação:</label>
+                <span id="modal-data-solicitacao"></span>
+            </div>
+            <div class="detail-item">
+                <label>Data de Registro no Formulário:</label>
+                <span id="modal-enc-data"></span>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Detalhes do Encaminhamento</legend>
+        <div class="detail-grid cols-2">
+            <div class="detail-item detail-highlight">
+                <label>Serviço Encaminhado:</label>
+                <span id="modal-enc-servico"></span>
+            </div>
+            <div class="detail-item">
+                <label>Continua Atendimento EuPsico?</label>
+                <span id="modal-enc-continua"></span>
+            </div>
+        </div>
+
+        <div class="detail-item detail-full">
+            <label>Motivo do Encaminhamento:</label>
+            <p id="modal-enc-motivo" class="detail-text-area"></p>
+        </div>
+        <div class="detail-item detail-full">
+            <label>Demanda do Paciente (Queixa):</label>
+            <p id="modal-enc-demanda" class="detail-text-area"></p>
+        </div>
+        <div class="detail-item detail-full">
+            <label>Breve Relato do Caso:</label>
+            <p id="modal-enc-relato" class="detail-text-area"></p>
+        </div>
+
+        <div class="detail-item">
+            <label>Sessões PB Realizadas:</label>
+            <span id="modal-enc-sessoes"></span>
+        </div>
+        <div class="detail-item detail-full">
+            <label>Observações Gerais do Voluntário:</label>
+            <p id="modal-enc-obs" class="detail-text-area"></p>
+        </div>
+    </fieldset>
+    
+    <fieldset>
+        <legend>Disponibilidade (Atualizar Cadastro)</legend>
+        <div class="detail-item detail-full">
+            <p><strong>Horários Detalhados Selecionados para o Novo Agendamento:</strong></p>
+            <ul id="modal-enc-disponibilidade-list" class="disponibilidade-list">
+                </ul>
+        </div>
+        <div class="info-note">
+            <p>Ao **Aprovar**, o status do paciente será alterado para **"Encaminhar PB"** e a lista de horários acima será gravada como a **Disponibilidade Específica** do paciente na Trilha.</p>
+        </div>
+    </fieldset>
+
+    <div id="modal-admin-message-group" style="display: none;">
+        <div class="form-group">
+            <label for="admin-message-text">Mensagem/Motivo (Para o profissional):</label>
+            <textarea id="admin-message-text" rows="3" class="form-control" placeholder="Obrigatório para Rejeição. Opcional para Aprovação."></textarea>
+        </div>
+    </div>
+
+    <div id="modal-admin-feedback-view" class="feedback-view-box" style="display: none;">
+        <p><strong>Resolvido por:</strong> <span id="view-admin-nome"></span> em <span id="view-admin-data"></span></p>
+        <p><strong>Status Final:</strong> <span id="view-admin-status" class="status-badge"></span></p>
+        <p><strong>Mensagem do Admin:</strong> <span id="view-admin-mensagem" class="detail-text-area"></span></p>
+    </div>
+</div>
