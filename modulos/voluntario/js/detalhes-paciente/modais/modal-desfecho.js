@@ -133,7 +133,8 @@ export async function abrirModalDesfechoPb() {
     } else {
       const updateFormVisibility = () => {
         const value = desfechoSelect.value;
-        const isAltaDesistencia = ["Alta", "Desistencia"].includes(value);
+        // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
+        const isAltaDesistencia = ["Alta", "Desistência"].includes(value);
         const isEncaminhamento = value === "Encaminhamento";
 
         motivoContainer.style.display = isAltaDesistencia ? "block" : "none";
@@ -213,8 +214,9 @@ export async function handleDesfechoPbSubmit(evento) {
     return;
   }
   // Valida campos condicionais que podem não ter sido pegos pelo 'required' se o JS falhar
+  // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
   if (
-    ["Alta", "Desistencia"].includes(desfechoTipo) &&
+    ["Alta", "Desistência"].includes(desfechoTipo) &&
     !form.querySelector("#motivo-alta-desistencia")?.value
   ) {
     alert("O motivo é obrigatório para Alta ou Desistência.");
@@ -248,6 +250,7 @@ export async function handleDesfechoPbSubmit(evento) {
           form.querySelector("#continua-atendimento")?.value || "Não informado",
         relatoCaso: form.querySelector("#relato-caso")?.value || "",
       };
+      // CORREÇÃO: Usando 'Desistencia' (sem acento) para corresponder ao 'value' do HTML.
     } else if (["Alta", "Desistencia"].includes(desfechoTipo)) {
       detalhesDesfecho = {
         motivo: form.querySelector("#motivo-alta-desistencia")?.value || null,
@@ -463,11 +466,11 @@ export function abrirModalEncerramento() {
             checkboxes.forEach((cb) => (cb.required = true)); // Torna obrigatório selecionar pelo menos um
             // Para validação customizada (requer mais código):
             // form.addEventListener('submit', function validateCheckboxes(event) {
-            //     const checked = novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]:checked').length > 0;
-            //     if (!checked && cloneDispSelect.value === 'nao') {
-            //         alert("Selecione ao menos um horário na nova disponibilidade.");
-            //         event.preventDefault();
-            //     }
+            //     const checked = novaDisponibilidadeContainer.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+            //     if (!checked && cloneDispSelect.value === 'nao') {
+            //         alert("Selecione ao menos um horário na nova disponibilidade.");
+            //         event.preventDefault();
+            //     }
             // }, { once: true }); // Adiciona uma vez para evitar múltiplos listeners
           }
         } else {
