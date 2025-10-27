@@ -34,9 +34,8 @@ let currentUserData = {}; // Para armazenar os dados do usuário logado
  * Função para carregar a lista de gestores e popular o campo select.
  */
 async function carregarGestores() {
-  // Busca usuários com a função 'Gestor' (ou 'Supervisor', dependendo da estrutura real)
-  // Usaremos 'Gestor' como padrão para este módulo.
-  const gestores = await fetchUsersByRole("Gestor");
+  // CORREÇÃO CRÍTICA: Busca usuários com a função 'gestor' (em minúsculas)
+  const gestores = await fetchUsersByRole("gestor");
 
   if (!selectGestor) return;
   selectGestor.innerHTML = '<option value="">Selecione o Gestor...</option>';
@@ -44,7 +43,7 @@ async function carregarGestores() {
   if (gestores.length === 0) {
     // Exibir uma mensagem de erro ou desabilitar o formulário, se necessário
     console.warn(
-      "Nenhum usuário com a função 'Gestor' encontrado no banco de dados."
+      "Nenhum usuário com a função 'gestor' encontrado no banco de dados."
     );
     return;
   }
@@ -67,7 +66,7 @@ function openNewVagaModal() {
   }
   if (modalTitle) modalTitle.textContent = "Criar Nova Vaga";
   if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
-  if (modalVaga) modalVaga.style.display = "flex";
+  if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
 }
 
 /**
@@ -93,6 +92,8 @@ async function handleDetalhesVaga(vagaId) {
       document.getElementById("vaga-nome").value = vaga.nome;
     if (document.getElementById("vaga-descricao"))
       document.getElementById("vaga-descricao").value = vaga.descricao;
+    // Garante que o select do gestor esteja populado antes de tentar selecionar
+    await carregarGestores();
     if (document.getElementById("vaga-gestor"))
       document.getElementById("vaga-gestor").value = vaga.gestorId;
 
@@ -100,7 +101,7 @@ async function handleDetalhesVaga(vagaId) {
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
     if (modalTitle) modalTitle.textContent = "Editar Detalhes da Vaga";
     if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
-    if (modalVaga) modalVaga.style.display = "flex";
+    if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
     window.showToast("Erro ao carregar os dados para edição.", "error");
@@ -210,21 +211,35 @@ async function carregarVagas(status) {
     };
 
     // Contagem e Renderização
-    // ... código omitido ...
+    snapshot.docs.forEach((doc) => {
+      const vaga = doc.data(); // Atualiza contadores para as abas
+      if (
+        vaga.status === "aguardando-aprovacao" ||
+        vaga.status === "em-divulgacao"
+      ) {
+        counts["abertas"]++;
+      }
+      if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
+      if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
+      if (vaga.status === "fechadas") counts["fechadas"]++; // Verifica se a vaga pertence à aba ativa para renderizar o HTML
+      const shouldRender =
+        (status === "abertas" &&
+          (vaga.status === "aguardando-aprovacao" ||
+            vaga.status === "em-divulgacao")) ||
+        vaga.status === status;
 
-    snapshot.forEach((doc) => {
-      const vaga = doc.data();
-      vaga.id = doc.id;
-      count++; // Renderização simplificada para demonstração
-      htmlVagas += `
+      if (shouldRender) {
+        vaga.id = doc.id;
+        count++;
+        htmlVagas += `
 <div class="card card-vaga" data-id="${vaga.id}">
 <h4>${vaga.nome}</h4>
 <p>Status: **${vaga.status.toUpperCase().replace(/-/g, " ")}**</p>
 <p>Candidatos: ${vaga.candidatosCount || 0}</p>
                     <div class="rh-card-actions">
 <button class="btn btn-sm btn-info btn-detalhes" data-id="${
-        vaga.id
-      }">Ver/Editar Detalhes</button>
+          vaga.id
+        }">Ver/Editar Detalhes</button>
 ${
   vaga.status === "aguardando-aprovacao"
     ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
@@ -232,10 +247,9 @@ ${
 }
                     </div>
 </div>
-`;
+            `;
+      }
     });
-
-    // ... código omitido ...
 
     // Atualiza os contadores em todos os botões de status
     document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
