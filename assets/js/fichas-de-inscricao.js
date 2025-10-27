@@ -196,7 +196,22 @@ function handleHorarioChange(e) {
 async function handleFormSubmit(event) {
   event.preventDefault();
   const form = document.getElementById("inscricao-form");
+  const cpfInput = document.getElementById("cpf");
+  const cpf = cpfInput.value.replace(/\D/g, "");
+  const cpfError = document.getElementById("cpf-error"); // --- NOVA VERIFICAÇÃO DE CPF ---
 
+  cpfError.style.display = "none"; // Garante que a mensagem de erro anterior seja limpa
+
+  if (!validarCPF(cpf)) {
+    cpfInput.setCustomValidity("CPF inválido ou incompleto.");
+    cpfError.style.display = "block"; // Mostra a mensagem de erro que já existe
+    form.reportValidity();
+    alert(
+      "Atenção: O CPF informado é inválido. Por favor, corrija para prosseguir."
+    );
+    cpfInput.setCustomValidity(""); // Limpa a validade para permitir correções
+    return;
+  } // -------------------------------
   if (!form.checkValidity()) {
     form.reportValidity();
     alert("Por favor, preencha todos os campos obrigatórios (*).");
@@ -242,7 +257,6 @@ async function handleFormSubmit(event) {
     submitButton.textContent = "Enviar Inscrição";
   }
 }
-
 // --- Funções Auxiliares (sem alterações) ---
 
 function mostrarSecaoAtualizacao(dados) {
