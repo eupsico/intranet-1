@@ -111,12 +111,13 @@ async function loadRhSubModule(subModuleId, user, userData) {
     pageTitleContainer.innerHTML = `<h1>${moduleInfo.title}</h1><p>${moduleInfo.subtitle}</p>`;
   }
 
-  // Caminhos relativos a partir de assets/js/app.js para modulos/rh
-  const htmlPath = `../../modulos/rh/page/${subModuleId}.html`;
-  const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
+  // Caminhos relativos ao subdiretório intranet-1
+  const basePath = "/intranet-1/modulos/rh";
+  const htmlPath = `${basePath}/page/${subModuleId}.html`;
+  const jsPath = `${basePath}/js/${subModuleId}.js`;
 
   try {
-    let response = await fetch(htmlPath);
+    const response = await fetch(htmlPath);
     if (!response.ok) {
       throw new Error(`Arquivo HTML '${htmlPath}' não encontrado.`);
     }
