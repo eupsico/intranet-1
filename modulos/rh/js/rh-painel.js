@@ -13,6 +13,7 @@ export function initrhPanel(user, db, userData) {
   const sidebarMenu = document.getElementById("sidebar-menu"); // Configuração de Views (o Dashboard será o fallback)
 
   const icons = {
+    voltar: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>`,
     dashboard: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17l-6-6L7 14"/></svg>`,
     gestao_profissionais: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`,
     gestao_vagas: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-2-2h-4l-3-3H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4l3 3h7a2 2 0 0 0 2-2z"/></svg>`,
@@ -171,7 +172,7 @@ ${view.icon}
     if (!sidebarMenu) return;
     // ... (menu HTML)
     sidebarMenu.innerHTML = `
-<li><a href="../../../index.html" class="back-link">${icons.dashboard}<span>Voltar à Intranet</span></a></li>
+<li><a href="../../../index.html" class="back-link">${icons.voltar}<span>Voltar à Intranet</span></a></li>
 <li class="menu-separator"></li>
 `;
     views.forEach((view) => {
