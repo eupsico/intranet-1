@@ -859,6 +859,8 @@ legend {
 
 .modal-overlay.is-visible {
   display: flex; /* Esta classe agora é responsável por mostrar o modal */
+  align-items: center;
+  justify-content: center;
 }
 .modal-content {
   background-color: var(--cor-surface);
