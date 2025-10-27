@@ -854,9 +854,6 @@ legend {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 20px;
 }
 
@@ -914,8 +911,9 @@ legend {
 
 .modal-body {
   padding: 25px;
-  overflow-y: auto; /* A barra de rolagem aparecerá aqui dentro */
-  flex-grow: 1; /* Faz o corpo do modal ocupar o espaço disponível */
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0; /* CORREÇÃO: Garante que a rolagem funcione dentro do layout flex */
 }
 
 .modal-footer {
