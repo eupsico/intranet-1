@@ -198,23 +198,26 @@ async function handleFormSubmit(event) {
   const form = document.getElementById("inscricao-form");
   const cpfInput = document.getElementById("cpf");
   const cpf = cpfInput.value.replace(/\D/g, "");
-  const cpfError = document.getElementById("cpf-error"); // --- NOVA VERIFICAÇÃO DE CPF ---
+  const cpfError = document.getElementById("cpf-error"); // 1. Garante que a mensagem de erro do CPF seja limpa inicialmente
 
-  cpfError.style.display = "none"; // Garante que a mensagem de erro anterior seja limpa
+  cpfError.style.display = "none"; // 2. Verifica a validade do CPF, que é um requisito crítico
 
   if (!validarCPF(cpf)) {
     cpfInput.setCustomValidity("CPF inválido ou incompleto.");
-    cpfError.style.display = "block"; // Mostra a mensagem de erro que já existe
-    form.reportValidity();
+    cpfError.style.display = "block"; // Mostra a mensagem de erro
+    form.reportValidity(); // Força a exibição da dica de erro do navegador
     alert(
       "Atenção: O CPF informado é inválido. Por favor, corrija para prosseguir."
     );
-    cpfInput.setCustomValidity(""); // Limpa a validade para permitir correções
+    cpfInput.setCustomValidity(""); // Limpa a validade para permitir correções futuras
     return;
-  } // -------------------------------
+  } // 3. Verifica a validade de TODOS os outros campos obrigatórios
+
   if (!form.checkValidity()) {
-    form.reportValidity();
-    alert("Por favor, preencha todos os campos obrigatórios (*).");
+    form.reportValidity(); // Força o navegador a mostrar a dica de erro no primeiro campo faltante // --- ALTERAÇÃO AQUI: Mensagem clara para campos faltantes ---
+    alert(
+      "Por favor, preencha todos os campos obrigatórios (*) para enviar a inscrição."
+    ); // ------------------------------------------------------------
     return;
   }
 
