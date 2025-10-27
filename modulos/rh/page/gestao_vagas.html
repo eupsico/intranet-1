@@ -2,7 +2,7 @@
   <h2 class="painel-titulo">Gestão de Vagas e Recrutamento</h2>
   <div class="acoes-header">
     <button id="btn-nova-vaga" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Criar Nova Vaga
+      <i class="fas fa-plus"></i> Criar Ficha Técnica
     </button>
   </div>
   <div class="card card-filtros">
@@ -23,6 +23,7 @@
   <div id="lista-vagas" class="tabela-dados">
     <p id="mensagem-vagas">Nenhuma vaga encontrada para este status.</p>
   </div>
+
   <div id="modal-vaga" class="modal-overlay">
     <div class="modal-content">
       <form id="form-vaga">
@@ -32,22 +33,215 @@
             &times;
           </button>
         </div>
+
         <div class="modal-body">
-          <div class="form-group">
-            <label for="vaga-nome">Nome da Vaga:</label>
-            <input type="text" id="vaga-nome" required />
-          </div>
-          <div class="form-group">
-            <label for="vaga-descricao">Descrição/Requisitos:</label>
-            <textarea id="vaga-descricao" rows="5" required></textarea>
-          </div>
-          <div class="form-group">
-            <label for="vaga-gestor">Gestor Responsável:</label>
-            <select id="vaga-gestor" required></select>
-          </div>
-          <fieldset class="criterios-fieldset">
-            <legend>Fases de Seleção</legend>
+          <fieldset>
+            <legend>Sobre o Cargo</legend>
+            <div class="form-group">
+              <label for="vaga-nome">Título da Vaga:</label>
+              <input type="text" id="vaga-nome" required />
+            </div>
+            <div class="form-group">
+              <label for="vaga-gestor">Gestor Responsável:</label>
+              <select id="vaga-gestor" required></select>
+            </div>
+            <div class="form-group">
+              <label for="vaga-responsabilidades"
+                >Quais são as principais responsabilidades e atividades?</label
+              >
+              <textarea
+                id="vaga-responsabilidades"
+                rows="3"
+                required
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-resultados"
+                >Quais resultados ou entregas são esperados dessa função?</label
+              >
+              <textarea id="vaga-resultados" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-nova-substituicao"
+                >Essa vaga é nova ou está substituindo alguém?</label
+              >
+              <textarea id="vaga-nova-substituicao" rows="2"></textarea>
+            </div>
           </fieldset>
+
+          <fieldset>
+            <legend>Formação e Qualificações</legend>
+            <div class="form-group">
+              <label for="vaga-formacao-minima"
+                >Qual é a formação mínima exigida?</label
+              >
+              <textarea
+                id="vaga-formacao-minima"
+                rows="3"
+                placeholder="Ex: Psicologia, Psiquiatria, Terapia Ocupacional, etc."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-conselho"
+                >O profissional precisa estar registrado em algum conselho (ex:
+                CRP, CRM)?</label
+              >
+              <textarea
+                id="vaga-conselho"
+                rows="2"
+                placeholder="Ex: Sim, CRP ativo / Não é exigido."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-especializacoes"
+                >Há especializações desejadas?</label
+              >
+              <textarea
+                id="vaga-especializacoes"
+                rows="3"
+                placeholder="Ex: TCC, Psicanálise, Neuropsicologia."
+              ></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Competências e Habilidades</legend>
+            <div class="form-group">
+              <label for="vaga-comp-tecnicas"
+                >Quais competências técnicas são indispensáveis?</label
+              >
+              <textarea
+                id="vaga-comp-tecnicas"
+                rows="3"
+                placeholder="Ex: Excel avançado, ferramentas de gestão, idiomas."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-comp-comportamentais"
+                >Quais competências comportamentais são desejadas?</label
+              >
+              <textarea
+                id="vaga-comp-comportamentais"
+                rows="3"
+                placeholder="Ex: Liderança, Comunicação, Resiliência, Proatividade."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-certificacoes"
+                >Há certificações ou formações específicas exigidas?</label
+              >
+              <textarea id="vaga-certificacoes" rows="2"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Experiência e Atuação</legend>
+            <div class="form-group">
+              <label for="vaga-nivel-experiencia"
+                >Qual o nível de experiência necessário?</label
+              >
+              <select id="vaga-nivel-experiencia">
+                <option value="">Selecione o Nível</option>
+                <option value="junior">Júnior</option>
+                <option value="pleno">Pleno</option>
+                <option value="senior">Sênior</option>
+                <option value="especialista">Especialista</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="vaga-contextos-similares"
+                >O profissional já atuou em contextos similares?</label
+              >
+              <textarea
+                id="vaga-contextos-similares"
+                rows="3"
+                placeholder="Ex: Clínica, hospital, escola, empresa."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-atuacao-grupos"
+                >Está habituado a trabalhar com grupos, famílias ou atendimento
+                individual?</label
+              >
+              <textarea id="vaga-atuacao-grupos" rows="3"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Fit Cultural e Valores</legend>
+            <div class="form-group">
+              <label for="vaga-fit-valores"
+                >Quais valores da EuPsico são importantes que o candidato
+                compartilhe?</label
+              >
+              <textarea id="vaga-fit-valores" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-estilo-equipe"
+                >Como é o estilo de trabalho da equipe (colaborativo, autônomo,
+                ágil)?</label
+              >
+              <textarea id="vaga-estilo-equipe" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-perfil-destaque"
+                >Que tipo de perfil costuma se destacar na empresa?</label
+              >
+              <textarea id="vaga-perfil-destaque" rows="2"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Crescimento e Desafios</legend>
+            <div class="form-group">
+              <label for="vaga-oportunidades"
+                >Quais são as oportunidades de desenvolvimento dentro da
+                função?</label
+              >
+              <textarea id="vaga-oportunidades" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-desafios"
+                >Quais os principais desafios que o novo colaborador
+                enfrentará?</label
+              >
+              <textarea id="vaga-desafios" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-plano-carreira"
+                >Existe plano de carreira para essa posição?</label
+              >
+              <textarea id="vaga-plano-carreira" rows="2"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Requisitos Práticos</legend>
+            <div class="form-group">
+              <label for="vaga-carga-horaria"
+                >Qual é a carga horária e o regime de trabalho (presencial,
+                híbrido, remoto)?</label
+              >
+              <textarea id="vaga-carga-horaria" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="vaga-faixa-salarial"
+                >Qual é a faixa salarial e os benefícios oferecidos?</label
+              >
+              <textarea id="vaga-faixa-salarial" rows="2"></textarea>
+            </div>
+            <fieldset class="criterios-fieldset" style="display: none">
+              <legend>
+                Fases de Seleção (Mantenha este campo invisível para não quebrar
+                a edição)
+              </legend>
+            </fieldset>
+          </fieldset>
+
+          <div class="form-group" style="display: none">
+            <label for="vaga-descricao">Descrição/Requisitos (Antigo):</label>
+            <textarea id="vaga-descricao" rows="5"></textarea>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary fechar-modal">
