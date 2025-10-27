@@ -1,4 +1,5 @@
 // modulos/rh/js/desligamento.js
+// Versão: 2.1 (Fix de Inicialização e Correção de Bug do Firestore)
 
 import {
   db,
@@ -10,6 +11,7 @@ import {
   query,
   where,
   FieldValue,
+  getDoc, // ADICIONADO: Necessário para buscar um documento único por referência
 } from "../../../assets/js/firebase-init.js";
 // Importa a função do novo utilitário user-management
 import { fetchActiveEmployees } from "../../../assets/js/utils/user-management.js";
@@ -23,11 +25,20 @@ const modalDesligamento = document.getElementById("modal-desligamento");
 const selectColaborador = document.getElementById("colaborador-id");
 const formDesligamento = document.getElementById("form-desligamento");
 
+// Variável para armazenar dados do usuário logado (para auditoria)
+let currentUserId = "ID_DO_USUARIO_LOGADO";
+
 /**
- * Inicializa o módulo de Desligamento.
+ * FUNÇÃO DE INICIALIZAÇÃO PRINCIPAL DO MÓDULO.
+ * Chamada pelo rh-painel.js.
+ * @param {object} user - Objeto de usuário do Firebase Auth.
+ * @param {object} userData - Dados de perfil do usuário logado no Firestore.
  */
-function initDesligamento() {
-  console.log("Módulo de Gestão de Desligamentos carregado.");
+export function initdesligamento(user, userData) {
+  console.log("🔹 Iniciando Módulo de Gestão de Desligamentos...");
+
+  // Define o ID do usuário logado para auditoria
+  currentUserId = user.uid || "ID_DO_USUARIO_LOGADO";
 
   document
     .getElementById("btn-iniciar-desligamento")
@@ -50,7 +61,8 @@ function initDesligamento() {
     });
   }); // Adiciona listener aos botões de ação dentro do modal
 
-  formDesligamento.addEventListener("click", handleDesligamentoActions); // Carrega dados iniciais
+  formDesligamento.addEventListener("click", handleDesligamentoActions); // Adiciona listener para processar a criação inicial ao selecionar o colaborador (Mantido o evento change fora do escopo init)
+  selectColaborador.addEventListener("change", handleSelectColaboradorChange); // Carrega dados iniciais
 
   carregarColaboradoresAtivos();
   carregarProcessos("preparacao"); // Fase inicial
@@ -90,18 +102,21 @@ async function carregarColaboradoresAtivos() {
 function abrirModalNovoDesligamento() {
   document.getElementById("desligamento-id").value = "";
   formDesligamento.reset();
-  selectColaborador.disabled = false;
-  document.getElementById("desligamento-checklist").style.display = "none";
+  selectColaborador.disabled = false; // Exibe apenas os campos iniciais (seleção de colaborador, motivo, data)
+  document.getElementById("desligamento-checklist").style.display = "none"; // Oculta a seleção de colaborador se já tiver um processo aberto (não é o caso aqui, mas boa prática)
+  const colaboradorGroup = selectColaborador.closest(".form-group");
+  if (colaboradorGroup) colaboradorGroup.style.display = "block";
+
   modalDesligamento.style.display = "flex";
 }
 
 /**
- * Processa a criação inicial de um registro de Desligamento.
+ * Processa a criação inicial de um registro de Desligamento, acionada pelo 'change' no select.
+ * Função renomeada e adaptada para ser chamada como event listener.
  */
-selectColaborador.addEventListener("change", async (e) => {
+async function handleSelectColaboradorChange(e) {
   const colaboradorId = e.target.value;
-  if (!colaboradorId) return; // TODO: Implementar lógica de busca para evitar duplicidade de desligamentos // Define os dados iniciais do processo de desligamento
-
+  if (!colaboradorId) return; // TODO: Implementar lógica de busca para evitar duplicidade de desligamentos
   const novoRegistro = {
     colaboradorId: colaboradorId,
     nomeColaborador:
@@ -126,6 +141,7 @@ selectColaborador.addEventListener("change", async (e) => {
       {
         data: new Date(),
         acao: "Processo de desligamento iniciado pelo RH.",
+        usuario: currentUserId,
       },
     ],
   };
@@ -135,20 +151,30 @@ selectColaborador.addEventListener("change", async (e) => {
     document.getElementById("desligamento-id").value = docRef.id;
     selectColaborador.disabled = true;
     document.getElementById("desligamento-checklist").style.display = "block";
-    alert("Processo de desligamento iniciado. Preencha os detalhes."); // A lógica de preenchimento inicial dos campos (motivo, data) será feita // pelo próprio usuário do RH após selecionar o colaborador.
+    window.showToast(
+      "Processo de desligamento iniciado. Preencha os detalhes.",
+      "success"
+    );
+
+    // Oculta a seleção de colaborador e exibe o nome (simulação)
+    const colaboradorGroup = selectColaborador.closest(".form-group");
+    if (colaboradorGroup) colaboradorGroup.style.display = "none"; // Recarrega a lista para mostrar o novo processo
+
+    carregarProcessos("preparacao");
   } catch (error) {
     console.error("Erro ao iniciar Desligamento:", error);
-    alert("Erro ao iniciar o registro de Desligamento.");
+    window.showToast("Erro ao iniciar o registro de Desligamento.", "error");
     selectColaborador.value = "";
   }
-});
+}
 
 /**
  * Carrega e exibe os processos de desligamento com base no status.
  * @param {string} status
  */
 async function carregarProcessos(status) {
-  listaDesligamentos.innerHTML = '<div class="loading-spinner"></div>';
+  listaDesligamentos.innerHTML =
+    '<div class="loading-spinner">Carregando processos...</div>';
 
   const q = query(desligamentoCollection, where("statusAtual", "==", status));
 
@@ -204,12 +230,14 @@ async function carregarProcessos(status) {
 async function carregarDetalhesDesligamento(desligamentoId) {
   const desligamentoRef = doc(db, "desligamentos", desligamentoId);
   try {
-    const deslSnap = await getDocs(desligamentoRef); // NOTA: A função getDocs retorna um QuerySnapshot, não um DocumentSnapshot.
-    // Para obter um documento único pelo ID, doc() deve ser usado com getDoc,
-    // ou se usando getDocs(query(collection, where(documentId))), deve-se checar o primeiro resultado.
-    // Preservando a estrutura existente, mas notando a inconsistência do getDocs aqui.
-    // Assumindo que a busca foi corrigida ou que o Snapshot é tratado como DocumentSnapshot para o propósito do mock/estrutura.
-    // Se fosse o correto (getDoc), seria: const deslSnap = await getDoc(desligamentoRef);
+    // CORRIGIDO: Usando getDoc para um único documento e checando a existência
+    const deslSnap = await getDoc(desligamentoRef);
+
+    if (!deslSnap.exists()) {
+      window.showToast("Processo de desligamento não encontrado.", "error");
+      return;
+    }
+
     const deslData = deslSnap.data(); // 1. Popula campos básicos
 
     document.getElementById("desligamento-id").value = desligamentoId;
@@ -217,7 +245,15 @@ async function carregarDetalhesDesligamento(desligamentoId) {
       deslData.motivo || "";
     document.getElementById("data-desligamento").value =
       deslData.dataEfetiva || "";
-    selectColaborador.disabled = true; // Mantém a edição bloqueada após iniciar // 2. Popula campos do checklist
+    selectColaborador.disabled = true; // Mantém a edição bloqueada após iniciar
+
+    // Oculta a seleção de colaborador e exibe o nome (simulação)
+    const colaboradorGroup = selectColaborador.closest(".form-group");
+    if (colaboradorGroup) colaboradorGroup.style.display = "none";
+
+    // 2. Popula campos do checklist
+    // Nota: O select colaborador precisa ter a opção correta selecionada para o caso de o processo já existir.
+    selectColaborador.value = deslData.colaboradorId;
 
     document.getElementById("documentacao-detalhes").value =
       deslData.documentacao.detalhes || "";
@@ -243,7 +279,7 @@ async function carregarDetalhesDesligamento(desligamentoId) {
     modalDesligamento.style.display = "flex";
   } catch (error) {
     console.error("Erro ao carregar detalhes do Desligamento:", error);
-    alert("Erro ao carregar detalhes. Verifique o console.");
+    window.showToast("Erro ao carregar detalhes.", "error");
   }
 }
 
@@ -254,6 +290,9 @@ async function carregarDetalhesDesligamento(desligamentoId) {
 async function handleDesligamentoActions(e) {
   const desligamentoId = document.getElementById("desligamento-id").value;
   if (!desligamentoId) return;
+
+  // Ignora cliques que não são botões de ação (ex: no formulário em si)
+  if (e.target.tagName !== "BUTTON" || e.target.type !== "button") return;
 
   const desligamentoRef = doc(db, "desligamentos", desligamentoId);
 
@@ -266,9 +305,13 @@ async function handleDesligamentoActions(e) {
       historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Documentação de desligamento finalizada e preparada.",
+        usuario: currentUserId,
       }),
     });
-    alert("Documentação finalizada. Prossiga para as recuperações e TI.");
+    window.showToast(
+      "Documentação finalizada. Prossiga para as recuperações e TI.",
+      "success"
+    );
     carregarDetalhesDesligamento(desligamentoId);
   } else if (e.target.classList.contains("btn-marcar-ativos-ok")) {
     const detalhes = document.getElementById(
@@ -280,25 +323,31 @@ async function handleDesligamentoActions(e) {
       historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Ativos e bens da empresa marcados como recuperados.",
+        usuario: currentUserId,
       }),
     });
-    alert("Recuperação de ativos marcada como concluída.");
+    window.showToast(
+      "Recuperação de ativos marcada como concluída.",
+      "success"
+    );
     carregarDetalhesDesligamento(desligamentoId);
   } else if (e.target.classList.contains("btn-enviar-cancelamento-ti")) {
     const detalhes = document.getElementById("cancelamento-ti-detalhes").value;
-    const colaborador =
+    const colaboradorName =
       selectColaborador.options[selectColaborador.selectedIndex].text; // 1. Cria o registro de solicitação de TI para cancelamento
 
     const solicitacao = {
-      tipo: "Cancelamento de Usuário/Acessos",
+      tipo: "Cancelamento de Usuário/Acessos (Offboarding)",
       desligamentoId: desligamentoId,
-      colaborador: colaborador,
+      colaborador: colaboradorName,
       detalhes: detalhes,
       status: "Pendente TI",
       dataSolicitacao: new Date(),
+      solicitanteId: currentUserId,
     };
-    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao); // 2. Atualiza o registro de Desligamento
+    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao);
 
+    // 2. Atualiza o registro de Desligamento
     await updateDoc(desligamentoRef, {
       statusAtual: "pendente-ti",
       "acessosTI.status": "solicitado",
@@ -307,22 +356,29 @@ async function handleDesligamentoActions(e) {
       historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Solicitação de cancelamento de acessos enviada à TI.",
+        usuario: currentUserId,
       }),
     });
 
-    alert("Solicitação de cancelamento de acessos enviada à TI.");
+    window.showToast(
+      "Solicitação de cancelamento de acessos enviada à TI.",
+      "warning"
+    );
     carregarDetalhesDesligamento(desligamentoId);
     carregarProcessos("pendente-ti");
   } else if (e.target.classList.contains("btn-finalizar-desligamento")) {
-    const dataBaixa = document.getElementById("data-baixa").value; // Validação básica se as etapas críticas foram concluídas (Documentação e TI/Recuperação)
+    const dataBaixa = document.getElementById("data-baixa").value;
 
-    const deslData = (await getDocs(desligamentoRef)).data();
+    const deslDoc = await getDoc(desligamentoRef);
+    const deslData = deslDoc.data();
+
     if (
       deslData.documentacao.status !== "finalizado" ||
       deslData.recuperacoes.status !== "recuperado" ||
+      // A confirmação da TI sobre o cancelamento deve ser marcada na solicitação_ti,
+      // mas faremos uma checagem básica aqui, dependendo do campo do deslData
       deslData.acessosTI.status !== "concluido"
     ) {
-      // Esta validação dependerá da confirmação da TI sobre o cancelamento
       if (
         !confirm(
           "Atenção: Nem todas as etapas estão concluídas (Documentação, Recuperação ou TI). Deseja finalizar mesmo assim?"
@@ -338,6 +394,7 @@ async function handleDesligamentoActions(e) {
       historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Desligamento finalizado e baixa registrada.",
+        usuario: currentUserId,
       }),
     }); // 2. Atualiza status do usuário (muda na coleção principal 'usuarios')
 
@@ -347,10 +404,11 @@ async function handleDesligamentoActions(e) {
       dataInativacao: new Date(),
     });
 
-    alert("Processo de Desligamento FINALIZADO com sucesso.");
+    window.showToast(
+      "Processo de Desligamento FINALIZADO com sucesso.",
+      "success"
+    );
     modalDesligamento.style.display = "none";
     carregarProcessos("realizado");
   }
 }
-
-document.addEventListener("DOMContentLoaded", initDesligamento);
