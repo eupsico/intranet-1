@@ -192,6 +192,65 @@ function handleHorarioChange(e) {
     container.classList.add("hidden-section");
   }
 }
+/**
+ * Coleta os nomes dos campos obrigatórios que não foram preenchidos.
+ * @param {HTMLFormElement} form O elemento do formulário.
+ * @returns {string[]} Um array com os nomes (labels) dos campos não preenchidos.
+ */
+function getMissingRequiredFields(form) {
+  const missingFields = [];
+  const requiredInputs = form.querySelectorAll("[required]");
+
+  requiredInputs.forEach((input) => {
+    // Ignora campos dentro de seções ocultas, exceto campos de cpf/data de nascimento
+    const parentSection = input.closest(".hidden-section");
+    if (
+      parentSection &&
+      parentSection.id !== "form-body" &&
+      parentSection.id !== "new-register-section"
+    ) {
+      // Se o campo está em uma seção oculta que não são as principais, ele não é validado
+      return;
+    }
+
+    // Verifica a validade. Se for um checkbox, verifica se pelo menos um está marcado
+    if (input.type === "checkbox" || input.type === "radio") {
+      const name = input.name;
+      const checked = form.querySelector(`[name="${name}"]:checked`);
+      if (!checked) {
+        // Apenas adiciona se o campo de horário ainda não foi adicionado (para evitar duplicidade de checkbox)
+        const labelText = input.closest(".form-group")
+          ? input
+              .closest(".form-group")
+              .querySelector("label")
+              .textContent.trim()
+              .replace("*", "")
+              .replace(":", "")
+              .trim()
+          : "Seleção de Horários";
+        if (!missingFields.includes(labelText)) {
+          missingFields.push(labelText);
+        }
+      }
+    } else if (!input.checkValidity()) {
+      // Para inputs e selects padrão, obtém o texto da label associada
+      const label = form.querySelector(`label[for="${input.id}"]`);
+      if (label) {
+        // Limpa o texto da label de asteriscos e espaços
+        let labelText = label.textContent
+          .trim()
+          .replace(/\s?\*\s?/, "")
+          .replace(":", "")
+          .trim();
+        missingFields.push(labelText);
+      }
+    }
+  });
+
+  return missingFields;
+}
+
+// --- Funções Handler de Eventos (handleFormSubmit) ---
 
 async function handleFormSubmit(event) {
   event.preventDefault();
@@ -214,10 +273,21 @@ async function handleFormSubmit(event) {
   } // 3. Verifica a validade de TODOS os outros campos obrigatórios
 
   if (!form.checkValidity()) {
-    form.reportValidity(); // Força o navegador a mostrar a dica de erro no primeiro campo faltante // --- ALTERAÇÃO AQUI: Mensagem clara para campos faltantes ---
-    alert(
-      "Por favor, preencha todos os campos obrigatórios (*) para enviar a inscrição."
-    ); // ------------------------------------------------------------
+    form.reportValidity(); // Força o navegador a mostrar a dica de erro no primeiro campo faltante // --- ALTERAÇÃO AQUI: Mensagem detalhada para campos faltantes ---
+
+    const missingFields = getMissingRequiredFields(form);
+    let alertMessage =
+      "Por favor, preencha os seguintes campos obrigatórios:\n\n";
+
+    if (missingFields.length > 0) {
+      alertMessage += "• " + missingFields.join("\n• ");
+    } else {
+      // Fallback caso a validação do navegador pegue algo que a função não listou (ex: validação de email)
+      alertMessage =
+        "Por favor, preencha todos os campos obrigatórios (*) corretamente.";
+    }
+
+    alert(alertMessage); // ------------------------------------------------------------
     return;
   }
 
@@ -260,6 +330,7 @@ async function handleFormSubmit(event) {
     submitButton.textContent = "Enviar Inscrição";
   }
 }
+
 // --- Funções Auxiliares (sem alterações) ---
 
 function mostrarSecaoAtualizacao(dados) {
