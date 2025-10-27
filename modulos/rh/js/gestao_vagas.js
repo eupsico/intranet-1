@@ -9,6 +9,7 @@ import {
   query,
   where,
   FieldValue,
+  getDoc, // Adicionado getDoc para buscar uma única vaga na edição
 } from "../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
 // Importa a função do novo utilitário user-management
@@ -17,7 +18,17 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 // Coleção principal no Firestore para as vagas
 const vagasCollection = collection(db, "vagas");
 const candidatosCollection = collection(db, "candidatos");
-const selectGestor = document.getElementById("vaga-gestor"); // Elemento Select
+
+// Elementos do DOM globais
+const modalVaga = document.getElementById("modal-vaga");
+const formVaga = document.getElementById("form-vaga");
+const selectGestor = document.getElementById("vaga-gestor");
+const btnSalvar = formVaga
+  ? formVaga.querySelector('button[type="submit"]')
+  : null;
+const modalTitle = modalVaga ? modalVaga.querySelector("h3") : null;
+
+let currentUserData = {}; // Para armazenar os dados do usuário logado
 
 /**
  * Função para carregar a lista de gestores e popular o campo select.
@@ -27,6 +38,7 @@ async function carregarGestores() {
   // Usaremos 'Gestor' como padrão para este módulo.
   const gestores = await fetchUsersByRole("Gestor");
 
+  if (!selectGestor) return;
   selectGestor.innerHTML = '<option value="">Selecione o Gestor...</option>';
 
   if (gestores.length === 0) {
@@ -46,82 +58,121 @@ async function carregarGestores() {
 }
 
 /**
- * Função para inicializar os eventos e carregar a lista de vagas.
+ * Função para configurar o modal para criação de uma nova vaga.
  */
-function initGestaoVagas() {
-  console.log("Módulo de Gestão de Vagas carregado.");
-
-  const btnNovaVaga = document.getElementById("btn-nova-vaga");
-  const modalVaga = document.getElementById("modal-vaga");
-  const formVaga = document.getElementById("form-vaga");
-  const listaVagas = document.getElementById("lista-vagas"); // Carrega a lista de gestores no início
-
-  carregarGestores(); // Abre o modal de nova vaga
-
-  btnNovaVaga.addEventListener("click", () => {
-    modalVaga.style.display = "flex"; // Resetar formulário para nova vaga
+function openNewVagaModal() {
+  if (formVaga) {
     formVaga.reset();
-  }); // Fecha o modal
-
-  document.querySelectorAll(".fechar-modal").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      modalVaga.style.display = "none";
-    });
-  }); // Submissão do formulário de vaga
-
-  formVaga.addEventListener("submit", handleSalvarVaga); // Carrega a lista inicial (vagas abertas)
-
-  carregarVagas("abertas"); // Adiciona eventos aos botões de status
-
-  document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const status = e.target.getAttribute("data-status");
-      document
-        .querySelectorAll(".status-tabs .btn-tab")
-        .forEach((b) => b.classList.remove("active"));
-      e.target.classList.add("active");
-      carregarVagas(status);
-    });
-  });
+    formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
+  }
+  if (modalTitle) modalTitle.textContent = "Criar Nova Vaga";
+  if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
+  if (modalVaga) modalVaga.style.display = "flex";
 }
 
 /**
- * Lida com a submissão do formulário de nova vaga.
+ * Função para buscar e exibir os detalhes de uma vaga para edição.
+ * @param {string} vagaId
+ */
+async function handleDetalhesVaga(vagaId) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, "vagas", vagaId);
+    const docSnap = await getDoc(vagaRef);
+
+    if (!docSnap.exists()) {
+      window.showToast("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = docSnap.data();
+
+    // 1. Preenche o formulário
+    if (document.getElementById("vaga-nome"))
+      document.getElementById("vaga-nome").value = vaga.nome;
+    if (document.getElementById("vaga-descricao"))
+      document.getElementById("vaga-descricao").value = vaga.descricao;
+    if (document.getElementById("vaga-gestor"))
+      document.getElementById("vaga-gestor").value = vaga.gestorId;
+
+    // 2. Configura o modal para edição
+    if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
+    if (modalTitle) modalTitle.textContent = "Editar Detalhes da Vaga";
+    if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
+    if (modalVaga) modalVaga.style.display = "flex";
+  } catch (error) {
+    console.error("Erro ao carregar detalhes da vaga:", error);
+    window.showToast("Erro ao carregar os dados para edição.", "error");
+  }
+}
+
+/**
+ * Lida com a submissão do formulário de nova vaga ou edição.
  * @param {Event} e
  */
 async function handleSalvarVaga(e) {
   e.preventDefault();
 
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  const isEditing = !!vagaId;
+  const submitButton = e.submitter;
+  if (submitButton) submitButton.disabled = true;
   const nome = document.getElementById("vaga-nome").value;
   const descricao = document.getElementById("vaga-descricao").value;
   const gestorId = document.getElementById("vaga-gestor").value; // Usar ID do gestor
-  const status = "aguardando-aprovacao"; // Inicia sempre aguardando aprovação
 
   try {
-    const novaVaga = {
+    const vagaData = {
       nome: nome,
       descricao: descricao,
       gestorId: gestorId,
-      status: status,
-      dataCriacao: new Date(),
-      historico: [
-        {
-          data: new Date(),
-          acao: "Vaga criada e enviada para aprovação do gestor.",
-          usuario: "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado
-        },
-      ],
-      candidatosCount: 0, // Contador para facilitar dashboard
+    }; // Campo de histórico baseado na ação
+    const historicoEntry = {
+      data: new Date(),
+      usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
     };
 
-    await addDoc(vagasCollection, novaVaga);
+    if (isEditing) {
+      // Ação de Edição
+      vagaData.historico = FieldValue.arrayUnion({
+        ...historicoEntry,
+        acao: "Vaga editada.",
+      });
 
-    alert("Vaga salva com sucesso! Aguardando aprovação.");
-    document.getElementById("modal-vaga").style.display = "none";
-    carregarVagas("aguardando-aprovacao"); // Recarrega a lista
+      const vagaRef = doc(db, "vagas", vagaId);
+      await updateDoc(vagaRef, vagaData);
+      window.showToast("Vaga atualizada com sucesso!", "success");
+    } else {
+      // Ação de Criação
+      vagaData.status = "aguardando-aprovacao"; // Inicia sempre aguardando aprovação
+      vagaData.dataCriacao = new Date();
+      vagaData.candidatosCount = 0;
+      vagaData.historico = [
+        {
+          ...historicoEntry,
+          acao: "Vaga criada e enviada para aprovação do gestor.",
+        },
+      ];
+
+      await addDoc(vagasCollection, vagaData);
+      window.showToast(
+        "Vaga salva com sucesso! Aguardando aprovação.",
+        "success"
+      );
+    }
+
+    document.getElementById("modal-vaga").style.display = "none"; // Recarrega a lista para o status que for mais provável de ser o atual após a ação
+    const activeTab = document.querySelector(".status-tabs .btn-tab.active");
+    const newStatus = isEditing
+      ? activeTab.getAttribute("data-status")
+      : "aguardando-aprovacao";
+    carregarVagas(newStatus);
   } catch (error) {
-    console.error("Erro ao salvar a vaga:", error);
-    alert("Ocorreu um erro ao salvar a vaga. Verifique o console.");
+    console.error("Erro ao salvar/atualizar a vaga:", error);
+    window.showToast("Ocorreu um erro ao salvar/atualizar a vaga.", "error");
+  } finally {
+    if (submitButton) submitButton.disabled = false;
   }
 }
 
@@ -131,7 +182,9 @@ async function handleSalvarVaga(e) {
  */
 async function carregarVagas(status) {
   const listaVagas = document.getElementById("lista-vagas");
-  listaVagas.innerHTML = '<div class="loading-spinner"></div>';
+  if (!listaVagas) return;
+  listaVagas.innerHTML =
+    '<div class="loading-spinner">Carregando vagas...</div>';
 
   let q;
   if (status === "abertas") {
@@ -147,51 +200,82 @@ async function carregarVagas(status) {
   try {
     const snapshot = await getDocs(q);
     let htmlVagas = "";
-    let count = 0;
+    let count = 0; // Dicionário para contagem de status
 
-    if (snapshot.empty) {
-      listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status}**.</p>`;
-      return;
-    }
+    const counts = {
+      abertas: 0,
+      "aprovacao-gestao": 0,
+      "em-divulgacao": 0,
+      fechadas: 0,
+    };
 
-    snapshot.forEach((doc) => {
-      const vaga = doc.data();
-      vaga.id = doc.id;
-      count++; // Renderização simplificada para demonstração
-      htmlVagas += `
+    // Contagem e Renderização
+    snapshot.docs.forEach((doc) => {
+      const vaga = doc.data(); // Atualiza contadores para as abas
+      if (
+        vaga.status === "aguardando-aprovacao" ||
+        vaga.status === "em-divulgacao"
+      ) {
+        counts["abertas"]++;
+      }
+      if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
+      if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
+      if (vaga.status === "fechadas") counts["fechadas"]++; // Verifica se a vaga pertence à aba ativa para renderizar o HTML
+      const shouldRender =
+        (status === "abertas" &&
+          (vaga.status === "aguardando-aprovacao" ||
+            vaga.status === "em-divulgacao")) ||
+        vaga.status === status;
+
+      if (shouldRender) {
+        vaga.id = doc.id;
+        count++;
+        htmlVagas += `
                 <div class="card card-vaga" data-id="${vaga.id}">
                     <h4>${vaga.nome}</h4>
                     <p>Status: **${vaga.status
-        .toUpperCase()
-        .replace("-", " ")}**</p>
+          .toUpperCase()
+          .replace(/-/g, " ")}**</p>
                     <p>Candidatos: ${vaga.candidatosCount || 0}</p>
                     <button class="btn btn-sm btn-info btn-detalhes" data-id="${
-        vaga.id
-      }">Ver Detalhes</button>
+          vaga.id
+        }">Ver/Editar Detalhes</button>
                     ${
-        vaga.status === "aguardando-aprovacao"
-          ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-          : ""
-      }
+          vaga.status === "aguardando-aprovacao"
+            ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
+            : ""
+        }
                 </div>
             `;
+      }
     });
 
-    listaVagas.innerHTML = htmlVagas; // Atualiza o contador na aba de status
+    // Atualiza os contadores em todos os botões de status
+    document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
+      const btnStatus = btn.getAttribute("data-status");
+      const countValue = counts[btnStatus] || 0;
+      // O nome da aba de aprovação é 'aprovacao-gestao' mas o status é 'aguardando-aprovacao' no banco. Corrigido na contagem acima.
+      btn.textContent = `${btnStatus
+        .replace(/-/g, " ")
+        .replace("aprovacao gestao", "Aguardando Aprovação")
+        .toUpperCase()} (${countValue})`;
+    });
 
-    document.querySelector(
-      `.btn-tab[data-status="${status}"]`
-    ).textContent = `${status.replace("-", " ").toUpperCase()} (${count})`; // Adiciona eventos para botões de detalhes/aprovação (futuramente em um módulo de controle)
+    if (count === 0) {
+      listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status.replace(
+        /-/g,
+        " "
+      )}**.</p>`;
+      return;
+    }
+
+    listaVagas.innerHTML = htmlVagas; // Adiciona eventos para botões de detalhes/edição
 
     document.querySelectorAll(".btn-detalhes").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        // Implementar lógica para abrir a visualização detalhada da vaga e dos candidatos
-        console.log(
-          "Abrir detalhes da vaga:",
-          e.target.getAttribute("data-id")
-        );
+        handleDetalhesVaga(e.target.getAttribute("data-id"));
       });
-    });
+    }); // Adiciona eventos para botões de aprovação
     document.querySelectorAll(".btn-aprovar").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         handleAprovarVaga(e.target.getAttribute("data-id"));
@@ -225,20 +309,74 @@ async function handleAprovarVaga(vagaId) {
       historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Vaga aprovada e liberada para divulgação/recrutamento.",
-        usuario: "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado
       }),
     });
 
-    alert("Vaga aprovada com sucesso! Agora está em recrutamento.");
+    window.showToast(
+      "Vaga aprovada com sucesso! Agora está em recrutamento.",
+      "success"
+    );
     carregarVagas("em-divulgacao"); // Recarrega para a nova aba
   } catch (error) {
     console.error("Erro ao aprovar vaga:", error);
-    alert("Ocorreu um erro ao aprovar a vaga.");
+    window.showToast("Ocorreu um erro ao aprovar a vaga.", "error");
   }
 }
 
-// Inicia o módulo quando a página for carregada e a view de gestao_vagas for ativada
-// Em uma aplicação de módulo único (SPA), você chamaria esta função após a navegação bem-sucedida.
-// Para este projeto, que parece carregar scripts via tipo="module", garantimos que a função seja exposta/chamada
-// ou o `app.js` geral precisará orquestrar. Assumindo que o script é carregado na view:
-document.addEventListener("DOMContentLoaded", initGestaoVagas);
+/**
+ * Função de inicialização principal do módulo, chamada pelo rh-painel.js.
+ * @param {object} user - Objeto de usuário do Firebase Auth.
+ * @param {object} userData - Dados de perfil do usuário logado no Firestore.
+ */
+export async function initgestaovagas(user, userData) {
+  console.log("🔹 Iniciando Módulo de Gestão de Vagas e Recrutamento...");
+
+  // Armazena dados do usuário para uso em logs de auditoria/histórico
+  currentUserData = userData || {};
+
+  const btnNovaVaga = document.getElementById("btn-nova-vaga");
+
+  // 1. Carrega a lista de gestores (assíncrono)
+  await carregarGestores();
+
+  // 2. Configura eventos de UI
+  if (btnNovaVaga) {
+    btnNovaVaga.addEventListener("click", openNewVagaModal);
+  }
+
+  // Configura evento de fechamento do modal
+  document.querySelectorAll(".fechar-modal").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (modalVaga) modalVaga.style.display = "none";
+    });
+  });
+
+  // Configura submissão do formulário (criação/edição)
+  if (formVaga) {
+    formVaga.addEventListener("submit", handleSalvarVaga);
+  }
+
+  // 3. Carrega a lista inicial (vagas abertas)
+  // Garante que a aba 'abertas' esteja ativa por padrão
+  document.querySelectorAll(".status-tabs .btn-tab").forEach((b) => {
+    b.classList.remove("active");
+    if (b.getAttribute("data-status") === "abertas") {
+      b.classList.add("active");
+    }
+  });
+
+  await carregarVagas("abertas");
+
+  // 4. Adiciona eventos aos botões de status (filtragem)
+  document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const status = e.target.getAttribute("data-status");
+      document
+        .querySelectorAll(".status-tabs .btn-tab")
+        .forEach((b) => b.classList.remove("active"));
+      e.target.classList.add("active");
+      carregarVagas(status);
+    });
+  });
+}
