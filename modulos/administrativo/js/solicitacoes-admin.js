@@ -421,21 +421,14 @@ export async function init(db_ignored, user, userData) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-        // COLUNA 1: DATA SOLICITAÇÃO
         <td>${dataSol}</td>
-        // COLUNA 2: PROFISSIONAL
         <td>${data.solicitanteNome || "N/A"}</td>
-        // COLUNA 3: PACIENTE
         <td>${data.pacienteNome || "N/A"}</td>
-        // COLUNA 4: HORÁRIO SOLICITADO
         <td>${detalhes.diaSemana || "N/A"}, ${detalhes.horario || "N/A"} (${
       detalhes.modalidade || "N/A"
     })</td>
-        // COLUNA 5: INÍCIO PREFERENCIAL
         <td>${dataInicioFormatada}</td>
-        // COLUNA 6: STATUS
         <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        // COLUNA 7: AÇÕES
         <td>
             <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="novas_sessoes">
                 ${data.status === "Pendente" ? "Processar" : "Ver"}
@@ -458,28 +451,27 @@ export async function init(db_ignored, user, userData) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-            <td>${dataSol}</td>
-            <td>${data.solicitanteNome || "N/A"}</td>
-            <td>${data.pacienteNome || "N/A"}</td>
-            <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${antigos.dia || "N/A"}, ${antigos.horario || "N/A"} (${
       antigos.modalidade || "N/A"
     })</td>
-            <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
+        <td>${novos.dia || "N/A"}, ${novos.horario || "N/A"} (${
       novos.modalidade || "N/A"
     })</td>
-             <td>${dataInicioNova}</td>
-            <td class="motivo-cell">${detalhes.justificativa || "N/A"}</td>
-            <td><span class="status-badge ${statusClass}">${
-      data.status
-    }</span></td>
-            <td>
-                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">
-                    ${data.status === "Pendente" ? "Processar" : "Ver"}
-                </button>
-            </td>
-        `;
+          <td>${dataInicioNova}</td>
+        <td class="motivo-cell">${detalhes.justificativa || "N/A"}</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+            <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="alteracao_horario">
+                ${data.status === "Pendente" ? "Processar" : "Ver"}
+            </button>
+        </td>
+    `;
     return tr;
   }
+
   function renderDesfechoRow(data, docId) {
     const detalhes = data.detalhes || {};
     const dataSol = formatarData(data.dataSolicitacao);
@@ -521,22 +513,18 @@ export async function init(db_ignored, user, userData) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-            <td>${dataSol}</td>
-            <td>${data.solicitanteNome || "N/A"}</td>
-            <td>${data.pacienteNome || "N/A"}</td>
-            <td>${detalhes.servicoEncaminhado || "N/A"}</td>
-            <td class="motivo-cell">${
-      detalhes.motivoEncaminhamento || "N/A"
-    }</td>
-            <td><span class="status-badge ${statusClass}">${
-      data.status
-    }</span></td>
-            <td>
-                <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="encaminhamento">
-                    ${data.status === "Pendente" ? "Processar" : "Ver"}
-                </button>
-            </td>
-        `;
+        <td>${dataSol}</td>
+        <td>${data.solicitanteNome || "N/A"}</td>
+        <td>${data.pacienteNome || "N/A"}</td>
+        <td>${detalhes.servicoEncaminhado || "N/A"}</td>
+        <td class="motivo-cell">${detalhes.motivoEncaminhamento || "N/A"}</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+            <button class="action-button btn-processar-solicitacao" data-doc-id="${docId}" data-tipo="encaminhamento">
+                ${data.status === "Pendente" ? "Processar" : "Ver"}
+            </button>
+        </td>
+    `;
     return tr;
   }
   function renderReavaliacaoRow(data, docId) {
