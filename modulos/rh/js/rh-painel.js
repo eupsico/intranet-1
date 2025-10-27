@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/rh-painel.js
-// Versão: 2.1 (Roteamento Final Corrigido e Módulos de Comunicação/Dashboard)
+// Versão: 2.2 (Modificação para Dashboard Analítico Carregado Dinamicamente)
 
 // Importa os utilitários de terceiros para garantir que arrayUnion funcione no escopo
 import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -68,37 +68,11 @@ export function initrhPanel(user, db, userData) {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
-  }; // --- Função para renderizar o Dashboard de Opções (Cartões) ---
-  function renderDashboard() {
-    contentArea.innerHTML = `
-        <div class="description-box">
-            <p>Selecione uma opção no menu lateral ou clique em um cartão abaixo para iniciar a gestão.</p>
-        </div>
-<div class="rh-dashboard-grid">
-${views
-  .filter((v) => v.id !== "dashboard")
-  .map((view) => {
-    const hasPermission = view.roles.some((role) =>
-      userRoles.includes(role.trim())
-    );
-    if (hasPermission) {
-      return `
-<a href="#${view.id}" class="rh-card card-link">
-${view.icon}
-<h3>${view.name}</h3>
-<p>Gerencie o fluxo de ${view.name
-        .toLowerCase()
-        .replace("gestão de ", "")
-        .replace("profissionais", "profissionais/voluntários")}.</p>
-</a>
-`;
-    }
-    return "";
-  })
-  .join("")}
-</div>
-`;
-  } // --- Função para carregar a view (HTML + JS) ---
+  };
+
+  // FUNÇÃO renderDashboard() QUE EXIBIA OS CARDS FOI REMOVIDA.
+
+  // --- Função para carregar a view (HTML + JS) ---
   async function loadView(viewName) {
     const viewData = views.find((v) => v.id === viewName);
 
@@ -115,11 +89,7 @@ ${view.icon}
       link.classList.toggle("active", link.dataset.view === viewName);
     });
 
-    // 2. Carrega o Dashboard se for a view padrão
-    if (viewName === "dashboard") {
-      renderDashboard();
-      return;
-    }
+    // 2. O dashboard agora é carregado como um módulo dinâmico normal.
 
     contentArea.innerHTML =
       '<div class="loading-spinner">Carregando módulo...</div>';
