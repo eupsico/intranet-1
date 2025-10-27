@@ -52,8 +52,8 @@ export async function fetchUsersByRole(role) {
 
   console.log(`Buscando usuários com a função: ${role}...`);
   try {
-    // Assume-se que a função está armazenada no campo 'role' (ou 'cargo')
-    const q = query(usuariosCollection, where("role", "==", role));
+    // CORREÇÃO: Altera a busca do campo 'role' para o campo 'cargo'
+    const q = query(usuariosCollection, where("cargo", "==", role));
     const snapshot = await getDocs(q);
 
     const usersByRole = [];
