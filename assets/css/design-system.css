@@ -875,7 +875,12 @@ legend {
   flex-direction: column;
   overflow: hidden; /* O contêiner principal esconde o overflow */
 }
-
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Garante que o formulário ocupe 100% da altura do modal-content */
+  width: 100%;
+}
 .modal-header {
   padding: 15px 25px;
   border-bottom: 1px solid var(--cor-borda);

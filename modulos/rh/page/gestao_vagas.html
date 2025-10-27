@@ -25,24 +25,25 @@
   </div>
   <div id="modal-vaga" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">
-        <h3>Detalhes da Vaga</h3>
-        <button type="button" class="close-modal-btn fechar-modal">
-          &times;
-        </button>
-      </div>
       <form id="form-vaga">
+        <div class="modal-header">
+          <h3>Detalhes da Vaga</h3>
+          <button type="button" class="close-modal-btn fechar-modal">
+            &times;
+          </button>
+        </div>
+
         <div class="modal-body">
           <div class="form-group">
-            <label for="vaga-nome">Nome da Vaga:</label>   
-            <input type="text" id="vaga-nome" required />   
+            <label for="vaga-nome">Nome da Vaga:</label> 
+            <input type="text" id="vaga-nome" required /> 
           </div>
           <div class="form-group">
-            <label for="vaga-descricao">Descrição/Requisitos:</label>   
-            <textarea id="vaga-descricao" rows="5" required></textarea>  
+            <label for="vaga-descricao">Descrição/Requisitos:</label> 
+            <textarea id="vaga-descricao" rows="5" required></textarea>
           </div>
           <div class="form-group">
-            <label for="vaga-gestor">Gestor Responsável:</label>  
+            <label for="vaga-gestor">Gestor Responsável:</label>
             <select id="vaga-gestor" required></select>
           </div>
           <fieldset class="criterios-fieldset">
