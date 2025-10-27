@@ -15,8 +15,12 @@ import {
 // Importa a função do novo utilitário user-management
 import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 
+// NOVO: Define a constante para o nome da coleção
+const VAGAS_COLLECTION_NAME = "recursos_humanos";
+
 // Coleção principal no Firestore para as vagas
-const vagasCollection = collection(db, "vagas");
+// CORRIGIDO: Agora aponta para a nova coleção.
+const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 const candidatosCollection = collection(db, "candidatos");
 
 // Elementos do DOM globais
@@ -64,7 +68,8 @@ function openNewVagaModal() {
     formVaga.reset();
     formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
   }
-  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga"; // CORRIGIDO: Novo Título
+  // CORRIGIDO: Novo Título
+  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga";
   if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
   if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
 }
@@ -77,7 +82,8 @@ async function handleDetalhesVaga(vagaId) {
   if (!vagaId) return;
 
   try {
-    const vagaRef = doc(db, "vagas", vagaId);
+    // CORRIGIDO: Usa a nova coleção
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     const docSnap = await getDoc(vagaRef);
 
     if (!docSnap.exists()) {
@@ -87,11 +93,88 @@ async function handleDetalhesVaga(vagaId) {
 
     const vaga = docSnap.data();
 
-    // 1. Preenche o formulário
+    // 1. Preenche o formulário (Mapeamento completo dos novos campos)
     if (document.getElementById("vaga-nome"))
-      document.getElementById("vaga-nome").value = vaga.nome;
+      document.getElementById("vaga-nome").value = vaga.nome || "";
+
+    // NOVOS CAMPOS: SOBRE O CARGO
+    if (document.getElementById("vaga-responsabilidades"))
+      document.getElementById("vaga-responsabilidades").value =
+        vaga.cargo?.responsabilidades || "";
+    if (document.getElementById("vaga-resultados"))
+      document.getElementById("vaga-resultados").value =
+        vaga.cargo?.resultados || "";
+    if (document.getElementById("vaga-nova-substituicao"))
+      document.getElementById("vaga-nova-substituicao").value =
+        vaga.cargo?.novaSubstituicao || "";
+
+    // NOVOS CAMPOS: FORMAÇÃO E QUALIFICAÇÕES
+    if (document.getElementById("vaga-formacao-minima"))
+      document.getElementById("vaga-formacao-minima").value =
+        vaga.formacao?.minima || "";
+    if (document.getElementById("vaga-conselho"))
+      document.getElementById("vaga-conselho").value =
+        vaga.formacao?.conselho || "";
+    if (document.getElementById("vaga-especializacoes"))
+      document.getElementById("vaga-especializacoes").value =
+        vaga.formacao?.especializacoes || "";
+
+    // NOVOS CAMPOS: COMPETÊNCIAS E HABILIDADES
+    if (document.getElementById("vaga-comp-tecnicas"))
+      document.getElementById("vaga-comp-tecnicas").value =
+        vaga.competencias?.tecnicas || "";
+    if (document.getElementById("vaga-comp-comportamentais"))
+      document.getElementById("vaga-comp-comportamentais").value =
+        vaga.competencias?.comportamentais || "";
+    if (document.getElementById("vaga-certificacoes"))
+      document.getElementById("vaga-certificacoes").value =
+        vaga.competencias?.certificacoes || "";
+
+    // NOVOS CAMPOS: EXPERIÊNCIA E ATUAÇÃO
+    if (document.getElementById("vaga-nivel-experiencia"))
+      document.getElementById("vaga-nivel-experiencia").value =
+        vaga.experiencia?.nivel || "";
+    if (document.getElementById("vaga-contextos-similares"))
+      document.getElementById("vaga-contextos-similares").value =
+        vaga.experiencia?.contextosSimilares || "";
+    if (document.getElementById("vaga-atuacao-grupos"))
+      document.getElementById("vaga-atuacao-grupos").value =
+        vaga.experiencia?.atuacaoGrupos || "";
+
+    // NOVOS CAMPOS: FIT CULTURAL E VALORES
+    if (document.getElementById("vaga-fit-valores"))
+      document.getElementById("vaga-fit-valores").value =
+        vaga.fitCultural?.valoresEuPsico || "";
+    if (document.getElementById("vaga-estilo-equipe"))
+      document.getElementById("vaga-estilo-equipe").value =
+        vaga.fitCultural?.estiloEquipe || "";
+    if (document.getElementById("vaga-perfil-destaque"))
+      document.getElementById("vaga-perfil-destaque").value =
+        vaga.fitCultural?.perfilDestaque || "";
+
+    // NOVOS CAMPOS: CRESCIMENTO E DESAFIOS
+    if (document.getElementById("vaga-oportunidades"))
+      document.getElementById("vaga-oportunidades").value =
+        vaga.crescimento?.oportunidades || "";
+    if (document.getElementById("vaga-desafios"))
+      document.getElementById("vaga-desafios").value =
+        vaga.crescimento?.desafios || "";
+    if (document.getElementById("vaga-plano-carreira"))
+      document.getElementById("vaga-plano-carreira").value =
+        vaga.crescimento?.planoCarreira || "";
+
+    // NOVOS CAMPOS: REQUISITOS PRÁTICOS
+    if (document.getElementById("vaga-carga-horaria"))
+      document.getElementById("vaga-carga-horaria").value =
+        vaga.praticos?.cargaHoraria || "";
+    if (document.getElementById("vaga-faixa-salarial"))
+      document.getElementById("vaga-faixa-salarial").value =
+        vaga.praticos?.faixaSalarial || "";
+
+    // Campo Antigo: Mantido para compatibilidade, se necessário no futuro.
     if (document.getElementById("vaga-descricao"))
-      document.getElementById("vaga-descricao").value = vaga.descricao;
+      document.getElementById("vaga-descricao").value = vaga.descricao || "";
+
     // Garante que o select do gestor esteja populado antes de tentar selecionar
     await carregarGestores();
     if (document.getElementById("vaga-gestor"))
@@ -99,7 +182,7 @@ async function handleDetalhesVaga(vagaId) {
 
     // 2. Configura o modal para edição
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
-    // CORRIGIDO: Altera o título para refletir a nova nomenclatura "Ficha Técnica da Vaga"
+    // CORRIGIDO: Título para edição
     if (modalTitle) modalTitle.textContent = "Editar Ficha Técnica da Vaga";
     if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
     if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
@@ -120,16 +203,96 @@ async function handleSalvarVaga(e) {
   const isEditing = !!vagaId;
   const submitButton = e.submitter;
   if (submitButton) submitButton.disabled = true;
+
+  // 1. EXTRAÇÃO DE DADOS DE TODOS OS CAMPOS DO NOVO FORMULÁRIO (FICHA TÉCNICA)
   const nome = document.getElementById("vaga-nome").value;
-  const descricao = document.getElementById("vaga-descricao").value;
-  const gestorId = document.getElementById("vaga-gestor").value; // Usar ID do gestor
+  const gestorId = document.getElementById("vaga-gestor").value;
+
+  // Usaremos responsabilidades como a 'descricao' principal (se o backend exigir)
+  const responsabilidades = document.getElementById(
+    "vaga-responsabilidades"
+  ).value;
+
+  // Novas variáveis
+  const resultados = document.getElementById("vaga-resultados").value;
+  const novaSubstituicao = document.getElementById(
+    "vaga-nova-substituicao"
+  ).value;
+  const formacaoMinima = document.getElementById("vaga-formacao-minima").value;
+  const conselho = document.getElementById("vaga-conselho").value;
+  const especializacoes = document.getElementById("vaga-especializacoes").value;
+  const compTecnicas = document.getElementById("vaga-comp-tecnicas").value;
+  const compComportamentais = document.getElementById(
+    "vaga-comp-comportamentais"
+  ).value;
+  const certificacoes = document.getElementById("vaga-certificacoes").value;
+  const nivelExperiencia = document.getElementById(
+    "vaga-nivel-experiencia"
+  ).value;
+  const contextosSimilares = document.getElementById(
+    "vaga-contextos-similares"
+  ).value;
+  const atuacaoGrupos = document.getElementById("vaga-atuacao-grupos").value;
+  const fitValores = document.getElementById("vaga-fit-valores").value;
+  const estiloEquipe = document.getElementById("vaga-estilo-equipe").value;
+  const perfilDestaque = document.getElementById("vaga-perfil-destaque").value;
+  const oportunidades = document.getElementById("vaga-oportunidades").value;
+  const desafios = document.getElementById("vaga-desafios").value;
+  const planoCarreira = document.getElementById("vaga-plano-carreira").value;
+  const cargaHoraria = document.getElementById("vaga-carga-horaria").value;
+  const faixaSalarial = document.getElementById("vaga-faixa-salarial").value;
 
   try {
     const vagaData = {
       nome: nome,
-      descricao: descricao,
+      descricao: responsabilidades, // Usando responsabilidades como o campo 'descricao' principal para compatibilidade.
       gestorId: gestorId,
-    }; // Campo de histórico baseado na ação
+
+      // NOVOS CAMPOS AGRUPADOS PARA MELHOR ORGANIZAÇÃO NO FIRESTORE
+
+      // 1. Sobre o Cargo
+      cargo: {
+        responsabilidades: responsabilidades,
+        resultados: resultados,
+        novaSubstituicao: novaSubstituicao,
+      },
+      // 2. Formação e Qualificações
+      formacao: {
+        minima: formacaoMinima,
+        conselho: conselho,
+        especializacoes: especializacoes,
+      },
+      // 3. Competências e Habilidades
+      competencias: {
+        tecnicas: compTecnicas,
+        comportamentais: compComportamentais,
+        certificacoes: certificacoes,
+      },
+      // 4. Experiência e Atuação
+      experiencia: {
+        nivel: nivelExperiencia,
+        contextosSimilares: contextosSimilares,
+        atuacaoGrupos: atuacaoGrupos,
+      },
+      // 5. Fit Cultural e Valores
+      fitCultural: {
+        valoresEuPsico: fitValores,
+        estiloEquipe: estiloEquipe,
+        perfilDestaque: perfilDestaque,
+      },
+      // 6. Crescimento e Desafios
+      crescimento: {
+        oportunidades: oportunidades,
+        desafios: desafios,
+        planoCarreira: planoCarreira,
+      },
+      // 7. Requisitos Práticos
+      praticos: {
+        cargaHoraria: cargaHoraria,
+        faixaSalarial: faixaSalarial,
+      },
+    };
+
     const historicoEntry = {
       data: new Date(),
       usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
@@ -139,12 +302,16 @@ async function handleSalvarVaga(e) {
       // Ação de Edição
       vagaData.historico = FieldValue.arrayUnion({
         ...historicoEntry,
-        acao: "Vaga editada.",
+        acao: "Vaga editada. (Ficha Técnica Atualizada)",
       });
 
-      const vagaRef = doc(db, "vagas", vagaId);
+      // CORRIGIDO: Usa a nova coleção
+      const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
       await updateDoc(vagaRef, vagaData);
-      window.showToast("Vaga atualizada com sucesso!", "success");
+      window.showToast(
+        "Ficha Técnica da Vaga atualizada com sucesso!",
+        "success"
+      );
     } else {
       // Ação de Criação
       vagaData.status = "aguardando-aprovacao"; // Inicia sempre aguardando aprovação
@@ -153,13 +320,14 @@ async function handleSalvarVaga(e) {
       vagaData.historico = [
         {
           ...historicoEntry,
-          acao: "Vaga criada e enviada para aprovação do gestor.",
+          acao: "Vaga criada (Ficha Técnica) e enviada para aprovação do gestor.",
         },
       ];
 
+      // CORRIGIDO: Salva na nova coleção (variável vagasCollection já está corrigida)
       await addDoc(vagasCollection, vagaData);
       window.showToast(
-        "Vaga salva com sucesso! Aguardando aprovação.",
+        "Ficha Técnica da Vaga salva com sucesso! Aguardando aprovação.",
         "success"
       );
     }
@@ -171,8 +339,11 @@ async function handleSalvarVaga(e) {
       : "aguardando-aprovacao";
     carregarVagas(newStatus);
   } catch (error) {
-    console.error("Erro ao salvar/atualizar a vaga:", error);
-    window.showToast("Ocorreu um erro ao salvar/atualizar a vaga.", "error");
+    console.error("Erro ao salvar/atualizar a Ficha Técnica da vaga:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar/atualizar a Ficha Técnica da vaga.",
+      "error"
+    );
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -306,7 +477,8 @@ async function handleAprovarVaga(vagaId) {
   }
 
   try {
-    const vagaRef = doc(db, "vagas", vagaId);
+    // CORRIGIDO: Usa a nova coleção
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     await updateDoc(vagaRef, {
       status: "em-divulgacao", // Passa para a fase de recrutamento/divulgação
       dataAprovacao: new Date(),
@@ -338,6 +510,10 @@ export async function initgestaovagas(user, userData) {
 
   // Armazena dados do usuário para uso em logs de auditoria/histórico
   currentUserData = userData || {};
+
+  // CORRIGIDO: Garante que o modal esteja oculto ao carregar,
+  // resolvendo o problema de auto-abertura.
+  if (modalVaga) modalVaga.style.display = "none";
 
   const btnNovaVaga = document.getElementById("btn-nova-vaga");
 
