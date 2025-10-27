@@ -192,17 +192,18 @@ async function carregarProcessos(status) {
       const desl = doc.data();
       desl.id = doc.id;
       count++; // Renderização simplificada
-
       htmlProcessos += `
-                <div class="card card-desligamento" data-id="${desl.id}">
-                    <h4>${desl.nomeColaborador}</h4>
-                    <p>Motivo: ${desl.motivo.substring(0, 50)}...</p>
-                    <p>Data Prevista: ${desl.dataEfetiva || "N/A"}</p>
-                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
+      <div class="card card-desligamento" data-id="${desl.id}">
+      <h4>${desl.nomeColaborador}</h4>
+      <p>Motivo: ${desl.motivo.substring(0, 50)}...</p>
+      <p>Data Prevista: ${desl.dataEfetiva || "N/A"}</p>
+      <div class="rh-card-actions">
+      <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
         desl.id
       }">Gerenciar Checklist</button>
-                </div>
-            `;
+</div>
+</div>
+`;
     });
 
     listaDesligamentos.innerHTML = htmlProcessos; // Atualiza o contador na aba de status

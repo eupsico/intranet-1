@@ -115,23 +115,21 @@ async function carregarColaboradores(fase) {
       const registro = doc.data();
       count++;
       htmlLista += `
-                <div class="card card-onboarding" data-id="${doc.id}">
-                    <h4>${
-        registro.nomeColaborador || "Colaborador sem Nome"
-      }</h4>
-                    <p>Fase: **${registro.faseAtual
-        .toUpperCase()
-        .replace(/-/g, " ")}**</p>
-                    <p>Iniciado em: ${
+<div class="card card-onboarding" data-id="${doc.id}">
+<h4>${registro.nomeColaborador || "Colaborador sem Nome"}</h4>
+<p>Fase: **${registro.faseAtual.toUpperCase().replace(/-/g, " ")}**</p>
+<p>Iniciado em: ${
         registro.dataInicio
           ? new Date(registro.dataInicio.toDate()).toLocaleDateString()
           : "N/A"
       }</p>
-                    <button class="btn btn-sm btn-info btn-detalhes-onboarding" data-id="${
+<div class="rh-card-actions">               
+<button class="btn btn-sm btn-info btn-detalhes-onboarding" data-id="${
         doc.id
       }">Gerenciar Checklist</button>
-                </div>
-            `;
+</div>
+</div>
+`;
     });
 
     listaOnboarding.innerHTML = htmlLista; // Adiciona eventos para botões de detalhes/edição
