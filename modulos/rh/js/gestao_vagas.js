@@ -64,7 +64,7 @@ function openNewVagaModal() {
     formVaga.reset();
     formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
   }
-  if (modalTitle) modalTitle.textContent = "Criar Nova Vaga";
+  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga"; // CORRIGIDO: Novo Título
   if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
   if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
 }
@@ -99,7 +99,8 @@ async function handleDetalhesVaga(vagaId) {
 
     // 2. Configura o modal para edição
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
-    if (modalTitle) modalTitle.textContent = "Editar Detalhes da Vaga";
+    // CORRIGIDO: Altera o título para refletir a nova nomenclatura "Ficha Técnica da Vaga"
+    if (modalTitle) modalTitle.textContent = "Editar Ficha Técnica da Vaga";
     if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
     if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
   } catch (error) {
