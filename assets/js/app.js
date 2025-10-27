@@ -61,98 +61,6 @@ export async function carregarProfissionais(dbInstance, funcao, selectElement) {
     selectElement.innerHTML = '<option value="">Erro ao carregar</option>';
   }
 }
-// --- Lógica Principal da Aplicação ---
-
-// --- NOVO: Função de carregamento dinâmico para submódulos do RH ---
-async function loadRhSubModule(subModuleId, user, userData) {
-  const contentArea = document.getElementById("content-area");
-  const pageTitleContainer = document.getElementById("page-title-container");
-
-  if (!contentArea) {
-    console.error("Elemento #content-area não encontrado.");
-    return;
-  }
-
-  contentArea.innerHTML =
-    '<div class="loading-spinner">Carregando módulo...</div>';
-
-  const titles = {
-    gestao_vagas: {
-      title: "Gestão de Vagas e Recrutamento",
-      subtitle: "Definição de vagas, aprovação e pipeline de candidatos.",
-    },
-    onboarding_colaboradores: {
-      title: "Onboarding de Colaboradores",
-      subtitle:
-        "Checklist de integração, documentação e acompanhamento inicial.",
-    },
-    desligamento: {
-      title: "Gestão de Desligamentos (Offboarding)",
-      subtitle:
-        "Checklist de encerramento, recuperação de ativos e baixa de acessos.",
-    },
-    gestao_profissionais: {
-      title: "Gestão de Profissionais",
-      subtitle: "Gerenciamento de dados e funções da equipe.",
-    },
-    comunicados: {
-      title: "Comunicados",
-      subtitle: "Envio e histórico de comunicações internas.",
-    },
-  };
-
-  const moduleInfo = titles[subModuleId];
-  if (!moduleInfo) {
-    contentArea.innerHTML = `<p class="alert alert-error">Módulo '${subModuleId}' não encontrado.</p>`;
-    return;
-  }
-
-  if (pageTitleContainer) {
-    pageTitleContainer.innerHTML = `<h1>${moduleInfo.title}</h1><p>${moduleInfo.subtitle}</p>`;
-  }
-
-  // Caminhos relativos ao subdiretório intranet-1
-  const basePath = "/intranet-1/modulos/rh";
-  const htmlPath = `${basePath}/page/${subModuleId}.html`;
-  const jsPath = `${basePath}/js/${subModuleId}.js`;
-
-  try {
-    const response = await fetch(htmlPath);
-    if (!response.ok) {
-      throw new Error(`Arquivo HTML '${htmlPath}' não encontrado.`);
-    }
-
-    const htmlContent = await response.text();
-    contentArea.innerHTML = htmlContent;
-
-    // Remove scripts embutidos
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = contentArea.innerHTML;
-    tempDiv.querySelectorAll("script").forEach((script) => script.remove());
-    contentArea.innerHTML = tempDiv.innerHTML;
-
-    // Importa JS dinamicamente
-    const module = await import(jsPath + "?t=" + Date.now());
-
-    // Inicializa o módulo
-    if (typeof module.init === "function") {
-      await module.init(user, userData);
-    } else if (
-      typeof module[`init${subModuleId.replace(/[-_]/g, "")}`] === "function"
-    ) {
-      await module[`init${subModuleId.replace(/[-_]/g, "")}`](user, userData);
-    } else if (typeof module.initrhPanel === "function") {
-      await module.initrhPanel(user, db, userData);
-    }
-
-    console.log(`Submódulo ${subModuleId}.js inicializado.`);
-  } catch (error) {
-    console.error(`Erro ao carregar o submódulo RH ${subModuleId}:`, error);
-    contentArea.innerHTML = `<div class="container-fluid"><p class="alert alert-error">Erro ao carregar a seção '${subModuleId}'. Verifique o console para detalhes técnicos.</p></div>`;
-  }
-}
-
-// --- FIM NOVO: Função de carregamento dinâmico para submódulos do RH ---
 
 document.addEventListener("DOMContentLoaded", function () {
   const loginView = document.getElementById("login-view");
@@ -217,15 +125,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const pathPrefix = isSubPage ? "../../../" : "./";
 
     loginView.innerHTML = `
-    <div class="login-container">
-    <div class="login-card">
-    <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
-    <h2>Intranet EuPsico</h2>
-    <p>${message}</p>
-    <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
-    <button id="login-button" class="action-button login-button">Login com Google</button>
-    </div>
-    </div>`;
+      <div class="login-container">
+      <div class="login-card">
+      <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
+      <h2>Intranet EuPsico</h2>
+      <p>${message}</p>
+      <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
+      <button id="login-button" class="action-button login-button">Login com Google</button>
+      </div>
+      </div>`;
     document.getElementById("login-button").addEventListener("click", () => {
       loginView.innerHTML = `<p style="text-align:center; margin-top: 50px;">Aguarde...</p>`;
       const provider = new GoogleAuthProvider(); // Sintaxe v9
@@ -354,62 +262,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const pageTitleContainer = document.getElementById(
           "page-title-container"
         );
-        const contentArea = document.getElementById("content-area");
-
         if (pageTitleContainer) {
           pageTitleContainer.innerHTML = `<h2>Recursos Humanos</h2><p>Gestão de profissionais, vagas e comunicados.</p>`;
-        }
-
-        // --- LÓGICA DE SUBMÓDULOS RH ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const subModuleId = urlParams.get("view"); // Assume que a navegação interna usa ?view=...
-
-        if (subModuleId) {
-          // Carrega o submódulo dinamicamente (gestao_vagas, onboarding, desligamento)
-          await loadRhSubModule(subModuleId, user, userData);
-        } else {
-          // Se não houver ?view=, carrega o dashboard padrão do RH
-          const module = await import("../../modulos/rh/js/rh-painel.js");
-          module.initrhPanel(user, db, userData);
-        }
-
-        // Adiciona listeners para navegação interna do RH (via #rh-views)
-        document
-          .getElementById("rh-views")
-          .addEventListener("click", async (e) => {
-            const target = e.target.closest("div[data-view-id]");
-            if (target) {
-              const viewId = target.getAttribute("data-view-id");
-              e.preventDefault();
-
-              // Mude a URL para refletir o estado (sem recarregar a página)
-              const newUrl = new URL(window.location.href);
-              newUrl.searchParams.set("view", viewId);
-              window.history.pushState({ path: newUrl.href }, "", newUrl.href);
-
-              // Carrega o novo submódulo
-              await loadRhSubModule(viewId, user, userData);
-            }
-          });
-
-        // Adiciona listener para os links/botões no conteúdo principal do RH (opcional, se forem botões)
-        contentArea.addEventListener("click", async (e) => {
-          const btn = e.target.closest("button[data-view-id]");
-          if (btn) {
-            const viewId = btn.getAttribute("data-view-id");
-            e.preventDefault();
-
-            // Mude a URL para refletir o estado (sem recarregar a página)
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set("view", viewId);
-            window.history.pushState({ path: newUrl.href }, "", newUrl.href);
-
-            // Carrega o novo submódulo
-            await loadRhSubModule(viewId, user, userData);
-          }
-        });
-
-        // --- FIM LÓGICA DE SUBMÓDULOS RH ---
+        } // O arquivo rh-painel.js agora fará o roteamento interno por Hash (#)
+        const module = await import("../../modulos/rh/js/rh-painel.js");
+        module.initrhPanel(user, db, userData);
       },
       "portal-voluntario.html": async () => {
         const pageTitleContainer = document.getElementById(
