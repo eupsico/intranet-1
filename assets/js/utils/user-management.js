@@ -1,5 +1,4 @@
-// assets/js/utils/user-management.js
-
+// assets/js/utils/user-management.js (Função corrigida)
 // Importa as funções de inicialização do Firebase
 // O caminho é relativo de assets/js/utils/ para assets/js/firebase-init.js
 import { db, collection, getDocs, query, where } from "../firebase-init.js";
@@ -52,8 +51,8 @@ export async function fetchUsersByRole(role) {
 
   console.log(`Buscando usuários com a função: ${role}...`);
   try {
-    // CORREÇÃO: Altera a busca do campo 'role' para o campo 'cargo'
-    const q = query(usuariosCollection, where("cargo", "==", role));
+    // CORREÇÃO: Alterado o campo de busca de 'role' para 'funcoes', conforme informado.
+    const q = query(usuariosCollection, where("funcoes", "==", role));
     const snapshot = await getDocs(q);
 
     const usersByRole = [];
