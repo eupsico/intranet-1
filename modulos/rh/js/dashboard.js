@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 2.3 (Integração com Firebase para Métricas de KPI)
+// Versão: 2.4 (Implementação de Agregação de Dados em Tempo Real para Gráficos)
 
 // Importa funções do Firebase necessárias
 import {
@@ -30,6 +30,7 @@ export async function initdashboard(user, userData) {
   const vagasCollection = collection(db, "vagas");
   const onboardingCollection = collection(db, "onboarding");
   const comunicadosCollection = collection(db, "comunicados");
+  const desligamentosCollection = collection(db, "desligamentos"); // Coleção adicionada
 
   // Mapeamento dos elementos do DOM
   const metricAtivos = document.getElementById("rh-metric-ativos");
@@ -45,8 +46,9 @@ export async function initdashboard(user, userData) {
 
   // Função de busca de dados reais (substitui o mock)
   async function fetchRHDashboardData() {
+    // --- Consultas para KPIs (contagens) ---
+
     // 1. Profissionais Ativos (status == 'ativo')
-    // Assumimos que o campo "status" em "usuarios" é usado para marcar o profissional como ativo.
     const ativosQuery = query(
       usuariosCollection,
       where("status", "==", "ativo")
@@ -71,49 +73,156 @@ export async function initdashboard(user, userData) {
     // 4. Comunicações Recentes (Total de comunicados)
     const comunicadosQuery = query(comunicadosCollection);
 
-    // Executa todas as consultas em paralelo (melhor performance)
-    const [ativosSnap, vagasSnap, onboardingSnap, comunicadosSnap] =
-      await Promise.all([
-        getDocs(ativosQuery),
-        getDocs(vagasQuery),
-        getDocs(onboardingQuery),
-        getDocs(comunicadosQuery),
-      ]);
+    // --- Consultas para Gráficos (Agregação) ---
 
-    // TODO: Implementar lógica de agregação para os dados dos gráficos (funcoesData e desligamentoData)
-    // Manteremos o mock para os gráficos, focando apenas nos KPIs solicitados.
+    // 5. Distribuição de Funções: Buscar todos os usuários ativos
+    const todosUsuariosQuery = query(
+      usuariosCollection,
+      where("status", "==", "ativo")
+    );
+
+    // 6. Desligamentos: Buscar desligamentos do último ano (últimos 12 meses)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const desligamentosQuery = query(
+      desligamentosCollection,
+      // Filtra por dataEfetiva a partir de um ano atrás (Timestamp do Firebase)
+      where("dataEfetiva", ">=", oneYearAgo)
+    );
+
+    // Executa todas as consultas em paralelo (melhor performance)
+    const [
+      ativosSnap,
+      vagasSnap,
+      onboardingSnap,
+      comunicadosSnap,
+      todosUsuariosSnap,
+      desligamentosSnap,
+    ] = await Promise.all([
+      getDocs(ativosQuery),
+      getDocs(vagasQuery),
+      getDocs(onboardingQuery),
+      getDocs(comunicadosQuery),
+      getDocs(todosUsuariosQuery),
+      getDocs(desligamentosQuery),
+    ]);
+
+    // --- Lógica de Agregação de Dados para os Gráficos ---
+
+    // 1. Distribuição de Funções (Gráfico de Rosca)
+    const funcoesMap = {};
+    todosUsuariosSnap.forEach((doc) => {
+      const user = doc.data();
+      const funcoes = user.funcoes || [];
+      // Usa a primeira função encontrada como principal para fins de contagem
+      const principalRole = funcoes.length > 0 ? funcoes[0] : "Não Definido";
+
+      // Mapeamento para nomes de exibição amigáveis
+      const displayRole =
+        {
+          psicologo_voluntario: "Psicólogo Voluntário",
+          psicologo_plantonista: "Psicólogo Plantonista",
+          supervisor: "Supervisor",
+          admin: "Admin",
+          rh: "RH",
+        }[principalRole] ||
+        principalRole.charAt(0).toUpperCase() +
+          principalRole.slice(1).replace(/_/g, " ");
+
+      funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+    });
+
+    const funcoesLabels = Object.keys(funcoesMap);
+    const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
+
+    // 2. Métricas de Desligamento (Gráfico de Barras - Últimos 12 meses)
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const monthNames = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
+
+    const monthlyDataMap = {};
+    const labels = [];
+
+    // Inicializa o mapa com os últimos 12 meses
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const yearMonthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      monthlyDataMap[yearMonthKey] = 0;
+      labels.push(
+        `${monthNames[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`
+      );
+    }
+
+    // Processa os dados do Firebase
+    desligamentosSnap.forEach((doc) => {
+      const desligamento = doc.data();
+      let effectiveDate;
+
+      // Converte o Timestamp do Firebase para Date (se for um objeto Timestamp)
+      if (
+        desligamento.dataEfetiva &&
+        typeof desligamento.dataEfetiva.toDate === "function"
+      ) {
+        effectiveDate = desligamento.dataEfetiva.toDate();
+      } else if (desligamento.dataEfetiva instanceof Date) {
+        effectiveDate = desligamento.dataEfetiva;
+      } else {
+        return; // Ignora registros sem data válida
+      }
+
+      const yearMonthKey = `${effectiveDate.getFullYear()}-${
+        effectiveDate.getMonth() + 1
+      }`;
+
+      // Incrementa a contagem se o mês estiver no intervalo dos últimos 12 meses
+      if (monthlyDataMap.hasOwnProperty(yearMonthKey)) {
+        monthlyDataMap[yearMonthKey]++;
+      }
+    });
+
+    const desligamentoData = labels.map((label) => {
+      const [monthName, yearShort] = label.split("/");
+      const monthIndex = monthNames.findIndex((name) => name === monthName);
+      // Garante que o ano seja '20YY'
+      const year = parseInt(
+        yearShort.length === 2 ? `20${yearShort}` : yearShort
+      );
+      const yearMonthKey = `${year}-${monthIndex + 1}`;
+      return monthlyDataMap[yearMonthKey] || 0;
+    });
+
+    // ----------------------------------------
 
     return {
-      // Retorna o tamanho dos snapshots (contagem de documentos)
+      // Retorna os tamanhos das contagens (KPIs)
       ativos: ativosSnap.size,
       vagas: vagasSnap.size,
       onboarding: onboardingSnap.size,
       comunicados: comunicadosSnap.size,
+
+      // Retorna os dados agregados para os gráficos
       funcoesData: {
-        labels: [
-          "Psicólogo Voluntário",
-          "Psicólogo Plantonista",
-          "Supervisor",
-          "Admin/RH",
-        ],
-        data: [110, 20, 10, 5],
+        labels: funcoesLabels,
+        data: funcoesData,
       },
       desligamentoData: {
-        labels: [
-          "Jan",
-          "Fev",
-          "Mar",
-          "Abr",
-          "Mai",
-          "Jun",
-          "Jul",
-          "Ago",
-          "Set",
-          "Out",
-          "Nov",
-          "Dez",
-        ],
-        data: [2, 1, 0, 3, 1, 0, 1, 2, 0, 0, 1, 0],
+        labels: labels, // Rótulos dos últimos 12 meses
+        data: desligamentoData, // Dados agregados por mês
       },
     };
   }
@@ -121,7 +230,7 @@ export async function initdashboard(user, userData) {
   try {
     const data = await fetchRHDashboardData();
 
-    // 1. Popular Métricas nos Cards
+    // 1. Popular Métricas nos Cards (KPIs)
     if (metricAtivos) metricAtivos.textContent = data.ativos;
     if (metricVagas) metricVagas.textContent = data.vagas;
     if (metricOnboarding) metricOnboarding.textContent = data.onboarding;
@@ -137,7 +246,14 @@ export async function initdashboard(user, userData) {
             {
               label: "Total",
               data: data.funcoesData.data,
-              backgroundColor: ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e"], // Cores de exemplo
+              backgroundColor: [
+                "#4e73df",
+                "#1cc88a",
+                "#36b9cc",
+                "#f6c23e",
+                "#6f42c1",
+                "#20c997",
+              ], // Cores de exemplo
               hoverOffset: 4,
             },
           ],
@@ -182,7 +298,7 @@ export async function initdashboard(user, userData) {
           scales: {
             y: {
               beginAtZero: true,
-              precision: 0, // Garante números inteiros no eixo Y
+              precision: 0,
             },
           },
           plugins: {
@@ -197,6 +313,6 @@ export async function initdashboard(user, userData) {
     console.error("Erro ao carregar dados do Dashboard RH:", error);
     // Exibe mensagem de erro na área de conteúdo
     document.getElementById("content-area").innerHTML =
-      "<h2>Erro de Carregamento</h2><p>Não foi possível carregar as métricas do dashboard devido a um erro de conexão ou permissões. Verifique o console para detalhes.</p>";
+      "<h2>Erro de Carregamento</h2><p>Não foi possível carregar as métricas do dashboard. Verifique as Regras de Segurança do Firebase para as coleções **usuarios, vagas, onboarding, comunicados e desligamentos**.</p>";
   }
 }
