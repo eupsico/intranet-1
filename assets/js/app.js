@@ -111,43 +111,29 @@ async function loadRhSubModule(subModuleId, user, userData) {
     pageTitleContainer.innerHTML = `<h1>${moduleInfo.title}</h1><p>${moduleInfo.subtitle}</p>`;
   }
 
-  // 2. Busca o HTML correspondente
-  // CORREÇÃO: Usamos o caminho relativo à URL da página para o HTML
-  const htmlPath = `./${subModuleId}.html`;
+  // Caminhos relativos a partir de assets/js/app.js para modulos/rh
+  const htmlPath = `../../modulos/rh/page/${subModuleId}.html`;
+  const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
+
   try {
-    console.log("Tentando carregar HTML de:", htmlPath);
-    const response = await fetch(htmlPath);
-
+    let response = await fetch(htmlPath);
     if (!response.ok) {
-      // Se falhar na URL relativa, tenta a URL absoluta do repositório
-      const fallbackPath = `/modulos/rh/page/${subModuleId}.html`;
-      const fallbackResponse = await fetch(fallbackPath);
-
-      if (!fallbackResponse.ok) {
-        throw new Error(
-          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (404 em ambas as tentativas).`
-        );
-      }
-      contentArea.innerHTML = await fallbackResponse.text();
-      console.log(`HTML carregado via fallback: ${fallbackPath}`);
-    } else {
-      const htmlContent = await response.text();
-      contentArea.innerHTML = htmlContent;
+      throw new Error(`Arquivo HTML '${htmlPath}' não encontrado.`);
     }
 
-    // Remoção de scripts (mantida)
+    const htmlContent = await response.text();
+    contentArea.innerHTML = htmlContent;
+
+    // Remove scripts embutidos
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = contentArea.innerHTML;
     tempDiv.querySelectorAll("script").forEach((script) => script.remove());
     contentArea.innerHTML = tempDiv.innerHTML;
 
-    // 3. Importa e executa o JS do submódulo
-    // CORREÇÃO CRÍTICA DO CAMINHO JS: O caminho correto a partir do contexto da página é '../js/'
-    const jsPath = `../js/${subModuleId}.js`;
-    console.log("Tentando importar JS do submódulo:", jsPath);
-
+    // Importa JS dinamicamente
     const module = await import(jsPath + "?t=" + Date.now());
 
+    // Inicializa o módulo
     if (typeof module.init === "function") {
       await module.init(user, userData);
     } else if (
@@ -164,6 +150,7 @@ async function loadRhSubModule(subModuleId, user, userData) {
     contentArea.innerHTML = `<div class="container-fluid"><p class="alert alert-error">Erro ao carregar a seção '${subModuleId}'. Verifique o console para detalhes técnicos.</p></div>`;
   }
 }
+
 // --- FIM NOVO: Função de carregamento dinâmico para submódulos do RH ---
 
 document.addEventListener("DOMContentLoaded", function () {
