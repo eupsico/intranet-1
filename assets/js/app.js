@@ -76,7 +76,7 @@ async function loadRhSubModule(subModuleId, user, userData) {
   contentArea.innerHTML =
     '<div class="loading-spinner">Carregando módulo...</div>';
 
-  // Mapeamento de títulos para os novos módulos do RH
+  // Mapeamento de títulos para os novos módulos do RH (Omitido para brevidade)
   const titles = {
     gestao_vagas: {
       title: "Gestão de Vagas e Recrutamento",
@@ -92,7 +92,6 @@ async function loadRhSubModule(subModuleId, user, userData) {
       subtitle:
         "Checklist de encerramento, recuperação de ativos e baixa de acessos.",
     },
-    // Módulos existentes
     gestao_profissionais: {
       title: "Gestão de Profissionais",
       subtitle: "Gerenciamento de dados e funções da equipe.",
@@ -115,33 +114,48 @@ async function loadRhSubModule(subModuleId, user, userData) {
   }
 
   // 2. Busca o HTML correspondente
-  const htmlPath = `../../modulos/rh/page/${subModuleId}.html`;
+  // Caminho corrigido: ./page/ se for um SPA (Single Page App)
+  // Se o rh-painel.html estiver em 'modulos/rh/page/' e o app.js estiver em 'assets/js/',
+  // o fetch relativo à URL do navegador para o HTML é o mais seguro.
+  const htmlPath = `./page/${subModuleId}.html`;
   try {
+    console.log("Tentando carregar HTML de:", htmlPath);
     const response = await fetch(htmlPath);
     if (!response.ok) {
-      throw new Error(
-        `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status}).`
-      );
+      // Tenta um caminho alternativo, mais profundo, caso o fetch falhe na primeira tentativa
+      const fallbackPath = `../rh/page/${subModuleId}.html`;
+      const fallbackResponse = await fetch(fallbackPath);
+
+      if (!fallbackResponse.ok) {
+        throw new Error(
+          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status} e ${fallbackResponse.status}).`
+        );
+      }
+      contentArea.innerHTML = await fallbackResponse.text();
+      console.log(`HTML carregado via fallback: ${fallbackPath}`);
+    } else {
+      const htmlContent = await response.text();
+      contentArea.innerHTML = htmlContent;
     }
-    const htmlContent = await response.text();
 
     // Remove a tag <script> para evitar carregamento duplo e injeta o HTML
     // Presume-se que o HTML contenha a tag <script type="module" src="../js/..."> que será removida
-    // e o JS será importado dinamicamente abaixo.
     const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = htmlContent;
+    tempDiv.innerHTML = contentArea.innerHTML;
     tempDiv.querySelectorAll("script").forEach((script) => script.remove());
-
     contentArea.innerHTML = tempDiv.innerHTML;
 
     // 3. Importa e executa o JS do submódulo
-    const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
+    // Caminho corrigido para o JS (assumindo que o app.js pode referenciar diretamente)
+    // Caminho do JS a partir da raiz da intranet: ./modulos/rh/js/
+    const jsPath = `../../modulos/rh/js/${subModuleId}.js`; // Manter o relativo se o JS estiver sendo carregado pelo app.js
+
     console.log("Tentando importar JS do submódulo:", jsPath);
 
     // Usa a convenção de que o arquivo JS tem o mesmo nome do HTML
     const module = await import(jsPath + "?t=" + Date.now()); // Cache busting
 
-    // O módulo RH usa funções globais como `initrhPanel` ou `initGestaoVagas`.
+    // ... (resto da lógica de inicialização do módulo)
     if (typeof module.init === "function") {
       // Se o módulo exporta uma função 'init' (convenção preferida)
       await module.init(user, userData);
