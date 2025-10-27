@@ -66,7 +66,7 @@ function openNewVagaModal() {
   }
   if (modalTitle) modalTitle.textContent = "Criar Nova Vaga";
   if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
-  if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
+  if (modalVaga) modalVaga.style.display = "flex"; // Ação de abrir o modal
 }
 
 /**
