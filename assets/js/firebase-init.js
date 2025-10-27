@@ -27,6 +27,7 @@ import {
   Timestamp,
   setDoc,
   writeBatch,
+  FieldValue,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import {
   getFunctions,
@@ -85,4 +86,5 @@ export {
   setDoc,
   getFunctions,
   writeBatch,
+  FieldValue,
 };

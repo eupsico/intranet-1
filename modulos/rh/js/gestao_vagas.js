@@ -9,6 +9,7 @@ import {
   doc,
   query,
   where,
+  FieldValue,
 } from "../../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
 // Importa a função do novo utilitário user-management
