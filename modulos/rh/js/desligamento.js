@@ -9,8 +9,9 @@ import {
   doc,
   query,
   where,
-  firebase,
+  FieldValue,
 } from "../../../assets/js/firebase-init.js";
+import { FieldValue } from "firebase/firestore";
 // Importa a função do novo utilitário user-management
 import { fetchActiveEmployees } from "../../../assets/js/utils/user-management.js";
 
@@ -263,7 +264,7 @@ async function handleDesligamentoActions(e) {
     await updateDoc(desligamentoRef, {
       "documentacao.status": "finalizado",
       "documentacao.detalhes": detalhes,
-      historico: firebase.firestore.FieldValue.arrayUnion({
+      historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Documentação de desligamento finalizada e preparada.",
       }),
@@ -277,7 +278,7 @@ async function handleDesligamentoActions(e) {
     await updateDoc(desligamentoRef, {
       "recuperacoes.status": "recuperado",
       "recuperacoes.detalhes": detalhes,
-      historico: firebase.firestore.FieldValue.arrayUnion({
+      historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Ativos e bens da empresa marcados como recuperados.",
       }),
@@ -304,7 +305,7 @@ async function handleDesligamentoActions(e) {
       "acessosTI.status": "solicitado",
       "acessosTI.detalhes": detalhes,
       "acessosTI.solicitacaoId": docSolicitacao.id,
-      historico: firebase.firestore.FieldValue.arrayUnion({
+      historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Solicitação de cancelamento de acessos enviada à TI.",
       }),
@@ -335,7 +336,7 @@ async function handleDesligamentoActions(e) {
     await updateDoc(desligamentoRef, {
       statusAtual: "realizado",
       dataBaixa: dataBaixa,
-      historico: firebase.firestore.FieldValue.arrayUnion({
+      historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Desligamento finalizado e baixa registrada.",
       }),

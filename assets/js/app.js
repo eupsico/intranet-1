@@ -76,7 +76,6 @@ async function loadRhSubModule(subModuleId, user, userData) {
   contentArea.innerHTML =
     '<div class="loading-spinner">Carregando módulo...</div>';
 
-  // Mapeamento de títulos para os novos módulos do RH (Omitido)
   const titles = {
     gestao_vagas: {
       title: "Gestão de Vagas e Recrutamento",
@@ -108,51 +107,46 @@ async function loadRhSubModule(subModuleId, user, userData) {
     return;
   }
 
-  // 1. Atualiza o título da página
   if (pageTitleContainer) {
     pageTitleContainer.innerHTML = `<h1>${moduleInfo.title}</h1><p>${moduleInfo.subtitle}</p>`;
   }
 
   // 2. Busca o HTML correspondente
-  // CORREÇÃO: O HTML está na mesma pasta da página principal do RH.
-  // O fetch deve ser relativo à URL do navegador, que é /modulos/rh/page/
+  // CORREÇÃO: Usamos o caminho relativo à URL da página para o HTML
   const htmlPath = `./${subModuleId}.html`;
   try {
     console.log("Tentando carregar HTML de:", htmlPath);
     const response = await fetch(htmlPath);
 
     if (!response.ok) {
-      // Se falhar, tenta o caminho relativo à raiz da Intranet
-      // Isso funciona se a base href estiver definida, mas é uma tentativa mais segura.
+      // Se falhar na URL relativa, tenta a URL absoluta do repositório
       const fallbackPath = `/modulos/rh/page/${subModuleId}.html`;
       const fallbackResponse = await fetch(fallbackPath);
 
       if (!fallbackResponse.ok) {
-        // Se ambas as tentativas falharem, lança o erro 404
         throw new Error(
-          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status}).`
+          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (404 em ambas as tentativas).`
         );
       }
       contentArea.innerHTML = await fallbackResponse.text();
-      console.log(
-        `HTML carregado via fallback (URL absoluta): ${fallbackPath}`
-      );
+      console.log(`HTML carregado via fallback: ${fallbackPath}`);
     } else {
       const htmlContent = await response.text();
       contentArea.innerHTML = htmlContent;
     }
 
-    // Remove a tag <script> para evitar carregamento duplo e injeta o HTML
+    // Remoção de scripts (mantida)
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = contentArea.innerHTML;
     tempDiv.querySelectorAll("script").forEach((script) => script.remove());
     contentArea.innerHTML = tempDiv.innerHTML;
 
     // 3. Importa e executa o JS do submódulo
-    // Manter o caminho JS como estava, pois o erro 404 está no FETCH do HTML.
-    const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
+    // CORREÇÃO CRÍTICA DO CAMINHO JS: O caminho correto a partir do contexto da página é '../js/'
+    const jsPath = `../js/${subModuleId}.js`;
     console.log("Tentando importar JS do submódulo:", jsPath);
-    const module = await import(jsPath + "?t=" + Date.now()); // Cache busting
+
+    const module = await import(jsPath + "?t=" + Date.now());
 
     if (typeof module.init === "function") {
       await module.init(user, userData);
@@ -163,6 +157,7 @@ async function loadRhSubModule(subModuleId, user, userData) {
     } else if (typeof module.initrhPanel === "function") {
       await module.initrhPanel(user, db, userData);
     }
+
     console.log(`Submódulo ${subModuleId}.js inicializado.`);
   } catch (error) {
     console.error(`Erro ao carregar o submódulo RH ${subModuleId}:`, error);
