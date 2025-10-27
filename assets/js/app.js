@@ -226,16 +226,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const pathPrefix = isSubPage ? "../../../" : "./";
 
     loginView.innerHTML = `
-    <div class="login-container">
-      <div class="login-card">
-        <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
-        <h2>Intranet EuPsico</h2>
-        <p>${message}</p>
-        <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
-        <button id="login-button" class="action-button login-button">Login com Google</button>
-      </div>
-    </div>`;
-
+    <div class="login-container">
+    <div class="login-card">
+    <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
+    <h2>Intranet EuPsico</h2>
+    <p>${message}</p>
+    <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
+    <button id="login-button" class="action-button login-button">Login com Google</button>
+    </div>
+    </div>`;
     document.getElementById("login-button").addEventListener("click", () => {
       loginView.innerHTML = `<p style="text-align:center; margin-top: 50px;">Aguarde...</p>`;
       const provider = new GoogleAuthProvider(); // Sintaxe v9
