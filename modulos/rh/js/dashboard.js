@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 2.5 (Correção da Lógica de Filtro para Profissionais Ativos: inativo == false)
+// Versão: 2.6 (Adição de Gráfico de Distribuição por Profissão)
 
 // Importa funções do Firebase necessárias
 import {
@@ -40,6 +40,9 @@ export async function initdashboard(user, userData) {
   const funcoesChartCtx = document
     .getElementById("rh-funcoes-chart")
     ?.getContext("2d");
+  const rhProfissaoChartCtx = document
+    .getElementById("rh-profissao-chart")
+    ?.getContext("2d"); // NOVO: Mapeamento do canvas de Profissão
   const desligamentoChartCtx = document
     .getElementById("rh-desligamento-chart")
     ?.getContext("2d");
@@ -49,7 +52,6 @@ export async function initdashboard(user, userData) {
     // --- Consultas para KPIs (contagens) ---
 
     // 1. Profissionais Ativos (inativo == false)
-    // CORRIGIDO: Agora usa o campo 'inativo' com valor 'false'
     const ativosQuery = query(
       usuariosCollection,
       where("inativo", "==", false)
@@ -76,8 +78,7 @@ export async function initdashboard(user, userData) {
 
     // --- Consultas para Gráficos (Agregação) ---
 
-    // 5. Distribuição de Funções: Buscar todos os usuários ativos
-    // CORRIGIDO: Agora usa o campo 'inativo' com valor 'false'
+    // 5. Distribuição de Funções e Profissões: Buscar todos os usuários ativos
     const todosUsuariosQuery = query(
       usuariosCollection,
       where("inativo", "==", false)
@@ -114,10 +115,14 @@ export async function initdashboard(user, userData) {
 
     // 1. Distribuição de Funções (Gráfico de Rosca)
     const funcoesMap = {};
+    const profissaoMap = {}; // NOVO: Mapa para Profissões
+
     todosUsuariosSnap.forEach((doc) => {
       const user = doc.data();
       const funcoes = user.funcoes || [];
-      // Usa a primeira função encontrada como principal para fins de contagem
+      const profissao = user.profissao || "Não Informado";
+
+      // Agregação por FUNÇÃO PRINCIPAL (Primeira da lista)
       const principalRole = funcoes.length > 0 ? funcoes[0] : "Não Definido";
 
       // Mapeamento para nomes de exibição amigáveis
@@ -133,10 +138,21 @@ export async function initdashboard(user, userData) {
           principalRole.slice(1).replace(/_/g, " ");
 
       funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+
+      // Agregação por PROFISSÃO
+      const displayProfissao =
+        profissao.charAt(0).toUpperCase() + profissao.slice(1);
+      profissaoMap[displayProfissao] =
+        (profissaoMap[displayProfissao] || 0) + 1;
     });
 
+    // Dados para o Gráfico de Funções
     const funcoesLabels = Object.keys(funcoesMap);
     const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
+
+    // Dados para o Gráfico de Profissões
+    const profissaoLabels = Object.keys(profissaoMap);
+    const profissaoData = profissaoLabels.map((label) => profissaoMap[label]);
 
     // 2. Métricas de Desligamento (Gráfico de Barras - Últimos 12 meses)
     const today = new Date();
@@ -222,6 +238,11 @@ export async function initdashboard(user, userData) {
         labels: funcoesLabels,
         data: funcoesData,
       },
+      profissaoData: {
+        // NOVO: Retorna dados de profissão
+        labels: profissaoLabels,
+        data: profissaoData,
+      },
       desligamentoData: {
         labels: labels, // Rótulos dos últimos 12 meses
         data: desligamentoData, // Dados agregados por mês
@@ -278,7 +299,48 @@ export async function initdashboard(user, userData) {
       });
     }
 
-    // 3. Renderizar Gráfico de Desligamentos (Barra)
+    // 3. Renderizar Gráfico de Distribuição por Profissão (Barra Horizontal)
+    if (rhProfissaoChartCtx) {
+      new Chart(rhProfissaoChartCtx, {
+        type: "bar",
+        data: {
+          labels: data.profissaoData.labels,
+          datasets: [
+            {
+              label: "Profissionais Ativos",
+              data: data.profissaoData.data,
+              backgroundColor: "#1d70b7", // Cor Secundária
+              borderColor: "#04396d",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: "y", // NOVO: Define o eixo Y como índice (barra horizontal)
+          scales: {
+            x: {
+              beginAtZero: true,
+              precision: 0, // Garante números inteiros no eixo X
+            },
+            y: {
+              // Não mostrar o título do eixo Y para simplificar
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+            title: {
+              display: false,
+            },
+          },
+        },
+      });
+    }
+
+    // 4. Renderizar Gráfico de Desligamentos (Barra)
     if (desligamentoChartCtx) {
       new Chart(desligamentoChartCtx, {
         type: "bar",
