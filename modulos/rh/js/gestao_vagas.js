@@ -1,5 +1,4 @@
 // modulos/rh/js/gestao_vagas.js
-
 import {
   db,
   collection,
@@ -10,7 +9,7 @@ import {
   query,
   where,
   FieldValue,
-} from "../../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
+} from "../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
 // Importa a função do novo utilitário user-management
 import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
