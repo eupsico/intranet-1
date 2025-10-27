@@ -1,39 +1,45 @@
 <div class="page-header">
-    <h2>Dashboard de Recursos Humanos</h2>
-    <p class="subtitle">Visão geral e métricas do módulo RH.</p>
+  <h2>Dashboard de Recursos Humanos</h2>
+  <p class="subtitle">Visão geral e métricas do módulo RH.</p>
 </div>
 
-<div class="dashboard-metrics-grid rh-stats-grid">
-    <div class="metric-card card">
-        <h4>Profissionais Ativos</h4>
-        <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
-        <span class="metric-detail">Voluntários e colaboradores com perfil ativo.</span>
-    </div>
-    <div class="metric-card card">
-        <h4>Vagas em Aberto</h4>
-        <p class="metric-value" id="rh-metric-vagas">Carregando...</p>
-        <span class="metric-detail">Total de vagas disponíveis atualmente.</span>
-    </div>
-    <div class="metric-card card">
-        <h4>Colaboradores em Onboarding</h4>
-        <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
-        <span class="metric-detail">Profissionais aguardando a finalização do processo.</span>
-    </div>
-    <div class="metric-card card">
-        <h4>Comunicações Recentes</h4>
-        <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
-        <span class="metric-detail">Comunicações enviadas na última semana (via módulo Comunicação).</span>
-    </div>
+<div class="summary-cards rh-stats-grid">
+  <div class="card">
+    <h3>Profissionais Ativos</h3>
+    <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
+    <span class="metric-detail"
+      >Voluntários e colaboradores com perfil ativo.</span
+    >
+  </div>
+  <div class="card">
+    <h3>Vagas em Aberto</h3>
+    <p class="metric-value" id="rh-metric-vagas">Carregando...</p>
+    <span class="metric-detail">Total de vagas disponíveis atualmente.</span>
+  </div>
+  <div class="card">
+    <h3>Colaboradores em Onboarding</h3>
+    <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
+    <span class="metric-detail"
+      >Profissionais aguardando a finalização do processo.</span
+    >
+  </div>
+  <div class="card">
+    <h3>Comunicações Recentes</h3>
+    <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
+    <span class="metric-detail"
+      >Comunicações enviadas na última semana (via módulo Comunicação).</span
+    >
+  </div>
 </div>
 
 <div class="dashboard-analytics-grid">
-    <div class="rh-chart-container card">
-        <h3>Distribuição de Profissionais por Função</h3>
-        <canvas id="rh-funcoes-chart"></canvas>
-    </div>
+  <div class="rh-chart-container card">
+    <h3>Distribuição de Profissionais por Função</h3>
+    <canvas id="rh-funcoes-chart"></canvas>
+  </div>
 
-    <div class="rh-chart-container card">
-        <h3>Métricas de Desligamento (Últimos 12 meses)</h3>
-        <canvas id="rh-desligamento-chart"></canvas>
-    </div>
+  <div class="rh-chart-container card">
+    <h3>Métricas de Desligamento (Últimos 12 meses)</h3>
+    <canvas id="rh-desligamento-chart"></canvas>
+  </div>
 </div>
