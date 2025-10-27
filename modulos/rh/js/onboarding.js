@@ -1,174 +1,405 @@
-<div>
-  <div class="painel-onboarding-colaboradores">
-    <h2 class="painel-titulo">Onboarding e Acompanhamento de Colaboradores</h2>
+// modulos/rh/js/onboarding.js
 
-    <div class="acoes-header">
-      <button id="btn-iniciar-onboarding" class="btn btn-primary">
-        <i class="fas fa-user-plus"></i> Iniciar Onboarding
-      </button>
-    </div>
+import {
+  db,
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  doc,
+  query,
+  where,
+} from "../../../assets/js/firebase-init.js";
+// Assumindo que a função para buscar usuários (gestores) está em um utilitário
+import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js"; // Novo utilitário hipotético
 
-    <div class="card card-filtros">
-      <h3>Fases do Onboarding</h3>
-      <div class="status-tabs">
-        <button class="btn btn-tab active" data-fase="pendente-docs">
-          Aguardando Documentação (0)
-        </button>
-        <button class="btn btn-tab" data-fase="em-integracao">
-          Em Integração (0)
-        </button>
-        <button class="btn btn-tab" data-fase="acompanhamento">
-          Acompanhamento (45/90 dias) (0)
-        </button>
-        <button class="btn btn-tab" data-fase="concluido">
-          Concluído (0)
-        </button>
-      </div>
-    </div>
+const onboardingCollection = collection(db, "onboarding");
+const candidatosCollection = collection(db, "candidatos");
+const solicitacoesTiCollection = collection(db, "solicitacoes_ti");
 
-    <div id="lista-onboarding" class="tabela-dados">
-      <p id="mensagem-onboarding">Nenhum colaborador nesta fase.</p>
-    </div>
+const listaOnboarding = document.getElementById("lista-onboarding");
+const modalOnboarding = document.getElementById("modal-onboarding");
+const selectCandidato = document.getElementById("onboarding-candidato-id");
+const formOnboarding = document.getElementById("form-onboarding");
 
-    <div id="modal-onboarding" class="modal-bg">
-      <div class="modal-content modal-lg">
-        <h3>Checklist de Integração</h3>
-        <form id="form-onboarding">
-          <input type="hidden" id="onboarding-id" />
+/**
+ * Inicializa o módulo de Onboarding, carrega candidatos aprovados e a lista de colaboradores em integração.
+ */
+function initOnboarding() {
+  console.log("Módulo de Onboarding de Colaboradores carregado.");
 
-          <div class="form-group">
-            <label for="onboarding-candidato-id">
-              Candidato/Novo Colaborador:
-            </label>
-            <select id="onboarding-candidato-id" required>
-              <option value="">Selecione o candidato aprovado...</option>
-            </select>
-          </div>
+  document
+    .getElementById("btn-iniciar-onboarding")
+    .addEventListener("click", () => abrirModalNovoOnboarding());
+  document.querySelectorAll(".fechar-modal").forEach((btn) => {
+    btn.addEventListener(
+      "click",
+      () => (modalOnboarding.style.display = "none")
+    );
+  });
 
-          <div id="onboarding-steps">
-            <fieldset class="step-card" data-step="documentacao">
-              <legend>1. Documentação e Termos</legend>
-              <p id="status-docs">
-                Status:{" "}
-                <span class="badge badge-warning">Aguardando Envio</span>
-              </p>
-              <button
-                type="button"
-                class="btn btn-sm btn-info btn-visualizar-docs"
-                style="display: none;"
-              >
-                Visualizar Documentos Anexados
-              </button>
-              <p class="small-text">
-                O formulário de documentos é enviado ao candidato aprovado para
-                preenchimento e upload.
-              </p>
-              <button
-                type="button"
-                class="btn btn-sm btn-secondary btn-marcar-docs-recebidos"
-              >
-                <i class="fas fa-check"></i> Marcar como Recebido (Manual)
-              </button>
-            </fieldset>
+  // Eventos para as tabs de filtro
+  document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const fase = e.target.getAttribute("data-fase");
+      document
+        .querySelectorAll(".status-tabs .btn-tab")
+        .forEach((b) => b.classList.remove("active"));
+      e.target.classList.add("active");
+      carregarColaboradores(fase);
+    });
+  });
 
-            <fieldset class="step-card" data-step="integracao">
-              <legend>2. Integração e Treinamentos</legend>
-              <div class="form-group">
-                <label for="data-integracao">Agendamento da Integração:</label>
-                <input type="date" id="data-integracao" />
-              </div>
-              <div class="form-group">
-                <label for="treinamentos-iniciais">
-                  Treinamentos Iniciais (Checklist):
-                </label>
-                <input type="checkbox" id="treinamento-codigo-conduta" />
-                <label for="treinamento-codigo-conduta" class="inline-label">
-                  Código de Conduta
-                </label>
-                <br />
-                <input type="checkbox" id="treinamento-sistemas" />
-                <label for="treinamento-sistemas" class="inline-label">
-                  Uso de Sistemas Internos
-                </label>
-              </div>
-              <button
-                type="button"
-                class="btn btn-sm btn-success btn-marcar-integracao-ok"
-              >
-                <i class="fas fa-check"></i> Finalizar Etapa
-              </button>
-            </fieldset>
+  // Adiciona listener aos botões de ação dentro do modal
+  formOnboarding.addEventListener("click", handleOnboardingActions);
 
-            <fieldset class="step-card" data-step="acessos-ti">
-              <legend>
-                3. Solicitação de Criação de Usuários/Acessos (TI)
-              </legend>
-              <textarea
-                id="solicitacao-ti-detalhes"
-                rows="3"
-                placeholder="Detalhe os acessos necessários (e-mail, sistemas, permissões)..."
-              ></textarea>
-              <button
-                type="button"
-                class="btn btn-sm btn-warning btn-enviar-solicitacao-ti"
-              >
-                <i class="fas fa-envelope"></i> Enviar Solicitação à TI
-              </button>
-              <p id="status-ti" class="mt-2">
-                Status: Pendente
-              </p>
-            </fieldset>
+  // Carrega dados iniciais
+  carregarCandidatosAprovados();
+  carregarColaboradores("pendente-docs"); // Fase inicial
+}
 
-            <fieldset class="step-card" data-step="feedback">
-              <legend>4. Acompanhamento e Feedback</legend>
-              <div class="form-group">
-                <label for="feedback-45d">Feedback Fase 1 - 45 Dias:</label>
-                <textarea
-                  id="feedback-45d"
-                  rows="2"
-                  placeholder="Registro do feedback de 45 dias..."
-                ></textarea>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-info btn-salvar-feedback-45d"
-                >
-                  Salvar Feedback
-                </button>
-              </div>
+/**
+ * Carrega a lista de candidatos que foram APROVADOS no processo seletivo e ainda não iniciaram o onboarding.
+ */
+async function carregarCandidatosAprovados() {
+  // Busca candidatos com status 'Aprovado' (vindo do módulo de Gestão de Vagas)
+  const qCandidatos = query(
+    candidatosCollection,
+    where("status", "==", "Aprovado")
+  );
 
-              <div class="form-group">
-                <label for="feedback-3m">Feedback Fase 1 - 3 Meses:</label>
-                <textarea
-                  id="feedback-3m"
-                  rows="2"
-                  placeholder="Registro do feedback de 3 meses..."
-                ></textarea>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-info btn-salvar-feedback-3m"
-                >
-                  Salvar Feedback
-                </button>
-              </div>
+  try {
+    const snapshot = await getDocs(qCandidatos);
+    selectCandidato.innerHTML =
+      '<option value="">Selecione o candidato aprovado...</option>';
 
-              <button
-                type="button"
-                class="btn btn-lg btn-success btn-concluir-onboarding"
-              >
-                <i class="fas fa-trophy"></i> Concluir Fase 1 e Iniciar Fase 2
-                (Após 3 Meses)
-              </button>
-            </fieldset>
-          </div>
-        </form>
+    snapshot.forEach((doc) => {
+      const candidato = doc.data();
+      const option = document.createElement("option");
+      option.value = doc.id;
+      // Verifica se este candidato já tem um onboarding em andamento
+      // Idealmente, isso seria feito com uma Cloud Function ou JOIN
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary fechar-modal">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <script type="module" src="../js/onboarding.js"></script>
-</div>;
+      option.textContent = `${candidato.nomeCandidato} - Vaga: ${
+        candidato.vagaNome || "N/A"
+      }`;
+      selectCandidato.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Erro ao carregar candidatos aprovados:", error);
+  }
+}
+
+/**
+ * Abre o modal para iniciar um novo Onboarding para um candidato aprovado.
+ */
+function abrirModalNovoOnboarding() {
+  document.getElementById("onboarding-id").value = ""; // Limpa ID
+  formOnboarding.reset();
+  selectCandidato.disabled = false; // Permite escolher o novo colaborador
+  // Oculta botões de status e mostra o campo de seleção de candidato
+  document.getElementById("onboarding-steps").style.display = "none";
+  modalOnboarding.style.display = "flex";
+}
+
+/**
+ * Processa a criação inicial de um registro de Onboarding.
+ */
+selectCandidato.addEventListener("change", async (e) => {
+  const candidatoId = e.target.value;
+  if (!candidatoId) return;
+
+  // TODO: Verificar se já existe um registro de onboarding para este candidato
+
+  const novoRegistro = {
+    candidatoId: candidatoId,
+    nome: selectCandidato.options[selectCandidato.selectedIndex].text.split(
+      " - "
+    )[0],
+    vaga: selectCandidato.options[selectCandidato.selectedIndex].text.split(
+      " - "
+    )[1],
+    faseAtual: "pendente-docs",
+    dataInicio: new Date(),
+    documentacao: {
+      status: "pendente",
+      urlAnexos: null,
+    },
+    integracao: {
+      status: "pendente",
+      dataAgendada: null,
+      treinamentos: {},
+    },
+    acessosTI: {
+      status: "pendente",
+      detalhes: null,
+      solicitacaoId: null,
+    },
+    feedback: {
+      feedback_45d: null,
+      feedback_3m: null,
+      statusFase2: "pendente",
+    },
+    historico: [
+      {
+        data: new Date(),
+        acao: "Onboarding iniciado pelo RH.",
+      },
+    ],
+  };
+
+  try {
+    const docRef = await addDoc(onboardingCollection, novoRegistro);
+    document.getElementById("onboarding-id").value = docRef.id;
+    selectCandidato.disabled = true; // Trava a seleção após a criação
+    carregarDetalhesOnboarding(docRef.id);
+  } catch (error) {
+    console.error("Erro ao iniciar Onboarding:", error);
+    alert("Erro ao iniciar o registro de Onboarding.");
+    selectCandidato.value = ""; // Reseta seleção
+  }
+});
+
+/**
+ * Carrega e exibe os colaboradores na fase de onboarding selecionada.
+ * @param {string} fase
+ */
+async function carregarColaboradores(fase) {
+  listaOnboarding.innerHTML = '<div class="loading-spinner"></div>';
+
+  const q = query(onboardingCollection, where("faseAtual", "==", fase));
+
+  try {
+    const snapshot = await getDocs(q);
+    let htmlColaboradores = "";
+    let count = 0;
+
+    if (snapshot.empty) {
+      listaOnboarding.innerHTML = `<p id="mensagem-onboarding">Nenhum colaborador na fase: **${fase}**.</p>`;
+      return;
+    }
+
+    snapshot.forEach((doc) => {
+      const onboard = doc.data();
+      onboard.id = doc.id;
+      count++;
+
+      // Renderização simplificada
+      htmlColaboradores += `
+                <div class="card card-onboarding" data-id="${onboard.id}">
+                    <h4>${onboard.nome}</h4>
+                    <p>Vaga: ${onboard.vaga}</p>
+                    <p>Fase: **${onboard.faseAtual
+                      .toUpperCase()
+                      .replace("-", " ")}**</p>
+                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
+                      onboard.id
+                    }">Gerenciar Onboarding</button>
+                </div>
+            `;
+    });
+
+    listaOnboarding.innerHTML = htmlColaboradores;
+
+    // Atualiza o contador na aba de status
+    document.querySelector(
+      `.btn-tab[data-fase="${fase}"]`
+    ).textContent = `${fase.replace("-", " ").toUpperCase()} (${count})`;
+
+    // Adiciona eventos para botões de gerenciar
+    document.querySelectorAll(".btn-gerenciar").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        carregarDetalhesOnboarding(e.target.getAttribute("data-id"));
+      });
+    });
+  } catch (error) {
+    console.error("Erro ao carregar colaboradores em Onboarding:", error);
+    listaOnboarding.innerHTML =
+      '<p class="error">Erro ao carregar a lista.</p>';
+  }
+}
+
+/**
+ * Carrega e popula o modal com os detalhes de um registro de Onboarding existente.
+ * @param {string} onboardingId
+ */
+async function carregarDetalhesOnboarding(onboardingId) {
+  const onboardingRef = doc(db, "onboarding", onboardingId);
+  try {
+    const onboardSnap = await getDocs(onboardingRef);
+    if (!onboardSnap.exists()) {
+      alert("Registro de Onboarding não encontrado.");
+      return;
+    }
+    const onboardData = onboardSnap.data();
+
+    // 1. Popula campos básicos e ID
+    document.getElementById("onboarding-id").value = onboardingId;
+    // 2. Desabilita seleção e preenche nome (não há campo, só o select)
+    selectCandidato.disabled = true;
+    // 3. Atualiza o status de documentação
+    const statusDocsEl = document.getElementById("status-docs");
+    statusDocsEl.innerHTML = `Status: <span class="badge badge-${
+      onboardData.documentacao.status === "recebido" ? "success" : "warning"
+    }">${onboardData.documentacao.status.toUpperCase()}</span>`;
+    if (onboardData.documentacao.urlAnexos) {
+      document.querySelector(".btn-visualizar-docs").style.display =
+        "inline-block";
+      document
+        .querySelector(".btn-visualizar-docs")
+        .setAttribute("data-url", onboardData.documentacao.urlAnexos);
+    }
+
+    // 4. Popula campos de integração
+    document.getElementById("data-integracao").value =
+      onboardData.integracao.dataAgendada || "";
+    document.getElementById("treinamento-codigo-conduta").checked =
+      onboardData.integracao.treinamentos["codigo-conduta"] || false;
+    document.getElementById("treinamento-sistemas").checked =
+      onboardData.integracao.treinamentos["sistemas"] || false;
+
+    // 5. Popula campos de TI
+    document.getElementById("solicitacao-ti-detalhes").value =
+      onboardData.acessosTI.detalhes || "";
+    document.getElementById(
+      "status-ti"
+    ).textContent = `Status: ${onboardData.acessosTI.status.toUpperCase()}`;
+
+    // 6. Popula campos de Feedback
+    document.getElementById("feedback-45d").value =
+      onboardData.feedback.feedback_45d || "";
+    document.getElementById("feedback-3m").value =
+      onboardData.feedback.feedback_3m || "";
+
+    // Exibe o formulário de steps e o modal
+    document.getElementById("onboarding-steps").style.display = "block";
+    modalOnboarding.style.display = "flex";
+  } catch (error) {
+    console.error("Erro ao carregar detalhes do Onboarding:", error);
+    alert("Erro ao carregar detalhes. Verifique o console.");
+  }
+}
+
+/**
+ * Centraliza o tratamento dos eventos de clique nos botões de ação do modal.
+ * @param {Event} e
+ */
+async function handleOnboardingActions(e) {
+  const onboardingId = document.getElementById("onboarding-id").value;
+  if (!onboardingId) return;
+
+  const onboardRef = doc(db, "onboarding", onboardingId);
+
+  if (e.target.classList.contains("btn-marcar-docs-recebidos")) {
+    await updateDoc(onboardRef, {
+      "documentacao.status": "recebido",
+      faseAtual: "em-integracao",
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Documentação marcada como recebida (Manual).",
+      }),
+    });
+    alert(
+      "Documentação marcada como recebida. O colaborador avançou para a fase de integração."
+    );
+    carregarDetalhesOnboarding(onboardingId);
+    carregarColaboradores("em-integracao");
+  } else if (e.target.classList.contains("btn-marcar-integracao-ok")) {
+    const dataIntegracao = document.getElementById("data-integracao").value;
+    const treinamentos = {
+      "codigo-conduta": document.getElementById("treinamento-codigo-conduta")
+        .checked,
+      sistemas: document.getElementById("treinamento-sistemas").checked,
+    };
+
+    await updateDoc(onboardRef, {
+      "integracao.status": "concluido",
+      "integracao.dataAgendada": dataIntegracao,
+      "integracao.treinamentos": treinamentos,
+      // A fase atual não muda, pois a TI e o Feedback ainda estão pendentes.
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Etapa de Integração/Treinamentos atualizada.",
+      }),
+    });
+    alert("Etapa de Integração atualizada com sucesso.");
+    carregarDetalhesOnboarding(onboardingId);
+  } else if (e.target.classList.contains("btn-enviar-solicitacao-ti")) {
+    const detalhes = document.getElementById("solicitacao-ti-detalhes").value;
+
+    // 1. Cria o registro de solicitação de TI
+    const solicitacao = {
+      tipo: "Novo Usuário/Acessos",
+      onboardingId: onboardingId,
+      detalhes: detalhes,
+      status: "Pendente TI",
+      dataSolicitacao: new Date(),
+    };
+    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao);
+
+    // 2. Atualiza o registro de Onboarding
+    await updateDoc(onboardRef, {
+      "acessosTI.status": "solicitado",
+      "acessosTI.detalhes": detalhes,
+      "acessosTI.solicitacaoId": docSolicitacao.id,
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Solicitação de TI enviada.",
+      }),
+    });
+
+    alert("Solicitação de Criação de Usuários enviada à TI.");
+    carregarDetalhesOnboarding(onboardingId);
+  } else if (e.target.classList.contains("btn-salvar-feedback-45d")) {
+    const feedback = document.getElementById("feedback-45d").value;
+    await updateDoc(onboardRef, {
+      "feedback.feedback_45d": feedback,
+      faseAtual: "acompanhamento",
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Feedback de 45 dias registrado.",
+      }),
+    });
+    alert("Feedback de 45 dias salvo com sucesso.");
+    carregarDetalhesOnboarding(onboardingId);
+  } else if (e.target.classList.contains("btn-salvar-feedback-3m")) {
+    const feedback = document.getElementById("feedback-3m").value;
+    await updateDoc(onboardRef, {
+      "feedback.feedback_3m": feedback,
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Feedback de 3 meses registrado.",
+      }),
+    });
+    alert("Feedback de 3 meses salvo com sucesso.");
+    carregarDetalhesOnboarding(onboardingId);
+  } else if (e.target.classList.contains("btn-concluir-onboarding")) {
+    // Verifica se o feedback de 3 meses está preenchido
+    const feedback3m = document.getElementById("feedback-3m").value;
+    if (!feedback3m) {
+      alert("Preencha o Feedback de 3 Meses antes de concluir o Onboarding.");
+      return;
+    }
+
+    await updateDoc(onboardRef, {
+      faseAtual: "concluido",
+      "feedback.statusFase2": "iniciada", // Marca o início da fase 2 (contrato efetivo)
+      dataConclusao: new Date(),
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Fase 1 do Onboarding concluída. Colaborador passa para Fase 2.",
+      }),
+    });
+    alert(
+      "Onboarding concluído com sucesso! Colaborador passa para Fase 2 (efetivação)."
+    );
+    modalOnboarding.style.display = "none";
+    carregarColaboradores("concluido");
+  }
+}
+
+// Inicia o módulo
+document.addEventListener("DOMContentLoaded", initOnboarding);
+
+// Exponha a função de inicialização se o app.js a chamar dinamicamente
+// window.initOnboarding = initOnboarding;
