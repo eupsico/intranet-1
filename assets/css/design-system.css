@@ -485,7 +485,7 @@ legend {
 .modal-header h2 {
     margin: 0;
     font-size: 1.4em;
-    color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
 }
 .modal-header modal-title-text{
     color: var(--cor-texto-inverso);

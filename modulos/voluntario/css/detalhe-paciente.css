@@ -262,10 +262,6 @@ MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
 }
 
 
-/* --- ESTILOS DE MODAIS (Movidos de meus-pacientes.css) --- */
-/* .modal-overlay, .modal-content, .modal-header, .modal-body, .modal-footer
-   são primariamente estilizados pelo design-system.css
-*/
 .modal-content.large {
     max-width: 850px;
 }
