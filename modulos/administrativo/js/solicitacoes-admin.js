@@ -386,18 +386,17 @@ export async function init(db_ignored, user, userData) {
           const dataAtualizacao = formatarData(item.lastUpdate);
           const tr = document.createElement("tr");
           tr.innerHTML = `
-                        <td>${item.pacienteNome}</td>
-                        <td>${item.profissionalNome}</td>
-                        <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
-                        <td>${dataAtualizacao}</td>
-                        <td>
-                            <button class="action-button btn-notificar-contrato"
-                                    data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
-                                    data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
-                                    title="Notificar profissional sobre contrato pendente via WhatsApp">
-                                Notificar
-                            </button>
-                        </td>`;
+      <td>${item.pacienteNome}</td>
+      <td>${item.profissionalNome}</td>
+      <td><span class="status-badge status-pendente">${item.statusContrato}</span></td>
+      <td>${dataAtualizacao}</td>
+      <td><button class="action-button btn-notificar-contrato" 
+      data-paciente-id="${item.pacienteId}" data-paciente-nome="${item.pacienteNome}"
+      data-profissional-id="${item.profissionalId}" data-profissional-nome="${item.profissionalNome}"
+      title="Notificar profissional sobre contrato pendente via WhatsApp">
+      Notificar
+      </button>
+      </td>`;
           tableBody.appendChild(tr);
         });
       }
