@@ -1,5 +1,5 @@
 // Arquivo: assets/js/app.js
-// Versão: 9.2 (Com integração do Painel de Gestão)
+// Versão: 9.2 (Com integração do Painel de Gestão e Módulos de RH)
 
 // 1. Importa os serviços e funções necessários do nosso arquivo de configuração central
 export let currentUserData = {};
@@ -62,6 +62,106 @@ export async function carregarProfissionais(dbInstance, funcao, selectElement) {
   }
 }
 // --- Lógica Principal da Aplicação ---
+
+// --- NOVO: Função de carregamento dinâmico para submódulos do RH ---
+async function loadRhSubModule(subModuleId, user, userData) {
+  const contentArea = document.getElementById("content-area");
+  const pageTitleContainer = document.getElementById("page-title-container");
+
+  if (!contentArea) {
+    console.error("Elemento #content-area não encontrado.");
+    return;
+  }
+
+  contentArea.innerHTML =
+    '<div class="loading-spinner">Carregando módulo...</div>';
+
+  // Mapeamento de títulos para os novos módulos do RH
+  const titles = {
+    gestao_vagas: {
+      title: "Gestão de Vagas e Recrutamento",
+      subtitle: "Definição de vagas, aprovação e pipeline de candidatos.",
+    },
+    onboarding_colaboradores: {
+      title: "Onboarding de Colaboradores",
+      subtitle:
+        "Checklist de integração, documentação e acompanhamento inicial.",
+    },
+    desligamento: {
+      title: "Gestão de Desligamentos (Offboarding)",
+      subtitle:
+        "Checklist de encerramento, recuperação de ativos e baixa de acessos.",
+    },
+    // Módulos existentes
+    gestao_profissionais: {
+      title: "Gestão de Profissionais",
+      subtitle: "Gerenciamento de dados e funções da equipe.",
+    },
+    comunicados: {
+      title: "Comunicados",
+      subtitle: "Envio e histórico de comunicações internas.",
+    },
+  };
+
+  const moduleInfo = titles[subModuleId];
+  if (!moduleInfo) {
+    contentArea.innerHTML = `<p class="alert alert-error">Módulo '${subModuleId}' não encontrado.</p>`;
+    return;
+  }
+
+  // 1. Atualiza o título da página
+  if (pageTitleContainer) {
+    pageTitleContainer.innerHTML = `<h1>${moduleInfo.title}</h1><p>${moduleInfo.subtitle}</p>`;
+  }
+
+  // 2. Busca o HTML correspondente
+  const htmlPath = `../../modulos/rh/page/${subModuleId}.html`;
+  try {
+    const response = await fetch(htmlPath);
+    if (!response.ok) {
+      throw new Error(
+        `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status}).`
+      );
+    }
+    const htmlContent = await response.text();
+
+    // Remove a tag <script> para evitar carregamento duplo e injeta o HTML
+    // Presume-se que o HTML contenha a tag <script type="module" src="../js/..."> que será removida
+    // e o JS será importado dinamicamente abaixo.
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = htmlContent;
+    tempDiv.querySelectorAll("script").forEach((script) => script.remove());
+
+    contentArea.innerHTML = tempDiv.innerHTML;
+
+    // 3. Importa e executa o JS do submódulo
+    const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
+    console.log("Tentando importar JS do submódulo:", jsPath);
+
+    // Usa a convenção de que o arquivo JS tem o mesmo nome do HTML
+    const module = await import(jsPath + "?t=" + Date.now()); // Cache busting
+
+    // O módulo RH usa funções globais como `initrhPanel` ou `initGestaoVagas`.
+    if (typeof module.init === "function") {
+      // Se o módulo exporta uma função 'init' (convenção preferida)
+      await module.init(user, userData);
+    } else if (
+      typeof module[`init${subModuleId.replace(/[-_]/g, "")}`] === "function"
+    ) {
+      // Caso a função de inicialização tenha o nome específico (e.g., initgestaovagas)
+      await module[`init${subModuleId.replace(/[-_]/g, "")}`](user, userData);
+    } else if (typeof module.initrhPanel === "function") {
+      // Caso o módulo antigo use uma função genérica (rh-painel.js)
+      await module.initrhPanel(user, db, userData);
+    }
+
+    console.log(`Submódulo ${subModuleId}.js inicializado.`);
+  } catch (error) {
+    console.error(`Erro ao carregar o submódulo RH ${subModuleId}:`, error);
+    contentArea.innerHTML = `<div class="container-fluid"><p class="alert alert-error">Erro ao carregar a seção '${subModuleId}'. Verifique o console para detalhes técnicos.</p></div>`;
+  }
+}
+// --- FIM NOVO: Função de carregamento dinâmico para submódulos do RH ---
 
 document.addEventListener("DOMContentLoaded", function () {
   const loginView = document.getElementById("login-view");
@@ -126,15 +226,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const pathPrefix = isSubPage ? "../../../" : "./";
 
     loginView.innerHTML = `
-    <div class="login-container">
-      <div class="login-card">
-        <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
-        <h2>Intranet EuPsico</h2>
-        <p>${message}</p>
-        <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
-        <button id="login-button" class="action-button login-button">Login com Google</button>
-      </div>
-    </div>`;
+    <div class="login-container">
+      <div class="login-card">
+        <img src="${pathPrefix}assets/img/logo-eupsico.png" alt="Logo EuPsico" class="login-logo">
+        <h2>Intranet EuPsico</h2>
+        <p>${message}</p>
+        <p class="login-email-info" style="font-size: 0.9em; font-weight: 500; color: var(--cor-primaria); background-color: var(--cor-fundo); padding: 10px; border-radius: 5px; margin-top: 20px; margin-bottom: 25px;">Utilize seu e-mail @eupsico.org.br para acessar.</p>
+        <button id="login-button" class="action-button login-button">Login com Google</button>
+      </div>
+    </div>`;
 
     document.getElementById("login-button").addEventListener("click", () => {
       loginView.innerHTML = `<p style="text-align:center; margin-top: 50px;">Aguarde...</p>`;
@@ -199,8 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (pageTitleContainer) {
           pageTitleContainer.innerHTML = `<h1>Painel de Controle</h1><p>Configurações gerais e gerenciamento do sistema.</p>`;
         }
-        const module = await import("../../modulos/admin/js/painel-admin.js");
-        // Chama a função 'init' exportada pelo módulo, passando o contexto do usuário
+        const module = await import("../../modulos/admin/js/painel-admin.js"); // Chama a função 'init' exportada pelo módulo, passando o contexto do usuário
         module.init(user, userData);
       },
       "painel-gestao.html": async () => {
@@ -265,21 +364,70 @@ document.addEventListener("DOMContentLoaded", function () {
         const pageTitleContainer = document.getElementById(
           "page-title-container"
         );
+        const contentArea = document.getElementById("content-area");
+
         if (pageTitleContainer) {
           pageTitleContainer.innerHTML = `<h2>Recursos Humanos</h2><p>Gestão de profissionais, vagas e comunicados.</p>`;
         }
-        const module = await import("../../modulos/rh/js/rh-painel.js");
-        module.initrhPanel(user, db, userData);
+
+        // --- LÓGICA DE SUBMÓDULOS RH ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const subModuleId = urlParams.get("view"); // Assume que a navegação interna usa ?view=...
+
+        if (subModuleId) {
+          // Carrega o submódulo dinamicamente (gestao_vagas, onboarding, desligamento)
+          await loadRhSubModule(subModuleId, user, userData);
+        } else {
+          // Se não houver ?view=, carrega o dashboard padrão do RH
+          const module = await import("../../modulos/rh/js/rh-painel.js");
+          module.initrhPanel(user, db, userData);
+        }
+
+        // Adiciona listeners para navegação interna do RH (via #rh-views)
+        document
+          .getElementById("rh-views")
+          .addEventListener("click", async (e) => {
+            const target = e.target.closest("div[data-view-id]");
+            if (target) {
+              const viewId = target.getAttribute("data-view-id");
+              e.preventDefault();
+
+              // Mude a URL para refletir o estado (sem recarregar a página)
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.set("view", viewId);
+              window.history.pushState({ path: newUrl.href }, "", newUrl.href);
+
+              // Carrega o novo submódulo
+              await loadRhSubModule(viewId, user, userData);
+            }
+          });
+
+        // Adiciona listener para os links/botões no conteúdo principal do RH (opcional, se forem botões)
+        contentArea.addEventListener("click", async (e) => {
+          const btn = e.target.closest("button[data-view-id]");
+          if (btn) {
+            const viewId = btn.getAttribute("data-view-id");
+            e.preventDefault();
+
+            // Mude a URL para refletir o estado (sem recarregar a página)
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set("view", viewId);
+            window.history.pushState({ path: newUrl.href }, "", newUrl.href);
+
+            // Carrega o novo submódulo
+            await loadRhSubModule(viewId, user, userData);
+          }
+        });
+
+        // --- FIM LÓGICA DE SUBMÓDULOS RH ---
       },
       "portal-voluntario.html": async () => {
         const pageTitleContainer = document.getElementById(
           "page-title-container"
-        );
-        // Define um título padrão inicial, que pode ser sobrescrito pelo submódulo
+        ); // Define um título padrão inicial, que pode ser sobrescrito pelo submódulo
         if (pageTitleContainer)
-          pageTitleContainer.innerHTML = "<h1>Portal do Voluntário</h1>";
+          pageTitleContainer.innerHTML = "<h1>Portal do Voluntário</h1>"; // Verifica se há parâmetros p= e s= na URL atual
 
-        // Verifica se há parâmetros p= e s= na URL atual
         const urlParams = new URLSearchParams(window.location.search);
         const moduloParam = urlParams.get("p");
         const secaoParam = urlParams.get("s");
@@ -288,8 +436,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!contentArea) {
           console.error(
             "Elemento #content-area não encontrado no HTML principal (portal-voluntario.html)."
-          );
-          // Tenta encontrar main-content como fallback
+          ); // Tenta encontrar main-content como fallback
           const mainContent = document.querySelector(".main-content");
           if (mainContent) {
             mainContent.innerHTML =
@@ -297,15 +444,14 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           return; // Não pode carregar conteúdo sem a área designada
         }
-        contentArea.innerHTML = '<div class="loading-spinner"></div>'; // Mostra loading inicial
+        contentArea.innerHTML = '<div class="loading-spinner"></div>'; // Mostra loading inicial // *** LÓGICA PRINCIPAL DA CORREÇÃO ***
 
-        // *** LÓGICA PRINCIPAL DA CORREÇÃO ***
         if (moduloParam && secaoParam && moduloParam === "voluntario") {
           // Se p=voluntario e s= existem, carrega o HTML e JS do SUBMÓDULO VOLUNTARIO específico
           console.log(`Carregando submódulo voluntário: ${secaoParam}`);
           try {
             // 1. Carrega o HTML da seção na #content-area
-            //    O caminho é relativo ao portal-voluntario.html
+            //    O caminho é relativo ao portal-voluntario.html
             const htmlPath = `./page/${secaoParam}.html`;
             console.log("Tentando carregar HTML do submódulo:", htmlPath);
             const response = await fetch(htmlPath);
@@ -315,13 +461,11 @@ document.addEventListener("DOMContentLoaded", function () {
               );
             }
             contentArea.innerHTML = await response.text();
-            console.log(`HTML de ${secaoParam}.html carregado.`);
+            console.log(`HTML de ${secaoParam}.html carregado.`); // Atualiza o título da página se houver h2 no conteúdo carregado
 
-            // Atualiza o título da página se houver h2 no conteúdo carregado
             const pageTitleElement = contentArea.querySelector("h2");
             if (pageTitleContainer && pageTitleElement) {
-              pageTitleContainer.innerHTML = `<h1>${pageTitleElement.textContent}</h1>`;
-              // Poderia adicionar subtítulo se houver <p class="description-box">
+              pageTitleContainer.innerHTML = `<h1>${pageTitleElement.textContent}</h1>`; // Poderia adicionar subtítulo se houver <p class="description-box">
               const descriptionElement =
                 contentArea.querySelector("p.description-box");
               if (descriptionElement) {
@@ -332,16 +476,12 @@ document.addEventListener("DOMContentLoaded", function () {
               pageTitleContainer.innerHTML = `<h1>${secaoParam
                 .replace(/[-_]/g, " ")
                 .replace(/\b\w/g, (l) => l.toUpperCase())}</h1>`;
-            }
+            } // 2. Importa e executa o JS do submódulo //    O caminho é relativo ao app.js
 
-            // 2. Importa e executa o JS do submódulo
-            //    O caminho é relativo ao app.js
             const jsPath = `../../modulos/${moduloParam}/js/${secaoParam}.js`;
-            console.log("Tentando importar JS do submódulo:", jsPath);
-            // Adiciona cache busting simples para tentar forçar recarregamento do JS
-            const module = await import(jsPath + "?t=" + Date.now());
+            console.log("Tentando importar JS do submódulo:", jsPath); // Adiciona cache busting simples para tentar forçar recarregamento do JS
+            const module = await import(jsPath + "?t=" + Date.now()); // Chama a função 'init' exportada pelo submódulo
 
-            // Chama a função 'init' exportada pelo submódulo
             if (module && typeof module.init === "function") {
               // Passa o user e userData para o init do submódulo (ex: meus-pacientes.js ou detalhe-paciente.js)
               await module.init(user, userData);
@@ -378,8 +518,7 @@ document.addEventListener("DOMContentLoaded", function () {
               // Esta função (initPortal) é responsável por
               // construir o menu, configurar listeners de hash e carregar a view inicial (geralmente dashboard)
               module.initPortal(user, userData);
-              console.log("portal-voluntario.js inicializado.");
-              // O título será definido pela lógica interna do portal-voluntario (handleHashChange -> loadView)
+              console.log("portal-voluntario.js inicializado."); // O título será definido pela lógica interna do portal-voluntario (handleHashChange -> loadView)
             } else {
               console.error(
                 `Módulo ${portalJsPath} não exporta a função 'initPortal'.`
