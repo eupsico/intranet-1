@@ -73,32 +73,31 @@ export function initrhPanel(user, db, userData) {
         <div class="description-box">
             <p>Selecione uma opção no menu lateral ou clique em um cartão abaixo para iniciar a gestão.</p>
         </div>
-        <div class="rh-dashboard-grid">
-            ${views
-      .filter((v) => v.id !== "dashboard")
-      .map((view) => {
-        const hasPermission = view.roles.some((role) =>
-          userRoles.includes(role.trim())
-        );
-        if (hasPermission) {
-          return `
-                        <a href="#${view.id}" class="rh-card card-link">
-                            ${view.icon}
-                            <h3>${view.name}</h3>
-                            <p>Gerencie o fluxo de ${view.name
-            .toLowerCase()
-            .replace("gestão de ", "")
-            .replace("profissionais", "profissionais/voluntários")}.</p>
-                        </a>
-                    `;
-        }
-        return "";
-      })
-      .join("")}
-        </div>
-    `;
+<div class="rh-dashboard-grid">
+${views
+  .filter((v) => v.id !== "dashboard")
+  .map((view) => {
+    const hasPermission = view.roles.some((role) =>
+      userRoles.includes(role.trim())
+    );
+    if (hasPermission) {
+      return `
+<a href="#${view.id}" class="rh-card card-link">
+${view.icon}
+<h3>${view.name}</h3>
+<p>Gerencie o fluxo de ${view.name
+        .toLowerCase()
+        .replace("gestão de ", "")
+        .replace("profissionais", "profissionais/voluntários")}.</p>
+</a>
+`;
+    }
+    return "";
+  })
+  .join("")}
+</div>
+`;
   } // --- Função para carregar a view (HTML + JS) ---
-
   async function loadView(viewName) {
     const viewData = views.find((v) => v.id === viewName);
 
@@ -172,10 +171,9 @@ export function initrhPanel(user, db, userData) {
     if (!sidebarMenu) return;
     // ... (menu HTML)
     sidebarMenu.innerHTML = `
-            <li><a href="../../../index.html" class="back-link">${icons.dashboard}<span>Voltar à Intranet</span></a></li>
-            <li class="menu-separator"></li>
-        `;
-
+<li><a href="../../../index.html" class="back-link">${icons.dashboard}<span>Voltar à Intranet</span></a></li>
+<li class="menu-separator"></li>
+`;
     views.forEach((view) => {
       const hasPermission = view.roles.some((role) =>
         userRoles.includes(role.trim())
