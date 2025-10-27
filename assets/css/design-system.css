@@ -882,9 +882,11 @@ legend {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--cor-fundo);
+  /* CORREÇÃO: Altera cor de fundo para a cor primária para destaque */
+  background-color: var(--cor-primaria);
 }
 
+.modal-header h3,
 .modal-header h2 {
   margin: 0;
   font-size: 1.4em;
@@ -899,7 +901,8 @@ legend {
   border: none;
   font-size: 2em;
   font-weight: 300;
-  color: var(--cor-texto-secundario);
+  /* CORREÇÃO: Altera cor para branco para ser visível no cabeçalho primário. */
+  color: var(--cor-texto-inverso);
   cursor: pointer;
   line-height: 1;
 }
