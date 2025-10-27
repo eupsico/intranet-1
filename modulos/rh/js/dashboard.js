@@ -1,96 +1,158 @@
-// modulos/rh/js/dashboard.js
+// Arquivo: /modulos/rh/js/dashboard.js
 
-import {
-  db,
-  collection,
-  getDocs,
-  query,
-  where,
-  limit,
-} from "../../../assets/js/firebase-init.js";
-
-const vagasCollection = collection(db, "vagas");
-const onboardingCollection = collection(db, "onboarding");
-
-/**
- * Inicializa o dashboard de RH e carrega todos os dados principais.
- */
+// A função initdashboard é a função de inicialização do módulo, chamada pelo rh-painel.js
 export async function initdashboard(user, userData) {
-  console.log("Dashboard de RH carregado. Buscando dados resumidos.");
+  console.log("📈 Iniciando Dashboard de RH...");
 
-  await carregarVagasEmRecrutamento();
-  // Funções futuras: carregarOnboardingSummary(), carregarDesligamentosSummary()
-}
+  // A instância do Firestore (db) é definida em window.db pelo rh-painel.js
+  const db = window.db;
 
-/**
- * Busca e exibe as vagas que estão ativamente em recrutamento.
- */
-async function carregarVagasEmRecrutamento() {
-  const listaVagasBody = document.getElementById("lista-vagas-dashboard");
-  const countVagasAbertas = document.getElementById("count-vagas-abertas");
+  if (!db) {
+    console.error(
+      "Firebase Firestore não inicializado. Não é possível carregar os dados."
+    );
+    document.getElementById("content-area").innerHTML =
+      "<h2>Erro</h2><p>Falha ao conectar com o banco de dados.</p>";
+    return;
+  }
 
-  // Filtra vagas que estão 'em-divulgacao' (status ativo)
-  const q = query(
-    vagasCollection,
-    where("status", "==", "em-divulgacao"),
-    limit(5) // Limita a 5 para o dashboard de resumo
-  );
+  // Mapeamento dos elementos do DOM
+  const metricAtivos = document.getElementById("rh-metric-ativos");
+  const metricVagas = document.getElementById("rh-metric-vagas");
+  const metricOnboarding = document.getElementById("rh-metric-onboarding");
+  const metricComunicados = document.getElementById("rh-metric-comunicados");
+  const funcoesChartCtx = document
+    .getElementById("rh-funcoes-chart")
+    ?.getContext("2d");
+  const desligamentoChartCtx = document
+    .getElementById("rh-desligamento-chart")
+    ?.getContext("2d");
+
+  // Função de busca de dados simulada.
+  // IMPORTANTE: Em produção, você deve implementar aqui as consultas reais ao Firebase Firestore.
+  async function fetchRHDashboardData() {
+    // Exemplo de como você faria uma consulta real (descomente e adapte):
+    /*
+    const ativosSnapshot = await db.collection('usuarios').where('status_rh', '==', 'ativo').get();
+    const ativosCount = ativosSnapshot.size;
+    
+    // ... e assim por diante para todas as métricas ...
+    */
+
+    // Dados de exemplo (Mock para demonstração da estrutura)
+    return {
+      ativos: 145,
+      vagas: 5,
+      onboarding: 12,
+      comunicados: 8,
+      funcoesData: {
+        labels: [
+          "Psicólogo Voluntário",
+          "Psicólogo Plantonista",
+          "Supervisor",
+          "Admin/RH",
+        ],
+        data: [110, 20, 10, 5],
+      },
+      desligamentoData: {
+        labels: [
+          "Jan",
+          "Fev",
+          "Mar",
+          "Abr",
+          "Mai",
+          "Jun",
+          "Jul",
+          "Ago",
+          "Set",
+          "Out",
+          "Nov",
+          "Dez",
+        ],
+        data: [2, 1, 0, 3, 1, 0, 1, 2, 0, 0, 1, 0],
+      },
+    };
+  }
 
   try {
-    const snapshot = await getDocs(q);
-    let htmlVagas = "";
-    let count = 0;
+    const data = await fetchRHDashboardData();
 
-    if (snapshot.empty) {
-      listaVagasBody.innerHTML =
-        '<tr><td colspan="5" class="text-center">Nenhuma vaga em recrutamento ativa no momento.</td></tr>';
-      countVagasAbertas.textContent = "0";
-      return;
+    // 1. Popular Métricas nos Cards
+    if (metricAtivos) metricAtivos.textContent = data.ativos;
+    if (metricVagas) metricVagas.textContent = data.vagas;
+    if (metricOnboarding) metricOnboarding.textContent = data.onboarding;
+    if (metricComunicados) metricComunicados.textContent = data.comunicados;
+
+    // 2. Renderizar Gráfico de Distribuição de Funções (Doughnut)
+    if (funcoesChartCtx) {
+      new Chart(funcoesChartCtx, {
+        type: "doughnut",
+        data: {
+          labels: data.funcoesData.labels,
+          datasets: [
+            {
+              label: "Total",
+              data: data.funcoesData.data,
+              backgroundColor: ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e"], // Cores de exemplo
+              hoverOffset: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                padding: 20,
+              },
+            },
+            title: {
+              display: false,
+            },
+          },
+        },
+      });
     }
 
-    snapshot.forEach((doc) => {
-      const vaga = doc.data();
-      vaga.id = doc.id;
-      count++;
-
-      const dataAbertura = vaga.dataCriacao
-        ? new Date(vaga.dataCriacao.seconds * 1000).toLocaleDateString("pt-BR")
-        : "N/A";
-      const candidatos = vaga.candidatosCount || 0;
-
-      htmlVagas += `
-                <tr>
-                    <td>${vaga.nome}</td>
-                    <td><span class="status-badge status-pendente">${vaga.status
-                      .toUpperCase()
-                      .replace("-", " ")}</span></td>
-                    <td>${candidatos}</td>
-                    <td>${dataAbertura}</td>
-                    <td><button class="action-button secondary btn-sm" data-vaga-id="${
-                      vaga.id
-                    }">Gerenciar</button></td>
-                </tr>
-            `;
-    });
-
-    listaVagasBody.innerHTML = htmlVagas;
-    countVagasAbertas.textContent = count.toString();
+    // 3. Renderizar Gráfico de Desligamentos (Barra)
+    if (desligamentoChartCtx) {
+      new Chart(desligamentoChartCtx, {
+        type: "bar",
+        data: {
+          labels: data.desligamentoData.labels,
+          datasets: [
+            {
+              label: "Desligamentos",
+              data: data.desligamentoData.data,
+              backgroundColor: "#e74a3b",
+              borderColor: "#e74a3b",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              precision: 0, // Garante números inteiros no eixo Y
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+        },
+      });
+    }
   } catch (error) {
-    console.error("Erro ao carregar vagas do dashboard:", error);
-    listaVagasBody.innerHTML =
-      '<tr><td colspan="5" class="alert alert-error">Erro ao carregar os dados.</td></tr>';
-    countVagasAbertas.textContent = "ERRO";
+    console.error("Erro ao carregar dados do Dashboard RH:", error);
+    // Exibe mensagem de erro na área de conteúdo
+    document.getElementById("content-area").innerHTML =
+      "<h2>Erro de Carregamento</h2><p>Não foi possível carregar as métricas do dashboard devido a um erro de conexão ou processamento de dados.</p>";
   }
 }
-
-// Inicia o módulo quando o DOM estiver pronto e a função for chamada pelo app.js
-document.addEventListener("DOMContentLoaded", () => {
-  // Adiciona listener para os botões "Ver Todas as Vagas"
-  document
-    .querySelector('.action-button[data-view-id="gestao_vagas"]')
-    ?.addEventListener("click", (e) => {
-      // Redireciona via JS para garantir que o app.js intercepte
-      const viewId = e.target.getAttribute("data-view-id");
-      window.location.search = `?view=${viewId}`;
-    });
-});

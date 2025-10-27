@@ -1,52 +1,39 @@
-<div class="rh-dashboard">
-    <div class="description-box">
-        <p>Visão geral das métricas e fluxos de trabalho do setor de Recursos Humanos. Acompanhe vagas, onboarding e desempenho da equipe.</p>
+<div class="page-header">
+    <h2>Dashboard de Recursos Humanos</h2>
+    <p class="subtitle">Visão geral e métricas do módulo RH.</p>
+</div>
+
+<div class="dashboard-metrics-grid rh-stats-grid">
+    <div class="metric-card card">
+        <h4>Profissionais Ativos</h4>
+        <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
+        <span class="metric-detail">Voluntários e colaboradores com perfil ativo.</span>
     </div>
-    
-    <div class="summary-cards">
-        <div class="card" id="card-vagas-abertas">
-            <h3>Vagas Abertas</h3>
-            <p id="count-vagas-abertas">0</p>
-        </div>
-        <div class="card" id="card-onboarding-andamento">
-            <h3>Onboarding em Andamento</h3>
-            <p id="count-onboarding-andamento">0</p>
-        </div>
-        <div class="card" id="card-desligamentos-mes">
-            <h3>Desligamentos (Mês)</h3>
-            <p id="count-desligamentos-mes">0</p>
-        </div>
-        <div class="card" id="card-profissionais-ativos">
-            <h3>Profissionais Ativos</h3>
-            <p id="count-profissionais-ativos">0</p>
-        </div>
+    <div class="metric-card card">
+        <h4>Vagas em Aberto</h4>
+        <p class="metric-value" id="rh-metric-vagas">Carregando...</p>
+        <span class="metric-detail">Total de vagas disponíveis atualmente.</span>
+    </div>
+    <div class="metric-card card">
+        <h4>Colaboradores em Onboarding</h4>
+        <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
+        <span class="metric-detail">Profissionais aguardando a finalização do processo.</span>
+    </div>
+    <div class="metric-card card">
+        <h4>Comunicações Recentes</h4>
+        <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
+        <span class="metric-detail">Comunicações enviadas na última semana (via módulo Comunicação).</span>
+    </div>
+</div>
+
+<div class="dashboard-analytics-grid">
+    <div class="rh-chart-container card">
+        <h3>Distribuição de Profissionais por Função</h3>
+        <canvas id="rh-funcoes-chart"></canvas>
     </div>
 
-    <div class="dashboard-section">
-        <div class="section-header">
-            <h2>Vagas em Recrutamento</h2>
-        </div>
-        <div class="table-section">
-            <table id="tabela-vagas-abertas">
-                <thead>
-                    <tr>
-                        <th>Vaga</th>
-                        <th>Status</th>
-                        <th>Candidatos</th>
-                        <th>Data de Abertura</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="lista-vagas-dashboard">
-                    <tr>
-                        <td colspan="5">Carregando vagas...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <button class="action-button secondary" data-view-id="gestao_vagas">Ver Todas as Vagas</button>
+    <div class="rh-chart-container card">
+        <h3>Métricas de Desligamento (Últimos 12 meses)</h3>
+        <canvas id="rh-desligamento-chart"></canvas>
     </div>
-
-    </div>
-
-<script type="module" src="../js/dashboard.js"></script>
+</div>
