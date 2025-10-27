@@ -11,9 +11,39 @@ import {
   where,
 } from "../../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
+// Importa a função do novo utilitário user-management
+import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
+
 // Coleção principal no Firestore para as vagas
 const vagasCollection = collection(db, "vagas");
 const candidatosCollection = collection(db, "candidatos");
+const selectGestor = document.getElementById("vaga-gestor"); // Elemento Select
+
+/**
+ * Função para carregar a lista de gestores e popular o campo select.
+ */
+async function carregarGestores() {
+  // Busca usuários com a função 'Gestor' (ou 'Supervisor', dependendo da estrutura real)
+  // Usaremos 'Gestor' como padrão para este módulo.
+  const gestores = await fetchUsersByRole("Gestor");
+
+  selectGestor.innerHTML = '<option value="">Selecione o Gestor...</option>';
+
+  if (gestores.length === 0) {
+    // Exibir uma mensagem de erro ou desabilitar o formulário, se necessário
+    console.warn(
+      "Nenhum usuário com a função 'Gestor' encontrado no banco de dados."
+    );
+    return;
+  }
+
+  gestores.forEach((gestor) => {
+    const option = document.createElement("option");
+    option.value = gestor.id;
+    option.textContent = gestor.nome || gestor.email; // Prefere o nome, senão usa o email
+    selectGestor.appendChild(option);
+  });
+}
 
 /**
  * Função para inicializar os eventos e carregar a lista de vagas.
@@ -24,29 +54,25 @@ function initGestaoVagas() {
   const btnNovaVaga = document.getElementById("btn-nova-vaga");
   const modalVaga = document.getElementById("modal-vaga");
   const formVaga = document.getElementById("form-vaga");
-  const listaVagas = document.getElementById("lista-vagas");
+  const listaVagas = document.getElementById("lista-vagas"); // Carrega a lista de gestores no início
 
-  // Abre o modal de nova vaga
+  carregarGestores(); // Abre o modal de nova vaga
+
   btnNovaVaga.addEventListener("click", () => {
-    modalVaga.style.display = "flex";
-    // Resetar formulário para nova vaga
+    modalVaga.style.display = "flex"; // Resetar formulário para nova vaga
     formVaga.reset();
-  });
+  }); // Fecha o modal
 
-  // Fecha o modal
   document.querySelectorAll(".fechar-modal").forEach((btn) => {
     btn.addEventListener("click", () => {
       modalVaga.style.display = "none";
     });
-  });
+  }); // Submissão do formulário de vaga
 
-  // Submissão do formulário de vaga
-  formVaga.addEventListener("submit", handleSalvarVaga);
+  formVaga.addEventListener("submit", handleSalvarVaga); // Carrega a lista inicial (vagas abertas)
 
-  // Carrega a lista inicial (vagas abertas)
-  carregarVagas("abertas");
+  carregarVagas("abertas"); // Adiciona eventos aos botões de status
 
-  // Adiciona eventos aos botões de status
   document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const status = e.target.getAttribute("data-status");
@@ -131,35 +157,32 @@ async function carregarVagas(status) {
     snapshot.forEach((doc) => {
       const vaga = doc.data();
       vaga.id = doc.id;
-      count++;
-      // Renderização simplificada para demonstração
+      count++; // Renderização simplificada para demonstração
       htmlVagas += `
-                <div class="card card-vaga" data-id="${vaga.id}">
-                    <h4>${vaga.nome}</h4>
-                    <p>Status: **${vaga.status
-                      .toUpperCase()
-                      .replace("-", " ")}**</p>
-                    <p>Candidatos: ${vaga.candidatosCount || 0}</p>
-                    <button class="btn btn-sm btn-info btn-detalhes" data-id="${
-                      vaga.id
-                    }">Ver Detalhes</button>
-                    ${
-                      vaga.status === "aguardando-aprovacao"
-                        ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-                        : ""
-                    }
-                </div>
-            `;
+                <div class="card card-vaga" data-id="${vaga.id}">
+                    <h4>${vaga.nome}</h4>
+                    <p>Status: **${vaga.status
+        .toUpperCase()
+        .replace("-", " ")}**</p>
+                    <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+                    <button class="btn btn-sm btn-info btn-detalhes" data-id="${
+        vaga.id
+      }">Ver Detalhes</button>
+                    ${
+        vaga.status === "aguardando-aprovacao"
+          ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
+          : ""
+      }
+                </div>
+            `;
     });
 
-    listaVagas.innerHTML = htmlVagas;
+    listaVagas.innerHTML = htmlVagas; // Atualiza o contador na aba de status
 
-    // Atualiza o contador na aba de status
     document.querySelector(
       `.btn-tab[data-status="${status}"]`
-    ).textContent = `${status.replace("-", " ").toUpperCase()} (${count})`;
+    ).textContent = `${status.replace("-", " ").toUpperCase()} (${count})`; // Adiciona eventos para botões de detalhes/aprovação (futuramente em um módulo de controle)
 
-    // Adiciona eventos para botões de detalhes/aprovação (futuramente em um módulo de controle)
     document.querySelectorAll(".btn-detalhes").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         // Implementar lógica para abrir a visualização detalhada da vaga e dos candidatos
