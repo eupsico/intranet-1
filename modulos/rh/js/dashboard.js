@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 2.4 (Implementação de Agregação de Dados em Tempo Real para Gráficos)
+// Versão: 2.5 (Correção da Lógica de Filtro para Profissionais Ativos: inativo == false)
 
 // Importa funções do Firebase necessárias
 import {
@@ -48,10 +48,11 @@ export async function initdashboard(user, userData) {
   async function fetchRHDashboardData() {
     // --- Consultas para KPIs (contagens) ---
 
-    // 1. Profissionais Ativos (status == 'ativo')
+    // 1. Profissionais Ativos (inativo == false)
+    // CORRIGIDO: Agora usa o campo 'inativo' com valor 'false'
     const ativosQuery = query(
       usuariosCollection,
-      where("status", "==", "ativo")
+      where("inativo", "==", false)
     );
 
     // 2. Vagas em Aberto (aguardando-aprovacao ou em-divulgacao)
@@ -76,9 +77,10 @@ export async function initdashboard(user, userData) {
     // --- Consultas para Gráficos (Agregação) ---
 
     // 5. Distribuição de Funções: Buscar todos os usuários ativos
+    // CORRIGIDO: Agora usa o campo 'inativo' com valor 'false'
     const todosUsuariosQuery = query(
       usuariosCollection,
-      where("status", "==", "ativo")
+      where("inativo", "==", false)
     );
 
     // 6. Desligamentos: Buscar desligamentos do último ano (últimos 12 meses)
@@ -313,6 +315,6 @@ export async function initdashboard(user, userData) {
     console.error("Erro ao carregar dados do Dashboard RH:", error);
     // Exibe mensagem de erro na área de conteúdo
     document.getElementById("content-area").innerHTML =
-      "<h2>Erro de Carregamento</h2><p>Não foi possível carregar as métricas do dashboard. Verifique as Regras de Segurança do Firebase para as coleções **usuarios, vagas, onboarding, comunicados e desligamentos**.</p>";
+      "<h2>Erro de Carregamento</h2><p>Não foi possível carregar as métricas do dashboard. Verifique as Regras de Segurança do Firebase e o campo **inativo** na coleção **usuarios**.</p>";
   }
 }
