@@ -17,6 +17,10 @@
             Desfechos (PB)
             <span id="count-desfechos-pb" class="notification-badge" style="display: none;"></span>
         </button>
+        <button class="tab-link" data-tab="tab-encaminhamento">
+            Encaminhamento
+            <span id="count-encaminhamento" class="notification-badge" style="display: none;"></span>
+        </button>
         <button class="tab-link" data-tab="tab-status-contratos">
             Status Contratos
             <span id="count-status-contratos" class="notification-badge" style="display: none;"></span>
@@ -49,7 +53,7 @@
                             </tr>
                         </thead>
                         <tbody id="table-body-novas-sessoes">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
                 <div id="empty-state-novas-sessoes" class="empty-state" style="display: none;">
@@ -80,7 +84,7 @@
                             </tr>
                         </thead>
                         <tbody id="table-body-alteracoes-horario">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
                 <div id="empty-state-alteracoes-horario" class="empty-state" style="display: none;">
@@ -110,19 +114,47 @@
                             </tr>
                         </thead>
                         <tbody id="table-body-desfechos-pb">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
-                 <div id="empty-state-desfechos-pb" class="empty-state" style="display: none;">
+                <div id="empty-state-desfechos-pb" class="empty-state" style="display: none;">
                     <p>Nenhum registro de desfecho encontrado.</p>
                 </div>
             </div>
         </div>
-
+        
+        <div id="tab-encaminhamento" class="tab-content">
+            <div class="table-section">
+                <h2>Solicitações de Encaminhamento (PB)</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-encaminhamento" class="form-control" placeholder="Buscar profissional ou paciente...">
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Solicitação</th>
+                                <th>Profissional</th>
+                                <th>Paciente</th>
+                                <th>Serviço Encaminhado</th>
+                                <th>Motivo</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-encaminhamento">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="empty-state-encaminhamento" class="empty-state" style="display: none;">
+                    <p>Nenhuma solicitação de encaminhamento encontrada.</p>
+                </div>
+            </div>
+        </div>
         <div id="tab-status-contratos" class="tab-content">
             <div class="table-section">
                 <h2>Status de Envio do Contrato</h2>
-                 <div class="table-controls">
+                <div class="table-controls">
                     <input type="text" id="search-status-contratos" class="form-control" placeholder="Buscar profissional ou paciente...">
                 </div>
                 <div class="table-wrapper">
@@ -137,10 +169,10 @@
                             </tr>
                         </thead>
                         <tbody id="table-body-status-contratos">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
-                 <div id="empty-state-status-contratos" class="empty-state" style="display: none;">
+                <div id="empty-state-status-contratos" class="empty-state" style="display: none;">
                     <p>Nenhum status de contrato para exibir.</p>
                 </div>
             </div>
@@ -166,15 +198,15 @@
                             </tr>
                         </thead>
                         <tbody id="table-body-exclusao-horarios">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
                 <div id="empty-state-exclusao-horarios" class="empty-state" style="display: none;">
                     <p>Nenhuma solicitação de exclusão de horários encontrada.</p>
-                </div>
+                </p>
             </div>
         </div>
-        </div>
+    </div>
 </div>
 
 <div id="solicitacao-details-modal" class="modal-overlay" style="display: none;">
@@ -184,9 +216,9 @@
             <button id="modal-close-btn" class="close-modal-btn">&times;</button>
         </div>
         <div id="modal-body-content" class="modal-body">
-            </div>
+        </div>
         <div id="modal-footer-actions" class="modal-footer">
             <button type="button" class="action-button secondary-button" id="modal-cancel-btn">Fechar</button>
-            </div>
+        </div>
     </div>
 </div>
