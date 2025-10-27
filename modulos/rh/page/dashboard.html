@@ -1,0 +1,52 @@
+<div class="rh-dashboard">
+    <div class="description-box">
+        <p>Visão geral das métricas e fluxos de trabalho do setor de Recursos Humanos. Acompanhe vagas, onboarding e desempenho da equipe.</p>
+    </div>
+    
+    <div class="summary-cards">
+        <div class="card" id="card-vagas-abertas">
+            <h3>Vagas Abertas</h3>
+            <p id="count-vagas-abertas">0</p>
+        </div>
+        <div class="card" id="card-onboarding-andamento">
+            <h3>Onboarding em Andamento</h3>
+            <p id="count-onboarding-andamento">0</p>
+        </div>
+        <div class="card" id="card-desligamentos-mes">
+            <h3>Desligamentos (Mês)</h3>
+            <p id="count-desligamentos-mes">0</p>
+        </div>
+        <div class="card" id="card-profissionais-ativos">
+            <h3>Profissionais Ativos</h3>
+            <p id="count-profissionais-ativos">0</p>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2>Vagas em Recrutamento</h2>
+        </div>
+        <div class="table-section">
+            <table id="tabela-vagas-abertas">
+                <thead>
+                    <tr>
+                        <th>Vaga</th>
+                        <th>Status</th>
+                        <th>Candidatos</th>
+                        <th>Data de Abertura</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-vagas-dashboard">
+                    <tr>
+                        <td colspan="5">Carregando vagas...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button class="action-button secondary" data-view-id="gestao_vagas">Ver Todas as Vagas</button>
+    </div>
+
+    </div>
+
+<script type="module" src="../js/dashboard.js"></script>

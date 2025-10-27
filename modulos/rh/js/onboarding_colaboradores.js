@@ -9,12 +9,11 @@ import {
   doc,
   query,
   where,
+  arrayUnion,
 } from "../../../assets/js/firebase-init.js";
 
 // IMPORTAÇÃO MODULAR PARA arrayUnion
-import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// Importa as funções do novo utilitário
 import {
   fetchActiveEmployees,
   fetchUsersByRole,
