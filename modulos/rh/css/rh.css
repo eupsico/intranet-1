@@ -1,103 +1,104 @@
 /* Arquivo: /modulos/rh/css/rh.css
-   Versão: 1.1 (Com Dashboard de Opções e Estilos de Card)
+   Versão: 1.2 (Dashboard Analítico)
    Descrição: Estilos principais e compartilhados para o Painel de RH.
 */
 
 /* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
 .view-rh .view-container {
-padding: 0;
+  padding: 0;
 }
 
 /* Estilo para o modal de edição de profissional */
 .modal-content {
-max-width: 600px;
-};
+  max-width: 600px;
+}
 /* Adicione este bloco de código NO FINAL do seu arquivo */
 .table-section table {
-min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
+  min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
 }
 
 /* --- ESTILOS PARA O DASHBOARD DE OPÇÕES DO RH (Início) --- */
 
 .rh-dashboard-grid {
-    display: grid;
-    /* Define 2 colunas como mínimo, mas permite até 3 colunas em telas maiores */
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-    gap: 25px;
-    margin-top: 20px;
-    margin-bottom: 40px;
+  display: grid;
+  /* Define 2 colunas como mínimo, mas permite até 3 colunas em telas maiores */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+  margin-bottom: 40px;
 }
 
 .rh-card {
-    /* Herda o background e sombra do design system */
-    background-color: var(--cor-surface); 
-    padding: 30px;
-    border-radius: var(--borda-radius);
-    box-shadow: var(--sombra-padrao);
-    border: 1px solid var(--cor-borda);
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    text-decoration: none; /* Garante que links (divs) não tenham sublinhado */
-    color: var(--cor-texto-principal);
+  /* Herda o background e sombra do design system */
+  background-color: var(--cor-surface);
+  padding: 30px;
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-padrao);
+  border: 1px solid var(--cor-borda);
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out,
+    border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-decoration: none; /* Garante que links (divs) não tenham sublinhado */
+  color: var(--cor-texto-principal);
 }
 
 .rh-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    border-color: var(--cor-primaria); /* Destaca a borda no hover */
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--cor-primaria); /* Destaca a borda no hover */
 }
 
 .rh-card svg {
-    /* Ícones maiores e em cor primária */
-    width: 36px;
-    height: 36px;
-    color: var(--cor-primaria);
-    margin-bottom: 15px;
+  /* Ícones maiores e em cor primária */
+  width: 36px;
+  height: 36px;
+  color: var(--cor-primaria);
+  margin-bottom: 15px;
 }
 
 .rh-card h3 {
-    margin: 0 0 5px 0;
-    font-size: 1.3em;
-    color: var(--cor-primaria);
-    font-weight: 600;
+  margin: 0 0 5px 0;
+  font-size: 1.3em;
+  color: var(--cor-primaria);
+  font-weight: 600;
 }
 
 .rh-card p {
-    margin: 0;
-    font-size: 0.95em;
-    color: var(--cor-texto-secundario);
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--cor-texto-secundario);
 }
 
 /* Ajuste para botões e elementos dentro das sub-views */
 .card-vaga {
-    /* Reutiliza o estilo de card, mas com foco no RH */
-    padding: 20px;
-    border-left: 5px solid var(--cor-secundaria);
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
+  /* Reutiliza o estilo de card, mas com foco no RH */
+  padding: 20px;
+  border-left: 5px solid var(--cor-secundaria);
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-vaga h4 {
-    margin-top: 0;
-    color: var(--cor-primaria);
-    font-size: 1.1em;
+  margin-top: 0;
+  color: var(--cor-primaria);
+  font-size: 1.1em;
 }
 
 .card-vaga button {
-    margin-top: 10px;
-    align-self: flex-start;
+  margin-top: 10px;
+  align-self: flex-start;
 }
 
 /* --- ESTILOS PARA O DASHBOARD DE OPÇÕES DO RH (Fim) --- */
 
 /* --- ESTILOS RESPONSIVOS ESPECÍFICOS DO RH (Início) --- */
 @media (max-width: 600px) {
-    .rh-dashboard-grid {
-        /* Garante que em telas muito pequenas, use apenas 1 coluna */
-        grid-template-columns: 1fr;
-    }
+  .rh-dashboard-grid {
+    /* Garante que em telas muito pequenas, use apenas 1 coluna */
+    grid-template-columns: 1fr;
+  }
 }

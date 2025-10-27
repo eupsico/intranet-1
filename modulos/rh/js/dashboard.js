@@ -100,7 +100,7 @@ export async function initdashboard(user, userData) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: false, // ESSENCIAL: Permite que o gráfico use a altura definida pelo CSS do container.
           plugins: {
             legend: {
               position: "bottom",
@@ -134,7 +134,7 @@ export async function initdashboard(user, userData) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: false, // ESSENCIAL: Permite que o gráfico use a altura definida pelo CSS do container.
           scales: {
             y: {
               beginAtZero: true,
