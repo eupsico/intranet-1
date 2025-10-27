@@ -1,8 +1,9 @@
 // Arquivo: /modulos/rh/js/rh-painel.js
-// Versão: 2.0 (Roteamento Interno por Hash - Padrão Intranet)
+// Versão: 2.1 (Roteamento Final Corrigido e Módulos de Comunicação/Dashboard)
 
 // Importa os utilitários de terceiros para garantir que arrayUnion funcione no escopo
-import { arrayUnion } from "../../../assets/js/firebase-init.js";
+import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
 export function initrhPanel(user, db, userData) {
   console.log("🔹 Iniciando painel de RH e roteador interno por Hash...");
 
@@ -56,8 +57,17 @@ export function initrhPanel(user, db, userData) {
       roles: ["admin", "rh"],
       icon: icons.comunicados,
     },
-  ]; // --- Função para renderizar o Dashboard de Opções (Cartões) ---
+  ]; // --- Função para exibir notificações (recolocada aqui para garantir escopo) ---
 
+  window.showToast = function (message, type = "success") {
+    const container =
+      document.getElementById("toast-container") || document.body;
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }; // --- Função para renderizar o Dashboard de Opções (Cartões) ---
   function renderDashboard() {
     contentArea.innerHTML = `
         <div class="description-box">
@@ -67,7 +77,6 @@ export function initrhPanel(user, db, userData) {
             ${views
       .filter((v) => v.id !== "dashboard")
       .map((view) => {
-        // Filtra o próprio dashboard
         const hasPermission = view.roles.some((role) =>
           userRoles.includes(role.trim())
         );
@@ -116,7 +125,10 @@ export function initrhPanel(user, db, userData) {
       '<div class="loading-spinner">Carregando módulo...</div>';
     // 3. Carrega o HTML da view
     try {
-      const htmlPath = `./page/${viewName}.html`; // Caminho relativo, pois estamos em /modulos/rh/page/
+      // CORREÇÃO CRÍTICA: HTML na mesma pasta da página principal
+      const htmlPath = `./${viewName}.html`;
+      console.log(`Tentando carregar HTML: ${htmlPath}`);
+
       const response = await fetch(htmlPath);
       if (!response.ok) {
         throw new Error(`Arquivo da view não encontrado: ${viewName}.html`);
@@ -134,9 +146,10 @@ export function initrhPanel(user, db, userData) {
       const jsPath = `../js/${viewName}.js`;
       console.log(`Tentando importar JS: ${jsPath}`);
 
-      // CORRIGIDO: O JS está em ../js/ (relativo à pasta /page/)
+      // CORRIGIDO: O JS está em ../js/ (caminho relativo do /page/)
       const viewModule = await import(jsPath + "?t=" + Date.now());
 
+      // Determina o nome da função de inicialização (initcomunicados, initdashboard, etc.)
       const initFuncName = `init${viewName.replace(/[-_]/g, "")}`;
 
       if (typeof viewModule[initFuncName] === "function") {
