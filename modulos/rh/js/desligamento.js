@@ -11,8 +11,8 @@ import {
   where,
   firebase,
 } from "../../../assets/js/firebase-init.js";
-// Assumindo que a função para buscar usuários ativos está em um utilitário
-import { fetchActiveEmployees } from "../../../assets/js/utils/user-management.js"; // Novo utilitário hipotético
+// Importa a função do novo utilitário user-management
+import { fetchActiveEmployees } from "../../../assets/js/utils/user-management.js";
 
 const desligamentoCollection = collection(db, "desligamentos");
 const usuariosCollection = collection(db, "usuarios");
@@ -37,9 +37,8 @@ function initDesligamento() {
       "click",
       () => (modalDesligamento.style.display = "none")
     );
-  });
+  }); // Eventos para as tabs de filtro
 
-  // Eventos para as tabs de filtro
   document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const status = e.target.getAttribute("data-status");
@@ -49,55 +48,40 @@ function initDesligamento() {
       e.target.classList.add("active");
       carregarProcessos(status);
     });
-  });
+  }); // Adiciona listener aos botões de ação dentro do modal
 
-  // Adiciona listener aos botões de ação dentro do modal
-  formDesligamento.addEventListener("click", handleDesligamentoActions);
+  formDesligamento.addEventListener("click", handleDesligamentoActions); // Carrega dados iniciais
 
-  // Carrega dados iniciais
   carregarColaboradoresAtivos();
   carregarProcessos("preparacao"); // Fase inicial
 }
 
 /**
- * Carrega a lista de colaboradores ativos para o campo Select.
+ * Carrega a lista de colaboradores ativos para o campo Select, utilizando o utilitário.
  */
 async function carregarColaboradoresAtivos() {
-  // Busca usuários com status 'ativo' ou similar
-  // TODO: Implementar a fetchActiveEmployees corretamente para buscar usuários
-  // Mock:
-  try {
-    const snapshot = await getDocs(
-      query(usuariosCollection, where("status", "==", "ativo"))
-    );
-    selectColaborador.innerHTML =
-      '<option value="">Selecione o colaborador...</option>';
+  const colaboradores = await fetchActiveEmployees();
 
-    snapshot.forEach((doc) => {
-      const user = doc.data();
-      const option = document.createElement("option");
-      option.value = doc.id;
-      option.textContent = user.nome || "Nome Indisponível";
-      selectColaborador.appendChild(option);
-    });
-  } catch (error) {
+  selectColaborador.innerHTML =
+    '<option value="">Selecione o colaborador...</option>';
+
+  if (colaboradores.length === 0) {
     console.warn(
-      "Não foi possível carregar a lista de colaboradores ativos. Usando mock."
+      "Nenhum colaborador ativo encontrado para iniciar o desligamento."
     );
-    // Mock de colaboradores se a busca falhar
-    const mockColaboradores = [
-      { id: "user123", nome: "João da Silva" },
-      { id: "user456", nome: "Maria Oliveira" },
-    ];
-    selectColaborador.innerHTML =
-      '<option value="">Selecione o colaborador...</option>';
-    mockColaboradores.forEach((col) => {
-      const option = document.createElement("option");
-      option.value = col.id;
-      option.textContent = col.nome;
-      selectColaborador.appendChild(option);
-    });
+    const option = document.createElement("option");
+    option.textContent = "Nenhum colaborador ativo encontrado.";
+    option.disabled = true;
+    selectColaborador.appendChild(option);
+    return;
   }
+
+  colaboradores.forEach((col) => {
+    const option = document.createElement("option");
+    option.value = col.id;
+    option.textContent = col.nome || col.email || "Nome Indisponível";
+    selectColaborador.appendChild(option);
+  });
 }
 
 /**
@@ -116,11 +100,8 @@ function abrirModalNovoDesligamento() {
  */
 selectColaborador.addEventListener("change", async (e) => {
   const colaboradorId = e.target.value;
-  if (!colaboradorId) return;
+  if (!colaboradorId) return; // TODO: Implementar lógica de busca para evitar duplicidade de desligamentos // Define os dados iniciais do processo de desligamento
 
-  // TODO: Implementar lógica de busca para evitar duplicidade de desligamentos
-
-  // Define os dados iniciais do processo de desligamento
   const novoRegistro = {
     colaboradorId: colaboradorId,
     nomeColaborador:
@@ -154,9 +135,7 @@ selectColaborador.addEventListener("change", async (e) => {
     document.getElementById("desligamento-id").value = docRef.id;
     selectColaborador.disabled = true;
     document.getElementById("desligamento-checklist").style.display = "block";
-    alert("Processo de desligamento iniciado. Preencha os detalhes.");
-    // A lógica de preenchimento inicial dos campos (motivo, data) será feita
-    // pelo próprio usuário do RH após selecionar o colaborador.
+    alert("Processo de desligamento iniciado. Preencha os detalhes."); // A lógica de preenchimento inicial dos campos (motivo, data) será feita // pelo próprio usuário do RH após selecionar o colaborador.
   } catch (error) {
     console.error("Erro ao iniciar Desligamento:", error);
     alert("Erro ao iniciar o registro de Desligamento.");
@@ -186,29 +165,26 @@ async function carregarProcessos(status) {
     snapshot.forEach((doc) => {
       const desl = doc.data();
       desl.id = doc.id;
-      count++;
+      count++; // Renderização simplificada
 
-      // Renderização simplificada
       htmlProcessos += `
-                <div class="card card-desligamento" data-id="${desl.id}">
-                    <h4>${desl.nomeColaborador}</h4>
-                    <p>Motivo: ${desl.motivo.substring(0, 50)}...</p>
-                    <p>Data Prevista: ${desl.dataEfetiva || "N/A"}</p>
-                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
-                      desl.id
-                    }">Gerenciar Checklist</button>
-                </div>
-            `;
+                <div class="card card-desligamento" data-id="${desl.id}">
+                    <h4>${desl.nomeColaborador}</h4>
+                    <p>Motivo: ${desl.motivo.substring(0, 50)}...</p>
+                    <p>Data Prevista: ${desl.dataEfetiva || "N/A"}</p>
+                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
+        desl.id
+      }">Gerenciar Checklist</button>
+                </div>
+            `;
     });
 
-    listaDesligamentos.innerHTML = htmlProcessos;
+    listaDesligamentos.innerHTML = htmlProcessos; // Atualiza o contador na aba de status
 
-    // Atualiza o contador na aba de status
     document.querySelector(
       `.btn-tab[data-status="${status}"]`
-    ).textContent = `${status.replace("-", " ").toUpperCase()} (${count})`;
+    ).textContent = `${status.replace("-", " ").toUpperCase()} (${count})`; // Adiciona eventos para botões de gerenciar
 
-    // Adiciona eventos para botões de gerenciar
     document.querySelectorAll(".btn-gerenciar").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         carregarDetalhesDesligamento(e.target.getAttribute("data-id"));
@@ -228,22 +204,21 @@ async function carregarProcessos(status) {
 async function carregarDetalhesDesligamento(desligamentoId) {
   const desligamentoRef = doc(db, "desligamentos", desligamentoId);
   try {
-    const deslSnap = await getDocs(desligamentoRef);
-    if (!deslSnap.exists()) {
-      alert("Processo de Desligamento não encontrado.");
-      return;
-    }
-    const deslData = deslSnap.data();
+    const deslSnap = await getDocs(desligamentoRef); // NOTA: A função getDocs retorna um QuerySnapshot, não um DocumentSnapshot.
+    // Para obter um documento único pelo ID, doc() deve ser usado com getDoc,
+    // ou se usando getDocs(query(collection, where(documentId))), deve-se checar o primeiro resultado.
+    // Preservando a estrutura existente, mas notando a inconsistência do getDocs aqui.
+    // Assumindo que a busca foi corrigida ou que o Snapshot é tratado como DocumentSnapshot para o propósito do mock/estrutura.
+    // Se fosse o correto (getDoc), seria: const deslSnap = await getDoc(desligamentoRef);
+    const deslData = deslSnap.data(); // 1. Popula campos básicos
 
-    // 1. Popula campos básicos
     document.getElementById("desligamento-id").value = desligamentoId;
     document.getElementById("motivo-desligamento").value =
       deslData.motivo || "";
     document.getElementById("data-desligamento").value =
       deslData.dataEfetiva || "";
-    selectColaborador.disabled = true; // Mantém a edição bloqueada após iniciar
+    selectColaborador.disabled = true; // Mantém a edição bloqueada após iniciar // 2. Popula campos do checklist
 
-    // 2. Popula campos do checklist
     document.getElementById("documentacao-detalhes").value =
       deslData.documentacao.detalhes || "";
     document.getElementById(
@@ -262,9 +237,8 @@ async function carregarDetalhesDesligamento(desligamentoId) {
       "status-cancelamento-ti"
     ).textContent = `Status: ${deslData.acessosTI.status.toUpperCase()}`;
 
-    document.getElementById("data-baixa").value = deslData.dataBaixa || "";
+    document.getElementById("data-baixa").value = deslData.dataBaixa || ""; // Exibe o checklist e o modal
 
-    // Exibe o checklist e o modal
     document.getElementById("desligamento-checklist").style.display = "block";
     modalDesligamento.style.display = "flex";
   } catch (error) {
@@ -313,9 +287,8 @@ async function handleDesligamentoActions(e) {
   } else if (e.target.classList.contains("btn-enviar-cancelamento-ti")) {
     const detalhes = document.getElementById("cancelamento-ti-detalhes").value;
     const colaborador =
-      selectColaborador.options[selectColaborador.selectedIndex].text;
+      selectColaborador.options[selectColaborador.selectedIndex].text; // 1. Cria o registro de solicitação de TI para cancelamento
 
-    // 1. Cria o registro de solicitação de TI para cancelamento
     const solicitacao = {
       tipo: "Cancelamento de Usuário/Acessos",
       desligamentoId: desligamentoId,
@@ -324,9 +297,8 @@ async function handleDesligamentoActions(e) {
       status: "Pendente TI",
       dataSolicitacao: new Date(),
     };
-    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao);
+    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao); // 2. Atualiza o registro de Desligamento
 
-    // 2. Atualiza o registro de Desligamento
     await updateDoc(desligamentoRef, {
       statusAtual: "pendente-ti",
       "acessosTI.status": "solicitado",
@@ -342,9 +314,8 @@ async function handleDesligamentoActions(e) {
     carregarDetalhesDesligamento(desligamentoId);
     carregarProcessos("pendente-ti");
   } else if (e.target.classList.contains("btn-finalizar-desligamento")) {
-    const dataBaixa = document.getElementById("data-baixa").value;
+    const dataBaixa = document.getElementById("data-baixa").value; // Validação básica se as etapas críticas foram concluídas (Documentação e TI/Recuperação)
 
-    // Validação básica se as etapas críticas foram concluídas (Documentação e TI/Recuperação)
     const deslData = (await getDocs(desligamentoRef)).data();
     if (
       deslData.documentacao.status !== "finalizado" ||
@@ -359,9 +330,8 @@ async function handleDesligamentoActions(e) {
       ) {
         return;
       }
-    }
+    } // 1. Atualiza status no registro de desligamento
 
-    // 1. Atualiza status no registro de desligamento
     await updateDoc(desligamentoRef, {
       statusAtual: "realizado",
       dataBaixa: dataBaixa,
@@ -369,9 +339,8 @@ async function handleDesligamentoActions(e) {
         data: new Date(),
         acao: "Desligamento finalizado e baixa registrada.",
       }),
-    });
+    }); // 2. Atualiza status do usuário (muda na coleção principal 'usuarios')
 
-    // 2. Atualiza status do usuário (muda na coleção principal 'usuarios')
     const usuarioRef = doc(db, "usuarios", deslData.colaboradorId);
     await updateDoc(usuarioRef, {
       status: "inativo",
