@@ -855,8 +855,8 @@ legend {
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 1000;
   padding: 20px;
-  align-items: center;
-  /* justify-content: center;*/
+  /*align-items: center;*/
+  justify-content: center;
 }
 
 .modal-overlay.is-visible {
