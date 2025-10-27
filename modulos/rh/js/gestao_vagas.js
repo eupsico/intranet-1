@@ -223,7 +223,7 @@ async function handleAprovarVaga(vagaId) {
     await updateDoc(vagaRef, {
       status: "em-divulgacao", // Passa para a fase de recrutamento/divulgação
       dataAprovacao: new Date(),
-      historico: firebase.firestore.FieldValue.arrayUnion({
+      historico: FieldValue.arrayUnion({
         data: new Date(),
         acao: "Vaga aprovada e liberada para divulgação/recrutamento.",
         usuario: "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado

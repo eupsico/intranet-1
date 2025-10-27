@@ -11,7 +11,6 @@ import {
   where,
   FieldValue,
 } from "../../../assets/js/firebase-init.js";
-import { FieldValue } from "firebase/firestore";
 // Importa a função do novo utilitário user-management
 import { fetchActiveEmployees } from "../../../assets/js/utils/user-management.js";
 
