@@ -76,7 +76,7 @@ async function loadRhSubModule(subModuleId, user, userData) {
   contentArea.innerHTML =
     '<div class="loading-spinner">Carregando módulo...</div>';
 
-  // Mapeamento de títulos para os novos módulos do RH (Omitido para brevidade)
+  // Mapeamento de títulos para os novos módulos do RH (Omitido)
   const titles = {
     gestao_vagas: {
       title: "Gestão de Vagas e Recrutamento",
@@ -114,61 +114,55 @@ async function loadRhSubModule(subModuleId, user, userData) {
   }
 
   // 2. Busca o HTML correspondente
-  // Caminho corrigido: ./page/ se for um SPA (Single Page App)
-  // Se o rh-painel.html estiver em 'modulos/rh/page/' e o app.js estiver em 'assets/js/',
-  // o fetch relativo à URL do navegador para o HTML é o mais seguro.
-  const htmlPath = `./page/${subModuleId}.html`;
+  // CORREÇÃO: O HTML está na mesma pasta da página principal do RH.
+  // O fetch deve ser relativo à URL do navegador, que é /modulos/rh/page/
+  const htmlPath = `./${subModuleId}.html`;
   try {
     console.log("Tentando carregar HTML de:", htmlPath);
     const response = await fetch(htmlPath);
+
     if (!response.ok) {
-      // Tenta um caminho alternativo, mais profundo, caso o fetch falhe na primeira tentativa
-      const fallbackPath = `../rh/page/${subModuleId}.html`;
+      // Se falhar, tenta o caminho relativo à raiz da Intranet
+      // Isso funciona se a base href estiver definida, mas é uma tentativa mais segura.
+      const fallbackPath = `/modulos/rh/page/${subModuleId}.html`;
       const fallbackResponse = await fetch(fallbackPath);
 
       if (!fallbackResponse.ok) {
+        // Se ambas as tentativas falharem, lança o erro 404
         throw new Error(
-          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status} e ${fallbackResponse.status}).`
+          `Arquivo HTML do submódulo RH '${subModuleId}' não encontrado (${response.status}).`
         );
       }
       contentArea.innerHTML = await fallbackResponse.text();
-      console.log(`HTML carregado via fallback: ${fallbackPath}`);
+      console.log(
+        `HTML carregado via fallback (URL absoluta): ${fallbackPath}`
+      );
     } else {
       const htmlContent = await response.text();
       contentArea.innerHTML = htmlContent;
     }
 
     // Remove a tag <script> para evitar carregamento duplo e injeta o HTML
-    // Presume-se que o HTML contenha a tag <script type="module" src="../js/..."> que será removida
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = contentArea.innerHTML;
     tempDiv.querySelectorAll("script").forEach((script) => script.remove());
     contentArea.innerHTML = tempDiv.innerHTML;
 
     // 3. Importa e executa o JS do submódulo
-    // Caminho corrigido para o JS (assumindo que o app.js pode referenciar diretamente)
-    // Caminho do JS a partir da raiz da intranet: ./modulos/rh/js/
-    const jsPath = `../../modulos/rh/js/${subModuleId}.js`; // Manter o relativo se o JS estiver sendo carregado pelo app.js
-
+    // Manter o caminho JS como estava, pois o erro 404 está no FETCH do HTML.
+    const jsPath = `../../modulos/rh/js/${subModuleId}.js`;
     console.log("Tentando importar JS do submódulo:", jsPath);
-
-    // Usa a convenção de que o arquivo JS tem o mesmo nome do HTML
     const module = await import(jsPath + "?t=" + Date.now()); // Cache busting
 
-    // ... (resto da lógica de inicialização do módulo)
     if (typeof module.init === "function") {
-      // Se o módulo exporta uma função 'init' (convenção preferida)
       await module.init(user, userData);
     } else if (
       typeof module[`init${subModuleId.replace(/[-_]/g, "")}`] === "function"
     ) {
-      // Caso a função de inicialização tenha o nome específico (e.g., initgestaovagas)
       await module[`init${subModuleId.replace(/[-_]/g, "")}`](user, userData);
     } else if (typeof module.initrhPanel === "function") {
-      // Caso o módulo antigo use uma função genérica (rh-painel.js)
       await module.initrhPanel(user, db, userData);
     }
-
     console.log(`Submódulo ${subModuleId}.js inicializado.`);
   } catch (error) {
     console.error(`Erro ao carregar o submódulo RH ${subModuleId}:`, error);
