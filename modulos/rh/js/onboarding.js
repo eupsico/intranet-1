@@ -9,9 +9,13 @@ import {
   doc,
   query,
   where,
+  firebase,
 } from "../../../assets/js/firebase-init.js";
-// Assumindo que a função para buscar usuários (gestores) está em um utilitário
-import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js"; // Novo utilitário hipotético
+// Importa as funções do novo utilitário
+import {
+  fetchActiveEmployees,
+  fetchUsersByRole,
+} from "../../../assets/js/utils/user-management.js";
 
 const onboardingCollection = collection(db, "onboarding");
 const candidatosCollection = collection(db, "candidatos");
@@ -36,9 +40,8 @@ function initOnboarding() {
       "click",
       () => (modalOnboarding.style.display = "none")
     );
-  });
+  }); // Eventos para as tabs de filtro
 
-  // Eventos para as tabs de filtro
   document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const fase = e.target.getAttribute("data-fase");
@@ -48,18 +51,17 @@ function initOnboarding() {
       e.target.classList.add("active");
       carregarColaboradores(fase);
     });
-  });
+  }); // Adiciona listener aos botões de ação dentro do modal
 
-  // Adiciona listener aos botões de ação dentro do modal
-  formOnboarding.addEventListener("click", handleOnboardingActions);
+  formOnboarding.addEventListener("click", handleOnboardingActions); // Carrega dados iniciais
 
-  // Carrega dados iniciais
   carregarCandidatosAprovados();
   carregarColaboradores("pendente-docs"); // Fase inicial
 }
 
 /**
  * Carrega a lista de candidatos que foram APROVADOS no processo seletivo e ainda não iniciaram o onboarding.
+ * Esses candidatos são elegíveis para iniciar o Onboarding.
  */
 async function carregarCandidatosAprovados() {
   // Busca candidatos com status 'Aprovado' (vindo do módulo de Gestão de Vagas)
@@ -76,10 +78,7 @@ async function carregarCandidatosAprovados() {
     snapshot.forEach((doc) => {
       const candidato = doc.data();
       const option = document.createElement("option");
-      option.value = doc.id;
-      // Verifica se este candidato já tem um onboarding em andamento
-      // Idealmente, isso seria feito com uma Cloud Function ou JOIN
-
+      option.value = doc.id; // Verifica se este candidato já tem um onboarding em andamento // Idealmente, isso seria feito com uma Cloud Function ou JOIN
       option.textContent = `${candidato.nomeCandidato} - Vaga: ${
         candidato.vagaNome || "N/A"
       }`;
@@ -96,8 +95,7 @@ async function carregarCandidatosAprovados() {
 function abrirModalNovoOnboarding() {
   document.getElementById("onboarding-id").value = ""; // Limpa ID
   formOnboarding.reset();
-  selectCandidato.disabled = false; // Permite escolher o novo colaborador
-  // Oculta botões de status e mostra o campo de seleção de candidato
+  selectCandidato.disabled = false; // Permite escolher o novo colaborador // Oculta botões de status e mostra o campo de seleção de candidato
   document.getElementById("onboarding-steps").style.display = "none";
   modalOnboarding.style.display = "flex";
 }
@@ -107,9 +105,7 @@ function abrirModalNovoOnboarding() {
  */
 selectCandidato.addEventListener("change", async (e) => {
   const candidatoId = e.target.value;
-  if (!candidatoId) return;
-
-  // TODO: Verificar se já existe um registro de onboarding para este candidato
+  if (!candidatoId) return; // TODO: Verificar se já existe um registro de onboarding para este candidato
 
   const novoRegistro = {
     candidatoId: candidatoId,
@@ -182,31 +178,28 @@ async function carregarColaboradores(fase) {
     snapshot.forEach((doc) => {
       const onboard = doc.data();
       onboard.id = doc.id;
-      count++;
+      count++; // Renderização simplificada
 
-      // Renderização simplificada
       htmlColaboradores += `
-                <div class="card card-onboarding" data-id="${onboard.id}">
-                    <h4>${onboard.nome}</h4>
-                    <p>Vaga: ${onboard.vaga}</p>
-                    <p>Fase: **${onboard.faseAtual
-                      .toUpperCase()
-                      .replace("-", " ")}**</p>
-                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
-                      onboard.id
-                    }">Gerenciar Onboarding</button>
-                </div>
-            `;
+                <div class="card card-onboarding" data-id="${onboard.id}">
+                    <h4>${onboard.nome}</h4>
+                    <p>Vaga: ${onboard.vaga}</p>
+                    <p>Fase: **${onboard.faseAtual
+        .toUpperCase()
+        .replace("-", " ")}**</p>
+                    <button class="btn btn-sm btn-info btn-gerenciar" data-id="${
+        onboard.id
+      }">Gerenciar Onboarding</button>
+                </div>
+            `;
     });
 
-    listaOnboarding.innerHTML = htmlColaboradores;
+    listaOnboarding.innerHTML = htmlColaboradores; // Atualiza o contador na aba de status
 
-    // Atualiza o contador na aba de status
     document.querySelector(
       `.btn-tab[data-fase="${fase}"]`
-    ).textContent = `${fase.replace("-", " ").toUpperCase()} (${count})`;
+    ).textContent = `${fase.replace("-", " ").toUpperCase()} (${count})`; // Adiciona eventos para botões de gerenciar
 
-    // Adiciona eventos para botões de gerenciar
     document.querySelectorAll(".btn-gerenciar").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         carregarDetalhesOnboarding(e.target.getAttribute("data-id"));
@@ -231,13 +224,10 @@ async function carregarDetalhesOnboarding(onboardingId) {
       alert("Registro de Onboarding não encontrado.");
       return;
     }
-    const onboardData = onboardSnap.data();
+    const onboardData = onboardSnap.data(); // 1. Popula campos básicos e ID
 
-    // 1. Popula campos básicos e ID
-    document.getElementById("onboarding-id").value = onboardingId;
-    // 2. Desabilita seleção e preenche nome (não há campo, só o select)
-    selectCandidato.disabled = true;
-    // 3. Atualiza o status de documentação
+    document.getElementById("onboarding-id").value = onboardingId; // 2. Desabilita seleção e preenche nome (não há campo, só o select)
+    selectCandidato.disabled = true; // 3. Atualiza o status de documentação
     const statusDocsEl = document.getElementById("status-docs");
     statusDocsEl.innerHTML = `Status: <span class="badge badge-${
       onboardData.documentacao.status === "recebido" ? "success" : "warning"
@@ -248,30 +238,26 @@ async function carregarDetalhesOnboarding(onboardingId) {
       document
         .querySelector(".btn-visualizar-docs")
         .setAttribute("data-url", onboardData.documentacao.urlAnexos);
-    }
+    } // 4. Popula campos de integração
 
-    // 4. Popula campos de integração
     document.getElementById("data-integracao").value =
       onboardData.integracao.dataAgendada || "";
     document.getElementById("treinamento-codigo-conduta").checked =
       onboardData.integracao.treinamentos["codigo-conduta"] || false;
     document.getElementById("treinamento-sistemas").checked =
-      onboardData.integracao.treinamentos["sistemas"] || false;
+      onboardData.integracao.treinamentos["sistemas"] || false; // 5. Popula campos de TI
 
-    // 5. Popula campos de TI
     document.getElementById("solicitacao-ti-detalhes").value =
       onboardData.acessosTI.detalhes || "";
     document.getElementById(
       "status-ti"
-    ).textContent = `Status: ${onboardData.acessosTI.status.toUpperCase()}`;
+    ).textContent = `Status: ${onboardData.acessosTI.status.toUpperCase()}`; // 6. Popula campos de Feedback
 
-    // 6. Popula campos de Feedback
     document.getElementById("feedback-45d").value =
       onboardData.feedback.feedback_45d || "";
     document.getElementById("feedback-3m").value =
-      onboardData.feedback.feedback_3m || "";
+      onboardData.feedback.feedback_3m || ""; // Exibe o formulário de steps e o modal
 
-    // Exibe o formulário de steps e o modal
     document.getElementById("onboarding-steps").style.display = "block";
     modalOnboarding.style.display = "flex";
   } catch (error) {
@@ -315,8 +301,7 @@ async function handleOnboardingActions(e) {
     await updateDoc(onboardRef, {
       "integracao.status": "concluido",
       "integracao.dataAgendada": dataIntegracao,
-      "integracao.treinamentos": treinamentos,
-      // A fase atual não muda, pois a TI e o Feedback ainda estão pendentes.
+      "integracao.treinamentos": treinamentos, // A fase atual não muda, pois a TI e o Feedback ainda estão pendentes.
       historico: firebase.firestore.FieldValue.arrayUnion({
         data: new Date(),
         acao: "Etapa de Integração/Treinamentos atualizada.",
@@ -325,9 +310,8 @@ async function handleOnboardingActions(e) {
     alert("Etapa de Integração atualizada com sucesso.");
     carregarDetalhesOnboarding(onboardingId);
   } else if (e.target.classList.contains("btn-enviar-solicitacao-ti")) {
-    const detalhes = document.getElementById("solicitacao-ti-detalhes").value;
+    const detalhes = document.getElementById("solicitacao-ti-detalhes").value; // 1. Cria o registro de solicitação de TI
 
-    // 1. Cria o registro de solicitação de TI
     const solicitacao = {
       tipo: "Novo Usuário/Acessos",
       onboardingId: onboardingId,
@@ -335,9 +319,8 @@ async function handleOnboardingActions(e) {
       status: "Pendente TI",
       dataSolicitacao: new Date(),
     };
-    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao);
+    const docSolicitacao = await addDoc(solicitacoesTiCollection, solicitacao); // 2. Atualiza o registro de Onboarding
 
-    // 2. Atualiza o registro de Onboarding
     await updateDoc(onboardRef, {
       "acessosTI.status": "solicitado",
       "acessosTI.detalhes": detalhes,
