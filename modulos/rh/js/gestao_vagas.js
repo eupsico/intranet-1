@@ -8,8 +8,6 @@ import {
   doc,
   query,
   where,
-  deleteDoc,
-  FieldValue,
   getDoc, // Adicionado getDoc para buscar uma única vaga na edição
   arrayUnion,
   // Não precisa de deleteDoc e FieldValue, mas arrayUnion foi mantido
@@ -101,15 +99,21 @@ function gerenciarEtapasModal(status) {
   secaoDivulgacao.style.display = "none";
   btnCancelarVaga.style.display = "none";
   btnEncerrarVaga.style.display = "none";
-  btnSalvar.style.display = "none"; // O botão salvar só aparece na Ficha ou para alterações de arte
+  btnSalvar.style.display = "none";
+
+  // NOVO: Remove botões dinâmicos anteriores
+  const dynamicButtonsContainer = modalVaga.querySelector(
+    ".acoes-aprovacao-ficha"
+  );
+  if (dynamicButtonsContainer) dynamicButtonsContainer.remove();
 
   const isVagaAprovada =
     status === "em-divulgacao" || status === "em-recrutamento";
   const isVagaAtiva =
     status !== "cancelada" && status !== "encerrada" && status !== "fechadas";
-  const isVagaBloqueada = isVagaAprovada;
+  const isVagaBloqueada = isVagaAprovada || status === "aguardando-aprovacao";
 
-  // Habilita/Desabilita campos da Ficha Técnica (Requisito: não permitir alteração de vaga aprovada)
+  // Habilita/Desabilita campos da Ficha Técnica (Requisito: não permitir alteração de vaga aprovada ou pendente de aprovação)
   const inputsFichaTecnica = secaoFichaTecnica.querySelectorAll(
     "input, select, textarea"
   );
@@ -117,7 +121,7 @@ function gerenciarEtapasModal(status) {
     input.disabled = isVagaBloqueada;
   });
 
-  // Mostra os botões de Controle de Fluxo
+  // Mostra os botões de Controle de Fluxo Geral
   if (isVagaAtiva) {
     btnCancelarVaga.style.display = "inline-block";
     if (status !== "em-criação" && status !== "aguardando-aprovacao") {
@@ -126,16 +130,37 @@ function gerenciarEtapasModal(status) {
   }
 
   // Define qual seção e quais botões mostrar
-  if (status === "em-criação" || status === "aguardando-aprovacao") {
-    // Fase 1: Ficha Técnica
+  if (status === "em-criação") {
+    // Fase 1.0: Rascunho da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
     btnSalvar.textContent = "Salvar e Enviar para Aprovação";
     btnSalvar.style.display = "inline-block";
+  } else if (status === "aguardando-aprovacao") {
+    // Fase 1.1: Aprovação da Ficha Técnica (Somente visualização e ação do Gestor)
+    secaoFichaTecnica.style.display = "block";
 
-    if (status === "aguardando-aprovacao") {
-      btnSalvar.textContent = "Salvar Alterações (Aprovação Pendente)";
-      // Se for apenas alteração de rascunho, permite salvar.
-    }
+    // Adiciona botões de ação específicos (Aprovar/Rejeitar)
+    const actionHtml = `
+            <div class="acoes-aprovacao-ficha" style="display:flex; justify-content:flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-danger" id="btn-rejeitar-ficha">
+                    <i class="fas fa-times-circle"></i> Rejeitar Ficha Técnica
+                </button>
+                <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+                    <i class="fas fa-check"></i> Aprovar Ficha Técnica
+                </button>
+            </div>
+        `;
+    // Insere os botões de ação no footer (após o botão de fechar)
+    modalVaga
+      .querySelector(".modal-footer")
+      .insertAdjacentHTML("beforeend", actionHtml);
+
+    // Configura os eventos dos novos botões dinâmicos
+    const vagaId = formVaga.getAttribute("data-vaga-id");
+    document.getElementById("btn-aprovar-ficha").onclick = () =>
+      handleAprovarFichaTecnica(vagaId);
+    document.getElementById("btn-rejeitar-ficha").onclick = () =>
+      handleRejeitarFichaTecnica(vagaId);
   } else if (status === "arte-pendente") {
     // Fase 2: Criação/Aprovação da Arte
     secaoCriacaoArte.style.display = "block";
@@ -149,10 +174,12 @@ function gerenciarEtapasModal(status) {
       caixaAlteracoesArte.style.display = "block";
       btnSalvar.style.display = "none";
     };
-    btnEnviarAlteracoes.onclick = () => handleSolicitarAlteracoes();
+    document.getElementById("btn-enviar-alteracoes").onclick = () =>
+      handleSolicitarAlteracoes();
 
     // NOVO: Lógica para aprovar a arte
-    btnAprovarArte.onclick = () => handleAprovarArte();
+    document.getElementById("btn-aprovar-arte").onclick = () =>
+      handleAprovarArte();
 
     // NOVO: Lógica para cancelar divulgação a partir daqui
     document.getElementById("btn-cancelar-divulgacao").onclick = () =>
@@ -207,6 +234,7 @@ async function handleDetalhesVaga(vagaId) {
 
     // CAMPOS PRINCIPAIS
     document.getElementById("vaga-nome").value = vaga.nome || "";
+    // CORREÇÃO: Leitura do departamento
     document.getElementById("vaga-departamento").value =
       vaga.departamento || "";
     document.getElementById("vaga-tipo-recrutamento").value =
@@ -437,11 +465,24 @@ async function handleSalvarVaga(e) {
 
       newStatus = oldStatus;
 
-      // Adiciona histórico
-      vagaData.historico = arrayUnion({
-        ...historicoEntry,
-        acao: `Vaga editada (Ficha Técnica atualizada). Status: ${newStatus}`,
-      });
+      // Se for em Criação, mantemos o status, mas se o usuário clicar em Salvar e Enviar, muda para aguardando-aprovacao
+      if (
+        oldStatus === "em-criação" &&
+        submitButton.textContent.includes("Aprovação")
+      ) {
+        newStatus = "aguardando-aprovacao";
+        vagaData.status = newStatus;
+        vagaData.historico = arrayUnion({
+          ...historicoEntry,
+          acao: "Ficha Técnica finalizada e enviada para aprovação do gestor.",
+        });
+      } else {
+        // Se for edição em Rascunho (em-criação) ou em Aguardando Aprovação (sem alteração de status)
+        vagaData.historico = arrayUnion({
+          ...historicoEntry,
+          acao: `Vaga editada (Ficha Técnica atualizada). Status: ${newStatus}`,
+        });
+      }
 
       const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
       await updateDoc(vagaRef, vagaData);
@@ -452,7 +493,7 @@ async function handleSalvarVaga(e) {
       );
     } else {
       // 4. AÇÃO DE CRIAÇÃO (Novo Fluxo: Salvar e Enviar para Aprovação do Gestor)
-      newStatus = "aguardando-aprovacao"; // Pula direto para a aprovação do gestor
+      newStatus = "aguardando-aprovacao";
       vagaData.status = newStatus;
       vagaData.dataCriacao = new Date();
       vagaData.candidatosCount = 0;
@@ -471,6 +512,7 @@ async function handleSalvarVaga(e) {
     }
 
     document.getElementById("modal-vaga").style.display = "none";
+    // Recarrega a lista para o status que será o novo (aguardando-aprovacao)
     carregarVagas(newStatus);
   } catch (error) {
     console.error("Erro ao salvar/atualizar a Ficha Técnica da vaga:", error);
@@ -480,6 +522,77 @@ async function handleSalvarVaga(e) {
     );
   } finally {
     if (submitButton) submitButton.disabled = false;
+  }
+}
+
+/**
+ * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
+ */
+async function handleAprovarFichaTecnica(vagaId) {
+  if (
+    !vagaId ||
+    !confirm(
+      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
+    )
+  )
+    return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "arte-pendente", // Próxima fase: Criação da Arte
+      dataAprovacaoFicha: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
+      "success"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente");
+  } catch (error) {
+    console.error("Erro ao aprovar ficha técnica:", error);
+    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
+  }
+}
+
+/**
+ * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Em Criação).
+ */
+async function handleRejeitarFichaTecnica(vagaId) {
+  if (
+    !vagaId ||
+    !confirm(
+      "Confirma a REJEIÇÃO desta Ficha Técnica de Vaga? A vaga voltará para a fase de 'Em Criação'."
+    )
+  )
+    return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "em-criação", // Volta para Em Criação (aba "Abertas")
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica REJEITADA. Retornou para 'Em Criação' para ajustes.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Ficha Técnica rejeitada. Retornando para Em Elaboração.",
+      "info"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("abertas");
+  } catch (error) {
+    console.error("Erro ao rejeitar ficha técnica:", error);
+    window.showToast("Ocorreu um erro ao rejeitar a ficha técnica.", "error");
   }
 }
 
@@ -496,6 +609,10 @@ async function handleAprovarArte() {
 
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para usar os dados de arte existentes
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+
     await updateDoc(vagaRef, {
       status: "em-divulgacao", // Próxima fase: em Divulgação
       arte: {
@@ -546,6 +663,10 @@ async function handleSolicitarAlteracoes() {
 
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para usar os dados de arte existentes
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+
     await updateDoc(vagaRef, {
       status: "arte-pendente", // Mantém o status para que o RH saiba que está pendente de correção
       arte: {
@@ -657,17 +778,19 @@ async function carregarVagas(status) {
     '<div class="loading-spinner">Carregando vagas...</div>';
 
   // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
-  let statusParaQuery = status;
   let statusArray = [status];
 
   if (status === "abertas") {
-    statusArray = ["em-criação", "aguardando-aprovacao"];
+    // CORREÇÃO: "Abertas" agora é somente "Em Criação" (rascunho)
+    statusArray = ["em-criação"];
   } else if (status === "fechadas") {
     statusArray = ["cancelada", "encerrada"];
   } else if (status === "aprovacao-gestao") {
     statusArray = ["aguardando-aprovacao"];
   } else if (status === "arte-pendente") {
     statusArray = ["arte-pendente"];
+  } else if (status === "em-divulgacao") {
+    statusArray = ["em-divulgacao"];
   }
 
   // 1. Consulta Estreita (Conteúdo da Aba Ativa)
@@ -704,7 +827,7 @@ async function carregarVagas(status) {
   const counts = {
     abertas: 0,
     "aprovacao-gestao": 0,
-    "arte-pendente": 0, // NOVO status
+    "arte-pendente": 0,
     "em-divulgacao": 0,
     fechadas: 0,
   };
@@ -713,11 +836,8 @@ async function carregarVagas(status) {
   snapshotContagem.docs.forEach((doc) => {
     const vaga = doc.data();
 
-    // Contagem da aba "Abertas" (Vagas em andamento ou pendentes de aprovação inicial)
-    if (
-      vaga.status === "em-criação" ||
-      vaga.status === "aguardando-aprovacao"
-    ) {
+    // Contagem da aba "Em Elaboração"
+    if (vaga.status === "em-criação") {
       counts["abertas"]++;
     }
 
@@ -757,7 +877,7 @@ async function carregarVagas(status) {
                 <button class="btn btn-primary btn-detalhes" data-id="${
                   vaga.id
                 }">Ver/Gerenciar Vaga</button>
-                </div>
+            </div>
         </div>
     `;
   });
@@ -824,11 +944,16 @@ export async function initgestaovagas(user, userData) {
   if (btnEncerrarVaga) {
     btnEncerrarVaga.addEventListener("click", handleEncerrarVaga);
   }
-  // Os botões de Arte (Aprovar/Solicitar Alterações/Enviar) são configurados dentro de gerenciarEtapasModal
 
   // Configura evento de fechamento do modal
   document.querySelectorAll(".fechar-modal").forEach((btn) => {
     btn.addEventListener("click", () => {
+      // NOVO: Remove botões dinâmicos ao fechar o modal
+      const dynamicButtonsContainer = modalVaga.querySelector(
+        ".acoes-aprovacao-ficha"
+      );
+      if (dynamicButtonsContainer) dynamicButtonsContainer.remove();
+
       if (modalVaga) modalVaga.style.display = "none";
     });
   });
