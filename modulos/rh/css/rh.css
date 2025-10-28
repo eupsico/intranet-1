@@ -1,4 +1,7 @@
-/* Arquivo: /modulos/rh/css/rh.css */
+/* Arquivo: /modulos/rh/css/rh.css
+Versão: 1.3 (Melhoria de Estilo em Listas e Botões de Ação)
+Descrição: Estilos principais e compartilhados para o Painel de RH.
+*/
 
 /* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
 .view-rh .view-container {
@@ -8,20 +11,7 @@
 /* Estilo para o modal de edição de profissional */
 .modal-content {
   max-width: 600px;
-  /* --- REFORÇO ROBUSTO INÍCIO --- */
-  display: flex; /* 1. Garante Flexbox */
-  flex-direction: column; /* 2. Garante orientação vertical (header, body, footer) */
-  max-height: 90vh; /* 3. Garante que o modal respeite a altura máxima */
-  /* --- REFORÇO ROBUSTO FIM --- */
 }
-
-/* NOVO BLOCO: Força o corpo do modal a ocupar todo o espaço restante */
-.modal-body {
-  flex-grow: 1; /* Faz o corpo expandir e empurrar o footer para baixo */
-  overflow-y: auto; /* Mantém a rolagem apenas se o conteúdo exceder */
-  min-height: 0; /* Ajuda a rolagem em Flexbox */
-}
-
 /* Adicione este bloco de código NO FINAL do seu arquivo */
 .table-section table {
   min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
@@ -194,7 +184,6 @@
   padding: 16px;
 }
 .modal-footer .btn {
-  /* REMOVIDO: flex: 1 1 auto; */
   min-width: 120px;
   height: 40px;
   padding: 0 16px;
@@ -205,12 +194,15 @@
   box-sizing: border-box;
 }
 
-/* NOVO: Regra de alinhamento. Apenas o botão de Cancelar Vaga fica à esquerda. */
+/* 1. Alinhamento dos Botões de Controle de Fluxo (Cancelar, Encerrar) */
+/* Aplicamos o margin-right: auto no Cancelar Vaga para empurrá-lo para a esquerda. */
 .modal-footer #btn-cancelar-vaga {
   margin-right: auto !important; /* Empurra o botão para a extrema esquerda */
 }
 
-/* Novo Wrapper para o Grupo de Ações Dinâmicas na Fase Aprovação Ficha */
+/* 2. Wrappers de Injeção Dinâmica (Aprovação Ficha e Arte) */
+
+/* Wrapper para Aprovação de Ficha Técnica: Alinha os botões Aprovar/Solicitar à direita do Cancelar Vaga */
 .acoes-aprovacao-ficha-wrapper {
   display: flex;
   gap: 10px;
@@ -218,37 +210,28 @@
   padding: 0;
 }
 
-/* Novo Wrapper para o Grupo de Ações Dinâmicas na Fase Arte */
+/* Wrapper para Ações de Arte: Este é o grupo Salvar Link/Obs, Solicitar, Aprovar Arte */
+/* NOVO: Removemos a margem auto do CSS para deixar o JS controlar melhor a injeção */
 .acoes-arte-wrapper {
   display: flex;
   gap: 10px;
-  /* Adiciona margem auto para posicionar o grupo dinâmico antes do Fechar/Salvar estático. */
-  margin-left: auto;
-  margin-right: 10px; /* Adiciona um pequeno espaço entre este wrapper e o botão 'Fechar' */
+  margin: 0;
+  padding: 0;
+  /* A âncora de alinhamento é feita no JS com um inline style de margin-left: auto; no primeiro botão do grupo. */
 }
 .acoes-arte-wrapper .btn {
   min-width: 150px;
 }
 
+/* Estilos de Botões */
+
 /* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
 .modal-footer .btn-excluir {
-  /* Não precisa de margin-right: auto aqui, pois o Cancelar Vaga fará o trabalho. */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
   border: none;
 }
-/* Se for um botão de ação dinâmico injetado para Aprovação/Rejeição: */
-.acoes-aprovacao-ficha {
-  /* IMPORTANTE: Desativamos justify-content: flex-end para evitar que ele concorra com o modal-footer */
-  display: flex;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-}
-/* Alinhamento dos botões de Aprovação/Rejeição */
-.acoes-aprovacao-ficha .btn {
-  min-width: 150px; /* Garante que os botões Aprovar/Rejeitar tenham bom tamanho */
-}
+
 /* Garante que o botão de Cancelar (Secundário) tenha a cor correta */
 .modal-footer .btn-secondary {
   background-color: var(--cor-borda);
@@ -264,15 +247,15 @@
   color: var(--cor-texto-inverso);
   border: none;
 }
+/* Botão Solicitar Alterações (Ficha e Arte) */
 .modal-footer .btn-alteracao,
 .modal-footer #btn-solicitar-alteracoes-arte {
-  /* Adicionado ID do botão da Arte */
   background-color: var(--cor-alerta);
   color: var(--cor-texto-inverso);
   border: none;
 }
 
-/* ESTILO NOVO: Salvar Link/Obs (Botão Primário) */
+/* Botão Salvar Link/Obs (Fase Arte) */
 .modal-footer #btn-salvar-link-arte {
   background-color: var(--cor-primaria);
   color: var(--cor-texto-inverso);
