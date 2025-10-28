@@ -1,7 +1,4 @@
-/* Arquivo: /modulos/rh/css/rh.css
-Versão: 1.3 (Melhoria de Estilo em Listas e Botões de Ação)
-Descrição: Estilos principais e compartilhados para o Painel de RH.
-*/
+/* Arquivo: /modulos/rh/css/rh.css */
 
 /* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
 .view-rh .view-container {
@@ -11,19 +8,18 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Estilo para o modal de edição de profissional */
 .modal-content {
   max-width: 600px;
-  /* --- CORREÇÃO CRÍTICA INÍCIO: Força o modal a ser um container vertical Flex --- */
-  display: flex;
-  flex-direction: column;
-  /* Garante que o modal ocupe a maior parte da altura da tela, permitindo que o flex-grow funcione */
-  max-height: 90vh;
-  min-height: 250px;
-  /* --- CORREÇÃO CRÍTICA FIM --- */
+  /* --- REFORÇO ROBUSTO INÍCIO --- */
+  display: flex; /* 1. Garante Flexbox */
+  flex-direction: column; /* 2. Garante orientação vertical (header, body, footer) */
+  max-height: 90vh; /* 3. Garante que o modal respeite a altura máxima */
+  /* --- REFORÇO ROBUSTO FIM --- */
 }
 
 /* NOVO BLOCO: Força o corpo do modal a ocupar todo o espaço restante */
 .modal-body {
-  flex-grow: 1; /* Isto fará o corpo expandir, empurrando o footer para o final */
-  overflow-y: auto; /* Mantém a rolagem quando o conteúdo é longo (Ex: Ficha Técnica) */
+  flex-grow: 1; /* Faz o corpo expandir e empurrar o footer para baixo */
+  overflow-y: auto; /* Mantém a rolagem apenas se o conteúdo exceder */
+  min-height: 0; /* Ajuda a rolagem em Flexbox */
 }
 
 /* Adicione este bloco de código NO FINAL do seu arquivo */
