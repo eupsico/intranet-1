@@ -138,7 +138,7 @@ function gerenciarEtapasModal(status) {
   if (dynamicButtonsArteWrapper) dynamicButtonsArteWrapper.remove(); // Visibilidade do botão Fechar do rodapé
 
   if (btnFecharRodape) {
-    btnFecharRodape.style.display = "none"; // REQUISITO: Fechar do rodapé sempre oculto (exceto na Fase 3)
+    btnFecharRodape.style.display = "none"; // REQUISITO: Fechar do rodapé oculto por padrão (exceto na Fase 3)
   }
 
   const isVagaAprovada =
@@ -158,7 +158,7 @@ function gerenciarEtapasModal(status) {
     // Fase 1.0: Rascunho da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
     btnSalvar.textContent = "Salvar e Enviar para Aprovação";
-    btnSalvar.style.display = "inline-block"; // REQUISITO: Fechar do rodapé já está oculto acima. Cancelar Vaga oculto.
+    btnSalvar.style.display = "inline-block"; // REQUISITO: Fechar do rodapé já está oculto. Cancelar Vaga oculto.
 
     btnCancelarVaga.style.display = "none";
   } else if (status === "aguardando-aprovacao") {
@@ -201,6 +201,7 @@ function gerenciarEtapasModal(status) {
     caixaAlteracoesArte.style.display = "none";
 
     // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) ---
+    // CORREÇÃO: A injeção está no local correto (modal-footer)
     const actionHtmlArte = `
         <div class="acoes-arte-wrapper">
             <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
@@ -237,12 +238,11 @@ function gerenciarEtapasModal(status) {
       const inputLink = document.getElementById("vaga-link-arte");
       const inputObs = document.getElementById("vaga-observacao-arte");
 
-      // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta
-      if (caixaAlteracoesArte.style.display !== "block") {
-        if (btnSolicitarRodape)
-          btnSolicitarRodape.style.display = "inline-block";
-        if (btnAprovarRodape) btnAprovarRodape.style.display = "inline-block";
-        if (btnSalvarLink) btnSalvarLink.style.display = "inline-block";
+      // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta (Ao reabrir o modal)
+      if (caixaAlteracoesArte.style.display === "block") {
+        if (btnSolicitarRodape) btnSolicitarRodape.style.display = "none";
+        if (btnAprovarRodape) btnAprovarRodape.style.display = "none";
+        if (btnSalvarLink) btnSalvarLink.style.display = "none";
       }
 
       if (btnSalvarLink) {
