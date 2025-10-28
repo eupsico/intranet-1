@@ -139,3 +139,27 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
     text-align: center;
   }
 }
+/* modulos/rh/css/rh.css (Bloco a ser INSERIDO ou AJUSTADO) */
+
+/* Garante que os botões dentro das ações de RH fiquem mais proeminentes */
+.rh-card-actions .btn,
+.rh-card-actions .action-button {
+  /* Sobrescreve estilos de botões menores para deixá-los grandes e coloridos */
+  padding: 10px 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block; /* Garante que o padding funcione */
+  min-width: 150px; /* Garante que os botões tenham um bom tamanho */
+  text-align: center;
+}
+
+/* Garante que o botão de detalhes (Ver/Editar) fique azul primário */
+.rh-card-actions .btn-primary {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+}
+.rh-card-actions .btn-primary:hover {
+  background-color: var(--cor-secundaria);
+  filter: none;
+}

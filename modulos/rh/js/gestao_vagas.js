@@ -11,6 +11,7 @@ import {
   FieldValue,
   getDoc, // Adicionado getDoc para buscar uma única vaga na edição
   deleteDoc,
+  arrayUnion,
 } from "../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
 // Importa a função do novo utilitário user-management
@@ -402,6 +403,12 @@ async function carregarVagas(status) {
     '<div class="loading-spinner">Carregando vagas...</div>';
 
   let q;
+  // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
+  let statusParaQuery = status;
+  if (status === "aprovacao-gestao") {
+    statusParaQuery = "aguardando-aprovacao";
+  }
+
   if (status === "abertas") {
     // 'Abertas' pode incluir 'aguardando-aprovacao' e 'em-divulgacao'
     q = query(
@@ -409,13 +416,14 @@ async function carregarVagas(status) {
       where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
     );
   } else {
-    q = query(vagasCollection, where("status", "==", status));
+    // CORRIGIDO: Usa o status mapeado para consultar no Firestore
+    q = query(vagasCollection, where("status", "==", statusParaQuery));
   }
 
   try {
     const snapshot = await getDocs(q);
     let htmlVagas = "";
-    let count = 0; // Dicionário para contagem de status
+    let count = 0; // Contador para a aba ativa
 
     const counts = {
       abertas: 0,
@@ -427,6 +435,8 @@ async function carregarVagas(status) {
     // Contagem e Renderização
     snapshot.docs.forEach((doc) => {
       const vaga = doc.data(); // Atualiza contadores para as abas
+
+      // 1. Contagem (A lógica de contagem percorre todos os documentos do snapshot)
       if (
         vaga.status === "aguardando-aprovacao" ||
         vaga.status === "em-divulgacao"
@@ -435,12 +445,14 @@ async function carregarVagas(status) {
       }
       if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
       if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
-      if (vaga.status === "fechadas") counts["fechadas"]++; // Verifica se a vaga pertence à aba ativa para renderizar o HTML
+      if (vaga.status === "fechadas") counts["fechadas"]++;
+
+      // 2. Renderização (Verifica se a vaga pertence à aba ativa para ser exibida)
       const shouldRender =
         (status === "abertas" &&
           (vaga.status === "aguardando-aprovacao" ||
             vaga.status === "em-divulgacao")) ||
-        vaga.status === status;
+        (status !== "abertas" && vaga.status === statusParaQuery);
 
       if (shouldRender) {
         vaga.id = doc.id;
@@ -485,7 +497,7 @@ async function carregarVagas(status) {
       // CORRIGIDO: usa a classe .tab-link
       const btnStatus = btn.getAttribute("data-status");
       const countValue = counts[btnStatus] || 0;
-      // O nome da aba de aprovação é 'aprovacao-gestao' mas o status é 'aguardando-aprovacao' no banco. Corrigido na contagem acima.
+
       btn.textContent = `${btnStatus
         .replace(/-/g, " ")
         .replace("aprovacao gestao", "Aguardando Aprovação")
@@ -500,13 +512,15 @@ async function carregarVagas(status) {
       return;
     }
 
-    listaVagas.innerHTML = htmlVagas; // Adiciona eventos para botões de detalhes/edição
+    listaVagas.innerHTML = htmlVagas;
 
+    // Adiciona eventos para botões de detalhes/edição
     document.querySelectorAll(".btn-detalhes").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         handleDetalhesVaga(e.target.getAttribute("data-id"));
       });
-    }); // Adiciona eventos para botões de aprovação
+    });
+    // Adiciona eventos para botões de aprovação
     document.querySelectorAll(".btn-aprovar").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         handleAprovarVaga(e.target.getAttribute("data-id"));
@@ -538,7 +552,9 @@ async function handleAprovarVaga(vagaId) {
     await updateDoc(vagaRef, {
       status: "em-divulgacao", // Passa para a fase de recrutamento/divulgação
       dataAprovacao: new Date(),
-      historico: FieldValue.arrayUnion({
+      // CORRIGIDO: Usa a função arrayUnion importada diretamente
+      historico: arrayUnion({
+        // <--- MUDANÇA AQUI
         data: new Date(),
         acao: "Vaga aprovada e liberada para divulgação/recrutamento.",
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado
