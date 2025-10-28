@@ -10,6 +10,7 @@ import {
   where,
   FieldValue,
   getDoc, // Adicionado getDoc para buscar uma única vaga na edição
+  deleteDoc,
 } from "../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
 
 // Importa a função do novo utilitário user-management
@@ -31,6 +32,8 @@ const btnSalvar = formVaga
   ? formVaga.querySelector('button[type="submit"]')
   : null;
 const modalTitle = modalVaga ? modalVaga.querySelector("h3") : null;
+// NOVO: Adiciona o botão de excluir
+const btnExcluir = document.getElementById("btn-excluir-vaga");
 
 let currentUserData = {}; // Para armazenar os dados do usuário logado
 
@@ -68,9 +71,12 @@ function openNewVagaModal() {
     formVaga.reset();
     formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
   }
-  // CORRIGIDO: Novo Título
-  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga";
+  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga"; // CORRIGIDO: Novo Título
   if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
+
+  // NOVO: Oculta o botão de excluir na criação
+  if (btnExcluir) btnExcluir.style.display = "none";
+
   if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
 }
 
@@ -182,9 +188,12 @@ async function handleDetalhesVaga(vagaId) {
 
     // 2. Configura o modal para edição
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
-    // CORRIGIDO: Título para edição
     if (modalTitle) modalTitle.textContent = "Editar Ficha Técnica da Vaga";
     if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
+
+    // NOVO: Exibe o botão de excluir na edição
+    if (btnExcluir) btnExcluir.style.display = "inline-block";
+
     if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
@@ -333,7 +342,7 @@ async function handleSalvarVaga(e) {
     }
 
     document.getElementById("modal-vaga").style.display = "none"; // Recarrega a lista para o status que for mais provável de ser o atual após a ação
-    const activeTab = document.querySelector(".status-tabs .btn-tab.active");
+    const activeTab = document.querySelector(".status-tabs .tab-link.active");
     const newStatus = isEditing
       ? activeTab.getAttribute("data-status")
       : "aguardando-aprovacao";
@@ -348,7 +357,40 @@ async function handleSalvarVaga(e) {
     if (submitButton) submitButton.disabled = false;
   }
 }
+/**
+ * NOVO: Função para excluir uma vaga.
+ * @param {Event} e
+ */
+async function handleExcluirVaga(e) {
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  if (!vagaId) return;
 
+  if (
+    !confirm(
+      "Tem certeza que deseja EXCLUIR permanentemente esta Ficha Técnica de Vaga? Esta ação não pode ser desfeita."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    // CORRIGIDO: Usa a nova coleção
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await deleteDoc(vagaRef);
+
+    window.showToast("Ficha Técnica da Vaga excluída com sucesso!", "success");
+
+    // Esconde o modal e recarrega a lista
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("abertas");
+  } catch (error) {
+    console.error("Erro ao excluir a Ficha Técnica da vaga:", error);
+    window.showToast(
+      "Ocorreu um erro ao excluir a Ficha Técnica da vaga.",
+      "error"
+    );
+  }
+}
 /**
  * Carrega e exibe as vagas com base no status.
  * @param {string} status
@@ -403,28 +445,44 @@ async function carregarVagas(status) {
       if (shouldRender) {
         vaga.id = doc.id;
         count++;
+
+        // NOVO: Mapeia informações principais para a aprovação (conforme solicitação)
+        const infoAprovacao = [
+          `Nível: ${vaga.experiencia?.nivel || "Não definido"}`,
+          `Formação: ${vaga.formacao?.minima || "Não definida"}`,
+          `Resp.: ${
+            vaga.cargo?.responsabilidades
+              ? vaga.cargo.responsabilidades.substring(0, 40) + "..."
+              : "Não definida"
+          }`,
+        ].join(" | ");
+
         htmlVagas += `
- <div class="card card-vaga" data-id="${vaga.id}">
-<h4>${vaga.nome}</h4>
-<p>Status: **${vaga.status.toUpperCase().replace(/-/g, " ")}**</p>
-<p>Candidatos: ${vaga.candidatosCount || 0}</p>
-                    <div class="rh-card-actions">
-<button class="btn btn-sm btn-info btn-detalhes" data-id="${
-          vaga.id
-        }">Ver/Editar Detalhes</button>
-${
-  vaga.status === "aguardando-aprovacao"
-    ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-    : ""
-}
-                    </div>
- </div>
-`;
+            <div class="card card-vaga" data-id="${vaga.id}">
+                <h4>${vaga.nome}</h4>
+                <p class="text-secondary small-info">${infoAprovacao}</p>
+                <p>Status: **${vaga.status
+                  .toUpperCase()
+                  .replace(/-/g, " ")}**</p>
+                <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+                <div class="rh-card-actions">
+                    <button class="btn btn-primary btn-detalhes" data-id="${
+                      vaga.id
+                    }">Ver/Editar Detalhes</button>
+                    ${
+                      vaga.status === "aguardando-aprovacao"
+                        ? `<button class="btn btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
+                        : ""
+                    }
+                </div>
+            </div>
+        `;
       }
     });
 
     // Atualiza os contadores em todos os botões de status
-    document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
+    document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
+      // CORRIGIDO: usa a classe .tab-link
       const btnStatus = btn.getAttribute("data-status");
       const countValue = counts[btnStatus] || 0;
       // O nome da aba de aprovação é 'aprovacao-gestao' mas o status é 'aguardando-aprovacao' no banco. Corrigido na contagem acima.
@@ -523,6 +581,11 @@ export async function initgestaovagas(user, userData) {
     btnNovaVaga.addEventListener("click", openNewVagaModal);
   }
 
+  // NOVO: Adiciona evento de exclusão
+  if (btnExcluir) {
+    btnExcluir.addEventListener("click", handleExcluirVaga);
+  }
+
   // Configura evento de fechamento do modal
   document.querySelectorAll(".fechar-modal").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -537,7 +600,8 @@ export async function initgestaovagas(user, userData) {
 
   // 3. Carrega a lista inicial (vagas abertas)
   // Garante que a aba 'abertas' esteja ativa por padrão
-  document.querySelectorAll(".status-tabs .btn-tab").forEach((b) => {
+  document.querySelectorAll(".status-tabs .tab-link").forEach((b) => {
+    // CORRIGIDO: Usa a classe .tab-link
     b.classList.remove("active");
     if (b.getAttribute("data-status") === "abertas") {
       b.classList.add("active");
@@ -547,11 +611,12 @@ export async function initgestaovagas(user, userData) {
   await carregarVagas("abertas");
 
   // 4. Adiciona eventos aos botões de status (filtragem)
-  document.querySelectorAll(".status-tabs .btn-tab").forEach((btn) => {
+  document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
+    // CORRIGIDO: Usa a classe .tab-link
     btn.addEventListener("click", (e) => {
       const status = e.target.getAttribute("data-status");
       document
-        .querySelectorAll(".status-tabs .btn-tab")
+        .querySelectorAll(".status-tabs .tab-link") // CORRIGIDO: Usa a classe .tab-link
         .forEach((b) => b.classList.remove("active"));
       e.target.classList.add("active");
       carregarVagas(status);
