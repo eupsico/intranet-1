@@ -3,16 +3,18 @@ import { db, doc, getDoc } from "../../../assets/js/firebase-init.js";
 // A função é exportada e recebe os dados do usuário, seguindo o padrão do painel
 // CORREÇÃO: Removido 'db' dos parâmetros, pois já é importado acima.
 export function init(user, userData) {
-  // A verificação de permissão usa os dados já recebidos
-  if (
-    !userData ||
-    !(
-      userData.funcoes &&
-      userData.funcoes.some((role) =>
-        ["admin", "gestor", "assistente"].includes(role)
-      )
-    )
-  ) {
+  // Linha 1: Início da função init
+  // Lista de funções que têm acesso
+  const rolesPermitidas = ["admin", "gestor", "assistente"]; // Bloco de Verificação de Permissão // Verifica: 1. Se userData está presente E 2. Se a lista de funções do usuário tem alguma função permitida
+
+  const hasPermission =
+    userData &&
+    userData.funcoes &&
+    Array.isArray(userData.funcoes) &&
+    userData.funcoes.some((role) => rolesPermitidas.includes(role));
+
+  if (!hasPermission) {
+    // Linha 16 (ou próximo a ela): Erro de acesso negado
     console.error("Acesso negado. O usuário não tem a permissão necessária.");
     const container = document.querySelector(".container");
     if (container)
