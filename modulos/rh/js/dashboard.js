@@ -122,22 +122,27 @@ export async function initdashboard(user, userData) {
       const funcoes = user.funcoes || [];
       const profissao = user.profissao || "Não Informado";
 
-      // Agregação por FUNÇÃO PRINCIPAL (Primeira da lista)
-      const principalRole = funcoes.length > 0 ? funcoes[0] : "Não Definido";
+      // CORREÇÃO: Itera sobre TODAS as funções do usuário para a distribuição (Fixa contagem de Gestores)
+      funcoes.forEach((role) => {
+        // Mapeamento para nomes de exibição amigáveis
+        const displayRole =
+          {
+            psicologo_voluntario: "Psicólogo Voluntário",
+            psicologo_plantonista: "Psicólogo Plantonista",
+            supervisor: "Supervisor",
+            admin: "Admin",
+            rh: "RH",
+            gestor: "Gestor", // Adicionado mapeamento para 'gestor'
+          }[role] ||
+          role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
 
-      // Mapeamento para nomes de exibição amigáveis
-      const displayRole =
-        {
-          psicologo_voluntario: "Psicólogo Voluntário",
-          psicologo_plantonista: "Psicólogo Plantonista",
-          supervisor: "Supervisor",
-          admin: "Admin",
-          rh: "RH",
-        }[principalRole] ||
-        principalRole.charAt(0).toUpperCase() +
-          principalRole.slice(1).replace(/_/g, " ");
+        funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+      });
 
-      funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+      // Se o usuário não tiver funções, garantir que ele seja contado como 'Não Definido'
+      if (funcoes.length === 0) {
+        funcoesMap["Não Definido"] = (funcoesMap["Não Definido"] || 0) + 1;
+      }
 
       // Agregação por PROFISSÃO
       const displayProfissao =
@@ -146,6 +151,8 @@ export async function initdashboard(user, userData) {
         (profissaoMap[displayProfissao] || 0) + 1;
     });
 
+    // Dados para o Gráfico de Funções
+    // ... (resto do código permanece igual) ...
     // Dados para o Gráfico de Funções
     const funcoesLabels = Object.keys(funcoesMap);
     const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
