@@ -126,7 +126,7 @@ function gerenciarEtapasModal(status) {
   secaoDivulgacao.style.display = "none";
   btnCancelarVaga.style.display = "none";
   btnEncerrarVaga.style.display = "none";
-  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos anteriores // [Remoção de botões dinâmicos deve ser feita ANTES da injeção]
+  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos anteriores
 
   const dynamicButtonsFicha = modalVaga.querySelector(
     ".acoes-aprovacao-ficha-wrapper"
@@ -627,6 +627,43 @@ async function handleSalvarVaga(e) {
  * @param {string} link
  * @param {string} observacao
  */
+async function handleSalvarArteLink(vagaId, link, observacao) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para manter o status e resumo atual
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    const currentArte = docSnap.data().arte || {};
+
+    await updateDoc(vagaRef, {
+      arte: {
+        ...currentArte,
+        link: link,
+        observacao: observacao, // Salva o novo campo de observação
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Link e Observação da Arte salvos com sucesso.",
+      "success"
+    );
+    // Recarrega o modal para exibir o status atualizado
+    handleDetalhesVaga(vagaId);
+  } catch (error) {
+    console.error("Erro ao salvar Link/Observação da Arte:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
+      "error"
+    );
+  }
+}
 
 /**
  * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
@@ -807,42 +844,6 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
       "Ocorreu um erro ao salvar o Link/Observação da Arte.",
       "error"
     );
-  }
-}
-
-/**
- * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
- */
-async function handleAprovarFichaTecnica(vagaId) {
-  if (
-    !vagaId ||
-    !confirm(
-      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
-    )
-  )
-    return;
-
-  try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    await updateDoc(vagaRef, {
-      status: "arte-pendente", // Próxima fase: Criação da Arte
-      dataAprovacaoFicha: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-    });
-
-    window.showToast(
-      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
-      "success"
-    );
-    document.getElementById("modal-vaga").style.display = "none";
-    carregarVagas("arte-pendente");
-  } catch (error) {
-    console.error("Erro ao aprovar ficha técnica:", error);
-    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
   }
 }
 
