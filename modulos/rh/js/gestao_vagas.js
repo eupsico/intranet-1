@@ -392,6 +392,7 @@ async function handleExcluirVaga(e) {
     );
   }
 }
+
 /**
  * Carrega e exibe as vagas com base no status.
  * @param {string} status
@@ -402,125 +403,133 @@ async function carregarVagas(status) {
   listaVagas.innerHTML =
     '<div class="loading-spinner">Carregando vagas...</div>';
 
-  // NOVO: Mapeia o status da aba para o status real do Firestore
+  // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
   let statusParaQuery = status;
   if (status === "aprovacao-gestao") {
     statusParaQuery = "aguardando-aprovacao";
   }
 
-  // CORRIGIDO: Sempre busca TODOS os documentos da coleção para que a contagem em todas as abas seja precisa.
-  const q = query(vagasCollection);
-
-  try {
-    const snapshot = await getDocs(q); // Snapshot completo de todas as vagas.
-    let htmlVagas = "";
-    let count = 0; // Contador para a aba ativa
-
-    const counts = {
-      abertas: 0,
-      "aprovacao-gestao": 0,
-      "em-divulgacao": 0,
-      fechadas: 0,
-    };
-
-    // Contagem e Renderização
-    snapshot.docs.forEach((doc) => {
-      const vaga = doc.data(); // Atualiza contadores para as abas
-
-      // 1. Contagem (A lógica de contagem total percorre todos os documentos do snapshot COMPLETO)
-      if (
-        vaga.status === "aguardando-aprovacao" ||
-        vaga.status === "em-divulgacao"
-      ) {
-        counts["abertas"]++;
-      }
-      if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
-      if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
-      if (vaga.status === "fechadas") counts["fechadas"]++;
-
-      // 2. Renderização (Verifica se a vaga pertence à aba ativa para ser exibida)
-      const shouldRender =
-        (status === "abertas" &&
-          (vaga.status === "aguardando-aprovacao" ||
-            vaga.status === "em-divulgacao")) ||
-        (status !== "abertas" && vaga.status === statusParaQuery); // CORRIGIDO: Usa statusParaQuery
-
-      if (shouldRender) {
-        vaga.id = doc.id;
-        count++;
-
-        // NOVO: Mapeia informações principais para a aprovação (conforme solicitação)
-        const infoAprovacao = [
-          `Nível: ${vaga.experiencia?.nivel || "Não definido"}`,
-          `Formação: ${vaga.formacao?.minima || "Não definida"}`,
-          `Resp.: ${
-            vaga.cargo?.responsabilidades
-              ? vaga.cargo.responsabilidades.substring(0, 40) + "..."
-              : "Não definida"
-          }`,
-        ].join(" | ");
-
-        htmlVagas += `
-            <div class="card card-vaga" data-id="${vaga.id}">
-                <h4>${vaga.nome}</h4>
-                <p class="text-secondary small-info">${infoAprovacao}</p>
-                <p>Status: **${vaga.status
-                  .toUpperCase()
-                  .replace(/-/g, " ")}**</p>
-                <p>Candidatos: ${vaga.candidatosCount || 0}</p>
-                <div class="rh-card-actions">
-                    <button class="btn btn-primary btn-detalhes" data-id="${
-                      vaga.id
-                    }">Ver/Editar Detalhes</button>
-                    ${
-                      vaga.status === "aguardando-aprovacao"
-                        ? `<button class="btn btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-                        : ""
-                    }
-                </div>
-            </div>
-        `;
-      }
-    });
-
-    // Atualiza os contadores em todos os botões de status
-    document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
-      // CORRIGIDO: usa a classe .tab-link
-      const btnStatus = btn.getAttribute("data-status");
-      const countValue = counts[btnStatus] || 0;
-
-      btn.textContent = `${btnStatus
-        .replace(/-/g, " ")
-        .replace("aprovacao gestao", "Aguardando Aprovação")
-        .toUpperCase()} (${countValue})`;
-    });
-
-    if (count === 0) {
-      listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status.replace(
-        /-/g,
-        " "
-      )}**.</p>`;
-      return;
-    }
-
-    listaVagas.innerHTML = htmlVagas;
-
-    // Adiciona eventos para botões de detalhes/edição
-    document.querySelectorAll(".btn-detalhes").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        handleDetalhesVaga(e.target.getAttribute("data-id"));
-      });
-    });
-    // Adiciona eventos para botões de aprovação
-    document.querySelectorAll(".btn-aprovar").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        handleAprovarVaga(e.target.getAttribute("data-id"));
-      });
-    });
-  } catch (error) {
-    console.error("Erro ao carregar vagas:", error);
-    listaVagas.innerHTML = '<p class="error">Erro ao carregar as vagas.</p>';
+  // 1. Consulta Estreita (Conteúdo da Aba Ativa)
+  let queryConteudo;
+  if (status === "abertas") {
+    queryConteudo = query(
+      vagasCollection,
+      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
+    );
+  } else {
+    queryConteudo = query(
+      vagasCollection,
+      where("status", "==", statusParaQuery)
+    );
   }
+
+  // 2. Consulta Ampla (Para Contagem Global)
+  // Busca todos os status possíveis para garantir que a contagem não zere.
+  const queryContagemGlobal = query(
+    vagasCollection,
+    where("status", "in", ["aguardando-aprovacao", "em-divulgacao", "fechadas"])
+  );
+
+  // Executa ambas as consultas em paralelo
+  const [snapshotConteudo, snapshotContagem] = await Promise.all([
+    getDocs(queryConteudo),
+    getDocs(queryContagemGlobal),
+  ]);
+
+  let htmlVagas = "";
+  let count = 0;
+
+  const counts = {
+    abertas: 0,
+    "aprovacao-gestao": 0,
+    "em-divulgacao": 0,
+    fechadas: 0,
+  };
+
+  // 1. Contagem GLOBAL (Baseada em todos os documentos)
+  snapshotContagem.docs.forEach((doc) => {
+    const vaga = doc.data();
+
+    if (
+      vaga.status === "aguardando-aprovacao" ||
+      vaga.status === "em-divulgacao"
+    ) {
+      counts["abertas"]++;
+    }
+    if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
+    if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
+    if (vaga.status === "fechadas") counts["fechadas"]++;
+  });
+
+  // 2. Renderização (Apenas os documentos da aba ativa)
+  snapshotConteudo.docs.forEach((doc) => {
+    const vaga = doc.data();
+    vaga.id = doc.id;
+    count++; // Conta apenas os que serão renderizados
+
+    // NOVO: Mapeia informações principais para a aprovação
+    const infoAprovacao = [
+      `Nível: ${vaga.experiencia?.nivel || "Não definido"}`,
+      `Formação: ${vaga.formacao?.minima || "Não definida"}`,
+      `Resp.: ${
+        vaga.cargo?.responsabilidades
+          ? vaga.cargo.responsabilidades.substring(0, 40) + "..."
+          : "Não definida"
+      }`,
+    ].join(" | ");
+
+    htmlVagas += `
+        <div class="card card-vaga" data-id="${vaga.id}">
+            <h4>${vaga.nome}</h4>
+            <p class="text-secondary small-info">${infoAprovacao}</p>
+            <p>Status: **${vaga.status.toUpperCase().replace(/-/g, " ")}**</p>
+            <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+            <div class="rh-card-actions">
+                <button class="btn btn-primary btn-detalhes" data-id="${
+                  vaga.id
+                }">Ver/Editar Detalhes</button>
+                ${
+                  vaga.status === "aguardando-aprovacao"
+                    ? `<button class="btn btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
+                    : ""
+                }
+            </div>
+        </div>
+    `;
+  });
+
+  // Atualiza os contadores em todos os botões de status (usa counts globais)
+  document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
+    const btnStatus = btn.getAttribute("data-status");
+    const countValue = counts[btnStatus] || 0;
+
+    btn.textContent = `${btnStatus
+      .replace(/-/g, " ")
+      .replace("aprovacao gestao", "Aguardando Aprovação")
+      .toUpperCase()} (${countValue})`;
+  });
+
+  if (count === 0) {
+    listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status.replace(
+      /-/g,
+      " "
+    )}**.</p>`;
+    return;
+  }
+
+  listaVagas.innerHTML = htmlVagas;
+
+  // Adiciona eventos... (o restante da função permanece igual)
+  document.querySelectorAll(".btn-detalhes").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      handleDetalhesVaga(e.target.getAttribute("data-id"));
+    });
+  });
+  document.querySelectorAll(".btn-aprovar").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      handleAprovarVaga(e.target.getAttribute("data-id"));
+    });
+  });
 }
 
 /**
