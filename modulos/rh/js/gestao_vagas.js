@@ -158,7 +158,7 @@ function gerenciarEtapasModal(status) {
     // Adiciona botões de ação dinâmicos
     const actionHtml = `
 <div class="acoes-aprovacao-ficha">
-<button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
+<button type="button" class="btn btn-alteracao" id="btn-rejeitar-ficha">
 <i class="fas fa-times-circle"></i> Solicitar Alterações
 </button>
 <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
