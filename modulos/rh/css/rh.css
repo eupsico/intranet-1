@@ -178,32 +178,46 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
 .modal-footer {
   display: flex;
-  justify-content: flex-end; /* Alinha os botões à direita */
-  gap: 8px; /* Espaço entre os botões */
-  flex-wrap: wrap; /* Permite quebra de linha em telas pequenas */
+  justify-content: flex-end; /* Alinha os botões à direita por padrão */
+  gap: 10px; /* Aumentei o gap para melhor espaçamento */
+  flex-wrap: wrap;
   padding: 16px;
 }
 .modal-footer .btn {
-  flex: 1 1 auto;
+  /* REMOVIDO: flex: 1 1 auto; */
   min-width: 120px;
   height: 40px;
   padding: 0 16px;
-  /* padding: 10px 20px; */
   font-size: 0.9em;
   font-weight: 500;
   text-align: center;
   white-space: nowrap;
   box-sizing: border-box;
 }
+.modal-footer #btn-cancelar-vaga {
+  margin-right: auto !important;
+}
 
 /* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
 .modal-footer .btn-excluir {
-  margin-right: auto !important; /* Move para a esquerda */
+  /* Não precisa de margin-right: auto aqui, pois o Cancelar Vaga fará o trabalho. */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
   border: none;
 }
-
+/* Se for um botão de ação dinâmico injetado para Aprovação/Rejeição: */
+.acoes-aprovacao-ficha {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  /* Adiciona margem à esquerda para separá-lo do grupo de Cancelar/Encerrar */
+  margin-left: 20px;
+}
+/* Alinhamento dos botões de Aprovação/Rejeição */
+.acoes-aprovacao-ficha .btn {
+  min-width: 150px; /* Garante que os botões Aprovar/Rejeitar tenham bom tamanho */
+}
 /* Garante que o botão de Cancelar (Secundário) tenha a cor correta */
 .modal-footer .btn-secondary {
   background-color: var(--cor-borda);
@@ -224,15 +238,19 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-inverso);
   border: none;
 }
+.modal-footer .btn-alteração {
+  background-color: var(--cor-alerta);
+  color: var(--cor-texto-inverso);
+  border: none;
+}
 .modal-footer .btn-danger {
-  /*margin-right: auto !important;  Move para a esquerda */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
   border: none;
 }
-.modal-footer .btn-secondary {
-  background-color: var(--cor--secondary);
-  color: var(--cor-surface);
+.modal-footer .btn-dark {
+  background-color: var(--cor-texto-secundario);
+  color: var(--cor-texto-inverso);
   border: none;
 }
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
