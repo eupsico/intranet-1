@@ -1,7 +1,6 @@
 import { db, doc, getDoc } from "../../../assets/js/firebase-init.js";
 
 // A função é exportada e recebe os dados do usuário, seguindo o padrão do painel
-// A verificação de acesso foi REMOVIDA para que o módulo seja iniciado sem falhas de permissão.
 export function init(user, userData) {
   console.log("📚 Módulo de Treinamentos (Visualização) iniciado.");
 
@@ -43,42 +42,59 @@ export function init(user, userData) {
     }
 
     videos.forEach((video) => {
-      // Lembrete: A função extrairVideoId atual só funciona para links do YouTube.
-      const videoId = extrairVideoId(video.link);
+      const videoId = extrairVideoId(video.link); // Conteúdo que será exibido dentro do acordeão
 
-      // Adicionamos uma verificação para não tentar renderizar vídeos sem ID válido (que seriam os links do Google Drive ou inválidos)
-      if (!videoId) {
-        console.warn(
-          "Link de vídeo inválido ou não suportado (não-YouTube):",
-          video.link
-        );
-        return; // Pula este vídeo se não for YouTube e não puder ser incorporado
-      }
+      let contentBody;
 
       if (videoId) {
-        const accordionItem = document.createElement("div");
-        accordionItem.classList.add("accordion-item"); // Estrutura do acordeão: título clicável e conteúdo oculto
-
-        accordionItem.innerHTML = `
-     <button class="accordion-header">
-      ${video.title || "Vídeo sem Título"}
-      <span class="accordion-icon">+</span>
-     </button>
-     <div class="accordion-content">
-      <div class="video-description">
-        <p>${video.descricao.replace(/\n/g, "<br>")}</p>
-      </div>
-      <div class="video-embed">
-        <iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      </div>
+        // --- Lógica para YouTube (incorporação via iframe) ---
+        contentBody = `
+     <div class="video-description">
+       <p>${video.descricao.replace(/\n/g, "<br>")}</p>
+     </div>
+     <div class="video-embed">
+       <iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
      </div>
     `;
-        container.appendChild(accordionItem);
-      }
+      } else {
+        // --- Lógica para Links Externos (Google Drive, etc.) ---
+        console.warn(
+          "Link de vídeo não-YouTube detectado (será exibido como link externo):",
+          video.link
+        );
+        contentBody = `
+     <div class="video-description">
+       <p>${video.descricao.replace(/\n/g, "<br>")}</p>
+     </div>
+     <div class="external-link-embed">
+       <p>Este vídeo está hospedado externamente (Ex: Google Drive). Clique no link abaixo para abrir em uma nova aba.</p>
+       <a href="${
+         video.link
+       }" target="_blank" rel="noopener noreferrer" class="action-button primary-button">
+        Abrir Vídeo Externo
+       </a>
+              <p class="small-link">${video.link}</p>
+     </div>
+    `;
+      } // Cria o item do acordeão para AMBOS os tipos de link (YouTube e Externo)
+
+      const accordionItem = document.createElement("div");
+      accordionItem.classList.add("accordion-item");
+
+      accordionItem.innerHTML = `
+    <button class="accordion-header">
+     ${video.title || "Vídeo sem Título"}
+     <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content">
+     ${contentBody}
+    </div>
+   `;
+      container.appendChild(accordionItem);
     }); // Adiciona os eventos de clique DEPOIS que todos os itens foram criados
 
     setupAccordion();
-  } // FUNÇÃO para controlar a lógica do acordeão
+  } // FUNÇÃO para controlar a lógica do acordeão (sem alterações)
 
   function setupAccordion() {
     const accordionHeaders = document.querySelectorAll(".accordion-header");
