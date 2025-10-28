@@ -111,11 +111,10 @@ async function carregarListasFirebase() {
  */
 function gerenciarEtapasModal(status) {
   // Elemento do botão Fechar (botão estático no HTML)
-  const btnFecharRodape = modalVaga.querySelector(
+  const btnFecharRodapé = modalVaga.querySelector(
     ".modal-footer .fechar-modal"
-  );
+  ); // Elementos do Modal Header (Botão X)
 
-  // Elementos do Modal Header (Botão X)
   const btnFecharHeader = modalVaga.querySelector(
     ".modal-header .close-modal-btn"
   );
@@ -137,8 +136,8 @@ function gerenciarEtapasModal(status) {
   );
   if (dynamicButtonsArteWrapper) dynamicButtonsArteWrapper.remove(); // Visibilidade do botão Fechar do rodapé
 
-  if (btnFecharRodape) {
-    btnFecharRodape.style.display = "none"; // REQUISITO: Fechar do rodapé oculto por padrão (exceto na Fase 3)
+  if (btnFecharRodapé) {
+    btnFecharRodapé.style.display = "none"; // REQUISITO: Fechar do rodapé oculto por padrão (exceto na Fase 3)
   }
 
   const isVagaAprovada =
@@ -170,15 +169,15 @@ function gerenciarEtapasModal(status) {
     btnSalvar.style.display = "none"; // Adiciona botões de ação dinâmicos em um wrapper
 
     const actionHtml = `
-      <div class="acoes-aprovacao-ficha-wrapper">
-        <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
-          <i class="fas fa-times-circle"></i> Solicitar Alterações
-        </button>
-        <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
-          <i class="fas fa-check"></i> Aprovar
-        </button>
-      </div>
-    `; // Injeta os botões dinâmicos no modal-footer, ANTES do Fechar
+   <div class="acoes-aprovacao-ficha-wrapper">
+    <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
+     <i class="fas fa-times-circle"></i> Solicitar Alterações
+    </button>
+    <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+     <i class="fas fa-check"></i> Aprovar
+    </button>
+   </div>
+  `; // Injeta os botões dinâmicos no modal-footer, ANTES do Fechar
 
     const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
     if (fecharModalBtn) {
@@ -198,50 +197,44 @@ function gerenciarEtapasModal(status) {
     btnCancelarVaga.style.display = "none";
     btnEncerrarVaga.style.display = "none"; // Esconde a caixa de texto de alteração por padrão
 
-    caixaAlteracoesArte.style.display = "none";
+    caixaAlteracoesArte.style.display = "none"; // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) --- // CORREÇÃO: A injeção está no local correto (modal-footer)
 
-    // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) ---
-    // CORREÇÃO: A injeção está no local correto (modal-footer)
     const actionHtmlArte = `
-        <div class="acoes-arte-wrapper">
-            <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
-                <i class="fas fa-save"></i> Salvar Link/Obs
-            </button>
-            <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
-                <i class="fas fa-edit"></i> Solicitar Alterações
-            </button>
-            <button type="button" class="btn btn-success" id="btn-aprovar-arte-final">
-                <i class="fas fa-check"></i> Aprovar Arte
-            </button>
-        </div>
-    `;
+    <div class="acoes-arte-wrapper">
+      <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
+        <i class="fas fa-save"></i> Salvar Link/Obs
+      </button>
+      <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
+        <i class="fas fa-edit"></i> Solicitar Alterações
+      </button>
+      <button type="button" class="btn btn-success" id="btn-aprovar-arte-final">
+        <i class="fas fa-check"></i> Aprovar Arte
+      </button>
+    </div>
+  `; // Injeta o wrapper antes do botão Fechar
 
-    // Injeta o wrapper antes do botão Fechar
     const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
     if (fecharModalBtn) {
       fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtmlArte);
-    }
+    } // --- LÓGICA DE EVENTOS E FLUXO DA ARTE ---
 
-    // --- LÓGICA DE EVENTOS E FLUXO DA ARTE ---
-    const vagaId = formVaga.getAttribute("data-vaga-id");
+    const vagaId = formVaga.getAttribute("data-vaga-id"); // Defer a configuração de eventos para o próximo tick ou após a injeção
 
-    // Defer a configuração de eventos para o próximo tick ou após a injeção
     setTimeout(() => {
       const btnSalvarLink = document.getElementById("btn-salvar-link-arte");
-      const btnSolicitarRodape = document.getElementById(
+      const btnSolicitarRodapé = document.getElementById(
         "btn-solicitar-alteracoes-arte"
       );
-      const btnAprovarRodape = document.getElementById(
+      const btnAprovarRodapé = document.getElementById(
         "btn-aprovar-arte-final"
       );
 
       const inputLink = document.getElementById("vaga-link-arte");
-      const inputObs = document.getElementById("vaga-observacao-arte");
+      const inputObs = document.getElementById("vaga-observacao-arte"); // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta (Ao reabrir o modal)
 
-      // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta (Ao reabrir o modal)
       if (caixaAlteracoesArte.style.display === "block") {
-        if (btnSolicitarRodape) btnSolicitarRodape.style.display = "none";
-        if (btnAprovarRodape) btnAprovarRodape.style.display = "none";
+        if (btnSolicitarRodapé) btnSolicitarRodapé.style.display = "none";
+        if (btnAprovarRodapé) btnAprovarRodapé.style.display = "none";
         if (btnSalvarLink) btnSalvarLink.style.display = "none";
       }
 
@@ -250,27 +243,24 @@ function gerenciarEtapasModal(status) {
           handleSalvarArteLink(vagaId, inputLink.value, inputObs.value);
       }
 
-      if (btnAprovarRodape) {
-        btnAprovarRodape.onclick = () => handleAprovarArte();
+      if (btnAprovarRodapé) {
+        btnAprovarRodapé.onclick = () => handleAprovarArte();
       }
 
-      if (btnSolicitarRodape) {
-        btnSolicitarRodape.onclick = () => {
+      if (btnSolicitarRodapé) {
+        btnSolicitarRodapé.onclick = () => {
           // Ao clicar em Solicitar, exibe o campo de texto
-          if (caixaAlteracoesArte) caixaAlteracoesArte.style.display = "block";
+          if (caixaAlteracoesArte) caixaAlteracoesArte.style.display = "block"; // Esconde os botões do rodapé enquanto o campo de texto está ativo
 
-          // Esconde os botões do rodapé enquanto o campo de texto está ativo
-          if (btnSolicitarRodape) btnSolicitarRodape.style.display = "none";
-          if (btnAprovarRodape) btnAprovarRodape.style.display = "none";
+          if (btnSolicitarRodapé) btnSolicitarRodapé.style.display = "none";
+          if (btnAprovarRodapé) btnAprovarRodapé.style.display = "none";
           if (btnSalvarLink) btnSalvarLink.style.display = "none";
         };
-      }
+      } // Configura o envio da solicitação (botão dentro da caixa de texto - que chama handleSolicitarAlteracoes)
 
-      // Configura o envio da solicitação (botão dentro da caixa de texto - que chama handleSolicitarAlteracoes)
       if (btnEnviarAlteracoes) {
         btnEnviarAlteracoes.onclick = () => {
-          handleSolicitarAlteracoes(vagaId);
-          // A ação de handleSolicitarAlteracoes recarrega a lista e fecha o modal.
+          handleSolicitarAlteracoes(vagaId); // A ação de handleSolicitarAlteracoes recarrega a lista e fecha o modal.
         };
       }
     }, 0);
@@ -280,7 +270,7 @@ function gerenciarEtapasModal(status) {
     btnSalvar.textContent = "Salvar Canais de Divulgação";
     btnSalvar.style.display = "inline-block";
 
-    if (btnFecharRodape) btnFecharRodape.style.display = "inline-block"; // Volta o Fechar do rodapé // Exibir Cancelar Vaga e Encerrar Vaga
+    if (btnFecharRodapé) btnFecharRodapé.style.display = "inline-block"; // Volta o Fechar do rodapé // Exibir Cancelar Vaga e Encerrar Vaga
 
     if (isVagaAtiva) {
       btnCancelarVaga.style.display = "inline-block";
@@ -387,13 +377,11 @@ async function handleDetalhesVaga(vagaId) {
 
     const resumoArteField = document.getElementById("vaga-resumo-arte");
     const linkArteField = document.getElementById("vaga-link-arte");
-    const obsArteField = document.getElementById("vaga-observacao-arte"); // Novo campo
+    const obsArteField = document.getElementById("vaga-observacao-arte"); // Novo campo // Carrega o link e observação
 
-    // Carrega o link e observação
     linkArteField.value = vaga.arte?.link || "";
-    obsArteField.value = vaga.arte?.observacao || ""; // Carrega observação salva
+    obsArteField.value = vaga.arte?.observacao || ""; // Carrega observação salva // Preenche Resumo da Arte (AUTOMÁTICO se estiver vazio)
 
-    // Preenche Resumo da Arte (AUTOMÁTICO se estiver vazio)
     if (!vaga.arte?.resumo) {
       // Se não houver resumo salvo, gera automaticamente a partir da ficha
       resumoArteField.value = gerarResumoVaga(vaga);
@@ -635,8 +623,7 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
   if (!vagaId) return;
 
   try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    // Busca docSnap para manter o status e resumo atual
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId); // Busca docSnap para manter o status e resumo atual
     const docSnap = await getDoc(vagaRef);
     if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
     const currentArte = docSnap.data().arte || {};
@@ -657,8 +644,7 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
     window.showToast(
       "Link e Observação da Arte salvos com sucesso.",
       "success"
-    );
-    // Recarrega o modal para exibir o status atualizado
+    ); // Recarrega o modal para exibir o status atualizado
     handleDetalhesVaga(vagaId);
   } catch (error) {
     console.error("Erro ao salvar Link/Observação da Arte:", error);
@@ -728,24 +714,24 @@ function modalRejeicaoFichaTecnica(vagaId) {
     modal.style.alignItems = "center";
 
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
-          <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
-          <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="rejeicao-motivo">Justificativa:</label>
-            <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
-          <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
-        </div>
-      </div>
-    `;
+   <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
+     <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
+     <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+    </div>
+    <div class="modal-body">
+     <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
+     <div class="form-group" style="margin-bottom: 15px;">
+      <label for="rejeicao-motivo">Justificativa:</label>
+      <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
+     </div>
+    </div>
+    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+     <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
+     <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
+    </div>
+   </div>
+  `;
     document.body.appendChild(modal); // Adiciona evento de fechar
 
     modal.querySelectorAll(".fechar-modal-rejeicao").forEach((btn) => {
@@ -1066,18 +1052,18 @@ async function carregarVagas(status) {
     ].join(" | ");
 
     htmlVagas += `
-    <div class="card card-vaga" data-id="${vaga.id}">
-      <h4>${vaga.nome}</h4>
-      <p class="text-secondary small-info">${infoSecundaria}</p>
-      <p>Status: **${statusFormatado}**</p>
-      <p>Candidatos: ${vaga.candidatosCount || 0}</p>
-      <div class="rh-card-actions">
-        <button class="btn btn-primary btn-detalhes" data-id="${
-          vaga.id
-        }">Ver/Gerenciar Vaga</button>
-      </div>
-    </div>
-  `;
+  <div class="card card-vaga" data-id="${vaga.id}">
+   <h4>${vaga.nome}</h4>
+   <p class="text-secondary small-info">${infoSecundaria}</p>
+   <p>Status: **${statusFormatado}**</p>
+   <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+   <div class="rh-card-actions">
+    <button class="btn btn-primary btn-detalhes" data-id="${
+      vaga.id
+    }">Ver/Gerenciar Vaga</button>
+   </div>
+  </div>
+ `;
   }); // Atualiza os contadores em todos os botões de status (usa counts globais)
 
   document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
