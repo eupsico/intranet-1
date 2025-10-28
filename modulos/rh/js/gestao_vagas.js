@@ -126,7 +126,7 @@ function gerenciarEtapasModal(status) {
   secaoDivulgacao.style.display = "none";
   btnCancelarVaga.style.display = "none";
   btnEncerrarVaga.style.display = "none";
-  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos ANTERIORES (Remoção direta dos wrappers que foram injetados)
+  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos anteriores // [Remoção de botões dinâmicos deve ser feita ANTES da injeção]
 
   const dynamicButtonsFicha = modalVaga.querySelector(
     ".acoes-aprovacao-ficha-wrapper"
@@ -165,7 +165,7 @@ function gerenciarEtapasModal(status) {
 
     btnCancelarVaga.style.display = "inline-block"; // Esconde o Salvar
 
-    btnSalvar.style.display = "none"; // Adiciona botões de ação dinâmicos em um wrapper
+    btnSalvar.style.display = "none"; // Lógica de Renderização Dinâmica (Aprovação de Ficha)
 
     const actionHtml = `
       <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
@@ -198,8 +198,8 @@ function gerenciarEtapasModal(status) {
 
     caixaAlteracoesArte.style.display = "none";
 
-    // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) ---
-    // CORREÇÃO FINAL: Usamos a lógica de injeção direta que funciona
+    // --- INJEÇÃO CORRETA DOS BOTÕES DA ARTE NO RODAPÉ ---
+    // NOVO: Renderização dinâmica dos botões como irmãos do Fechar
     const actionHtmlArte = `
         <button type="button" class="btn btn-primary" id="btn-salvar-link-arte" style="margin-left: auto;">
             <i class="fas fa-save"></i> Salvar Link/Obs
@@ -212,7 +212,7 @@ function gerenciarEtapasModal(status) {
         </button>
     `;
 
-    // Injeta os botões ANTES do botão Fechar (ancorando no final por Flexbox)
+    // Injeta os botões ANTES do botão Fechar
     const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
     if (fecharModalBtn) {
       fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtmlArte);
@@ -844,6 +844,42 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
       "Ocorreu um erro ao salvar o Link/Observação da Arte.",
       "error"
     );
+  }
+}
+
+/**
+ * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
+ */
+async function handleAprovarFichaTecnica(vagaId) {
+  if (
+    !vagaId ||
+    !confirm(
+      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
+    )
+  )
+    return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "arte-pendente", // Próxima fase: Criação da Arte
+      dataAprovacaoFicha: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
+      "success"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente");
+  } catch (error) {
+    console.error("Erro ao aprovar ficha técnica:", error);
+    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
   }
 }
 
