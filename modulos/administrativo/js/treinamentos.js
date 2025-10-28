@@ -30,6 +30,24 @@ export function init(user, userData) {
       container.innerHTML = "<p>Ocorreu um erro ao carregar os vídeos.</p>";
     }
   }
+  /**
+   * Converte um link de visualização padrão do Google Drive para um link de incorporação (embed).
+   * Isso permite que o vídeo seja exibido em um iframe sem a interface completa do Drive,
+   * geralmente impedindo o download fácil.
+   * @param {string} url - Link do Google Drive (ex: https://drive.google.com/file/d/ID_DO_ARQUIVO/view?usp=sharing)
+   * @returns {string | null} O link de embed, ou null se não for um link do Drive reconhecido.
+   */
+
+  function converterLinkDriveParaEmbed(url) {
+    if (!url) return null;
+    const regex = /file\/d\/([a-zA-Z0-9_-]+)\//;
+    const matches = url.match(regex);
+    if (matches && matches[1]) {
+      const fileId = matches[1]; // Formato ideal para incorporar no iframe
+      return `https://drive.google.com/file/d/${fileId}/preview`;
+    }
+    return null;
+  }
 
   function renderizarVideos(videos) {
     const container = document.getElementById("videos-container");
@@ -42,44 +60,40 @@ export function init(user, userData) {
     }
 
     videos.forEach((video) => {
-      const videoId = extrairVideoId(video.link); // Conteúdo que será exibido dentro do acordeão
+      const youtubeId = extrairVideoId(video.link);
+      const driveEmbedLink = converterLinkDriveParaEmbed(video.link); // Determina qual URL de incorporação usar
 
-      let contentBody;
+      let embedUrl = null;
+      if (youtubeId) {
+        embedUrl = `https://www.youtube.com/embed/${youtubeId}`;
+      } else if (driveEmbedLink) {
+        embedUrl = driveEmbedLink;
+      } // Se não for YouTube nem Drive, exibe um aviso e não renderiza.
 
-      if (videoId) {
-        // --- Lógica para YouTube (incorporação via iframe) ---
-        contentBody = `
-     <div class="video-description">
-       <p>${video.descricao.replace(/\n/g, "<br>")}</p>
-     </div>
-     <div class="video-embed">
-       <iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-     </div>
-    `;
-      } else {
-        // --- Lógica para Links Externos (Google Drive, etc.) ---
+      if (!embedUrl) {
         console.warn(
-          "Link de vídeo não-YouTube detectado (será exibido como link externo):",
+          "Link de vídeo inválido ou não suportado para incorporação:",
           video.link
         );
-        contentBody = `
-     <div class="video-description">
-       <p>${video.descricao.replace(/\n/g, "<br>")}</p>
-     </div>
-     <div class="external-link-embed">
-       <p>Este vídeo está hospedado externamente (Ex: Google Drive). Clique no link abaixo para abrir em uma nova aba.</p>
-       <a href="${
-         video.link
-       }" target="_blank" rel="noopener noreferrer" class="action-button primary-button">
-        Abrir Vídeo Externo
-       </a>
-              <p class="small-link">${video.link}</p>
-     </div>
-    `;
-      } // Cria o item do acordeão para AMBOS os tipos de link (YouTube e Externo)
+        return;
+      }
 
+      // Se chegamos aqui, temos um embedUrl (YouTube ou Drive)
       const accordionItem = document.createElement("div");
-      accordionItem.classList.add("accordion-item");
+      accordionItem.classList.add("accordion-item"); // Conteúdo com o iframe
+
+      const contentBody = `
+    <div class="video-description">
+      <p>${video.descricao.replace(/\n/g, "<br>")}</p>
+    </div>
+    <div class="video-embed">
+      <iframe src="${embedUrl}" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    </div>
+   `;
 
       accordionItem.innerHTML = `
     <button class="accordion-header">
