@@ -11,19 +11,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Estilo para o modal de edição de profissional */
 .modal-content {
   max-width: 600px;
-  /* --- CORREÇÃO INÍCIO --- */
-  display: flex; /* 1. Habilita o Flexbox */
-  flex-direction: column; /* 2. Define a direção como coluna (cabeçalho, corpo, rodapé) */
-  min-height: 400px; /* Opcional: Garante altura mínima para modais curtos */
-  /* --- CORREÇÃO FIM --- */
 }
-
-/* NOVO: Faz com que o corpo do modal ocupe todo o espaço vertical disponível */
-.modal-body {
-  flex-grow: 1; /* Permite que o body se expanda para preencher o espaço */
-  overflow-y: auto; /* Mantém a rolagem apenas se o conteúdo exceder */
-}
-
 /* Adicione este bloco de código NO FINAL do seu arquivo */
 .table-section table {
   min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
@@ -206,30 +194,8 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   white-space: nowrap;
   box-sizing: border-box;
 }
-
-/* NOVO: Regra de alinhamento. Apenas o botão de Cancelar Vaga fica à esquerda. */
 .modal-footer #btn-cancelar-vaga {
-  margin-right: auto !important; /* Empurra o botão para a extrema esquerda */
-}
-
-/* Novo Wrapper para o Grupo de Ações Dinâmicas na Fase Aprovação Ficha */
-.acoes-aprovacao-ficha-wrapper {
-  display: flex;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-}
-
-/* Novo Wrapper para o Grupo de Ações Dinâmicas na Fase Arte */
-.acoes-arte-wrapper {
-  display: flex;
-  gap: 10px;
-  /* Adiciona margem auto para posicionar o grupo dinâmico antes do Fechar/Salvar estático. */
-  margin-left: auto;
-  margin-right: 10px; /* Adiciona um pequeno espaço entre este wrapper e o botão 'Fechar' */
-}
-.acoes-arte-wrapper .btn {
-  min-width: 150px;
+  margin-right: auto !important;
 }
 
 /* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
@@ -266,20 +232,10 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-inverso);
   border: none;
 }
-.modal-footer .btn-alteracao,
-.modal-footer #btn-solicitar-alteracoes-arte {
-  /* Adicionado ID do botão da Arte */
+.modal-footer .btn-alteracao {
   background-color: var(--cor-alerta);
   color: var(--cor-texto-inverso);
   border: none;
-}
-
-/* ESTILO NOVO: Salvar Link/Obs (Botão Primário) */
-.modal-footer #btn-salvar-link-arte {
-  background-color: var(--cor-primaria);
-  color: var(--cor-texto-inverso);
-  border: none;
-  min-width: 150px;
 }
 
 .modal-footer .btn-danger {
