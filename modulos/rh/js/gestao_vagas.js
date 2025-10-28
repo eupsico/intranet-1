@@ -96,7 +96,9 @@ async function carregarListasFirebase() {
  */
 function gerenciarEtapasModal(status) {
   // Elemento do botão Fechar (botão estático no HTML)
-  const btnFecharModal = modalVaga.querySelector(".fechar-modal");
+  const btnFecharRodape = modalVaga.querySelector(
+    ".modal-footer .fechar-modal"
+  );
 
   // Oculta todas as seções por padrão
   secaoFichaTecnica.style.display = "none";
@@ -106,19 +108,15 @@ function gerenciarEtapasModal(status) {
   btnEncerrarVaga.style.display = "none";
   btnSalvar.style.display = "none";
 
-  // Ações no Modal Header (Botão X)
-  modalVaga.querySelector(".close-modal-btn").style.display = "block"; // Visível por padrão, exceto se especificado
-
   // NOVO: Remove botões dinâmicos anteriores
   const dynamicButtonsContainer = modalVaga.querySelector(
-    ".acoes-aprovacao-ficha"
+    ".acoes-aprovacao-ficha-wrapper" // Usaremos um novo wrapper para alinhar
   );
   if (dynamicButtonsContainer) dynamicButtonsContainer.remove();
 
-  // Define a visibilidade do botão Fechar (estático)
-  if (btnFecharModal) {
-    // Por padrão, é visível, exceto nos casos específicos
-    btnFecharModal.style.display = "inline-block";
+  // Visibilidade do botão Fechar do rodapé
+  if (btnFecharRodape) {
+    btnFecharRodape.style.display = "inline-block"; // Padrão: visível
   }
 
   const isVagaAprovada =
@@ -142,39 +140,39 @@ function gerenciarEtapasModal(status) {
     btnSalvar.textContent = "Salvar e Enviar para Aprovação";
     btnSalvar.style.display = "inline-block";
 
-    // REQUISITO: Remover Cancelar Vaga e Fechar
+    // REQUISITO: Remover Cancelar Vaga e Fechar do rodapé
     btnCancelarVaga.style.display = "none";
-    if (btnFecharModal) btnFecharModal.style.display = "none";
+    if (btnFecharRodape) btnFecharRodape.style.display = "none";
   } else if (status === "aguardando-aprovacao") {
     // Fase 1.1: Aprovação da Ficha Técnica (3 Botões alinhados)
     secaoFichaTecnica.style.display = "block";
 
-    // REQUISITO: Remover botão Fechar
-    if (btnFecharModal) btnFecharModal.style.display = "none";
+    // REQUISITO: Remover botão Fechar do rodapé
+    if (btnFecharRodape) btnFecharRodape.style.display = "none";
 
     // REQUISITO: Exibir Cancelar Vaga (estático)
     btnCancelarVaga.style.display = "inline-block";
 
-    // Adiciona botões de ação dinâmicos
+    // Esconde o Salvar
+    btnSalvar.style.display = "none";
+
+    // Adiciona botões de ação dinâmicos em um wrapper
+    // A ordem será: [Solicitar Alterações] [Aprovar] (junto com o Cancelar Vaga estático)
     const actionHtml = `
-<div class="acoes-aprovacao-ficha">
-<button type="button" class="btn btn-alteracao" id="btn-rejeitar-ficha">
-<i class="fas fa-times-circle"></i> Solicitar Alterações
-</button>
-<button type="button" class="btn btn-success" id="btn-aprovar-ficha">
-<i class="fas fa-check"></i> Aprovar
-</button>
-</div>
-`;
+            <div class="acoes-aprovacao-ficha-wrapper">
+                <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
+                    <i class="fas fa-times-circle"></i> Solicitar Alterações
+                </button>
+                <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+                    <i class="fas fa-check"></i> Aprovar
+                </button>
+            </div>
+        `;
 
-    // Seleciona o botão de salvar para injetar a nova div ANTES dele
+    // Injeta os botões dinâmicos no modal-footer, ANTES do Fechar e Salvar
     const salvarModalBtn = modalVaga.querySelector("#btn-salvar-vaga");
-
-    // Injeta os botões dinâmicos no modal-footer
     if (salvarModalBtn) {
       salvarModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
-      // Oculta o Salvar estático (já oculto no início da função, mas garante)
-      btnSalvar.style.display = "none";
     }
 
     // Configura os eventos dos novos botões dinâmicos
@@ -183,9 +181,6 @@ function gerenciarEtapasModal(status) {
       handleAprovarFichaTecnica(vagaId);
     document.getElementById("btn-rejeitar-ficha").onclick = () =>
       modalRejeicaoFichaTecnica(vagaId);
-
-    // NOVO: Adicionamos o Cancelar Vaga (btnCancelarVaga) estático no HTML para o alinhamento
-    // Ele será estilizado via CSS para ficar junto dos botões dinâmicos.
   } else if (status === "arte-pendente") {
     // Fase 2: Criação/Aprovação da Arte
     secaoCriacaoArte.style.display = "block";
@@ -222,6 +217,14 @@ function gerenciarEtapasModal(status) {
     if (isVagaAtiva) {
       btnCancelarVaga.style.display = "inline-block";
       btnEncerrarVaga.style.display = "inline-block";
+    }
+
+    // Exibir Cancelar Vaga e Encerrar Vaga
+    if (isVagaAtiva) {
+      btnCancelarVaga.style.display = "inline-block";
+      if (status !== "em-criação" && status !== "aguardando-aprovacao") {
+        btnEncerrarVaga.style.display = "inline-block";
+      }
     }
   }
 }
