@@ -158,7 +158,7 @@ function gerenciarEtapasModal(status) {
     // Fase 1.0: Rascunho da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
     btnSalvar.textContent = "Salvar e Enviar para Aprovação";
-    btnSalvar.style.display = "inline-block"; // REQUISITO: Fechar do rodapé já está oculto. Cancelar Vaga oculto.
+    btnSalvar.style.display = "inline-block"; // Fechar do rodapé e Cancelar Vaga ocultos (conforme requisito)
 
     btnCancelarVaga.style.display = "none";
   } else if (status === "aguardando-aprovacao") {
@@ -804,6 +804,50 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
   } catch (error) {
     console.error("Erro ao rejeitar ficha técnica:", error);
     window.showToast("Ocorreu um erro ao rejeitar a ficha técnica.", "error");
+  }
+}
+
+/**
+ * NOVO: Lida com o salvamento do Link da Arte e Observação
+ * @param {string} vagaId
+ * @param {string} link
+ * @param {string} observacao
+ */
+async function handleSalvarArteLink(vagaId, link, observacao) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para manter o status e resumo atual
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    const currentArte = docSnap.data().arte || {};
+
+    await updateDoc(vagaRef, {
+      arte: {
+        ...currentArte,
+        link: link,
+        observacao: observacao, // Salva o novo campo de observação
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Link e Observação da Arte salvos com sucesso.",
+      "success"
+    );
+    // Recarrega o modal para exibir o status atualizado
+    handleDetalhesVaga(vagaId);
+  } catch (error) {
+    console.error("Erro ao salvar Link/Observação da Arte:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
+      "error"
+    );
   }
 }
 
