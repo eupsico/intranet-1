@@ -329,34 +329,27 @@
                 />
               </div>
 
+              <div class="form-group">
+                <label for="vaga-observacao-arte"
+                  >Observação sobre o Link/Arte (Opcional):</label
+                >
+                <textarea
+                  id="vaga-observacao-arte"
+                  rows="2"
+                  placeholder="Ex: A arte foi adaptada do template Y."
+                ></textarea>
+              </div>
+
               <div id="aprovacao-arte-container">
                 <h4>Aprovação da Arte</h4>
                 <p>
                   Status atual: <strong id="status-arte-atual">Pendente</strong>
                 </p>
-                <div class="form-group acoes-arte-gestor">
-                  <button
-                    type="button"
-                    class="btn btn-success"
-                    id="btn-aprovar-arte"
-                  >
-                    <i class="fas fa-check"></i> Aprovar Arte
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-warning"
-                    id="btn-solicitar-alteracoes"
-                  >
-                    <i class="fas fa-edit"></i> Solicitar Alterações
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-danger"
-                    id="btn-cancelar-divulgacao"
-                  >
-                    <i class="fas fa-times-circle"></i> Cancelar Divulgação
-                  </button>
-                </div>
+
+                <div
+                  class="form-group acoes-arte-gestor"
+                  style="display: none"
+                ></div>
 
                 <div
                   class="form-group"
