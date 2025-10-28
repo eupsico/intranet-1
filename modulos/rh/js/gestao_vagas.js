@@ -43,14 +43,14 @@ const secaoFichaTecnica = document.getElementById("secao-ficha-tecnica");
 const secaoCriacaoArte = document.getElementById("secao-criacao-arte");
 const secaoDivulgacao = document.getElementById("secao-divulgacao");
 
-// Elementos da Seção Arte
+// Elementos da Seção Arte (Mantemos as IDs mesmo que os botões estejam no rodapé)
 const caixaAlteracoesArte = document.getElementById("caixa-alteracoes-arte");
 const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
 let currentUserData = {}; // Para armazenar os dados do usuário logado
 
 /**
- * NOVO: Gera um resumo da vaga usando os dados principais da Ficha Técnica.
+ * NOVO: Gera um resumo da vaga usando os dados principais da Ficha Técnica (para a arte).
  * @param {object} vaga - O objeto de dados da vaga.
  * @returns {string} O resumo formatado.
  */
@@ -138,7 +138,7 @@ function gerenciarEtapasModal(status) {
   if (dynamicButtonsArteWrapper) dynamicButtonsArteWrapper.remove(); // Visibilidade do botão Fechar do rodapé
 
   if (btnFecharRodape) {
-    btnFecharRodape.style.display = "inline-block"; // Padrão: visível
+    btnFecharRodape.style.display = "none"; // REQUISITO: Fechar do rodapé sempre oculto (exceto na Fase 3)
   }
 
   const isVagaAprovada =
@@ -158,19 +158,16 @@ function gerenciarEtapasModal(status) {
     // Fase 1.0: Rascunho da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
     btnSalvar.textContent = "Salvar e Enviar para Aprovação";
-    btnSalvar.style.display = "inline-block"; // REQUISITO: Remover Cancelar Vaga e Fechar do rodapé
+    btnSalvar.style.display = "inline-block"; // REQUISITO: Fechar do rodapé já está oculto acima. Cancelar Vaga oculto.
 
     btnCancelarVaga.style.display = "none";
-    if (btnFecharRodape) btnFecharRodape.style.display = "none";
   } else if (status === "aguardando-aprovacao") {
     // Fase 1.1: Aprovação da Ficha Técnica (3 Botões alinhados)
-    secaoFichaTecnica.style.display = "block"; // REQUISITO: Remover botão Fechar do rodapé
-
-    if (btnFecharRodape) btnFecharRodape.style.display = "none"; // REQUISITO: Exibir Cancelar Vaga (estático)
+    secaoFichaTecnica.style.display = "block"; // REQUISITO: Exibir Cancelar Vaga (estático)
 
     btnCancelarVaga.style.display = "inline-block"; // Esconde o Salvar
 
-    btnSalvar.style.display = "none"; // Adiciona botões de ação dinâmicos em um wrapper // A ordem será: [Solicitar Alterações] [Aprovar] (junto com o Cancelar Vaga estático)
+    btnSalvar.style.display = "none"; // Adiciona botões de ação dinâmicos em um wrapper
 
     const actionHtml = `
       <div class="acoes-aprovacao-ficha-wrapper">
@@ -181,11 +178,11 @@ function gerenciarEtapasModal(status) {
           <i class="fas fa-check"></i> Aprovar
         </button>
       </div>
-    `; // Injeta os botões dinâmicos no modal-footer, ANTES do Fechar e Salvar
+    `; // Injeta os botões dinâmicos no modal-footer, ANTES do Fechar
 
-    const salvarModalBtn = modalVaga.querySelector("#btn-salvar-vaga");
-    if (salvarModalBtn) {
-      salvarModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
+    const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
+    if (fecharModalBtn) {
+      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
     } // Configura os eventos dos novos botões dinâmicos
 
     const vagaId = formVaga.getAttribute("data-vaga-id");
@@ -196,15 +193,14 @@ function gerenciarEtapasModal(status) {
   } else if (status === "arte-pendente") {
     // Fase 2: Criação/Aprovação da Arte
     secaoCriacaoArte.style.display = "block";
-    btnSalvar.style.display = "none";
-    if (btnFecharRodape) btnFecharRodape.style.display = "inline-block"; // Mantém o fechar visível // REQUISITO: Remover Cancelar Vaga nesta fase
+    btnSalvar.style.display = "none"; // REQUISITO: Remover Cancelar Vaga nesta fase
 
     btnCancelarVaga.style.display = "none";
     btnEncerrarVaga.style.display = "none"; // Esconde a caixa de texto de alteração por padrão
 
     caixaAlteracoesArte.style.display = "none";
 
-    // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Aprovar/Solicitar/Salvar Link) ---
+    // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) ---
     const actionHtmlArte = `
         <div class="acoes-arte-wrapper">
             <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
@@ -241,6 +237,14 @@ function gerenciarEtapasModal(status) {
       const inputLink = document.getElementById("vaga-link-arte");
       const inputObs = document.getElementById("vaga-observacao-arte");
 
+      // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta
+      if (caixaAlteracoesArte.style.display !== "block") {
+        if (btnSolicitarRodape)
+          btnSolicitarRodape.style.display = "inline-block";
+        if (btnAprovarRodape) btnAprovarRodape.style.display = "inline-block";
+        if (btnSalvarLink) btnSalvarLink.style.display = "inline-block";
+      }
+
       if (btnSalvarLink) {
         btnSalvarLink.onclick = () =>
           handleSalvarArteLink(vagaId, inputLink.value, inputObs.value);
@@ -265,13 +269,8 @@ function gerenciarEtapasModal(status) {
       // Configura o envio da solicitação (botão dentro da caixa de texto - que chama handleSolicitarAlteracoes)
       if (btnEnviarAlteracoes) {
         btnEnviarAlteracoes.onclick = () => {
-          // Reverte a visibilidade dos botões do rodapé após o envio
           handleSolicitarAlteracoes(vagaId);
-          if (caixaAlteracoesArte) caixaAlteracoesArte.style.display = "none";
-          if (btnSolicitarRodape)
-            btnSolicitarRodape.style.display = "inline-block";
-          if (btnAprovarRodape) btnAprovarRodape.style.display = "inline-block";
-          if (btnSalvarLink) btnSalvarLink.style.display = "inline-block";
+          // A ação de handleSolicitarAlteracoes recarrega a lista e fecha o modal.
         };
       }
     }, 0);
@@ -279,7 +278,9 @@ function gerenciarEtapasModal(status) {
     // Fase 3: Em Divulgação (Pós-Aprovação da Arte)
     secaoDivulgacao.style.display = "block";
     btnSalvar.textContent = "Salvar Canais de Divulgação";
-    btnSalvar.style.display = "inline-block"; // Exibir Cancelar Vaga e Encerrar Vaga
+    btnSalvar.style.display = "inline-block";
+
+    if (btnFecharRodape) btnFecharRodape.style.display = "inline-block"; // Volta o Fechar do rodapé // Exibir Cancelar Vaga e Encerrar Vaga
 
     if (isVagaAtiva) {
       btnCancelarVaga.style.display = "inline-block";
@@ -625,6 +626,50 @@ async function handleSalvarVaga(e) {
 }
 
 /**
+ * NOVO: Lida com o salvamento do Link da Arte e Observação
+ * @param {string} vagaId
+ * @param {string} link
+ * @param {string} observacao
+ */
+async function handleSalvarArteLink(vagaId, link, observacao) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para manter o status e resumo atual
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    const currentArte = docSnap.data().arte || {};
+
+    await updateDoc(vagaRef, {
+      arte: {
+        ...currentArte,
+        link: link,
+        observacao: observacao, // Salva o novo campo de observação
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Link e Observação da Arte salvos com sucesso.",
+      "success"
+    );
+    // Recarrega o modal para exibir o status atualizado
+    handleDetalhesVaga(vagaId);
+  } catch (error) {
+    console.error("Erro ao salvar Link/Observação da Arte:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
+      "error"
+    );
+  }
+}
+
+/**
  * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
  */
 async function handleAprovarFichaTecnica(vagaId) {
@@ -759,48 +804,6 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
   } catch (error) {
     console.error("Erro ao rejeitar ficha técnica:", error);
     window.showToast("Ocorreu um erro ao rejeitar a ficha técnica.", "error");
-  }
-}
-
-/**
- * NOVO: Lida com o salvamento do Link da Arte e Observação
- * @param {string} vagaId
- * @param {string} link
- * @param {string} observacao
- */
-async function handleSalvarArteLink(vagaId, link, observacao) {
-  if (!vagaId) return;
-
-  try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    // Busca docSnap para manter o status e resumo atual
-    const docSnap = await getDoc(vagaRef);
-    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
-    const currentArte = docSnap.data().arte || {};
-
-    await updateDoc(vagaRef, {
-      arte: {
-        ...currentArte,
-        link: link,
-        observacao: observacao, // Salva o novo campo de observação
-      },
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-    });
-
-    window.showToast(
-      "Link e Observação da Arte salvos com sucesso.",
-      "success"
-    );
-  } catch (error) {
-    console.error("Erro ao salvar Link/Observação da Arte:", error);
-    window.showToast(
-      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
-      "error"
-    );
   }
 }
 
