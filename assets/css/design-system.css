@@ -1320,4 +1320,29 @@ td .action-button,
     grid-template-columns: 1fr;
   }
 }
-/* --- FIM DA NOVA SEÇÃO PARA DASHBOARDS (RH/Financeiro) --- */
+.rh-card-actions .btn-sm {
+  /* Removido o btn-sm, usamos o estilo padrão de botão para ser maior e mais colorido */
+  padding: 8px 18px;
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Estilo para Botão de Excluir no Modal */
+.modal-footer .btn-danger {
+  margin-right: auto; /* Empurra o botão 'Excluir Vaga' para a esquerda */
+}
+
+/* Ajuste do modal para corrigir a rolagem (Repetição da correção anterior, vital para o scroll) */
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+.modal-body {
+  padding: 25px;
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0;
+}
