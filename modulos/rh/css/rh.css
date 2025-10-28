@@ -196,7 +196,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 }
 .modal-footer .btn-success {
   background-color: var(--cor-salvar);
-  color: var(--cor-texto-inverso);
+  color: var(--cor-texto-principal);
 }
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
 .rh-card-actions .btn,
