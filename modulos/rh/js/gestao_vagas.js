@@ -8,60 +8,162 @@ import {
   doc,
   query,
   where,
+  deleteDoc,
   FieldValue,
   getDoc, // Adicionado getDoc para buscar uma única vaga na edição
-  deleteDoc,
   arrayUnion,
-} from "../../../assets/js/firebase-init.js"; // Ajuste o caminho conforme necessário
+  // Não precisa de deleteDoc e FieldValue, mas arrayUnion foi mantido
+} from "../../../assets/js/firebase-init.js";
 
-// Importa a função do novo utilitário user-management
+// Importa a função do novo utilitário user-management (mantido)
 import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 
+// Importações do Firebase atualizadas
+import { arrayRemove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
 // NOVO: Define a constante para o nome da coleção
-const VAGAS_COLLECTION_NAME = "recursos_humanos";
+const VAGAS_COLLECTION_NAME = "vagas"; // COLEÇÃO CORRETA: vagas
+const CONFIG_COLLECTION_NAME = "configuracoesSistema"; // Para buscar listas globais
 
 // Coleção principal no Firestore para as vagas
-// CORRIGIDO: Agora aponta para a nova coleção.
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
-const candidatosCollection = collection(db, "candidatos");
 
 // Elementos do DOM globais
 const modalVaga = document.getElementById("modal-vaga");
 const formVaga = document.getElementById("form-vaga");
-const selectGestor = document.getElementById("vaga-gestor");
-const btnSalvar = formVaga
-  ? formVaga.querySelector('button[type="submit"]')
-  : null;
 const modalTitle = modalVaga ? modalVaga.querySelector("h3") : null;
-// NOVO: Adiciona o botão de excluir
-const btnExcluir = document.getElementById("btn-excluir-vaga");
+const btnSalvar = document.getElementById("btn-salvar-vaga");
+
+// Elementos de novas ações (Removido btnExcluir)
+const btnCancelarVaga = document.getElementById("btn-cancelar-vaga");
+const btnEncerrarVaga = document.getElementById("btn-encerrar-vaga");
+
+// Elementos de controle de etapa
+const secaoFichaTecnica = document.getElementById("secao-ficha-tecnica");
+const secaoCriacaoArte = document.getElementById("secao-criacao-arte");
+const secaoDivulgacao = document.getElementById("secao-divulgacao");
+
+// Elementos da Seção Arte
+const btnAprovarArte = document.getElementById("btn-aprovar-arte");
+const btnSolicitarAlteracoes = document.getElementById(
+  "btn-solicitar-alteracoes"
+);
+const caixaAlteracoesArte = document.getElementById("caixa-alteracoes-arte");
+const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
 let currentUserData = {}; // Para armazenar os dados do usuário logado
 
 /**
- * Função para carregar a lista de gestores e popular o campo select.
+ * NOVO: Função para carregar listas dinâmicas (Departamentos, Regimes, Modalidades) do Firebase.
  */
-async function carregarGestores() {
-  // CORRIGIDO: Busca usuários com a função 'gestor' (tudo minúsculo)
-  const gestores = await fetchUsersByRole("gestor");
+async function carregarListasFirebase() {
+  const selectDepartamento = document.getElementById("vaga-departamento");
 
-  if (!selectGestor) return;
-  selectGestor.innerHTML = '<option value="">Selecione o Gestor...</option>';
+  if (!selectDepartamento) return;
 
-  if (gestores.length === 0) {
-    // Exibir esta mensagem apenas se não encontrar o gestor.
-    console.warn(
-      "Nenhum usuário com a função 'gestor' encontrado no banco de dados."
-    );
-    return;
+  try {
+    // 1. Carregar Departamentos
+    // Caminho: configuracoesSistema -> geral -> listas (map) -> departamentos (array)
+    const configRef = doc(db, CONFIG_COLLECTION_NAME, "geral");
+    const docSnap = await getDoc(configRef);
+
+    if (docSnap.exists()) {
+      const listas = docSnap.data().listas;
+      const departamentos = listas?.departamentos || [];
+
+      selectDepartamento.innerHTML =
+        '<option value="">Selecione o Departamento</option>';
+
+      departamentos.forEach((depto) => {
+        const option = document.createElement("option");
+        option.value = depto;
+        option.textContent = depto;
+        selectDepartamento.appendChild(option);
+      });
+    }
+
+    // 2. Os campos Regime de Trabalho e Modalidade já estão no HTML,
+    // mas se forem dinâmicos, a lógica de busca do Firebase seria adicionada aqui.
+  } catch (error) {
+    console.error("Erro ao carregar listas do Firebase:", error);
+    window.showToast("Erro ao carregar listas de configuração.", "error");
+  }
+}
+
+/**
+ * NOVO: Gerencia a exibição das etapas no modal com base no status da vaga.
+ * @param {string} status - Status atual da vaga ('em-criação', 'aguardando-aprovacao', 'arte-pendente', 'em-divulgacao', etc.).
+ */
+function gerenciarEtapasModal(status) {
+  // Oculta todas as seções por padrão
+  secaoFichaTecnica.style.display = "none";
+  secaoCriacaoArte.style.display = "none";
+  secaoDivulgacao.style.display = "none";
+  btnCancelarVaga.style.display = "none";
+  btnEncerrarVaga.style.display = "none";
+  btnSalvar.style.display = "none"; // O botão salvar só aparece na Ficha ou para alterações de arte
+
+  const isVagaAprovada =
+    status === "em-divulgacao" || status === "em-recrutamento";
+  const isVagaAtiva =
+    status !== "cancelada" && status !== "encerrada" && status !== "fechadas";
+  const isVagaBloqueada = isVagaAprovada;
+
+  // Habilita/Desabilita campos da Ficha Técnica (Requisito: não permitir alteração de vaga aprovada)
+  const inputsFichaTecnica = secaoFichaTecnica.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsFichaTecnica.forEach((input) => {
+    input.disabled = isVagaBloqueada;
+  });
+
+  // Mostra os botões de Controle de Fluxo
+  if (isVagaAtiva) {
+    btnCancelarVaga.style.display = "inline-block";
+    if (status !== "em-criação" && status !== "aguardando-aprovacao") {
+      btnEncerrarVaga.style.display = "inline-block";
+    }
   }
 
-  gestores.forEach((gestor) => {
-    const option = document.createElement("option");
-    option.value = gestor.id;
-    option.textContent = gestor.nome || gestor.email; // Prefere o nome, senão usa o email
-    selectGestor.appendChild(option);
-  });
+  // Define qual seção e quais botões mostrar
+  if (status === "em-criação" || status === "aguardando-aprovacao") {
+    // Fase 1: Ficha Técnica
+    secaoFichaTecnica.style.display = "block";
+    btnSalvar.textContent = "Salvar e Enviar para Aprovação";
+    btnSalvar.style.display = "inline-block";
+
+    if (status === "aguardando-aprovacao") {
+      btnSalvar.textContent = "Salvar Alterações (Aprovação Pendente)";
+      // Se for apenas alteração de rascunho, permite salvar.
+    }
+  } else if (status === "arte-pendente") {
+    // Fase 2: Criação/Aprovação da Arte
+    secaoCriacaoArte.style.display = "block";
+    btnSalvar.style.display = "none"; // Salvar só existe para Alterações Solicitadas
+
+    // Esconde a caixa de texto de alteração por padrão
+    caixaAlteracoesArte.style.display = "none";
+
+    // NOVO: Adiciona lógica para o botão Solicitar Alterações
+    btnSolicitarAlteracoes.onclick = () => {
+      caixaAlteracoesArte.style.display = "block";
+      btnSalvar.style.display = "none";
+    };
+    btnEnviarAlteracoes.onclick = () => handleSolicitarAlteracoes();
+
+    // NOVO: Lógica para aprovar a arte
+    btnAprovarArte.onclick = () => handleAprovarArte();
+
+    // NOVO: Lógica para cancelar divulgação a partir daqui
+    document.getElementById("btn-cancelar-divulgacao").onclick = () =>
+      handleCancelarDivulgacao();
+  } else if (isVagaAprovada) {
+    // Fase 3: Em Divulgação (Pós-Aprovação da Arte)
+    secaoDivulgacao.style.display = "block";
+    btnSalvar.textContent = "Salvar Canais de Divulgação";
+    btnSalvar.style.display = "inline-block";
+    // Permite salvar apenas a lista de canais de divulgação
+  }
 }
 
 /**
@@ -72,13 +174,12 @@ function openNewVagaModal() {
     formVaga.reset();
     formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
   }
-  if (modalTitle) modalTitle.textContent = "Ficha Técnica da Vaga"; // CORRIGIDO: Novo Título
-  if (btnSalvar) btnSalvar.textContent = "Salvar e Iniciar Aprovação";
+  if (modalTitle) modalTitle.textContent = "Nova Vaga - Ficha Técnica";
 
-  // NOVO: Oculta o botão de excluir na criação
-  if (btnExcluir) btnExcluir.style.display = "none";
+  // NOVO: Exibe apenas a primeira etapa (Ficha Técnica)
+  gerenciarEtapasModal("em-criação");
 
-  if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
+  if (modalVaga) modalVaga.style.display = "flex";
 }
 
 /**
@@ -89,7 +190,6 @@ async function handleDetalhesVaga(vagaId) {
   if (!vagaId) return;
 
   try {
-    // CORRIGIDO: Usa a nova coleção
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     const docSnap = await getDoc(vagaRef);
 
@@ -99,103 +199,87 @@ async function handleDetalhesVaga(vagaId) {
     }
 
     const vaga = docSnap.data();
+    const statusAtual = vaga.status || "em-criação";
 
     // 1. Preenche o formulário (Mapeamento completo dos novos campos)
-    if (document.getElementById("vaga-nome"))
-      document.getElementById("vaga-nome").value = vaga.nome || "";
-
-    // NOVOS CAMPOS: SOBRE O CARGO
-    if (document.getElementById("vaga-responsabilidades"))
-      document.getElementById("vaga-responsabilidades").value =
-        vaga.cargo?.responsabilidades || "";
-    if (document.getElementById("vaga-resultados"))
-      document.getElementById("vaga-resultados").value =
-        vaga.cargo?.resultados || "";
-    if (document.getElementById("vaga-nova-substituicao"))
-      document.getElementById("vaga-nova-substituicao").value =
-        vaga.cargo?.novaSubstituicao || "";
-
-    // NOVOS CAMPOS: FORMAÇÃO E QUALIFICAÇÕES
-    if (document.getElementById("vaga-formacao-minima"))
-      document.getElementById("vaga-formacao-minima").value =
-        vaga.formacao?.minima || "";
-    if (document.getElementById("vaga-conselho"))
-      document.getElementById("vaga-conselho").value =
-        vaga.formacao?.conselho || "";
-    if (document.getElementById("vaga-especializacoes"))
-      document.getElementById("vaga-especializacoes").value =
-        vaga.formacao?.especializacoes || "";
-
-    // NOVOS CAMPOS: COMPETÊNCIAS E HABILIDADES
-    if (document.getElementById("vaga-comp-tecnicas"))
-      document.getElementById("vaga-comp-tecnicas").value =
-        vaga.competencias?.tecnicas || "";
-    if (document.getElementById("vaga-comp-comportamentais"))
-      document.getElementById("vaga-comp-comportamentais").value =
-        vaga.competencias?.comportamentais || "";
-    if (document.getElementById("vaga-certificacoes"))
-      document.getElementById("vaga-certificacoes").value =
-        vaga.competencias?.certificacoes || "";
-
-    // NOVOS CAMPOS: EXPERIÊNCIA E ATUAÇÃO
-    if (document.getElementById("vaga-nivel-experiencia"))
-      document.getElementById("vaga-nivel-experiencia").value =
-        vaga.experiencia?.nivel || "";
-    if (document.getElementById("vaga-contextos-similares"))
-      document.getElementById("vaga-contextos-similares").value =
-        vaga.experiencia?.contextosSimilares || "";
-    if (document.getElementById("vaga-atuacao-grupos"))
-      document.getElementById("vaga-atuacao-grupos").value =
-        vaga.experiencia?.atuacaoGrupos || "";
-
-    // NOVOS CAMPOS: FIT CULTURAL E VALORES
-    if (document.getElementById("vaga-fit-valores"))
-      document.getElementById("vaga-fit-valores").value =
-        vaga.fitCultural?.valoresEuPsico || "";
-    if (document.getElementById("vaga-estilo-equipe"))
-      document.getElementById("vaga-estilo-equipe").value =
-        vaga.fitCultural?.estiloEquipe || "";
-    if (document.getElementById("vaga-perfil-destaque"))
-      document.getElementById("vaga-perfil-destaque").value =
-        vaga.fitCultural?.perfilDestaque || "";
-
-    // NOVOS CAMPOS: CRESCIMENTO E DESAFIOS
-    if (document.getElementById("vaga-oportunidades"))
-      document.getElementById("vaga-oportunidades").value =
-        vaga.crescimento?.oportunidades || "";
-    if (document.getElementById("vaga-desafios"))
-      document.getElementById("vaga-desafios").value =
-        vaga.crescimento?.desafios || "";
-    if (document.getElementById("vaga-plano-carreira"))
-      document.getElementById("vaga-plano-carreira").value =
-        vaga.crescimento?.planoCarreira || "";
-
-    // NOVOS CAMPOS: REQUISITOS PRÁTICOS
-    if (document.getElementById("vaga-carga-horaria"))
-      document.getElementById("vaga-carga-horaria").value =
-        vaga.praticos?.cargaHoraria || "";
-    if (document.getElementById("vaga-faixa-salarial"))
-      document.getElementById("vaga-faixa-salarial").value =
-        vaga.praticos?.faixaSalarial || "";
-
-    // Campo Antigo: Mantido para compatibilidade, se necessário no futuro.
-    if (document.getElementById("vaga-descricao"))
-      document.getElementById("vaga-descricao").value = vaga.descricao || "";
-
-    // Garante que o select do gestor esteja populado antes de tentar selecionar
-    await carregarGestores();
-    if (document.getElementById("vaga-gestor"))
-      document.getElementById("vaga-gestor").value = vaga.gestorId;
-
-    // 2. Configura o modal para edição
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
-    if (modalTitle) modalTitle.textContent = "Editar Ficha Técnica da Vaga";
-    if (btnSalvar) btnSalvar.textContent = "Salvar Alterações";
+    if (modalTitle) modalTitle.textContent = `Vaga: ${vaga.nome}`;
 
-    // NOVO: Exibe o botão de excluir na edição
-    if (btnExcluir) btnExcluir.style.display = "inline-block";
+    // CAMPOS PRINCIPAIS
+    document.getElementById("vaga-nome").value = vaga.nome || "";
+    document.getElementById("vaga-departamento").value =
+      vaga.departamento || "";
+    document.getElementById("vaga-tipo-recrutamento").value =
+      vaga.tipoRecrutamento || "";
+    document.getElementById("vaga-regime-trabalho").value =
+      vaga.regimeTrabalho || "";
+    document.getElementById("vaga-modalidade-trabalho").value =
+      vaga.modalidadeTrabalho || "";
+    document.getElementById("vaga-valor-salario").value =
+      vaga.valorSalario || "";
+    document.getElementById("vaga-data-fechamento").value =
+      vaga.dataFechamento || ""; // Assumindo que é uma string de data (YYYY-MM-DD)
 
-    if (modalVaga) modalVaga.style.display = "flex"; // Implementa o popup
+    // OUTROS CAMPOS (Mapeamento agrupado mantido)
+    document.getElementById("vaga-responsabilidades").value =
+      vaga.cargo?.responsabilidades || "";
+    document.getElementById("vaga-resultados").value =
+      vaga.cargo?.resultados || "";
+    document.getElementById("vaga-nova-substituicao").value =
+      vaga.cargo?.novaSubstituicao || "";
+    document.getElementById("vaga-formacao-minima").value =
+      vaga.formacao?.minima || "";
+    document.getElementById("vaga-conselho").value =
+      vaga.formacao?.conselho || "";
+    document.getElementById("vaga-especializacoes").value =
+      vaga.formacao?.especializacoes || "";
+    document.getElementById("vaga-comp-tecnicas").value =
+      vaga.competencias?.tecnicas || "";
+    document.getElementById("vaga-comp-comportamentais").value =
+      vaga.competencias?.comportamentais || "";
+    document.getElementById("vaga-certificacoes").value =
+      vaga.competencias?.certificacoes || "";
+    document.getElementById("vaga-nivel-experiencia").value =
+      vaga.experiencia?.nivel || "";
+    document.getElementById("vaga-contextos-similares").value =
+      vaga.experiencia?.contextosSimilares || "";
+    document.getElementById("vaga-atuacao-grupos").value =
+      vaga.experiencia?.atuacaoGrupos || "";
+    document.getElementById("vaga-fit-valores").value =
+      vaga.fitCultural?.valoresEuPsico || "";
+    document.getElementById("vaga-estilo-equipe").value =
+      vaga.fitCultural?.estiloEquipe || "";
+    document.getElementById("vaga-perfil-destaque").value =
+      vaga.fitCultural?.perfilDestaque || "";
+    document.getElementById("vaga-oportunidades").value =
+      vaga.crescimento?.oportunidades || "";
+    document.getElementById("vaga-desafios").value =
+      vaga.crescimento?.desafios || "";
+    document.getElementById("vaga-plano-carreira").value =
+      vaga.crescimento?.planoCarreira || "";
+
+    // NOVOS CAMPOS ARTE E DIVULGAÇÃO
+    document.getElementById("vaga-resumo-arte").value = vaga.arte?.resumo || "";
+    document.getElementById("vaga-link-arte").value = vaga.arte?.link || "";
+
+    // Preenchimento dos Canais de Divulgação (Select Múltiplo)
+    const selectCanais = document.getElementById("vaga-canais-divulgacao");
+    const canaisSalvos = vaga.canaisDivulgacao || [];
+    Array.from(selectCanais.options).forEach((option) => {
+      option.selected = canaisSalvos.includes(option.value);
+    });
+
+    // Garante que as listas dinâmicas estejam carregadas
+    await carregarListasFirebase();
+
+    // 2. Gerencia a exibição da etapa com base no status
+    gerenciarEtapasModal(statusAtual);
+
+    // NOVO: Atualiza o status da arte no modal
+    document.getElementById("status-arte-atual").textContent =
+      vaga.arte?.status || "Pendente";
+
+    if (modalVaga) modalVaga.style.display = "flex";
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
     window.showToast("Erro ao carregar os dados para edição.", "error");
@@ -210,97 +294,123 @@ async function handleSalvarVaga(e) {
   e.preventDefault();
 
   const vagaId = formVaga.getAttribute("data-vaga-id");
-  const isEditing = !!vagaId;
+  let isEditing = !!vagaId;
   const submitButton = e.submitter;
   if (submitButton) submitButton.disabled = true;
 
-  // 1. EXTRAÇÃO DE DADOS DE TODOS OS CAMPOS DO NOVO FORMULÁRIO (FICHA TÉCNICA)
-  const nome = document.getElementById("vaga-nome").value;
-  const gestorId = document.getElementById("vaga-gestor").value;
-
-  // Usaremos responsabilidades como a 'descricao' principal (se o backend exigir)
-  const responsabilidades = document.getElementById(
-    "vaga-responsabilidades"
-  ).value;
-
-  // Novas variáveis
-  const resultados = document.getElementById("vaga-resultados").value;
-  const novaSubstituicao = document.getElementById(
-    "vaga-nova-substituicao"
-  ).value;
-  const formacaoMinima = document.getElementById("vaga-formacao-minima").value;
-  const conselho = document.getElementById("vaga-conselho").value;
-  const especializacoes = document.getElementById("vaga-especializacoes").value;
-  const compTecnicas = document.getElementById("vaga-comp-tecnicas").value;
-  const compComportamentais = document.getElementById(
-    "vaga-comp-comportamentais"
-  ).value;
-  const certificacoes = document.getElementById("vaga-certificacoes").value;
-  const nivelExperiencia = document.getElementById(
-    "vaga-nivel-experiencia"
-  ).value;
-  const contextosSimilares = document.getElementById(
-    "vaga-contextos-similares"
-  ).value;
-  const atuacaoGrupos = document.getElementById("vaga-atuacao-grupos").value;
-  const fitValores = document.getElementById("vaga-fit-valores").value;
-  const estiloEquipe = document.getElementById("vaga-estilo-equipe").value;
-  const perfilDestaque = document.getElementById("vaga-perfil-destaque").value;
-  const oportunidades = document.getElementById("vaga-oportunidades").value;
-  const desafios = document.getElementById("vaga-desafios").value;
-  const planoCarreira = document.getElementById("vaga-plano-carreira").value;
-  const cargaHoraria = document.getElementById("vaga-carga-horaria").value;
-  const faixaSalarial = document.getElementById("vaga-faixa-salarial").value;
-
   try {
+    // 1. EXTRAÇÃO DE DADOS PRINCIPAIS E DE AGRUPAMENTO (Ficha Técnica)
+    const nome = document.getElementById("vaga-nome").value;
+    const departamento = document.getElementById("vaga-departamento").value;
+    const tipoRecrutamento = document.getElementById(
+      "vaga-tipo-recrutamento"
+    ).value;
+    const regimeTrabalho = document.getElementById(
+      "vaga-regime-trabalho"
+    ).value;
+    const modalidadeTrabalho = document.getElementById(
+      "vaga-modalidade-trabalho"
+    ).value;
+    const valorSalario = document.getElementById("vaga-valor-salario").value;
+    const dataFechamento = document.getElementById(
+      "vaga-data-fechamento"
+    ).value;
+    const responsabilidades = document.getElementById(
+      "vaga-responsabilidades"
+    ).value;
+
+    // Outros campos agrupados...
+    const resultados = document.getElementById("vaga-resultados").value;
+    const novaSubstituicao = document.getElementById(
+      "vaga-nova-substituicao"
+    ).value;
+    const formacaoMinima = document.getElementById(
+      "vaga-formacao-minima"
+    ).value;
+    const conselho = document.getElementById("vaga-conselho").value;
+    const especializacoes = document.getElementById(
+      "vaga-especializacoes"
+    ).value;
+    const compTecnicas = document.getElementById("vaga-comp-tecnicas").value;
+    const compComportamentais = document.getElementById(
+      "vaga-comp-comportamentais"
+    ).value;
+    const certificacoes = document.getElementById("vaga-certificacoes").value;
+    const nivelExperiencia = document.getElementById(
+      "vaga-nivel-experiencia"
+    ).value;
+    const contextosSimilares = document.getElementById(
+      "vaga-contextos-similares"
+    ).value;
+    const atuacaoGrupos = document.getElementById("vaga-atuacao-grupos").value;
+    const fitValores = document.getElementById("vaga-fit-valores").value;
+    const estiloEquipe = document.getElementById("vaga-estilo-equipe").value;
+    const perfilDestaque = document.getElementById(
+      "vaga-perfil-destaque"
+    ).value;
+    const oportunidades = document.getElementById("vaga-oportunidades").value;
+    const desafios = document.getElementById("vaga-desafios").value;
+    const planoCarreira = document.getElementById("vaga-plano-carreira").value;
+
+    // Campos da Seção de Arte e Divulgação (Salva mesmo se a seção estiver oculta)
+    const resumoArte = document.getElementById("vaga-resumo-arte").value;
+    const linkArte = document.getElementById("vaga-link-arte").value;
+
+    const selectCanais = document.getElementById("vaga-canais-divulgacao");
+    const canaisDivulgacao = Array.from(selectCanais.options)
+      .filter((option) => option.selected)
+      .map((option) => option.value);
+
+    // 2. CONSTRUÇÃO DO OBJETO DE DADOS
     const vagaData = {
       nome: nome,
-      descricao: responsabilidades, // Usando responsabilidades como o campo 'descricao' principal para compatibilidade.
-      gestorId: gestorId,
+      departamento: departamento,
+      tipoRecrutamento: tipoRecrutamento,
+      regimeTrabalho: regimeTrabalho,
+      modalidadeTrabalho: modalidadeTrabalho,
+      valorSalario: valorSalario,
+      dataFechamento: dataFechamento, // Guarda a data no formato 'YYYY-MM-DD'
 
-      // NOVOS CAMPOS AGRUPADOS PARA MELHOR ORGANIZAÇÃO NO FIRESTORE
-
-      // 1. Sobre o Cargo
+      // Mapeamento dos campos detalhados
       cargo: {
         responsabilidades: responsabilidades,
         resultados: resultados,
         novaSubstituicao: novaSubstituicao,
       },
-      // 2. Formação e Qualificações
       formacao: {
         minima: formacaoMinima,
         conselho: conselho,
         especializacoes: especializacoes,
       },
-      // 3. Competências e Habilidades
       competencias: {
         tecnicas: compTecnicas,
         comportamentais: compComportamentais,
         certificacoes: certificacoes,
       },
-      // 4. Experiência e Atuação
       experiencia: {
         nivel: nivelExperiencia,
         contextosSimilares: contextosSimilares,
         atuacaoGrupos: atuacaoGrupos,
       },
-      // 5. Fit Cultural e Valores
       fitCultural: {
         valoresEuPsico: fitValores,
         estiloEquipe: estiloEquipe,
         perfilDestaque: perfilDestaque,
       },
-      // 6. Crescimento e Desafios
       crescimento: {
         oportunidades: oportunidades,
         desafios: desafios,
         planoCarreira: planoCarreira,
       },
-      // 7. Requisitos Práticos
-      praticos: {
-        cargaHoraria: cargaHoraria,
-        faixaSalarial: faixaSalarial,
+
+      // Informações da arte e divulgação
+      arte: {
+        resumo: resumoArte,
+        link: linkArte,
+        status: "Pendente", // Status só muda por ação dos botões
+        // alteraçõesPendentes: string
       },
+      canaisDivulgacao: canaisDivulgacao,
     };
 
     const historicoEntry = {
@@ -308,23 +418,42 @@ async function handleSalvarVaga(e) {
       usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
     };
 
+    let newStatus = "";
+
     if (isEditing) {
-      // Ação de Edição
-      vagaData.historico = FieldValue.arrayUnion({
+      // Carrega status anterior para decidir o que fazer no histórico
+      const vagaDoc = await getDoc(doc(db, VAGAS_COLLECTION_NAME, vagaId));
+      const oldStatus = vagaDoc.data().status;
+
+      // 3. AÇÃO DE EDIÇÃO/ATUALIZAÇÃO
+      // A edição da Ficha só é permitida se a vaga NÃO FOI APROVADA
+      if (oldStatus === "em-divulgacao" || oldStatus === "em-recrutamento") {
+        window.showToast(
+          "Não é possível editar a Ficha Técnica de uma vaga aprovada.",
+          "error"
+        );
+        return;
+      }
+
+      newStatus = oldStatus;
+
+      // Adiciona histórico
+      vagaData.historico = arrayUnion({
         ...historicoEntry,
-        acao: "Vaga editada. (Ficha Técnica Atualizada)",
+        acao: `Vaga editada (Ficha Técnica atualizada). Status: ${newStatus}`,
       });
 
-      // CORRIGIDO: Usa a nova coleção
       const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
       await updateDoc(vagaRef, vagaData);
+
       window.showToast(
         "Ficha Técnica da Vaga atualizada com sucesso!",
         "success"
       );
     } else {
-      // Ação de Criação
-      vagaData.status = "aguardando-aprovacao"; // Inicia sempre aguardando aprovação
+      // 4. AÇÃO DE CRIAÇÃO (Novo Fluxo: Salvar e Enviar para Aprovação do Gestor)
+      newStatus = "aguardando-aprovacao"; // Pula direto para a aprovação do gestor
+      vagaData.status = newStatus;
       vagaData.dataCriacao = new Date();
       vagaData.candidatosCount = 0;
       vagaData.historico = [
@@ -334,19 +463,14 @@ async function handleSalvarVaga(e) {
         },
       ];
 
-      // CORRIGIDO: Salva na nova coleção (variável vagasCollection já está corrigida)
       await addDoc(vagasCollection, vagaData);
       window.showToast(
-        "Ficha Técnica da Vaga salva com sucesso! Aguardando aprovação.",
+        "Ficha Técnica da Vaga salva com sucesso! Enviada para aprovação do gestor.",
         "success"
       );
     }
 
-    document.getElementById("modal-vaga").style.display = "none"; // Recarrega a lista para o status que for mais provável de ser o atual após a ação
-    const activeTab = document.querySelector(".status-tabs .tab-link.active");
-    const newStatus = isEditing
-      ? activeTab.getAttribute("data-status")
-      : "aguardando-aprovacao";
+    document.getElementById("modal-vaga").style.display = "none";
     carregarVagas(newStatus);
   } catch (error) {
     console.error("Erro ao salvar/atualizar a Ficha Técnica da vaga:", error);
@@ -358,38 +482,167 @@ async function handleSalvarVaga(e) {
     if (submitButton) submitButton.disabled = false;
   }
 }
+
 /**
- * NOVO: Função para excluir uma vaga.
- * @param {Event} e
+ * NOVO: Lida com a Aprovação da Arte pelo Gestor.
  */
-async function handleExcluirVaga(e) {
+async function handleAprovarArte() {
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  if (!vagaId || !confirm("Confirma a APROVAÇÃO da arte de divulgação?"))
+    return;
+
+  const submitButton = btnAprovarArte;
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "em-divulgacao", // Próxima fase: em Divulgação
+      arte: {
+        ...docSnap.data().arte, // Mantém resumo e link
+        status: "Aprovada",
+        alteracoesPendentes: null, // Limpa qualquer pendência
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Arte de divulgação APROVADA. Vaga pronta para ser divulgada.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Arte aprovada! A vaga agora está em Divulgação.",
+      "success"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("em-divulgacao");
+  } catch (error) {
+    console.error("Erro ao aprovar arte:", error);
+    window.showToast("Ocorreu um erro ao aprovar a arte.", "error");
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+/**
+ * NOVO: Lida com a Solicitação de Alterações na Arte.
+ */
+async function handleSolicitarAlteracoes() {
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  const alteracoes = document.getElementById("vaga-alteracoes-arte").value;
+
+  if (!vagaId || !alteracoes) {
+    window.showToast(
+      "Por favor, descreva as alterações solicitadas.",
+      "warning"
+    );
+    return;
+  }
+
+  if (!confirm("Confirma a SOLICITAÇÃO de alterações na arte?")) return;
+
+  const submitButton = btnEnviarAlteracoes;
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "arte-pendente", // Mantém o status para que o RH saiba que está pendente de correção
+      arte: {
+        ...docSnap.data().arte, // Mantém resumo e link
+        status: "Alteração Solicitada",
+        alteracoesPendentes: alteracoes,
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Alterações na arte solicitadas: ${alteracoes.substring(
+          0,
+          50
+        )}...`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast("Solicitação de alterações enviada com sucesso.", "info");
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente");
+  } catch (error) {
+    console.error("Erro ao solicitar alterações na arte:", error);
+    window.showToast("Ocorreu um erro ao solicitar alterações.", "error");
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+/**
+ * NOVO: Lida com o Cancelamento da Divulgação.
+ */
+async function handleCancelarDivulgacao() {
   const vagaId = formVaga.getAttribute("data-vaga-id");
   if (!vagaId) return;
 
   if (
     !confirm(
-      "Tem certeza que deseja EXCLUIR permanentemente esta Ficha Técnica de Vaga? Esta ação não pode ser desfeita."
+      "Tem certeza que deseja CANCELAR a divulgação e arquivar esta vaga? Esta ação pode ser revertida manualmente, mas interrompe o fluxo de recrutamento."
     )
   ) {
     return;
   }
 
   try {
-    // CORRIGIDO: Usa a nova coleção
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    await deleteDoc(vagaRef);
+    await updateDoc(vagaRef, {
+      status: "cancelada", // Novo status para cancelamento
+      dataCancelamento: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Vaga CANCELADA (Fluxo de divulgação interrompido).",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
 
-    window.showToast("Ficha Técnica da Vaga excluída com sucesso!", "success");
-
-    // Esconde o modal e recarrega a lista
+    window.showToast("Vaga cancelada com sucesso!", "info");
     document.getElementById("modal-vaga").style.display = "none";
-    carregarVagas("abertas");
+    carregarVagas("fechadas"); // Exibe vagas canceladas/encerradas na aba Fechadas
   } catch (error) {
-    console.error("Erro ao excluir a Ficha Técnica da vaga:", error);
-    window.showToast(
-      "Ocorreu um erro ao excluir a Ficha Técnica da vaga.",
-      "error"
-    );
+    console.error("Erro ao cancelar a vaga:", error);
+    window.showToast("Ocorreu um erro ao cancelar a vaga.", "error");
+  }
+}
+
+/**
+ * NOVO: Lida com o Encerrramento da Vaga (pós-recrutamento ou por outro motivo).
+ */
+async function handleEncerrarVaga() {
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  if (!vagaId) return;
+
+  if (
+    !confirm(
+      "Tem certeza que deseja ENCERRAR a vaga? Se o recrutamento foi concluído, esta é a ação correta. Se não, use 'Cancelar Vaga'."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "encerrada", // Novo status para encerramento
+      dataEncerramento: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Vaga ENCERRADA (Recrutamento concluído ou finalizado).",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast("Vaga encerrada com sucesso!", "success");
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("fechadas"); // Exibe vagas canceladas/encerradas na aba Fechadas
+  } catch (error) {
+    console.error("Erro ao encerrar a vaga:", error);
+    window.showToast("Ocorreu um erro ao encerrar a vaga.", "error");
   }
 }
 
@@ -405,29 +658,38 @@ async function carregarVagas(status) {
 
   // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
   let statusParaQuery = status;
-  if (status === "aprovacao-gestao") {
-    statusParaQuery = "aguardando-aprovacao";
+  let statusArray = [status];
+
+  if (status === "abertas") {
+    statusArray = ["em-criação", "aguardando-aprovacao"];
+  } else if (status === "fechadas") {
+    statusArray = ["cancelada", "encerrada"];
+  } else if (status === "aprovacao-gestao") {
+    statusArray = ["aguardando-aprovacao"];
+  } else if (status === "arte-pendente") {
+    statusArray = ["arte-pendente"];
   }
 
   // 1. Consulta Estreita (Conteúdo da Aba Ativa)
-  let queryConteudo;
-  if (status === "abertas") {
-    queryConteudo = query(
-      vagasCollection,
-      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
-    );
-  } else {
-    queryConteudo = query(
-      vagasCollection,
-      where("status", "==", statusParaQuery)
-    );
-  }
+  const queryConteudo = query(
+    vagasCollection,
+    where("status", "in", statusArray)
+  );
 
   // 2. Consulta Ampla (Para Contagem Global)
-  // Busca todos os status possíveis para garantir que a contagem não zere.
+  // Busca todos os status ativos/fechados para garantir que a contagem seja precisa.
+  const allStatuses = [
+    "em-criação",
+    "aguardando-aprovacao",
+    "arte-pendente",
+    "em-divulgacao",
+    "encerrada",
+    "cancelada",
+  ];
+
   const queryContagemGlobal = query(
     vagasCollection,
-    where("status", "in", ["aguardando-aprovacao", "em-divulgacao", "fechadas"])
+    where("status", "in", allStatuses)
   );
 
   // Executa ambas as consultas em paralelo
@@ -442,6 +704,7 @@ async function carregarVagas(status) {
   const counts = {
     abertas: 0,
     "aprovacao-gestao": 0,
+    "arte-pendente": 0, // NOVO status
     "em-divulgacao": 0,
     fechadas: 0,
   };
@@ -450,15 +713,20 @@ async function carregarVagas(status) {
   snapshotContagem.docs.forEach((doc) => {
     const vaga = doc.data();
 
+    // Contagem da aba "Abertas" (Vagas em andamento ou pendentes de aprovação inicial)
     if (
-      vaga.status === "aguardando-aprovacao" ||
-      vaga.status === "em-divulgacao"
+      vaga.status === "em-criação" ||
+      vaga.status === "aguardando-aprovacao"
     ) {
       counts["abertas"]++;
     }
+
+    // Contagem das demais abas
     if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
+    if (vaga.status === "arte-pendente") counts["arte-pendente"]++;
     if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
-    if (vaga.status === "fechadas") counts["fechadas"]++;
+    if (vaga.status === "cancelada" || vaga.status === "encerrada")
+      counts["fechadas"]++;
   });
 
   // 2. Renderização (Apenas os documentos da aba ativa)
@@ -467,33 +735,29 @@ async function carregarVagas(status) {
     vaga.id = doc.id;
     count++; // Conta apenas os que serão renderizados
 
+    const statusFormatado = vaga.status
+      .toUpperCase()
+      .replace(/-/g, " ")
+      .replace("APROVACAO GESTAO", "AGUARDANDO APROVAÇÃO");
+
     // NOVO: Mapeia informações principais para a aprovação
-    const infoAprovacao = [
-      `Nível: ${vaga.experiencia?.nivel || "Não definido"}`,
-      `Formação: ${vaga.formacao?.minima || "Não definida"}`,
-      `Resp.: ${
-        vaga.cargo?.responsabilidades
-          ? vaga.cargo.responsabilidades.substring(0, 40) + "..."
-          : "Não definida"
-      }`,
+    const infoSecundaria = [
+      `Dpto: ${vaga.departamento || "Não definido"}`,
+      `Regime: ${vaga.regimeTrabalho || "Não definido"}`,
+      `Salário: ${vaga.valorSalario || "Não informado"}`,
     ].join(" | ");
 
     htmlVagas += `
         <div class="card card-vaga" data-id="${vaga.id}">
             <h4>${vaga.nome}</h4>
-            <p class="text-secondary small-info">${infoAprovacao}</p>
-            <p>Status: **${vaga.status.toUpperCase().replace(/-/g, " ")}**</p>
+            <p class="text-secondary small-info">${infoSecundaria}</p>
+            <p>Status: **${statusFormatado}**</p>
             <p>Candidatos: ${vaga.candidatosCount || 0}</p>
             <div class="rh-card-actions">
                 <button class="btn btn-primary btn-detalhes" data-id="${
                   vaga.id
-                }">Ver/Editar Detalhes</button>
-                ${
-                  vaga.status === "aguardando-aprovacao"
-                    ? `<button class="btn btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-                    : ""
-                }
-            </div>
+                }">Ver/Gerenciar Vaga</button>
+                </div>
         </div>
     `;
   });
@@ -503,73 +767,32 @@ async function carregarVagas(status) {
     const btnStatus = btn.getAttribute("data-status");
     const countValue = counts[btnStatus] || 0;
 
-    btn.textContent = `${btnStatus
-      .replace(/-/g, " ")
-      .replace("aprovacao gestao", "Aguardando Aprovação")
-      .toUpperCase()} (${countValue})`;
+    // Formatação dos nomes das abas
+    let tabText = btnStatus;
+    if (btnStatus === "aprovacao-gestao") tabText = "Aguardando Aprovação";
+    if (btnStatus === "arte-pendente") tabText = "Criação da Arte";
+    if (btnStatus === "em-divulgacao") tabText = "Em Divulgação";
+    if (btnStatus === "fechadas") tabText = "Fechadas/Encerradas";
+    if (btnStatus === "abertas") tabText = "Em Elaboração";
+
+    btn.textContent = `${tabText} (${countValue})`;
   });
 
   if (count === 0) {
-    listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status.replace(
-      /-/g,
-      " "
-    )}**.</p>`;
+    listaVagas.innerHTML = `<p id="mensagem-vagas">Nenhuma vaga encontrada para o status: **${status
+      .replace(/-/g, " ")
+      .toUpperCase()}**.</p>`;
     return;
   }
 
   listaVagas.innerHTML = htmlVagas;
 
-  // Adiciona eventos... (o restante da função permanece igual)
+  // Adiciona eventos de detalhe/gerenciamento
   document.querySelectorAll(".btn-detalhes").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       handleDetalhesVaga(e.target.getAttribute("data-id"));
     });
   });
-  document.querySelectorAll(".btn-aprovar").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      handleAprovarVaga(e.target.getAttribute("data-id"));
-    });
-  });
-}
-
-/**
- * Função mock para simular a aprovação de uma vaga pelo gestor.
- * Numa arquitetura robusta, isso seria uma Cloud Function ou um processo de permissão.
- * @param {string} vagaId
- */
-async function handleAprovarVaga(vagaId) {
-  if (
-    !confirm(
-      "Tem certeza que deseja aprovar esta vaga e iniciar o recrutamento?"
-    )
-  ) {
-    return;
-  }
-
-  try {
-    // CORRIGIDO: Usa a nova coleção
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    await updateDoc(vagaRef, {
-      status: "em-divulgacao", // Passa para a fase de recrutamento/divulgação
-      dataAprovacao: new Date(),
-      // CORRIGIDO: Usa a função arrayUnion importada diretamente
-      historico: arrayUnion({
-        // <--- MUDANÇA AQUI
-        data: new Date(),
-        acao: "Vaga aprovada e liberada para divulgação/recrutamento.",
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO", // TODO: Substituir pelo ID do usuário logado
-      }),
-    });
-
-    window.showToast(
-      "Vaga aprovada com sucesso! Agora está em recrutamento.",
-      "success"
-    );
-    carregarVagas("em-divulgacao"); // Recarrega para a nova aba
-  } catch (error) {
-    console.error("Erro ao aprovar vaga:", error);
-    window.showToast("Ocorreu um erro ao aprovar a vaga.", "error");
-  }
 }
 
 /**
@@ -580,27 +803,28 @@ async function handleAprovarVaga(vagaId) {
 export async function initgestaovagas(user, userData) {
   console.log("🔹 Iniciando Módulo de Gestão de Vagas e Recrutamento...");
 
-  // Armazena dados do usuário para uso em logs de auditoria/histórico
   currentUserData = userData || {};
 
-  // CORRIGIDO: Garante que o modal esteja oculto ao carregar,
-  // resolvendo o problema de auto-abertura.
   if (modalVaga) modalVaga.style.display = "none";
 
   const btnNovaVaga = document.getElementById("btn-nova-vaga");
 
-  // 1. Carrega a lista de gestores (assíncrono)
-  await carregarGestores();
+  // 1. Carrega as listas dinâmicas (Departamentos)
+  await carregarListasFirebase();
 
   // 2. Configura eventos de UI
   if (btnNovaVaga) {
     btnNovaVaga.addEventListener("click", openNewVagaModal);
   }
 
-  // NOVO: Adiciona evento de exclusão
-  if (btnExcluir) {
-    btnExcluir.addEventListener("click", handleExcluirVaga);
+  // NOVO: Adiciona eventos aos botões de controle de fluxo no modal
+  if (btnCancelarVaga) {
+    btnCancelarVaga.addEventListener("click", handleCancelarDivulgacao);
   }
+  if (btnEncerrarVaga) {
+    btnEncerrarVaga.addEventListener("click", handleEncerrarVaga);
+  }
+  // Os botões de Arte (Aprovar/Solicitar Alterações/Enviar) são configurados dentro de gerenciarEtapasModal
 
   // Configura evento de fechamento do modal
   document.querySelectorAll(".fechar-modal").forEach((btn) => {
@@ -609,15 +833,13 @@ export async function initgestaovagas(user, userData) {
     });
   });
 
-  // Configura submissão do formulário (criação/edição)
+  // Configura submissão do formulário (Salvar Ficha Técnica)
   if (formVaga) {
     formVaga.addEventListener("submit", handleSalvarVaga);
   }
 
   // 3. Carrega a lista inicial (vagas abertas)
-  // Garante que a aba 'abertas' esteja ativa por padrão
   document.querySelectorAll(".status-tabs .tab-link").forEach((b) => {
-    // CORRIGIDO: Usa a classe .tab-link
     b.classList.remove("active");
     if (b.getAttribute("data-status") === "abertas") {
       b.classList.add("active");
@@ -628,11 +850,10 @@ export async function initgestaovagas(user, userData) {
 
   // 4. Adiciona eventos aos botões de status (filtragem)
   document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
-    // CORRIGIDO: Usa a classe .tab-link
     btn.addEventListener("click", (e) => {
       const status = e.target.getAttribute("data-status");
       document
-        .querySelectorAll(".status-tabs .tab-link") // CORRIGIDO: Usa a classe .tab-link
+        .querySelectorAll(".status-tabs .tab-link")
         .forEach((b) => b.classList.remove("active"));
       e.target.classList.add("active");
       carregarVagas(status);

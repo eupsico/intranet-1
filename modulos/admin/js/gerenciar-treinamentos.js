@@ -6,16 +6,14 @@ export function init(user, userData) {
   const tabs = document.querySelectorAll(".tab-link");
   const contents = document.querySelectorAll(".tab-content");
   const modal = document.getElementById("video-modal");
-  const videoForm = document.getElementById("video-form");
+  const videoForm = document.getElementById("video-form"); // Botões para fechar o modal
 
-  // Botões para fechar o modal
   const closeModalBtn = document.querySelector(".close-modal-btn");
   const cancelModalBtn = document.getElementById("modal-cancel-btn");
   const modalOverlay = document.querySelector(".modal-overlay");
 
-  let treinamentosData = {};
+  let treinamentosData = {}; // --- LÓGICA DAS ABAS ---
 
-  // --- LÓGICA DAS ABAS ---
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       tabs.forEach((item) => item.classList.remove("active"));
@@ -23,9 +21,8 @@ export function init(user, userData) {
       tab.classList.add("active");
       document.getElementById(tab.dataset.tab).classList.add("active");
     });
-  });
+  }); // --- LÓGICA DO MODAL ---
 
-  // --- LÓGICA DO MODAL ---
   const openModal = (category, id = null) => {
     videoForm.reset();
     document.getElementById("video-category").value = category;
@@ -65,9 +62,8 @@ export function init(user, userData) {
     if (e.target === modalOverlay) {
       closeModalFunction();
     }
-  });
+  }); // --- LÓGICA DE DADOS ---
 
-  // --- LÓGICA DE DADOS ---
   videoForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     await salvarVideo();
@@ -97,21 +93,20 @@ export function init(user, userData) {
       }
       videos.forEach((video, index) => {
         const item = document.createElement("div");
-        item.classList.add("video-list-item");
-        // Mostra o Título na lista
+        item.classList.add("video-list-item"); // Mostra o Título na lista
         item.innerHTML = `
-          <div class="video-info">
-              <strong>${video.title || "Vídeo sem título"}</strong>
-              <p>${video.descricao}</p>
-              <a href="${
-                video.link
-              }" target="_blank" rel="noopener noreferrer">${video.link}</a>
-          </div>
-          <div class="video-actions">
-              <button class="action-button secondary btn-edit-video" data-category="${category}" data-id="${index}">Editar</button>
-              <button class="action-button danger btn-delete-video" data-category="${category}" data-id="${index}">Excluir</button>
-          </div>
-        `;
+<div class="video-info">
+<strong>${video.title || "Vídeo sem título"}</strong>
+<p>${video.descricao}</p>
+<a href="${video.link}" target="_blank" rel="noopener noreferrer">${
+          video.link
+        }</a>
+</div>
+<div class="video-actions">
+<button class="action-button secondary btn-edit-video" data-category="${category}" data-id="${index}">Editar</button>
+<button class="action-button danger btn-delete-video" data-category="${category}" data-id="${index}">Excluir</button>
+</div>
+`;
         container.appendChild(item);
       });
     });
