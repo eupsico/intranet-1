@@ -179,9 +179,10 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 .modal-footer {
   display: flex;
   justify-content: flex-end; /* Alinha os botões à direita por padrão */
-  gap: 10px; /* Aumentei o gap para melhor espaçamento */
+  gap: 10px; /* Espaço entre os botões */
   flex-wrap: wrap;
   padding: 16px;
+  /* NOVO: Permite que elementos como os botões dinâmicos ocupem o espaço necessário */
 }
 .modal-footer .btn {
   /* REMOVIDO: flex: 1 1 auto; */
@@ -210,8 +211,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 20px;
-  /* Adiciona margem à esquerda para separá-lo do grupo de Cancelar/Encerrar */
+  margin-top: 0; /* Remove margem superior desnecessária no contexto do footer */
   margin-left: 20px;
 }
 /* Alinhamento dos botões de Aprovação/Rejeição */
