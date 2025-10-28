@@ -176,6 +176,13 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 }
 
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end; /* Alinha os botões à direita */
+  gap: 8px; /* Espaço entre os botões */
+  flex-wrap: wrap; /* Permite quebra de linha em telas pequenas */
+  padding: 16px;
+}
 .modal-footer .btn {
   flex: 1 1 auto;
   min-width: 120px;
@@ -218,7 +225,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   border: none;
 }
 .modal-footer .btn-danger {
-  margin-right: auto !important; /* Move para a esquerda */
+  /*margin-right: auto !important;  Move para a esquerda */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
   border: none;
