@@ -177,9 +177,16 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
 .modal-footer .btn {
-  padding: 10px 20px;
+  flex: 1 1 auto;
+  min-width: 120px;
+  height: 40px;
+  padding: 0 16px;
+  /* padding: 10px 20px; */
   font-size: 0.9em;
   font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
