@@ -163,3 +163,46 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   background-color: var(--cor-secundaria);
   filter: none;
 }
+/* --- CORREÇÃO DE ESTILO DOS BOTÕES DE AÇÃO E MODAL --- */
+
+/* Estilo para o botão principal "Criar Ficha Técnica" */
+.acoes-header .btn-primary {
+  padding: 12px 25px; /* Tamanho maior */
+  font-size: 1em;
+  font-weight: 600;
+}
+
+/* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
+.modal-footer .btn {
+  padding: 10px 20px;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+/* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
+.modal-footer .btn-excluir {
+  margin-right: auto !important; /* Move para a esquerda */
+  background-color: var(--cor-erro);
+  color: var(--cor-texto-inverso);
+}
+
+/* Garante que o botão de Cancelar (Secundário) tenha a cor correta */
+.modal-footer .btn-secondary {
+  background-color: var(--cor-borda);
+  color: var(--cor-texto-principal);
+}
+.modal-footer .btn-secondary:hover {
+  background-color: #d1d1d1;
+}
+
+/* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
+.rh-card-actions .btn,
+.rh-card-actions .action-button {
+  padding: 10px 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+  min-width: 150px;
+  text-align: center;
+}
