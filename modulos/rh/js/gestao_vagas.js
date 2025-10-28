@@ -402,26 +402,17 @@ async function carregarVagas(status) {
   listaVagas.innerHTML =
     '<div class="loading-spinner">Carregando vagas...</div>';
 
-  let q;
-  // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
+  // NOVO: Mapeia o status da aba para o status real do Firestore
   let statusParaQuery = status;
   if (status === "aprovacao-gestao") {
     statusParaQuery = "aguardando-aprovacao";
   }
 
-  if (status === "abertas") {
-    // 'Abertas' pode incluir 'aguardando-aprovacao' e 'em-divulgacao'
-    q = query(
-      vagasCollection,
-      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
-    );
-  } else {
-    // CORRIGIDO: Usa o status mapeado para consultar no Firestore
-    q = query(vagasCollection, where("status", "==", statusParaQuery));
-  }
+  // CORRIGIDO: Sempre busca TODOS os documentos da coleção para que a contagem em todas as abas seja precisa.
+  const q = query(vagasCollection);
 
   try {
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q); // Snapshot completo de todas as vagas.
     let htmlVagas = "";
     let count = 0; // Contador para a aba ativa
 
@@ -436,7 +427,7 @@ async function carregarVagas(status) {
     snapshot.docs.forEach((doc) => {
       const vaga = doc.data(); // Atualiza contadores para as abas
 
-      // 1. Contagem (A lógica de contagem percorre todos os documentos do snapshot)
+      // 1. Contagem (A lógica de contagem total percorre todos os documentos do snapshot COMPLETO)
       if (
         vaga.status === "aguardando-aprovacao" ||
         vaga.status === "em-divulgacao"
@@ -452,7 +443,7 @@ async function carregarVagas(status) {
         (status === "abertas" &&
           (vaga.status === "aguardando-aprovacao" ||
             vaga.status === "em-divulgacao")) ||
-        (status !== "abertas" && vaga.status === statusParaQuery);
+        (status !== "abertas" && vaga.status === statusParaQuery); // CORRIGIDO: Usa statusParaQuery
 
       if (shouldRender) {
         vaga.id = doc.id;
