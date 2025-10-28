@@ -144,12 +144,11 @@ function gerenciarEtapasModal(status) {
     // Adiciona botões de ação específicos (Aprovar/Rejeitar)
     const actionHtml = `
             <div class="acoes-aprovacao-ficha" style="display:flex; justify-content:flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-danger" id="btn-rejeitar-ficha">
-                    <i class="fas fa-times-circle"></i> Rejeitar Ficha Técnica
+                <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
+                    <i class="fas fa-times-circle"></i> Solicitar Alterações
                 </button>
                 <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
-                    <i class="fas fa-check"></i> Aprovar Ficha Técnica
-                </button>
+                    <i class="fas fa-check"></i> Aprovar</button>
             </div>
         `;
     // Insere os botões de ação no footer (após o botão de fechar)
