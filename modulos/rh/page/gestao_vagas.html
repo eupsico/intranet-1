@@ -18,18 +18,20 @@
 
   <div class="tabs-container status-tabs">
     <button class="tab-link active" data-status="abertas">
-      Em Criação (0)
+      Em Elaboração (0)
     </button>
     <button class="tab-link" data-status="aprovacao-gestao">
       Aguardando Aprovação (0)
     </button>
     <button class="tab-link" data-status="arte-pendente">
-      Arte Pendente (0)
+      Criação da Arte (0)
     </button>
     <button class="tab-link" data-status="em-divulgacao">
       Em Divulgação (0)
     </button>
-    <button class="tab-link" data-status="fechadas">Fechadas (0)</button>
+    <button class="tab-link" data-status="fechadas">
+      Fechadas/Encerradas (0)
+    </button>
   </div>
 
   <div id="lista-vagas" class="tabela-dados">
@@ -116,6 +118,12 @@
                   função?</label
                 >
                 <textarea id="vaga-resultados" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="vaga-nova-substituicao"
+                  >Essa vaga é nova ou está substituindo alguém?
+                </label>
+                <textarea id="vaga-nova-substituicao" rows="2"></textarea>
               </div>
             </fieldset>
 
@@ -309,7 +317,7 @@
                   >Resumo da Vaga para Divulgação (Será usado na criação da
                   arte):</label
                 >
-                <textarea id="vaga-resumo-arte" rows="4" required></textarea>
+                <textarea id="vaga-resumo-arte" rows="4"></textarea>
               </div>
 
               <div class="form-group">
