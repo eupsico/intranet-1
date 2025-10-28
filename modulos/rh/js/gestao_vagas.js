@@ -145,8 +145,7 @@ function gerenciarEtapasModal(status) {
     const actionHtml = `
             <div class="acoes-aprovacao-ficha" style="display:flex; justify-content:flex-end; gap: 10px; margin-top: 20px;">
                 <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
-                    <i class="fas fa-times-circle"></i> Solicitar Alterações
-                </button>
+                    <i class="fas fa-times-circle"></i> Solicitar Alterações</button>
                 <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
                     <i class="fas fa-check"></i> Aprovar</button>
             </div>
@@ -234,11 +233,18 @@ async function handleDetalhesVaga(vagaId) {
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
     if (modalTitle) modalTitle.textContent = `Vaga: ${vaga.nome}`;
 
+    // Garante que as listas dinâmicas estejam carregadas antes de atribuir o valor
+    await carregarListasFirebase();
+
     // CAMPOS PRINCIPAIS
     document.getElementById("vaga-nome").value = vaga.nome || "";
-    // CORREÇÃO: Leitura do departamento
-    document.getElementById("vaga-departamento").value =
-      vaga.departamento || "";
+
+    // CORREÇÃO: Leitura e atribuição do departamento após o carregamento das opções
+    const selectDepartamento = document.getElementById("vaga-departamento");
+    if (selectDepartamento) {
+      selectDepartamento.value = vaga.departamento || "";
+    }
+
     document.getElementById("vaga-tipo-recrutamento").value =
       vaga.tipoRecrutamento || "";
     document.getElementById("vaga-regime-trabalho").value =
@@ -298,9 +304,6 @@ async function handleDetalhesVaga(vagaId) {
     Array.from(selectCanais.options).forEach((option) => {
       option.selected = canaisSalvos.includes(option.value);
     });
-
-    // Garante que as listas dinâmicas estejam carregadas
-    await carregarListasFirebase();
 
     // 2. Gerencia a exibição da etapa com base no status
     gerenciarEtapasModal(statusAtual);
