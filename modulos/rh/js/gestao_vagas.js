@@ -126,16 +126,14 @@ function gerenciarEtapasModal(status) {
   secaoDivulgacao.style.display = "none";
   btnCancelarVaga.style.display = "none";
   btnEncerrarVaga.style.display = "none";
-  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos (voltando à lógica de botões irmãos)
+  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos ANTERIORES (Remoção direta dos wrappers que foram injetados)
 
-  const dynamicButtonsFichaWrapper = modalVaga.querySelector(
+  const dynamicButtonsFicha = modalVaga.querySelector(
     ".acoes-aprovacao-ficha-wrapper"
   );
-  if (dynamicButtonsFichaWrapper) dynamicButtonsFichaWrapper.remove();
-  const dynamicButtonsArteWrapper = modalVaga.querySelector(
-    ".acoes-arte-wrapper"
-  );
-  if (dynamicButtonsArteWrapper) dynamicButtonsArteWrapper.remove(); // Visibilidade do botão Fechar do rodapé
+  if (dynamicButtonsFicha) dynamicButtonsFicha.remove();
+  const dynamicButtonsArte = modalVaga.querySelector(".acoes-arte-wrapper");
+  if (dynamicButtonsArte) dynamicButtonsArte.remove(); // Visibilidade do botão Fechar do rodapé
 
   if (btnFecharRodape) {
     btnFecharRodape.style.display = "none"; // REQUISITO: Fechar do rodapé oculto por padrão
@@ -162,7 +160,7 @@ function gerenciarEtapasModal(status) {
 
     btnCancelarVaga.style.display = "none";
   } else if (status === "aguardando-aprovacao") {
-    // Fase 1.1: Aprovação da Ficha Técnica
+    // Fase 1.1: Aprovação da Ficha Técnica (3 Botões alinhados)
     secaoFichaTecnica.style.display = "block"; // REQUISITO: Exibir Cancelar Vaga (estático)
 
     btnCancelarVaga.style.display = "inline-block"; // Esconde o Salvar
@@ -201,22 +199,20 @@ function gerenciarEtapasModal(status) {
     caixaAlteracoesArte.style.display = "none";
 
     // --- INJEÇÃO DOS BOTÕES NO RODAPÉ (Salvar Link/Obs, Solicitar, Aprovar) ---
-    // NOVO: Garantindo a injeção no rodapé
+    // CORREÇÃO FINAL: Usamos a lógica de injeção direta que funciona
     const actionHtmlArte = `
-        <div class="acoes-arte-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
-            <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
-                <i class="fas fa-save"></i> Salvar Link/Obs
-            </button>
-            <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
-                <i class="fas fa-edit"></i> Solicitar Alterações
-            </button>
-            <button type="button" class="btn btn-success" id="btn-aprovar-arte-final">
-                <i class="fas fa-check"></i> Aprovar Arte
-            </button>
-        </div>
+        <button type="button" class="btn btn-primary" id="btn-salvar-link-arte" style="margin-left: auto;">
+            <i class="fas fa-save"></i> Salvar Link/Obs
+        </button>
+        <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
+            <i class="fas fa-edit"></i> Solicitar Alterações
+        </button>
+        <button type="button" class="btn btn-success" id="btn-aprovar-arte-final">
+            <i class="fas fa-check"></i> Aprovar Arte
+        </button>
     `;
 
-    // Injeta o wrapper antes do botão Fechar
+    // Injeta os botões ANTES do botão Fechar (ancorando no final por Flexbox)
     const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
     if (fecharModalBtn) {
       fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtmlArte);
