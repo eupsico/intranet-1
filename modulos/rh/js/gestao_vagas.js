@@ -143,27 +143,18 @@ function gerenciarEtapasModal(status) {
 
     // Adiciona botões de ação específicos (Aprovar/Rejeitar)
     const actionHtml = `
-            <div class="acoes-aprovacao-ficha">
-                <button type="button" class="btn btn-danger" id="btn-rejeitar-ficha">
+            <div class="acoes-aprovacao-ficha" style="display:flex; justify-content:flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
                     <i class="fas fa-times-circle"></i> Solicitar Alterações
                 </button>
                 <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
+                    <i class="fas fa-check"></i> Aprovar</button>
             </div>
         `;
-    // NOVO: Seleciona o botão 'Fechar' para injetar a div de ações ANTES dele.
-    const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
-
-    if (fecharModalBtn) {
-      // Insere os botões dinâmicos ANTES do botão "Fechar"
-      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
-    } else {
-      // Fallback: insere no final do footer se o botão fechar não for encontrado
-      modalVaga
-        .querySelector(".modal-footer")
-        .insertAdjacentHTML("beforeend", actionHtml);
-    }
+    // Insere os botões de ação no footer (após o botão de fechar)
+    modalVaga
+      .querySelector(".modal-footer")
+      .insertAdjacentHTML("beforeend", actionHtml);
 
     // Configura os eventos dos novos botões dinâmicos
     const vagaId = formVaga.getAttribute("data-vaga-id");
