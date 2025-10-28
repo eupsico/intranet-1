@@ -1,25 +1,33 @@
 <div class="painel-gestao-vagas">
   <h2 class="painel-titulo">Gestão de Vagas e Recrutamento</h2>
+
+  <div class="description-box">
+    <p>
+      Este painel permite gerenciar o ciclo de vida das vagas, desde a criação
+      da Ficha Técnica até o fechamento. Utilize o botão
+      <strong>"Criar Ficha Técnica"</strong> para iniciar um novo processo
+      seletivo. As ações de <strong>Ver/Editar</strong> e
+      <strong>Aprovar</strong> são realizadas diretamente nos cards da lista.
+    </p>
+  </div>
+
   <div class="acoes-header">
     <button id="btn-nova-vaga" class="btn btn-primary">
       <i class="fas fa-plus"></i> Criar Ficha Técnica
     </button>
   </div>
-  <div class="card card-filtros">
-    <h3>Pipeline de Vagas</h3>
-    <div class="status-tabs">
-      <button class="btn btn-tab active" data-status="abertas">
-        Abertas (0)
-      </button>
-      <button class="btn btn-tab" data-status="aprovacao-gestao">
-        Aguardando Aprovação (0)
-      </button>
-      <button class="btn btn-tab" data-status="em-divulgacao">
-        Em Recrutamento (0)
-      </button>
-      <button class="btn btn-tab" data-status="fechadas">Fechadas (0)</button>
-    </div>
+
+  <div class="tabs-container status-tabs">
+    <button class="tab-link active" data-status="abertas">Abertas (0)</button>
+    <button class="tab-link" data-status="aprovacao-gestao">
+      Aguardando Aprovação (0)
+    </button>
+    <button class="tab-link" data-status="em-divulgacao">
+      Em Recrutamento (0)
+    </button>
+    <button class="tab-link" data-status="fechadas">Fechadas (0)</button>
   </div>
+
   <div id="lista-vagas" class="tabela-dados">
     <p id="mensagem-vagas">Nenhuma vaga encontrada para este status.</p>
   </div>
@@ -49,6 +57,7 @@
               <label for="vaga-responsabilidades"
                 >Quais são as principais responsabilidades e atividades?</label
               >
+
               <textarea
                 id="vaga-responsabilidades"
                 rows="3"
@@ -63,23 +72,23 @@
             </div>
             <div class="form-group">
               <label for="vaga-nova-substituicao"
-                >Essa vaga é nova ou está substituindo alguém?</label
-              >
+                >Essa vaga é nova ou está substituindo alguém?
+              </label>
               <textarea id="vaga-nova-substituicao" rows="2"></textarea>
             </div>
           </fieldset>
-
           <fieldset>
             <legend>Formação e Qualificações</legend>
             <div class="form-group">
               <label for="vaga-formacao-minima"
-                >Qual é a formação mínima exigida?</label
-              >
+                >Qual é a formação mínima exigida?
+              </label>
               <textarea
                 id="vaga-formacao-minima"
                 rows="3"
                 placeholder="Ex: Psicologia, Psiquiatria, Terapia Ocupacional, etc."
-              ></textarea>
+              >
+              </textarea>
             </div>
             <div class="form-group">
               <label for="vaga-conselho"
@@ -110,6 +119,7 @@
               <label for="vaga-comp-tecnicas"
                 >Quais competências técnicas são indispensáveis?</label
               >
+
               <textarea
                 id="vaga-comp-tecnicas"
                 rows="3"
@@ -117,9 +127,9 @@
               ></textarea>
             </div>
             <div class="form-group">
-              <label for="vaga-comp-comportamentais"
-                >Quais competências comportamentais são desejadas?</label
-              >
+              <label for="vaga-comp-comportamentais">
+                Quais competências comportamentais são desejadas?
+              </label>
               <textarea
                 id="vaga-comp-comportamentais"
                 rows="3"
@@ -128,8 +138,8 @@
             </div>
             <div class="form-group">
               <label for="vaga-certificacoes"
-                >Há certificações ou formações específicas exigidas?</label
-              >
+                >Há certificações ou formações específicas exigidas?
+              </label>
               <textarea id="vaga-certificacoes" rows="2"></textarea>
             </div>
           </fieldset>
@@ -138,8 +148,8 @@
             <legend>Experiência e Atuação</legend>
             <div class="form-group">
               <label for="vaga-nivel-experiencia"
-                >Qual o nível de experiência necessário?</label
-              >
+                >Qual o nível de experiência necessário?
+              </label>
               <select id="vaga-nivel-experiencia">
                 <option value="">Selecione o Nível</option>
                 <option value="junior">Júnior</option>
@@ -150,8 +160,8 @@
             </div>
             <div class="form-group">
               <label for="vaga-contextos-similares"
-                >O profissional já atuou em contextos similares?</label
-              >
+                >O profissional já atuou em contextos similares?
+              </label>
               <textarea
                 id="vaga-contextos-similares"
                 rows="3"
@@ -219,10 +229,13 @@
             <legend>Requisitos Práticos</legend>
             <div class="form-group">
               <label for="vaga-carga-horaria"
-                >Qual é a carga horária e o regime de trabalho (presencial,
-                híbrido, remoto)?</label
-              >
-              <textarea id="vaga-carga-horaria" rows="2"></textarea>
+                >Qual é a carga horária e o regime de trabalho?
+              </label>
+              <textarea
+                id="vaga-carga-horaria"
+                rows="2"
+                placeholder="Ex: 40h, Híbrido."
+              ></textarea>
             </div>
             <div class="form-group">
               <label for="vaga-faixa-salarial"
@@ -230,20 +243,24 @@
               >
               <textarea id="vaga-faixa-salarial" rows="2"></textarea>
             </div>
+            <div class="form-group" style="display: none">
+              <label for="vaga-descricao">Descrição/Requisitos (Antigo):</label>
+              <textarea id="vaga-descricao" rows="5"></textarea>
+            </div>
             <fieldset class="criterios-fieldset" style="display: none">
-              <legend>
-                Fases de Seleção (Mantenha este campo invisível para não quebrar
-                a edição)
-              </legend>
+              <legend>Fases de Seleção</legend>
             </fieldset>
           </fieldset>
-
-          <div class="form-group" style="display: none">
-            <label for="vaga-descricao">Descrição/Requisitos (Antigo):</label>
-            <textarea id="vaga-descricao" rows="5"></textarea>
-          </div>
         </div>
         <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-danger btn-excluir"
+            id="btn-excluir-vaga"
+            style="display: none"
+          >
+            Excluir Vaga
+          </button>
           <button type="button" class="btn btn-secondary fechar-modal">
             Cancelar
           </button>
