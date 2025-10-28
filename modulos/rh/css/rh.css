@@ -170,6 +170,8 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   padding: 12px 25px; /* Tamanho maior */
   font-size: 1em;
   font-weight: 600;
+  background-color: var(--cor-secundaria);
+  color: var(--cor-texto-inverso);
 }
 
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
