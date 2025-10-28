@@ -119,12 +119,13 @@ export async function initdashboard(user, userData) {
 
     todosUsuariosSnap.forEach((doc) => {
       const user = doc.data();
-      const funcoes = user.funcoes || [];
+      const funcoes = user.funcoes || []; // Array de funções
       const profissao = user.profissao || "Não Informado";
 
-      // CORREÇÃO: Itera sobre TODAS as funções do usuário para a distribuição (Fixa contagem de Gestores)
+      // CORREÇÃO: Itera sobre TODAS as funções do usuário para a contagem.
+      // Isso garante que gestores com múltiplas funções sejam contabilizados.
       funcoes.forEach((role) => {
-        // Mapeamento para nomes de exibição amigáveis
+        // Mapeamento para nomes de exibição amigáveis (incluindo 'gestor')
         const displayRole =
           {
             psicologo_voluntario: "Psicólogo Voluntário",
@@ -132,27 +133,20 @@ export async function initdashboard(user, userData) {
             supervisor: "Supervisor",
             admin: "Admin",
             rh: "RH",
-            gestor: "Gestor", // Adicionado mapeamento para 'gestor'
+            gestor: "Gestor", // Certifica que 'gestor' tem um nome de exibição
           }[role] ||
           role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
 
         funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
       });
 
-      // Se o usuário não tiver funções, garantir que ele seja contado como 'Não Definido'
-      if (funcoes.length === 0) {
-        funcoesMap["Não Definido"] = (funcoesMap["Não Definido"] || 0) + 1;
-      }
-
-      // Agregação por PROFISSÃO
+      // Agregação por PROFISSÃO (permanece igual)
       const displayProfissao =
         profissao.charAt(0).toUpperCase() + profissao.slice(1);
       profissaoMap[displayProfissao] =
         (profissaoMap[displayProfissao] || 0) + 1;
     });
 
-    // Dados para o Gráfico de Funções
-    // ... (resto do código permanece igual) ...
     // Dados para o Gráfico de Funções
     const funcoesLabels = Object.keys(funcoesMap);
     const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
