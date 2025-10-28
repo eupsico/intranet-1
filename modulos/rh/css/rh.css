@@ -172,6 +172,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   font-weight: 600;
   background-color: var(--cor-secundaria);
   color: var(--cor-texto-inverso);
+  border: none;
 }
 
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
@@ -186,19 +187,23 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   margin-right: auto !important; /* Move para a esquerda */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
+  border: none;
 }
 
 /* Garante que o botão de Cancelar (Secundário) tenha a cor correta */
 .modal-footer .btn-secondary {
   background-color: var(--cor-borda);
   color: var(--cor-texto-principal);
+  border: none;
 }
 .modal-footer .btn-secondary:hover {
   background-color: #d1d1d1;
+  border: none;
 }
 .modal-footer .btn-success {
   background-color: var(--cor-secundaria);
   color: var(--cor-texto-inverso);
+  border: none;
 }
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
 .rh-card-actions .btn,
