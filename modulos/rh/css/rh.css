@@ -182,7 +182,6 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   gap: 10px; /* Espaço entre os botões */
   flex-wrap: wrap;
   padding: 16px;
-  /* NOVO: Permite que elementos como os botões dinâmicos ocupem o espaço necessário */
 }
 .modal-footer .btn {
   /* REMOVIDO: flex: 1 1 auto; */
@@ -208,11 +207,11 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 }
 /* Se for um botão de ação dinâmico injetado para Aprovação/Rejeição: */
 .acoes-aprovacao-ficha {
+  /* IMPORTANTE: Desativamos justify-content: flex-end para evitar que ele concorra com o modal-footer */
   display: flex;
-  justify-content: flex-end;
   gap: 10px;
-  margin-top: 0; /* Remove margem superior desnecessária no contexto do footer */
-  margin-left: 20px;
+  margin: 0;
+  padding: 0;
 }
 /* Alinhamento dos botões de Aprovação/Rejeição */
 .acoes-aprovacao-ficha .btn {
@@ -233,16 +232,12 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-inverso);
   border: none;
 }
-.modal-footer .btn-alteração {
+.modal-footer .btn-alteracao {
   background-color: var(--cor-alerta);
   color: var(--cor-texto-inverso);
   border: none;
 }
-.modal-footer .btn-alteração {
-  background-color: var(--cor-alerta);
-  color: var(--cor-texto-inverso);
-  border: none;
-}
+
 .modal-footer .btn-danger {
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
