@@ -1,7 +1,8 @@
 import { db, doc, getDoc } from "../../../assets/js/firebase-init.js";
 
 // A função é exportada e recebe os dados do usuário, seguindo o padrão do painel
-export function init(db, user, userData) {
+// CORREÇÃO: Removido 'db' dos parâmetros, pois já é importado acima.
+export function init(user, userData) {
   // A verificação de permissão usa os dados já recebidos
   if (
     !userData ||
@@ -29,6 +30,7 @@ export function init(db, user, userData) {
     container.innerHTML = '<div class="loading-spinner"></div>'; // Mostra carregando
 
     try {
+      // O objeto 'db' agora está acessível globalmente a partir do import
       const docRef = doc(db, "configuracoesSistema", "treinamentos");
       const docSnap = await getDoc(docRef);
 
@@ -63,40 +65,36 @@ export function init(db, user, userData) {
       const videoId = extrairVideoId(video.link);
       if (videoId) {
         const accordionItem = document.createElement("div");
-        accordionItem.classList.add("accordion-item");
+        accordionItem.classList.add("accordion-item"); // Estrutura do acordeão: título clicável e conteúdo oculto
 
-        // Estrutura do acordeão: título clicável e conteúdo oculto
         accordionItem.innerHTML = `
-          <button class="accordion-header">
-            ${video.title || "Vídeo sem Título"}
-            <span class="accordion-icon">+</span>
-          </button>
-          <div class="accordion-content">
-            <div class="video-description">
-                <p>${video.descricao.replace(/\n/g, "<br>")}</p>
-            </div>
-            <div class="video-embed">
-                <iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </div>
-          </div>
-        `;
+ <button class="accordion-header">
+${video.title || "Vídeo sem Título"}
+<span class="accordion-icon">+</span>
+ </button>
+ <div class="accordion-content">
+<div class="video-description">
+<p>${video.descricao.replace(/\n/g, "<br>")}</p>
+</div>
+<div class="video-embed">
+<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+ </div>
+`;
         container.appendChild(accordionItem);
       }
-    });
+    }); // Adiciona os eventos de clique DEPOIS que todos os itens foram criados
 
-    // Adiciona os eventos de clique DEPOIS que todos os itens foram criados
     setupAccordion();
-  }
+  } // NOVA FUNÇÃO para controlar a lógica do acordeão
 
-  // NOVA FUNÇÃO para controlar a lógica do acordeão
   function setupAccordion() {
     const accordionHeaders = document.querySelectorAll(".accordion-header");
     accordionHeaders.forEach((header) => {
       header.addEventListener("click", () => {
         const content = header.nextElementSibling;
-        const icon = header.querySelector(".accordion-icon");
+        const icon = header.querySelector(".accordion-icon"); // Alterna a classe 'active' para mostrar/esconder o conteúdo
 
-        // Alterna a classe 'active' para mostrar/esconder o conteúdo
         header.classList.toggle("active");
 
         if (content.style.maxHeight) {
@@ -111,7 +109,7 @@ export function init(db, user, userData) {
   }
 
   function extrairVideoId(url) {
-    if (!url) return null;
+    if (!url) return null; // Esta regex é específica para YouTube. Se você estiver usando o Google Drive, o vídeo não será exibido.
     const regex =
       /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const matches = url.match(regex);
