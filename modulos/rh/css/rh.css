@@ -210,15 +210,15 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-inverso);
   border: none;
 }
-.modal-footer .btn-danger #btn-cancelar-vaga {
+.modal-footer .btn-danger {
   margin-right: auto !important; /* Move para a esquerda */
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
   border: none;
 }
 .modal-footer .btn-secondary {
-  background-color: var(---cor-texto-principal);
-  color: var(--cor-texto-inverso);
+  background-color: var(--cor--secondary);
+  color: var(--cor-surface);
   border: none;
 }
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
