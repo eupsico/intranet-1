@@ -404,24 +404,22 @@ async function carregarVagas(status) {
         vaga.id = doc.id;
         count++;
         htmlVagas += `
-                <div class="card card-vaga" data-id="${vaga.id}">
-                    <h4>${vaga.nome}</h4>
-                    <p>Status: **${vaga.status
-          .toUpperCase()
-          .replace(/-/g, " ")}**</p>
-                    <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+ <div class="card card-vaga" data-id="${vaga.id}">
+<h4>${vaga.nome}</h4>
+<p>Status: **${vaga.status.toUpperCase().replace(/-/g, " ")}**</p>
+<p>Candidatos: ${vaga.candidatosCount || 0}</p>
                     <div class="rh-card-actions">
-                    <button class="btn btn-sm btn-info btn-detalhes" data-id="${
+<button class="btn btn-sm btn-info btn-detalhes" data-id="${
           vaga.id
         }">Ver/Editar Detalhes</button>
-                    ${
-          vaga.status === "aguardando-aprovacao"
-            ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
-            : ""
-        }
+${
+  vaga.status === "aguardando-aprovacao"
+    ? `<button class="btn btn-sm btn-success btn-aprovar" data-id="${vaga.id}">Aprovar Vaga</button>`
+    : ""
+}
                     </div>
-                </div>
-            `;
+ </div>
+`;
       }
     });
 
