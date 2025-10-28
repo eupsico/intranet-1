@@ -10,7 +10,6 @@ import {
   where,
   getDoc, // Adicionado getDoc para buscar uma única vaga na edição
   arrayUnion,
-  // Não precisa de deleteDoc e FieldValue, mas arrayUnion foi mantido
 } from "../../../assets/js/firebase-init.js";
 
 // Importa a função do novo utilitário user-management (mantido)
@@ -25,6 +24,9 @@ const CONFIG_COLLECTION_NAME = "configuracoesSistema"; // Para buscar listas glo
 
 // Coleção principal no Firestore para as vagas
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
+
+// NOVO: Adiciona o ID do modal de rejeição
+const ID_MODAL_REJEICAO = "modal-rejeicao-ficha";
 
 // Elementos do DOM globais
 const modalVaga = document.getElementById("modal-vaga");
@@ -159,8 +161,9 @@ function gerenciarEtapasModal(status) {
     const vagaId = formVaga.getAttribute("data-vaga-id");
     document.getElementById("btn-aprovar-ficha").onclick = () =>
       handleAprovarFichaTecnica(vagaId);
+    // MODIFICADO: Chama o modal de justificativa
     document.getElementById("btn-rejeitar-ficha").onclick = () =>
-      handleRejeitarFichaTecnica(vagaId);
+      modalRejeicaoFichaTecnica(vagaId);
   } else if (status === "arte-pendente") {
     // Fase 2: Criação/Aprovação da Arte
     secaoCriacaoArte.style.display = "block";
@@ -562,16 +565,84 @@ async function handleAprovarFichaTecnica(vagaId) {
 }
 
 /**
- * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Em Criação).
+ * NOVO: Abre um modal para solicitar a justificativa da rejeição.
+ * @param {string} vagaId
  */
-async function handleRejeitarFichaTecnica(vagaId) {
-  if (
-    !vagaId ||
-    !confirm(
-      "Confirma a REJEIÇÃO desta Ficha Técnica de Vaga? A vaga voltará para a fase de 'Em Criação'."
-    )
-  )
-    return;
+function modalRejeicaoFichaTecnica(vagaId) {
+  let modal = document.getElementById(ID_MODAL_REJEICAO);
+
+  // Se o modal não existe, cria ele (simulação de um modal simples)
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = ID_MODAL_REJEICAO;
+    modal.className = "modal-overlay";
+    // Adiciona um estilo básico para garantir que o modal de rejeição seja visível
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    modal.style.zIndex = "1000";
+    modal.style.display = "flex";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+
+    modal.innerHTML = `
+            <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
+                    <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="rejeicao-motivo">Justificativa:</label>
+                        <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
+                </div>
+            </div>
+        `;
+    document.body.appendChild(modal);
+
+    // Adiciona evento de fechar
+    modal.querySelectorAll(".fechar-modal-rejeicao").forEach((btn) => {
+      btn.onclick = () => (modal.style.display = "none");
+    });
+  }
+
+  // Configura evento de confirmação no novo modal
+  const btnConfirmar = modal.querySelector("#btn-confirmar-rejeicao");
+  if (btnConfirmar) {
+    btnConfirmar.onclick = () => {
+      const motivo = document.getElementById("rejeicao-motivo").value;
+      if (motivo.trim()) {
+        modal.style.display = "none";
+        handleRejeitarFichaTecnica(vagaId, motivo);
+      } else {
+        window.showToast("O motivo da rejeição é obrigatório.", "warning");
+      }
+    };
+  }
+
+  // Reseta o campo de texto antes de abrir
+  document.getElementById("rejeicao-motivo").value = "";
+
+  modal.style.display = "flex";
+}
+
+/**
+ * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Em Criação).
+ * MODIFICADA: Agora recebe a justificativa.
+ * @param {string} vagaId
+ * @param {string} justificativa
+ */
+async function handleRejeitarFichaTecnica(vagaId, justificativa) {
+  if (!vagaId || !justificativa) return;
 
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
@@ -579,7 +650,11 @@ async function handleRejeitarFichaTecnica(vagaId) {
       status: "em-criação", // Volta para Em Criação (aba "Abertas")
       historico: arrayUnion({
         data: new Date(),
-        acao: "Ficha Técnica REJEITADA. Retornou para 'Em Criação' para ajustes.",
+        acao: `Ficha Técnica REJEITADA. Motivo: ${justificativa.substring(
+          0,
+          80
+        )}...`,
+        justificativa: justificativa,
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
       }),
     });
@@ -781,7 +856,7 @@ async function carregarVagas(status) {
   let statusArray = [status];
 
   if (status === "abertas") {
-    // CORREÇÃO: "Abertas" agora é somente "Em Criação" (rascunho)
+    // "Abertas" agora é somente "Em Criação" (rascunho)
     statusArray = ["em-criação"];
   } else if (status === "fechadas") {
     statusArray = ["cancelada", "encerrada"];
@@ -860,7 +935,7 @@ async function carregarVagas(status) {
       .replace(/-/g, " ")
       .replace("APROVACAO GESTAO", "AGUARDANDO APROVAÇÃO");
 
-    // NOVO: Mapeia informações principais para a aprovação
+    // CORRIGIDO: Mapeia informações principais, incluindo o Departamento
     const infoSecundaria = [
       `Dpto: ${vaga.departamento || "Não definido"}`,
       `Regime: ${vaga.regimeTrabalho || "Não definido"}`,
