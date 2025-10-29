@@ -8,7 +8,7 @@ import {
   doc,
   query,
   where,
-  getDoc, // Adicionado getDoc para buscar uma única vaga na edição
+  getDoc,
   arrayUnion,
 } from "../../../assets/js/firebase-init.js";
 
@@ -19,7 +19,7 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 import { arrayRemove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // =====================================================================
-// CONSTANTES GLOBAIS E ELEMENTOS DO DOM (Definidos no escopo principal)
+// CONSTANTES GLOBAIS E ELEMENTOS DO DOM
 // =====================================================================
 
 const VAGAS_COLLECTION_NAME = "vagas";
@@ -46,11 +46,90 @@ const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
 let currentUserData = {};
 
-// modulos/rh/js/gestao_vagas.js (Bloco 2: Funções Auxiliares)
+// =====================================================================
+// FUNÇÕES AUXILIARES (A função gerenciarEtapasModal estava faltando)
+// =====================================================================
 
-// =====================================================================
-// FUNÇÕES AUXILIARES E DE LÓGICA DE NEGÓCIO
-// =====================================================================
+/**
+ * FUNÇÃO FALTANTE: Gerencia a exibição das seções do modal com base no status da vaga.
+ * Controla a visibilidade e o estado de edição das etapas do fluxo.
+ */
+function gerenciarEtapasModal(status) {
+  if (!secaoFichaTecnica || !secaoCriacaoArte || !secaoDivulgacao) return;
+
+  // 1. Resetar visibilidade das seções
+  secaoFichaTecnica.style.display = "none";
+  secaoCriacaoArte.style.display = "none";
+  secaoDivulgacao.style.display = "none";
+
+  // 2. Controlar visibilidade dos botões de fluxo
+  if (btnCancelarVaga) btnCancelarVaga.style.display = "none";
+  if (btnEncerrarVaga) btnEncerrarVaga.style.display = "none";
+
+  // 3. Definir visibilidade com base no status
+  switch (status) {
+    case "em-criação":
+      // Ficha Técnica editável (Rascunho)
+      secaoFichaTecnica.style.display = "block";
+      break;
+
+    case "aguardando-aprovacao":
+      // Visualização da Ficha (Botões de Aprovar/Rejeitar são injetados dinamicamente)
+      secaoFichaTecnica.style.display = "block";
+      break;
+
+    case "arte-pendente":
+      // Ficha (leitura) + Seção de Criação de Arte (para inserir/revisar link)
+      secaoFichaTecnica.style.display = "block";
+      secaoCriacaoArte.style.display = "block";
+      break;
+
+    case "em-divulgacao":
+    case "em-recrutamento":
+      // Todas as seções visíveis. Ações de Cancelar/Encerrar disponíveis.
+      secaoFichaTecnica.style.display = "block";
+      secaoCriacaoArte.style.display = "block";
+      secaoDivulgacao.style.display = "block";
+      if (btnCancelarVaga) btnCancelarVaga.style.display = "inline-block";
+      if (btnEncerrarVaga) btnEncerrarVaga.style.display = "inline-block";
+      break;
+
+    case "cancelada":
+    case "encerrada":
+      // Apenas visualização final (mostra tudo, mas não editável)
+      secaoFichaTecnica.style.display = "block";
+      secaoCriacaoArte.style.display = "block";
+      secaoDivulgacao.style.display = "block";
+      break;
+
+    default:
+      secaoFichaTecnica.style.display = "block";
+      break;
+  }
+
+  // 4. Lógica de Desativação do Formulário Principal (Ficha Técnica)
+  const formFields = formVaga
+    ? formVaga.querySelectorAll("input, select, textarea")
+    : [];
+  const isEditable = status === "em-criação"; // Permite edição completa apenas em rascunho.
+
+  formFields.forEach((field) => {
+    // Exclui campos da seção Arte/Divulgação do controle de desabilitação da Ficha Técnica
+    const isArteField =
+      field.id.includes("vaga-resumo-arte") ||
+      field.id.includes("vaga-link-arte") ||
+      field.id.includes("vaga-observacao-arte");
+
+    if (!isArteField) {
+      field.disabled = !isEditable;
+    }
+  });
+
+  if (btnSalvar) {
+    // O botão Salvar só deve aparecer quando a Ficha Técnica é editável
+    btnSalvar.style.display = isEditable ? "inline-block" : "none";
+  }
+}
 
 /**
  * NOVO: Gera um resumo da vaga usando os dados principais da Ficha Técnica (para a arte).
@@ -406,24 +485,24 @@ function modalRejeicaoFichaTecnica(vagaId) {
     modal.style.alignItems = "center";
 
     modal.innerHTML = `
-            <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
-                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
-                    <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label for="rejeicao-motivo">Justificativa:</label>
-                        <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
-                    <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
-                </div>
-            </div>
-        `;
+      <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
+          <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
+          <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="rejeicao-motivo">Justificativa:</label>
+            <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
+        </div>
+      </div>
+    `;
     document.body.appendChild(modal); // Adiciona evento de fechar
 
     modal.querySelectorAll(".fechar-modal-rejeicao").forEach((btn) => {
@@ -743,18 +822,18 @@ async function carregarVagas(status) {
     ].join(" | ");
 
     htmlVagas += `
-        <div class="card card-vaga" data-id="${vaga.id}">
-            <h4>${vaga.nome}</h4>
-            <p class="text-secondary small-info">${infoSecundaria}</p>
-            <p>Status: **${statusFormatado}**</p>
-            <p>Candidatos: ${vaga.candidatosCount || 0}</p>
-            <div class="rh-card-actions">
-                <button class="btn btn-primary btn-detalhes" data-id="${
-      vaga.id
-    }">Ver/Gerenciar Vaga</button>
-            </div>
-        </div>
-    `;
+    <div class="card card-vaga" data-id="${vaga.id}">
+      <h4>${vaga.nome}</h4>
+      <p class="text-secondary small-info">${infoSecundaria}</p>
+      <p>Status: **${statusFormatado}**</p>
+      <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+      <div class="rh-card-actions">
+        <button class="btn btn-primary btn-detalhes" data-id="${
+          vaga.id
+        }">Ver/Gerenciar Vaga</button>
+      </div>
+    </div>
+  `;
   }); // Atualiza os contadores em todos os botões de status (usa counts globais)
 
   document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
