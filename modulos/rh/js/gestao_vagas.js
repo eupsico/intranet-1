@@ -132,7 +132,11 @@ function openNewVagaModal() {
  * NOVO: Abre o modal da Ficha Técnica (Em Criação e Aguardando Aprovação).
  * CORRIGIDO: Injeta os botões no rodapé e remove o botão "Fechar" em Aprovação, evitando o cabeçalho.
  */
-function openFichaTecnicaModal(vagaId, statusAtual) {
+/**
+ * NOVO: Abre o modal da Ficha Técnica (Em Criação, Aprovação, e Correção).
+ * CORREÇÃO: Recebe o objeto 'vaga' e lê o feedback diretamente do histórico.
+ */
+function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
   // 1. Lógica de Limpeza e Variáveis
   const footer = modalFicha.querySelector(".modal-footer");
   if (footer) {
@@ -141,23 +145,23 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       .forEach((el) => el.remove());
   }
 
+  // Se estiver em correção, habilita edição
   const canEdit =
-    statusAtual === "em-criação" || statusAtual === "correcao-pendente"; // HABILITA EDIÇÃO SE FOR CORREÇÃO
+    statusAtual === "em-criação" || statusAtual === "correcao-pendente";
   const isAprovacao = statusAtual === "aguardando-aprovacao";
 
-  // 2. Limpeza de banners e Verificação de Feedback (NOVO)
+  // 2. Limpeza de banners e Verificação de Feedback (CORRIGIDO)
   const modalBody = modalFicha.querySelector(".modal-body");
   if (modalBody) {
     modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
   }
 
-  const vagaData = JSON.parse(formVaga.getAttribute("data-vaga-data") || "{}");
-
-  if (statusAtual === "correcao-pendente" && vagaData.historico?.length) {
-    const lastAction = vagaData.historico[vagaData.historico.length - 1];
+  if (statusAtual === "correcao-pendente" && vaga?.historico?.length) {
+    const lastAction = vaga.historico[vaga.historico.length - 1];
 
     // Verifica se a última ação foi uma rejeição de ficha e se tem justificativa
     if (lastAction.acao?.includes("REJEITADA") && lastAction.justificativa) {
+      // ATENÇÃO: Assumo que displayFeedbackBanner está definido
       displayFeedbackBanner(modalFicha, lastAction.justificativa, "warning");
     }
   }
@@ -176,7 +180,6 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
   if (btnSalvar) {
     btnSalvar.style.display = canEdit ? "inline-block" : "none";
 
-    // Se a vaga está em Correção, o botão deve ser 'Salvar e Enviar' novamente
     if (statusAtual === "correcao-pendente") {
       btnSalvar.textContent = "Salvar e Reenviar para Aprovação";
     } else {
@@ -203,7 +206,6 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
                 </button>
             </div>`;
 
-    // Injeta o wrapper no rodapé (usando a âncora fecharModalBtn)
     const fecharRodapeBtn = modalFicha.querySelector(
       ".modal-footer .fechar-modal"
     );
@@ -229,7 +231,6 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
   // 7. Exibe o modal
   if (modalFicha) modalFicha.style.display = "flex";
 }
-
 /**
  * NOVO: Modal para Solicitar Alterações na Ficha Técnica (Aprovação Gestão).
  */
@@ -1285,7 +1286,7 @@ async function handleDetalhesVaga(vagaId) {
     const vaga = docSnap.data();
     const statusAtual = vaga.status || "em-criação";
 
-    // 1. Preenche TODOS os campos em TODOS os modais (centralizado e seguro)
+    // 1. Preenche TODOS os campos (necessário para UI, mas não para o histórico)
     await preencherFormularioVaga(vagaId, vaga);
 
     // 2. ROTEA PARA O MODAL CORRETO
@@ -1293,11 +1294,16 @@ async function handleDetalhesVaga(vagaId) {
       .querySelectorAll(".modal-overlay")
       .forEach((modal) => (modal.style.display = "none"));
 
+    // CORREÇÃO: Passar o objeto VAGA completo para a função de abertura
     if (
       statusAtual === "em-criação" ||
-      statusAtual === "aguardando-aprovacao"
+      statusAtual === "aguardando-aprovacao" ||
+      statusAtual === "correcao-pendente"
     ) {
-      openFichaTecnicaModal(vagaId, statusAtual);
+      // Se for correção ou edição de ficha, sempre abrimos no modo edição
+      const targetStatus =
+        statusAtual === "correcao-pendente" ? "correcao-pendente" : statusAtual;
+      openFichaTecnicaModal(vagaId, targetStatus, vaga); // <-- PASSAMOS A VAGA COMPLETA
     } else if (statusAtual === "arte-pendente") {
       openCriacaoArteModal(vagaId, vaga);
     } else if (statusAtual === "aguardando-aprovacao-arte") {
@@ -1306,17 +1312,6 @@ async function handleDetalhesVaga(vagaId) {
       openDivulgacaoModal(vagaId, vaga);
     } else if (statusAtual === "cancelada" || statusAtual === "encerrada") {
       openVisualizacaoFechadaModal(vagaId, vaga);
-    } else if (statusAtual === "correcao-pendente") {
-      // Verifica o tipo de correção pendente
-      const isCorrecaoArte = !!vaga.arte?.alteracoesPendentes;
-
-      if (isCorrecaoArte) {
-        // Se o feedback é sobre a arte, abre o modal de criação/edição de arte
-        openCriacaoArteModal(vagaId, vaga);
-      } else {
-        // Se o feedback foi sobre a ficha (justificativa), abre o modal da ficha para edição
-        openFichaTecnicaModal(vagaId, "em-criação");
-      }
     }
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
