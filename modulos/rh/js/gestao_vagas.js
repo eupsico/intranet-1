@@ -401,7 +401,7 @@ async function handleSalvarEEnviarArte(vagaId, link, observacao) {
         ...currentArte,
         link: link,
         observacao: observacao,
-        status: "Aguardando Aprovação",
+        status: "Aprovação da Arte",
       },
       historico: arrayUnion({
         data: new Date(),
