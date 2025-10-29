@@ -284,3 +284,35 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   min-width: 150px;
   text-align: center;
 }
+/* --- ESTILOS PARA CORREÇÃO DE LARGURA DE CAMPOS NO MODAL (vaga-link-arte) --- */
+
+#vaga-link-arte {
+  /* Garante que o campo de input ocupe toda a largura disponível */
+  width: 100%;
+  /* Remove preenchimentos ou margens que possam causar rolagem horizontal */
+  box-sizing: border-box;
+  /* Adiciona um pequeno padding interno para estética, se necessário */
+  padding: 10px;
+  /* Opção: Melhora a fonte e borda para padronizar com outros campos */
+  font-size: 1em;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+}
+
+/* Se 'vaga-resumo-arte' e 'vaga-observacao-arte' forem textareas, também é bom aplicar a regra */
+#vaga-resumo-arte,
+#vaga-observacao-arte {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  font-size: 1em;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+}
+
+/* Garante que o container imediato não tenha paddings laterais desnecessários */
+.modal-body .form-group {
+  /* Usando a técnica de 'border-box' garante que a largura de 100% seja segura */
+  padding-left: 0;
+  padding-right: 0;
+}
