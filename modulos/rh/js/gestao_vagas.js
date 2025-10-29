@@ -1241,6 +1241,7 @@ function openNewVagaModal() {
 
 /**
  * Função para buscar e exibir os detalhes de uma vaga para edição.
+ * CORRIGIDA: Implementa verificações de nulidade nos elementos da seção de Aprovação da Arte.
  */
 async function handleDetalhesVaga(vagaId) {
   if (!vagaId) return;
@@ -1257,107 +1258,157 @@ async function handleDetalhesVaga(vagaId) {
     const vaga = docSnap.data();
     const statusAtual = vaga.status || "em-criação";
     const isVagaFechada =
-      statusAtual === "cancelada" || statusAtual === "encerrada"; // 1. Pré-preenchimento (mantido)
+      statusAtual === "cancelada" || statusAtual === "encerrada";
 
+    // 1. Pré-preenchimento
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
+
     // Armazena todos os dados da vaga para uso em gerenciarEtapasModal (ex: preenchimento da seção de aprovação)
-    formVaga.setAttribute("data-vaga-data", JSON.stringify(vaga));
+    if (formVaga) formVaga.setAttribute("data-vaga-data", JSON.stringify(vaga));
+
     if (modalTitle) modalTitle.textContent = `Vaga: ${vaga.nome}`;
 
+    // Garante que as listas dinâmicas estejam carregadas antes de atribuir o valor
     await carregarListasFirebase();
 
-    document.getElementById("vaga-nome").value = vaga.nome || "";
+    // CAMPOS PRINCIPAIS
+    if (document.getElementById("vaga-nome"))
+      document.getElementById("vaga-nome").value = vaga.nome || "";
 
     const selectDepartamento = document.getElementById("vaga-departamento");
     if (selectDepartamento) {
       selectDepartamento.value = vaga.departamento || "";
     }
 
-    // (O restante do preenchimento dos campos é mantido para clareza)
-    document.getElementById("vaga-tipo-recrutamento").value =
-      vaga.tipoRecrutamento || "";
-    document.getElementById("vaga-regime-trabalho").value =
-      vaga.regimeTrabalho || "";
-    document.getElementById("vaga-modalidade-trabalho").value =
-      vaga.modalidadeTrabalho || "";
-    document.getElementById("vaga-valor-salario").value =
-      vaga.valorSalario || "";
-    document.getElementById("vaga-data-fechamento").value =
-      vaga.dataFechamento || "";
+    if (document.getElementById("vaga-tipo-recrutamento"))
+      document.getElementById("vaga-tipo-recrutamento").value =
+        vaga.tipoRecrutamento || "";
+    if (document.getElementById("vaga-regime-trabalho"))
+      document.getElementById("vaga-regime-trabalho").value =
+        vaga.regimeTrabalho || "";
+    if (document.getElementById("vaga-modalidade-trabalho"))
+      document.getElementById("vaga-modalidade-trabalho").value =
+        vaga.modalidadeTrabalho || "";
+    if (document.getElementById("vaga-valor-salario"))
+      document.getElementById("vaga-valor-salario").value =
+        vaga.valorSalario || "";
+    if (document.getElementById("vaga-data-fechamento"))
+      document.getElementById("vaga-data-fechamento").value =
+        vaga.dataFechamento || "";
 
-    document.getElementById("vaga-responsabilidades").value =
-      vaga.cargo?.responsabilidades || "";
-    document.getElementById("vaga-resultados").value =
-      vaga.cargo?.resultados || "";
-    document.getElementById("vaga-nova-substituicao").value =
-      vaga.cargo?.novaSubstituicao || "";
-    document.getElementById("vaga-formacao-minima").value =
-      vaga.formacao?.minima || "";
-    document.getElementById("vaga-conselho").value =
-      vaga.formacao?.conselho || "";
-    document.getElementById("vaga-especializacoes").value =
-      vaga.formacao?.especializacoes || "";
-    document.getElementById("vaga-comp-tecnicas").value =
-      vaga.competencias?.tecnicas || "";
-    document.getElementById("vaga-comp-comportamentais").value =
-      vaga.competencias?.comportamentais || "";
-    document.getElementById("vaga-certificacoes").value =
-      vaga.competencias?.certificacoes || "";
-    document.getElementById("vaga-nivel-experiencia").value =
-      vaga.experiencia?.nivel || "";
-    document.getElementById("vaga-contextos-similares").value =
-      vaga.experiencia?.contextosSimilares || "";
-    document.getElementById("vaga-atuacao-grupos").value =
-      vaga.experiencia?.atuacaoGrupos || "";
-    document.getElementById("vaga-fit-valores").value =
-      vaga.fitCultural?.valoresEuPsico || "";
-    document.getElementById("vaga-estilo-equipe").value =
-      vaga.fitCultural?.estiloEquipe || "";
-    document.getElementById("vaga-perfil-destaque").value =
-      vaga.fitCultural?.perfilDestaque || "";
-    document.getElementById("vaga-oportunidades").value =
-      vaga.crescimento?.oportunidades || "";
-    document.getElementById("vaga-desafios").value =
-      vaga.crescimento?.desafios || "";
-    document.getElementById("vaga-plano-carreira").value =
-      vaga.crescimento?.planoCarreira || "";
+    // OUTROS CAMPOS (Mapeamento agrupado mantido)
+    if (document.getElementById("vaga-responsabilidades"))
+      document.getElementById("vaga-responsabilidades").value =
+        vaga.cargo?.responsabilidades || "";
+    if (document.getElementById("vaga-resultados"))
+      document.getElementById("vaga-resultados").value =
+        vaga.cargo?.resultados || "";
+    if (document.getElementById("vaga-nova-substituicao"))
+      document.getElementById("vaga-nova-substituicao").value =
+        vaga.cargo?.novaSubstituicao || "";
+    if (document.getElementById("vaga-formacao-minima"))
+      document.getElementById("vaga-formacao-minima").value =
+        vaga.formacao?.minima || "";
+    if (document.getElementById("vaga-conselho"))
+      document.getElementById("vaga-conselho").value =
+        vaga.formacao?.conselho || "";
+    if (document.getElementById("vaga-especializacoes"))
+      document.getElementById("vaga-especializacoes").value =
+        vaga.formacao?.especializacoes || "";
+    if (document.getElementById("vaga-comp-tecnicas"))
+      document.getElementById("vaga-comp-tecnicas").value =
+        vaga.competencias?.tecnicas || "";
+    if (document.getElementById("vaga-comp-comportamentais"))
+      document.getElementById("vaga-comp-comportamentais").value =
+        vaga.competencias?.comportamentais || "";
+    if (document.getElementById("vaga-certificacoes"))
+      document.getElementById("vaga-certificacoes").value =
+        vaga.competencias?.certificacoes || "";
+    if (document.getElementById("vaga-nivel-experiencia"))
+      document.getElementById("vaga-nivel-experiencia").value =
+        vaga.experiencia?.nivel || "";
+    if (document.getElementById("vaga-contextos-similares"))
+      document.getElementById("vaga-contextos-similares").value =
+        vaga.experiencia?.contextosSimilares || "";
+    if (document.getElementById("vaga-atuacao-grupos"))
+      document.getElementById("vaga-atuacao-grupos").value =
+        vaga.experiencia?.atuacaoGrupos || "";
+    if (document.getElementById("vaga-fit-valores"))
+      document.getElementById("vaga-fit-valores").value =
+        vaga.fitCultural?.valoresEuPsico || "";
+    if (document.getElementById("vaga-estilo-equipe"))
+      document.getElementById("vaga-estilo-equipe").value =
+        vaga.fitCultural?.estiloEquipe || "";
+    if (document.getElementById("vaga-perfil-destaque"))
+      document.getElementById("vaga-perfil-destaque").value =
+        vaga.fitCultural?.perfilDestaque || "";
+    if (document.getElementById("vaga-oportunidades"))
+      document.getElementById("vaga-oportunidades").value =
+        vaga.crescimento?.oportunidades || "";
+    if (document.getElementById("vaga-desafios"))
+      document.getElementById("vaga-desafios").value =
+        vaga.crescimento?.desafios || "";
+    if (document.getElementById("vaga-plano-carreira"))
+      document.getElementById("vaga-plano-carreira").value =
+        vaga.crescimento?.planoCarreira || "";
 
-    // NOVOS CAMPOS ARTE E DIVULGAÇÃO (Mantido)
+    // NOVOS CAMPOS ARTE E DIVULGAÇÃO
     const resumoArteField = document.getElementById("vaga-resumo-arte");
     const linkArteField = document.getElementById("vaga-link-arte");
     const obsArteField = document.getElementById("vaga-observacao-arte");
-    linkArteField.value = vaga.arte?.link || "";
-    obsArteField.value = vaga.arte?.observacao || "";
-    if (!vaga.arte?.resumo) {
-      resumoArteField.value = gerarResumoVaga(vaga);
-    } else {
-      resumoArteField.value = vaga.arte.resumo;
+
+    if (linkArteField) linkArteField.value = vaga.arte?.link || "";
+    if (obsArteField) obsArteField.value = vaga.arte?.observacao || "";
+
+    if (resumoArteField) {
+      if (!vaga.arte?.resumo) {
+        resumoArteField.value = gerarResumoVaga(vaga);
+      } else {
+        resumoArteField.value = vaga.arte.resumo;
+      }
     }
 
-    // 2. Preencher a seção de Revisão (NOVO)
+    // 2. Preencher a seção de Revisão (Aprovação da Arte)
     const linkParaRevisao = vaga.arte?.link || "N/A";
     const obsParaRevisao = vaga.arte?.observacao || "Nenhuma observação.";
 
-    if (document.getElementById("link-arte-clicavel")) {
-      const linkElement = document.getElementById("link-arte-clicavel");
-      linkElement.textContent =
+    const linkClicavel = document.getElementById("link-arte-clicavel");
+    const obsElement = document.getElementById("aprovacao-obs-arte-visual");
+    const statusArteAtualElement = document.getElementById("status-arte-atual");
+
+    // PREENCHE LINK CLICÁVEL (CORREÇÃO DE ERRO APLICADA AQUI)
+    if (linkClicavel) {
+      linkClicavel.textContent =
         linkParaRevisao !== "N/A" ? linkParaRevisao : "N/A";
-      linkElement.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
-      linkElement.style.pointerEvents =
-        linkParaRevisao !== "N/A" ? "auto" : "none"; // Desabilita clique se N/A
-    }
-    if (document.getElementById("aprovacao-obs-arte-visual")) {
-      document.getElementById("aprovacao-obs-arte-visual").textContent =
-        obsParaRevisao;
+      linkClicavel.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
+      linkClicavel.target = "_blank"; // Garante que abre em nova página
+      linkClicavel.style.pointerEvents =
+        linkParaRevisao !== "N/A" ? "auto" : "none";
     }
 
-    // 3. Gerencia a exibição da etapa
+    // PREENCHE OBSERVAÇÕES (CORREÇÃO DE ERRO APLICADA AQUI)
+    if (obsElement) {
+      obsElement.textContent = obsParaRevisao;
+    }
+
+    // 3. Preenchimento dos Canais de Divulgação
+    const selectCanais = document.getElementById("vaga-canais-divulgacao");
+    const canaisSalvos = vaga.canaisDivulgacao || [];
+    if (selectCanais) {
+      Array.from(selectCanais.options).forEach((option) => {
+        option.selected = canaisSalvos.includes(option.value);
+      });
+    }
+
+    // 4. Gerencia a exibição da etapa
     gerenciarEtapasModal(statusAtual);
 
-    document.getElementById("status-arte-atual").textContent =
-      vaga.arte?.status || "Pendente";
+    // 5. Atualiza o status da arte no modal
+    if (statusArteAtualElement) {
+      statusArteAtualElement.textContent = vaga.arte?.status || "Pendente";
+    }
 
-    // Habilita/desabilita campos se for vaga fechada/cancelada
+    // 6. Desabilita campos se for vaga fechada/cancelada
     if (isVagaFechada) {
       modalVaga.querySelectorAll("input, select, textarea").forEach((field) => {
         field.disabled = true;
