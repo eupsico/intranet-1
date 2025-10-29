@@ -401,7 +401,7 @@ async function handleSalvarEEnviarArte(vagaId, link, observacao) {
         ...currentArte,
         link: link,
         observacao: observacao,
-        status: "Aprovação da Arte",
+        status: "Aguardando Aprovação",
       },
       historico: arrayUnion({
         data: new Date(),
@@ -1197,7 +1197,7 @@ async function carregarVagas(status) {
     const countValue = counts[btnStatus] || 0;
 
     let tabText = btnStatus;
-    if (btnStatus === "aprovacao-gestao") tabText = "Aguardando Aprovação";
+    if (btnStatus === "aprovacao-gestao") tabText = "Aprovação da Vaga";
     if (btnStatus === "arte-pendente") tabText = "Criação da Arte";
     if (btnStatus === "aprovacao-arte") tabText = "Aprovação da Arte"; // NOVO: Rótulo correto para a nova aba
     if (btnStatus === "em-divulgacao") tabText = "Em Divulgação";
@@ -1355,8 +1355,9 @@ async function handleDetalhesVaga(vagaId) {
     gerenciarEtapasModal(statusAtual);
 
     document.getElementById("status-arte-atual").textContent =
-      vaga.arte?.status || "Pendente"; // Habilita/desabilita campos se for vaga fechada/cancelada
+      vaga.arte?.status || "Pendente";
 
+    // Habilita/desabilita campos se for vaga fechada/cancelada
     if (isVagaFechada) {
       modalVaga.querySelectorAll("input, select, textarea").forEach((field) => {
         field.disabled = true;
