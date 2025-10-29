@@ -146,7 +146,14 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
       .forEach((el) => el.remove());
   }
-
+  // VERIFICAR FEEDBACK PENDENTE (Novo)
+  const vagaData = JSON.parse(formVaga.getAttribute("data-vaga-data") || "{}");
+  if (statusAtual === "em-criação" && vagaData.historico?.length) {
+    const lastAction = vagaData.historico[vagaData.historico.length - 1];
+    if (lastAction.justificativa) {
+      displayFeedbackBanner(modalFicha, lastAction.justificativa, "warning");
+    }
+  }
   const canEdit = statusAtual === "em-criação";
   const isAprovacao = statusAtual === "aguardando-aprovacao";
 
@@ -1120,23 +1127,45 @@ async function preencherFormularioVaga(vagaId, vaga) {
 
 /**
  * NOVO: Abre o modal de Criação da Arte (Fase RH).
+ * CORRIGIDO: Exibe feedback de solicitação de alterações na arte.
+ * ATENÇÃO: Esta função utiliza as variáveis globais modalCriacaoArte, displayFeedbackBanner e handleSalvarEEnviarArte (Assumidas).
  */
 function openCriacaoArteModal(vagaId, vaga) {
-  const isPendente = vaga.status === "arte-pendente"; // 1. Configura o formulário
+  const isPendente = vaga.status === "arte-pendente";
 
+  // 1. Limpeza de banners anteriores (Boa prática)
+  const modalBody = modalCriacaoArte.querySelector(".modal-body");
+  if (modalBody) {
+    modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
+  }
+
+  // 2. VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE (NOVO)
+  if (isPendente && vaga.arte?.alteracoesPendentes) {
+    // Assume que 'displayFeedbackBanner' está definida no escopo global
+    displayFeedbackBanner(
+      modalCriacaoArte,
+      vaga.arte.alteracoesPendentes,
+      "warning"
+    );
+  }
+
+  // 3. Configura o formulário
   const linkArteField = document.querySelector(
     "#modal-criacao-arte #vaga-link-arte"
   );
   const textoDivulgacaoField = document.querySelector(
     "#modal-criacao-arte #vaga-texto-divulgacao"
-  ); // 2. Configura botões e estados para edição de link/texto de divulgação
+  );
 
+  // 4. Configura botões e estados para edição de link/texto de divulgação
   const inputs = modalCriacaoArte.querySelectorAll("input, textarea");
   inputs.forEach((input) => (input.disabled = !isPendente));
 
   const btnEnviar = modalCriacaoArte.querySelector(
     "#btn-enviar-aprovacao-arte"
   );
+
+  // 5. Configura o evento do botão
   if (btnEnviar) {
     btnEnviar.style.display = isPendente ? "inline-block" : "none";
     btnEnviar.onclick = () => {
@@ -1148,6 +1177,7 @@ function openCriacaoArteModal(vagaId, vaga) {
     };
   }
 
+  // 6. Exibe o modal
   if (modalCriacaoArte) modalCriacaoArte.style.display = "flex";
 }
 
@@ -1471,6 +1501,42 @@ async function initgestaovagas(user, userData) {
       carregarVagas(status);
     });
   });
+}
+/**
+ * NOVO: Cria e insere um banner de feedback (alerta) no topo do modal.
+ * @param {HTMLElement} modal O container do modal (ex: modalFicha, modalCriacaoArte).
+ * @param {string} feedbackText O texto da alteração pendente.
+ * @param {string} type Tipo de feedback (ex: 'error', 'warning').
+ */
+function displayFeedbackBanner(modal, feedbackText, type = "warning") {
+  const existingBanner = modal.querySelector(".feedback-banner");
+  if (existingBanner) existingBanner.remove();
+
+  const banner = document.createElement("div");
+  banner.className = `feedback-banner alert alert-${type}`;
+  banner.style.padding = "10px 15px";
+  banner.style.margin = "10px 0";
+  banner.style.backgroundColor = type === "warning" ? "#fff3cd" : "#f8d7da";
+  banner.style.border = `1px solid ${
+    type === "warning" ? "#ffeeba" : "#f5c6cb"
+  }`;
+  banner.style.color = type === "warning" ? "#856404" : "#721c24";
+  banner.style.borderRadius = "5px";
+  banner.style.fontWeight = "bold";
+
+  banner.innerHTML = `
+        <p style="margin: 0;">
+            <i class="fas fa-exclamation-triangle"></i> 
+            FEEDBACK PENDENTE: ${feedbackText}
+        </p>
+    `;
+
+  // Insere o banner no modal-body
+  const modalBody = modal.querySelector(".modal-body");
+  if (modalBody) {
+    // Insere o banner no início do modal body
+    modalBody.insertBefore(banner, modalBody.firstChild);
+  }
 }
 
 // CORREÇÃO DE ERRO DE INICIALIZAÇÃO: Exporta a função principal
