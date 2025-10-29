@@ -1,0 +1,81 @@
+<div class="painel-recrutamento">
+  <h2 class="painel-titulo">Recrutamento e Seleção</h2>
+
+  <div class="description-box">
+    <p>
+      Este painel gerencia o processo seletivo para vagas em divulgação, desde o
+      estabelecimento de cronogramas, triagem de candidatos, até a entrevista
+      final e contratação.
+    </p>
+  </div>
+
+  <div class="acoes-header">
+    <div class="form-group" style="margin-bottom: 0">
+      <label for="filtro-vaga" style="font-weight: 600"
+        >Filtrar por Vaga:</label
+      >
+      <select id="filtro-vaga" class="select-filtro">
+        <option value="">Selecione uma Vaga...</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tabs-container status-tabs" id="status-candidatura-tabs">
+    <button class="tab-link active" data-status="cronograma">
+      1. Cronograma e Orçamento
+    </button>
+    <button class="tab-link" data-status="triagem">
+      2. Triagem de Currículo (0)
+    </button>
+    <button class="tab-link" data-status="entrevistas">
+      3. Entrevistas e Avaliações (0)
+    </button>
+    <button class="tab-link" data-status="gestor">
+      4. Entrevista com Gestor (0)
+    </button>
+    <button class="tab-link" data-status="finalizados">
+      5. Finalizados (0)
+    </button>
+
+    <button
+      class="tab-link btn-secondary"
+      data-status="gestao-conteudo"
+      id="btn-gestao-conteudo"
+      style="margin-left: auto"
+    >
+      <i class="fas fa-tools"></i> Gerenciar Estudos/Testes
+    </button>
+  </div>
+
+  <div id="conteudo-recrutamento" class="tabela-dados">
+    <p id="mensagem-inicial">
+      Selecione uma vaga no filtro acima para iniciar a visualização do processo
+      seletivo.
+    </p>
+  </div>
+
+  <div id="modal-candidato" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px">
+      <form id="form-candidatura">
+        <div class="modal-header">
+          <h3 id="candidato-nome-titulo">Detalhes da Candidatura</h3>
+          <button type="button" class="close-modal-btn fechar-modal-candidato">
+            &times;
+          </button>
+        </div>
+
+        <div class="modal-body" id="candidato-modal-body"></div>
+
+        <div class="modal-footer" id="candidato-modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary fechar-modal-candidato"
+          >
+            Fechar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script type="module" src="../js/recrutamento.js"></script>
