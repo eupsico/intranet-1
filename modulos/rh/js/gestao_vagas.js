@@ -55,79 +55,180 @@ let currentUserData = {};
  * Controla a visibilidade e o estado de edição das etapas do fluxo.
  */
 function gerenciarEtapasModal(status) {
-  if (!secaoFichaTecnica || !secaoCriacaoArte || !secaoDivulgacao) return;
+  // Elemento do botão Fechar (botão estático no HTML)
+  const btnFecharRodape = modalVaga.querySelector(
+    ".modal-footer .fechar-modal"
+  );
 
-  // 1. Resetar visibilidade das seções
+  // Elementos do Modal Header (Botão X)
+  const btnFecharHeader = modalVaga.querySelector(
+    ".modal-header .close-modal-btn"
+  );
+  if (btnFecharHeader) btnFecharHeader.style.display = "block"; // Oculta todas as seções por padrão
+
   secaoFichaTecnica.style.display = "none";
   secaoCriacaoArte.style.display = "none";
   secaoDivulgacao.style.display = "none";
+  btnCancelarVaga.style.display = "none";
+  btnEncerrarVaga.style.display = "none";
+  btnSalvar.style.display = "none"; // NOVO: Remove botões dinâmicos anteriores
 
-  // 2. Controlar visibilidade dos botões de fluxo
-  if (btnCancelarVaga) btnCancelarVaga.style.display = "none";
-  if (btnEncerrarVaga) btnEncerrarVaga.style.display = "none";
+  const dynamicButtonsFicha = modalVaga.querySelector(
+    ".acoes-aprovacao-ficha-wrapper"
+  );
+  if (dynamicButtonsFicha) dynamicButtonsFicha.remove();
+  const dynamicButtonsArte = modalVaga.querySelector(".acoes-arte-wrapper");
+  if (dynamicButtonsArte) dynamicButtonsArte.remove(); // Visibilidade do botão Fechar do rodapé
 
-  // 3. Definir visibilidade com base no status
-  switch (status) {
-    case "em-criação":
-      // Ficha Técnica editável (Rascunho)
-      secaoFichaTecnica.style.display = "block";
-      break;
-
-    case "aguardando-aprovacao":
-      // Visualização da Ficha (Botões de Aprovar/Rejeitar são injetados dinamicamente)
-      secaoFichaTecnica.style.display = "block";
-      break;
-
-    case "arte-pendente":
-      // Ficha (leitura) + Seção de Criação de Arte (para inserir/revisar link)
-      secaoFichaTecnica.style.display = "block";
-      secaoCriacaoArte.style.display = "block";
-      break;
-
-    case "em-divulgacao":
-    case "em-recrutamento":
-      // Todas as seções visíveis. Ações de Cancelar/Encerrar disponíveis.
-      secaoFichaTecnica.style.display = "block";
-      secaoCriacaoArte.style.display = "block";
-      secaoDivulgacao.style.display = "block";
-      if (btnCancelarVaga) btnCancelarVaga.style.display = "inline-block";
-      if (btnEncerrarVaga) btnEncerrarVaga.style.display = "inline-block";
-      break;
-
-    case "cancelada":
-    case "encerrada":
-      // Apenas visualização final (mostra tudo, mas não editável)
-      secaoFichaTecnica.style.display = "block";
-      secaoCriacaoArte.style.display = "block";
-      secaoDivulgacao.style.display = "block";
-      break;
-
-    default:
-      secaoFichaTecnica.style.display = "block";
-      break;
+  if (btnFecharRodape) {
+    btnFecharRodape.style.display = "none"; // Fechar do rodapé oculto por padrão
   }
 
-  // 4. Lógica de Desativação do Formulário Principal (Ficha Técnica)
-  const formFields = formVaga
-    ? formVaga.querySelectorAll("input, select, textarea")
-    : [];
-  const isEditable = status === "em-criação"; // Permite edição completa apenas em rascunho.
+  const isVagaAprovada =
+    status === "em-divulgacao" || status === "em-recrutamento";
+  const isVagaAtiva =
+    status !== "cancelada" && status !== "encerrada" && status !== "fechadas";
+  const isVagaBloqueada = isVagaAprovada || status === "aguardando-aprovacao"; // Habilita/Desabilita campos da Ficha Técnica (Requisito: não permitir alteração de vaga aprovada ou pendente de aprovação)
 
-  formFields.forEach((field) => {
-    // Exclui campos da seção Arte/Divulgação do controle de desabilitação da Ficha Técnica
-    const isArteField =
-      field.id.includes("vaga-resumo-arte") ||
-      field.id.includes("vaga-link-arte") ||
-      field.id.includes("vaga-observacao-arte");
+  const inputsFichaTecnica = secaoFichaTecnica.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsFichaTecnica.forEach((input) => {
+    input.disabled = isVagaBloqueada;
+  }); // Define qual seção e quais botões mostrar
 
-    if (!isArteField) {
-      field.disabled = !isEditable;
+  if (status === "em-criação") {
+    // Fase 1.0: Rascunho da Ficha Técnica
+    secaoFichaTecnica.style.display = "block";
+    btnSalvar.textContent = "Salvar e Enviar para Aprovação";
+    btnSalvar.style.display = "inline-block"; // Fechar do rodapé e Cancelar Vaga ocultos (conforme requisito)
+
+    btnCancelarVaga.style.display = "none";
+  } else if (status === "aguardando-aprovacao") {
+    // Fase 1.1: Aprovação da Ficha Técnica (3 Botões alinhados)
+    secaoFichaTecnica.style.display = "block"; // REQUISITO: Exibir Cancelar Vaga (estático)
+
+    btnCancelarVaga.style.display = "inline-block"; // Esconde o Salvar
+
+    btnSalvar.style.display = "none"; // Lógica de Renderização Dinâmica (Aprovação de Ficha)
+
+    const actionHtml = `
+      <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
+        <button type="button" class="btn btn-alteração" id="btn-rejeitar-ficha">
+          <i class="fas fa-times-circle"></i> Solicitar Alterações
+        </button>
+        <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+          <i class="fas fa-check"></i> Aprovar
+        </button>
+      </div>
+    `; // Injeta o wrapper ANTES do botão estático Fechar
+
+    const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
+    if (fecharModalBtn) {
+      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
+    } // Configura os eventos dos novos botões dinâmicos
+
+    const vagaId = formVaga.getAttribute("data-vaga-id");
+    document.getElementById("btn-aprovar-ficha").onclick = () =>
+      handleAprovarFichaTecnica(vagaId);
+    document.getElementById("btn-rejeitar-ficha").onclick = () =>
+      modalRejeicaoFichaTecnica(vagaId);
+  } else if (status === "arte-pendente") {
+    // Fase 2: Criação/Aprovação da Arte
+    secaoCriacaoArte.style.display = "block";
+    btnSalvar.style.display = "none"; // REQUISITO: Remover Cancelar Vaga nesta fase
+
+    btnCancelarVaga.style.display = "none";
+    btnEncerrarVaga.style.display = "none"; // Esconde a caixa de texto de alteração por padrão
+
+    caixaAlteracoesArte.style.display = "none";
+
+    // --- INJEÇÃO DOS BOTÕES DA ARTE NO RODAPÉ ---
+    // A injeção direta dos botões como irmãos do Fechar
+    const actionHtmlArte = `
+        <button type="button" class="btn btn-primary" id="btn-salvar-link-arte" style="margin-left: auto;">
+            <i class="fas fa-save"></i> Salvar Link/Obs
+        </button>
+        <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
+            <i class="fas fa-edit"></i> Solicitar Alterações
+        </button>
+        <button type="button" class="btn btn-success" id="btn-aprovar-arte-final">
+            <i class="fas fa-check"></i> Aprovar Arte
+        </button>
+    `;
+
+    // Injeta os botões ANTES do botão Fechar
+    const fecharModalBtn = modalVaga.querySelector(".fechar-modal");
+    if (fecharModalBtn) {
+      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtmlArte);
     }
-  });
 
-  if (btnSalvar) {
-    // O botão Salvar só deve aparecer quando a Ficha Técnica é editável
-    btnSalvar.style.display = isEditable ? "inline-block" : "none";
+    // --- LÓGICA DE EVENTOS E FLUXO DA ARTE ---
+    const vagaId = formVaga.getAttribute("data-vaga-id");
+
+    // Defer a configuração de eventos para o próximo tick ou após a injeção
+    setTimeout(() => {
+      const btnSalvarLink = document.getElementById("btn-salvar-link-arte");
+      const btnSolicitarRodape = document.getElementById(
+        "btn-solicitar-alteracoes-arte"
+      );
+      const btnAprovarRodape = document.getElementById(
+        "btn-aprovar-arte-final"
+      );
+
+      const inputLink = document.getElementById("vaga-link-arte");
+      const inputObs = document.getElementById("vaga-observacao-arte");
+
+      // REVERTE VISIBILIDADE dos botões do rodapé se a caixa de alterações estiver aberta (Ao reabrir o modal)
+      if (caixaAlteracoesArte.style.display === "block") {
+        if (btnSolicitarRodape) btnSolicitarRodape.style.display = "none";
+        if (btnAprovarRodape) btnAprovarRodape.style.display = "none";
+        if (btnSalvarLink) btnSalvarLink.style.display = "none";
+      }
+
+      if (btnSalvarLink) {
+        btnSalvarLink.onclick = () =>
+          handleSalvarArteLink(vagaId, inputLink.value, inputObs.value);
+      }
+
+      if (btnAprovarRodape) {
+        btnAprovarRodape.onclick = () => handleAprovarArte();
+      }
+
+      if (btnSolicitarRodape) {
+        btnSolicitarRodape.onclick = () => {
+          // Ao clicar em Solicitar, exibe o campo de texto
+          if (caixaAlteracoesArte) caixaAlteracoesArte.style.display = "block";
+
+          // Esconde os botões do rodapé enquanto o campo de texto está ativo
+          if (btnSolicitarRodape) btnSolicitarRodape.style.display = "none";
+          if (btnAprovarRodape) btnAprovarRodape.style.display = "none";
+          if (btnSalvarLink) btnSalvarLink.style.display = "none";
+        };
+      }
+
+      // Configura o envio da solicitação (botão dentro da caixa de texto - que chama handleSolicitarAlteracoes)
+      if (btnEnviarAlteracoes) {
+        btnEnviarAlteracoes.onclick = () => {
+          handleSolicitarAlteracoes(vagaId);
+          // A ação de handleSolicitarAlteracoes recarrega a lista e fecha o modal.
+        };
+      }
+    }, 0);
+  } else if (isVagaAprovada) {
+    // Fase 3: Em Divulgação (Pós-Aprovação da Arte)
+    secaoDivulgacao.style.display = "block";
+    btnSalvar.textContent = "Salvar Canais de Divulgação";
+    btnSalvar.style.display = "inline-block";
+
+    if (btnFecharRodape) btnFecharRodape.style.display = "inline-block"; // Volta o Fechar do rodapé // Exibir Cancelar Vaga e Encerrar Vaga
+
+    if (isVagaAtiva) {
+      btnCancelarVaga.style.display = "inline-block";
+      if (status !== "em-criação" && status !== "aguardando-aprovacao") {
+        btnEncerrarVaga.style.display = "inline-block";
+      }
+    }
   }
 }
 
