@@ -19,7 +19,7 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 import { arrayRemove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // =====================================================================
-// CONSTANTES GLOBAIS E ELEMENTOS DO DOM
+// CONSTANTES GLOBAIS E ELEMENTOS DO DOM (Definidos no escopo principal)
 // =====================================================================
 
 const VAGAS_COLLECTION_NAME = "vagas";
@@ -46,6 +46,8 @@ const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
 let currentUserData = {};
 
+// modulos/rh/js/gestao_vagas.js (Bloco 2: Funções Auxiliares)
+
 // =====================================================================
 // FUNÇÕES AUXILIARES E DE LÓGICA DE NEGÓCIO
 // =====================================================================
@@ -66,7 +68,6 @@ function gerarResumoVaga(vaga) {
   resumo += `Nível/Formação Mínima: ${vaga.experiencia?.nivel || "Júnior"} | ${
     vaga.formacao?.minima || "Ensino Superior"
   }\n`;
-
   return resumo.trim();
 }
 
@@ -310,16 +311,12 @@ async function handleSalvarVaga(e) {
 
 /**
  * NOVO: Lida com o salvamento do Link da Arte e Observação
- * @param {string} vagaId
- * @param {string} link
- * @param {string} observacao
  */
 async function handleSalvarArteLink(vagaId, link, observacao) {
   if (!vagaId) return;
 
   try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    // Busca docSnap para manter o status e resumo atual
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId); // Busca docSnap para manter o status e resumo atual
     const docSnap = await getDoc(vagaRef);
     if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
     const currentArte = docSnap.data().arte || {};
@@ -340,8 +337,7 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
     window.showToast(
       "Link e Observação da Arte salvos com sucesso.",
       "success"
-    );
-    // Recarrega o modal para exibir o status atualizado
+    ); // Recarrega o modal para exibir o status atualizado
     handleDetalhesVaga(vagaId);
   } catch (error) {
     console.error("Erro ao salvar Link/Observação da Arte:", error);
@@ -353,8 +349,43 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
 }
 
 /**
+ * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
+ */
+async function handleAprovarFichaTecnica(vagaId) {
+  if (
+    !vagaId ||
+    !confirm(
+      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
+    )
+  )
+    return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "arte-pendente", // Próxima fase: Criação da Arte
+      dataAprovacaoFicha: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
+      "success"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente");
+  } catch (error) {
+    console.error("Erro ao aprovar ficha técnica:", error);
+    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
+  }
+}
+
+/**
  * NOVO: Abre um modal para solicitar a justificativa da rejeição.
- * @param {string} vagaId
  */
 function modalRejeicaoFichaTecnica(vagaId) {
   let modal = document.getElementById(ID_MODAL_REJEICAO); // Se o modal não existe, cria ele (simulação de um modal simples)
@@ -375,24 +406,24 @@ function modalRejeicaoFichaTecnica(vagaId) {
     modal.style.alignItems = "center";
 
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
-          <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
-          <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
-          <div class="form-group" style="margin-bottom: 15px;">
-            <label for="rejeicao-motivo">Justificativa:</label>
-            <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
-          <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
-        </div>
-      </div>
-    `;
+            <div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Rejeitar Ficha Técnica</h3>
+                    <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Por favor, informe o motivo pelo qual a Ficha Técnica será rejeitada e retornada para a fase de criação:</p>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="rejeicao-motivo">Justificativa:</label>
+                        <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
+                </div>
+            </div>
+        `;
     document.body.appendChild(modal); // Adiciona evento de fechar
 
     modal.querySelectorAll(".fechar-modal-rejeicao").forEach((btn) => {
@@ -451,42 +482,6 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
   } catch (error) {
     console.error("Erro ao rejeitar ficha técnica:", error);
     window.showToast("Ocorreu um erro ao rejeitar a ficha técnica.", "error");
-  }
-}
-
-/**
- * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
- */
-async function handleAprovarFichaTecnica(vagaId) {
-  if (
-    !vagaId ||
-    !confirm(
-      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
-    )
-  )
-    return;
-
-  try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    await updateDoc(vagaRef, {
-      status: "arte-pendente", // Próxima fase: Criação da Arte
-      dataAprovacaoFicha: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-    });
-
-    window.showToast(
-      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
-      "success"
-    );
-    document.getElementById("modal-vaga").style.display = "none";
-    carregarVagas("arte-pendente");
-  } catch (error) {
-    console.error("Erro ao aprovar ficha técnica:", error);
-    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
   }
 }
 
@@ -660,7 +655,6 @@ async function handleEncerrarVaga() {
 
 /**
  * Carrega e exibe as vagas com base no status.
- * @param {string} status
  */
 async function carregarVagas(status) {
   const listaVagas = document.getElementById("lista-vagas");
@@ -749,18 +743,18 @@ async function carregarVagas(status) {
     ].join(" | ");
 
     htmlVagas += `
-    <div class="card card-vaga" data-id="${vaga.id}">
-      <h4>${vaga.nome}</h4>
-      <p class="text-secondary small-info">${infoSecundaria}</p>
-      <p>Status: **${statusFormatado}**</p>
-      <p>Candidatos: ${vaga.candidatosCount || 0}</p>
-      <div class="rh-card-actions">
-        <button class="btn btn-primary btn-detalhes" data-id="${
-          vaga.id
-        }">Ver/Gerenciar Vaga</button>
-      </div>
-    </div>
-  `;
+        <div class="card card-vaga" data-id="${vaga.id}">
+            <h4>${vaga.nome}</h4>
+            <p class="text-secondary small-info">${infoSecundaria}</p>
+            <p>Status: **${statusFormatado}**</p>
+            <p>Candidatos: ${vaga.candidatosCount || 0}</p>
+            <div class="rh-card-actions">
+                <button class="btn btn-primary btn-detalhes" data-id="${
+      vaga.id
+    }">Ver/Gerenciar Vaga</button>
+            </div>
+        </div>
+    `;
   }); // Atualiza os contadores em todos os botões de status (usa counts globais)
 
   document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
@@ -794,10 +788,132 @@ async function carregarVagas(status) {
 }
 
 /**
+ * Função para configurar o modal para criação de uma nova vaga.
+ * NOTA: Esta função precisa ser definida no escopo principal.
+ */
+function openNewVagaModal() {
+  if (formVaga) {
+    formVaga.reset();
+    formVaga.removeAttribute("data-vaga-id"); // Remove ID para indicar criação
+  }
+  if (modalTitle) modalTitle.textContent = "Nova Vaga - Ficha Técnica"; // NOVO: Exibe apenas a primeira etapa (Ficha Técnica)
+
+  gerenciarEtapasModal("em-criação");
+
+  if (modalVaga) modalVaga.style.display = "flex";
+}
+
+/**
+ * Função para buscar e exibir os detalhes de uma vaga para edição.
+ */
+async function handleDetalhesVaga(vagaId) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    const docSnap = await getDoc(vagaRef);
+
+    if (!docSnap.exists()) {
+      window.showToast("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = docSnap.data();
+    const statusAtual = vaga.status || "em-criação"; // 1. Preenche o formulário (Mapeamento completo dos novos campos)
+
+    if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
+    if (modalTitle) modalTitle.textContent = `Vaga: ${vaga.nome}`; // Garante que as listas dinâmicas estejam carregadas antes de atribuir o valor
+
+    await carregarListasFirebase(); // CAMPOS PRINCIPAIS
+
+    document.getElementById("vaga-nome").value = vaga.nome || ""; // CORREÇÃO: Leitura e atribuição do departamento após o carregamento das opções
+
+    const selectDepartamento = document.getElementById("vaga-departamento");
+    if (selectDepartamento) {
+      selectDepartamento.value = vaga.departamento || "";
+    }
+
+    document.getElementById("vaga-tipo-recrutamento").value =
+      vaga.tipoRecrutamento || "";
+    document.getElementById("vaga-regime-trabalho").value =
+      vaga.regimeTrabalho || "";
+    document.getElementById("vaga-modalidade-trabalho").value =
+      vaga.modalidadeTrabalho || "";
+    document.getElementById("vaga-valor-salario").value =
+      vaga.valorSalario || "";
+    document.getElementById("vaga-data-fechamento").value =
+      vaga.dataFechamento || ""; // Assumindo que é uma string de data (YYYY-MM-DD) // OUTROS CAMPOS (Mapeamento agrupado mantido)
+
+    document.getElementById("vaga-responsabilidades").value =
+      vaga.cargo?.responsabilidades || "";
+    document.getElementById("vaga-resultados").value =
+      vaga.cargo?.resultados || "";
+    document.getElementById("vaga-nova-substituicao").value =
+      vaga.cargo?.novaSubstituicao || "";
+    document.getElementById("vaga-formacao-minima").value =
+      vaga.formacao?.minima || "";
+    document.getElementById("vaga-conselho").value =
+      vaga.formacao?.conselho || "";
+    document.getElementById("vaga-especializacoes").value =
+      vaga.formacao?.especializacoes || "";
+    document.getElementById("vaga-comp-tecnicas").value =
+      vaga.competencias?.tecnicas || "";
+    document.getElementById("vaga-comp-comportamentais").value =
+      vaga.competencias?.comportamentais || "";
+    document.getElementById("vaga-certificacoes").value =
+      vaga.competencias?.certificacoes || "";
+    document.getElementById("vaga-nivel-experiencia").value =
+      vaga.experiencia?.nivel || "";
+    document.getElementById("vaga-contextos-similares").value =
+      vaga.experiencia?.contextosSimilares || "";
+    document.getElementById("vaga-atuacao-grupos").value =
+      vaga.experiencia?.atuacaoGrupos || "";
+    document.getElementById("vaga-fit-valores").value =
+      vaga.fitCultural?.valoresEuPsico || "";
+    document.getElementById("vaga-estilo-equipe").value =
+      vaga.fitCultural?.estiloEquipe || "";
+    document.getElementById("vaga-perfil-destaque").value =
+      vaga.fitCultural?.perfilDestaque || "";
+    document.getElementById("vaga-oportunidades").value =
+      vaga.crescimento?.oportunidades || "";
+    document.getElementById("vaga-desafios").value =
+      vaga.crescimento?.desafios || "";
+    document.getElementById("vaga-plano-carreira").value =
+      vaga.crescimento?.planoCarreira || ""; // NOVOS CAMPOS ARTE E DIVULGAÇÃO
+
+    const resumoArteField = document.getElementById("vaga-resumo-arte");
+    const linkArteField = document.getElementById("vaga-link-arte");
+    const obsArteField = document.getElementById("vaga-observacao-arte"); // Novo campo // Carrega o link e observação
+    linkArteField.value = vaga.arte?.link || "";
+    obsArteField.value = vaga.arte?.observacao || ""; // Carrega observação salva // Preenche Resumo da Arte (AUTOMÁTICO se estiver vazio)
+    if (!vaga.arte?.resumo) {
+      // Se não houver resumo salvo, gera automaticamente a partir da ficha
+      resumoArteField.value = gerarResumoVaga(vaga);
+    } else {
+      // Se houver resumo salvo, usa o salvo
+      resumoArteField.value = vaga.arte.resumo;
+    } // Preenchimento dos Canais de Divulgação (Select Múltiplo)
+
+    const selectCanais = document.getElementById("vaga-canais-divulgacao");
+    const canaisSalvos = vaga.canaisDivulgacao || [];
+    Array.from(selectCanais.options).forEach((option) => {
+      option.selected = canaisSalvos.includes(option.value);
+    }); // 2. Gerencia a exibição da etapa com base no status
+
+    gerenciarEtapasModal(statusAtual); // NOVO: Atualiza o status da arte no modal
+
+    document.getElementById("status-arte-atual").textContent =
+      vaga.arte?.status || "Pendente";
+
+    if (modalVaga) modalVaga.style.display = "flex";
+  } catch (error) {
+    console.error("Erro ao carregar detalhes da vaga:", error);
+    window.showToast("Erro ao carregar os dados para edição.", "error");
+  }
+}
+
+/**
  * Função de inicialização principal do módulo.
- * CORREÇÃO: Função renomeada para ser mais robusta e exportada via alias.
- * @param {object} user - Objeto de usuário do Firebase Auth.
- * @param {object} userData - Dados de perfil do usuário logado no Firestore.
  */
 async function initgestaovagas(user, userData) {
   console.log("🔹 Iniciando Módulo de Gestão de Vagas e Recrutamento...");
@@ -811,7 +927,7 @@ async function initgestaovagas(user, userData) {
   await carregarListasFirebase(); // 2. Configura eventos de UI
 
   if (btnNovaVaga) {
-    // CORREÇÃO: A função openNewVagaModal deve ser definida para ser acessível
+    // CORREÇÃO: A função openNewVagaModal é agora acessível no escopo
     btnNovaVaga.addEventListener("click", openNewVagaModal);
   } // NOVO: Adiciona eventos aos botões de controle de fluxo no modal
 
@@ -829,7 +945,6 @@ async function initgestaovagas(user, userData) {
         ".acoes-aprovacao-ficha-wrapper"
       );
       if (dynamicButtonsFicha) dynamicButtonsFicha.remove();
-
       const dynamicButtonsArte = modalVaga.querySelector(".acoes-arte-wrapper");
       if (dynamicButtonsArte) dynamicButtonsArte.remove();
 
@@ -862,5 +977,5 @@ async function initgestaovagas(user, userData) {
   });
 }
 
-// CORREÇÃO DE ERRO DE INICIALIZAÇÃO: Exporta a função principal e um alias 'init'
+// CORREÇÃO DE ERRO DE INICIALIZAÇÃO: Exporta a função principal
 export { initgestaovagas };
