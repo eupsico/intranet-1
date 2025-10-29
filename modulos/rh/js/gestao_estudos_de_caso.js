@@ -9,6 +9,7 @@ import {
   query,
   where,
   deleteDoc,
+  arrayUnion, // Adicionado para persistência (embora não usado em todo este bloco)
 } from "../../../assets/js/firebase-init.js";
 
 // =====================================================================
@@ -18,27 +19,29 @@ import {
 const ESTUDOS_COLLECTION_NAME = "estudos_de_caso";
 const estudosCollection = collection(db, ESTUDOS_COLLECTION_NAME);
 
+// Elementos do DOM do HTML (modulos/rh/page/gestao_estudos_de_caso.html)
 const formNovoEstudo = document.getElementById("form-novo-estudo");
 const listaPerguntas = document.getElementById("lista-perguntas");
 const btnAdicionarPergunta = document.getElementById("btn-adicionar-pergunta");
 const listaModelosSalvos = document.getElementById("lista-modelos-salvos");
+const modalGerarLink = document.getElementById("modal-gerar-link");
 
-let perguntaCounter = 1;
+let perguntaCounter = 0; // Inicia em 0 e será corrigido pela função init
 
 // =====================================================================
-// FUNÇÕES AUXILIARES DE UI
+// FUNÇÕES AUXILIARES DE UI E FLUXO
 // =====================================================================
 
 /**
  * Adiciona um novo campo de textarea para pergunta ao formulário.
  */
-function adicionarCampoPergunta() {
+function adicionarCampoPergunta(texto = "") {
   perguntaCounter++;
   const novoCampo = document.createElement("div");
   novoCampo.className = "pergunta-item form-group";
   novoCampo.innerHTML = `
         <label for="pergunta-${perguntaCounter}">Pergunta ${perguntaCounter}:</label>
-        <textarea class="pergunta-texto" data-id="${perguntaCounter}" rows="2" placeholder="Digite o texto da pergunta."></textarea>
+        <textarea class="pergunta-texto" data-id="${perguntaCounter}" rows="2" placeholder="Digite o texto da pergunta.">${texto}</textarea>
         <button type="button" class="btn btn-sm btn-danger btn-remover-pergunta" style="margin-top: 5px;">
             <i class="fas fa-trash"></i> Remover
         </button>
@@ -60,14 +63,18 @@ function adicionarCampoPergunta() {
 function atualizarNumeracaoPerguntas() {
   const itens = listaPerguntas.querySelectorAll(".pergunta-item");
   let count = 1;
+  let maxId = 0;
+
   itens.forEach((item) => {
     const label = item.querySelector("label");
     const textarea = item.querySelector("textarea");
     if (label) label.textContent = `Pergunta ${count}:`;
     if (textarea) textarea.setAttribute("data-id", count);
+
+    maxId = count;
     count++;
   });
-  perguntaCounter = count - 1;
+  perguntaCounter = maxId;
 }
 
 /**
@@ -90,7 +97,107 @@ function handleTabClick(e) {
     contentArea.style.display = "block";
     if (targetTab === "modelos-salvos") {
       carregarModelosSalvos();
+    } else if (targetTab === "criar-novo") {
+      // Limpar formulário ao voltar para a criação
+      formNovoEstudo.reset();
+      formNovoEstudo.removeAttribute("data-modelo-id");
+      listaPerguntas.innerHTML = "";
+      perguntaCounter = 0;
+      adicionarCampoPergunta();
     }
+  }
+}
+
+/**
+ * Lida com a abertura do modal de geração de link.
+ */
+function handleGerarLink(e) {
+  const modeloId = e.currentTarget.getAttribute("data-id");
+  const linkInput = document.getElementById("link-publico");
+  // Base do link público (Deve ser o URL de acesso do candidato)
+  const linkBase = `${window.location.origin}/public/estudo-de-caso.html?id=${modeloId}`;
+
+  if (linkInput) {
+    linkInput.value = linkBase;
+  }
+
+  // Configura o evento de cópia
+  document.getElementById("btn-copiar-link").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(linkBase);
+      window.showToast("Link copiado para a área de transferência!", "success");
+    } catch (err) {
+      console.error("Falha ao copiar link:", err);
+      window.showToast(
+        "Falha ao copiar link (permita o acesso à área de transferência).",
+        "error"
+      );
+    }
+  };
+
+  if (modalGerarLink) {
+    modalGerarLink.style.display = "flex";
+    // Configura o botão de fechar
+    modalGerarLink.querySelector(".fechar-modal-link").onclick = () => {
+      modalGerarLink.style.display = "none";
+    };
+  }
+}
+
+/**
+ * Lida com a exclusão de um modelo.
+ */
+async function handleExcluirModelo(e) {
+  const modeloId = e.currentTarget.getAttribute("data-id");
+  if (!confirm("Tem certeza que deseja excluir este modelo permanentemente?"))
+    return;
+
+  try {
+    await deleteDoc(doc(estudosCollection, modeloId));
+    window.showToast("Modelo excluído com sucesso!", "success");
+    carregarModelosSalvos();
+  } catch (error) {
+    console.error("Erro ao excluir modelo:", error);
+    window.showToast("Erro ao excluir modelo.", "error");
+  }
+}
+
+/**
+ * Lida com a edição de um modelo (carrega os dados no formulário de criação).
+ */
+async function handleEditarModelo(e) {
+  const modeloId = e.currentTarget.getAttribute("data-id");
+
+  try {
+    const docSnap = await getDoc(doc(estudosCollection, modeloId));
+    if (!docSnap.exists()) {
+      window.showToast("Modelo não encontrado.", "error");
+      return;
+    }
+    const modelo = docSnap.data();
+
+    // 1. Preenche dados básicos
+    document.getElementById("conteudo-titulo").value = modelo.titulo || "";
+    document.getElementById("conteudo-tipo").value = modelo.tipo || "";
+    document.getElementById("conteudo-texto").value = modelo.conteudo || "";
+    formNovoEstudo.setAttribute("data-modelo-id", docSnap.id);
+
+    // 2. Preenche perguntas
+    listaPerguntas.innerHTML = "";
+    perguntaCounter = 0;
+    if (modelo.perguntas && modelo.perguntas.length > 0) {
+      modelo.perguntas.forEach((p) => adicionarCampoPergunta(p.texto));
+    } else {
+      adicionarCampoPergunta();
+    }
+
+    // 3. Troca para a aba de criação/edição
+    document
+      .querySelector('.content-tabs .tab-link[data-tab="criar-novo"]')
+      .click();
+  } catch (error) {
+    console.error("Erro ao carregar modelo para edição:", error);
+    window.showToast("Erro ao carregar modelo para edição.", "error");
   }
 }
 
@@ -104,12 +211,12 @@ function handleTabClick(e) {
 function extrairPerguntasDoForm() {
   const perguntas = [];
   const itens = listaPerguntas.querySelectorAll(".pergunta-item");
-  itens.forEach((item) => {
+  itens.forEach((item, index) => {
     const textarea = item.querySelector(".pergunta-texto");
     if (textarea && textarea.value.trim()) {
       perguntas.push({
         texto: textarea.value.trim(),
-        id: textarea.getAttribute("data-id"),
+        id: index + 1,
       });
     }
   });
@@ -126,6 +233,8 @@ async function handleSalvarModelo(e) {
   const tipo = document.getElementById("conteudo-tipo").value;
   const texto = document.getElementById("conteudo-texto").value.trim();
   const perguntas = extrairPerguntasDoForm();
+  const modeloId = formNovoEstudo.getAttribute("data-modelo-id");
+  const isEditing = !!modeloId;
 
   if (!titulo || !tipo) {
     window.showToast("Título e Tipo de Avaliação são obrigatórios.", "warning");
@@ -137,15 +246,34 @@ async function handleSalvarModelo(e) {
     tipo: tipo,
     conteudo: texto,
     perguntas: perguntas,
-    dataCriacao: new Date(),
+    dataAtualizacao: new Date(),
     // TODO: Adicionar usuário criador
   };
 
   try {
-    const docRef = await addDoc(estudosCollection, modeloData);
-    window.showToast("Modelo de avaliação salvo com sucesso!", "success");
-    formNovoEstudo.reset(); // Limpa o formulário após o sucesso
-    carregarModelosSalvos(); // Atualiza a lista
+    if (isEditing) {
+      await updateDoc(doc(estudosCollection, modeloId), modeloData);
+      window.showToast(
+        "Modelo de avaliação atualizado com sucesso!",
+        "success"
+      );
+    } else {
+      modeloData.dataCriacao = new Date();
+      await addDoc(estudosCollection, modeloData);
+      window.showToast("Modelo de avaliação salvo com sucesso!", "success");
+    }
+
+    // Limpar e redirecionar
+    formNovoEstudo.reset();
+    formNovoEstudo.removeAttribute("data-modelo-id");
+    listaPerguntas.innerHTML = "";
+    perguntaCounter = 0;
+    adicionarCampoPergunta();
+
+    // Vai para a aba de modelos salvos
+    document
+      .querySelector('.content-tabs .tab-link[data-tab="modelos-salvos"]')
+      .click();
   } catch (error) {
     console.error("Erro ao salvar modelo de avaliação:", error);
     window.showToast("Erro ao salvar modelo. Tente novamente.", "error");
@@ -194,8 +322,16 @@ async function carregarModelosSalvos() {
 
     listaModelosSalvos.innerHTML = html;
 
-    // TODO: Adicionar eventos para editar/excluir/gerar link
-    // Ex: document.querySelectorAll('.btn-gerar-link').forEach(btn => btn.onclick = handleGerarLink);
+    // Configura eventos nos botões recém-criados
+    document.querySelectorAll(".btn-gerar-link").forEach((btn) => {
+      btn.addEventListener("click", handleGerarLink);
+    });
+    document.querySelectorAll(".btn-excluir-modelo").forEach((btn) => {
+      btn.addEventListener("click", handleExcluirModelo);
+    });
+    document.querySelectorAll(".btn-editar-modelo").forEach((btn) => {
+      btn.addEventListener("click", handleEditarModelo);
+    });
   } catch (error) {
     console.error("Erro ao carregar modelos salvos:", error);
     listaModelosSalvos.innerHTML =
@@ -228,16 +364,8 @@ export async function initGestaoEstudos(user, userData) {
     btn.addEventListener("click", handleTabClick);
   });
 
-  // 4. Carrega a lista de modelos (se a aba de modelos for a ativa)
-  // Inicialmente, a aba "Criar Novo" está ativa, mas a lógica de navegação
-  // entre os painéis (Recrutamento/Gestão) pode chamar 'modelos-salvos'
-  // Se o usuário clicar em "Modelos Salvos" pela primeira vez, a função
-  // `carregarModelosSalvos` será chamada.
-
-  // Se o elemento principal não carregar, inicializa a lista (para o caso de ser o painel padrão)
-  if (
-    document.querySelector(".tab-content.active").id === "tab-modelos-salvos"
-  ) {
-    carregarModelosSalvos();
+  // 4. Inicializa o campo de perguntas se estiver vazio (na primeira aba)
+  if (listaPerguntas && listaPerguntas.children.length === 0) {
+    adicionarCampoPergunta();
   }
 }
