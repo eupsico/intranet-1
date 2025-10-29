@@ -18,15 +18,15 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 // Importações do Firebase atualizadas
 import { arrayRemove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// NOVO: Define a constante para o nome da coleção
-const VAGAS_COLLECTION_NAME = "vagas"; // COLEÇÃO CORRETA: vagas
-const CONFIG_COLLECTION_NAME = "configuracoesSistema"; // Para buscar listas globais
+// =====================================================================
+// CONSTANTES GLOBAIS E ELEMENTOS DO DOM
+// =====================================================================
 
-// Coleção principal no Firestore para as vagas
-const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
-
-// NOVO: Adiciona o ID do modal de rejeição
+const VAGAS_COLLECTION_NAME = "vagas";
+const CONFIG_COLLECTION_NAME = "configuracoesSistema";
 const ID_MODAL_REJEICAO = "modal-rejeicao-ficha";
+
+const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
 // Elementos do DOM globais
 const modalVaga = document.getElementById("modal-vaga");
@@ -34,25 +34,24 @@ const formVaga = document.getElementById("form-vaga");
 const modalTitle = modalVaga ? modalVaga.querySelector("h3") : null;
 const btnSalvar = document.getElementById("btn-salvar-vaga");
 
-// Elementos de novas ações (Removido btnExcluir)
 const btnCancelarVaga = document.getElementById("btn-cancelar-vaga");
 const btnEncerrarVaga = document.getElementById("btn-encerrar-vaga");
 
-// Elementos de controle de etapa
 const secaoFichaTecnica = document.getElementById("secao-ficha-tecnica");
 const secaoCriacaoArte = document.getElementById("secao-criacao-arte");
 const secaoDivulgacao = document.getElementById("secao-divulgacao");
 
-// Elementos da Seção Arte (Mantemos as IDs mesmo que os botões estejam no rodapé)
 const caixaAlteracoesArte = document.getElementById("caixa-alteracoes-arte");
 const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
-let currentUserData = {}; // Para armazenar os dados do usuário logado
+let currentUserData = {};
+
+// =====================================================================
+// FUNÇÕES AUXILIARES E DE LÓGICA DE NEGÓCIO
+// =====================================================================
 
 /**
  * NOVO: Gera um resumo da vaga usando os dados principais da Ficha Técnica (para a arte).
- * @param {object} vaga - O objeto de dados da vaga.
- * @returns {string} O resumo formatado.
  */
 function gerarResumoVaga(vaga) {
   let resumo = `Vaga: ${vaga.nome || "Não Informado"}\n`;
@@ -98,10 +97,258 @@ async function carregarListasFirebase() {
         option.textContent = depto;
         selectDepartamento.appendChild(option);
       });
-    } // 2. Os campos Regime de Trabalho e Modalidade já estão no HTML, // mas se forem dinâmicos, a lógica de busca do Firebase seria adicionada aqui.
+    }
   } catch (error) {
     console.error("Erro ao carregar listas do Firebase:", error);
     window.showToast("Erro ao carregar listas de configuração.", "error");
+  }
+}
+
+/**
+ * Lida com a submissão do formulário de nova vaga ou edição.
+ */
+async function handleSalvarVaga(e) {
+  e.preventDefault();
+
+  const vagaId = formVaga.getAttribute("data-vaga-id");
+  let isEditing = !!vagaId;
+  const submitButton = e.submitter;
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    // 1. EXTRAÇÃO DE DADOS PRINCIPAIS E DE AGRUPAMENTO (Ficha Técnica)
+    const nome = document.getElementById("vaga-nome").value;
+    const departamento = document.getElementById("vaga-departamento").value;
+    const tipoRecrutamento = document.getElementById(
+      "vaga-tipo-recrutamento"
+    ).value;
+    const regimeTrabalho = document.getElementById(
+      "vaga-regime-trabalho"
+    ).value;
+    const modalidadeTrabalho = document.getElementById(
+      "vaga-modalidade-trabalho"
+    ).value;
+    const valorSalario = document.getElementById("vaga-valor-salario").value;
+    const dataFechamento = document.getElementById(
+      "vaga-data-fechamento"
+    ).value;
+    const responsabilidades = document.getElementById(
+      "vaga-responsabilidades"
+    ).value; // Outros campos agrupados...
+
+    const resultados = document.getElementById("vaga-resultados").value;
+    const novaSubstituicao = document.getElementById(
+      "vaga-nova-substituicao"
+    ).value;
+    const formacaoMinima = document.getElementById(
+      "vaga-formacao-minima"
+    ).value;
+    const conselho = document.getElementById("vaga-conselho").value;
+    const especializacoes = document.getElementById(
+      "vaga-especializacoes"
+    ).value;
+    const compTecnicas = document.getElementById("vaga-comp-tecnicas").value;
+    const compComportamentais = document.getElementById(
+      "vaga-comp-comportamentais"
+    ).value;
+    const certificacoes = document.getElementById("vaga-certificacoes").value;
+    const nivelExperiencia = document.getElementById(
+      "vaga-nivel-experiencia"
+    ).value;
+    const contextosSimilares = document.getElementById(
+      "vaga-contextos-similares"
+    ).value;
+    const atuacaoGrupos = document.getElementById("vaga-atuacao-grupos").value;
+    const fitValores = document.getElementById("vaga-fit-valores").value;
+    const estiloEquipe = document.getElementById("vaga-estilo-equipe").value;
+    const perfilDestaque = document.getElementById(
+      "vaga-perfil-destaque"
+    ).value;
+    const oportunidades = document.getElementById("vaga-oportunidades").value;
+    const desafios = document.getElementById("vaga-desafios").value;
+    const planoCarreira = document.getElementById("vaga-plano-carreira").value; // Campos da Seção de Arte e Divulgação (Salva mesmo se a seção estiver oculta)
+
+    const resumoArte = document.getElementById("vaga-resumo-arte").value;
+    const linkArte = document.getElementById("vaga-link-arte").value;
+    const observacaoArte = document.getElementById(
+      "vaga-observacao-arte"
+    ).value; // Novo campo
+
+    const selectCanais = document.getElementById("vaga-canais-divulgacao");
+    const canaisDivulgacao = Array.from(selectCanais.options)
+      .filter((option) => option.selected)
+      .map((option) => option.value); // 2. CONSTRUÇÃO DO OBJETO DE DADOS
+
+    const vagaData = {
+      nome: nome,
+      departamento: departamento,
+      tipoRecrutamento: tipoRecrutamento,
+      regimeTrabalho: regimeTrabalho,
+      modalidadeTrabalho: modalidadeTrabalho,
+      valorSalario: valorSalario,
+      dataFechamento: dataFechamento, // Guarda a data no formato 'YYYY-MM-DD' // Mapeamento dos campos detalhados
+
+      cargo: {
+        responsabilidades: responsabilidades,
+        resultados: resultados,
+        novaSubstituicao: novaSubstituicao,
+      },
+      formacao: {
+        minima: formacaoMinima,
+        conselho: conselho,
+        especializacoes: especializacoes,
+      },
+      competencias: {
+        tecnicas: compTecnicas,
+        comportamentais: compComportamentais,
+        certificacoes: certificacoes,
+      },
+      experiencia: {
+        nivel: nivelExperiencia,
+        contextosSimilares: contextosSimilares,
+        atuacaoGrupos: atuacaoGrupos,
+      },
+      fitCultural: {
+        valoresEuPsico: fitValores,
+        estiloEquipe: estiloEquipe,
+        perfilDestaque: perfilDestaque,
+      },
+      crescimento: {
+        oportunidades: oportunidades,
+        desafios: desafios,
+        planoCarreira: planoCarreira,
+      }, // Informações da arte e divulgação
+
+      arte: {
+        resumo: resumoArte,
+        link: linkArte,
+        status: "Pendente", // Status só muda por ação dos botões
+        observacao: observacaoArte, // Novo campo salvo // alteraçõesPendentes: string
+      },
+      canaisDivulgacao: canaisDivulgacao,
+    };
+
+    const historicoEntry = {
+      data: new Date(),
+      usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+    };
+
+    let newStatus = "";
+
+    if (isEditing) {
+      // Carrega status anterior para decidir o que fazer no histórico
+      const vagaDoc = await getDoc(doc(db, VAGAS_COLLECTION_NAME, vagaId));
+      const oldStatus = vagaDoc.data().status; // 3. AÇÃO DE EDIÇÃO/ATUALIZAÇÃO // A edição da Ficha só é permitida se a vaga NÃO FOI APROVADA
+
+      if (oldStatus === "em-divulgacao" || oldStatus === "em-recrutamento") {
+        window.showToast(
+          "Não é possível editar a Ficha Técnica de uma vaga aprovada.",
+          "error"
+        );
+        return;
+      }
+
+      newStatus = oldStatus; // Se for em Criação, mantemos o status, mas se o usuário clicar em Salvar e Enviar, muda para aguardando-aprovacao
+
+      if (
+        oldStatus === "em-criação" &&
+        submitButton.textContent.includes("Aprovação")
+      ) {
+        newStatus = "aguardando-aprovacao";
+        vagaData.status = newStatus;
+        vagaData.historico = arrayUnion({
+          ...historicoEntry,
+          acao: "Ficha Técnica finalizada e enviada para aprovação do gestor.",
+        });
+      } else {
+        // Se for edição em Rascunho (em-criação) ou em Aguardando Aprovação (sem alteração de status)
+        vagaData.historico = arrayUnion({
+          ...historicoEntry,
+          acao: `Vaga editada (Ficha Técnica atualizada). Status: ${newStatus}`,
+        });
+      }
+
+      const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+      await updateDoc(vagaRef, vagaData);
+
+      window.showToast(
+        "Ficha Técnica da Vaga atualizada com sucesso!",
+        "success"
+      );
+    } else {
+      // 4. AÇÃO DE CRIAÇÃO (Novo Fluxo: Salvar e Enviar para Aprovação do Gestor)
+      newStatus = "aguardando-aprovacao";
+      vagaData.status = newStatus;
+      vagaData.dataCriacao = new Date();
+      vagaData.candidatosCount = 0;
+      vagaData.historico = [
+        {
+          ...historicoEntry,
+          acao: "Vaga criada (Ficha Técnica) e enviada para aprovação do gestor.",
+        },
+      ];
+
+      await addDoc(vagasCollection, vagaData);
+      window.showToast(
+        "Ficha Técnica da Vaga salva com sucesso! Enviada para aprovação do gestor.",
+        "success"
+      );
+    }
+
+    document.getElementById("modal-vaga").style.display = "none"; // Recarrega a lista para o status que será o novo (aguardando-aprovacao)
+    carregarVagas(newStatus);
+  } catch (error) {
+    console.error("Erro ao salvar/atualizar a Ficha Técnica da vaga:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar/atualizar a Ficha Técnica da vaga.",
+      "error"
+    );
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+/**
+ * NOVO: Lida com o salvamento do Link da Arte e Observação
+ * @param {string} vagaId
+ * @param {string} link
+ * @param {string} observacao
+ */
+async function handleSalvarArteLink(vagaId, link, observacao) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    // Busca docSnap para manter o status e resumo atual
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    const currentArte = docSnap.data().arte || {};
+
+    await updateDoc(vagaRef, {
+      arte: {
+        ...currentArte,
+        link: link,
+        observacao: observacao, // Salva o novo campo de observação
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Link e Observação da Arte salvos com sucesso.",
+      "success"
+    );
+    // Recarrega o modal para exibir o status atualizado
+    handleDetalhesVaga(vagaId);
+  } catch (error) {
+    console.error("Erro ao salvar Link/Observação da Arte:", error);
+    window.showToast(
+      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
+      "error"
+    );
   }
 }
 
@@ -284,6 +531,42 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
       "Ocorreu um erro ao salvar o Link/Observação da Arte.",
       "error"
     );
+  }
+}
+
+/**
+ * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
+ */
+async function handleAprovarFichaTecnica(vagaId) {
+  if (
+    !vagaId ||
+    !confirm(
+      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
+    )
+  )
+    return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    await updateDoc(vagaRef, {
+      status: "arte-pendente", // Próxima fase: Criação da Arte
+      dataAprovacaoFicha: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast(
+      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
+      "success"
+    );
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente");
+  } catch (error) {
+    console.error("Erro ao aprovar ficha técnica:", error);
+    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
   }
 }
 
@@ -608,6 +891,7 @@ async function initgestaovagas(user, userData) {
   await carregarListasFirebase(); // 2. Configura eventos de UI
 
   if (btnNovaVaga) {
+    // CORREÇÃO: A função openNewVagaModal deve ser definida para ser acessível
     btnNovaVaga.addEventListener("click", openNewVagaModal);
   } // NOVO: Adiciona eventos aos botões de controle de fluxo no modal
 
