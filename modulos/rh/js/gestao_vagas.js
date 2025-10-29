@@ -128,29 +128,35 @@ function openNewVagaModal() {
   // Abre o modal principal (Ficha Técnica) forçando o status de edição
   openFichaTecnicaModal(null, "em-criação");
 }
+/**
+ * NOVO: Abre o modal da Ficha Técnica (Em Criação e Aguardando Aprovação).
+ * CORRIGIDO: Adiciona a injeção dinâmica dos botões de Aprovação/Solicitação/Cancelamento.
+ */
 function openFichaTecnicaModal(vagaId, statusAtual) {
-  // Só pode editar se o status for "em-criação" (Nova Vaga ou Rascunho rejeitado)
-  const canEdit = statusAtual === "em-criação";
+  // 1. Limpeza de Ações Dinâmicas Antigas (se houver)
+  const footer = modalFicha.querySelector(".modal-footer");
+  if (footer) {
+    footer
+      .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
+      .forEach((el) => el.remove());
+  }
 
-  // 1. Desabilita/Habilita todos os campos
+  // Apenas pode editar se o status for "em-criação" (Nova Vaga ou Rascunho rejeitado)
+  const canEdit = statusAtual === "em-criação";
+  const isAprovacao = statusAtual === "aguardando-aprovacao";
+
+  // 2. Desabilita/Habilita todos os campos
   const inputsAndSelects = modalFicha.querySelectorAll(
     "input, select, textarea"
   );
   inputsAndSelects.forEach((el) => {
-    // Se canEdit for TRUE, el.disabled será FALSE (habilitado)
     el.disabled = !canEdit;
   });
 
-  // 2. Configura botões de Salvar/Editar
   const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
-  // const btnEnviar = modalFicha.querySelector("#btn-enviar-aprovacao"); // (Comentado ou Removido se não existir)
+  const fecharModalBtn = modalFicha.querySelector(".fechar-modal");
 
-  // Se não estiver em Aprovação Vaga (aguardando-aprovacao), remove botões dinâmicos
-  const dynamicWrapper = modalFicha.querySelector(
-    ".acoes-aprovacao-ficha-wrapper"
-  );
-  if (dynamicWrapper) dynamicWrapper.remove();
-
+  // 3. Configura botões de Salvar/Editar
   if (btnSalvar) {
     btnSalvar.style.display = canEdit ? "inline-block" : "none";
     btnSalvar.textContent = vagaId
@@ -158,7 +164,44 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       : "Salvar e Enviar para Aprovação";
   }
 
-  // 3. Exibe o modal
+  // 4. INJEÇÃO DOS BOTÕES DE APROVAÇÃO/SOLICITAÇÃO
+  if (isAprovacao) {
+    // Injeta os botões ANTES do botão "Fechar" no rodapé
+    const actionHtml = `
+            <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-right: auto;">
+                <button type="button" class="btn btn-danger" id="btn-cancelar-vaga-ficha">
+                    <i class="fas fa-ban"></i> Cancelar Vaga
+                </button>
+                <button type="button" class="btn btn-alteração" id="btn-solicitar-alteracoes-ficha">
+                    <i class="fas fa-edit"></i> Solicitar Alterações
+                </button>
+                <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+                    <i class="fas fa-check"></i> Aprovar
+                </button>
+            </div>`;
+
+    if (fecharModalBtn) {
+      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
+    }
+
+    // 5. Configura Eventos dos botões injetados
+    const btnAprovar = modalFicha.querySelector("#btn-aprovar-ficha");
+    const btnSolicitar = modalFicha.querySelector(
+      "#btn-solicitar-alteracoes-ficha"
+    );
+    const btnCancelar = modalFicha.querySelector("#btn-cancelar-vaga-ficha");
+
+    if (btnAprovar)
+      btnAprovar.onclick = () => handleAprovarFichaTecnica(vagaId);
+    if (btnSolicitar)
+      btnSolicitar.onclick = () => modalSolicitarAlteracoesFicha(vagaId);
+    if (btnCancelar)
+      btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId); // Usa rejeitar como fluxo de cancelamento/retorno
+  }
+
+  // O botão "Fechar" estático do HTML agora é o único visível em Aprovação, ou o último em Elaboração.
+
+  // 6. Exibe o modal
   if (modalFicha) modalFicha.style.display = "flex";
 }
 /**
