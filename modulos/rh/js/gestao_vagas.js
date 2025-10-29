@@ -1318,6 +1318,9 @@ async function carregarVagas(status) {
     statusArray = ["arte-pendente"];
   } else if (status === "aprovacao-arte") {
     statusArray = ["aguardando-aprovacao-arte"];
+  } else if (status === "correcao") {
+    // <--- AQUI ESTÁ O NOVO BLOCO
+    statusArray = ["correcao-pendente"];
   } else if (status === "em-divulgacao") {
     statusArray = ["em-divulgacao"];
   }
@@ -1331,6 +1334,7 @@ async function carregarVagas(status) {
     "aguardando-aprovacao",
     "arte-pendente",
     "aguardando-aprovacao-arte",
+    "correcao-pendente", // Status de contagem
     "em-divulgacao",
     "encerrada",
     "cancelada",
@@ -1354,6 +1358,7 @@ async function carregarVagas(status) {
     "aprovacao-gestao": 0,
     "arte-pendente": 0,
     "aprovacao-arte": 0,
+    correcao: 0, // Contador da nova aba
     "em-divulgacao": 0,
     fechadas: 0,
   };
@@ -1368,6 +1373,7 @@ async function carregarVagas(status) {
     if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
     if (vaga.status === "arte-pendente") counts["arte-pendente"]++;
     if (vaga.status === "aguardando-aprovacao-arte") counts["aprovacao-arte"]++;
+    if (vaga.status === "correcao-pendente") counts["correcao"]++; // CONTAGEM DA NOVA ABA
     if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
     if (vaga.status === "cancelada" || vaga.status === "encerrada")
       counts["fechadas"]++;
@@ -1382,7 +1388,8 @@ async function carregarVagas(status) {
       .toUpperCase()
       .replace(/-/g, " ")
       .replace("APROVACAO GESTAO", "APROVAÇÃO DA VAGA")
-      .replace("APROVACAO ARTE", "APROVAÇÃO DA ARTE");
+      .replace("APROVACAO ARTE", "APROVAÇÃO DA ARTE")
+      .replace("CORRECAO PENDENTE", "CORREÇÃO PENDENTE"); // Formatação do novo status
 
     const infoSecundaria = [
       `Dpto: ${vaga.departamento || "Não definido"}`,
@@ -1413,6 +1420,7 @@ async function carregarVagas(status) {
     if (btnStatus === "aprovacao-gestao") tabText = "Aprovação da Vaga";
     if (btnStatus === "arte-pendente") tabText = "Criação da Arte";
     if (btnStatus === "aprovacao-arte") tabText = "Aprovação da Arte";
+    if (btnStatus === "correcao") tabText = "Alterações Solicitadas"; // RÓTULO DA NOVA ABA
     if (btnStatus === "em-divulgacao") tabText = "Em Divulgação";
     if (btnStatus === "fechadas") tabText = "Fechadas/Encerradas";
     if (btnStatus === "abertas") tabText = "Em Elaboração";
