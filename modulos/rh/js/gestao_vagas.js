@@ -1142,17 +1142,17 @@ async function preencherFormularioVaga(vagaId, vaga) {
  * ATENÇÃO: Esta função utiliza as variáveis globais modalCriacaoArte, displayFeedbackBanner e handleSalvarEEnviarArte (Assumidas).
  */
 function openCriacaoArteModal(vagaId, vaga) {
-  const isPendente = vaga.status === "arte-pendente";
+  const isPendente =
+    vaga.status === "arte-pendente" || vaga.status === "correcao-pendente"; // HABILITA EDIÇÃO SE FOR CORREÇÃO
 
-  // 1. Limpeza de banners anteriores (Boa prática)
+  // Limpeza e banners (assumidos como corretos)
   const modalBody = modalCriacaoArte.querySelector(".modal-body");
   if (modalBody) {
     modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
   }
 
-  // 2. VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE (NOVO)
-  if (isPendente && vaga.arte?.alteracoesPendentes) {
-    // Assume que 'displayFeedbackBanner' está definida no escopo global
+  // VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE
+  if (vaga.status === "correcao-pendente" && vaga.arte?.alteracoesPendentes) {
     displayFeedbackBanner(
       modalCriacaoArte,
       vaga.arte.alteracoesPendentes,
@@ -1160,7 +1160,7 @@ function openCriacaoArteModal(vagaId, vaga) {
     );
   }
 
-  // 3. Configura o formulário
+  // Configura campos e botões
   const linkArteField = document.querySelector(
     "#modal-criacao-arte #vaga-link-arte"
   );
@@ -1168,7 +1168,6 @@ function openCriacaoArteModal(vagaId, vaga) {
     "#modal-criacao-arte #vaga-texto-divulgacao"
   );
 
-  // 4. Configura botões e estados para edição de link/texto de divulgação
   const inputs = modalCriacaoArte.querySelectorAll("input, textarea");
   inputs.forEach((input) => (input.disabled = !isPendente));
 
@@ -1176,7 +1175,6 @@ function openCriacaoArteModal(vagaId, vaga) {
     "#btn-enviar-aprovacao-arte"
   );
 
-  // 5. Configura o evento do botão
   if (btnEnviar) {
     btnEnviar.style.display = isPendente ? "inline-block" : "none";
     btnEnviar.onclick = () => {
@@ -1188,7 +1186,6 @@ function openCriacaoArteModal(vagaId, vaga) {
     };
   }
 
-  // 6. Exibe o modal
   if (modalCriacaoArte) modalCriacaoArte.style.display = "flex";
 }
 
@@ -1269,10 +1266,12 @@ async function handleDetalhesVaga(vagaId) {
     }
 
     const vaga = docSnap.data();
-    const statusAtual = vaga.status || "em-criação"; // 1. Preenche TODOS os campos em TODOS os modais (centralizado)
+    const statusAtual = vaga.status || "em-criação";
 
-    await preencherFormularioVaga(vagaId, vaga); // 2. ROTEA PARA O MODAL CORRETO // Esconde todos os modais antes de abrir o correto (garante limpeza de tela)
+    // 1. Preenche TODOS os campos em TODOS os modais (centralizado e seguro)
+    await preencherFormularioVaga(vagaId, vaga);
 
+    // 2. ROTEA PARA O MODAL CORRETO
     document
       .querySelectorAll(".modal-overlay")
       .forEach((modal) => (modal.style.display = "none"));
@@ -1290,6 +1289,17 @@ async function handleDetalhesVaga(vagaId) {
       openDivulgacaoModal(vagaId, vaga);
     } else if (statusAtual === "cancelada" || statusAtual === "encerrada") {
       openVisualizacaoFechadaModal(vagaId, vaga);
+    } else if (statusAtual === "correcao-pendente") {
+      // Verifica o tipo de correção pendente
+      const isCorrecaoArte = !!vaga.arte?.alteracoesPendentes;
+
+      if (isCorrecaoArte) {
+        // Se o feedback é sobre a arte, abre o modal de criação/edição de arte
+        openCriacaoArteModal(vagaId, vaga);
+      } else {
+        // Se o feedback foi sobre a ficha (justificativa), abre o modal da ficha para edição
+        openFichaTecnicaModal(vagaId, "em-criação");
+      }
     }
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
