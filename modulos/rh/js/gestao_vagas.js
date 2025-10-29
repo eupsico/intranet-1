@@ -641,13 +641,19 @@ async function handleAprovarFichaTecnica(vagaId) {
  * @param {string} vagaId
  * @param {string} justificativa
  */
+/**
+ * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Correção Pendente).
+ * MODIFICADO: Muda o status de retorno para 'correcao-pendente'.
+ * @param {string} vagaId
+ * @param {string} justificativa
+ */
 async function handleRejeitarFichaTecnica(vagaId, justificativa) {
   if (!vagaId || !justificativa) return;
 
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     await updateDoc(vagaRef, {
-      status: "em-criação", // Volta para Em Criação (aba "Abertas")
+      status: "correcao-pendente", // NOVO STATUS: Volta para a fila de correção
       historico: arrayUnion({
         data: new Date(),
         acao: `Ficha Técnica REJEITADA. Motivo: ${justificativa.substring(
@@ -657,14 +663,17 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
         justificativa: justificativa,
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
       }),
+      // Garante que o campo alteracoesPendentes da arte esteja limpo se a ficha for rejeitada
+      // (a rejeição da ficha anula o ciclo de arte atual)
+      "arte.alteracoesPendentes": null,
     });
 
     window.showToast(
-      "Ficha Técnica rejeitada. Retornando para Em Elaboração.",
+      "Ficha Técnica rejeitada. Retornando para Alterações Solicitadas.",
       "info"
     );
-    modalFicha.style.display = "none";
-    carregarVagas("abertas");
+    if (modalFicha) modalFicha.style.display = "none";
+    carregarVagas("correcao"); // Recarrega a nova aba
   } catch (error) {
     console.error("Erro ao rejeitar ficha técnica:", error);
     window.showToast("Ocorreu um erro ao rejeitar a ficha técnica.", "error");
@@ -769,12 +778,14 @@ async function handleSolicitarAlteracoes(vagaId, alteracoes) {
     if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
 
     await updateDoc(vagaRef, {
-      status: "arte-pendente", // Volta para a fase de Criação
+      status: "correcao-pendente", // NOVO STATUS: Volta para a fila de correção
       arte: {
         ...docSnap.data().arte,
         status: "Alteração Solicitada",
-        alteracoesPendentes: alteracoes,
+        alteracoesPendentes: alteracoes, // Salva o motivo no campo da arte
       },
+      // Limpa o campo justificativa da ficha, pois a correção é na arte
+      justificativa: null,
       historico: arrayUnion({
         data: new Date(),
         acao: `Alterações na arte solicitadas: ${alteracoes.substring(
@@ -787,7 +798,7 @@ async function handleSolicitarAlteracoes(vagaId, alteracoes) {
 
     window.showToast("Solicitação de alterações enviada com sucesso.", "info");
     if (modalAprovacaoArte) modalAprovacaoArte.style.display = "none";
-    carregarVagas("arte-pendente");
+    carregarVagas("correcao"); // Recarrega a nova aba
   } catch (error) {
     console.error("Erro ao solicitar alterações na arte:", error);
     window.showToast("Ocorreu um erro ao solicitar alterações.", "error");
