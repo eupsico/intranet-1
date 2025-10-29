@@ -19,17 +19,17 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 import { arrayRemove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // =====================================================================
-// CONSTANTES GLOBAIS E ELEMENTOS DO DOM
+// CONSTANTES GLOBAIS E ELEMENTOS DO DOM (CORRIGIDO PARA NOVA SEÇÃO)
 // =====================================================================
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CONFIG_COLLECTION_NAME = "configuracoesSistema";
-// Renomeando ID para evitar conflito com o novo modal de Alterações Ficha (usaremos IDs diferentes para o popup)
 const ID_MODAL_REJEICAO = "modal-rejeicao-ficha";
 const ID_MODAL_SOLICITAR_FICHA = "modal-solicitar-ficha";
 const ID_MODAL_SOLICITAR_ARTE = "modal-solicitar-arte";
-const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 const ID_MODAL_REAPROVEITAR = "modal-reaproveitar-vaga";
+
+const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
 // Elementos do DOM globais
 const modalVaga = document.getElementById("modal-vaga");
@@ -44,11 +44,13 @@ const secaoFichaTecnica = document.getElementById("secao-ficha-tecnica");
 const secaoCriacaoArte = document.getElementById("secao-criacao-arte");
 const secaoDivulgacao = document.getElementById("secao-divulgacao");
 
+// NOVO: Adicionando a constante para a seção de Aprovação da Arte
+const secaoAprovacaoArte = document.getElementById("secao-aprovacao-arte");
+
 const caixaAlteracoesArte = document.getElementById("caixa-alteracoes-arte");
 const btnEnviarAlteracoes = document.getElementById("btn-enviar-alteracoes");
 
 let currentUserData = {};
-
 function modalSolicitarAlteracoesFicha(vagaId) {
   let modal = document.getElementById(ID_MODAL_SOLICITAR_FICHA);
 
@@ -175,15 +177,19 @@ function modalSolicitarAlteracoesArte(vagaId) {
   document.getElementById("solicitar-arte-motivo").value = "";
   modal.style.display = "flex";
 }
+/**
+ * FUNÇÃO DE FLUXO: Gerencia a exibição das seções do modal com base no status da vaga.
+ * *CORRIGIDA para usar secaoAprovacaoArte e manter secaoDivulgacao.*
+ */
 function gerenciarEtapasModal(status) {
   // Elemento do botão Fechar do rodapé (âncora segura)
   const btnFecharRodape = modalVaga.querySelector(
     ".modal-footer .fechar-modal"
-  ); // Limpeza de botões estáticos e dinâmicos (MELHORIA DE LIMPEZA GERAL)
+  ); // Limpeza de botões estáticos e dinâmicos
 
   if (btnCancelarVaga) btnCancelarVaga.style.display = "none";
   if (btnEncerrarVaga) btnEncerrarVaga.style.display = "none";
-  if (btnSalvar) btnSalvar.style.display = "none"; // Removendo wrappers dinâmicos
+  if (btnSalvar) btnSalvar.style.display = "none";
   const dynamicButtonsFicha = modalVaga.querySelector(
     ".acoes-aprovacao-ficha-wrapper"
   );
@@ -193,44 +199,48 @@ function gerenciarEtapasModal(status) {
   const dynamicButtonsReaproveitar = modalVaga.querySelector(
     ".acoes-reaproveitar-wrapper"
   );
-  if (dynamicButtonsReaproveitar) dynamicButtonsReaproveitar.remove(); // Novo: Limpa wrapper de Reaproveitar
+  if (dynamicButtonsReaproveitar) dynamicButtonsReaproveitar.remove();
 
   if (btnFecharRodape) btnFecharRodape.style.display = "inline-block"; // Ocultar todas as seções por padrão
 
   secaoFichaTecnica.style.display = "none";
   secaoCriacaoArte.style.display = "none";
-  secaoDivulgacao.style.display = "none";
+  if (secaoAprovacaoArte) secaoAprovacaoArte.style.display = "none"; // Nova seção
+  secaoDivulgacao.style.display = "none"; // Mantida para Divulgação
+
   const isVagaFechada = status === "cancelada" || status === "encerrada";
   const isVagaAprovada =
     status === "em-divulgacao" || status === "em-recrutamento";
-  const isVagaBloqueada =
-    isVagaAprovada ||
-    status === "aguardando-aprovacao" ||
-    status === "arte-pendente"; // 1. CONTROLE DE DESABILITAÇÃO (Permite reaproveitar se for vaga fechada)
+  const isFichaBloqueada = status !== "em-criação"; // 1. CONTROLE DE DESABILITAÇÃO
 
   const inputsFichaTecnica = secaoFichaTecnica.querySelectorAll(
     "input, select, textarea"
   );
   inputsFichaTecnica.forEach((input) => {
-    // Desabilita APENAS se não for 'em-criação' E não for uma vaga fechada
-    input.disabled = isVagaBloqueada || isVagaFechada;
+    input.disabled = isFichaBloqueada || isVagaFechada;
+  }); // Desativa campos da Seção de Criação de Arte (visível apenas para edição em 'arte-pendente')
+
+  const inputsCriacaoArte = secaoCriacaoArte.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsCriacaoArte.forEach((input) => {
+    input.disabled = status !== "arte-pendente";
   });
 
   const vagaId = formVaga.getAttribute("data-vaga-id");
 
   if (status === "em-criação") {
-    // Fase 1.0: Rascunho da Ficha Técnica
+    // FASE 1.0: Rascunho da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
     if (btnSalvar) {
       btnSalvar.textContent = "Salvar e Enviar para Aprovação";
       btnSalvar.style.display = "inline-block";
     }
   } else if (status === "aguardando-aprovacao") {
-    // Fase 1.1: Aprovação da Ficha Técnica (Aprovar / Solicitar)
+    // FASE 1.1: Aprovação da Ficha Técnica
     secaoFichaTecnica.style.display = "block";
 
     if (btnCancelarVaga) {
-      // REQUISITO: Botão "Cancelar Vaga" chama o modal de REJEIÇÃO para justificar a interrupção.
       btnCancelarVaga.style.display = "inline-block";
       btnCancelarVaga.onclick = () => modalRejeicaoFichaTecnica(vagaId);
     }
@@ -250,7 +260,7 @@ function gerenciarEtapasModal(status) {
 
     if (btnFecharRodape) {
       btnFecharRodape.insertAdjacentHTML("beforebegin", actionHtml);
-    } // Configura os eventos dos novos botões dinâmicos
+    }
 
     const btnAprovarFicha = document.getElementById("btn-aprovar-ficha");
     const btnSolicitarFicha = document.getElementById(
@@ -259,20 +269,51 @@ function gerenciarEtapasModal(status) {
 
     if (btnAprovarFicha)
       btnAprovarFicha.onclick = () => handleAprovarFichaTecnica(vagaId);
-
-    // REQUISITO: Novo modal para Solicitar Alterações Ficha (diferente de Rejeitar)
     if (btnSolicitarFicha)
       btnSolicitarFicha.onclick = () => modalSolicitarAlteracoesFicha(vagaId);
   } else if (status === "arte-pendente") {
-    // Fase 2: Criação/Aprovação da Arte
-    secaoCriacaoArte.style.display = "block";
+    // FASE 2.0: CRIAÇÃO DA ARTE (APENAS CADASTRO DE LINK)
     secaoFichaTecnica.style.display = "block";
-
+    secaoCriacaoArte.style.display = "block"; // Botão único: Enviar para Aprovação
     const actionHtmlArte = `
       <div class="acoes-arte-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
-        <button type="button" class="btn btn-primary" id="btn-salvar-link-arte">
-          <i class="fas fa-save"></i> Salvar Link/Obs
+        <button type="button" class="btn btn-primary" id="btn-enviar-aprovacao-arte">
+          <i class="fas fa-paper-plane"></i> Enviar para Aprovação
         </button>
+      </div>
+  `;
+
+    if (btnFecharRodape) {
+      btnFecharRodape.insertAdjacentHTML("beforebegin", actionHtmlArte);
+    }
+
+    setTimeout(() => {
+      const btnEnviarAprovacao = document.getElementById(
+        "btn-enviar-aprovacao-arte"
+      );
+      const inputLink = document.getElementById("vaga-link-arte");
+      const inputObs = document.getElementById("vaga-observacao-arte");
+
+      if (btnEnviarAprovacao) {
+        btnEnviarAprovacao.onclick = () => {
+          if (!inputLink.value) {
+            window.showToast(
+              "O link da arte é obrigatório para envio.",
+              "warning"
+            );
+            return;
+          }
+          handleSalvarEEnviarArte(vagaId, inputLink.value, inputObs.value);
+        };
+      }
+    }, 0);
+  } else if (status === "aguardando-aprovacao-arte") {
+    // FASE 2.1: APROVAÇÃO DA ARTE (NOVA ETAPA)
+    secaoFichaTecnica.style.display = "block";
+    secaoCriacaoArte.style.display = "block";
+    if (secaoAprovacaoArte) secaoAprovacaoArte.style.display = "block"; // Exibe a nova seção // Injetar botões de Aprovação/Solicitação
+    const actionHtmlAprovacaoArte = `
+      <div class="acoes-arte-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
         <button type="button" class="btn btn-warning" id="btn-solicitar-alteracoes-arte">
           <i class="fas fa-edit"></i> Solicitar Alterações
         </button>
@@ -283,11 +324,14 @@ function gerenciarEtapasModal(status) {
   `;
 
     if (btnFecharRodape) {
-      btnFecharRodape.insertAdjacentHTML("beforebegin", actionHtmlArte);
+      btnFecharRodape.insertAdjacentHTML(
+        "beforebegin",
+        actionHtmlAprovacaoArte
+      );
     }
 
+    // Configuração dos eventos da Aprovação de Arte
     setTimeout(() => {
-      const btnSalvarLink = document.getElementById("btn-salvar-link-arte");
       const btnSolicitarRodape = document.getElementById(
         "btn-solicitar-alteracoes-arte"
       );
@@ -295,26 +339,18 @@ function gerenciarEtapasModal(status) {
         "btn-aprovar-arte-final"
       );
 
-      const inputLink = document.getElementById("vaga-link-arte");
-      const inputObs = document.getElementById("vaga-observacao-arte");
-
-      if (btnSalvarLink) {
-        btnSalvarLink.onclick = () =>
-          handleSalvarArteLink(vagaId, inputLink.value, inputObs.value);
-      }
-      if (btnAprovarRodape) {
+      if (btnAprovarRodape)
         btnAprovarRodape.onclick = () => handleAprovarArte();
-      }
-      // REQUISITO: Solicitar Alterações Arte agora abre um popup
-      if (btnSolicitarRodape) {
+      if (btnSolicitarRodape)
         btnSolicitarRodape.onclick = () => modalSolicitarAlteracoesArte(vagaId);
-      }
     }, 0);
   } else if (isVagaAprovada) {
-    // Fase 3: Em Divulgação (Pós-Aprovação da Arte)
+    // FASE 3: Em Divulgação (MANTIDO)
     secaoFichaTecnica.style.display = "block";
     secaoCriacaoArte.style.display = "block";
-    secaoDivulgacao.style.display = "block";
+    secaoDivulgacao.style.display = "block"; // Esta é a seção de Divulgação final
+    if (secaoAprovacaoArte) secaoAprovacaoArte.style.display = "block"; // Também visível para histórico
+
     if (btnSalvar) {
       btnSalvar.textContent = "Salvar Canais de Divulgação";
       btnSalvar.style.display = "inline-block";
@@ -326,6 +362,7 @@ function gerenciarEtapasModal(status) {
     // FASE FECHADA / CANCELADA (Reaproveitamento)
     secaoFichaTecnica.style.display = "block";
     secaoCriacaoArte.style.display = "block";
+    if (secaoAprovacaoArte) secaoAprovacaoArte.style.display = "block";
     secaoDivulgacao.style.display = "block";
 
     // Injetar botão Reaproveitar
@@ -341,6 +378,44 @@ function gerenciarEtapasModal(status) {
     }
     document.getElementById("btn-reaproveitar-vaga").onclick = () =>
       handleReaproveitarVaga(vagaId);
+  }
+}
+
+/**
+ * NOVO: Salva os dados de Arte e muda o status para Aguardando Aprovação da Arte.
+ */
+async function handleSalvarEEnviarArte(vagaId, link, observacao) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    const docSnap = await getDoc(vagaRef);
+    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    const currentArte = docSnap.data().arte || {};
+
+    const newStatus = "aguardando-aprovacao-arte";
+
+    await updateDoc(vagaRef, {
+      status: newStatus, // Mudar para o novo status de aprovação de arte
+      arte: {
+        ...currentArte,
+        link: link,
+        observacao: observacao,
+        status: "Aguardando Aprovação",
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Arte e Link salvos. Enviado para Aprovação de Arte.`,
+        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
+      }),
+    });
+
+    window.showToast("Arte enviada para aprovação do Gestor!", "success");
+    document.getElementById("modal-vaga").style.display = "none";
+    carregarVagas("arte-pendente"); // Recarrega a aba para refletir a mudança de status
+  } catch (error) {
+    console.error("Erro ao salvar/enviar Arte:", error);
+    window.showToast("Ocorreu um erro ao salvar e enviar a Arte.", "error");
   }
 }
 
@@ -853,7 +928,7 @@ async function handleReaproveitarVaga(vagaId) {
   }
 }
 /**
- * NOVO: Lida com a Aprovação da Arte pelo Gestor.
+ * MODIFICADA: Lida com a Aprovação da Arte pelo Gestor (Agora na fase 'aguardando-aprovacao-arte').
  */
 async function handleAprovarArte() {
   const vagaId = formVaga.getAttribute("data-vaga-id");
@@ -861,14 +936,14 @@ async function handleAprovarArte() {
     return;
 
   try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId); // Busca docSnap para usar os dados de arte existentes
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     const docSnap = await getDoc(vagaRef);
     if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
 
     await updateDoc(vagaRef, {
       status: "em-divulgacao", // Próxima fase: em Divulgação
       arte: {
-        ...docSnap.data().arte, // Mantém resumo, link e observação
+        ...docSnap.data().arte,
         status: "Aprovada",
         alteracoesPendentes: null, // Limpa qualquer pendência
       },
@@ -1016,19 +1091,22 @@ async function carregarVagas(status) {
   const listaVagas = document.getElementById("lista-vagas");
   if (!listaVagas) return;
   listaVagas.innerHTML =
-    '<div class="loading-spinner">Carregando vagas...</div>'; // NOVO: Mapeia o status da aba para o status real do Firestore para consultas
+    '<div class="loading-spinner">Carregando vagas...</div>';
 
   let statusArray = [status];
 
   if (status === "abertas") {
-    // "Abertas" agora é somente "Em Criação" (rascunho)
     statusArray = ["em-criação"];
   } else if (status === "fechadas") {
     statusArray = ["cancelada", "encerrada"];
   } else if (status === "aprovacao-gestao") {
     statusArray = ["aguardando-aprovacao"];
   } else if (status === "arte-pendente") {
+    // NOVO: FASE CRIAÇÃO: arte-pendente
     statusArray = ["arte-pendente"];
+  } else if (status === "aprovacao-arte") {
+    // NOVO: FASE APROVAÇÃO: aguardando-aprovacao-arte
+    statusArray = ["aguardando-aprovacao-arte"];
   } else if (status === "em-divulgacao") {
     statusArray = ["em-divulgacao"];
   } // 1. Consulta Estreita (Conteúdo da Aba Ativa)
@@ -1036,12 +1114,13 @@ async function carregarVagas(status) {
   const queryConteudo = query(
     vagasCollection,
     where("status", "in", statusArray)
-  ); // 2. Consulta Ampla (Para Contagem Global) // Busca todos os status ativos/fechados para garantir que a contagem seja precisa.
+  ); // 2. Consulta Ampla (Para Contagem Global)
 
   const allStatuses = [
     "em-criação",
     "aguardando-aprovacao",
     "arte-pendente",
+    "aguardando-aprovacao-arte", // NOVO
     "em-divulgacao",
     "encerrada",
     "cancelada",
@@ -1050,7 +1129,7 @@ async function carregarVagas(status) {
   const queryContagemGlobal = query(
     vagasCollection,
     where("status", "in", allStatuses)
-  ); // Executa ambas as consultas em paralelo
+  );
 
   const [snapshotConteudo, snapshotContagem] = await Promise.all([
     getDocs(queryConteudo),
@@ -1064,33 +1143,36 @@ async function carregarVagas(status) {
     abertas: 0,
     "aprovacao-gestao": 0,
     "arte-pendente": 0,
+    "aprovacao-arte": 0, // NOVO
     "em-divulgacao": 0,
     fechadas: 0,
-  }; // 1. Contagem GLOBAL (Baseada em todos os documentos)
+  }; // 1. Contagem GLOBAL
 
   snapshotContagem.docs.forEach((doc) => {
-    const vaga = doc.data(); // Contagem da aba "Em Elaboração"
+    const vaga = doc.data();
 
     if (vaga.status === "em-criação") {
       counts["abertas"]++;
-    } // Contagem das demais abas
+    }
 
     if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
     if (vaga.status === "arte-pendente") counts["arte-pendente"]++;
+    if (vaga.status === "aguardando-aprovacao-arte") counts["aprovacao-arte"]++; // NOVO
     if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
     if (vaga.status === "cancelada" || vaga.status === "encerrada")
       counts["fechadas"]++;
-  }); // 2. Renderização (Apenas os documentos da aba ativa)
+  }); // 2. Renderização (Mantida)
 
   snapshotConteudo.docs.forEach((doc) => {
     const vaga = doc.data();
     vaga.id = doc.id;
-    count++; // Conta apenas os que serão renderizados
+    count++;
 
     const statusFormatado = vaga.status
       .toUpperCase()
       .replace(/-/g, " ")
-      .replace("APROVACAO GESTAO", "AGUARDANDO APROVAÇÃO"); // CORRIGIDO: Mapeia informações principais, incluindo o Departamento
+      .replace("APROVACAO GESTAO", "AGUARDANDO APROVAÇÃO")
+      .replace("APROVACAO ARTE", "AGUARDANDO APROVAÇÃO ARTE"); // NOVO
 
     const infoSecundaria = [
       `Dpto: ${vaga.departamento || "Não definido"}`,
@@ -1111,15 +1193,16 @@ async function carregarVagas(status) {
    </div>
   </div>
  `;
-  }); // Atualiza os contadores em todos os botões de status (usa counts globais)
+  }); // Atualiza os contadores em todos os botões de status
 
   document.querySelectorAll(".status-tabs .tab-link").forEach((btn) => {
     const btnStatus = btn.getAttribute("data-status");
-    const countValue = counts[btnStatus] || 0; // Formatação dos nomes das abas
+    const countValue = counts[btnStatus] || 0;
 
     let tabText = btnStatus;
     if (btnStatus === "aprovacao-gestao") tabText = "Aguardando Aprovação";
     if (btnStatus === "arte-pendente") tabText = "Criação da Arte";
+    if (btnStatus === "aprovacao-arte") tabText = "Aprovação da Arte"; // NOVO
     if (btnStatus === "em-divulgacao") tabText = "Em Divulgação";
     if (btnStatus === "fechadas") tabText = "Fechadas/Encerradas";
     if (btnStatus === "abertas") tabText = "Em Elaboração";
@@ -1134,7 +1217,7 @@ async function carregarVagas(status) {
     return;
   }
 
-  listaVagas.innerHTML = htmlVagas; // Adiciona eventos de detalhe/gerenciamento
+  listaVagas.innerHTML = htmlVagas;
 
   document.querySelectorAll(".btn-detalhes").forEach((btn) => {
     btn.addEventListener("click", (e) => {
