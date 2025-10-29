@@ -1,6 +1,5 @@
 <div class="painel-gestao-vagas">
   <h2 class="painel-titulo">Gestão de Vagas</h2>
-
   <div class="description-box">
     <p>
       Este painel permite gerenciar o ciclo de vida das vagas, desde a criação
@@ -9,13 +8,11 @@
       novo processo seletivo.
     </p>
   </div>
-
   <div class="acoes-header">
     <button id="btn-nova-vaga" class="btn btn-primary">
       <i class="fas fa-plus"></i> Criar Ficha Técnica
     </button>
   </div>
-
   <div class="tabs-container status-tabs">
     <button class="tab-link active" data-status="abertas">
       Em Elaboração (0)
@@ -26,6 +23,9 @@
     <button class="tab-link" data-status="arte-pendente">
       Criação da Arte (0)
     </button>
+    <button class="tab-link" data-status="aprovacao-arte">
+      Aprovação da Arte (0)
+    </button>
     <button class="tab-link" data-status="em-divulgacao">
       Em Divulgação (0)
     </button>
@@ -33,11 +33,9 @@
       Fechadas/Encerradas (0)
     </button>
   </div>
-
   <div id="lista-vagas" class="tabela-dados">
     <p id="mensagem-vagas">Nenhuma vaga encontrada para este status.</p>
   </div>
-
   <div id="modal-vaga" class="modal-overlay">
     <div class="modal-content">
       <form id="form-vaga">
@@ -47,27 +45,25 @@
             &times;
           </button>
         </div>
-
         <div class="modal-body">
           <div id="secao-ficha-tecnica" class="modal-secao active">
             <fieldset>
               <legend>Sobre o Cargo</legend>
+
               <div class="form-group">
                 <label for="vaga-nome">Título da Vaga:</label>
                 <input type="text" id="vaga-nome" required />
               </div>
-
               <div class="form-group">
                 <label for="vaga-departamento">Departamento:</label>
                 <select id="vaga-departamento" required>
                   <option value="">Carregando Departamentos...</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label for="vaga-tipo-recrutamento"
-                  >Tipo de Recrutamento:</label
-                >
+                  >Tipo de Recrutamento:
+                </label>
                 <select id="vaga-tipo-recrutamento" required>
                   <option value="">Selecione o Tipo</option>
                   <option value="interno">Interno</option>
@@ -75,7 +71,6 @@
                   <option value="misto">Misto</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label for="vaga-regime-trabalho">Regime de Trabalho:</label>
                 <select id="vaga-regime-trabalho" required>
@@ -87,11 +82,10 @@
                   <option value="voluntario">Voluntário</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label for="vaga-modalidade-trabalho"
-                  >Modalidade de Trabalho:</label
-                >
+                  >Modalidade de Trabalho:
+                </label>
                 <select id="vaga-modalidade-trabalho" required>
                   <option value="">Selecione a Modalidade</option>
                   <option value="presencial">Presencial</option>
@@ -99,13 +93,10 @@
                   <option value="hibrido">Híbrido</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label for="vaga-responsabilidades"
-                  >Quais são as principais responsabilidades e
-                  atividades?</label
-                >
-
+                  >Quais são as principais responsabilidades e atividades?
+                </label>
                 <textarea
                   id="vaga-responsabilidades"
                   rows="3"
@@ -114,9 +105,8 @@
               </div>
               <div class="form-group">
                 <label for="vaga-resultados"
-                  >Quais resultados ou entregas são esperados dessa
-                  função?</label
-                >
+                  >Quais resultados ou entregas são esperados dessa função?
+                </label>
                 <textarea id="vaga-resultados" rows="3"></textarea>
               </div>
               <div class="form-group">
@@ -126,28 +116,25 @@
                 <textarea id="vaga-nova-substituicao" rows="2"></textarea>
               </div>
             </fieldset>
-
             <fieldset>
               <legend>Remuneração e Fechamento</legend>
               <div class="form-group">
                 <label for="vaga-valor-salario"
-                  >Valor do Salário (ou Faixa):</label
-                >
+                  >Valor do Salário (ou Faixa):
+                </label>
                 <input
                   type="text"
                   id="vaga-valor-salario"
                   placeholder="Ex: R$ 3.500,00 ou A combinar"
                 />
               </div>
-
               <div class="form-group">
                 <label for="vaga-data-fechamento"
-                  >Data de Fechamento da Vaga:</label
-                >
+                  >Data de Fechamento da Vaga:
+                </label>
                 <input type="date" id="vaga-data-fechamento" />
               </div>
             </fieldset>
-
             <fieldset>
               <legend>Formação e Qualificações</legend>
               <div class="form-group">
@@ -164,8 +151,8 @@
               <div class="form-group">
                 <label for="vaga-conselho"
                   >O profissional precisa estar registrado em algum conselho
-                  (ex: CRP, CRM)?</label
-                >
+                  (ex: CRP, CRM)?
+                </label>
                 <textarea
                   id="vaga-conselho"
                   rows="2"
@@ -174,8 +161,9 @@
               </div>
               <div class="form-group">
                 <label for="vaga-especializacoes"
-                  >Há especializações desejadas?</label
-                >
+                  >Há especializações desejadas?
+                </label>
+
                 <textarea
                   id="vaga-especializacoes"
                   rows="3"
@@ -186,6 +174,7 @@
 
             <fieldset>
               <legend>Competências e Habilidades</legend>
+
               <div class="form-group">
                 <label for="vaga-comp-tecnicas"
                   >Quais competências técnicas são indispensáveis?</label
@@ -197,101 +186,127 @@
                   placeholder="Ex: Excel avançado, ferramentas de gestão, idiomas."
                 ></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-comp-comportamentais">
                   Quais competências comportamentais são desejadas?
                 </label>
+
                 <textarea
                   id="vaga-comp-comportamentais"
                   rows="3"
                   placeholder="Ex: Liderança, Comunicação, Resiliência, Proatividade."
                 ></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-certificacoes"
                   >Há certificações ou formações específicas exigidas?
                 </label>
+
                 <textarea id="vaga-certificacoes" rows="2"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Experiência e Atuação</legend>
+
               <div class="form-group">
                 <label for="vaga-nivel-experiencia"
                   >Qual o nível de experiência necessário?
                 </label>
+
                 <select id="vaga-nivel-experiencia">
                   <option value="">Selecione o Nível</option>
+
                   <option value="junior">Júnior</option>
+
                   <option value="pleno">Pleno</option>
+
                   <option value="senior">Sênior</option>
+
                   <option value="especialista">Especialista</option>
                 </select>
               </div>
+
               <div class="form-group">
                 <label for="vaga-contextos-similares"
                   >O profissional já atuou em contextos similares?
                 </label>
+
                 <textarea
                   id="vaga-contextos-similares"
                   rows="3"
                   placeholder="Ex: Clínica, hospital, escola, empresa."
                 ></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-atuacao-grupos"
                   >Está habituado a trabalhar com grupos, famílias ou
                   atendimento individual?</label
                 >
+
                 <textarea id="vaga-atuacao-grupos" rows="3"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Fit Cultural e Valores</legend>
+
               <div class="form-group">
                 <label for="vaga-fit-valores"
                   >Quais valores da EuPsico são importantes que o candidato
                   compartilhe?</label
                 >
+
                 <textarea id="vaga-fit-valores" rows="3"></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-estilo-equipe"
                   >Como é o estilo de trabalho da equipe (colaborativo,
                   autônomo, ágil)?</label
                 >
+
                 <textarea id="vaga-estilo-equipe" rows="2"></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-perfil-destaque"
                   >Que tipo de perfil costuma se destacar na empresa?</label
                 >
+
                 <textarea id="vaga-perfil-destaque" rows="2"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Crescimento e Desafios</legend>
+
               <div class="form-group">
                 <label for="vaga-oportunidades"
                   >Quais são as oportunidades de desenvolvimento dentro da
                   função?</label
                 >
+
                 <textarea id="vaga-oportunidades" rows="3"></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-desafios"
                   >Quais os principais desafios que o novo colaborador
                   enfrentará?</label
                 >
+
                 <textarea id="vaga-desafios" rows="3"></textarea>
               </div>
+
               <div class="form-group">
                 <label for="vaga-plano-carreira"
                   >Existe plano de carreira para essa posição?</label
                 >
+
                 <textarea id="vaga-plano-carreira" rows="2"></textarea>
               </div>
             </fieldset>
@@ -300,28 +315,32 @@
               <label for="vaga-descricao">Descrição/Requisitos (Antigo):</label>
               <textarea id="vaga-descricao" rows="5"></textarea>
             </div>
+
             <fieldset class="criterios-fieldset" style="display: none">
               <legend>Fases de Seleção</legend>
             </fieldset>
           </div>
+
           <div
             id="secao-criacao-arte"
             class="modal-secao"
             style="display: none"
           >
             <fieldset>
-              <legend>Criação e Aprovação da Arte de Divulgação</legend>
+              <legend>Criação da Arte de Divulgação</legend>
 
               <div class="form-group">
                 <label for="vaga-resumo-arte"
                   >Resumo da Vaga para Divulgação (Será usado na criação da
                   arte):</label
                 >
+
                 <textarea id="vaga-resumo-arte" rows="4"></textarea>
               </div>
 
               <div class="form-group">
                 <label for="vaga-link-arte">Link da Arte (URL):</label>
+
                 <input
                   type="url"
                   id="vaga-link-arte"
@@ -333,45 +352,44 @@
                 <label for="vaga-observacao-arte"
                   >Observação sobre o Link/Arte (Opcional):</label
                 >
+
                 <textarea
                   id="vaga-observacao-arte"
                   rows="2"
                   placeholder="Ex: A arte foi adaptada do template Y."
                 ></textarea>
               </div>
+            </fieldset>
+          </div>
+          <div
+            id="secao-aprovacao-arte"
+            class="modal-secao"
+            style="display: none"
+          >
+            <fieldset>
+              <legend>Aprovação da Arte</legend>
+              <p>
+                Status atual: <strong id="status-arte-atual">Pendente</strong>
+              </p>
+              <p>
+                O Gestor de Arte revisará o link e as observações fornecidas na
+                seção "Criação da Arte de Divulgação" antes de aprovar.
+              </p>
+            </fieldset>
 
-              <div id="aprovacao-arte-container">
-                <h4>Aprovação da Arte</h4>
-                <p>
-                  Status atual: <strong id="status-arte-atual">Pendente</strong>
-                </p>
-
-                <div
-                  class="form-group"
-                  id="caixa-alteracoes-arte"
-                  style="display: none; margin-top: 15px"
-                >
-                  <label for="vaga-alteracoes-arte"
-                    >Detalhe as alterações necessárias:</label
-                  >
-                  <textarea
-                    id="vaga-alteracoes-arte"
-                    rows="3"
-                    placeholder="Ex: Mudar a cor do fundo, corrigir erro de digitação no título, etc."
-                  ></textarea>
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    id="btn-enviar-alteracoes"
-                    style="margin-top: 10px"
-                  >
-                    <i class="fas fa-paper-plane"></i> Enviar Solicitação de
-                    Alterações
-                  </button>
-                </div>
+            <fieldset>
+              <legend>Informações da Arte para Revisão</legend>
+              <div class="form-group">
+                <label>Link fornecido:</label>
+                <p id="aprovacao-link-arte-visual"></p>
+              </div>
+              <div class="form-group">
+                <label>Observações:</label>
+                <p id="aprovacao-obs-arte-visual"></p>
               </div>
             </fieldset>
           </div>
+
           <div id="secao-divulgacao" class="modal-secao" style="display: none">
             <fieldset>
               <legend>Canais de Divulgação</legend>
@@ -380,18 +398,25 @@
                 <label for="vaga-canais-divulgacao"
                   >Canais Onde a Vaga Será Divulgada:</label
                 >
+
                 <select id="vaga-canais-divulgacao" multiple>
                   <option value="linkedin">LinkedIn</option>
+
                   <option value="sites-emprego">
                     Sites de Emprego (Ex: Gupy, Vagas.com)
                   </option>
+
                   <option value="redes-sociais">
                     Redes Sociais (Ex: Instagram, Facebook)
                   </option>
+
                   <option value="whatsapp">Grupos de WhatsApp</option>
+
                   <option value="eupsico-site">Site EuPsico</option>
+
                   <option value="outros">Outros</option>
                 </select>
+
                 <small class="form-text text-muted"
                   >Selecione todos os canais de divulgação utilizados.</small
                 >
@@ -399,6 +424,7 @@
             </fieldset>
           </div>
         </div>
+
         <div class="modal-footer">
           <button
             type="button"

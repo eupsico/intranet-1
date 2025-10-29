@@ -1102,15 +1102,12 @@ async function carregarVagas(status) {
   } else if (status === "aprovacao-gestao") {
     statusArray = ["aguardando-aprovacao"];
   } else if (status === "arte-pendente") {
-    // NOVO: FASE CRIAÇÃO: arte-pendente
     statusArray = ["arte-pendente"];
   } else if (status === "aprovacao-arte") {
-    // NOVO: FASE APROVAÇÃO: aguardando-aprovacao-arte
     statusArray = ["aguardando-aprovacao-arte"];
   } else if (status === "em-divulgacao") {
     statusArray = ["em-divulgacao"];
-  } // 1. Consulta Estreita (Conteúdo da Aba Ativa)
-
+  }
   const queryConteudo = query(
     vagasCollection,
     where("status", "in", statusArray)
@@ -1157,7 +1154,7 @@ async function carregarVagas(status) {
 
     if (vaga.status === "aguardando-aprovacao") counts["aprovacao-gestao"]++;
     if (vaga.status === "arte-pendente") counts["arte-pendente"]++;
-    if (vaga.status === "aguardando-aprovacao-arte") counts["aprovacao-arte"]++; // NOVO
+    if (vaga.status === "aguardando-aprovacao-arte") counts["aprovacao-arte"]++; // NOVO: Conta vagas na fila de Aprovação da Arte
     if (vaga.status === "em-divulgacao") counts["em-divulgacao"]++;
     if (vaga.status === "cancelada" || vaga.status === "encerrada")
       counts["fechadas"]++;
@@ -1202,7 +1199,7 @@ async function carregarVagas(status) {
     let tabText = btnStatus;
     if (btnStatus === "aprovacao-gestao") tabText = "Aguardando Aprovação";
     if (btnStatus === "arte-pendente") tabText = "Criação da Arte";
-    if (btnStatus === "aprovacao-arte") tabText = "Aprovação da Arte"; // NOVO
+    if (btnStatus === "aprovacao-arte") tabText = "Aprovação da Arte"; // NOVO: Rótulo correto para a nova aba
     if (btnStatus === "em-divulgacao") tabText = "Em Divulgação";
     if (btnStatus === "fechadas") tabText = "Fechadas/Encerradas";
     if (btnStatus === "abertas") tabText = "Em Elaboração";
