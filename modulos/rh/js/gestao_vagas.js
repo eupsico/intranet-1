@@ -927,10 +927,12 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
  * NOVO: Centraliza o preenchimento de TODOS os campos da Ficha Técnica e Arte.
  */
 async function preencherFormularioVaga(vagaId, vaga) {
-  if (!vaga) return; // 1. Garante que as listas dinâmicas estejam carregadas
+  if (!vaga) return;
 
-  await carregarListasFirebase(); // 2. Define o ID da vaga nos formulários de cada modal (assumindo que os inputs hidden existem)
+  // 1. Garante que as listas dinâmicas estejam carregadas
+  await carregarListasFirebase();
 
+  // 2. Define o ID da vaga nos formulários de cada modal (assumindo que os inputs hidden existem)
   const forms = [formVaga, formCriacaoArte, formDivulgacao, modalFechadas];
   const ids = [
     "vaga-id-ficha",
@@ -942,11 +944,12 @@ async function preencherFormularioVaga(vagaId, vaga) {
   forms.forEach((form, index) => {
     if (form) {
       const hiddenInput = form.querySelector(`#${ids[index]}`);
-      if (hiddenInput) hiddenInput.value = vagaId; // Se formVaga for o formulário, setamos o atributo data
+      if (hiddenInput) hiddenInput.value = vagaId;
       if (form === formVaga) form.setAttribute("data-vaga-id", vagaId);
     }
-  }); // 3. Mapeamento dos campos da FICHA TÉCNICA (formVaga)
+  });
 
+  // 3. Mapeamento dos campos da FICHA TÉCNICA (formVaga)
   const mapValue = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.value = value || "";
@@ -977,8 +980,9 @@ async function preencherFormularioVaga(vagaId, vaga) {
   mapValue("vaga-perfil-destaque", vaga.fitCultural?.perfilDestaque);
   mapValue("vaga-oportunidades", vaga.crescimento?.oportunidades);
   mapValue("vaga-desafios", vaga.crescimento?.desafios);
-  mapValue("vaga-plano-carreira", vaga.crescimento?.planoCarreira); // 4. Mapeamento dos campos de CRIAÇÃO DE ARTE (modal-criacao-arte)
+  mapValue("vaga-plano-carreira", vaga.crescimento?.planoCarreira);
 
+  // 4. Mapeamento dos campos de CRIAÇÃO DE ARTE (modal-criacao-arte)
   const resumoArteField = document.querySelector(
     "#modal-criacao-arte #vaga-resumo-arte"
   );
@@ -995,15 +999,24 @@ async function preencherFormularioVaga(vagaId, vaga) {
 
   if (resumoArteField) {
     resumoArteField.value = vaga.arte?.resumo || gerarResumoVaga(vaga);
-  } // 5. Mapeamento dos campos de APROVAÇÃO/DIVULGAÇÃO (somente visualização)
+  }
 
+  // 5. Mapeamento dos campos de APROVAÇÃO/DIVULGAÇÃO (somente visualização)
   const linkParaRevisao = vaga.arte?.link || "N/A";
   const textoParaRevisao = vaga.arte?.observacao || "N/A";
-  const statusArte = vaga.arte?.status || "Pendente"; // Aprovação de Arte: Link Clicável e Texto
+  const statusArte = vaga.arte?.status || "Pendente";
 
+  // --- Aprovação de Arte: Link Clicável e Texto ---
   const linkClicavelAprov = document.querySelector(
     "#modal-aprovacao-arte #link-arte-clicavel"
   );
+  const textoVisualAprov = document.querySelector(
+    "#modal-aprovacao-arte #aprovacao-texto-divulgacao-visual"
+  );
+  const statusArteAtualElement = document.querySelector(
+    "#modal-aprovacao-arte #status-arte-atual"
+  );
+
   if (linkClicavelAprov) {
     linkClicavelAprov.textContent =
       linkParaRevisao !== "N/A" ? "Clique Aqui" : "N/A";
@@ -1011,40 +1024,47 @@ async function preencherFormularioVaga(vagaId, vaga) {
     linkClicavelAprov.target = "_blank";
     linkClicavelAprov.style.pointerEvents =
       linkParaRevisao !== "N/A" ? "auto" : "none";
+  }
+  if (textoVisualAprov) {
+    textoVisualAprov.textContent = textoParaRevisao;
+  }
+  // ATENÇÃO: #status-arte-atual não existe no modal-aprovacao-arte no HTML que me forneceu, mas assumo que está em algum lugar no seu código
+  if (statusArteAtualElement) {
+    statusArteAtualElement.textContent = statusArte;
+  }
 
-    document.querySelector(
-      "#modal-aprovacao-arte #aprovacao-texto-divulgacao-visual"
-    ).textContent = textoParaRevisao;
-    document.querySelector(
-      "#modal-aprovacao-arte #status-arte-atual"
-    ).textContent = statusArte;
-  } // Divulgação: Link Clicável e Canais
-
+  // --- Divulgação: Link Clicável e Canais ---
   const linkClicavelDivulg = document.querySelector(
     "#modal-divulgacao #divulgacao-link-clicavel"
   );
+  const textoAprovadoDivulg = document.querySelector(
+    "#modal-divulgacao #divulgacao-texto-aprovado"
+  );
+  const periodoDivulgacaoInput = document.querySelector(
+    "#vaga-periodo-divulgacao"
+  );
+  const selectCanais = document.querySelector(
+    "#modal-divulgacao #vaga-canais-divulgacao"
+  );
+
   if (linkClicavelDivulg) {
     linkClicavelDivulg.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
-    document.querySelector(
-      "#modal-divulgacao #divulgacao-texto-aprovado"
-    ).textContent = textoParaRevisao; // Canais de Divulgação
+  }
+  if (textoAprovadoDivulg) {
+    textoAprovadoDivulg.textContent = textoParaRevisao;
+  }
+  if (periodoDivulgacaoInput) {
+    periodoDivulgacaoInput.value = vaga.periodoDivulgacao || "";
+  }
 
-    const selectCanais = document.querySelector(
-      "#modal-divulgacao #vaga-canais-divulgacao"
-    );
+  if (selectCanais) {
     const canaisSalvos = vaga.canaisDivulgacao || [];
-    if (selectCanais) {
-      // Remove seleções anteriores
-      Array.from(selectCanais.options).forEach(
-        (option) => (option.selected = false)
-      ); // Aplica as novas seleções
-      Array.from(selectCanais.options).forEach((option) => {
-        option.selected = canaisSalvos.includes(option.value);
-      });
-    } // Período de Divulgação
-
-    document.querySelector("#vaga-periodo-divulgacao").value =
-      vaga.periodoDivulgacao || "";
+    Array.from(selectCanais.options).forEach(
+      (option) => (option.selected = false)
+    );
+    Array.from(selectCanais.options).forEach((option) => {
+      option.selected = canaisSalvos.includes(option.value);
+    });
   }
 }
 
