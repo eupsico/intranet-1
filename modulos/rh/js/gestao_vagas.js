@@ -133,30 +133,25 @@ function openNewVagaModal() {
  * CORRIGIDO: Adiciona a injeção dinâmica dos botões de Aprovação/Solicitação/Cancelamento.
  */
 function openFichaTecnicaModal(vagaId, statusAtual) {
-  // 1. Limpeza de Ações Dinâmicas Antigas (se houver)
+  // 1. Lógica de Limpeza e Botões Estáticos
   const footer = modalFicha.querySelector(".modal-footer");
+  const fecharModalBtn = modalFicha.querySelector(".fechar-modal");
+  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
+
   if (footer) {
     footer
       .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
       .forEach((el) => el.remove());
   }
 
-  // Apenas pode editar se o status for "em-criação" (Nova Vaga ou Rascunho rejeitado)
   const canEdit = statusAtual === "em-criação";
   const isAprovacao = statusAtual === "aguardando-aprovacao";
 
-  // 2. Desabilita/Habilita todos os campos
-  const inputsAndSelects = modalFicha.querySelectorAll(
-    "input, select, textarea"
-  );
-  inputsAndSelects.forEach((el) => {
-    el.disabled = !canEdit;
-  });
-
-  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
-  const fecharModalBtn = modalFicha.querySelector(".fechar-modal");
-
-  // 3. Configura botões de Salvar/Editar
+  // Ocultar/Remover botão "Fechar" do rodapé e configurar "Salvar"
+  if (fecharModalBtn) {
+    // REQUISITO: Remover o botão Fechar (deve haver apenas o 'X' no header)
+    fecharModalBtn.style.display = "none";
+  }
   if (btnSalvar) {
     btnSalvar.style.display = canEdit ? "inline-block" : "none";
     btnSalvar.textContent = vagaId
@@ -164,11 +159,22 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       : "Salvar e Enviar para Aprovação";
   }
 
-  // 4. INJEÇÃO DOS BOTÕES DE APROVAÇÃO/SOLICITAÇÃO
+  // Desabilita/Habilita todos os campos (mantido)
+  const inputsAndSelects = modalFicha.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsAndSelects.forEach((el) => {
+    el.disabled = !canEdit;
+  });
+
+  // 2. INJEÇÃO DOS BOTÕES DE APROVAÇÃO/SOLICITAÇÃO (NOVO POSICIONAMENTO)
   if (isAprovacao) {
-    // Injeta os botões ANTES do botão "Fechar" no rodapé
+    // Oculta o botão Salvar
+    if (btnSalvar) btnSalvar.style.display = "none";
+
+    // Injeta os botões de ação do fluxo de trabalho
     const actionHtml = `
-            <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-right: auto;">
+            <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
                 <button type="button" class="btn btn-danger" id="btn-cancelar-vaga-ficha">
                     <i class="fas fa-ban"></i> Cancelar Vaga
                 </button>
@@ -180,11 +186,20 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
                 </button>
             </div>`;
 
-    if (fecharModalBtn) {
-      fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
+    // Injeta o wrapper DENTRO do modal-footer
+    if (footer) {
+      // Remove o conteúdo do footer que não for o 'X' do header
+      const fecharModalFooter = footer.querySelector(".fechar-modal");
+      if (fecharModalFooter) {
+        // Injeta os botões ANTES do botão fechar (se ele estiver lá)
+        fecharModalBtn.insertAdjacentHTML("beforebegin", actionHtml);
+      } else {
+        // Injeta os botões no final do footer se o Fechar não for encontrado
+        footer.insertAdjacentHTML("beforeend", actionHtml);
+      }
     }
 
-    // 5. Configura Eventos dos botões injetados
+    // 3. Configura Eventos dos botões injetados
     const btnAprovar = modalFicha.querySelector("#btn-aprovar-ficha");
     const btnSolicitar = modalFicha.querySelector(
       "#btn-solicitar-alteracoes-ficha"
@@ -196,12 +211,10 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
     if (btnSolicitar)
       btnSolicitar.onclick = () => modalSolicitarAlteracoesFicha(vagaId);
     if (btnCancelar)
-      btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId); // Usa rejeitar como fluxo de cancelamento/retorno
+      btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId);
   }
 
-  // O botão "Fechar" estático do HTML agora é o único visível em Aprovação, ou o último em Elaboração.
-
-  // 6. Exibe o modal
+  // 4. Exibe o modal
   if (modalFicha) modalFicha.style.display = "flex";
 }
 /**
