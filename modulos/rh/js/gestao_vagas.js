@@ -128,18 +128,12 @@ function openNewVagaModal() {
   // Abre o modal principal (Ficha Técnica) forçando o status de edição
   openFichaTecnicaModal(null, "em-criação");
 }
-
-/**
- * NOVO: Abre o modal da Ficha Técnica (Em Criação e Aguardando Aprovação).
- * CORRIGIDO: Usa modalFicha em vez de modalVaga, resolvendo o ReferenceError.
- */
 function openFichaTecnicaModal(vagaId, statusAtual) {
   // Só pode editar se o status for "em-criação" (Nova Vaga ou Rascunho rejeitado)
   const canEdit = statusAtual === "em-criação";
 
   // 1. Desabilita/Habilita todos os campos
   const inputsAndSelects = modalFicha.querySelectorAll(
-    // <-- CORREÇÃO: Usando modalFicha
     "input, select, textarea"
   );
   inputsAndSelects.forEach((el) => {
@@ -149,7 +143,7 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
 
   // 2. Configura botões de Salvar/Editar
   const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
-  // const btnEnviar = modalFicha.querySelector("#btn-enviar-aprovacao"); // Comentado se não existir no HTML
+  // const btnEnviar = modalFicha.querySelector("#btn-enviar-aprovacao"); // (Comentado ou Removido se não existir)
 
   // Se não estiver em Aprovação Vaga (aguardando-aprovacao), remove botões dinâmicos
   const dynamicWrapper = modalFicha.querySelector(
@@ -164,12 +158,8 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       : "Salvar e Enviar para Aprovação";
   }
 
-  // if (btnEnviar) {
-  //     btnEnviar.style.display = 'none';
-  // }
-
   // 3. Exibe o modal
-  if (modalFicha) modalFicha.style.display = "flex"; // <-- CORREÇÃO: Usando modalFicha
+  if (modalFicha) modalFicha.style.display = "flex";
 }
 /**
  * NOVO: Modal para Solicitar Alterações na Ficha Técnica (Aprovação Gestão).
@@ -938,47 +928,6 @@ async function handleReaproveitarVaga(vagaId) {
   }
 }
 
-/**
- * NOVO: Abre o modal da Ficha Técnica (Em Criação e Aguardando Aprovação).
- * CORREÇÃO: Foi a única definição mantida, removendo a duplicata.
- */
-function openFichaTecnicaModal(vagaId, statusAtual) {
-  // Só pode editar se o status for "em-criação" (Nova Vaga ou Rascunho rejeitado)
-  const canEdit = statusAtual === "em-criação";
-
-  // 1. Desabilita/Habilita todos os campos
-  const inputsAndSelects = modalVaga.querySelectorAll(
-    "input, select, textarea"
-  );
-  inputsAndSelects.forEach((el) => {
-    // Se canEdit for TRUE, el.disabled será FALSE (habilitado)
-    el.disabled = !canEdit;
-  });
-
-  // 2. Configura botões de Salvar/Editar
-  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
-  const btnEnviar = modalFicha.querySelector("#btn-enviar-aprovacao"); // Assumindo ID fictício
-
-  // Se não estiver em Aprovação Vaga (aguardando-aprovacao), remove botões dinâmicos
-  const dynamicWrapper = modalFicha.querySelector(
-    ".acoes-aprovacao-ficha-wrapper"
-  );
-  if (dynamicWrapper) dynamicWrapper.remove();
-
-  if (btnSalvar) {
-    btnSalvar.style.display = canEdit ? "inline-block" : "none";
-    btnSalvar.textContent = vagaId
-      ? "Salvar Alterações"
-      : "Salvar e Enviar para Aprovação";
-  }
-
-  if (btnEnviar) {
-    btnEnviar.style.display = "none"; // Este botão é injetado dinamicamente no modo Aprovação Vaga, não deve estar no HTML estático.
-  }
-
-  // 3. Exibe o modal
-  if (modalFicha) modalFicha.style.display = "flex";
-}
 /**
  * NOVO: Centraliza o preenchimento de TODOS os campos da Ficha Técnica e Arte.
  */
