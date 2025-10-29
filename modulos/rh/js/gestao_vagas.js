@@ -353,42 +353,6 @@ async function handleSalvarArteLink(vagaId, link, observacao) {
 }
 
 /**
- * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
- */
-async function handleAprovarFichaTecnica(vagaId) {
-  if (
-    !vagaId ||
-    !confirm(
-      "Confirma a APROVAÇÃO desta Ficha Técnica de Vaga? Isso liberará a próxima etapa de Criação da Arte."
-    )
-  )
-    return;
-
-  try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    await updateDoc(vagaRef, {
-      status: "arte-pendente", // Próxima fase: Criação da Arte
-      dataAprovacaoFicha: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: "Ficha Técnica APROVADA. Próxima etapa: Criação da Arte.",
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-    });
-
-    window.showToast(
-      "Ficha Técnica aprovada! Próximo passo é a Criação da Arte.",
-      "success"
-    );
-    document.getElementById("modal-vaga").style.display = "none";
-    carregarVagas("arte-pendente");
-  } catch (error) {
-    console.error("Erro ao aprovar ficha técnica:", error);
-    window.showToast("Ocorreu um erro ao aprovar a ficha técnica.", "error");
-  }
-}
-
-/**
  * NOVO: Abre um modal para solicitar a justificativa da rejeição.
  * @param {string} vagaId
  */
