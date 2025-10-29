@@ -655,13 +655,8 @@ async function handleAprovarFichaTecnica(vagaId) {
 }
 
 /**
- * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Em Criação).
- * @param {string} vagaId
- * @param {string} justificativa
- */
-/**
  * NOVO: Lida com a Rejeição da Ficha Técnica pelo Gestor (volta para Correção Pendente).
- * MODIFICADO: Muda o status de retorno para 'correcao-pendente'.
+ * MODIFICADO: Define o status e o target da correção como "FICHA".
  * @param {string} vagaId
  * @param {string} justificativa
  */
@@ -671,7 +666,8 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     await updateDoc(vagaRef, {
-      status: "correcao-pendente", // NOVO STATUS: Volta para a fila de correção
+      status: "correcao-pendente", // NOVO STATUS
+      correcaoTarget: "FICHA", // NOVO: Define que a correção é na FICHA
       historico: arrayUnion({
         data: new Date(),
         acao: `Ficha Técnica REJEITADA. Motivo: ${justificativa.substring(
@@ -681,9 +677,9 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
         justificativa: justificativa,
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
       }),
-      // Garante que o campo alteracoesPendentes da arte esteja limpo se a ficha for rejeitada
-      // (a rejeição da ficha anula o ciclo de arte atual)
+      // Limpa os campos de controle de arte para evitar confusão de target
       "arte.alteracoesPendentes": null,
+      "arte.status": "Pendente",
     });
 
     window.showToast(
@@ -779,6 +775,10 @@ async function handleAprovarArte() {
     window.showToast("Ocorreu um erro ao aprovar a arte.", "error");
   }
 }
+/**
+ * NOVO: Lida com a Solicitação de Alterações na Arte (volta para Correção Pendente).
+ * MODIFICADO: Define o status e o target da correção como "ARTE".
+ */
 async function handleSolicitarAlteracoes(vagaId, alteracoes) {
   if (!vagaId || !alteracoes) {
     window.showToast(
@@ -796,13 +796,14 @@ async function handleSolicitarAlteracoes(vagaId, alteracoes) {
     if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
 
     await updateDoc(vagaRef, {
-      status: "correcao-pendente", // NOVO STATUS: Volta para a fila de correção
+      status: "correcao-pendente", // NOVO STATUS
+      correcaoTarget: "ARTE", // NOVO: Define que a correção é na ARTE
       arte: {
         ...docSnap.data().arte,
         status: "Alteração Solicitada",
         alteracoesPendentes: alteracoes, // Salva o motivo no campo da arte
       },
-      // Limpa o campo justificativa da ficha, pois a correção é na arte
+      // Limpa os campos de controle de ficha para evitar confusão de target
       justificativa: null,
       historico: arrayUnion({
         data: new Date(),
@@ -822,7 +823,6 @@ async function handleSolicitarAlteracoes(vagaId, alteracoes) {
     window.showToast("Ocorreu um erro ao solicitar alterações.", "error");
   }
 }
-
 /**
  * NOVO: Lida com o Encerramento da Vaga (pós-recrutamento ou por outro motivo).
  */
@@ -1269,7 +1269,8 @@ function openVisualizacaoFechadaModal(vagaId, vaga) {
 
 /**
  * Função para buscar e exibir os detalhes de uma vaga para edição.
- * ATUA COMO ROTEAROR: Carrega os dados e abre o modal correto baseado no status.
+ * ATUA COMO ROTEAROR: Carrega os dados e abre o modal correto baseado no status,
+ * usando 'correcaoTarget' para diferenciar correção de Ficha vs. Arte.
  */
 async function handleDetalhesVaga(vagaId) {
   if (!vagaId) return;
@@ -1286,7 +1287,7 @@ async function handleDetalhesVaga(vagaId) {
     const vaga = docSnap.data();
     const statusAtual = vaga.status || "em-criação";
 
-    // 1. Preenche TODOS os campos (necessário para UI, mas não para o histórico)
+    // 1. Preenche TODOS os campos (centralizado)
     await preencherFormularioVaga(vagaId, vaga);
 
     // 2. ROTEA PARA O MODAL CORRETO
@@ -1294,16 +1295,11 @@ async function handleDetalhesVaga(vagaId) {
       .querySelectorAll(".modal-overlay")
       .forEach((modal) => (modal.style.display = "none"));
 
-    // CORREÇÃO: Passar o objeto VAGA completo para a função de abertura
     if (
       statusAtual === "em-criação" ||
-      statusAtual === "aguardando-aprovacao" ||
-      statusAtual === "correcao-pendente"
+      statusAtual === "aguardando-aprovacao"
     ) {
-      // Se for correção ou edição de ficha, sempre abrimos no modo edição
-      const targetStatus =
-        statusAtual === "correcao-pendente" ? "correcao-pendente" : statusAtual;
-      openFichaTecnicaModal(vagaId, targetStatus, vaga); // <-- PASSAMOS A VAGA COMPLETA
+      openFichaTecnicaModal(vagaId, statusAtual, vaga);
     } else if (statusAtual === "arte-pendente") {
       openCriacaoArteModal(vagaId, vaga);
     } else if (statusAtual === "aguardando-aprovacao-arte") {
@@ -1312,13 +1308,22 @@ async function handleDetalhesVaga(vagaId) {
       openDivulgacaoModal(vagaId, vaga);
     } else if (statusAtual === "cancelada" || statusAtual === "encerrada") {
       openVisualizacaoFechadaModal(vagaId, vaga);
+    } else if (statusAtual === "correcao-pendente") {
+      const correcaoTarget = vaga.correcaoTarget;
+
+      if (correcaoTarget === "ARTE") {
+        // Se o target for ARTE, abre o modal de criação/edição de arte (openCriacaoArteModal lida com o feedback)
+        openCriacaoArteModal(vagaId, vaga);
+      } else {
+        // Se o target for FICHA (ou indefinido/nulo), abre o modal da Ficha Técnica (openFichaTecnicaModal lida com o feedback)
+        openFichaTecnicaModal(vagaId, "correcao-pendente", vaga);
+      }
     }
   } catch (error) {
     console.error("Erro ao carregar detalhes da vaga:", error);
     window.showToast("Erro ao carregar os dados para edição.", "error");
   }
 }
-
 /**
  * Carrega e exibe as vagas com base no status.
  */
