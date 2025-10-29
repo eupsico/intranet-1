@@ -1,5 +1,6 @@
 <div class="painel-gestao-vagas">
   <h2 class="painel-titulo">Gestão de Vagas</h2>
+
   <div class="description-box">
     <p>
       Este painel permite gerenciar o ciclo de vida das vagas, desde a criação
@@ -8,11 +9,13 @@
       novo processo seletivo.
     </p>
   </div>
+
   <div class="acoes-header">
     <button id="btn-nova-vaga" class="btn btn-primary">
       <i class="fas fa-plus"></i> Criar Ficha Técnica
     </button>
   </div>
+
   <div class="tabs-container status-tabs">
     <button class="tab-link active" data-status="abertas">
       Em Elaboração (0)
@@ -33,15 +36,21 @@
       Fechadas/Encerradas (0)
     </button>
   </div>
+
   <div id="lista-vagas" class="tabela-dados">
     <p id="mensagem-vagas">Nenhuma vaga encontrada para este status.</p>
   </div>
+
   <div id="modal-vaga" class="modal-overlay">
     <div class="modal-content">
       <form id="form-vaga">
         <div class="modal-header">
-          <h3>Detalhes da Vaga</h3>
-          <button type="button" class="close-modal-btn fechar-modal">
+          <h3 id="ficha-title">Detalhes da Vaga</h3>
+          <button
+            type="button"
+            class="close-modal-btn fechar-modal"
+            data-modal="modal-vaga"
+          >
             &times;
           </button>
         </div>
@@ -49,7 +58,6 @@
           <div id="secao-ficha-tecnica" class="modal-secao active">
             <fieldset>
               <legend>Sobre o Cargo</legend>
-
               <div class="form-group">
                 <label for="vaga-nome">Título da Vaga:</label>
                 <input type="text" id="vaga-nome" required />
@@ -62,8 +70,8 @@
               </div>
               <div class="form-group">
                 <label for="vaga-tipo-recrutamento"
-                  >Tipo de Recrutamento:
-                </label>
+                  >Tipo de Recrutamento:</label
+                >
                 <select id="vaga-tipo-recrutamento" required>
                   <option value="">Selecione o Tipo</option>
                   <option value="interno">Interno</option>
@@ -84,8 +92,8 @@
               </div>
               <div class="form-group">
                 <label for="vaga-modalidade-trabalho"
-                  >Modalidade de Trabalho:
-                </label>
+                  >Modalidade de Trabalho:</label
+                >
                 <select id="vaga-modalidade-trabalho" required>
                   <option value="">Selecione a Modalidade</option>
                   <option value="presencial">Presencial</option>
@@ -95,8 +103,9 @@
               </div>
               <div class="form-group">
                 <label for="vaga-responsabilidades"
-                  >Quais são as principais responsabilidades e atividades?
-                </label>
+                  >Quais são as principais responsabilidades e
+                  atividades?</label
+                >
                 <textarea
                   id="vaga-responsabilidades"
                   rows="3"
@@ -105,23 +114,25 @@
               </div>
               <div class="form-group">
                 <label for="vaga-resultados"
-                  >Quais resultados ou entregas são esperados dessa função?
-                </label>
+                  >Quais resultados ou entregas são esperados dessa
+                  função?</label
+                >
                 <textarea id="vaga-resultados" rows="3"></textarea>
               </div>
               <div class="form-group">
                 <label for="vaga-nova-substituicao"
-                  >Essa vaga é nova ou está substituindo alguém?
-                </label>
+                  >Essa vaga é nova ou está substituindo alguém?</label
+                >
                 <textarea id="vaga-nova-substituicao" rows="2"></textarea>
               </div>
             </fieldset>
+
             <fieldset>
               <legend>Remuneração e Fechamento</legend>
               <div class="form-group">
                 <label for="vaga-valor-salario"
-                  >Valor do Salário (ou Faixa):
-                </label>
+                  >Valor do Salário (ou Faixa):</label
+                >
                 <input
                   type="text"
                   id="vaga-valor-salario"
@@ -130,289 +141,154 @@
               </div>
               <div class="form-group">
                 <label for="vaga-data-fechamento"
-                  >Data de Fechamento da Vaga:
-                </label>
+                  >Data de Fechamento da Vaga:</label
+                >
                 <input type="date" id="vaga-data-fechamento" />
               </div>
-            </fieldset>
-            <fieldset>
-              <legend>Formação e Qualificações</legend>
-              <div class="form-group">
-                <label for="vaga-formacao-minima"
-                  >Qual é a formação mínima exigida?
-                </label>
-                <textarea
-                  id="vaga-formacao-minima"
-                  rows="3"
-                  placeholder="Ex: Psicologia, Psiquiatria, Terapia Ocupacional, etc."
-                >
-                </textarea>
-              </div>
-              <div class="form-group">
-                <label for="vaga-conselho"
-                  >O profissional precisa estar registrado em algum conselho
-                  (ex: CRP, CRM)?
-                </label>
-                <textarea
-                  id="vaga-conselho"
-                  rows="2"
-                  placeholder="Ex: Sim, CRP ativo / Não é exigido."
-                ></textarea>
-              </div>
-              <div class="form-group">
-                <label for="vaga-especializacoes"
-                  >Há especializações desejadas?
-                </label>
-
-                <textarea
-                  id="vaga-especializacoes"
-                  rows="3"
-                  placeholder="Ex: TCC, Psicanálise, Neuropsicologia."
-                ></textarea>
-              </div>
+              <fieldset>
+                <legend>Formação e Qualificações</legend>
+                <div class="form-group">
+                  <label for="vaga-formacao-minima"
+                    >Qual é a formação mínima exigida?</label
+                  >
+                  <textarea
+                    id="vaga-formacao-minima"
+                    rows="3"
+                    placeholder="Ex: Psicologia, Psiquiatria, Terapia Ocupacional, etc."
+                  ></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="vaga-conselho"
+                    >O profissional precisa estar registrado em algum conselho
+                    (ex: CRP, CRM)?</label
+                  >
+                  <textarea
+                    id="vaga-conselho"
+                    rows="2"
+                    placeholder="Ex: Sim, CRP ativo / Não é exigido."
+                  ></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="vaga-especializacoes"
+                    >Há especializações desejadas?</label
+                  >
+                  <textarea
+                    id="vaga-especializacoes"
+                    rows="3"
+                    placeholder="Ex: TCC, Psicanálise, Neuropsicologia."
+                  ></textarea>
+                </div>
+              </fieldset>
             </fieldset>
 
             <fieldset>
               <legend>Competências e Habilidades</legend>
-
               <div class="form-group">
                 <label for="vaga-comp-tecnicas"
                   >Quais competências técnicas são indispensáveis?</label
                 >
-
                 <textarea
                   id="vaga-comp-tecnicas"
                   rows="3"
                   placeholder="Ex: Excel avançado, ferramentas de gestão, idiomas."
                 ></textarea>
               </div>
-
               <div class="form-group">
-                <label for="vaga-comp-comportamentais">
-                  Quais competências comportamentais são desejadas?
-                </label>
-
+                <label for="vaga-comp-comportamentais"
+                  >Quais competências comportamentais são desejadas?</label
+                >
                 <textarea
                   id="vaga-comp-comportamentais"
                   rows="3"
                   placeholder="Ex: Liderança, Comunicação, Resiliência, Proatividade."
                 ></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-certificacoes"
-                  >Há certificações ou formações específicas exigidas?
-                </label>
-
+                  >Há certificações ou formações específicas exigidas?</label
+                >
                 <textarea id="vaga-certificacoes" rows="2"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Experiência e Atuação</legend>
-
               <div class="form-group">
                 <label for="vaga-nivel-experiencia"
-                  >Qual o nível de experiência necessário?
-                </label>
-
+                  >Qual o nível de experiência necessário?</label
+                >
                 <select id="vaga-nivel-experiencia">
                   <option value="">Selecione o Nível</option>
-
                   <option value="junior">Júnior</option>
-
                   <option value="pleno">Pleno</option>
-
                   <option value="senior">Sênior</option>
-
                   <option value="especialista">Especialista</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label for="vaga-contextos-similares"
-                  >O profissional já atuou em contextos similares?
-                </label>
-
+                  >O profissional já atuou em contextos similares?</label
+                >
                 <textarea
                   id="vaga-contextos-similares"
                   rows="3"
                   placeholder="Ex: Clínica, hospital, escola, empresa."
                 ></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-atuacao-grupos"
                   >Está habituado a trabalhar com grupos, famílias ou
                   atendimento individual?</label
                 >
-
                 <textarea id="vaga-atuacao-grupos" rows="3"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Fit Cultural e Valores</legend>
-
               <div class="form-group">
                 <label for="vaga-fit-valores"
                   >Quais valores da EuPsico são importantes que o candidato
                   compartilhe?</label
                 >
-
                 <textarea id="vaga-fit-valores" rows="3"></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-estilo-equipe"
                   >Como é o estilo de trabalho da equipe (colaborativo,
                   autônomo, ágil)?</label
                 >
-
                 <textarea id="vaga-estilo-equipe" rows="2"></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-perfil-destaque"
                   >Que tipo de perfil costuma se destacar na empresa?</label
                 >
-
                 <textarea id="vaga-perfil-destaque" rows="2"></textarea>
               </div>
             </fieldset>
 
             <fieldset>
               <legend>Crescimento e Desafios</legend>
-
               <div class="form-group">
                 <label for="vaga-oportunidades"
                   >Quais são as oportunidades de desenvolvimento dentro da
                   função?</label
                 >
-
                 <textarea id="vaga-oportunidades" rows="3"></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-desafios"
                   >Quais os principais desafios que o novo colaborador
                   enfrentará?</label
                 >
-
                 <textarea id="vaga-desafios" rows="3"></textarea>
               </div>
-
               <div class="form-group">
                 <label for="vaga-plano-carreira"
                   >Existe plano de carreira para essa posição?</label
                 >
-
                 <textarea id="vaga-plano-carreira" rows="2"></textarea>
-              </div>
-            </fieldset>
-
-            <div class="form-group" style="display: none">
-              <label for="vaga-descricao">Descrição/Requisitos (Antigo):</label>
-              <textarea id="vaga-descricao" rows="5"></textarea>
-            </div>
-
-            <fieldset class="criterios-fieldset" style="display: none">
-              <legend>Fases de Seleção</legend>
-            </fieldset>
-          </div>
-
-          <div
-            id="secao-criacao-arte"
-            class="modal-secao"
-            style="display: none"
-          >
-            <fieldset>
-              <legend>Criação da Arte de Divulgação</legend>
-
-              <div class="form-group">
-                <label for="vaga-resumo-arte"
-                  >Resumo da Vaga para Divulgação (Será usado na criação da
-                  arte):</label
-                >
-
-                <textarea id="vaga-resumo-arte" rows="4"></textarea>
-              </div>
-
-              <div class="form-group">
-                <label for="vaga-link-arte">Link da Arte (URL):</label>
-
-                <input
-                  type="url"
-                  id="vaga-link-arte"
-                  placeholder="Insira o link para a imagem ou post da arte"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="vaga-observacao-arte"
-                  >Observação sobre o Link/Arte (Opcional):</label
-                >
-
-                <textarea
-                  id="vaga-observacao-arte"
-                  rows="2"
-                  placeholder="Ex: A arte foi adaptada do template Y."
-                ></textarea>
-              </div>
-            </fieldset>
-          </div>
-          <div
-            id="secao-aprovacao-arte"
-            class="modal-secao"
-            style="display: none"
-          >
-            <fieldset>
-              <legend>Aprovação da Arte</legend>
-            </fieldset>
-            <fieldset>
-              <legend>Informações da Arte para Revisão</legend>
-              <div class="form-group">
-                <label>Link da Arte:</label>
-                <p id="aprovacao-link-arte-visual">
-                  <a href="#" target="_blank" id="link-arte-clicavel">N/A</a>
-                </p>
-              </div>
-              <div class="form-group">
-                <label>Observações:</label>
-                <p id="aprovacao-obs-arte-visual">Nenhuma observação.</p>
-              </div>
-            </fieldset>
-          </div>
-          <div id="secao-divulgacao" class="modal-secao" style="display: none">
-            <fieldset>
-              <legend>Canais de Divulgação</legend>
-
-              <div class="form-group">
-                <label for="vaga-canais-divulgacao"
-                  >Canais Onde a Vaga Será Divulgada:</label
-                >
-
-                <select id="vaga-canais-divulgacao" multiple>
-                  <option value="linkedin">LinkedIn</option>
-
-                  <option value="sites-emprego">
-                    Sites de Emprego (Ex: Gupy, Vagas.com)
-                  </option>
-
-                  <option value="redes-sociais">
-                    Redes Sociais (Ex: Instagram, Facebook)
-                  </option>
-
-                  <option value="whatsapp">Grupos de WhatsApp</option>
-
-                  <option value="eupsico-site">Site EuPsico</option>
-
-                  <option value="outros">Outros</option>
-                </select>
-
-                <small class="form-text text-muted"
-                  >Selecione todos os canais de divulgação utilizados.</small
-                >
               </div>
             </fieldset>
           </div>
@@ -421,31 +297,303 @@
         <div class="modal-footer">
           <button
             type="button"
-            class="btn btn-danger"
-            id="btn-cancelar-vaga"
-            style="display: none"
+            class="btn btn-secondary fechar-modal"
+            data-modal="modal-vaga"
           >
-            <i class="fas fa-ban"></i> Cancelar Vaga
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-dark"
-            id="btn-encerrar-vaga"
-            style="display: none"
-          >
-            <i class="fas fa-times"></i> Encerrar Vaga
-          </button>
-
-          <button type="button" class="btn btn-secondary fechar-modal">
             Fechar
           </button>
-
           <button type="submit" class="btn btn-success" id="btn-salvar-vaga">
             <i class="fas fa-save"></i> Salvar e Próxima Etapa
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="modal-criacao-arte" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <form id="form-criacao-arte">
+        <div class="modal-header">
+          <h3>Criação da Arte de Divulgação</h3>
+          <button
+            type="button"
+            class="close-modal-btn fechar-modal"
+            data-modal="modal-criacao-arte"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="vaga-id-arte-criacao" />
+          <fieldset>
+            <legend>Dados da Arte</legend>
+
+            <div class="form-group">
+              <label for="vaga-resumo-arte"
+                >Resumo da Vaga para Divulgação (Será usado na criação da
+                arte):</label
+              >
+              <textarea id="vaga-resumo-arte" rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="vaga-link-arte">Link da Arte (URL):</label>
+              <input
+                type="url"
+                id="vaga-link-arte"
+                required
+                placeholder="Insira o link para a imagem ou post da arte"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="vaga-texto-divulgacao">Texto de Divulgação:</label>
+              <textarea
+                id="vaga-texto-divulgacao"
+                rows="4"
+                required
+                placeholder="O texto completo que acompanhará a arte."
+              ></textarea>
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary fechar-modal"
+            data-modal="modal-criacao-arte"
+          >
+            Fechar
+          </button>
+          <button
+            type="button"
+            class="btn btn-success"
+            id="btn-enviar-aprovacao-arte"
+          >
+            <i class="fas fa-paper-plane"></i> Enviar para Aprovação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-aprovacao-arte" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Aprovação da Arte de Divulgação</h3>
+        <button
+          type="button"
+          class="close-modal-btn fechar-modal"
+          data-modal="modal-aprovacao-arte"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="vaga-id-arte-aprovacao" />
+        <fieldset>
+          <legend>Resumo da Vaga para Divulgação</legend>
+          <div id="resumo-arte-aprovacao-visual">
+            <p>
+              <strong>Salário:</strong> <span id="aprovacao-salario"></span>
+            </p>
+            <p>
+              <strong>Regime:</strong> <span id="aprovacao-regime"></span> |
+              <strong>Modalidade:</strong>
+              <span id="aprovacao-modalidade"></span>
+            </p>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Informações da Arte para Revisão</legend>
+          <div class="form-group">
+            <label>Link da Arte:</label>
+            <p id="aprovacao-link-arte-visual">
+              <a href="#" target="_blank" id="link-arte-clicavel"
+                >Clique Aqui</a
+              >
+            </p>
+          </div>
+          <div class="form-group">
+            <label>Texto de Divulgação:</label>
+            <p id="aprovacao-texto-divulgacao-visual">N/A</p>
+          </div>
+        </fieldset>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary fechar-modal"
+          data-modal="modal-aprovacao-arte"
+        >
+          Fechar
+        </button>
+        <button
+          type="button"
+          class="btn btn-warning"
+          id="btn-solicitar-alteracoes-arte"
+        >
+          <i class="fas fa-edit"></i> Solicitar Alterações
+        </button>
+        <button
+          type="button"
+          class="btn btn-success"
+          id="btn-aprovar-arte-final"
+        >
+          <i class="fas fa-check"></i> Aprovar Arte
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-divulgacao" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <form id="form-divulgacao">
+        <div class="modal-header">
+          <h3>Gerenciar Divulgação</h3>
+          <button
+            type="button"
+            class="close-modal-btn fechar-modal"
+            data-modal="modal-divulgacao"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="vaga-id-divulgacao" />
+
+          <fieldset>
+            <legend>Arte Aprovada (Revisão)</legend>
+            <div class="form-group">
+              <label>Link da Arte:</label>
+              <p id="divulgacao-link-arte">
+                <a href="#" target="_blank" id="divulgacao-link-clicavel"
+                  >Clique Aqui</a
+                >
+              </p>
+            </div>
+            <div class="form-group">
+              <label>Texto de Divulgação Aprovado:</label>
+              <p id="divulgacao-texto-aprovado">N/A</p>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Canais e Período de Divulgação</legend>
+            <div class="form-group">
+              <label for="vaga-canais-divulgacao"
+                >Canais Onde a Vaga Foi Divulgada:</label
+              >
+              <select id="vaga-canais-divulgacao" multiple>
+                <option value="linkedin">LinkedIn</option>
+                <option value="sites-emprego">
+                  Sites de Emprego (Ex: Gupy, Vagas.com)
+                </option>
+                <option value="redes-sociais">
+                  Redes Sociais (Ex: Instagram, Facebook)
+                </option>
+                <option value="whatsapp">Grupos de WhatsApp</option>
+                <option value="eupsico-site">Site EuPsico</option>
+                <option value="outros">Outros</option>
+              </select>
+              <small class="form-text text-muted"
+                >Selecione todos os canais utilizados.</small
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="vaga-periodo-divulgacao"
+                >Período de Divulgação:</label
+              >
+              <input
+                type="text"
+                id="vaga-periodo-divulgacao"
+                placeholder="Ex: De 01/10/2025 até 30/11/2025"
+              />
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary fechar-modal"
+            data-modal="modal-divulgacao"
+          >
+            Fechar
+          </button>
+          <button
+            type="button"
+            class="btn btn-success"
+            id="btn-salvar-divulgacao"
+          >
+            <i class="fas fa-save"></i> Salvar Divulgação
+          </button>
+          <button type="button" class="btn btn-dark" id="btn-encerrar-vaga">
+            <i class="fas fa-times"></i> Encerrar Vaga
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-fechadas" class="modal-overlay" style="display: none">
+    <div class="modal-content modal-content-lg">
+      <div class="modal-header">
+        <h3 id="fechadas-title">Vaga Encerrada/Cancelada</h3>
+        <button
+          type="button"
+          class="close-modal-btn fechar-modal"
+          data-modal="modal-fechadas"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="modal-body modal-scrollable-content">
+        <input type="hidden" id="vaga-id-fechadas" />
+
+        <fieldset>
+          <legend>Ficha Técnica Completa</legend>
+          <div id="visualizacao-ficha-completa"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Detalhes da Divulgação</legend>
+          <div id="visualizacao-arte-completa"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Histórico e Alterações</legend>
+          <div id="visualizacao-historico">
+            <p>
+              Detalhes de aprovações, rejeições e cancelamento/encerramento.
+            </p>
+          </div>
+        </fieldset>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-danger"
+          id="btn-cancelar-vaga-fechada"
+        >
+          <i class="fas fa-ban"></i> Cancelar Vaga
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary fechar-modal"
+          data-modal="modal-fechadas"
+        >
+          Fechar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          id="btn-reaproveitar-vaga"
+        >
+          <i class="fas fa-copy"></i> Reaproveitar Vaga
+        </button>
+      </div>
     </div>
   </div>
 </div>
