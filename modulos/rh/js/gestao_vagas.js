@@ -1256,15 +1256,15 @@ async function handleDetalhesVaga(vagaId) {
 
     const vaga = docSnap.data();
     const statusAtual = vaga.status || "em-criação";
-
-    // Indica se é uma vaga concluída (para o controle de desativação de campos)
     const isVagaFechada =
-      statusAtual === "cancelada" || statusAtual === "encerrada"; // 1. Preenche o formulário (Mapeamento completo dos novos campos)
+      statusAtual === "cancelada" || statusAtual === "encerrada"; // 1. Pré-preenchimento (mantido)
 
     if (formVaga) formVaga.setAttribute("data-vaga-id", vagaId);
+    // Armazena todos os dados da vaga para uso em gerenciarEtapasModal (ex: preenchimento da seção de aprovação)
+    formVaga.setAttribute("data-vaga-data", JSON.stringify(vaga));
     if (modalTitle) modalTitle.textContent = `Vaga: ${vaga.nome}`;
 
-    await carregarListasFirebase(); // CAMPOS PRINCIPAIS
+    await carregarListasFirebase();
 
     document.getElementById("vaga-nome").value = vaga.nome || "";
 
@@ -1322,6 +1322,7 @@ async function handleDetalhesVaga(vagaId) {
     document.getElementById("vaga-plano-carreira").value =
       vaga.crescimento?.planoCarreira || "";
 
+    // NOVOS CAMPOS ARTE E DIVULGAÇÃO (Mantido)
     const resumoArteField = document.getElementById("vaga-resumo-arte");
     const linkArteField = document.getElementById("vaga-link-arte");
     const obsArteField = document.getElementById("vaga-observacao-arte");
@@ -1333,27 +1334,34 @@ async function handleDetalhesVaga(vagaId) {
       resumoArteField.value = vaga.arte.resumo;
     }
 
-    const selectCanais = document.getElementById("vaga-canais-divulgacao");
-    const canaisSalvos = vaga.canaisDivulgacao || [];
-    Array.from(selectCanais.options).forEach((option) => {
-      option.selected = canaisSalvos.includes(option.value);
-    });
+    // 2. Preencher a seção de Revisão (NOVO)
+    const linkParaRevisao = vaga.arte?.link || "N/A";
+    const obsParaRevisao = vaga.arte?.observacao || "Nenhuma observação.";
 
-    // 2. Gerencia a exibição da etapa com base no status (incluindo a lógica do Reaproveitar)
-    gerenciarEtapasModal(statusAtual);
-
-    // 3. Permite a visualização (e habilita temporariamente para leitura) dos campos da ficha,
-    // mesmo em vagas canceladas/encerradas, a menos que o status exija desabilitação completa.
-    if (isVagaFechada) {
-      const allFields = modalVaga.querySelectorAll("input, select, textarea");
-      allFields.forEach((field) => {
-        field.disabled = true; // Desabilita todos os campos para visualização
-        field.style.opacity = 0.7; // Indicativo visual de desabilitado
-      });
+    if (document.getElementById("link-arte-clicavel")) {
+      const linkElement = document.getElementById("link-arte-clicavel");
+      linkElement.textContent =
+        linkParaRevisao !== "N/A" ? linkParaRevisao : "N/A";
+      linkElement.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
+      linkElement.style.pointerEvents =
+        linkParaRevisao !== "N/A" ? "auto" : "none"; // Desabilita clique se N/A
+    }
+    if (document.getElementById("aprovacao-obs-arte-visual")) {
+      document.getElementById("aprovacao-obs-arte-visual").textContent =
+        obsParaRevisao;
     }
 
+    // 3. Gerencia a exibição da etapa
+    gerenciarEtapasModal(statusAtual);
+
     document.getElementById("status-arte-atual").textContent =
-      vaga.arte?.status || "Pendente";
+      vaga.arte?.status || "Pendente"; // Habilita/desabilita campos se for vaga fechada/cancelada
+
+    if (isVagaFechada) {
+      modalVaga.querySelectorAll("input, select, textarea").forEach((field) => {
+        field.disabled = true;
+      });
+    }
 
     if (modalVaga) modalVaga.style.display = "flex";
   } catch (error) {
