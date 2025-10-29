@@ -133,46 +133,62 @@ function openNewVagaModal() {
  * CORRIGIDO: Injeta os botões no rodapé e remove o botão "Fechar" em Aprovação, evitando o cabeçalho.
  */
 function openFichaTecnicaModal(vagaId, statusAtual) {
+  // 1. Lógica de Limpeza e Variáveis
   const footer = modalFicha.querySelector(".modal-footer");
-  const fecharRodapeBtn = modalFicha.querySelector(
-    ".modal-footer .fechar-modal"
-  ); // Seletor específico para o rodapé
-  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
-
-  // 1. Limpeza e Configurações Iniciais
   if (footer) {
-    // Remove wrappers dinâmicos antigos
     footer
       .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
       .forEach((el) => el.remove());
   }
-  // VERIFICAR FEEDBACK PENDENTE (Novo)
+
+  const canEdit =
+    statusAtual === "em-criação" || statusAtual === "correcao-pendente"; // HABILITA EDIÇÃO SE FOR CORREÇÃO
+  const isAprovacao = statusAtual === "aguardando-aprovacao";
+
+  // 2. Limpeza de banners e Verificação de Feedback (NOVO)
+  const modalBody = modalFicha.querySelector(".modal-body");
+  if (modalBody) {
+    modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
+  }
+
   const vagaData = JSON.parse(formVaga.getAttribute("data-vaga-data") || "{}");
-  if (statusAtual === "em-criação" && vagaData.historico?.length) {
+
+  if (statusAtual === "correcao-pendente" && vagaData.historico?.length) {
     const lastAction = vagaData.historico[vagaData.historico.length - 1];
-    if (lastAction.justificativa) {
+
+    // Verifica se a última ação foi uma rejeição de ficha e se tem justificativa
+    if (lastAction.acao?.includes("REJEITADA") && lastAction.justificativa) {
       displayFeedbackBanner(modalFicha, lastAction.justificativa, "warning");
     }
   }
-  const canEdit = statusAtual === "em-criação";
-  const isAprovacao = statusAtual === "aguardando-aprovacao";
 
-  // Ocultar botão "Fechar" do rodapé (Requisito: usar apenas o 'X' do cabeçalho)
-  if (fecharRodapeBtn) {
-    fecharRodapeBtn.style.display = "none";
-  }
+  // 3. Desabilita/Habilita todos os campos
+  const inputsAndSelects = modalFicha.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsAndSelects.forEach((el) => {
+    el.disabled = !canEdit;
+  });
 
-  // Configura botão Salvar
+  // 4. Configura botões de Salvar/Editar (Só aparece se for em Edição/Correção)
+  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
+
   if (btnSalvar) {
     btnSalvar.style.display = canEdit ? "inline-block" : "none";
-    btnSalvar.textContent = vagaId
-      ? "Salvar Alterações"
-      : "Salvar e Enviar para Aprovação";
+
+    // Se a vaga está em Correção, o botão deve ser 'Salvar e Enviar' novamente
+    if (statusAtual === "correcao-pendente") {
+      btnSalvar.textContent = "Salvar e Reenviar para Aprovação";
+    } else {
+      btnSalvar.textContent = vagaId
+        ? "Salvar Alterações"
+        : "Salvar e Enviar para Aprovação";
+    }
   }
 
-  // 2. INJEÇÃO DOS BOTÕES DE APROVAÇÃO/SOLICITAÇÃO
+  // 5. Injeção de Botões de Aprovação (Se aplicável)
   if (isAprovacao) {
-    if (btnSalvar) btnSalvar.style.display = "none"; // Oculta Salvar para dar lugar aos botões de fluxo
+    if (btnSalvar) btnSalvar.style.display = "none";
 
     const actionHtml = `
             <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
@@ -187,14 +203,15 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
                 </button>
             </div>`;
 
-    // Injeta o wrapper no final do FOOTER, mas antes do botão Fechar (se estiver lá)
+    // Injeta o wrapper no rodapé (usando a âncora fecharModalBtn)
+    const fecharRodapeBtn = modalFicha.querySelector(
+      ".modal-footer .fechar-modal"
+    );
     if (fecharRodapeBtn) {
       fecharRodapeBtn.insertAdjacentHTML("beforebegin", actionHtml);
-    } else if (footer) {
-      footer.insertAdjacentHTML("beforeend", actionHtml);
     }
 
-    // 3. Configura Eventos dos botões injetados
+    // 6. Configura Eventos (Aprovação)
     const btnAprovar = modalFicha.querySelector("#btn-aprovar-ficha");
     const btnSolicitar = modalFicha.querySelector(
       "#btn-solicitar-alteracoes-ficha"
@@ -209,7 +226,7 @@ function openFichaTecnicaModal(vagaId, statusAtual) {
       btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId);
   }
 
-  // 4. Exibe o modal
+  // 7. Exibe o modal
   if (modalFicha) modalFicha.style.display = "flex";
 }
 
