@@ -491,50 +491,6 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
 }
 
 /**
- * NOVO: Lida com o salvamento do Link da Arte e Observação
- * @param {string} vagaId
- * @param {string} link
- * @param {string} observacao
- */
-async function handleSalvarArteLink(vagaId, link, observacao) {
-  if (!vagaId) return;
-
-  try {
-    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
-    // Busca docSnap para manter o status e resumo atual
-    const docSnap = await getDoc(vagaRef);
-    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
-    const currentArte = docSnap.data().arte || {};
-
-    await updateDoc(vagaRef, {
-      arte: {
-        ...currentArte,
-        link: link,
-        observacao: observacao, // Salva o novo campo de observação
-      },
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Link e Observação da Arte atualizados. Link: ${link}`,
-        usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-    });
-
-    window.showToast(
-      "Link e Observação da Arte salvos com sucesso.",
-      "success"
-    );
-    // Recarrega o modal para exibir o status atualizado
-    handleDetalhesVaga(vagaId);
-  } catch (error) {
-    console.error("Erro ao salvar Link/Observação da Arte:", error);
-    window.showToast(
-      "Ocorreu um erro ao salvar o Link/Observação da Arte.",
-      "error"
-    );
-  }
-}
-
-/**
  * NOVO: Lida com a Aprovação da Ficha Técnica pelo Gestor.
  */
 async function handleAprovarFichaTecnica(vagaId) {
