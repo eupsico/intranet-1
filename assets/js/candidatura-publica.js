@@ -5,7 +5,10 @@
 import { db, collection, getDocs, query, where } from "./firebase-init.js";
 
 // Adicionar importação das Funções do Firebase para o Frontend
-import { getFunctions, httpsCallable } from "firebase/functions";
+import {
+  getFunctionsInstance as getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 
 // =====================================================================
 // VARIÁVEIS GLOBAIS

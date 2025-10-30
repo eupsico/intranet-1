@@ -32,6 +32,7 @@ import {
 import {
   getFunctions,
   httpsCallable,
+  getFunctionsInstance,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -85,6 +86,7 @@ export {
   Timestamp,
   setDoc,
   getFunctions,
+  getFunctionsInstance,
   writeBatch,
   FieldValue,
 };
