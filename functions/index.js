@@ -1286,7 +1286,7 @@ const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', depende
  * @param {object} data - Os dados da candidatura, incluindo link_curriculo_drive.
  * @returns {object} Objeto de sucesso.
  */
-/*exports.salvarCandidatura = onCall(async (data, context) => {
+/* exports.salvarCandidatura = onCall(async (data, context) => {
   // 1. Validação Crítica no Servidor
   if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
     // Usa HttpsError que é importado no seu setup
@@ -1329,7 +1329,6 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
 // Função auxiliar para CORS (necessária para HTTP Functions)
