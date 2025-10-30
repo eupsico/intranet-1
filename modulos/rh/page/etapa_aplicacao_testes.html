@@ -1,0 +1,164 @@
+<div class="painel-rh-etapa">
+  <div class="header-etapa mb-4">
+    <h2 class="titulo-modulo">
+      Recrutamento: Aplicação de Testes e Estudos de Caso
+    </h2>
+    <p class="descricao-modulo">
+      Selecione e envie o conteúdo de avaliação (Teste ou Estudo de Caso) para o
+      candidato
+      <span id="nome-candidato-teste" class="badge bg-primary-eu"
+        >Carregando Candidato...</span
+      >
+      e registre o resultado.
+    </p>
+    <div id="alerta-status-teste" class="mt-3"></div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-6">
+      <div class="card card-shadow mb-4">
+        <div class="card-header bg-info-subtle">
+          <h5 class="mb-0">1. Seleção e Envio do Conteúdo</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <label for="tipo-avaliacao" class="form-label"
+              >Tipo de Avaliação a ser Aplicada:</label
+            >
+            <select class="form-select" id="tipo-avaliacao">
+              <option value="">Selecione o Tipo...</option>
+              <option value="estudo-caso">Estudo de Caso</option>
+              <option value="teste-conhecimento">Teste de Conhecimento</option>
+              <option value="questionario-perfil">
+                Questionário de Perfil
+              </option>
+            </select>
+          </div>
+
+          <div class="mb-4" id="container-selecao-modelo" style="display: none">
+            <label for="modelo-avaliacao" class="form-label"
+              >Selecione o Modelo Salvo (Gerido em Gerenciar
+              Estudos/Testes):</label
+            >
+            <select class="form-select" id="modelo-avaliacao">
+              <option value="">Carregando Modelos...</option>
+            </select>
+          </div>
+
+          <form id="form-envio-teste">
+            <div class="mb-4">
+              <label for="link-avaliacao-publico" class="form-label"
+                >Link de Avaliação Público (Gerado ou Externo)</label
+              >
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="link-avaliacao-publico"
+                  placeholder="URL do formulário ou estudo de caso"
+                  required
+                  readonly
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  id="btn-copiar-link-envio"
+                  title="Copiar Link"
+                >
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+              <p class="text-info small-info mt-1">
+                Este link será usado para enviar a avaliação ao candidato.
+              </p>
+            </div>
+
+            <div class="d-grid">
+              <button
+                type="button"
+                id="btn-enviar-whatsapp"
+                class="btn btn-success"
+                disabled
+              >
+                <i class="fab fa-whatsapp me-2"></i> Gerar Link WhatsApp para
+                Envio
+              </button>
+              <p class="small-info mt-2">
+                O envio deve ser feito manualmente pelo RH usando o link gerado.
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card card-shadow">
+        <div class="card-header bg-warning-subtle">
+          <h5 class="mb-0">2. Registro do Resultado Recebido</h5>
+        </div>
+        <div class="card-body">
+          <form id="form-registro-resultado">
+            <div class="mb-3">
+              <label for="resultado-recebido" class="form-label"
+                >Status da Avaliação do Candidato:</label
+              >
+              <select class="form-select" id="resultado-recebido" required>
+                <option value="">Selecione...</option>
+                <option value="pendente">Aguardando Envio/Resposta</option>
+                <option value="recebido-em-analise">
+                  Recebido, em Análise
+                </option>
+                <option value="aprovado">Aprovado(a) na Avaliação</option>
+                <option value="reprovado">Reprovado(a) na Avaliação</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="link-resultado-candidato" class="form-label"
+                >Link para Resposta do Candidato (Drive/Formulário)</label
+              >
+              <input
+                type="url"
+                class="form-control"
+                id="link-resultado-candidato"
+                placeholder="URL para o arquivo/resposta devolvida."
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="nota-analise" class="form-label"
+                >Análise/Comentários do RH sobre o Resultado</label
+              >
+              <textarea
+                class="form-control"
+                id="nota-analise"
+                rows="3"
+                placeholder="Pontos de destaque, falhas críticas, pontuação obtida, etc."
+              ></textarea>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <button
+                type="button"
+                id="btn-voltar-recrutamento"
+                class="btn btn-outline-secondary"
+              >
+                <i class="fas fa-arrow-left me-2"></i> Voltar ao Painel
+              </button>
+              <button
+                type="submit"
+                id="btn-finalizar-etapa"
+                class="btn btn-success"
+              >
+                <i class="fas fa-check-circle me-2"></i> Salvar e Mudar Status
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../modulos/rh/js/etapa_aplicacao_testes.js"></script>
