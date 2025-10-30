@@ -210,6 +210,7 @@ export function init(user, userData) {
         .then((response) => {
           if (response.status === "success") {
             const comprovanteData = {
+              userId: user.uid,
               profissional: payload.profissional,
               paciente: payload.paciente,
               valor: payload.valor,
