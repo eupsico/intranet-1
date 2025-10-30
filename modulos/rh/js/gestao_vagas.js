@@ -29,7 +29,7 @@ const ID_MODAL_APROVACAO_ARTE = "modal-aprovacao-arte";
 const ID_MODAL_DIVULGACAO = "modal-divulgacao";
 const ID_MODAL_FECHADAS = "modal-fechadas";
 
-const ID_MODAL_REJEICAO = "modal-rejeicao-ficha"; // Criado dinamicamente no JS
+const ID_MODAL_REJEICAO = "modal-rejeicao-ficha";
 const ID_MODAL_SOLICITAR_FICHA = "modal-solicitar-ficha";
 const ID_MODAL_SOLICITAR_ARTE = "modal-solicitar-arte";
 const ID_MODAL_REAPROVEITAR = "modal-reaproveitar-vaga";
@@ -58,7 +58,7 @@ const formDivulgacao = modalDivulgacao
 let currentUserData = {};
 
 // =====================================================================
-// FUNÇÕES AUXILIARES
+// FUNÇÕES AUXILIARES (GERAIS E DOM)
 // =====================================================================
 
 /**
@@ -149,20 +149,23 @@ function displayFeedbackBanner(modal, feedbackText, type = "warning") {
    <i class="fas fa-exclamation-triangle"></i> 
    FEEDBACK PENDENTE: ${feedbackText}
   </p>
- `; // Insere o banner no modal-body
+ `;
 
   const modalBody = modal.querySelector(".modal-body");
   if (modalBody) {
-    // Insere o banner no início do modal body
     modalBody.insertBefore(banner, modalBody.firstChild);
   }
 }
+
+// =====================================================================
+// FUNÇÕES DE ROTEMENTO E ABERTURA DE MODAIS
+// =====================================================================
 
 /**
  * NOVO: Centraliza o preenchimento de TODOS os campos da Ficha Técnica e Arte.
  */
 async function preencherFormularioVaga(vagaId, vaga) {
-  if (!vaga) return; // 1. Garante que as listas dinâmicas estejam carregadas
+  if (!vaga) return;
 
   await carregarListasFirebase(); // 2. Define o ID da vaga nos formulários de cada modal
 
@@ -723,7 +726,7 @@ async function initgestaovagas(user, userData) {
       // Encontra o ID do modal a partir do atributo data-modal ou do pai
       const modalId =
         e.target.getAttribute("data-modal") ||
-        e.closest(".modal-content").parentElement.id;
+        e.target.closest(".modal-content").parentElement.id;
       const modal = document.getElementById(modalId);
 
       if (modal) {
