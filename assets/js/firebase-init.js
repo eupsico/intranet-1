@@ -1,6 +1,7 @@
 // Arquivo: assets/js/firebase-init.js
-// Versão: 9.3 (Versão limpa, usando importações via CDN)
-// 1. Importa as funções de inicialização e os serviços que serão usados no projeto
+// Versão: 9.4 (Corrigido para sintaxe correta de importação de functions)
+
+// 1. Importa as funções de inicialização e os serviços
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
   getAuth,
@@ -32,8 +33,7 @@ import {
 import {
   getFunctions,
   httpsCallable,
-  getFunctionsInstance,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js"; // CORREÇÃO: Removido getFunctionsInstance
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
@@ -48,12 +48,12 @@ const firebaseConfig = {
   appId: "1:1041518416343:web:087006662ffcfa12d7bb92",
 };
 
-// 3. Inicializa os serviços do Firebase e os exporta
+// 3. Inicializa os serviços do Firebase
 const app = initializeApp(firebaseConfig);
 
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app); // Instância de Functions
 const storage = getStorage(app);
 const rtdb = getDatabase(app);
 
@@ -62,11 +62,11 @@ export {
   app,
   auth,
   db,
-  functions,
+  functions, // Exporta a instância
   storage,
   rtdb,
   onAuthStateChanged,
-  httpsCallable,
+  httpsCallable, // Exporta a função callable
   collection,
   doc,
   getDoc,
@@ -85,8 +85,6 @@ export {
   documentId,
   Timestamp,
   setDoc,
-  getFunctions,
-  getFunctionsInstance,
   writeBatch,
   FieldValue,
 };
