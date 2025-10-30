@@ -1286,7 +1286,7 @@ const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', depende
  * @param {object} data - Os dados da candidatura, incluindo link_curriculo_drive.
  * @returns {object} Objeto de sucesso.
  */
-exports.salvarCandidatura = onCall(async (data, context) => {
+/*exports.salvarCandidatura = onCall(async (data, context) => {
   // 1. Validação Crítica no Servidor
   if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
     // Usa HttpsError que é importado no seu setup
@@ -1324,4 +1324,117 @@ exports.salvarCandidatura = onCall(async (data, context) => {
       error.message
     );
   }
+});*/
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+admin.initializeApp();
+
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+// Função auxiliar para CORS (necessária para HTTP Functions)
+const setCorsHeaders = (req, res) => {
+  // Permite CORS de qualquer origem, método e cabeçalho
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+
+  // Responde ao preflight request OPTIONS
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Cloud Function HTTP que lida com o upload do currículo (Base64) para o Storage
+ * e salva os metadados da candidatura no Firestore.
+ */
+exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
+  if (setCorsHeaders(req, res)) return;
+
+  if (
+    req.method !== "POST" ||
+    req.headers["content-type"] !== "application/json"
+  ) {
+    return res.status(405).json({
+      status: "error",
+      message: "Método não permitido ou Content-Type incorreto.",
+    });
+  }
+
+  try {
+    const {
+      fileData,
+      mimeType,
+      fileName,
+      nomeCandidato,
+      vagaTitulo,
+      // Os metadados completos vêm no req.body:
+      ...candidaturaData
+    } = req.body;
+
+    if (!fileData || !nomeCandidato || !vagaTitulo) {
+      return res.status(400).json({
+        status: "error",
+        message: "Dados de arquivo ou candidato incompletos.",
+      });
+    }
+
+    // 1. UPLOAD PARA O FIREBASE STORAGE
+    const buffer = Buffer.from(fileData, "base64");
+
+    const folderPath = `curriculos/${vagaTitulo.replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+    const fileExtension = fileName.split(".").pop();
+    const newFileName = `${nomeCandidato.replace(
+      /\s/g,
+      "_"
+    )}_${Date.now()}.${fileExtension}`;
+    const filePath = `${folderPath}/${newFileName}`;
+
+    const file = bucket.file(filePath);
+
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimeType || "application/octet-stream",
+      },
+      public: true, // Torna o arquivo acessível via URL pública (CDN)
+    });
+
+    // Obtém o link público do arquivo (URL de Download/CDN)
+    const fileUrl = `https://storage.googleapis.com/${
+      bucket.name
+    }/${filePath.replace(/\//g, "%2F")}`;
+
+    // 2. SALVAR OS METADADOS NO FIRESTORE
+    const finalCandidaturaData = {
+      ...candidaturaData,
+      link_curriculo_storage: fileUrl, // Novo link do Storage
+      data_envio: admin.firestore.FieldValue.serverTimestamp(),
+      status_candidatura: "Em Análise",
+    };
+
+    const docRef = await db
+      .collection("candidaturas")
+      .add(finalCandidaturaData);
+
+    // 3. RETORNO DE SUCESSO
+    return res.status(200).json({
+      status: "success",
+      message: "Candidatura e currículo salvos com sucesso!",
+      fileUrl: fileUrl,
+      docId: docRef.id,
+    });
+  } catch (error) {
+    console.error("Erro na Cloud Function 'uploadCandidatura':", error);
+    return res.status(500).json({
+      status: "error",
+      message: `Erro interno no servidor: ${error.message}`,
+    });
+  }
 });
+
+// ⚠️ Se você ainda tiver a função 'salvarCandidatura', remova-a ou desative-a
+// exports.salvarCandidatura = functions.https.onCall(async (data, context) => { ... });
