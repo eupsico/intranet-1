@@ -1,4 +1,5 @@
 // modulos/rh/js/recrutamento.js
+
 import {
   db,
   collection,
@@ -50,38 +51,88 @@ let currentUserData = {};
 // =====================================================================
 
 /**
- * Carrega a lista de vagas com status 'em-divulgacao' e popula o filtro.
+ * Utilitário para formatar o Timestamp
+ */
+function formatarTimestamp(timestamp) {
+  if (!timestamp) return "N/A";
+  // Assumindo que o timestamp do Firebase pode ser um objeto com .seconds
+  const date = timestamp.toDate
+    ? timestamp.toDate()
+    : typeof timestamp.seconds === "number"
+    ? new Date(timestamp.seconds * 1000)
+    : new Date(timestamp);
+  return date.toLocaleDateString("pt-BR");
+}
+
+/**
+ * Carrega a lista de vagas com status de recrutamento ativo e popula o filtro.
  */
 async function carregarVagasAtivas() {
   if (!filtroVaga) return;
 
   try {
-    // Busca vagas aprovadas (status 'em-divulgacao')
-    const q = query(vagasCollection, where("status", "==", "em-divulgacao"));
+    // Filtra vagas com status que indicam um processo de recrutamento ativo:
+    const q = query(
+      vagasCollection,
+      where("status_vaga", "in", [
+        "Em Divulgação",
+        "Cronograma Pendente",
+        "Cronograma Definido (Triagem Pendente)",
+        "Entrevista RH Pendente",
+        "Testes Pendente",
+        "Entrevista Gestor Pendente",
+        "Contratado", // Mantém vagas com processo concluído para visualização
+        "Encerrada",
+      ])
+    );
     const snapshot = await getDocs(q);
 
     let htmlOptions = '<option value="">Selecione uma Vaga...</option>';
 
     if (snapshot.empty) {
-      htmlOptions = '<option value="">Nenhuma vaga em divulgação.</option>';
+      htmlOptions =
+        '<option value="">Nenhuma vaga em processo de recrutamento.</option>';
     } else {
       snapshot.docs.forEach((doc) => {
         const vaga = doc.data();
-        htmlOptions += `<option value="${doc.id}">${vaga.nome}</option>`;
+        // Usando vaga.titulo_vaga conforme definido no Plano de Estrutura de Dados
+        htmlOptions += `<option value="${doc.id}">${vaga.titulo_vaga} - (${vaga.status_vaga})</option>`;
       });
     }
     filtroVaga.innerHTML = htmlOptions;
 
-    // Tenta selecionar a primeira vaga se houver
-    if (snapshot.size > 0 && filtroVaga.options.length > 1) {
+    // Tenta carregar vaga do parâmetro da URL ou a primeira vaga
+    const urlParams = new URLSearchParams(window.location.search);
+    const vagaFromUrl = urlParams.get("vaga");
+
+    if (vagaFromUrl) {
+      vagaSelecionadaId = vagaFromUrl;
+      filtroVaga.value = vagaSelecionadaId;
+      handleFiltroVagaChange();
+    } else if (snapshot.size > 0 && filtroVaga.options.length > 1) {
+      // Seleciona a primeira vaga (exceto a opção "Selecione")
       vagaSelecionadaId = snapshot.docs[0].id;
       filtroVaga.value = vagaSelecionadaId;
-      // Dispara o carregamento inicial da aba
       handleFiltroVagaChange();
+    }
+
+    // Tenta ativar a aba correta se o parâmetro 'etapa' estiver na URL
+    const etapaFromUrl = urlParams.get("etapa");
+    if (etapaFromUrl) {
+      const targetTab = statusCandidaturaTabs.querySelector(
+        `[data-status="${etapaFromUrl}"]`
+      );
+      if (targetTab) {
+        handleTabClick({ currentTarget: targetTab });
+      }
     }
   } catch (error) {
     console.error("Erro ao carregar vagas ativas:", error);
-    window.showToast("Erro ao carregar lista de vagas.", "error");
+    if (window.showToast) {
+      window.showToast("Erro ao carregar lista de vagas.", "error");
+    } else {
+      alert("Erro ao carregar lista de vagas.");
+    }
   }
 }
 
@@ -92,59 +143,71 @@ async function carregarVagasAtivas() {
 /**
  * Renderiza o conteúdo da aba "Cronograma e Orçamento".
  */
-function renderizarCronograma() {
+async function renderizarCronograma() {
   if (!vagaSelecionadaId) {
     conteudoRecrutamento.innerHTML =
       '<p class="alert alert-info">Selecione uma vaga para iniciar a gestão do cronograma.</p>';
     return;
   }
 
-  // Conteúdo simulado (o carregamento dos dados reais seria implementado aqui)
+  let vagaNome = filtroVaga.options[filtroVaga.selectedIndex].text;
+
+  // Tenta carregar os dados de cronograma da vaga
+  let dadosCronograma = {
+    data_inicio_recrutamento: "N/A",
+    data_fechamento_recrutamento: "N/A",
+    data_contratacao_prevista: "N/A",
+    orcamento_previsto: 0,
+    detalhes_cronograma: "Não informado.",
+    fonte_orcamento: "Não informado.",
+  };
+
+  try {
+    const vagaDoc = await getDoc(doc(vagasCollection, vagaSelecionadaId));
+    if (vagaDoc.exists()) {
+      const vagaData = vagaDoc.data();
+      dadosCronograma = {
+        data_inicio_recrutamento: vagaData.data_inicio_recrutamento || "N/A",
+        data_fechamento_recrutamento:
+          vagaData.data_fechamento_recrutamento || "N/A",
+        data_contratacao_prevista: vagaData.data_contratacao_prevista || "N/A",
+        orcamento_previsto: vagaData.orcamento_previsto || 0,
+        fonte_orcamento: vagaData.fonte_orcamento || "Não informado.",
+        detalhes_cronograma: vagaData.detalhes_cronograma || "Não informado.",
+      };
+    }
+  } catch (e) {
+    console.error("Erro ao carregar cronograma da vaga:", e);
+    // Não interrompe o fluxo, apenas exibe N/A
+  }
+
   conteudoRecrutamento.innerHTML = `
-        <div class="painel-cronograma">
-            <h3>Cronograma e Orçamento da Vaga: ${
-              filtroVaga.options[filtroVaga.selectedIndex].text
-            }</h3>
+    <div class="painel-cronograma card card-shadow p-4">
+      <h3>Cronograma e Orçamento da Vaga: ${vagaNome}</h3>
+      
+            <div class="detalhes-cronograma-resumo mb-4">
+                <p><strong>Início Previsto do Recrutamento:</strong> ${
+                  dadosCronograma.data_inicio_recrutamento
+                }</p>
+                <p><strong>Término Previsto do Recrutamento:</strong> ${
+                  dadosCronograma.data_fechamento_recrutamento
+                }</p>
+                <p><strong>Contratação Prevista:</strong> ${
+                  dadosCronograma.data_contratacao_prevista
+                }</p>
+                <p><strong>Orçamento Estimado:</strong> R$ ${dadosCronograma.orcamento_previsto.toFixed(
+                  2
+                )} (${dadosCronograma.fonte_orcamento})</p>
+                <p><strong>Observações:</strong> ${
+                  dadosCronograma.detalhes_cronograma
+                }</p>
+            </div>
             
-            <fieldset>
-                <legend>Definições de Cronograma</legend>
-                
-                <div class="form-group">
-                    <label for="cronograma-data-inicio">Data de Início do Processo Seletivo:</label>
-                    <input type="date" id="cronograma-data-inicio" value="${
-                      new Date().toISOString().split("T")[0]
-                    }">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cronograma-data-fim">Data Prevista de Contratação:</label>
-                    <input type="date" id="cronograma-data-fim">
-                </div>
-
-                <div class="form-group">
-                    <label for="cronograma-etapas">Etapas do Processo Seletivo (Resumo):</label>
-                    <textarea id="cronograma-etapas" rows="3" placeholder="Ex: Triagem -> Teste -> Entrevista RH -> Gestor"></textarea>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Orçamento Estimado</legend>
-                <div class="form-group">
-                    <label for="orcamento-valor-total">Orçamento Total Estimado (R$):</label>
-                    <input type="number" id="orcamento-valor-total" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label for="orcamento-detalhes">Detalhes do Orçamento (Fontes de Custos):</label>
-                    <textarea id="orcamento-detalhes" rows="3" placeholder="Ex: Divulgação em sites pagos, custo de tempo RH/Gestor, etc."></textarea>
-                </div>
-            </fieldset>
-            
-            <button class="btn btn-success" id="btn-salvar-cronograma">
-                <i class="fas fa-save"></i> Salvar Cronograma e Orçamento
-            </button>
-        </div>
-    `;
-  // TODO: Adicionar evento de salvar cronograma
+      <a href="etapa_cronograma_orcamento.html?vaga=${vagaSelecionadaId}" class="btn btn-primary-eu">
+        <i class="fas fa-calendar-alt me-2"></i> Editar/Ajustar Cronograma e Orçamento
+      </a>
+    </div>
+  `;
 }
 
 /**
@@ -158,77 +221,368 @@ async function renderizarTriagem() {
   }
 
   conteudoRecrutamento.innerHTML =
-    '<div class="loading-spinner">Carregando candidaturas...</div>';
+    '<div class="loading-spinner">Carregando candidaturas para Triagem...</div>';
 
-  // Busca candidatos para a vaga e que estejam na fase de triagem (status inicial)
-  // Supondo que o status inicial de candidatura seja 'triagem_pendente'
-  const q = query(
-    candidatosCollection,
-    where("vagaId", "==", vagaSelecionadaId),
-    where("statusRecrutamento", "==", "triagem_pendente")
-  );
-  const snapshot = await getDocs(q);
+  try {
+    // Busca candidatos para a vaga que ainda não passaram da triagem (ou foram reprovados nela)
+    const q = query(
+      candidatosCollection,
+      where("vaga_id", "==", vagaSelecionadaId), // Usando vaga_id conforme o plano anterior
+      where("status_recrutamento", "in", [
+        "Candidatura Recebida (Triagem Pendente)", // Novo status inicial
+        "Triagem Aprovada (Entrevista Pendente)", // Já passou, mas pode precisar de revisão
+        "Triagem Reprovada (Encerrada)", // Rejeitado na triagem
+      ])
+    );
+    const snapshot = await getDocs(q);
 
-  if (snapshot.empty) {
-    conteudoRecrutamento.innerHTML =
-      '<p class="alert alert-warning">Nenhuma candidatura pendente de triagem.</p>';
-    return;
-  }
+    // Atualiza contagem na aba
+    const triagemTab = statusCandidaturaTabs.querySelector(
+      '.tab-link[data-status="triagem"]'
+    );
+    if (triagemTab)
+      triagemTab.textContent = `2. Triagem de Currículo (${snapshot.size})`;
 
-  let listaHtml = `
-        <div class="list-candidaturas">
-            <h3>Triagem de Currículo (${snapshot.size})</h3>
-            <p>Clique em um candidato para iniciar a triagem e avaliação de pré-requisitos.</p>
-    `;
+    if (snapshot.empty) {
+      conteudoRecrutamento.innerHTML =
+        '<p class="alert alert-warning">Nenhuma candidatura para triagem ou todas já foram processadas.</p>';
+      return;
+    }
 
-  snapshot.docs.forEach((doc) => {
-    const cand = doc.data();
-    const statusTriagem = cand.statusRecrutamento || "Aguardando Triagem";
-    const corStatus = "info"; // Deve ser info, pois ainda está pendente de triagem
+    let listaHtml = `
+    <div class="list-candidaturas">
+      <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
+      <p>Clique em "Avaliar Candidatura" para abrir o painel de avaliação detalhada.</p>
+  `;
 
-    listaHtml += `
-            <div class="card card-candidato" data-id="${doc.id}">
-                <h4>${cand.nomeCompleto || "Candidato Sem Nome"}</h4>
-                <p>Status: <span class="badge badge-${corStatus}">${statusTriagem.replace(
-      "_",
-      " "
-    )}</span></p>
-                <p class="small-info">Email: ${cand.email} | Telefone: ${
-      cand.telefone || "N/A"
-    }</p>
-                <button class="btn btn-sm btn-primary btn-abrir-candidato" data-id="${
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const statusTriagem = cand.status_recrutamento || "Aguardando Triagem";
+      let corStatus = "secondary";
+
+      if (statusTriagem.includes("Aprovada")) {
+        corStatus = "success";
+      } else if (statusTriagem.includes("Reprovada")) {
+        corStatus = "danger";
+      } else if (statusTriagem.includes("Recebida")) {
+        corStatus = "info";
+      }
+
+      listaHtml += `
+      <div class="card card-candidato" data-id="${doc.id}">
+        <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+        <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
+        "_",
+        " "
+      )}</span></p>
+        <p class="small-info">Email: ${cand.email} | Tel: ${
+        cand.telefone_contato || "N/A"
+      }</p>
+                <div class="acoes-candidato">
+        <a href="etapa_triagem.html?candidatura=${
+          doc.id
+        }&vaga=${vagaSelecionadaId}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-file-alt me-2"></i> Avaliar Candidatura
+                </a>
+                <button class="btn btn-sm btn-outline-secondary btn-ver-detalhes" data-id="${
                   doc.id
-                }" data-etapa="triagem">Avaliar Candidatura</button>
-            </div>
-        `;
-  });
-
-  listaHtml += "</div>";
-  conteudoRecrutamento.innerHTML = listaHtml;
-
-  // Configura evento para abrir modal
-  document.querySelectorAll(".btn-abrir-candidato").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const candidatoId = e.currentTarget.getAttribute("data-id");
-      abrirModalCandidato(candidatoId, "triagem");
+                }">Detalhes</button>
+                </div>
+      </div>
+    `;
     });
-  });
+
+    listaHtml += "</div>";
+    conteudoRecrutamento.innerHTML = listaHtml;
+
+    // Configura evento para abrir modal de detalhes
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        abrirModalCandidato(candidatoId, "detalhes");
+      });
+    });
+  } catch (error) {
+    console.error("Erro ao renderizar triagem:", error);
+    conteudoRecrutamento.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista de candidatos: ${error.message}</p>`;
+  }
 }
 
 /**
- * Abre o modal de avaliação para o candidato na etapa específica.
- * @param {string} candidatoId
- * @param {string} etapa - 'triagem', 'entrevista_rh', 'teste', 'dinamica', 'entrevista_gestor'
+ * Renderiza a listagem de candidatos para Entrevistas e Avaliações.
  */
-async function abrirModalCandidato(candidatoId, etapa) {
+async function renderizarEntrevistas() {
+  if (!vagaSelecionadaId) {
+    conteudoRecrutamento.innerHTML =
+      '<p class="alert alert-info">Nenhuma vaga selecionada.</p>';
+    return;
+  }
+
+  conteudoRecrutamento.innerHTML =
+    '<div class="loading-spinner">Carregando candidatos em Entrevistas/Avaliações...</div>';
+
+  try {
+    const q = query(
+      candidatosCollection,
+      where("vaga_id", "==", vagaSelecionadaId),
+      where("status_recrutamento", "in", [
+        "Triagem Aprovada (Entrevista Pendente)",
+        "Entrevista RH Aprovada (Testes Pendente)",
+        "Testes Pendente",
+      ])
+    );
+    const snapshot = await getDocs(q);
+
+    // Atualiza contagem na aba
+    const tab = statusCandidaturaTabs.querySelector(
+      '.tab-link[data-status="entrevistas"]'
+    );
+    if (tab) tab.textContent = `3. Entrevistas e Avaliações (${snapshot.size})`;
+
+    if (snapshot.empty) {
+      conteudoRecrutamento.innerHTML =
+        '<p class="alert alert-warning">Nenhuma candidato na fase de Entrevistas/Avaliações.</p>';
+      return;
+    }
+
+    let listaHtml = `
+            <div class="list-candidaturas">
+                <h3>Candidaturas em Entrevistas e Testes (${snapshot.size})</h3>
+                <p>Gerencie as etapas de Entrevista com RH, Testes e Estudos de Caso. (Link de etapa a ser criado)</p>
+        `;
+
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const statusAtual = cand.status_recrutamento || "N/A";
+
+      // Lógica para determinar a URL da próxima página (Entrevista RH ou Aplicação de Testes)
+      let proximaEtapaUrl = "";
+      let acaoBotao = "";
+      if (statusAtual.includes("Entrevista Pendente")) {
+        proximaEtapaUrl = `etapa_entrevista_rh.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
+        acaoBotao = "Entrevista RH";
+      } else if (statusAtual.includes("Testes Pendente")) {
+        proximaEtapaUrl = `etapa_aplicacao_testes.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
+        acaoBotao = "Aplicar Testes";
+      } else {
+        proximaEtapaUrl = `etapa_entrevista_rh.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
+        acaoBotao = "Ver Etapa";
+      }
+
+      let corStatus = "primary";
+      if (statusAtual.includes("Aprovada")) corStatus = "success";
+
+      listaHtml += `
+                <div class="card card-candidato" data-id="${doc.id}">
+                    <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+                    <p>Status: <span class="badge bg-${corStatus}">${statusAtual}</span></p>
+                    <p class="small-info">Ação: ${acaoBotao}</p>
+                    <div class="acoes-candidato">
+                    <a href="${proximaEtapaUrl}" class="btn btn-sm btn-info">
+                        <i class="fas fa-play me-2"></i> ${acaoBotao}
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary btn-ver-detalhes" data-id="${
+                      doc.id
+                    }">Detalhes</button>
+                    </div>
+                </div>
+            `;
+    });
+
+    listaHtml += "</div>";
+    conteudoRecrutamento.innerHTML = listaHtml;
+
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        abrirModalCandidato(candidatoId, "detalhes");
+      });
+    });
+  } catch (error) {
+    console.error("Erro ao renderizar entrevistas:", error);
+    conteudoRecrutamento.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista de candidatos para entrevistas: ${error.message}</p>`;
+  }
+}
+
+/**
+ * Renderiza a listagem de candidatos para Entrevista com Gestor.
+ */
+async function renderizarEntrevistaGestor() {
+  if (!vagaSelecionadaId) {
+    conteudoRecrutamento.innerHTML =
+      '<p class="alert alert-info">Nenhuma vaga selecionada.</p>';
+    return;
+  }
+
+  conteudoRecrutamento.innerHTML =
+    '<div class="loading-spinner">Carregando candidatos para Entrevista com Gestor...</div>';
+
+  try {
+    const q = query(
+      candidatosCollection,
+      where("vaga_id", "==", vagaSelecionadaId),
+      where(
+        "status_recrutamento",
+        "==",
+        "Testes Aprovado (Entrevista Gestor Pendente)"
+      )
+    );
+    const snapshot = await getDocs(q);
+
+    // Atualiza contagem na aba
+    const tab = statusCandidaturaTabs.querySelector(
+      '.tab-link[data-status="gestor"]'
+    );
+    if (tab) tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
+
+    if (snapshot.empty) {
+      conteudoRecrutamento.innerHTML =
+        '<p class="alert alert-warning">Nenhuma candidato na fase de Entrevista com Gestor.</p>';
+      return;
+    }
+
+    let listaHtml = `
+            <div class="list-candidaturas">
+                <h3>Candidaturas na Fase Entrevista com Gestor (${snapshot.size})</h3>
+                <p>Avaliação final antes da comunicação e contratação.</p>
+        `;
+
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const statusAtual = cand.status_recrutamento || "N/A";
+
+      listaHtml += `
+                <div class="card card-candidato" data-id="${doc.id}">
+                    <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+                    <p>Status: <span class="badge bg-primary">${statusAtual}</span></p>
+                    <p class="small-info">Etapa: Entrevista com Gestor.</p>
+                    <div class="acoes-candidato">
+                    <a href="etapa_entrevista_gestor.html?candidatura=${
+                      doc.id
+                    }&vaga=${vagaSelecionadaId}" class="btn btn-sm btn-info">
+                        <i class="fas fa-user-tie me-2"></i> Avaliar Gestor
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary btn-ver-detalhes" data-id="${
+                      doc.id
+                    }">Detalhes</button>
+                    </div>
+                </div>
+            `;
+    });
+
+    listaHtml += "</div>";
+    conteudoRecrutamento.innerHTML = listaHtml;
+
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        abrirModalCandidato(candidatoId, "detalhes");
+      });
+    });
+  } catch (error) {
+    console.error("Erro ao renderizar entrevista gestor:", error);
+    conteudoRecrutamento.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista de candidatos: ${error.message}</p>`;
+  }
+}
+
+/**
+ * Renderiza a listagem de candidatos na etapa de Finalizados (Contratados ou Rejeitados na fase final).
+ */
+async function renderizarFinalizados() {
+  if (!vagaSelecionadaId) {
+    conteudoRecrutamento.innerHTML =
+      '<p class="alert alert-info">Nenhuma vaga selecionada.</p>';
+    return;
+  }
+
+  conteudoRecrutamento.innerHTML =
+    '<div class="loading-spinner">Carregando candidatos finalizados...</div>';
+
+  try {
+    const q = query(
+      candidatosCollection,
+      where("vaga_id", "==", vagaSelecionadaId),
+      where("status_recrutamento", "in", [
+        "Contratado",
+        "Rejeitado (Comunicação Final)",
+        "Triagem Reprovada (Encerrada)",
+      ])
+    );
+    const snapshot = await getDocs(q);
+
+    // Atualiza contagem na aba
+    const tab = statusCandidaturaTabs.querySelector(
+      '.tab-link[data-status="finalizados"]'
+    );
+    if (tab) tab.textContent = `5. Finalizados (${snapshot.size})`;
+
+    if (snapshot.empty) {
+      conteudoRecrutamento.innerHTML =
+        '<p class="alert alert-warning">Nenhuma candidatura finalizada para esta vaga.</p>';
+      return;
+    }
+
+    let listaHtml = `
+            <div class="list-candidaturas">
+                <h3>Candidaturas Finalizadas (${snapshot.size})</h3>
+                <p>Lista de candidatos contratados ou que receberam comunicação final de rejeição.</p>
+        `;
+
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const statusAtual = cand.status_recrutamento || "N/A";
+
+      let corStatus = "secondary";
+      if (statusAtual.includes("Contratado")) corStatus = "success";
+      else if (
+        statusAtual.includes("Rejeitado") ||
+        statusAtual.includes("Reprovada")
+      )
+        corStatus = "danger";
+
+      listaHtml += `
+                <div class="card card-candidato" data-id="${doc.id}">
+                    <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+                    <p>Status: <span class="badge bg-${corStatus}">${statusAtual}</span></p>
+                    <div class="acoes-candidato">
+                    <button class="btn btn-sm btn-outline-secondary btn-ver-detalhes" data-id="${
+                      doc.id
+                    }">Ver Histórico</button>
+                    </div>
+                </div>
+            `;
+    });
+
+    listaHtml += "</div>";
+    conteudoRecrutamento.innerHTML = listaHtml;
+
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        abrirModalCandidato(candidatoId, "detalhes");
+      });
+    });
+  } catch (error) {
+    console.error("Erro ao renderizar finalizados:", error);
+    conteudoRecrutamento.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista de candidatos finalizados: ${error.message}</p>`;
+  }
+}
+
+/**
+ * Abre o modal de visualização/detalhes do candidato.
+ * @param {string} candidatoId
+ * @param {string} modo - 'detalhes'
+ */
+async function abrirModalCandidato(candidatoId, modo) {
   if (!modalCandidato || !modalCandidatoBody) return;
 
   modalCandidatoBody.innerHTML =
     '<div class="loading-spinner">Carregando dados do candidato...</div>';
+  modalCandidatoFooter.innerHTML =
+    '<button type="button" class="btn btn-secondary fechar-modal-candidato">Fechar</button>';
 
   try {
-    const candRef = doc(db, CANDIDATOS_COLLECTION_NAME, candidatoId);
-    const candSnap = await getDoc(candRef);
+    const candSnap = await getDoc(doc(candidatosCollection, candidatoId));
 
     if (!candSnap.exists()) {
       modalCandidatoBody.innerHTML =
@@ -237,210 +591,103 @@ async function abrirModalCandidato(candidatoId, etapa) {
     }
 
     const candidato = candSnap.data();
-    document.getElementById(
-      "candidato-nome-titulo"
-    ).textContent = `Avaliação: ${candidato.nomeCompleto}`;
+    document.getElementById("candidato-nome-titulo").textContent = `Detalhes: ${
+      candidato.nome_completo || "N/A"
+    }`;
 
-    // --- Geração do Conteúdo Específico da Etapa ---
-    let contentHtml = "";
-
-    if (etapa === "triagem") {
-      contentHtml = await gerarConteudoTriagem(candidato, candSnap.id);
-    }
-    // TODO: Adicionar geração de conteúdo para outras etapas (entrevista_rh, gestor, etc.)
+    // --- Geração do Conteúdo Detalhes ---
+    let contentHtml = `
+        <div class="row detalhes-candidato-modal">
+            <div class="col-md-6">
+                <h5>Informações Pessoais</h5>
+                <p><strong>Email:</strong> ${candidato.email}</p>
+                <p><strong>Telefone (WhatsApp):</strong> ${
+                  candidato.telefone_contato || "N/A"
+                }</p>
+                <p><strong>Vaga Aplicada:</strong> ${
+                  candidato.titulo_vaga_original || "N/A"
+                }</p>
+                <p><strong>Localidade:</strong> ${
+                  candidato.cidade || "N/A"
+                } / ${candidato.estado || "UF"}</p>
+                <p><strong>Status Atual:</strong> <span class="badge bg-primary">${
+                  candidato.status_recrutamento || "N/A"
+                }</span></p>
+            </div>
+            <div class="col-md-6">
+                <h5>Experiência e Arquivos</h5>
+                <p><strong>Resumo Experiência:</strong> ${
+                  candidato.resumo_experiencia || "Não informado"
+                }</p>
+                <p><strong>Habilidades:</strong> ${
+                  candidato.habilidades_competencias || "Não informadas"
+                }</p>
+                <p><strong>Currículo:</strong> 
+                    <a href="${
+                      candidato.link_curriculo_drive || "#"
+                    }" target="_blank" class="btn btn-sm btn-info ${
+      !candidato.link_curriculo_drive ? "disabled" : ""
+    }">
+                        <i class="fas fa-file-pdf"></i> Ver Currículo
+                    </a>
+                </p>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="historico-candidatura">
+            <h5>Histórico de Avaliações</h5>
+            ${
+              candidato.triagem_rh
+                ? `
+                <h6>Triagem RH</h6>
+                <p><strong>Decisão:</strong> ${
+                  candidato.triagem_rh.apto_entrevista
+                } | 
+                <strong>Data:</strong> ${formatarTimestamp(
+                  candidato.triagem_rh.data_avaliacao
+                )}</p>
+                <p class="small-info">Comentários: ${
+                  candidato.triagem_rh.comentarios_gerais || "N/A"
+                }</p>
+            `
+                : "<p>Ainda não avaliado na Triagem RH.</p>"
+            }
+            
+            ${
+              candidato.rejeicao?.etapa
+                ? `
+                <h6 class="text-danger">Rejeição Registrada</h6>
+                <p><strong>Etapa:</strong> ${candidato.rejeicao.etapa} | 
+                <strong>Data:</strong> ${formatarTimestamp(
+                  candidato.rejeicao.data
+                )}</p>
+                <p class="small-info">Justificativa: ${
+                  candidato.rejeicao.justificativa || "N/A"
+                }</p>
+            `
+                : ""
+            }
+            
+        </div>
+    `;
 
     modalCandidatoBody.innerHTML = contentHtml;
     modalCandidato.style.display = "flex";
-
-    // Garante que o formulário de triagem esteja funcional
-    const formTriagem = document.getElementById("form-avaliacao-triagem");
-    if (formTriagem) {
-      formTriagem.addEventListener("submit", handleAprovarTriagem);
-    }
   } catch (error) {
-    console.error(`Erro ao abrir modal de candidato (${etapa}):`, error);
+    console.error(`Erro ao abrir modal de candidato (${modo}):`, error);
     modalCandidatoBody.innerHTML =
       '<p class="alert alert-danger">Erro ao carregar os detalhes da candidatura.</p>';
   }
 }
 
-/**
- * Gera o conteúdo da aba de Triagem (Ficha de Candidatura + Formulário de Avaliação).
- */
-async function gerarConteudoTriagem(candidato, candidatoId) {
-  // Busca pré-requisitos da vaga
-  const vagaDoc = await getDoc(
-    doc(db, VAGAS_COLLECTION_NAME, candidato.vagaId)
-  );
-  const vaga = vagaDoc.data();
-
-  // Supondo que os pré-requisitos são as responsabilidades + formação mínima + competências
-  const preRequisitos = [
-    ...(vaga.formacao?.minima
-      ? [{ label: `Formação: ${vaga.formacao.minima}`, campo: "formacao" }]
-      : []),
-    ...(vaga.competencias?.tecnicas
-      ? [
-          {
-            label: `Técnicas: ${vaga.competencias.tecnicas}`,
-            campo: "tecnicas",
-          },
-        ]
-      : []),
-    ...(vaga.competencias?.comportamentais
-      ? [
-          {
-            label: `Comportamentais: ${vaga.competencias.comportamentais}`,
-            campo: "comportamentais",
-          },
-        ]
-      : []),
-  ];
-
-  // Gerar um link simples para o currículo no Google Drive (usando a URL fornecida na candidatura)
-  const linkCurriculo = candidato.linkCurriculo || "#";
-  const isCurriculoDisponivel = linkCurriculo !== "#";
-
-  let fichaCandidatoHtml = `
-        <h3>Ficha de Candidatura (Vaga: ${vaga.nome})</h3>
-        <div class="ficha-candidato-detalhes">
-            <p><strong>Telefone (WhatsApp):</strong> ${
-              candidato.telefone || "N/A"
-            }</p>
-            <p><strong>Localidade:</strong> ${candidato.cidade} / ${
-    candidato.estado
-  } (${candidato.cep})</p>
-            <p><strong>Habilidades:</strong> ${
-              candidato.habilidades || "N/A"
-            }</p>
-            <p><strong>Resumo da Experiência:</strong> <textarea rows="4" disabled>${
-              candidato.resumoProfissional ||
-              candidato.breveApresentacao ||
-              "N/A"
-            }</textarea></p>
-            <p><strong>Currículo:</strong> 
-                <a href="${linkCurriculo}" target="_blank" class="btn btn-sm btn-info" ${
-    !isCurriculoDisponivel ? "disabled" : ""
-  }>
-                    <i class="fas fa-file-pdf"></i> Ver Currículo no Drive
-                </a>
-                ${
-                  !isCurriculoDisponivel
-                    ? '<span class="text-danger small-info">Link indisponível ou não fornecido.</span>'
-                    : ""
-                }
-            </p>
-        </div>
-        
-        <hr>
-
-        <form id="form-avaliacao-triagem" data-candidato-id="${candidatoId}">
-            <h4>Avaliação da Triagem</h4>
-            <fieldset>
-                <legend>Pré-Requisitos e Aptidão</legend>
-                
-                <div class="form-group">
-                    <label>1. Quais dos pré-requisitos o candidato atende?</label>
-                    <p class="small-info text-secondary">Pré-requisitos da Vaga:</p>
-                    <div class="list-pre-requisitos">
-                        ${preRequisitos
-                          .map(
-                            (req, index) => `
-                            <div style="margin-bottom: 5px;">
-                                <input type="checkbox" id="req-${req.campo}-${index}" name="pre-requisito" value="${req.label}">
-                                <label for="req-${req.campo}-${index}">${req.label}</label>
-                            </div>
-                        `
-                          )
-                          .join("")}
-                    </div>
-                    <textarea name="atende-requisitos-obs" rows="2" placeholder="Observações sobre os pré-requisitos atendidos/faltantes (Opcional)."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="apto-entrevista">2. O(A) candidato(a) está apto(a) para a entrevista?</label>
-                    <select id="apto-entrevista" name="apto-entrevista" required>
-                        <option value="">Selecione...</option>
-                        <option value="sim">Sim (Apto para a próxima etapa)</option>
-                        <option value="nao">Não (A ser rejeitado)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="triagem-comentarios">3. Comentários Finais da Triagem:</label>
-                    <textarea id="triagem-comentarios" name="triagem-comentarios" rows="3" required></textarea>
-                </div>
-            </fieldset>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="reprovarCandidatura('${candidatoId}', 'triagem')">
-                    <i class="fas fa-times"></i> Reprovar Candidatura
-                </button>
-                <button type="submit" class="btn btn-success" id="btn-aprovar-triagem">
-                    <i class="fas fa-check"></i> Aprovar para Entrevista
-                </button>
-            </div>
-        </form>
-    `;
-
-  return fichaCandidatoHtml;
-}
-
-// =====================================================================
-// HANDLERS DE AÇÃO E FLUXO PRINCIPAL
-// =====================================================================
-
-/**
- * Lida com a aprovação da etapa de triagem.
- */
-async function handleAprovarTriagem(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const candidatoId = form.getAttribute("data-candidato-id");
-  const aptoEntrevista = form.querySelector("#apto-entrevista").value;
-  const comentarios = form.querySelector("#triagem-comentarios").value;
-
-  if (aptoEntrevista === "nao") {
-    // Se não está apto, chama a função de reprovação com justificativa
-    reprovarCandidatura(candidatoId, "triagem", comentarios);
-    return;
-  }
-
-  const preRequisitosAtendidos = Array.from(
-    form.querySelectorAll('input[name="pre-requisito"]:checked')
-  ).map((input) => input.value);
-  const obsRequisitos = form.querySelector(
-    'textarea[name="atende-requisitos-obs"]'
-  ).value;
-
-  try {
-    await updateDoc(doc(candidatosCollection, candidatoId), {
-      statusRecrutamento: "entrevista_rh_pendente", // Próxima etapa
-      "avaliacoes.triagem.data": new Date(),
-      "avaliacoes.triagem.aptoEntrevista": aptoEntrevista,
-      "avaliacoes.triagem.comentarios": comentarios,
-      "avaliacoes.triagem.preRequisitosAtendidos": preRequisitosAtendidos,
-      "avaliacoes.triagem.obsRequisitos": obsRequisitos,
-    });
-
-    window.showToast("Candidato Aprovado para Entrevista RH!", "success");
-    document.getElementById("modal-candidato").style.display = "none";
-    renderizarTriagem(); // Recarrega a lista de triagem
-  } catch (error) {
-    console.error("Erro ao aprovar triagem:", error);
-    window.showToast("Erro ao aprovar triagem.", "error");
-  }
-}
-
-/**
- * Lida com a reprovação de um candidato em qualquer etapa.
- */
-async function reprovarCandidatura(
+// Manter a função reprovarCandidatura no escopo global para compatibilidade
+window.reprovarCandidatura = async function (
   candidatoId,
   etapa,
   justificativaFicha = null
 ) {
-  // Para simplificar, usamos a justificativaFicha (comentarios) como justificativa de reprovação.
   let justificativa =
     justificativaFicha ||
     prompt(
@@ -448,38 +695,60 @@ async function reprovarCandidatura(
     );
 
   if (!justificativa || justificativa.trim() === "") {
-    window.showToast("A justificativa de reprovação é obrigatória.", "warning");
+    if (window.showToast) {
+      window.showToast(
+        "A justificativa de reprovação é obrigatória.",
+        "warning"
+      );
+    } else {
+      alert("A justificativa de reprovação é obrigatória.");
+    }
     return;
   }
 
   if (!confirm(`Confirmar reprovação na etapa ${etapa}?`)) return;
 
   try {
-    // Atualiza o status e adiciona ao histórico
-    await updateDoc(doc(candidatosCollection, candidatoId), {
-      statusRecrutamento: "rejeitado",
-      "avaliacoes.rejeicao.etapa": etapa,
-      "avaliacoes.rejeicao.data": new Date(),
-      "avaliacoes.rejeicao.justificativa": justificativa,
+    // Atualiza o status
+    const candidatoRef = doc(candidatosCollection, candidatoId);
+
+    await updateDoc(candidatoRef, {
+      status_recrutamento: "Rejeitado (Comunicação Pendente)",
+      "rejeicao.etapa": etapa,
+      "rejeicao.data": firebase.firestore.FieldValue.serverTimestamp(),
+      "rejeicao.justificativa": justificativa,
       // Adicionar ao histórico principal (usando arrayUnion)
       historico: arrayUnion({
-        data: new Date(),
+        data: firebase.firestore.FieldValue.serverTimestamp(),
         acao: `Candidatura REJEITADA na etapa de ${etapa}. Motivo: ${justificativa}`,
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
       }),
     });
 
-    window.showToast(
-      `Candidatura rejeitada com sucesso na etapa ${etapa}.`,
-      "error"
-    );
-    document.getElementById("modal-candidato").style.display = "none";
-    renderizarTriagem(); // Recarrega a listagem atual
+    if (window.showToast) {
+      window.showToast(`Candidatura rejeitada na etapa ${etapa}.`, "error");
+    } else {
+      alert("Candidatura rejeitada.");
+    }
+    // Se o modal estiver aberto, feche
+    modalCandidato.style.display = "none";
+
+    // Recarrega a listagem atual
+    const activeStatus = statusCandidaturaTabs
+      .querySelector(".tab-link.active")
+      ?.getAttribute("data-status");
+    if (activeStatus === "triagem") renderizarTriagem();
+    else if (activeStatus === "entrevistas") renderizarEntrevistas();
+    else if (activeStatus === "gestor") renderizarEntrevistaGestor();
   } catch (error) {
     console.error("Erro ao reprovar candidato:", error);
-    window.showToast("Erro ao reprovar candidato.", "error");
+    if (window.showToast) {
+      window.showToast("Erro ao reprovar candidato.", "error");
+    } else {
+      alert("Erro ao reprovar candidato.");
+    }
   }
-}
+};
 
 // =====================================================================
 // HANDLERS DE UI
@@ -532,29 +801,16 @@ function handleTabClick(e) {
       renderizarTriagem();
       break;
     case "entrevistas":
-      // TODO: Implementar listagem de candidatos em entrevistas
-      conteudoRecrutamento.innerHTML =
-        "<p>Conteúdo da aba Entrevistas em desenvolvimento.</p>";
+      renderizarEntrevistas();
       break;
     case "gestor":
-      // TODO: Implementar listagem de candidatos na entrevista com gestor
-      conteudoRecrutamento.innerHTML =
-        "<p>Conteúdo da aba Entrevista com Gestor em desenvolvimento.</p>";
+      renderizarEntrevistaGestor();
       break;
     case "finalizados":
-      conteudoRecrutamento.innerHTML =
-        "<p>Conteúdo da aba Finalizados em desenvolvimento.</p>";
-      break;
-    case "contratados":
-      conteudoRecrutamento.innerHTML =
-        "<p>Conteúdo da aba Contratados em desenvolvimento.</p>";
-      break;
-    case "rejeitados":
-      conteudoRecrutamento.innerHTML =
-        "<p>Conteúdo da aba Rejeitados em desenvolvimento.</p>";
+      renderizarFinalizados();
       break;
     case "gestao-conteudo":
-      // Redirecionamento (Usar a função de navegação do app.js se houver)
+      // Redirecionamento direto para o módulo de gestão de estudos
       window.location.hash = "#rh/gestao_estudos_de_caso";
       break;
     default:
@@ -594,20 +850,13 @@ export async function initRecrutamento(user, userData) {
     document.querySelectorAll(".fechar-modal-candidato").forEach((btn) => {
       btn.addEventListener("click", () => {
         modalCandidato.style.display = "none";
-        // Recarrega a aba de triagem para atualizar o status do candidato
-        const triagemTab = statusCandidaturaTabs.querySelector(
-          '.tab-link[data-status="triagem"]'
-        );
-        if (triagemTab && triagemTab.classList.contains("active")) {
-          renderizarTriagem();
-        }
+        // Recarrega a aba ativa após fechar o modal
+        const activeTab =
+          statusCandidaturaTabs.querySelector(".tab-link.active");
+        if (activeTab) handleTabClick({ currentTarget: activeTab });
       });
     });
   }
 
-  // 4. Se não houve vaga selecionada (lista vazia), exibe mensagem inicial
-  if (!vagaSelecionadaId) {
-    conteudoRecrutamento.innerHTML =
-      '<p id="mensagem-inicial" class="alert alert-info">Nenhuma vaga em divulgação. Crie uma nova vaga no painel de Gestão de Vagas.</p>';
-  }
+  // 4. Se não houve vaga selecionada, a mensagem inicial será exibida.
 }
