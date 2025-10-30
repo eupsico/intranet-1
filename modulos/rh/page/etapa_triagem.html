@@ -1,0 +1,162 @@
+<div class="painel-rh-etapa">
+  <div class="header-etapa mb-4">
+    <h2 class="titulo-modulo">Recrutamento: Triagem de Currículo</h2>
+    <p class="descricao-modulo">
+      Análise e avaliação da candidatura para a vaga
+      <span id="nome-vaga-triagem" class="badge bg-primary-eu"
+        >Carregando Vaga...</span
+      >.
+    </p>
+    <div id="alerta-status-triagem" class="mt-3"></div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-6">
+      <div class="card card-shadow mb-4">
+        <div class="card-header bg-card-header-eu">
+          <h5 class="mb-0 text-white">
+            Ficha de Candidatura -
+            <span id="nome-candidato-triagem">Candidato(a)</span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">
+            <strong>Email:</strong> <span id="dado-email">...</span>
+          </p>
+          <p class="card-text">
+            <strong>Telefone (WhatsApp):</strong>
+            <span id="dado-telefone">...</span>
+          </p>
+          <p class="card-text">
+            <strong>Cidade/Estado:</strong>
+            <span id="dado-cidade-estado">...</span>
+          </p>
+          <p class="card-text">
+            <strong>Como conheceu a EuPsico:</strong>
+            <span id="dado-como-conheceu">...</span>
+          </p>
+
+          <hr />
+          <h6>Resumo da Experiência Profissional:</h6>
+          <p id="dado-resumo-experiencia" class="text-muted small">...</p>
+
+          <h6>Habilidades/Competências:</h6>
+          <p id="dado-habilidades" class="text-muted small">...</p>
+
+          <hr />
+          <a
+            href="#"
+            id="link-curriculo"
+            target="_blank"
+            class="btn btn-sm btn-outline-primary-eu"
+            disabled
+          >
+            <i class="fas fa-file-pdf me-2"></i> Ver Currículo (Google Drive)
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card card-shadow">
+        <div class="card-header bg-info-subtle">
+          <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
+        </div>
+        <div class="card-body">
+          <form id="form-avaliacao-triagem">
+            <div class="mb-3">
+              <label for="prerequisitos-atendidos" class="form-label"
+                >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
+              >
+              <textarea
+                class="form-control"
+                id="prerequisitos-atendidos"
+                rows="3"
+                placeholder="Ex: Formação em Psicologia, 2 anos de experiência com X, Ferramentas Y..."
+                required
+              ></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="comentarios-gerais" class="form-label"
+                >Comentários Gerais da Triagem</label
+              >
+              <textarea
+                class="form-control"
+                id="comentarios-gerais"
+                rows="3"
+                placeholder="Pontos fortes, pontos de atenção, risco de turnover, etc."
+              ></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label d-block"
+                >Apto(a) para a Entrevista?</label
+              >
+              <div class="form-check form-check-inline">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="apto-entrevista"
+                  id="apto-sim"
+                  value="Sim"
+                  required
+                />
+                <label class="form-check-label" for="apto-sim"
+                  >Sim (Aprovar)</label
+                >
+              </div>
+              <div class="form-check form-check-inline">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="apto-entrevista"
+                  id="apto-nao"
+                  value="Não"
+                />
+                <label class="form-check-label" for="apto-nao"
+                  >Não (Reprovar)</label
+                >
+              </div>
+            </div>
+
+            <div
+              class="mb-4"
+              id="motivo-rejeicao-container"
+              style="display: none"
+            >
+              <label for="motivo-rejeicao" class="form-label"
+                >Motivo Detalhado da Reprovação</label
+              >
+              <textarea
+                class="form-control"
+                id="motivo-rejeicao"
+                rows="2"
+                placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
+              ></textarea>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button
+                type="submit"
+                id="btn-finalizar-triagem"
+                class="btn btn-lg btn-success"
+              >
+                <i class="fas fa-check-circle me-2"></i> Registrar Decisão
+              </button>
+              <button
+                type="button"
+                id="btn-voltar-recrutamento"
+                class="btn btn-sm btn-outline-secondary"
+              >
+                <i class="fas fa-arrow-left me-2"></i> Voltar ao Painel da Vaga
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../modulos/rh/js/etapa_triagem.js"></script>
