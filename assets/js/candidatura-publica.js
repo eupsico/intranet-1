@@ -57,29 +57,27 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
     const reader = new FileReader();
 
     reader.onload = function (e) {
-      const fileData = e.target.result.split(",")[1]; // Pega a parte Base64
+      const fileData = e.target.result.split(",")[1];
 
       const payload = {
         fileData: fileData,
         mimeType: file.type,
         fileName: file.name,
         nomeCandidato: nomeCandidato,
-        vagaTitulo: vagaTitulo, // Usado para nomear a pasta/arquivo no Apps Script
+        vagaTitulo: vagaTitulo,
       };
 
-      // Chamada HTTP POST para o Apps Script
       fetch(WEB_APP_URL, {
         method: "POST",
-        // Envia como JSON; o Apps Script (doPost) deve ser configurado para receber JSON
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8", // funciona com Apps Script
+        },
         body: JSON.stringify(payload),
-        //headers: {
-        //  "Content-Type": "text/plain;charset=utf-8",
-        //  },
       })
         .then((res) => res.json())
         .then((response) => {
           if (response.status === "success" && response.fileUrl) {
-            resolve(response.fileUrl); // Retorna o link do Drive
+            resolve(response.fileUrl);
           } else {
             reject(
               new Error(
@@ -104,6 +102,37 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
 
     reader.readAsDataURL(file);
   });
+}
+/**
+ * Função que envia os dados da candidatura para o Firebase.
+ */
+async function enviarCandidaturaParaFirebase(dadosCandidatura) {
+  try {
+    const result = await salvarCandidaturaCallable(dadosCandidatura);
+
+    if (result.data && result.data.success) {
+      exibirFeedback(
+        "mensagem-sucesso",
+        `Candidatura enviada com sucesso para a vaga de ${dadosCandidatura.titulo_vaga_original}!`,
+        false
+      );
+      formCandidatura.reset();
+      enderecoRua.value = "";
+      cidadeEndereco.value = "";
+      estadoEndereco.value = "";
+    } else {
+      throw new Error(
+        result.data.message || "Erro desconhecido ao processar candidatura."
+      );
+    }
+  } catch (error) {
+    console.error("Erro ao salvar candidatura no Firebase:", error);
+    exibirFeedback(
+      "mensagem-erro",
+      `Erro ao salvar candidatura. Detalhes: ${error.message}`,
+      true
+    );
+  }
 }
 
 /**
@@ -190,15 +219,14 @@ async function buscarCEP() {
 }
 
 /**
- * Lida com a submissão do formulário de candidatura.
- * MODIFICADO: Usa o fluxo de upload Base64/Apps Script.
+ * Função principal que lida com o envio do formulário.
  */
 async function handleCandidatura(e) {
   e.preventDefault();
 
   btnSubmit.disabled = true;
   msgFeedback.innerHTML =
-    '<div class="loading-spinner">Enviando candidatura e currículo...</div>'; // 1. Coleta de Dados
+    '<div class="loading-spinner">Enviando candidatura e currículo...</div>';
 
   const vagaSelectOption = selectVaga.options[selectVaga.selectedIndex];
   const vagaId = selectVaga.value;
@@ -206,13 +234,11 @@ async function handleCandidatura(e) {
 
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
-  const telefone = document.getElementById("telefone-candidato").value.trim(); // Campos de Localização
-
+  const telefone = document.getElementById("telefone-candidato").value.trim();
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
   const cidade = cidadeEndereco.value.trim();
-  const estado = estadoEndereco.value.trim(); // Campos de Experiência
-
+  const estado = estadoEndereco.value.trim();
   const resumoExperiencia = document
     .getElementById("resumo-experiencia")
     .value.trim();
@@ -220,9 +246,9 @@ async function handleCandidatura(e) {
     .getElementById("habilidades-competencias")
     .value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
+  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
 
-  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0]; // 2. Validação básica
-
+  // Validação
   if (
     !vagaId ||
     !nome ||
@@ -239,11 +265,11 @@ async function handleCandidatura(e) {
   ) {
     exibirFeedback(
       "mensagem-erro",
-      "Por favor, preencha todos os campos obrigatórios e anexe o currículo.",
+      "Preencha todos os campos obrigatórios e anexe o currículo.",
       true
     );
     return;
-  } // Validação de tamanho do arquivo (máximo 5MB)
+  }
 
   const maxFileSize = 5 * 1024 * 1024;
   if (arquivoCurriculo.size > maxFileSize) {
@@ -256,53 +282,31 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // 3. UPLOAD DO ARQUIVO (Baseado no fluxo de comprovantes)
+    // Etapa 1: Upload do currículo
     const linkCurriculoDrive = await uploadCurriculoToAppsScript(
       arquivoCurriculo,
-      tituloVagaOriginal, // Passamos o título para nomear a pasta
+      tituloVagaOriginal,
       nome
-    ); // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND (Callable)
+    );
 
+    // Etapa 2: Envio da candidatura
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
-
       nome_completo: nome,
       email: email,
       telefone_contato: telefone,
-
       cep: cep,
       numero_endereco: numero,
       cidade: cidade,
       estado: estado,
-
       resumo_experiencia: resumoExperiencia,
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
-
-      link_curriculo_drive: linkCurriculoDrive, // Link retornado do Apps Script
+      link_curriculo_drive: linkCurriculoDrive,
     };
 
-    // 5. CHAMADA CALLABLE PARA SALVAR NO FIRESTORE
-    const result = await salvarCandidaturaCallable(novaCandidatura);
-
-    if (result.data && result.data.success) {
-      // Ação de sucesso (limpeza e feedback)
-      exibirFeedback(
-        "mensagem-sucesso",
-        `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
-        false
-      );
-      formCandidatura.reset();
-      enderecoRua.value = "";
-      cidadeEndereco.value = "";
-      estadoEndereco.value = "";
-    } else {
-      // Captura erros lançados pela Cloud Function (HttpsError)
-      throw new Error(
-        result.data.message || "Erro desconhecido ao processar candidatura."
-      );
-    }
+    await enviarCandidaturaParaFirebase(novaCandidatura);
   } catch (error) {
     console.error("Erro completo na candidatura:", error);
     exibirFeedback(
