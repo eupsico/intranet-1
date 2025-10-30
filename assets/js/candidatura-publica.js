@@ -1,5 +1,5 @@
 // assets/js/candidatura-publica.js
-// Versão: 1.8 - Implementa upload e persistência via Firebase Cloud Function HTTP (Finalizado).
+// Versão: 1.9 - Tentativa de correção de comunicação com Cloud Function (Content-Type: text/plain).
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
@@ -16,7 +16,7 @@ import {
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
 // =====================================================================
 
-// ✅ URL REAL DA CLOUD FUNCTION FORNECIDA PELO USUÁRIO.
+// ✅ URL REAL DA CLOUD FUNCTION
 const WEB_APP_URL = "https://uploadcandidatura-tlwthl477q-uc.a.run.app";
 
 const VAGAS_COLLECTION_NAME = "vagas";
@@ -40,10 +40,10 @@ const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
 // ⚠️ Função descontinuada, pois a lógica de salvar metadados foi para a Cloud Function HTTP.
-// const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
+const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
- * NOVO: Função que lê o arquivo binário e o envia como Base64 para a Cloud Function.
+ * Função que lê o arquivo binário e o envia como Base64 para a Cloud Function.
  * @param {File} file Arquivo do currículo.
  * @param {string} vagaTitulo Título da vaga.
  * @param {string} nomeCandidato Nome do candidato.
@@ -78,7 +78,7 @@ function uploadCurriculoToCloudFunction(
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
-          "Content-Type": "application/json", // Deve funcionar corretamente com a Cloud Function e CORS
+          "Content-Type": "text/plain;charset=utf-8", // 👈 CORREÇÃO: Voltando para text/plain para forçar Simple Request e evitar falhas de CORS/Preflight
         },
       })
         .then((res) => {
@@ -296,7 +296,7 @@ async function handleCandidatura(e) {
       como_conheceu: comoConheceu, // Adiciona um timestamp para o backend
 
       timestamp: new Date().toISOString(),
-    }; // 3. UPLOAD DO ARQUIVO + SALVAR METADADOS (em uma única chamada à Cloud Function) // O linkCurriculoDrive (agora Storage) é retornado, mas não é usado aqui.
+    }; // 3. UPLOAD DO ARQUIVO + SALVAR METADADOS (em uma única chamada à Cloud Function)
 
     await uploadCurriculoToCloudFunction(
       arquivoCurriculo,
@@ -318,7 +318,7 @@ async function handleCandidatura(e) {
     console.error("Erro completo na candidatura:", error);
     exibirFeedback(
       "mensagem-erro",
-      `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
+      `Erro ao enviar a candidatura. Detalhes: ${error.message}. Verifique o log do navegador (F12) e os logs da Cloud Function.`,
       true
     );
   }
@@ -350,3 +350,4 @@ cepCandidato.addEventListener("blur", buscarCEP);
 
 // Inicializa o módulo
 document.addEventListener("DOMContentLoaded", carregarVagasAtivas);
+formCandidatura.addEventListener("submit", handleCandidatura);
