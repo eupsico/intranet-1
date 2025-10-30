@@ -1,25 +1,26 @@
 // assets/js/candidatura-publica.js
 // Versão: 1.2 - Atualizado para usar Cloud Function para salvamento seguro.
 
-// Importa as funções necessárias do Firebase SDK (caminho ajustado para o contexto de assets)
-import { db, collection, getDocs, query, where } from "./firebase-init.js";
+// Importa as funções necessárias e as instâncias (functions, httpsCallable)
 
-// Adicionar importação das Funções do Firebase para o Frontend
 import {
-  getFunctionsInstance as getFunctions,
+  db,
+  collection,
+  getDocs,
+  query,
+  where,
+  functions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "./firebase-init.js";
 
 // =====================================================================
 // VARIÁVEIS GLOBAIS
 // =====================================================================
 
-// ATENÇÃO: Verifique se a coleção correta é 'candidaturas' ou 'candidatos'
 const VAGAS_COLLECTION_NAME = "vagas";
-const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
+const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore (Verifique suas regras)
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
-// A coleção de candidaturas será acessada via Cloud Function
 
 // Elementos do DOM
 const formCandidatura = document.getElementById("form-candidatura");
@@ -36,7 +37,7 @@ const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
-const functions = getFunctions();
+// 'functions' é a instância, 'salvarCandidatura' é o nome da função no backend
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
@@ -67,7 +68,7 @@ async function uploadFileToDrive(file, vagaId, nomeCandidato) {
 
 /**
  * Função para carregar as vagas ativas e popular o campo Select.
- * CORRIGIDO: Usa o campo de status correto ("em-divulgacao").
+ * CORRIGIDO: Usa o status "em-divulgacao" para consulta.
  */
 async function carregarVagasAtivas() {
   try {
@@ -247,7 +248,6 @@ async function handleCandidatura(e) {
     };
 
     // 5. CHAMADA DA CLOUD FUNCTION PARA SALVAR NO FIRESTORE
-    // A função no backend adicionará status_recrutamento e data_candidatura
     const result = await salvarCandidaturaCallable(novaCandidatura);
 
     if (result.data && result.data.success) {
