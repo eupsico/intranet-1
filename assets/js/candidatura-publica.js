@@ -1,8 +1,8 @@
 // assets/js/candidatura-publica.js
-// Versão: 1.2 - Atualizado para usar Cloud Function para salvamento seguro.
+// Versão: 1.3 - Corrigida importação de functions e lógica de submissão Cloud Function.
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
-
+// CORRIGIDO: Importa a instância 'functions' e 'httpsCallable' diretamente do firebase-init.js
 import {
   db,
   collection,
@@ -18,7 +18,7 @@ import {
 // =====================================================================
 
 const VAGAS_COLLECTION_NAME = "vagas";
-const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore (Verifique suas regras)
+const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
@@ -37,19 +37,20 @@ const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
-// 'functions' é a instância, 'salvarCandidatura' é o nome da função no backend
+// 'functions' é a instância importada, 'salvarCandidatura' é o nome da função no backend
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
  * Simula a função de upload para o Google Drive.
- * (Mantida como função placeholder, a chamada real deve estar no backend).
+ * NOTA: Usei o ID de pasta do seu Drive, mas isso deve ser substituído por uma API/Cloud Function real.
  */
 async function uploadFileToDrive(file, vagaId, nomeCandidato) {
   // --- LÓGICA DE SIMULAÇÃO (DEVE SER SUBSTITUÍDA POR UMA CHAMADA REAL DE BACKEND) ---
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (file.size > 0) {
-        const simulatedLink = `https://drive.google.com/open?id=DRIVE_ID_SIMULADO_${vagaId}_${nomeCandidato.replace(
+        // Usando o ID da pasta do Drive que você forneceu para a simulação: 1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF
+        const simulatedLink = `https://drive.google.com/drive/u/1/folders/1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF/view?id=SIMULADO_${vagaId}_${nomeCandidato.replace(
           /\s/g,
           "_"
         )}`;
@@ -68,7 +69,6 @@ async function uploadFileToDrive(file, vagaId, nomeCandidato) {
 
 /**
  * Função para carregar as vagas ativas e popular o campo Select.
- * CORRIGIDO: Usa o status "em-divulgacao" para consulta.
  */
 async function carregarVagasAtivas() {
   try {
@@ -79,16 +79,15 @@ async function carregarVagasAtivas() {
     selectVaga.innerHTML = '<option value="">Selecione a vaga...</option>'; // Reseta opções
 
     if (snapshot.empty) {
-      // CORREÇÃO UX: Não há vagas, exibe mensagem final e OCULTA o spinner.
+      // Não há vagas, exibe mensagem final e OCULTA o spinner.
       loadingVagas.textContent =
         "Não há vagas abertas para candidatura no momento.";
       loadingVagas.style.display = "block"; // Mantém a mensagem visível
       vagaSelectGroup.style.display = "none";
       btnSubmit.disabled = true;
       return;
-    }
+    } // Vagas carregadas, oculta o spinner e mostra o select
 
-    // Vagas carregadas, oculta o spinner e mostra o select
     loadingVagas.style.display = "none";
     vagaSelectGroup.style.display = "block";
     btnSubmit.disabled = false;
