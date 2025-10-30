@@ -2,9 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+
     <title>Candidatura de Vaga - EuPsico</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <link rel="stylesheet" href="../assets/css/design-system.css" />
+
     <style>
       /* Estilos simples para o formulário público */
       body {
@@ -82,6 +86,7 @@
       }
     </style>
   </head>
+
   <body>
     <div class="container">
       <h2>Formulário de Candidatura EuPsico</h2>
@@ -112,6 +117,7 @@
           <label for="telefone-candidato"
             >Telefone (com DDD), de preferência o WhatsApp:</label
           >
+
           <input
             type="text"
             id="telefone-candidato"
@@ -133,20 +139,24 @@
               placeholder="Ex: 00000-000"
             />
           </div>
+
           <div class="col-md-2 form-group">
             <label for="numero-endereco">Número:</label>
             <input type="text" id="numero-endereco" required />
           </div>
+
           <div class="col-md-6 form-group">
             <label for="cidade-endereco">Cidade:</label>
             <input type="text" id="cidade-endereco" required readonly />
           </div>
         </div>
+
         <div class="row">
           <div class="col-md-6 form-group">
             <label for="endereco-rua">Endereço (Rua/Av):</label>
             <input type="text" id="endereco-rua" required readonly />
           </div>
+
           <div class="col-md-6 form-group">
             <label for="estado-endereco">Estado (UF):</label>
             <input type="text" id="estado-endereco" required readonly />
@@ -160,6 +170,7 @@
             >Resumo da Experiência Profissional (Breve Apresentação
             Profissional):</label
           >
+
           <textarea
             id="resumo-experiencia"
             rows="4"
@@ -172,6 +183,7 @@
           <label for="habilidades-competencias"
             >Habilidades/Competências (Separe por vírgulas):</label
           >
+
           <textarea
             id="habilidades-competencias"
             rows="3"
@@ -182,12 +194,18 @@
 
         <div class="form-group">
           <label for="como-conheceu">Como conheceu a EuPsico (e a vaga):</label>
+
           <select id="como-conheceu" required>
             <option value="">Selecione...</option>
+
             <option value="linkedin">LinkedIn</option>
+
             <option value="instagram">Instagram</option>
+
             <option value="site">Site da EuPsico</option>
+
             <option value="indicacao">Indicação de um Colaborador</option>
+
             <option value="outros">Outros</option>
           </select>
         </div>
@@ -199,6 +217,7 @@
             >Anexar Currículo (PDF, DOCX, no máximo 5MB - Será salvo no Google
             Drive):</label
           >
+
           <input
             type="file"
             id="anexo-curriculo"
@@ -210,13 +229,13 @@
         <button type="submit" id="btn-submit" class="btn-submit" disabled>
           Enviar Candidatura
         </button>
+
         <div id="mensagem-feedback"></div>
       </form>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js"></script>
     <script type="module" src="../assets/js/firebase-init.js"></script>
+
     <script type="module" src="../assets/js/candidatura-publica.js"></script>
   </body>
 </html>
