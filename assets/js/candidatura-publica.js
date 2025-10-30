@@ -1,5 +1,4 @@
 // assets/js/candidatura-publica.js
-// Versão: 1.1 - Inclui lógica de CEP, novos campos e simulação de upload para Drive/Backend
 
 // Importa as funções necessárias do Firebase SDK (caminho ajustado para o contexto de assets)
 import {
@@ -9,29 +8,14 @@ import {
   getDocs,
   query,
   where,
-  // Removido ref, uploadBytes, getDownloadURL do Firebase Storage
 } from "./firebase-init.js";
-
-// Importa o utilitário de upload para o Google Drive
-// ASSUMIMOS QUE ESTA FUNÇÃO EXISTE E ESTÁ IMPLEMENTADA NA CAMADA DE FUNÇÕES DO BACKEND (Cloud Functions)
-// Baseado na sua nota de usar 'modulos/voluntario/js/envio_comprovantes.js' como referência.
-// No Front-end, o mais seguro é chamar uma Cloud Function ou API REST para mediar o upload para o Google Drive.
-// Aqui, criamos um PLACEHOLDER para simular essa chamada.
 
 /**
  * Simula a função de upload para o Google Drive.
  * Em um ambiente real, esta função faria um fetch(POST) para uma Cloud Function/API.
- * @param {File} file O arquivo a ser enviado.
- * @param {string} vagaId ID da vaga para estruturar o caminho.
- * @param {string} nomeCandidato Nome do candidato para o nome do arquivo.
- * @returns {Promise<string>} Promessa que resolve com o link público do arquivo no Drive.
  */
 async function uploadFileToDrive(file, vagaId, nomeCandidato) {
   // --- LÓGICA DE SIMULAÇÃO (DEVE SER SUBSTITUÍDA POR UMA CHAMADA REAL DE BACKEND) ---
-  // A chamada real usaria: FormData, fetch() para Cloud Function, e o backend usaria
-  // googleapis SDK para interagir com o Drive.
-
-  // Apenas para simular, retornaremos um link com placeholders
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (file.size > 0) {
@@ -53,7 +37,6 @@ async function uploadFileToDrive(file, vagaId, nomeCandidato) {
 }
 
 const VAGAS_COLLECTION_NAME = "vagas";
-// Nova coleção de destino: candidaturas
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
@@ -75,45 +58,45 @@ const estadoEndereco = document.getElementById("estado-endereco");
 
 /**
  * Função para carregar as vagas ativas e popular o campo Select.
+ * CORRIGIDO: Usa o campo de status correto ("status") e o valor correto ("em-divulgacao").
  */
 async function carregarVagasAtivas() {
   try {
-    // Busca vagas que estão com status 'Em Divulgação' e arte aprovada
-    const q = query(
-      vagasCollection,
-      where("status_vaga", "==", "Em Divulgação"),
-      where("status_arte", "==", "Aprovada") // Garante que apenas vagas prontas apareçam
-    );
+    // Consulta o Firestore buscando vagas com o status 'em-divulgacao'
+    const q = query(vagasCollection, where("status", "==", "em-divulgacao"));
     const snapshot = await getDocs(q);
 
     selectVaga.innerHTML = '<option value="">Selecione a vaga...</option>'; // Reseta opções
 
     if (snapshot.empty) {
+      // CORREÇÃO UX: Não há vagas, exibe mensagem final e OCULTA o spinner.
       loadingVagas.textContent =
         "Não há vagas abertas para candidatura no momento.";
+      loadingVagas.style.display = "block"; // Mantém a mensagem visível
+      vagaSelectGroup.style.display = "none";
       btnSubmit.disabled = true;
       return;
     }
 
-    snapshot.forEach((doc) => {
-      const vaga = doc.data();
-      const option = document.createElement("option");
-      option.value = doc.id;
-      // Usando o novo campo titulo_vaga
-      option.textContent = vaga.titulo_vaga;
-      option.setAttribute("data-titulo", vaga.titulo_vaga); // Salva o título para uso posterior
-      selectVaga.appendChild(option);
-    });
-
-    // Vagas carregadas, mostra o campo e habilita o botão de envio
+    // Vagas carregadas, oculta o spinner e mostra o select
     loadingVagas.style.display = "none";
     vagaSelectGroup.style.display = "block";
     btnSubmit.disabled = false;
+
+    snapshot.forEach((doc) => {
+      const vaga = doc.data();
+      const option = document.createElement("option");
+      option.value = doc.id; // O título da vaga é o campo 'nome'
+      option.textContent = vaga.nome;
+      option.setAttribute("data-titulo", vaga.nome);
+      selectVaga.appendChild(option);
+    });
   } catch (error) {
     console.error("Erro ao carregar vagas:", error);
     loadingVagas.textContent =
       "Erro ao carregar as vagas. Tente novamente mais tarde.";
     btnSubmit.disabled = true;
+    vagaSelectGroup.style.display = "none";
   }
 }
 
@@ -123,9 +106,8 @@ async function carregarVagasAtivas() {
 async function buscarCEP() {
   const cep = cepCandidato.value.replace(/\D/g, ""); // Remove caracteres não numéricos
 
-  if (cep.length !== 8) return;
+  if (cep.length !== 8) return; // Bloqueia campos enquanto busca
 
-  // Bloqueia campos enquanto busca
   enderecoRua.value = "Buscando...";
   cidadeEndereco.value = "Buscando...";
   estadoEndereco.value = "Buscando...";
@@ -170,24 +152,21 @@ async function handleCandidatura(e) {
 
   btnSubmit.disabled = true;
   msgFeedback.innerHTML =
-    '<div class="loading-spinner">Enviando candidatura e currículo...</div>';
+    '<div class="loading-spinner">Enviando candidatura e currículo...</div>'; // 1. Coleta de Dados
 
-  // 1. Coleta de Dados
   const vagaSelectOption = selectVaga.options[selectVaga.selectedIndex];
   const vagaId = selectVaga.value;
   const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo"); // Pega o título salvo
 
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
-  const telefone = document.getElementById("telefone-candidato").value.trim();
+  const telefone = document.getElementById("telefone-candidato").value.trim(); // Campos de Localização
 
-  // Campos de Localização
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
   const cidade = cidadeEndereco.value.trim();
-  const estado = estadoEndereco.value.trim();
+  const estado = estadoEndereco.value.trim(); // Campos de Experiência
 
-  // Campos de Experiência
   const resumoExperiencia = document
     .getElementById("resumo-experiencia")
     .value.trim();
@@ -196,9 +175,8 @@ async function handleCandidatura(e) {
     .value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
 
-  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
+  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0]; // Validação básica
 
-  // Validação básica
   if (
     !vagaId ||
     !nome ||
@@ -219,9 +197,8 @@ async function handleCandidatura(e) {
       true
     );
     return;
-  }
+  } // Validação de tamanho do arquivo (máximo 5MB)
 
-  // Validação de tamanho do arquivo (máximo 5MB)
   const maxFileSize = 5 * 1024 * 1024;
   if (arquivoCurriculo.size > maxFileSize) {
     exibirFeedback(
@@ -239,9 +216,8 @@ async function handleCandidatura(e) {
       arquivoCurriculo,
       vagaId,
       nome
-    );
+    ); // 3. SALVAR OS DADOS NO FIRESTORE (Coleção candidaturas)
 
-    // 3. SALVAR OS DADOS NO FIRESTORE (Coleção candidaturas)
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal, // Salva o título para referência
@@ -259,12 +235,10 @@ async function handleCandidatura(e) {
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
 
-      link_curriculo_drive: linkCurriculoDrive, // Link do Drive
+      link_curriculo_drive: linkCurriculoDrive, // Link do Drive // Novos campos para o fluxo de RH
 
-      // Novos campos para o fluxo de RH
-      status_recrutamento: "Candidatura Recebida (Triagem Pendente)", // Status inicial
-      data_candidatura: firebase.firestore.FieldValue.serverTimestamp(),
-      // histórico: [] - será inicializado pela primeira atualização
+      status_recrutamento: "Candidatura Recebida (Triagem Pendente)", // Status inicial // ATENÇÃO: Assumo que firebase.firestore.FieldValue.serverTimestamp() está disponível
+      data_candidatura: new Date(),
     };
 
     await addDoc(candidaturasCollection, novaCandidatura);
@@ -274,8 +248,7 @@ async function handleCandidatura(e) {
       `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
       false
     );
-    formCandidatura.reset();
-    // Limpar o conteúdo dos campos de endereço, que são readonly após a busca de CEP
+    formCandidatura.reset(); // Limpar o conteúdo dos campos de endereço, que são readonly após a busca de CEP
     enderecoRua.value = "";
     cidadeEndereco.value = "";
     estadoEndereco.value = "";
@@ -291,9 +264,6 @@ async function handleCandidatura(e) {
 
 /**
  * Exibe a mensagem de feedback para o usuário.
- * @param {string} classe Classe CSS para estilização (sucesso/erro).
- * @param {string} mensagem Texto da mensagem.
- * @param {boolean} reHabilitar Define se o botão deve ser reabilitado após o erro.
  */
 function exibirFeedback(classe, mensagem, reHabilitar) {
   msgFeedback.innerHTML = `<div class="${classe}">${mensagem}</div>`;
