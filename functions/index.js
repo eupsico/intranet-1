@@ -1328,13 +1328,9 @@ const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', depende
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-// ⚠️ Se o seu projeto já inicializa o app admin em outro lugar, remova a linha abaixo.
-// Se você tem certeza que esta linha DEVE ficar, mantenha-a.
-admin.initializeApp();
-
-// Acessando as instâncias via admin.app() para evitar conflito de escopo global.
-const getFirestore = () => admin.firestore();
-const getBucket = () => admin.storage().bucket();
+// ⚠️ Mantenha o admin.initializeApp() onde ele já está no seu arquivo index.js (seja aqui ou no topo)
+// Se já estiver declarado, garanta que esteja descomentado:
+// admin.initializeApp();
 
 // Função auxiliar para configurar cabeçalhos CORS
 const setCorsHeaders = (req, res) => {
@@ -1371,9 +1367,11 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
 
   let data;
   try {
-    // 3. CORREÇÃO CRÍTICA: Faz o parsing manual se o Content-Type foi alterado para 'text/plain' no frontend.
+    // 3. CORREÇÃO CRÍTICA: Faz o parsing manual do corpo da requisição.
+    // Necessário porque o frontend envia Content-Type: text/plain para evitar CORS.
     data = JSON.parse(req.body);
   } catch (e) {
+    console.error("Erro ao fazer parse do JSON no corpo da requisição:", e);
     return res
       .status(400)
       .json({
@@ -1383,9 +1381,9 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
       });
   }
 
-  // Acessa as instâncias DENTRO da função para evitar conflitos de declaração
-  const db = getFirestore();
-  const bucket = getBucket();
+  // ✅ CORREÇÃO FINAL: Acessa os serviços Admin SDK diretamente, sem redeclarar identificadores.
+  const db = admin.firestore();
+  const bucket = admin.storage().bucket();
 
   try {
     const {
@@ -1441,16 +1439,13 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
       status_candidatura: "Em Análise",
     };
 
-    const docRef = await db
-      .collection("candidaturas")
-      .add(finalCandidaturaData);
+    await db.collection("candidaturas").add(finalCandidaturaData);
 
     // 6. RETORNO DE SUCESSO
     return res.status(200).json({
       status: "success",
       message: "Candidatura e currículo salvos com sucesso!",
       fileUrl: fileUrl,
-      docId: docRef.id,
     });
   } catch (error) {
     console.error("Erro na Cloud Function 'uploadCandidatura':", error);
