@@ -115,26 +115,196 @@ async function carregarListasFirebase() {
 /**
  * Função para configurar o modal para criação de uma nova vaga.
  */
-/**
- * Função para configurar o modal para criação de uma nova vaga.
- */
 function openNewVagaModal() {
   if (formVaga) {
     formVaga.reset();
     formVaga.removeAttribute("data-vaga-id"); // Garante que é uma nova vaga
   }
-  if (modalTitle) modalTitle.textContent = "Nova Vaga - Ficha Técnica";
+  if (modalTitle) modalTitle.textContent = "Nova Vaga - Ficha Técnica"; // Abre o modal principal (Ficha Técnica) forçando o status de edição
 
-  // Abre o modal principal (Ficha Técnica) forçando o status de edição
   openFichaTecnicaModal(null, "em-criação");
 }
+
 /**
- * NOVO: Abre o modal da Ficha Técnica (Em Criação e Aguardando Aprovação).
- * CORRIGIDO: Injeta os botões no rodapé e remove o botão "Fechar" em Aprovação, evitando o cabeçalho.
+ * NOVO: Cria e insere um banner de feedback (alerta) no topo do modal.
  */
+function displayFeedbackBanner(modal, feedbackText, type = "warning") {
+  const existingBanner = modal.querySelector(".feedback-banner");
+  if (existingBanner) existingBanner.remove();
+
+  const banner = document.createElement("div");
+  banner.className = `feedback-banner alert alert-${type}`;
+  banner.style.padding = "10px 15px";
+  banner.style.margin = "10px 0";
+  banner.style.backgroundColor = type === "warning" ? "#fff3cd" : "#f8d7da";
+  banner.style.border = `1px solid ${
+    type === "warning" ? "#ffeeba" : "#f5c6cb"
+  }`;
+  banner.style.color = type === "warning" ? "#856404" : "#721c24";
+  banner.style.borderRadius = "5px";
+  banner.style.fontWeight = "bold";
+
+  banner.innerHTML = `
+    <p style="margin: 0;">
+      <i class="fas fa-exclamation-triangle"></i> 
+      FEEDBACK PENDENTE: ${feedbackText}
+    </p>
+  `; // Insere o banner no modal-body
+
+  const modalBody = modal.querySelector(".modal-body");
+  if (modalBody) {
+    // Insere o banner no início do modal body
+    modalBody.insertBefore(banner, modalBody.firstChild);
+  }
+}
+
+/**
+ * NOVO: Centraliza o preenchimento de TODOS os campos da Ficha Técnica e Arte.
+ * CORRIGIDO: Garante que o input hidden do modalAprovacaoArte seja preenchido.
+ */
+async function preencherFormularioVaga(vagaId, vaga) {
+  if (!vaga) return; // 1. Garante que as listas dinâmicas estejam carregadas
+
+  await carregarListasFirebase(); // 2. Define o ID da vaga nos formulários de cada modal
+
+  const forms = [formVaga, formCriacaoArte, formDivulgacao, modalFechadas];
+  const ids = [
+    "vaga-id-ficha",
+    "vaga-id-arte-criacao",
+    "vaga-id-divulgacao",
+    "vaga-id-fechadas",
+  ];
+
+  forms.forEach((form, index) => {
+    if (form) {
+      const hiddenInput = form.querySelector(`#${ids[index]}`);
+      if (hiddenInput) hiddenInput.value = vagaId;
+      if (form === formVaga) form.setAttribute("data-vaga-id", vagaId);
+    }
+  }); // CORREÇÃO: Tratar modalAprovacaoArte e seu input hidden separadamente
+
+  const hiddenInputAprovacao = modalAprovacaoArte?.querySelector(
+    "#vaga-id-arte-aprovacao"
+  );
+  if (hiddenInputAprovacao) {
+    hiddenInputAprovacao.value = vagaId;
+  } // 3. Mapeamento dos campos da FICHA TÉCNICA (formVaga)
+
+  const mapValue = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value || "";
+  };
+
+  mapValue("vaga-nome", vaga.nome);
+  mapValue("vaga-departamento", vaga.departamento);
+  mapValue("vaga-tipo-recrutamento", vaga.tipoRecrutamento);
+  mapValue("vaga-regime-trabalho", vaga.regimeTrabalho);
+  mapValue("vaga-modalidade-trabalho", vaga.modalidadeTrabalho);
+  mapValue("vaga-valor-salario", vaga.valorSalario);
+  mapValue("vaga-data-fechamento", vaga.dataFechamento);
+
+  mapValue("vaga-responsabilidades", vaga.cargo?.responsabilidades);
+  mapValue("vaga-resultados", vaga.cargo?.resultados);
+  mapValue("vaga-nova-substituicao", vaga.cargo?.novaSubstituicao);
+  mapValue("vaga-formacao-minima", vaga.formacao?.minima);
+  mapValue("vaga-conselho", vaga.formacao?.conselho);
+  mapValue("vaga-especializacoes", vaga.formacao?.especializacoes);
+  mapValue("vaga-comp-tecnicas", vaga.competencias?.tecnicas);
+  mapValue("vaga-comp-comportamentais", vaga.competencias?.comportamentais);
+  mapValue("vaga-certificacoes", vaga.competencias?.certificacoes);
+  mapValue("vaga-nivel-experiencia", vaga.experiencia?.nivel);
+  mapValue("vaga-contextos-similares", vaga.experiencia?.contextosSimilares);
+  mapValue("vaga-atuacao-grupos", vaga.experiencia?.atuacaoGrupos);
+  mapValue("vaga-fit-valores", vaga.fitCultural?.valoresEuPsico);
+  mapValue("vaga-estilo-equipe", vaga.fitCultural?.estiloEquipe);
+  mapValue("vaga-perfil-destaque", vaga.fitCultural?.perfilDestaque);
+  mapValue("vaga-oportunidades", vaga.crescimento?.oportunidades);
+  mapValue("vaga-desafios", vaga.crescimento?.desafios);
+  mapValue("vaga-plano-carreira", vaga.crescimento?.planoCarreira); // 4. Mapeamento dos campos de CRIAÇÃO DE ARTE (modal-criacao-arte)
+
+  const resumoArteField = document.querySelector(
+    "#modal-criacao-arte #vaga-resumo-arte"
+  );
+  const linkArteField = document.querySelector(
+    "#modal-criacao-arte #vaga-link-arte"
+  );
+  const textoDivulgacaoField = document.querySelector(
+    "#modal-criacao-arte #vaga-texto-divulgacao"
+  );
+
+  if (linkArteField) linkArteField.value = vaga.arte?.link || "";
+  if (textoDivulgacaoField)
+    textoDivulgacaoField.value = vaga.arte?.observacao || "";
+
+  if (resumoArteField) {
+    resumoArteField.value = vaga.arte?.resumo || gerarResumoVaga(vaga);
+  } // 5. Mapeamento dos campos de APROVAÇÃO/DIVULGAÇÃO (somente visualização)
+
+  const linkParaRevisao = vaga.arte?.link || "N/A";
+  const textoParaRevisao = vaga.arte?.observacao || "N/A";
+  const statusArte = vaga.arte?.status || "Pendente"; // --- Aprovação de Arte: Link Clicável e Texto ---
+
+  const linkClicavelAprov = document.querySelector(
+    "#modal-aprovacao-arte #link-arte-clicavel"
+  );
+  const textoVisualAprov = document.querySelector(
+    "#modal-aprovacao-arte #aprovacao-texto-divulgacao-visual"
+  );
+  const statusArteAtualElement = document.querySelector(
+    "#modal-aprovacao-arte #status-arte-atual"
+  );
+
+  if (linkClicavelAprov) {
+    linkClicavelAprov.textContent =
+      linkParaRevisao !== "N/A" ? "Clique Aqui" : "N/A";
+    linkClicavelAprov.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
+    linkClicavelAprov.target = "_blank";
+    linkClicavelAprov.style.pointerEvents =
+      linkParaRevisao !== "N/A" ? "auto" : "none";
+  }
+  if (textoVisualAprov) {
+    textoVisualAprov.textContent = textoParaRevisao;
+  }
+  if (statusArteAtualElement) {
+    statusArteAtualElement.textContent = statusArte;
+  } // --- Divulgação: Link Clicável e Canais ---
+
+  const linkClicavelDivulg = document.querySelector(
+    "#modal-divulgacao #divulgacao-link-clicavel"
+  );
+  const textoAprovadoDivulg = document.querySelector(
+    "#modal-divulgacao #divulgacao-texto-aprovado"
+  );
+  const periodoDivulgacaoInput = document.querySelector(
+    "#vaga-periodo-divulgacao"
+  );
+  const selectCanais = document.querySelector(
+    "#modal-divulgacao #vaga-canais-divulgacao"
+  );
+
+  if (linkClicavelDivulg) {
+    linkClicavelDivulg.href = linkParaRevisao !== "N/A" ? linkParaRevisao : "#";
+  }
+  if (textoAprovadoDivulg) {
+    textoAprovadoDivulg.textContent = textoParaRevisao;
+  }
+  if (periodoDivulgacaoInput) {
+    periodoDivulgacaoInput.value = vaga.periodoDivulgacao || "";
+  }
+
+  if (selectCanais) {
+    const canaisSalvos = vaga.canaisDivulgacao || [];
+    Array.from(selectCanais.options).forEach(
+      (option) => (option.selected = false)
+    );
+    Array.from(selectCanais.options).forEach((option) => {
+      option.selected = canaisSalvos.includes(option.value);
+    });
+  }
+}
+
 /**
  * NOVO: Abre o modal da Ficha Técnica (Em Criação, Aprovação, e Correção).
- * CORREÇÃO: Recebe o objeto 'vaga' e lê o feedback diretamente do histórico.
  */
 function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
   // 1. Lógica de Limpeza e Variáveis
@@ -143,38 +313,32 @@ function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
     footer
       .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
       .forEach((el) => el.remove());
-  }
+  } // Se estiver em correção, habilita edição
 
-  // Se estiver em correção, habilita edição
   const canEdit =
     statusAtual === "em-criação" || statusAtual === "correcao-pendente";
-  const isAprovacao = statusAtual === "aguardando-aprovacao";
+  const isAprovacao = statusAtual === "aguardando-aprovacao"; // 2. Limpeza de banners e Verificação de Feedback
 
-  // 2. Limpeza de banners e Verificação de Feedback (CORRIGIDO)
   const modalBody = modalFicha.querySelector(".modal-body");
   if (modalBody) {
     modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
   }
 
   if (statusAtual === "correcao-pendente" && vaga?.historico?.length) {
-    const lastAction = vaga.historico[vaga.historico.length - 1];
+    const lastAction = vaga.historico[vaga.historico.length - 1]; // Verifica se a última ação foi uma rejeição de ficha e se tem justificativa
 
-    // Verifica se a última ação foi uma rejeição de ficha e se tem justificativa
     if (lastAction.acao?.includes("REJEITADA") && lastAction.justificativa) {
-      // ATENÇÃO: Assumo que displayFeedbackBanner está definido
       displayFeedbackBanner(modalFicha, lastAction.justificativa, "warning");
     }
-  }
+  } // 3. Desabilita/Habilita todos os campos
 
-  // 3. Desabilita/Habilita todos os campos
   const inputsAndSelects = modalFicha.querySelectorAll(
     "input, select, textarea"
   );
   inputsAndSelects.forEach((el) => {
     el.disabled = !canEdit;
-  });
+  }); // 4. Configura botões de Salvar/Editar (Só aparece se for em Edição/Correção)
 
-  // 4. Configura botões de Salvar/Editar (Só aparece se for em Edição/Correção)
   const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
 
   if (btnSalvar) {
@@ -187,33 +351,31 @@ function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
         ? "Salvar Alterações"
         : "Salvar e Enviar para Aprovação";
     }
-  }
+  } // 5. Injeção de Botões de Aprovação (Se aplicável)
 
-  // 5. Injeção de Botões de Aprovação (Se aplicável)
   if (isAprovacao) {
     if (btnSalvar) btnSalvar.style.display = "none";
 
     const actionHtml = `
-            <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
-                <button type="button" class="btn btn-danger" id="btn-cancelar-vaga-ficha">
-                    <i class="fas fa-ban"></i> Cancelar Vaga
-                </button>
-                <button type="button" class="btn btn-alteração" id="btn-solicitar-alteracoes-ficha">
-                    <i class="fas fa-edit"></i> Solicitar Alterações
-                </button>
-                <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-            </div>`;
+      <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
+        <button type="button" class="btn btn-danger" id="btn-cancelar-vaga-ficha">
+          <i class="fas fa-ban"></i> Cancelar Vaga
+        </button>
+        <button type="button" class="btn btn-alteração" id="btn-solicitar-alteracoes-ficha">
+          <i class="fas fa-edit"></i> Solicitar Alterações
+        </button>
+        <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+          <i class="fas fa-check"></i> Aprovar
+        </button>
+      </div>`;
 
     const fecharRodapeBtn = modalFicha.querySelector(
       ".modal-footer .fechar-modal"
     );
     if (fecharRodapeBtn) {
       fecharRodapeBtn.insertAdjacentHTML("beforebegin", actionHtml);
-    }
+    } // 6. Configura Eventos (Aprovação)
 
-    // 6. Configura Eventos (Aprovação)
     const btnAprovar = modalFicha.querySelector("#btn-aprovar-ficha");
     const btnSolicitar = modalFicha.querySelector(
       "#btn-solicitar-alteracoes-ficha"
@@ -226,203 +388,173 @@ function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
       btnSolicitar.onclick = () => modalSolicitarAlteracoesFicha(vagaId);
     if (btnCancelar)
       btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId);
-  }
+  } // 7. Exibe o modal
 
-  // 7. Exibe o modal
   if (modalFicha) modalFicha.style.display = "flex";
 }
+
 /**
- * NOVO: Modal para Solicitar Alterações na Ficha Técnica (Aprovação Gestão).
+ * NOVO: Abre o modal de Criação da Arte (Fase RH).
  */
-function modalSolicitarAlteracoesFicha(vagaId) {
-  let modal = document.getElementById(ID_MODAL_SOLICITAR_FICHA);
+function openCriacaoArteModal(vagaId, vaga) {
+  const isPendente =
+    vaga.status === "arte-pendente" || vaga.status === "correcao-pendente"; // Limpeza e banners
 
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = ID_MODAL_SOLICITAR_FICHA;
-    modal.className = "modal-overlay";
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    modal.style.zIndex = "1000";
-    modal.style.display = "flex";
-    modal.style.justifyContent = "center";
-    modal.style.alignItems = "center";
+  const modalBody = modalCriacaoArte.querySelector(".modal-body");
+  if (modalBody) {
+    modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
+  } // VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE
 
-    modal.innerHTML = `
-<div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
- <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
- <h3 style="margin: 0;">Solicitar Alterações na Ficha</h3>
- <button type="button" class="close-modal-btn fechar-modal-alteracao-ficha" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
- </div>
- <div class="modal-body">
- <p>Descreva as alterações necessárias na Ficha Técnica. A vaga será retornada para **'Em Elaboração'** para correção:</p>
- <div class="form-group" style="margin-bottom: 15px;">
- <label for="solicitar-ficha-motivo">Alterações:</label>
- <textarea id="solicitar-ficha-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
- </div>
- </div>
- <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
- <button type="button" class="btn btn-secondary fechar-modal-alteracao-ficha">Cancelar</button>
- <button type="button" class="btn btn-danger" id="btn-confirmar-alteracoes-ficha">Confirmar Solicitação</button>
- </div>
-</div>
-`;
-    document.body.appendChild(modal);
+  if (vaga.status === "correcao-pendente" && vaga.arte?.alteracoesPendentes) {
+    displayFeedbackBanner(
+      modalCriacaoArte,
+      vaga.arte.alteracoesPendentes,
+      "warning"
+    );
+  } // Configura campos e botões
 
-    modal.querySelectorAll(".fechar-modal-alteracao-ficha").forEach((btn) => {
-      btn.onclick = () => (modal.style.display = "none");
-    });
-  }
+  const linkArteField = document.querySelector(
+    "#modal-criacao-arte #vaga-link-arte"
+  );
+  const textoDivulgacaoField = document.querySelector(
+    "#modal-criacao-arte #vaga-texto-divulgacao"
+  );
 
-  const btnConfirmar = modal.querySelector("#btn-confirmar-alteracoes-ficha");
-  if (btnConfirmar) {
-    btnConfirmar.onclick = () => {
-      const motivo = document.getElementById("solicitar-ficha-motivo").value;
-      if (motivo.trim()) {
-        modal.style.display = "none";
-        handleRejeitarFichaTecnica(vagaId, motivo);
-      } else {
-        window.showToast("A descrição da alteração é obrigatória.", "warning");
-      }
+  const inputs = modalCriacaoArte.querySelectorAll("input, textarea");
+  inputs.forEach((input) => (input.disabled = !isPendente));
+
+  const btnEnviar = modalCriacaoArte.querySelector(
+    "#btn-enviar-aprovacao-arte"
+  );
+
+  if (btnEnviar) {
+    btnEnviar.style.display = isPendente ? "inline-block" : "none";
+    btnEnviar.onclick = () => {
+      handleSalvarEEnviarArte(
+        vagaId,
+        linkArteField.value,
+        textoDivulgacaoField.value
+      );
     };
   }
 
-  document.getElementById("solicitar-ficha-motivo").value = "";
-  modal.style.display = "flex";
+  if (modalCriacaoArte) modalCriacaoArte.style.display = "flex";
 }
 
 /**
- * NOVO: Modal para Solicitar Alterações na Arte (Fase Aprovação da Arte).
+ * NOVO: Abre o modal de Aprovação da Arte (Fase Gestor/Revisor).
  */
-function modalSolicitarAlteracoesArte(vagaId) {
-  let modal = document.getElementById(ID_MODAL_SOLICITAR_ARTE);
+function openAprovacaoArteModal(vagaId, vaga) {
+  // 1. O preenchimento visual é feito em preencherFormularioVaga
 
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = ID_MODAL_SOLICITAR_ARTE;
-    modal.className = "modal-overlay";
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    modal.style.zIndex = "1000";
-    modal.style.display = "flex";
-    modal.style.justifyContent = "center";
-    modal.style.alignItems = "center";
+  // 2. Configuração dos eventos
+  const btnAprovar = modalAprovacaoArte.querySelector(
+    "#btn-aprovar-arte-final"
+  );
+  const btnSolicitar = modalAprovacaoArte.querySelector(
+    "#btn-solicitar-alteracoes-arte"
+  );
 
-    modal.innerHTML = `
-<div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
- <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
- <h3 style="margin: 0;">Solicitar Alterações na Arte</h3>
- <button type="button" class="close-modal-btn fechar-modal-alteracao-arte" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
- </div>
- <div class="modal-body">
- <p>Descreva detalhadamente as alterações necessárias na arte de divulgação:</p>
- <div class="form-group" style="margin-bottom: 15px;">
- <label for="solicitar-arte-motivo">Alterações:</label>
- <textarea id="solicitar-arte-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
- </div>
- </div>
- <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
- <button type="button" class="btn btn-secondary fechar-modal-alteracao-arte">Cancelar</button>
- <button type="button" class="btn btn-warning" id="btn-confirmar-alteracoes-arte">Confirmar Solicitação</button>
- </div>
-</div>
-`;
-    document.body.appendChild(modal);
+  if (btnAprovar) btnAprovar.onclick = () => handleAprovarArte();
+  if (btnSolicitar)
+    btnSolicitar.onclick = () => modalSolicitarAlteracoesArte(vagaId);
 
-    modal.querySelectorAll(".fechar-modal-alteracao-arte").forEach((btn) => {
-      btn.onclick = () => (modal.style.display = "none");
-    });
-  }
-
-  const btnConfirmar = modal.querySelector("#btn-confirmar-alteracoes-arte");
-  if (btnConfirmar) {
-    btnConfirmar.onclick = () => {
-      const alteracoes = document.getElementById("solicitar-arte-motivo").value;
-      if (alteracoes.trim()) {
-        modal.style.display = "none";
-        handleSolicitarAlteracoes(vagaId, alteracoes);
-      } else {
-        window.showToast("A descrição da alteração é obrigatória.", "warning");
-      }
-    };
-  }
-
-  document.getElementById("solicitar-arte-motivo").value = "";
-  modal.style.display = "flex";
+  if (modalAprovacaoArte) modalAprovacaoArte.style.display = "flex";
 }
 
 /**
- * NOVO: Abre um modal para solicitar a justificativa da rejeição.
- * Usado pelo botão 'Cancelar Vaga' (na fase de aprovação da ficha).
+ * NOVO: Abre o modal de Gerenciamento da Divulgação (Vaga Ativa).
  */
-function modalRejeicaoFichaTecnica(vagaId) {
-  let modal = document.getElementById(ID_MODAL_REJEICAO);
+function openDivulgacaoModal(vagaId, vaga) {
+  const btnSalvarDiv = modalDivulgacao.querySelector("#btn-salvar-divulgacao"); // 1. Configura botão de salvar detalhes
 
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = ID_MODAL_REJEICAO;
-    modal.className = "modal-overlay";
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    modal.style.zIndex = "1000";
-    modal.style.display = "flex";
-    modal.style.justifyContent = "center";
-    modal.style.alignItems = "center";
+  if (btnSalvarDiv) btnSalvarDiv.onclick = handleSalvarDivulgacaoDetalhes; // 2. Configura botões de fluxo (Encerrar/Cancelar)
 
-    modal.innerHTML = `
-<div class="modal-content" style="max-width: 450px; background-color: white; padding: 20px; border-radius: 8px;">
- <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;">
- <h3 style="margin: 0;">Rejeitar Ficha Técnica (Cancelar Vaga)</h3>
- <button type="button" class="close-modal-btn fechar-modal-rejeicao" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
- </div>
- <div class="modal-body">
- <p>**ATENÇÃO:** Esta ação é irreversível e interromperá o fluxo de aprovação. A vaga será retornada para **'Em Elaboração'** para correção.</p>
- <p>Por favor, informe o motivo do cancelamento da vaga:</p>
- <div class="form-group" style="margin-bottom: 15px;">
- <label for="rejeicao-motivo">Justificativa:</label>
- <textarea id="rejeicao-motivo" rows="4" required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
- </div>
- </div>
- <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
- <button type="button" class="btn btn-secondary fechar-modal-rejeicao">Cancelar</button>
- <button type="button" class="btn btn-danger" id="btn-confirmar-rejeicao">Confirmar Rejeição</button>
- </div>
-</div>
-`;
-    document.body.appendChild(modal);
+  const btnEncerrar = modalDivulgacao.querySelector("#btn-encerrar-vaga");
+  const btnCancelar = modalDivulgacao.querySelector("#btn-cancelar-vaga");
 
-    modal.querySelectorAll(".fechar-modal-rejeicao").forEach((btn) => {
-      btn.onclick = () => (modal.style.display = "none");
-    });
-  }
+  if (btnEncerrar) btnEncerrar.onclick = handleEncerrarVaga;
+  if (btnCancelar) btnCancelar.onclick = handleCancelarDivulgacao;
 
-  const btnConfirmar = modal.querySelector("#btn-confirmar-rejeicao");
-  if (btnConfirmar) {
-    btnConfirmar.onclick = () => {
-      const motivo = document.getElementById("rejeicao-motivo").value;
-      if (motivo.trim()) {
-        modal.style.display = "none";
-        handleRejeitarFichaTecnica(vagaId, motivo);
+  if (modalDivulgacao) modalDivulgacao.style.display = "flex";
+}
+
+/**
+ * NOVO: Abre o modal de Visualização de Vagas Fechadas/Encerradas.
+ */
+function openVisualizacaoFechadaModal(vagaId, vaga) {
+  const fichaContainer = modalFechadas.querySelector(
+    "#visualizacao-ficha-completa"
+  );
+  const arteContainer = modalFechadas.querySelector(
+    "#visualizacao-arte-completa"
+  );
+  const historicoContainer = modalFechadas.querySelector(
+    "#visualizacao-historico"
+  ); // 1. Limpar e popular Ficha Técnica para visualização // (A lógica de clonagem/população visual é assumida como complexa e omitida aqui) // 2. Configuração dos Eventos
+
+  const btnReaproveitar = modalFechadas.querySelector("#btn-reaproveitar-vaga");
+
+  if (btnReaproveitar)
+    btnReaproveitar.onclick = () => handleReaproveitarVaga(vagaId); // 3. Exibe o modal
+
+  if (modalFechadas) modalFechadas.style.display = "flex";
+}
+
+/**
+ * Função para buscar e exibir os detalhes de uma vaga para edição.
+ * ATUA COMO ROTEAROR: Carrega os dados e abre o modal correto baseado no status,
+ * usando 'correcaoTarget' para diferenciar correção de Ficha vs. Arte.
+ */
+async function handleDetalhesVaga(vagaId) {
+  if (!vagaId) return;
+
+  try {
+    const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
+    const docSnap = await getDoc(vagaRef);
+
+    if (!docSnap.exists()) {
+      window.showToast("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = docSnap.data();
+    const statusAtual = vaga.status || "em-criação"; // 1. Preenche TODOS os campos (centralizado)
+
+    await preencherFormularioVaga(vagaId, vaga); // 2. ROTEA PARA O MODAL CORRETO
+
+    document
+      .querySelectorAll(".modal-overlay")
+      .forEach((modal) => (modal.style.display = "none"));
+
+    if (
+      statusAtual === "em-criação" ||
+      statusAtual === "aguardando-aprovacao"
+    ) {
+      openFichaTecnicaModal(vagaId, statusAtual, vaga);
+    } else if (statusAtual === "arte-pendente") {
+      openCriacaoArteModal(vagaId, vaga);
+    } else if (statusAtual === "aguardando-aprovacao-arte") {
+      openAprovacaoArteModal(vagaId, vaga);
+    } else if (statusAtual === "em-divulgacao") {
+      openDivulgacaoModal(vagaId, vaga);
+    } else if (statusAtual === "cancelada" || statusAtual === "encerrada") {
+      openVisualizacaoFechadaModal(vagaId, vaga);
+    } else if (statusAtual === "correcao-pendente") {
+      const correcaoTarget = vaga.correcaoTarget;
+
+      if (correcaoTarget === "ARTE") {
+        // Se o target for ARTE, abre o modal de criação/edição de arte (openCriacaoArteModal lida com o feedback)
+        openCriacaoArteModal(vagaId, vaga);
       } else {
-        window.showToast("O motivo da rejeição é obrigatório.", "warning");
+        // Se o target for FICHA (ou indefinido/nulo), abre o modal da Ficha Técnica (openFichaTecnicaModal lida com o feedback)
+        openFichaTecnicaModal(vagaId, "correcao-pendente", vaga);
       }
-    };
+    }
+  } catch (error) {
+    console.error("Erro ao carregar detalhes da vaga:", error);
+    window.showToast("Erro ao carregar os dados para edição.", "error");
   }
-
-  document.getElementById("rejeicao-motivo").value = "";
-  modal.style.display = "flex";
 }
 /**
  * Lida com a submissão do formulário de nova vaga ou edição.
@@ -676,8 +808,7 @@ async function handleRejeitarFichaTecnica(vagaId, justificativa) {
         )}...`,
         justificativa: justificativa,
         usuario: currentUserData.id || "ID_DO_USUARIO_LOGADO",
-      }),
-      // Limpa os campos de controle de arte para evitar confusão de target
+      }), // Limpa os campos de controle de arte para evitar confusão de target
       "arte.alteracoesPendentes": null,
       "arte.status": "Pendente",
     });
@@ -734,11 +865,10 @@ async function handleSalvarEEnviarArte(vagaId, link, textoDivulgacao) {
 }
 
 /**
- * NOVO: Lida com a Aprovação da Arte pelo Gestor (na fase 'aguardando-aprovacao-arte').
- * CORRIGIDO: Rastreamento robusto do vagaId e tratamento de falhas.
+ * NOVO: Lida com a Aprovação da Arte pelo Gestor.
  */
 async function handleAprovarArte() {
-  // 1. RASTREAMENTO ROBUSTO DO vagaId
+  // RASTREAMENTO ROBUSTO DO vagaId (Busca o valor do input hidden do modal de Aprovação)
   const hiddenInput = modalAprovacaoArte?.querySelector(
     "#vaga-id-arte-aprovacao"
   );
@@ -761,16 +891,14 @@ async function handleAprovarArte() {
       throw new Error("Vaga não encontrada no banco de dados.");
     }
 
-    // Garante que o documento exista antes de tentar ler/atualizar
     const vagaData = docSnap.data();
 
-    // 2. EXECUÇÃO DO UPDATE (Garantir que AWAIT esteja no lugar correto)
     await updateDoc(vagaRef, {
-      status: "em-divulgacao", // Próxima fase: em Divulgação
+      status: "em-divulgacao",
       arte: {
-        ...vagaData.arte, // Usa os dados carregados do docSnap
+        ...vagaData.arte,
         status: "Aprovada",
-        alteracoesPendentes: null, // Limpa qualquer pendência
+        alteracoesPendentes: null,
       },
       historico: arrayUnion({
         data: new Date(),
@@ -779,7 +907,6 @@ async function handleAprovarArte() {
       }),
     });
 
-    // 3. AÇÃO DE SUCESSO (Atualização da UI)
     window.showToast(
       "Arte aprovada! A vaga agora está em Divulgação.",
       "success"
@@ -787,7 +914,6 @@ async function handleAprovarArte() {
     if (modalAprovacaoArte) modalAprovacaoArte.style.display = "none";
     carregarVagas("em-divulgacao");
   } catch (error) {
-    // Captura falhas na busca (getDoc), na atualização (updateDoc), ou se o ID estava incorreto.
     console.error("Erro ao aprovar arte:", error);
     window.showToast(
       `Ocorreu um erro ao aprovar a arte: ${error.message || ""}`,
@@ -795,10 +921,6 @@ async function handleAprovarArte() {
     );
   }
 }
-/**
- * NOVO: Lida com a Solicitação de Alterações na Arte (volta para Correção Pendente).
- * MODIFICADO: Define o status e o target da correção como "ARTE".
- */
 async function handleSolicitarAlteracoes(vagaId, alteracoes) {
   if (!vagaId || !alteracoes) {
     window.showToast(
@@ -822,8 +944,7 @@ async function handleSolicitarAlteracoes(vagaId, alteracoes) {
         ...docSnap.data().arte,
         status: "Alteração Solicitada",
         alteracoesPendentes: alteracoes, // Salva o motivo no campo da arte
-      },
-      // Limpa os campos de controle de ficha para evitar confusão de target
+      }, // Limpa os campos de controle de ficha para evitar confusão de target
       justificativa: null,
       historico: arrayUnion({
         data: new Date(),
@@ -1033,12 +1154,10 @@ async function handleReaproveitarVaga(vagaId) {
  * NOVO: Centraliza o preenchimento de TODOS os campos da Ficha Técnica e Arte.
  */
 async function preencherFormularioVaga(vagaId, vaga) {
-  if (!vaga) return;
+  if (!vaga) return; // 1. Garante que as listas dinâmicas estejam carregadas
 
-  // 1. Garante que as listas dinâmicas estejam carregadas
-  await carregarListasFirebase();
+  await carregarListasFirebase(); // 2. Define o ID da vaga nos formulários de cada modal
 
-  // 2. Define o ID da vaga nos formulários de cada modal (assumindo que os inputs hidden existem)
   const forms = [formVaga, formCriacaoArte, formDivulgacao, modalFechadas];
   const ids = [
     "vaga-id-ficha",
@@ -1053,9 +1172,15 @@ async function preencherFormularioVaga(vagaId, vaga) {
       if (hiddenInput) hiddenInput.value = vagaId;
       if (form === formVaga) form.setAttribute("data-vaga-id", vagaId);
     }
-  });
+  }); // CORREÇÃO: Tratar modalAprovacaoArte e seu input hidden separadamente
 
-  // 3. Mapeamento dos campos da FICHA TÉCNICA (formVaga)
+  const hiddenInputAprovacao = modalAprovacaoArte?.querySelector(
+    "#vaga-id-arte-aprovacao"
+  );
+  if (hiddenInputAprovacao) {
+    hiddenInputAprovacao.value = vagaId;
+  } // 3. Mapeamento dos campos da FICHA TÉCNICA (formVaga)
+
   const mapValue = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.value = value || "";
@@ -1086,9 +1211,8 @@ async function preencherFormularioVaga(vagaId, vaga) {
   mapValue("vaga-perfil-destaque", vaga.fitCultural?.perfilDestaque);
   mapValue("vaga-oportunidades", vaga.crescimento?.oportunidades);
   mapValue("vaga-desafios", vaga.crescimento?.desafios);
-  mapValue("vaga-plano-carreira", vaga.crescimento?.planoCarreira);
+  mapValue("vaga-plano-carreira", vaga.crescimento?.planoCarreira); // 4. Mapeamento dos campos de CRIAÇÃO DE ARTE (modal-criacao-arte)
 
-  // 4. Mapeamento dos campos de CRIAÇÃO DE ARTE (modal-criacao-arte)
   const resumoArteField = document.querySelector(
     "#modal-criacao-arte #vaga-resumo-arte"
   );
@@ -1105,14 +1229,12 @@ async function preencherFormularioVaga(vagaId, vaga) {
 
   if (resumoArteField) {
     resumoArteField.value = vaga.arte?.resumo || gerarResumoVaga(vaga);
-  }
+  } // 5. Mapeamento dos campos de APROVAÇÃO/DIVULGAÇÃO (somente visualização)
 
-  // 5. Mapeamento dos campos de APROVAÇÃO/DIVULGAÇÃO (somente visualização)
   const linkParaRevisao = vaga.arte?.link || "N/A";
   const textoParaRevisao = vaga.arte?.observacao || "N/A";
-  const statusArte = vaga.arte?.status || "Pendente";
+  const statusArte = vaga.arte?.status || "Pendente"; // --- Aprovação de Arte: Link Clicável e Texto ---
 
-  // --- Aprovação de Arte: Link Clicável e Texto ---
   const linkClicavelAprov = document.querySelector(
     "#modal-aprovacao-arte #link-arte-clicavel"
   );
@@ -1134,12 +1256,10 @@ async function preencherFormularioVaga(vagaId, vaga) {
   if (textoVisualAprov) {
     textoVisualAprov.textContent = textoParaRevisao;
   }
-  // ATENÇÃO: #status-arte-atual não existe no modal-aprovacao-arte no HTML que me forneceu, mas assumo que está em algum lugar no seu código
   if (statusArteAtualElement) {
     statusArteAtualElement.textContent = statusArte;
-  }
+  } // --- Divulgação: Link Clicável e Canais ---
 
-  // --- Divulgação: Link Clicável e Canais ---
   const linkClicavelDivulg = document.querySelector(
     "#modal-divulgacao #divulgacao-link-clicavel"
   );
@@ -1175,30 +1295,115 @@ async function preencherFormularioVaga(vagaId, vaga) {
 }
 
 /**
- * NOVO: Abre o modal de Criação da Arte (Fase RH).
- * CORRIGIDO: Exibe feedback de solicitação de alterações na arte.
- * ATENÇÃO: Esta função utiliza as variáveis globais modalCriacaoArte, displayFeedbackBanner e handleSalvarEEnviarArte (Assumidas).
+ * NOVO: Abre o modal da Ficha Técnica (Em Criação, Aprovação, e Correção).
  */
-function openCriacaoArteModal(vagaId, vaga) {
-  const isPendente =
-    vaga.status === "arte-pendente" || vaga.status === "correcao-pendente"; // HABILITA EDIÇÃO SE FOR CORREÇÃO
+function openFichaTecnicaModal(vagaId, statusAtual, vaga) {
+  // 1. Lógica de Limpeza e Variáveis
+  const footer = modalFicha.querySelector(".modal-footer");
+  if (footer) {
+    footer
+      .querySelectorAll(".acoes-aprovacao-ficha-wrapper")
+      .forEach((el) => el.remove());
+  } // Se estiver em correção, habilita edição
 
-  // Limpeza e banners (assumidos como corretos)
-  const modalBody = modalCriacaoArte.querySelector(".modal-body");
+  const canEdit =
+    statusAtual === "em-criação" || statusAtual === "correcao-pendente";
+  const isAprovacao = statusAtual === "aguardando-aprovacao"; // 2. Limpeza de banners e Verificação de Feedback
+
+  const modalBody = modalFicha.querySelector(".modal-body");
   if (modalBody) {
     modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
   }
 
-  // VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE
+  if (statusAtual === "correcao-pendente" && vaga?.historico?.length) {
+    const lastAction = vaga.historico[vaga.historico.length - 1]; // Verifica se a última ação foi uma rejeição de ficha e se tem justificativa
+
+    if (lastAction.acao?.includes("REJEITADA") && lastAction.justificativa) {
+      displayFeedbackBanner(modalFicha, lastAction.justificativa, "warning");
+    }
+  } // 3. Desabilita/Habilita todos os campos
+
+  const inputsAndSelects = modalFicha.querySelectorAll(
+    "input, select, textarea"
+  );
+  inputsAndSelects.forEach((el) => {
+    el.disabled = !canEdit;
+  }); // 4. Configura botões de Salvar/Editar (Só aparece se for em Edição/Correção)
+
+  const btnSalvar = modalFicha.querySelector("#btn-salvar-vaga");
+
+  if (btnSalvar) {
+    btnSalvar.style.display = canEdit ? "inline-block" : "none";
+
+    if (statusAtual === "correcao-pendente") {
+      btnSalvar.textContent = "Salvar e Reenviar para Aprovação";
+    } else {
+      btnSalvar.textContent = vagaId
+        ? "Salvar Alterações"
+        : "Salvar e Enviar para Aprovação";
+    }
+  } // 5. Injeção de Botões de Aprovação (Se aplicável)
+
+  if (isAprovacao) {
+    if (btnSalvar) btnSalvar.style.display = "none";
+
+    const actionHtml = `
+      <div class="acoes-aprovacao-ficha-wrapper" style="display: flex; gap: 10px; margin-left: auto;">
+        <button type="button" class="btn btn-danger" id="btn-cancelar-vaga-ficha">
+          <i class="fas fa-ban"></i> Cancelar Vaga
+        </button>
+        <button type="button" class="btn btn-alteração" id="btn-solicitar-alteracoes-ficha">
+          <i class="fas fa-edit"></i> Solicitar Alterações
+        </button>
+        <button type="button" class="btn btn-success" id="btn-aprovar-ficha">
+          <i class="fas fa-check"></i> Aprovar
+        </button>
+      </div>`;
+
+    const fecharRodapeBtn = modalFicha.querySelector(
+      ".modal-footer .fechar-modal"
+    );
+    if (fecharRodapeBtn) {
+      fecharRodapeBtn.insertAdjacentHTML("beforebegin", actionHtml);
+    } // 6. Configura Eventos (Aprovação)
+
+    const btnAprovar = modalFicha.querySelector("#btn-aprovar-ficha");
+    const btnSolicitar = modalFicha.querySelector(
+      "#btn-solicitar-alteracoes-ficha"
+    );
+    const btnCancelar = modalFicha.querySelector("#btn-cancelar-vaga-ficha");
+
+    if (btnAprovar)
+      btnAprovar.onclick = () => handleAprovarFichaTecnica(vagaId);
+    if (btnSolicitar)
+      btnSolicitar.onclick = () => modalSolicitarAlteracoesFicha(vagaId);
+    if (btnCancelar)
+      btnCancelar.onclick = () => modalRejeicaoFichaTecnica(vagaId);
+  } // 7. Exibe o modal
+
+  if (modalFicha) modalFicha.style.display = "flex";
+}
+
+/**
+ * NOVO: Abre o modal de Criação da Arte (Fase RH).
+ */
+function openCriacaoArteModal(vagaId, vaga) {
+  const isPendente =
+    vaga.status === "arte-pendente" || vaga.status === "correcao-pendente"; // Limpeza e banners
+
+  const modalBody = modalCriacaoArte.querySelector(".modal-body");
+  if (modalBody) {
+    modalBody.querySelectorAll(".feedback-banner").forEach((el) => el.remove());
+  } // VERIFICAR E EXIBIR FEEDBACK PENDENTE DE ARTE
+
   if (vaga.status === "correcao-pendente" && vaga.arte?.alteracoesPendentes) {
     displayFeedbackBanner(
       modalCriacaoArte,
       vaga.arte.alteracoesPendentes,
       "warning"
     );
-  }
+  } // Configura campos e botões
 
-  // Configura campos e botões
   const linkArteField = document.querySelector(
     "#modal-criacao-arte #vaga-link-arte"
   );
@@ -1305,12 +1510,10 @@ async function handleDetalhesVaga(vagaId) {
     }
 
     const vaga = docSnap.data();
-    const statusAtual = vaga.status || "em-criação";
+    const statusAtual = vaga.status || "em-criação"; // 1. Preenche TODOS os campos (centralizado)
 
-    // 1. Preenche TODOS os campos (centralizado)
-    await preencherFormularioVaga(vagaId, vaga);
+    await preencherFormularioVaga(vagaId, vaga); // 2. ROTEA PARA O MODAL CORRETO
 
-    // 2. ROTEA PARA O MODAL CORRETO
     document
       .querySelectorAll(".modal-overlay")
       .forEach((modal) => (modal.style.display = "none"));
@@ -1451,9 +1654,9 @@ async function carregarVagas(status) {
 <p>Status: **${statusFormatado}**</p>
 <p>Candidatos: ${vaga.candidatosCount || 0}</p>
 <div class="rh-card-actions">
- <button class="btn btn-primary btn-detalhes" data-id="${
-   vaga.id
- }">Ver/Gerenciar Vaga</button>
+<button class="btn btn-primary btn-detalhes" data-id="${
+      vaga.id
+    }">Ver/Gerenciar Vaga</button>
 </div>
 </div>
 `;
@@ -1523,7 +1726,7 @@ async function initgestaovagas(user, userData) {
 
   if (btnNovaVaga) {
     btnNovaVaga.addEventListener("click", openNewVagaModal);
-  } // CORREÇÃO DE ERRO LÓGICO: Atribui o submit ao formulário, não ao botão.
+  }
   if (formVaga) {
     formVaga.addEventListener("submit", handleSalvarVaga);
   } // Configura submissão do modal de divulgação
@@ -1567,42 +1770,6 @@ async function initgestaovagas(user, userData) {
       carregarVagas(status);
     });
   });
-}
-/**
- * NOVO: Cria e insere um banner de feedback (alerta) no topo do modal.
- * @param {HTMLElement} modal O container do modal (ex: modalFicha, modalCriacaoArte).
- * @param {string} feedbackText O texto da alteração pendente.
- * @param {string} type Tipo de feedback (ex: 'error', 'warning').
- */
-function displayFeedbackBanner(modal, feedbackText, type = "warning") {
-  const existingBanner = modal.querySelector(".feedback-banner");
-  if (existingBanner) existingBanner.remove();
-
-  const banner = document.createElement("div");
-  banner.className = `feedback-banner alert alert-${type}`;
-  banner.style.padding = "10px 15px";
-  banner.style.margin = "10px 0";
-  banner.style.backgroundColor = type === "warning" ? "#fff3cd" : "#f8d7da";
-  banner.style.border = `1px solid ${
-    type === "warning" ? "#ffeeba" : "#f5c6cb"
-  }`;
-  banner.style.color = type === "warning" ? "#856404" : "#721c24";
-  banner.style.borderRadius = "5px";
-  banner.style.fontWeight = "bold";
-
-  banner.innerHTML = `
-        <p style="margin: 0;">
-            <i class="fas fa-exclamation-triangle"></i> 
-            FEEDBACK PENDENTE: ${feedbackText}
-        </p>
-    `;
-
-  // Insere o banner no modal-body
-  const modalBody = modal.querySelector(".modal-body");
-  if (modalBody) {
-    // Insere o banner no início do modal body
-    modalBody.insertBefore(banner, modalBody.firstChild);
-  }
 }
 
 // CORREÇÃO DE ERRO DE INICIALIZAÇÃO: Exporta a função principal
