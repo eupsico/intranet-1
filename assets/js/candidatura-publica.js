@@ -1,8 +1,7 @@
 // assets/js/candidatura-publica.js
-// Versão: 1.3 - Corrigida importação de functions e lógica de submissão Cloud Function.
+// Versão: 1.6 - Implementa upload real via Google Apps Script (Base64/JSON).
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
-// CORRIGIDO: Importa a instância 'functions' e 'httpsCallable' diretamente do firebase-init.js
 import {
   db,
   collection,
@@ -14,8 +13,12 @@ import {
 } from "./firebase-init.js";
 
 // =====================================================================
-// VARIÁVEIS GLOBAIS
+// VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
 // =====================================================================
+
+// URL REAL do Google Apps Script para processar o upload do currículo.
+const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbwhqJwbafkfLG9avvWqigOeYCWgudyNZPsCXoMPJUOsjxh-gULxCG9cv1K4_WVALexdGA/exec";
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
@@ -37,33 +40,69 @@ const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
-// 'functions' é a instância importada, 'salvarCandidatura' é o nome da função no backend
+// Esta é a função que salvará os metadados no Firestore (Backend)
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
- * Simula a função de upload para o Google Drive.
- * NOTA: Usei o ID de pasta do seu Drive, mas isso deve ser substituído por uma API/Cloud Function real.
+ * NOVO: Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
+ * @param {File} file Arquivo do currículo.
+ * @param {string} vagaTitulo Título da vaga.
+ * @param {string} nomeCandidato Nome do candidato.
+ * @returns {Promise<string>} Promessa que resolve com o link (URL) do arquivo no Drive.
  */
-async function uploadFileToDrive(file, vagaId, nomeCandidato) {
-  // --- LÓGICA DE SIMULAÇÃO (DEVE SER SUBSTITUÍDA POR UMA CHAMADA REAL DE BACKEND) ---
+function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (file.size > 0) {
-        // Usando o ID da pasta do Drive que você forneceu para a simulação: 1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF
-        const simulatedLink = `https://drive.google.com/drive/u/1/folders/1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF/view?id=SIMULADO_${vagaId}_${nomeCandidato.replace(
-          /\s/g,
-          "_"
-        )}`;
-        console.log(
-          `[SIMULAÇÃO] Arquivo enviado para o Drive. Link: ${simulatedLink}`
-        );
-        resolve(simulatedLink);
-      } else {
-        reject(
-          new Error("Erro simulado: Arquivo vazio. O upload real falharia.")
-        );
-      }
-    }, 1500); // Simula o tempo de latência de upload
+    if (!file) return reject(new Error("Nenhum arquivo anexado."));
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      const fileData = e.target.result.split(",")[1]; // Pega a parte Base64
+
+      const payload = {
+        fileData: fileData,
+        mimeType: file.type,
+        fileName: file.name,
+        nomeCandidato: nomeCandidato,
+        vagaTitulo: vagaTitulo, // Usado para nomear a pasta/arquivo no Apps Script
+      };
+
+      // Chamada HTTP POST para o Apps Script
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        // Envia como JSON; o Apps Script (doPost) deve ser configurado para receber JSON
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((res) => res.json())
+        .then((response) => {
+          if (response.status === "success" && response.fileUrl) {
+            resolve(response.fileUrl); // Retorna o link do Drive
+          } else {
+            reject(
+              new Error(
+                response.message || "Erro desconhecido no servidor Apps Script."
+              )
+            );
+          }
+        })
+        .catch((error) => {
+          console.error("Fetch Error:", error);
+          reject(
+            new Error(
+              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
+            )
+          );
+        });
+    };
+
+    reader.onerror = function (error) {
+      reject(new Error("Erro ao ler o arquivo: " + error.message));
+    };
+
+    reader.readAsDataURL(file);
   });
 }
 
@@ -72,21 +111,19 @@ async function uploadFileToDrive(file, vagaId, nomeCandidato) {
  */
 async function carregarVagasAtivas() {
   try {
-    // Consulta o Firestore buscando vagas com o status 'em-divulgacao'
     const q = query(vagasCollection, where("status", "==", "em-divulgacao"));
     const snapshot = await getDocs(q);
 
-    selectVaga.innerHTML = '<option value="">Selecione a vaga...</option>'; // Reseta opções
+    selectVaga.innerHTML = '<option value="">Selecione a vaga...</option>';
 
     if (snapshot.empty) {
-      // Não há vagas, exibe mensagem final e OCULTA o spinner.
       loadingVagas.textContent =
         "Não há vagas abertas para candidatura no momento.";
-      loadingVagas.style.display = "block"; // Mantém a mensagem visível
+      loadingVagas.style.display = "block";
       vagaSelectGroup.style.display = "none";
       btnSubmit.disabled = true;
       return;
-    } // Vagas carregadas, oculta o spinner e mostra o select
+    }
 
     loadingVagas.style.display = "none";
     vagaSelectGroup.style.display = "block";
@@ -95,7 +132,7 @@ async function carregarVagasAtivas() {
     snapshot.forEach((doc) => {
       const vaga = doc.data();
       const option = document.createElement("option");
-      option.value = doc.id; // O título da vaga é o campo 'nome'
+      option.value = doc.id;
       option.textContent = vaga.nome;
       option.setAttribute("data-titulo", vaga.nome);
       selectVaga.appendChild(option);
@@ -113,9 +150,9 @@ async function carregarVagasAtivas() {
  * Consulta a API ViaCEP e preenche os campos de endereço.
  */
 async function buscarCEP() {
-  const cep = cepCandidato.value.replace(/\D/g, ""); // Remove caracteres não numéricos
+  const cep = cepCandidato.value.replace(/\D/g, "");
 
-  if (cep.length !== 8) return; // Bloqueia campos enquanto busca
+  if (cep.length !== 8) return;
 
   enderecoRua.value = "Buscando...";
   cidadeEndereco.value = "Buscando...";
@@ -141,7 +178,7 @@ async function buscarCEP() {
     cidadeEndereco.value = data.localidade || "";
     estadoEndereco.value = data.uf || "";
 
-    exibirFeedback("", "", false); // Limpa feedback de erro, se houver
+    exibirFeedback("", "", false);
   } catch (error) {
     console.error("Erro ao buscar CEP:", error);
     exibirFeedback(
@@ -154,7 +191,7 @@ async function buscarCEP() {
 
 /**
  * Lida com a submissão do formulário de candidatura.
- * MODIFICADO: Chama a Cloud Function 'salvarCandidatura'.
+ * MODIFICADO: Usa o fluxo de upload Base64/Apps Script.
  */
 async function handleCandidatura(e) {
   e.preventDefault();
@@ -219,12 +256,12 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // 3. UPLOAD DO ARQUIVO PARA O GOOGLE DRIVE (Via Placeholder)
-    const linkCurriculoDrive = await uploadFileToDrive(
+    // 3. UPLOAD DO ARQUIVO (Baseado no fluxo de comprovantes)
+    const linkCurriculoDrive = await uploadCurriculoToAppsScript(
       arquivoCurriculo,
-      vagaId,
+      tituloVagaOriginal, // Passamos o título para nomear a pasta
       nome
-    ); // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND
+    ); // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND (Callable)
 
     const novaCandidatura = {
       vaga_id: vagaId,
@@ -243,10 +280,10 @@ async function handleCandidatura(e) {
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
 
-      link_curriculo_drive: linkCurriculoDrive,
+      link_curriculo_drive: linkCurriculoDrive, // Link retornado do Apps Script
     };
 
-    // 5. CHAMADA DA CLOUD FUNCTION PARA SALVAR NO FIRESTORE
+    // 5. CHAMADA CALLABLE PARA SALVAR NO FIRESTORE
     const result = await salvarCandidaturaCallable(novaCandidatura);
 
     if (result.data && result.data.success) {
