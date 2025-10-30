@@ -734,28 +734,43 @@ async function handleSalvarEEnviarArte(vagaId, link, textoDivulgacao) {
 }
 
 /**
- * NOVO: Lida com a Aprovação da Arte pelo Gestor.
+ * NOVO: Lida com a Aprovação da Arte pelo Gestor (na fase 'aguardando-aprovacao-arte').
+ * CORRIGIDO: Rastreamento robusto do vagaId e tratamento de falhas.
  */
 async function handleAprovarArte() {
-  // Busca o ID da vaga no modal de aprovação de arte
-  const vagaId = modalAprovacaoArte.querySelector(
+  // 1. RASTREAMENTO ROBUSTO DO vagaId
+  const hiddenInput = modalAprovacaoArte?.querySelector(
     "#vaga-id-arte-aprovacao"
-  )?.value;
+  );
+  const vagaId = hiddenInput ? hiddenInput.value : null;
 
-  if (!vagaId || !confirm("Confirma a APROVAÇÃO da arte de divulgação?"))
+  if (!vagaId) {
+    window.showToast(
+      "Erro: ID da vaga não encontrado para aprovação.",
+      "error"
+    );
     return;
+  }
+
+  if (!confirm("Confirma a APROVAÇÃO da arte de divulgação?")) return;
 
   try {
     const vagaRef = doc(db, VAGAS_COLLECTION_NAME, vagaId);
     const docSnap = await getDoc(vagaRef);
-    if (!docSnap.exists()) throw new Error("Vaga não encontrada.");
+    if (!docSnap.exists()) {
+      throw new Error("Vaga não encontrada no banco de dados.");
+    }
 
+    // Garante que o documento exista antes de tentar ler/atualizar
+    const vagaData = docSnap.data();
+
+    // 2. EXECUÇÃO DO UPDATE (Garantir que AWAIT esteja no lugar correto)
     await updateDoc(vagaRef, {
-      status: "em-divulgacao",
+      status: "em-divulgacao", // Próxima fase: em Divulgação
       arte: {
-        ...docSnap.data().arte,
+        ...vagaData.arte, // Usa os dados carregados do docSnap
         status: "Aprovada",
-        alteracoesPendentes: null,
+        alteracoesPendentes: null, // Limpa qualquer pendência
       },
       historico: arrayUnion({
         data: new Date(),
@@ -764,6 +779,7 @@ async function handleAprovarArte() {
       }),
     });
 
+    // 3. AÇÃO DE SUCESSO (Atualização da UI)
     window.showToast(
       "Arte aprovada! A vaga agora está em Divulgação.",
       "success"
@@ -771,8 +787,12 @@ async function handleAprovarArte() {
     if (modalAprovacaoArte) modalAprovacaoArte.style.display = "none";
     carregarVagas("em-divulgacao");
   } catch (error) {
+    // Captura falhas na busca (getDoc), na atualização (updateDoc), ou se o ID estava incorreto.
     console.error("Erro ao aprovar arte:", error);
-    window.showToast("Ocorreu um erro ao aprovar a arte.", "error");
+    window.showToast(
+      `Ocorreu um erro ao aprovar a arte: ${error.message || ""}`,
+      "error"
+    );
   }
 }
 /**
