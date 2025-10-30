@@ -1011,13 +1011,21 @@ async function preencherFormularioVaga(vagaId, vaga) {
   // 1. Garante que as listas dinâmicas estejam carregadas
   await carregarListasFirebase();
 
-  // 2. Define o ID da vaga nos formulários de cada modal (assumindo que os inputs hidden existem)
-  const forms = [formVaga, formCriacaoArte, formDivulgacao, modalFechadas];
+  // 2. Define o ID da vaga nos formulários de cada modal
+  // CORREÇÃO APLICADA: Incluindo modalAprovacaoArte no mapeamento de ID.
+  const forms = [
+    formVaga,
+    formCriacaoArte,
+    modalDivulgacao,
+    modalFechadas,
+    modalAprovacaoArte, // Adicionado
+  ];
   const ids = [
     "vaga-id-ficha",
     "vaga-id-arte-criacao",
     "vaga-id-divulgacao",
     "vaga-id-fechadas",
+    "vaga-id-arte-aprovacao", // Adicionado, correspondente ao modalAprovacaoArte
   ];
 
   forms.forEach((form, index) => {
@@ -1095,6 +1103,25 @@ async function preencherFormularioVaga(vagaId, vaga) {
   const statusArteAtualElement = document.querySelector(
     "#modal-aprovacao-arte #status-arte-atual"
   );
+
+  // Mapeamento dos campos de resumo para visualização
+  const aprovacaoSalario = document.querySelector(
+    "#modal-aprovacao-arte #aprovacao-salario"
+  );
+  const aprovacaoRegime = document.querySelector(
+    "#modal-aprovacao-arte #aprovacao-regime"
+  );
+  const aprovacaoModalidade = document.querySelector(
+    "#modal-aprovacao-arte #aprovacao-modalidade"
+  );
+
+  if (aprovacaoSalario)
+    aprovacaoSalario.textContent = vaga.valorSalario || "Não Informado";
+  if (aprovacaoRegime)
+    aprovacaoRegime.textContent = vaga.regimeTrabalho || "Não Informado";
+  if (aprovacaoModalidade)
+    aprovacaoModalidade.textContent =
+      vaga.modalidadeTrabalho || "Não Informado";
 
   if (linkClicavelAprov) {
     linkClicavelAprov.textContent =
@@ -1204,9 +1231,6 @@ function openCriacaoArteModal(vagaId, vaga) {
  * NOVO: Abre o modal de Aprovação da Arte (Fase Gestor/Revisor).
  */
 function openAprovacaoArteModal(vagaId, vaga) {
-  // 1. O preenchimento visual é feito em preencherFormularioVaga
-
-  // 2. Configuração dos eventos
   const btnAprovar = modalAprovacaoArte.querySelector(
     "#btn-aprovar-arte-final"
   );
