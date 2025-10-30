@@ -73,7 +73,7 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
         // Envia como JSON; o Apps Script (doPost) deve ser configurado para receber JSON
         body: JSON.stringify(payload),
         headers: {
-          "Content-Type": "text/plain;charset=utf-8",
+          "Content-Type": "application/json",
         },
       })
         .then((res) => res.json())
