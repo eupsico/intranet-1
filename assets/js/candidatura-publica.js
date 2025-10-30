@@ -1,5 +1,5 @@
 // assets/js/candidatura-publica.js
-// Versão: 1.9 - Tentativa de correção de comunicação com Cloud Function (Content-Type: text/plain).
+// Versão: 1.6 - Implementa upload real via Google Apps Script (Base64/JSON).
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
@@ -16,8 +16,9 @@ import {
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
 // =====================================================================
 
-// ✅ URL REAL DA CLOUD FUNCTION
-const WEB_APP_URL = "https://uploadcandidatura-tlwthl477q-uc.a.run.app";
+// URL REAL do Google Apps Script para processar o upload do currículo.
+const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbwhqJwbafkfLG9avvWqigOeYCWgudyNZPsCXoMPJUOsjxh-gULxCG9cv1K4_WVALexdGA/exec";
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
@@ -39,23 +40,17 @@ const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
-// ⚠️ Função descontinuada, pois a lógica de salvar metadados foi para a Cloud Function HTTP.
+// Esta é a função que salvará os metadados no Firestore (Backend)
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
- * Função que lê o arquivo binário e o envia como Base64 para a Cloud Function.
+ * NOVO: Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
  * @param {File} file Arquivo do currículo.
  * @param {string} vagaTitulo Título da vaga.
  * @param {string} nomeCandidato Nome do candidato.
- * @param {object} dadosCandidatura Objeto completo de metadados da candidatura.
- * @returns {Promise<string>} Promessa que resolve com o link (URL) do arquivo no Storage.
+ * @returns {Promise<string>} Promessa que resolve com o link (URL) do arquivo no Drive.
  */
-function uploadCurriculoToCloudFunction(
-  file,
-  vagaTitulo,
-  nomeCandidato,
-  dadosCandidatura
-) {
+function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error("Nenhum arquivo anexado."));
 
@@ -65,46 +60,30 @@ function uploadCurriculoToCloudFunction(
       const fileData = e.target.result.split(",")[1]; // Pega a parte Base64
 
       const payload = {
-        // Dados do Arquivo
         fileData: fileData,
         mimeType: file.type,
-        fileName: file.name, // Dados para a Cloud Function
+        fileName: file.name,
         nomeCandidato: nomeCandidato,
-        vagaTitulo: vagaTitulo, // Metadados completos da candidatura (para salvar no Firestore)
-        ...dadosCandidatura,
-      }; // Chamada HTTP POST para a Cloud Function
+        vagaTitulo: vagaTitulo, // Usado para nomear a pasta/arquivo no Apps Script
+      };
 
+      // Chamada HTTP POST para o Apps Script
       fetch(WEB_APP_URL, {
         method: "POST",
+        // Envia como JSON; o Apps Script (doPost) deve ser configurado para receber JSON
         body: JSON.stringify(payload),
         headers: {
-          "Content-Type": "text/plain;charset=utf-8", // 👈 CORREÇÃO: Voltando para text/plain para forçar Simple Request e evitar falhas de CORS/Preflight
+          "Content-Type": "text/plain;charset=utf-8",
         },
       })
-        .then((res) => {
-          // Tratamento de erros HTTP (4xx ou 5xx)
-          if (!res.ok) {
-            return res
-              .json()
-              .then((errorData) => {
-                throw new Error(
-                  errorData.message || `Erro HTTP: ${res.status}`
-                );
-              })
-              .catch(() => {
-                throw new Error(`Erro HTTP Desconhecido: ${res.status}`);
-              });
-          }
-          return res.json();
-        })
+        .then((res) => res.json())
         .then((response) => {
-          // A Cloud Function deve retornar { status: 'success', fileUrl: '...', docId: '...' }
           if (response.status === "success" && response.fileUrl) {
-            resolve(response.fileUrl); // Retorna o link do Storage
+            resolve(response.fileUrl); // Retorna o link do Drive
           } else {
             reject(
               new Error(
-                response.message || "Erro desconhecido na Cloud Function."
+                response.message || "Erro desconhecido no servidor Apps Script."
               )
             );
           }
@@ -212,7 +191,7 @@ async function buscarCEP() {
 
 /**
  * Lida com a submissão do formulário de candidatura.
- * Fluxo migrado para Cloud Function HTTP (upload e salvamento de dados unificados).
+ * MODIFICADO: Usa o fluxo de upload Base64/Apps Script.
  */
 async function handleCandidatura(e) {
   e.preventDefault();
@@ -277,7 +256,13 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND (Cloud Function)
+    // 3. UPLOAD DO ARQUIVO (Baseado no fluxo de comprovantes)
+    const linkCurriculoDrive = await uploadCurriculoToAppsScript(
+      arquivoCurriculo,
+      tituloVagaOriginal, // Passamos o título para nomear a pasta
+      nome
+    ); // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND (Callable)
+
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
@@ -293,32 +278,36 @@ async function handleCandidatura(e) {
 
       resumo_experiencia: resumoExperiencia,
       habilidades_competencias: habilidades,
-      como_conheceu: comoConheceu, // Adiciona um timestamp para o backend
+      como_conheceu: comoConheceu,
 
-      timestamp: new Date().toISOString(),
-    }; // 3. UPLOAD DO ARQUIVO + SALVAR METADADOS (em uma única chamada à Cloud Function)
+      link_curriculo_drive: linkCurriculoDrive, // Link retornado do Apps Script
+    };
 
-    await uploadCurriculoToCloudFunction(
-      arquivoCurriculo,
-      tituloVagaOriginal,
-      nome,
-      novaCandidatura // Passamos os metadados para a função
-    ); // 5. AÇÃO DE SUCESSO
+    // 5. CHAMADA CALLABLE PARA SALVAR NO FIRESTORE
+    const result = await salvarCandidaturaCallable(novaCandidatura);
 
-    exibirFeedback(
-      "mensagem-sucesso",
-      `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
-      false
-    );
-    formCandidatura.reset();
-    enderecoRua.value = "";
-    cidadeEndereco.value = "";
-    estadoEndereco.value = "";
+    if (result.data && result.data.success) {
+      // Ação de sucesso (limpeza e feedback)
+      exibirFeedback(
+        "mensagem-sucesso",
+        `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
+        false
+      );
+      formCandidatura.reset();
+      enderecoRua.value = "";
+      cidadeEndereco.value = "";
+      estadoEndereco.value = "";
+    } else {
+      // Captura erros lançados pela Cloud Function (HttpsError)
+      throw new Error(
+        result.data.message || "Erro desconhecido ao processar candidatura."
+      );
+    }
   } catch (error) {
     console.error("Erro completo na candidatura:", error);
     exibirFeedback(
       "mensagem-erro",
-      `Erro ao enviar a candidatura. Detalhes: ${error.message}. Verifique o log do navegador (F12) e os logs da Cloud Function.`,
+      `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
       true
     );
   }
