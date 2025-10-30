@@ -1327,15 +1327,18 @@ const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', depende
 });*/
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+
+// ⚠️ Se o seu projeto já inicializa o app admin em outro lugar, remova a linha abaixo.
 admin.initializeApp();
 
+const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
-// Função auxiliar para CORS (necessária para HTTP Functions)
+// Função auxiliar para configurar cabeçalhos CORS
 const setCorsHeaders = (req, res) => {
   // Permite CORS de qualquer origem, método e cabeçalho
   res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
 
   // Responde ao preflight request OPTIONS
@@ -1347,20 +1350,39 @@ const setCorsHeaders = (req, res) => {
 };
 
 /**
- * Cloud Function HTTP que lida com o upload do currículo (Base64) para o Storage
- * e salva os metadados da candidatura no Firestore.
+ * Cloud Function HTTP: uploadCandidatura
+ * Lida com o upload do currículo (Base64) e salva os metadados no Firestore.
  */
 exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
+  // 1. Configura CORS e trata o preflight OPTIONS
   if (setCorsHeaders(req, res)) return;
 
-  if (
-    req.method !== "POST" ||
-    req.headers["content-type"] !== "application/json"
-  ) {
-    return res.status(405).json({
-      status: "error",
-      message: "Método não permitido ou Content-Type incorreto.",
-    });
+  // 2. Trata requisições que não são POST
+  if (req.method !== "POST") {
+    // Retorna 200 para GET (para evitar logs de erro desnecessários em health checks)
+    // e 405 para outros métodos.
+    const status = req.method === "GET" ? 200 : 405;
+    const message =
+      req.method === "GET"
+        ? "Acesso OK. Endpoint para POST de candidaturas."
+        : "Método não permitido. Utilize POST.";
+    return res.status(status).json({ status: "info", message: message });
+  }
+
+  let data;
+  try {
+    // 3. CORREÇÃO CRÍTICA: Faz o parsing manual se o Content-Type foi alterado para 'text/plain' no frontend.
+    data = JSON.parse(req.body);
+  } catch (e) {
+    // Erro se o corpo estiver vazio ou não for JSON válido
+    console.error("Erro ao fazer parse do JSON no corpo da requisição:", e);
+    return res
+      .status(400)
+      .json({
+        status: "error",
+        message:
+          "Dados de candidatura inválidos ou ausentes no corpo da requisição.",
+      });
   }
 
   try {
@@ -1370,21 +1392,24 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
       fileName,
       nomeCandidato,
       vagaTitulo,
-      // Os metadados completos vêm no req.body:
       ...candidaturaData
-    } = req.body;
+    } = data;
 
     if (!fileData || !nomeCandidato || !vagaTitulo) {
-      return res.status(400).json({
-        status: "error",
-        message: "Dados de arquivo ou candidato incompletos.",
-      });
+      return res
+        .status(400)
+        .json({
+          status: "error",
+          message: "Dados de arquivo ou candidato incompletos.",
+        });
     }
 
-    // 1. UPLOAD PARA O FIREBASE STORAGE
+    // 4. UPLOAD PARA O FIREBASE STORAGE
     const buffer = Buffer.from(fileData, "base64");
 
-    const folderPath = `curriculos/${vagaTitulo.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const folderPath = `curriculos/${vagaTitulo
+      .replace(/[^a-zA-Z0-9\s]/g, "_")
+      .replace(/\s/g, "-")}`;
 
     const fileExtension = fileName.split(".").pop();
     const newFileName = `${nomeCandidato.replace(
@@ -1399,18 +1424,17 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
       metadata: {
         contentType: mimeType || "application/octet-stream",
       },
-      public: true, // Torna o arquivo acessível via URL pública (CDN)
+      public: true,
     });
 
-    // Obtém o link público do arquivo (URL de Download/CDN)
     const fileUrl = `https://storage.googleapis.com/${
       bucket.name
     }/${filePath.replace(/\//g, "%2F")}`;
 
-    // 2. SALVAR OS METADADOS NO FIRESTORE
+    // 5. SALVAR OS METADADOS NO FIRESTORE
     const finalCandidaturaData = {
       ...candidaturaData,
-      link_curriculo_storage: fileUrl, // Novo link do Storage
+      link_curriculo_storage: fileUrl,
       data_envio: admin.firestore.FieldValue.serverTimestamp(),
       status_candidatura: "Em Análise",
     };
@@ -1419,7 +1443,7 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
       .collection("candidaturas")
       .add(finalCandidaturaData);
 
-    // 3. RETORNO DE SUCESSO
+    // 6. RETORNO DE SUCESSO
     return res.status(200).json({
       status: "success",
       message: "Candidatura e currículo salvos com sucesso!",
@@ -1428,12 +1452,18 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
     });
   } catch (error) {
     console.error("Erro na Cloud Function 'uploadCandidatura':", error);
+    // Verifica se é erro de permissão do Firebase
+    if (error.code && error.code === 403) {
+      return res.status(500).json({
+        status: "error",
+        message:
+          "Erro de permissão: A Cloud Function não tem acesso para escrever no Storage ou Firestore. Verifique as permissões IAM.",
+        errorDetail: error.message,
+      });
+    }
     return res.status(500).json({
       status: "error",
       message: `Erro interno no servidor: ${error.message}`,
     });
   }
 });
-
-// ⚠️ Se você ainda tiver a função 'salvarCandidatura', remova-a ou desative-a
-// exports.salvarCandidatura = functions.https.onCall(async (data, context) => { ... });
