@@ -1329,10 +1329,12 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
 // ⚠️ Se o seu projeto já inicializa o app admin em outro lugar, remova a linha abaixo.
+// Se você tem certeza que esta linha DEVE ficar, mantenha-a.
 admin.initializeApp();
 
-const db = admin.firestore();
-const bucket = admin.storage().bucket();
+// Acessando as instâncias via admin.app() para evitar conflito de escopo global.
+const getFirestore = () => admin.firestore();
+const getBucket = () => admin.storage().bucket();
 
 // Função auxiliar para configurar cabeçalhos CORS
 const setCorsHeaders = (req, res) => {
@@ -1359,8 +1361,6 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
 
   // 2. Trata requisições que não são POST
   if (req.method !== "POST") {
-    // Retorna 200 para GET (para evitar logs de erro desnecessários em health checks)
-    // e 405 para outros métodos.
     const status = req.method === "GET" ? 200 : 405;
     const message =
       req.method === "GET"
@@ -1374,8 +1374,6 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
     // 3. CORREÇÃO CRÍTICA: Faz o parsing manual se o Content-Type foi alterado para 'text/plain' no frontend.
     data = JSON.parse(req.body);
   } catch (e) {
-    // Erro se o corpo estiver vazio ou não for JSON válido
-    console.error("Erro ao fazer parse do JSON no corpo da requisição:", e);
     return res
       .status(400)
       .json({
@@ -1384,6 +1382,10 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
           "Dados de candidatura inválidos ou ausentes no corpo da requisição.",
       });
   }
+
+  // Acessa as instâncias DENTRO da função para evitar conflitos de declaração
+  const db = getFirestore();
+  const bucket = getBucket();
 
   try {
     const {
@@ -1452,7 +1454,6 @@ exports.uploadCandidatura = functions.https.onRequest(async (req, res) => {
     });
   } catch (error) {
     console.error("Erro na Cloud Function 'uploadCandidatura':", error);
-    // Verifica se é erro de permissão do Firebase
     if (error.code && error.code === 403) {
       return res.status(500).json({
         status: "error",
