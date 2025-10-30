@@ -1,18 +1,44 @@
 // assets/js/candidatura-publica.js
+// Versão: 1.2 - Atualizado para usar Cloud Function para salvamento seguro.
 
 // Importa as funções necessárias do Firebase SDK (caminho ajustado para o contexto de assets)
-import {
-  db,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-} from "./firebase-init.js";
+import { db, collection, getDocs, query, where } from "./firebase-init.js";
+
+// Adicionar importação das Funções do Firebase para o Frontend
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+// =====================================================================
+// VARIÁVEIS GLOBAIS
+// =====================================================================
+
+// ATENÇÃO: Verifique se a coleção correta é 'candidaturas' ou 'candidatos'
+const VAGAS_COLLECTION_NAME = "vagas";
+const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
+
+const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
+// A coleção de candidaturas será acessada via Cloud Function
+
+// Elementos do DOM
+const formCandidatura = document.getElementById("form-candidatura");
+const selectVaga = document.getElementById("select-vaga");
+const btnSubmit = document.getElementById("btn-submit");
+const msgFeedback = document.getElementById("mensagem-feedback");
+const vagaSelectGroup = document.getElementById("vaga-select-group");
+const loadingVagas = document.getElementById("loading-vagas");
+
+// Campos de Endereço
+const cepCandidato = document.getElementById("cep-candidato");
+const enderecoRua = document.getElementById("endereco-rua");
+const cidadeEndereco = document.getElementById("cidade-endereco");
+const estadoEndereco = document.getElementById("estado-endereco");
+
+// Inicialização e Callable Function
+const functions = getFunctions();
+const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
  * Simula a função de upload para o Google Drive.
- * Em um ambiente real, esta função faria um fetch(POST) para uma Cloud Function/API.
+ * (Mantida como função placeholder, a chamada real deve estar no backend).
  */
 async function uploadFileToDrive(file, vagaId, nomeCandidato) {
   // --- LÓGICA DE SIMULAÇÃO (DEVE SER SUBSTITUÍDA POR UMA CHAMADA REAL DE BACKEND) ---
@@ -36,29 +62,9 @@ async function uploadFileToDrive(file, vagaId, nomeCandidato) {
   });
 }
 
-const VAGAS_COLLECTION_NAME = "vagas";
-const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
-
-const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
-const candidaturasCollection = collection(db, CANDIDATURAS_COLLECTION_NAME);
-
-// Elementos do DOM
-const formCandidatura = document.getElementById("form-candidatura");
-const selectVaga = document.getElementById("select-vaga");
-const btnSubmit = document.getElementById("btn-submit");
-const msgFeedback = document.getElementById("mensagem-feedback");
-const vagaSelectGroup = document.getElementById("vaga-select-group");
-const loadingVagas = document.getElementById("loading-vagas");
-
-// Campos de Endereço
-const cepCandidato = document.getElementById("cep-candidato");
-const enderecoRua = document.getElementById("endereco-rua");
-const cidadeEndereco = document.getElementById("cidade-endereco");
-const estadoEndereco = document.getElementById("estado-endereco");
-
 /**
  * Função para carregar as vagas ativas e popular o campo Select.
- * CORRIGIDO: Usa o campo de status correto ("status") e o valor correto ("em-divulgacao").
+ * CORRIGIDO: Usa o campo de status correto ("em-divulgacao").
  */
 async function carregarVagasAtivas() {
   try {
@@ -145,7 +151,7 @@ async function buscarCEP() {
 
 /**
  * Lida com a submissão do formulário de candidatura.
- * @param {Event} e
+ * MODIFICADO: Chama a Cloud Function 'salvarCandidatura'.
  */
 async function handleCandidatura(e) {
   e.preventDefault();
@@ -156,7 +162,7 @@ async function handleCandidatura(e) {
 
   const vagaSelectOption = selectVaga.options[selectVaga.selectedIndex];
   const vagaId = selectVaga.value;
-  const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo"); // Pega o título salvo
+  const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo");
 
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
@@ -175,7 +181,7 @@ async function handleCandidatura(e) {
     .value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
 
-  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0]; // Validação básica
+  const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0]; // 2. Validação básica
 
   if (
     !vagaId ||
@@ -210,17 +216,16 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // 2. UPLOAD DO ARQUIVO PARA O GOOGLE DRIVE (Via Backend/Cloud Function - USANDO PLACEHOLDER)
-    // O nome do arquivo no Drive usará o nome da vaga e o nome do candidato para organização
+    // 3. UPLOAD DO ARQUIVO PARA O GOOGLE DRIVE (Via Placeholder)
     const linkCurriculoDrive = await uploadFileToDrive(
       arquivoCurriculo,
       vagaId,
       nome
-    ); // 3. SALVAR OS DADOS NO FIRESTORE (Coleção candidaturas)
+    ); // 4. PREPARAÇÃO DO OBJETO DE CANDIDATURA PARA O BACKEND
 
     const novaCandidatura = {
       vaga_id: vagaId,
-      titulo_vaga_original: tituloVagaOriginal, // Salva o título para referência
+      titulo_vaga_original: tituloVagaOriginal,
 
       nome_completo: nome,
       email: email,
@@ -235,28 +240,35 @@ async function handleCandidatura(e) {
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
 
-      link_curriculo_drive: linkCurriculoDrive, // Link do Drive // Novos campos para o fluxo de RH
-
-      status_recrutamento: "Candidatura Recebida (Triagem Pendente)", // Status inicial // ATENÇÃO: Assumo que firebase.firestore.FieldValue.serverTimestamp() está disponível
-      data_candidatura: new Date(),
+      link_curriculo_drive: linkCurriculoDrive,
     };
 
-    await addDoc(candidaturasCollection, novaCandidatura);
+    // 5. CHAMADA DA CLOUD FUNCTION PARA SALVAR NO FIRESTORE
+    // A função no backend adicionará status_recrutamento e data_candidatura
+    const result = await salvarCandidaturaCallable(novaCandidatura);
 
-    exibirFeedback(
-      "mensagem-sucesso",
-      `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
-      false
-    );
-    formCandidatura.reset(); // Limpar o conteúdo dos campos de endereço, que são readonly após a busca de CEP
-    enderecoRua.value = "";
-    cidadeEndereco.value = "";
-    estadoEndereco.value = "";
+    if (result.data && result.data.success) {
+      // Ação de sucesso (limpeza e feedback)
+      exibirFeedback(
+        "mensagem-sucesso",
+        `Candidatura enviada com sucesso para a vaga de ${tituloVagaOriginal}! Em breve, nosso RH entrará em contato.`,
+        false
+      );
+      formCandidatura.reset();
+      enderecoRua.value = "";
+      cidadeEndereco.value = "";
+      estadoEndereco.value = "";
+    } else {
+      // Captura erros lançados pela Cloud Function (HttpsError)
+      throw new Error(
+        result.data.message || "Erro desconhecido ao processar candidatura."
+      );
+    }
   } catch (error) {
     console.error("Erro completo na candidatura:", error);
     exibirFeedback(
       "mensagem-erro",
-      `Erro ao enviar a candidatura. Tente novamente. Detalhes: ${error.message}`,
+      `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
       true
     );
   }
