@@ -1274,3 +1274,54 @@ exports.importarPacientesBatch = onCall(async (request) => {
     );
   }
 });
+// ATENÇÃO: Esta função deve ser adicionada no seu functions/index.js
+// logo após a inicialização do 'db' e 'initializeApp()'.
+
+const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', dependendo da coleção final usada pelo front-end
+
+/**
+ * Salva os dados de uma nova candidatura no Firestore.
+ * Esta é uma função HTTP Callable e pública (não requer autenticação).
+ *
+ * @param {object} data - Os dados da candidatura, incluindo link_curriculo_drive.
+ * @returns {object} Objeto de sucesso.
+ */
+exports.salvarCandidatura = onCall(async (data, context) => {
+  // 1. Validação Crítica no Servidor
+  if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
+    // Usa HttpsError que é importado no seu setup
+    throw new HttpsError(
+      "invalid-argument",
+      "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
+    );
+  }
+
+  try {
+    // 2. Preparar Objeto Final para Salvar
+    const novaCandidaturaData = {
+      ...data,
+      // Sobrescreve a data com o carimbo de data/hora do servidor, usando FieldValue
+      data_candidatura: FieldValue.serverTimestamp(),
+      // Garante que o status inicial seja sempre definido pelo servidor
+      status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
+    };
+
+    // 3. Salvar no Firestore usando a instância 'db'
+    await db.collection(CANDIDATURAS_COLLECTION_NAME).add(novaCandidaturaData);
+
+    logger.info("Nova candidatura salva com sucesso.", {
+      vagaId: data.vaga_id,
+    });
+
+    return { success: true, message: "Candidatura registrada com sucesso!" };
+  } catch (error) {
+    logger.error("Erro ao processar candidatura no backend:", error);
+
+    // Retorna um erro HTTPs para ser capturado pelo front-end
+    throw new HttpsError(
+      "internal",
+      "Ocorreu um erro interno ao salvar sua candidatura.",
+      error.message
+    );
+  }
+});
