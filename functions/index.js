@@ -8,6 +8,7 @@ const { logger } = require("firebase-functions");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const fetch = require('node-fetch');
 
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
@@ -1330,13 +1331,14 @@ exports.salvarCandidatura = onCall(async (data, context) => {
 // DESCRIÇÃO: Atua como um proxy reverso para enviar o currículo ao Google Apps Script,
 // contornando a restrição de CORS do navegador.
 // ---------------------------------------------------------------------------------
-exports.proxyUpload = onCall(async (request) => {
-  // ATENÇÃO: COLOQUE A URL FINAL DE EXECUÇÃO DO SEU GOOGLE APPS SCRIPT AQUI.
+exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (request) => { // Timeout e memória aumentados
+  // ATENÇÃO: VERIFIQUE ESTA URL após a última implantação do Apps Script
   const GAS_WEB_APP_URL =
     "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
 
   // 1. Validação e Extração dos Dados
   if (!request.data || !request.data.fileData) {
+    logger.error("Proxy: Dados ou arquivo Base64 não fornecidos.");
     throw new HttpsError("invalid-argument", "Dados ou arquivo Base64 não fornecidos.");
   }
   
@@ -1350,12 +1352,12 @@ exports.proxyUpload = onCall(async (request) => {
         "Content-Type": "text/plain;charset=utf-8", // Formato que o Apps Script espera
       },
       body: JSON.stringify(payload),
-      timeout: 30000 // Aumenta o timeout para uploads de arquivos grandes (30s)
+      timeout: 45000 // 45 segundos de timeout para o fetch
     });
 
     if (!gasResponse.ok) {
       const errorText = await gasResponse.text();
-      logger.error("Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText);
+      logger.error("Proxy: Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText);
       throw new HttpsError(
         "internal",
         "O Apps Script retornou um erro ao processar o upload.",
@@ -1365,10 +1367,11 @@ exports.proxyUpload = onCall(async (request) => {
     
     // 3. Retorna a Resposta do Apps Script (JSON) para o Cliente
     const gasJson = await gasResponse.json();
+    logger.info("Proxy: Resposta bem-sucedida do Apps Script.", gasJson);
     return gasJson;
     
   } catch (error) {
-    logger.error("Erro ao fazer fetch para o Apps Script via Proxy:", error);
+    logger.error("Proxy: Erro crítico ao fazer fetch para o Apps Script:", error);
     if (error instanceof HttpsError) throw error;
     throw new HttpsError(
       "internal",
