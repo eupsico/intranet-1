@@ -1,5 +1,6 @@
 // assets/js/candidatura-publica.js
-// Versão: 2.0 - Implementa Upload via Cloud Function Proxy para contornar CORS com Apps Script.
+// Versão: 2.1 - Revertido para o modelo de comunicação comprovado (fetch direto)
+//             com as estruturas de payload e parse do modelo envio_comprovantes.js.
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
@@ -16,8 +17,10 @@ import {
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
 // =====================================================================
 
-// 🚨 REMOVIDA: A URL WEB_APP_URL não é mais usada diretamente. 
-// Ela foi movida para a Cloud Function 'proxyUpload'.
+// 🚨 ATUALIZE ESTA URL com a NOVA URL de EXECUÇÃO obtida após o RE-DEPLOY 
+// do Apps Script (com o código da Etapa 1) com permissão 'Anyone'.
+const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbxB7aRviy5muNFULBkWOP_mdpm5aeCFXL3ouiadEfNzE8RpSmMJdCSifuuqYRRTqfwpxw/exec"; 
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
@@ -38,15 +41,12 @@ const enderecoRua = document.getElementById("endereco-rua");
 const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
-// Inicialização e Callable Functions
+// Inicialização e Callable Function
 // Esta é a função que salvará os metadados no Firestore (Backend)
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
-// 🚨 NOVO: Callable Function para o proxy de upload (Chama a Cloud Function)
-const proxyUploadCallable = httpsCallable(functions, "proxyUpload");
-
 /**
- * Função que lê o arquivo binário e o envia como Base64 para a Cloud Function Proxy.
+ * Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
  * @param {File} file Arquivo do currículo.
  * @param {string} vagaTitulo Título da vaga.
  * @param {string} nomeCandidato Nome do candidato.
@@ -54,63 +54,70 @@ const proxyUploadCallable = httpsCallable(functions, "proxyUpload");
  */
 function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
-    if (!file) {
-        console.error("LOG-CLIENTE: NENHUM ARQUIVO ANEXADO.");
-        return reject(new Error("Nenhum arquivo anexado."));
-    }
+    if (!file) return reject(new Error("Nenhum arquivo anexado."));
 
     const reader = new FileReader();
 
-    reader.onload = async function (e) {
+    reader.onload = function (e) {
       const fileData = e.target.result.split(",")[1];
 
       const payload = {
-        fileData: fileData, // Base64 completo
+        fileData: fileData,
         mimeType: file.type,
         fileName: file.name,
         nomeCandidato: nomeCandidato,
         vagaTitulo: vagaTitulo,
       };
+      
+      console.log(`LOG-CLIENTE: Enviando POST (fetch) para: ${WEB_APP_URL}. Tamanho dos dados Base64: ${fileData.length}`);
 
-      console.log(`LOG-CLIENTE: Chamando Cloud Function Proxy (proxyUpload). Tamanho dos dados Base64: ${fileData.length}`);
-
-      try {
-        // 🚨 MUDANÇA CRÍTICA: Chama o proxy no Firebase
-        const result = await proxyUploadCallable(payload);
-        const response = result.data; // A resposta da Cloud Function é encapsulada em .data
-
-        if (response.status === "success" && response.fileUrl) {
-          console.log("LOG-CLIENTE: Upload bem-sucedido via Proxy. URL Drive:", response.fileUrl);
-          resolve(response.fileUrl);
-        } else {
-          // Captura erro que veio do Apps Script (via Proxy)
-          console.error("LOG-CLIENTE: Proxy retornou status de erro:", response);
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8", 
+        },
+        body: JSON.stringify(payload),
+      })
+        // 🚨 Lógica de processamento do modelo envio_comprovantes.js
+        .then((res) => {
+          console.log(`LOG-CLIENTE: Resposta Recebida. Status HTTP: ${res.status}.`);
+          // Adiciona uma checagem de segurança, embora o Apps Script sempre retorne 200
+          if (!res.ok) {
+             console.error("LOG-CLIENTE: Resposta HTTP de erro do servidor GAS. Status:", res.status);
+             // Se o CORS não estiver aplicado, o erro será lançado no .catch abaixo
+          }
+          return res.json();
+        })
+        .then((response) => {
+          console.log("LOG-CLIENTE: Resposta JSON do Apps Script:", response);
+          if (response.status === "success" && response.fileUrl) {
+            resolve(response.fileUrl);
+          } else {
+            reject(
+              new Error(
+                response.message || "Erro desconhecido no servidor Apps Script."
+              )
+            );
+          }
+        })
+        .catch((error) => {
+          // Captura o erro de CORS (TypeError: Failed to fetch)
+          console.error("LOG-CLIENTE: 💥 FETCH/REDE FALHOU. DETALHES:", error);
           reject(
             new Error(
-              response.message || "Erro desconhecido no servidor Apps Script via Proxy."
+              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}. Certifique-se que a URL do Apps Script é a de EXECUÇÃO e tem permissão 'Anyone'.`
             )
           );
-        }
-      } catch (error) {
-        // Captura erro da Cloud Function em si (timeout, erro interno no código do proxy)
-        console.error("LOG-CLIENTE: 💥 ERRO CRÍTICO NA CLOUD FUNCTION PROXY:", error);
-        reject(
-          new Error(
-            `Falha na comunicação com o servidor de upload (Proxy). Detalhes: ${error.message}`
-          )
-        );
-      }
+        });
     };
 
     reader.onerror = function (error) {
-      console.error("LOG-CLIENTE: Erro ao ler o arquivo no leitor:", error);
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
 
     reader.readAsDataURL(file);
   });
 }
-
 /**
  * Função que envia os dados da candidatura para o Firebase.
  */
@@ -290,7 +297,7 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // Etapa 1: Upload do currículo (via Cloud Function Proxy)
+    // Etapa 1: Upload do currículo (usando o GAS)
     const linkCurriculoDrive = await uploadCurriculoToAppsScript(
       arquivoCurriculo,
       tituloVagaOriginal,
