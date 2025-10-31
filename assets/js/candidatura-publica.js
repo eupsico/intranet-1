@@ -1,4 +1,4 @@
-// Versão: 1.9 - Retornando à lógica fetch (Base64/JSON), com a premissa de que o Apps Script foi re-implantado corretamente.
+// Versão: 1.10 - Implementação de Logs Robustos no Frontend.
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
@@ -51,41 +51,65 @@ const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
  */
 function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
-    if (!file) return reject(new Error("Nenhum arquivo anexado."));
+    if (!file) {
+        console.error("LOG-CLIENTE: NENHUM ARQUIVO ANEXADO.");
+        return reject(new Error("Nenhum arquivo anexado."));
+    }
 
     const reader = new FileReader();
 
     reader.onload = function (e) {
+      // O Google Apps Script pode não conseguir processar strings Base64 muito grandes.
+      // Assumimos que o tamanho do arquivo é < 5MB, mas a string Base64 é ~33% maior.
       const fileData = e.target.result.split(",")[1];
 
       const payload = {
-        fileData: fileData,
+        // Reduzindo o Base64 para log, pois é muito grande
+        fileData: `[Base64 Data, Length: ${fileData.length}]`, 
         mimeType: file.type,
         fileName: file.name,
         nomeCandidato: nomeCandidato,
         vagaTitulo: vagaTitulo,
       };
 
+      console.log("LOG-CLIENTE: Payload de envio (Sem Base64):", payload);
+      console.log("LOG-CLIENTE: Enviando POST para:", WEB_APP_URL);
+      
+      // O JSON real com a Base64 completa
+      const fullPayload = { ...payload, fileData: e.target.result.split(",")[1] }; 
+
       fetch(WEB_APP_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "text/plain;charset=utf-8", // Mantendo o header que funcionava para upload (Apps Script pode ser sensível)
+          "Content-Type": "text/plain;charset=utf-8", 
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(fullPayload),
       })
         .then((res) => {
+          console.log(`LOG-CLIENTE: Resposta Recebida. Status HTTP: ${res.status} ${res.statusText}`);
+          
+          // O Google Apps Script sempre retorna 200 OK. O problema é a leitura do corpo.
+          // Se o CORS fosse resolvido, esta linha seria executada.
           if (!res.ok) {
-            // Isso só será alcançado se o Apps Script estiver respondendo, mas com status HTTP de erro (ex: 404, 500)
+            console.error("LOG-CLIENTE: Resposta HTTP de erro do servidor GAS. Status:", res.status);
             throw new Error(
               `Resposta HTTP inválida do Apps Script: ${res.status} ${res.statusText}`
             );
           }
-          return res.json();
+          
+          // Tentamos ler o JSON. Se o CORS bloqueou o corpo, isso falhará.
+          return res.json()
+            .catch(jsonError => {
+                console.error("LOG-CLIENTE: Erro ao parsear JSON. Isso pode ser um indicativo de CORS mal resolvido ou resposta HTML/Vazio.", jsonError);
+                throw new Error("Falha ao processar resposta do servidor (provavelmente erro de CORS ou resposta vazia).");
+            });
         })
         .then((response) => {
+          console.log("LOG-CLIENTE: Resposta JSON do Apps Script:", response);
           if (response.status === "success" && response.fileUrl) {
             resolve(response.fileUrl);
           } else {
+            console.error("LOG-CLIENTE: Servidor Apps Script retornou status de erro:", response.message);
             reject(
               new Error(
                 response.message || "Erro desconhecido no servidor Apps Script."
@@ -94,8 +118,8 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           }
         })
         .catch((error) => {
-          // ⚠️ ESTE É O BLOCO DE ERRO DE CORS. Se o Apps Script NÃO enviar o cabeçalho, a promessa falha aqui.
-          console.error("Fetch Error:", error);
+          // ESTE É O BLOCO DE ERRO DE REDE/CORS (TypeError: Failed to fetch)
+          console.error("LOG-CLIENTE: 💥 FETCH/REDE FALHOU COMPLETAMENTE. DETALHES:", error);
           reject(
             new Error(
               `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
@@ -105,6 +129,7 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
     };
 
     reader.onerror = function (error) {
+      console.error("LOG-CLIENTE: Erro ao ler o arquivo no leitor:", error);
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
 
