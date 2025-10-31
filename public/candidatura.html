@@ -91,26 +91,26 @@
     <div class="container">
       <h2>Formulário de Candidatura EuPsico</h2>
 
-      <form id="form-candidatura">
+      <form id="form-candidatura" target="hidden_iframe">
         <div id="loading-vagas" class="loading-spinner">
           Carregando vagas disponíveis...
         </div>
 
         <div class="form-group" id="vaga-select-group" style="display: none">
           <label for="select-vaga">Selecione a Vaga:</label>
-          <select id="select-vaga" required>
+          <select id="select-vaga" required name="vaga-id">
             <option value="">Selecione a vaga...</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="nome-candidato">Nome Completo:</label>
-          <input type="text" id="nome-candidato" required />
+          <input type="text" id="nome-candidato" required name="nome-candidato" />
         </div>
 
         <div class="form-group">
           <label for="email-candidato">Email para Contato:</label>
-          <input type="email" id="email-candidato" required />
+          <input type="email" id="email-candidato" required name="email-candidato" />
         </div>
 
         <div class="form-group">
@@ -122,6 +122,7 @@
             type="text"
             id="telefone-candidato"
             required
+            name="telefone-candidato"
             placeholder="(XX) XXXXX-XXXX"
           />
         </div>
@@ -135,6 +136,7 @@
               type="text"
               id="cep-candidato"
               required
+              name="cep-candidato"
               maxlength="9"
               placeholder="Ex: 00000-000"
             />
@@ -142,24 +144,24 @@
 
           <div class="col-md-2 form-group">
             <label for="numero-endereco">Número:</label>
-            <input type="text" id="numero-endereco" required />
+            <input type="text" id="numero-endereco" required name="numero-endereco" />
           </div>
 
           <div class="col-md-6 form-group">
             <label for="cidade-endereco">Cidade:</label>
-            <input type="text" id="cidade-endereco" required readonly />
+            <input type="text" id="cidade-endereco" required readonly name="cidade-endereco" />
           </div>
         </div>
 
         <div class="row">
           <div class="col-md-6 form-group">
             <label for="endereco-rua">Endereço (Rua/Av):</label>
-            <input type="text" id="endereco-rua" required readonly />
+            <input type="text" id="endereco-rua" required readonly name="endereco-rua" />
           </div>
 
           <div class="col-md-6 form-group">
             <label for="estado-endereco">Estado (UF):</label>
-            <input type="text" id="estado-endereco" required readonly />
+            <input type="text" id="estado-endereco" required readonly name="estado-endereco" />
           </div>
         </div>
 
@@ -175,6 +177,7 @@
             id="resumo-experiencia"
             rows="4"
             required
+            name="resumo-experiencia"
             placeholder="Fale sobre suas qualificações, tempo de experiência na área e principais conquistas."
           ></textarea>
         </div>
@@ -188,6 +191,7 @@
             id="habilidades-competencias"
             rows="3"
             required
+            name="habilidades-competencias"
             placeholder="Ex: Python, Machine Learning, Liderança, Comunicação, Firebase, etc."
           ></textarea>
         </div>
@@ -195,7 +199,7 @@
         <div class="form-group">
           <label for="como-conheceu">Como conheceu a EuPsico (e a vaga):</label>
 
-          <select id="como-conheceu" required>
+          <select id="como-conheceu" required name="como-conheceu">
             <option value="">Selecione...</option>
 
             <option value="linkedin">LinkedIn</option>
@@ -222,6 +226,7 @@
             type="file"
             id="anexo-curriculo"
             accept=".pdf,.docx"
+            name="arquivo-curriculo"
             required
           />
         </div>
@@ -232,6 +237,8 @@
 
         <div id="mensagem-feedback"></div>
       </form>
+
+      <iframe name="hidden_iframe" id="hidden_iframe" style="display: none"></iframe>
     </div>
 
     <script type="module" src="../assets/js/firebase-init.js"></script>
