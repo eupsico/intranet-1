@@ -1,4 +1,3 @@
-// assets/js/candidatura-publica.js
 // Versão: 1.6 - Implementa upload real via Google Apps Script (Base64/JSON).
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
@@ -74,7 +73,18 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
         },
         body: JSON.stringify(payload),
       })
-        .then((res) => res.json())
+        // 🚨 MODIFICAÇÃO: Adicionada verificação do status HTTP antes de tentar o res.json().
+        // Isso ajuda a diagnosticar erros de servidor que não sejam de Apps Script.
+        .then((res) => {
+          // O Apps Script quase sempre retorna 200 OK, mesmo em caso de erro interno,
+          // mas é uma boa prática.
+          if (!res.ok) {
+            throw new Error(
+              `Resposta HTTP inválida do Apps Script: ${res.status} ${res.statusText}`
+            );
+          }
+          return res.json();
+        })
         .then((response) => {
           if (response.status === "success" && response.fileUrl) {
             resolve(response.fileUrl);
@@ -87,6 +97,8 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           }
         })
         .catch((error) => {
+          // ⚠️ Este bloco é onde o erro de CORS se manifesta como "TypeError: Failed to fetch".
+          // Se o CORS for resolvido no Apps Script, a comunicação deve fluir normalmente.
           console.error("Fetch Error:", error);
           reject(
             new Error(
