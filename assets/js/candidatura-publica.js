@@ -18,7 +18,7 @@ import {
 
 // URL REAL do Google Apps Script para processar o upload do currículo.
 const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwel_QR6LBdcK0dzn1Igp35ZNmqSbrBniM7Q0QXtxbZe_SAvAwh1PStYn4qifF2H7sUYA/exec";
+  "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
