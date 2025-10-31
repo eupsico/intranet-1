@@ -1331,8 +1331,8 @@ exports.salvarCandidatura = onCall(async (data, context) => {
 // DESCRIÇÃO: Atua como um proxy reverso para enviar o currículo ao Google Apps Script,
 // contornando a restrição de CORS do navegador.
 // ---------------------------------------------------------------------------------
-exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (request) => { // Timeout e memória aumentados
-  // ATENÇÃO: VERIFIQUE ESTA URL após a última implantação do Apps Script
+exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (request) => { 
+  // ATENÇÃO: USE A URL ATUAL E ATIVA DO SEU GOOGLE APPS SCRIPT AQUI.
   const GAS_WEB_APP_URL =
     "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
 
@@ -1349,15 +1349,17 @@ exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (reque
     const gasResponse = await fetch(GAS_WEB_APP_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain;charset=utf-8", // Formato que o Apps Script espera
+        "Content-Type": "text/plain;charset=utf-8", 
       },
       body: JSON.stringify(payload),
       timeout: 45000 // 45 segundos de timeout para o fetch
     });
-
+    
+    // Verificamos se a resposta GAS foi OK
     if (!gasResponse.ok) {
       const errorText = await gasResponse.text();
-      logger.error("Proxy: Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText);
+      logger.error("Proxy: Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText.substring(0, 200));
+      // Se a Cloud Function não conseguir se comunicar, retorna um erro interno
       throw new HttpsError(
         "internal",
         "O Apps Script retornou um erro ao processar o upload.",
@@ -1373,6 +1375,7 @@ exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (reque
   } catch (error) {
     logger.error("Proxy: Erro crítico ao fazer fetch para o Apps Script:", error);
     if (error instanceof HttpsError) throw error;
+    // Se a falha for de rede/timeout, retornamos um erro genérico
     throw new HttpsError(
       "internal",
       "Falha na comunicação com o servidor de upload (GAS Proxy)."
