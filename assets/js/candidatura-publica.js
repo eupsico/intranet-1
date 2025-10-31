@@ -1,6 +1,3 @@
-// Versão: 1.10 - Implementação de Logs Robustos no Frontend.
-
-// Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
   db,
   collection,
@@ -15,10 +12,8 @@ import {
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
 // =====================================================================
 
-// URL REAL do Google Apps Script para processar o upload do currículo.
-// **ATUALIZE ESTA URL com a de EXECUÇÃO obtida após o RE-DEPLOY com 'Anyone'.**
-const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
+// 🚨 REMOVENDO: Não precisamos mais da URL direta do Apps Script.
+// const WEB_APP_URL = "URL_ANTIGA_GAS"; 
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
@@ -26,24 +21,16 @@ const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
 // Elementos do DOM
-const formCandidatura = document.getElementById("form-candidatura");
-const selectVaga = document.getElementById("select-vaga");
-const btnSubmit = document.getElementById("btn-submit");
-const msgFeedback = document.getElementById("mensagem-feedback");
-const vagaSelectGroup = document.getElementById("vaga-select-group");
-const loadingVagas = document.getElementById("loading-vagas");
-
-// Campos de Endereço
-const cepCandidato = document.getElementById("cep-candidato");
-const enderecoRua = document.getElementById("endereco-rua");
-const cidadeEndereco = document.getElementById("cidade-endereco");
-const estadoEndereco = document.getElementById("estado-endereco");
+// ... (Mantenha o resto das variáveis DOM)
 
 // Inicialização e Callable Function
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
+// 🚨 NOVO: Callable Function para o proxy de upload
+const proxyUploadCallable = httpsCallable(functions, "proxyUpload");
+
 /**
- * Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
+ * NOVO: Função que lê o arquivo binário e o envia Base64 via Cloud Function Proxy.
  * @param {File} file Arquivo do currículo.
  * @param {string} vagaTitulo Título da vaga.
  * @param {string} nomeCandidato Nome do candidato.
@@ -58,78 +45,47 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
 
     const reader = new FileReader();
 
-    reader.onload = function (e) {
-      // O Google Apps Script pode não conseguir processar strings Base64 muito grandes.
-      // Assumimos que o tamanho do arquivo é < 5MB, mas a string Base64 é ~33% maior.
+    reader.onload = async function (e) {
       const fileData = e.target.result.split(",")[1];
 
       const payload = {
-        // Reduzindo o Base64 para log, pois é muito grande
-        fileData: `[Base64 Data, Length: ${fileData.length}]`, 
+        fileData: fileData, // Base64 completo
         mimeType: file.type,
         fileName: file.name,
         nomeCandidato: nomeCandidato,
         vagaTitulo: vagaTitulo,
       };
 
-      console.log("LOG-CLIENTE: Payload de envio (Sem Base64):", payload);
-      console.log("LOG-CLIENTE: Enviando POST para:", WEB_APP_URL);
-      
-      // O JSON real com a Base64 completa
-      const fullPayload = { ...payload, fileData: e.target.result.split(",")[1] }; 
+      console.log("LOG-CLIENTE: Chamando Cloud Function Proxy para upload...");
 
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8", 
-        },
-        body: JSON.stringify(fullPayload),
-      })
-        .then((res) => {
-          console.log(`LOG-CLIENTE: Resposta Recebida. Status HTTP: ${res.status} ${res.statusText}`);
-          
-          // O Google Apps Script sempre retorna 200 OK. O problema é a leitura do corpo.
-          // Se o CORS fosse resolvido, esta linha seria executada.
-          if (!res.ok) {
-            console.error("LOG-CLIENTE: Resposta HTTP de erro do servidor GAS. Status:", res.status);
-            throw new Error(
-              `Resposta HTTP inválida do Apps Script: ${res.status} ${res.statusText}`
-            );
-          }
-          
-          // Tentamos ler o JSON. Se o CORS bloqueou o corpo, isso falhará.
-          return res.json()
-            .catch(jsonError => {
-                console.error("LOG-CLIENTE: Erro ao parsear JSON. Isso pode ser um indicativo de CORS mal resolvido ou resposta HTML/Vazio.", jsonError);
-                throw new Error("Falha ao processar resposta do servidor (provavelmente erro de CORS ou resposta vazia).");
-            });
-        })
-        .then((response) => {
-          console.log("LOG-CLIENTE: Resposta JSON do Apps Script:", response);
-          if (response.status === "success" && response.fileUrl) {
-            resolve(response.fileUrl);
-          } else {
-            console.error("LOG-CLIENTE: Servidor Apps Script retornou status de erro:", response.message);
-            reject(
-              new Error(
-                response.message || "Erro desconhecido no servidor Apps Script."
-              )
-            );
-          }
-        })
-        .catch((error) => {
-          // ESTE É O BLOCO DE ERRO DE REDE/CORS (TypeError: Failed to fetch)
-          console.error("LOG-CLIENTE: 💥 FETCH/REDE FALHOU COMPLETAMENTE. DETALHES:", error);
+      try {
+        // 🚨 MUDANÇA CRÍTICA: Chama o proxy no Firebase em vez do Apps Script direto
+        const result = await proxyUploadCallable(payload);
+        const response = result.data; // A resposta da Cloud Function é encapsulada em .data
+
+        if (response.status === "success" && response.fileUrl) {
+          console.log("LOG-CLIENTE: Upload bem-sucedido via Proxy.");
+          resolve(response.fileUrl);
+        } else {
+          console.error("LOG-CLIENTE: Proxy retornou status de erro:", response);
           reject(
             new Error(
-              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
+              response.message || "Erro desconhecido no servidor Apps Script via Proxy."
             )
           );
-        });
+        }
+      } catch (error) {
+        // Este bloco captura erros da Cloud Function em si (ex: timeout, internal error)
+        console.error("LOG-CLIENTE: Erro ao chamar Cloud Function Proxy:", error);
+        reject(
+          new Error(
+            `Falha na comunicação com o servidor de upload (Proxy). Detalhes: ${error.message}`
+          )
+        );
+      }
     };
 
     reader.onerror = function (error) {
-      console.error("LOG-CLIENTE: Erro ao ler o arquivo no leitor:", error);
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
 
