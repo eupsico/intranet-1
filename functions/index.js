@@ -1325,3 +1325,54 @@ exports.salvarCandidatura = onCall(async (data, context) => {
     );
   }
 });
+// ---------------------------------------------------------------------------------
+// FUNÇÃO: proxyUpload (Cloud Function Callable)
+// DESCRIÇÃO: Atua como um proxy reverso para enviar o currículo ao Google Apps Script,
+// contornando a restrição de CORS do navegador.
+// ---------------------------------------------------------------------------------
+exports.proxyUpload = onCall(async (request) => {
+  // ATENÇÃO: COLOQUE A URL FINAL DE EXECUÇÃO DO SEU GOOGLE APPS SCRIPT AQUI.
+  const GAS_WEB_APP_URL =
+    "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
+
+  // 1. Validação e Extração dos Dados
+  if (!request.data || !request.data.fileData) {
+    throw new HttpsError("invalid-argument", "Dados ou arquivo Base64 não fornecidos.");
+  }
+  
+  const payload = request.data;
+  
+  // 2. Chama o Apps Script (Server-to-Server)
+  try {
+    const gasResponse = await fetch(GAS_WEB_APP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8", // Formato que o Apps Script espera
+      },
+      body: JSON.stringify(payload),
+      timeout: 30000 // Aumenta o timeout para uploads de arquivos grandes (30s)
+    });
+
+    if (!gasResponse.ok) {
+      const errorText = await gasResponse.text();
+      logger.error("Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText);
+      throw new HttpsError(
+        "internal",
+        "O Apps Script retornou um erro ao processar o upload.",
+        { status: gasResponse.status, details: errorText.substring(0, 200) }
+      );
+    }
+    
+    // 3. Retorna a Resposta do Apps Script (JSON) para o Cliente
+    const gasJson = await gasResponse.json();
+    return gasJson;
+    
+  } catch (error) {
+    logger.error("Erro ao fazer fetch para o Apps Script via Proxy:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError(
+      "internal",
+      "Falha na comunicação com o servidor de upload (GAS Proxy)."
+    );
+  }
+});
