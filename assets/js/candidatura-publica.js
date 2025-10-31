@@ -1,5 +1,4 @@
-// assets/js/candidatura-publica.js
-// Versão: 1.7 - Tentativa final de correção de CORS via omissão de Content-Type.
+// Versão: 1.9 - Retornando à lógica fetch (Base64/JSON), com a premissa de que o Apps Script foi re-implantado corretamente.
 
 // Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
@@ -17,6 +16,7 @@ import {
 // =====================================================================
 
 // URL REAL do Google Apps Script para processar o upload do currículo.
+// **ATUALIZE ESTA URL com a de EXECUÇÃO obtida após o RE-DEPLOY com 'Anyone'.**
 const WEB_APP_URL =
   "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
 
@@ -40,11 +40,10 @@ const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
 // Inicialização e Callable Function
-// Esta é a função que salvará os metadados no Firestore (Backend)
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
- * NOVO: Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
+ * Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
  * @param {File} file Arquivo do currículo.
  * @param {string} vagaTitulo Título da vaga.
  * @param {string} nomeCandidato Nome do candidato.
@@ -69,13 +68,14 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
 
       fetch(WEB_APP_URL, {
         method: "POST",
-        // 🚨 MODIFICAÇÃO: REMOVENDO O HEADER Content-Type
-        // Isso força o navegador a usar 'application/json' (se não houver File/Blob)
-        // e, em certos casos de Apps Script, pode evitar o erro de CORS.
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8", // Mantendo o header que funcionava para upload (Apps Script pode ser sensível)
+        },
         body: JSON.stringify(payload),
       })
         .then((res) => {
           if (!res.ok) {
+            // Isso só será alcançado se o Apps Script estiver respondendo, mas com status HTTP de erro (ex: 404, 500)
             throw new Error(
               `Resposta HTTP inválida do Apps Script: ${res.status} ${res.statusText}`
             );
@@ -94,6 +94,7 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           }
         })
         .catch((error) => {
+          // ⚠️ ESTE É O BLOCO DE ERRO DE CORS. Se o Apps Script NÃO enviar o cabeçalho, a promessa falha aqui.
           console.error("Fetch Error:", error);
           reject(
             new Error(
@@ -289,14 +290,14 @@ async function handleCandidatura(e) {
   }
 
   try {
-    // Etapa 1: Upload do currículo
+    // Etapa 1: Upload do currículo (AQUI CAI O ERRO DE CORS)
     const linkCurriculoDrive = await uploadCurriculoToAppsScript(
       arquivoCurriculo,
       tituloVagaOriginal,
       nome
     );
 
-    // Etapa 2: Envio da candidatura
+    // Etapa 2: Envio da candidatura (SÓ RODA SE A ETAPA 1 FOR SUCESSO)
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
