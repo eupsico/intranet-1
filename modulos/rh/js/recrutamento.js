@@ -862,9 +862,7 @@ function handleTabClick(e) {
 // INICIALIZAÇÃO
 // =====================================================================
 
-/**
- * Ponto de entrada do módulo.
- */
+
 /**
  * Ponto de entrada do módulo.
  */
