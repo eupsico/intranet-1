@@ -283,21 +283,23 @@ async function handleCandidatura(e) {
     );
     console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
-    const novaCandidatura = {
-      vaga_id: vagaId,
-      titulo_vaga_original: tituloVagaOriginal,
-      nome_completo: nome,
-      email: email,
-      telefone_contato: telefone,
-      cep: cep,
-      numero_endereco: numero,
-      cidade: cidade,
-      estado: estado,
-      resumo_experiencia: resumoExperiencia,
-      habilidades_competencias: habilidades,
-      como_conheceu: comoConheceu,
-      link_curriculo_drive: linkCurriculoDrive,
-    };
+// Procure por esta linha (aproximadamente linha 280-290):
+const novaCandidatura = {
+  vaga_id: vagaId,
+  titulo_vaga_original: tituloVagaOriginal,
+  nome_completo: nome,
+  email: email,
+  telefone_contato: telefone,
+  cep: cep,
+  numero_endereco: numero,
+  cidade: cidade,
+  estado: estado,
+  resumo_experiencia: resumoExperiencia,
+  habilidades_competencias: habilidades,
+  como_conheceu: comoConheceu,
+  link_curriculo_drive: linkCurriculoDrive,  // ← DEIXE ASSIM (agora é do Storage)
+};
+
 
     console.log("🔥 Salvando candidatura no Firebase...");
     await enviarCandidaturaParaFirebase(novaCandidatura);
