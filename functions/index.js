@@ -1280,7 +1280,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
     const drive = google.drive({ version: 'v3', auth });
 
-    const DRIVE_FOLDER_ID = '1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF';
+    const DRIVE_FOLDER_ID = '1F_9FzOhGL2R3UTlCNN_8J53y3LElGop3';
 
     const buffer = Buffer.from(fileData, 'base64');
 
