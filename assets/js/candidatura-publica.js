@@ -45,28 +45,34 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
 
     const reader = new FileReader();
     reader.onload = function (e) {
-      const fileData = e.target.result.split(",")[1]; // Remove "data:mime;base64,"
+      const fileData = e.target.result.split(",")[1];
 
-      // 🔹 Usa FormData (não causa preflight OPTIONS)
-      const formData = new FormData();
-      formData.append('fileData', fileData);
-      formData.append('mimeType', file.type);
-      formData.append('fileName', file.name);
-      formData.append('nomeCandidato', nomeCandidato);
-      formData.append('vagaTitulo', vagaTitulo);
+      // 🔹 MUDANÇA: Chama Cloud Function em vez de Apps Script
+      const CLOUD_FUNCTION_URL = 
+        " https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/uploadCurriculo";
 
-      console.log(`🔵 LOG-CLIENTE: Enviando POST (FormData) para: ${WEB_APP_URL}`);
-      console.log(`📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+      const payload = {
+        fileData: fileData,
+        mimeType: file.type,
+        fileName: file.name,
+        nomeCandidato: nomeCandidato,
+        vagaTitulo: vagaTitulo,
+      };
+
+      console.log(`🔵 LOG-CLIENTE: Enviando para Cloud Function`);
+      console.log(`📄 Arquivo: ${file.name}`);
       console.log(`👤 Candidato: ${nomeCandidato}`);
       console.log(`💼 Vaga: ${vagaTitulo}`);
 
-      // 🔑 SEM HEADERS - Evita preflight
-      fetch(WEB_APP_URL, {
+      fetch(CLOUD_FUNCTION_URL, {
         method: "POST",
-        body: formData, // FormData não precisa de Content-Type manual
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       })
         .then((res) => {
-          console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
+          console.log(`✅ Status HTTP: ${res.status}`);
           
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -75,32 +81,24 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           return res.json();
         })
         .then((response) => {
-          console.log("📦 LOG-CLIENTE: Resposta JSON do Apps Script:", response);
+          console.log("📦 Resposta JSON:", response);
           
           if (response.status === "success" && response.fileUrl) {
             resolve(response.fileUrl);
           } else {
-            reject(
-              new Error(
-                response.message || "Erro desconhecido no servidor Apps Script."
-              )
-            );
+            reject(new Error(response.message || "Erro desconhecido."));
           }
         })
         .catch((error) => {
-          console.error("💥 LOG-CLIENTE: FETCH/REDE FALHOU. DETALHES:", error);
-          reject(
-            new Error(
-              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
-            )
-          );
+          console.error("💥 Erro na requisição:", error);
+          reject(new Error(`Falha: ${error.message}`));
         });
     };
-    
+
     reader.onerror = function (error) {
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
-    
+
     reader.readAsDataURL(file);
   });
 }

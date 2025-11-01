@@ -1384,7 +1384,6 @@ exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (reque
 });
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const fetch = require('node-fetch');
 
 admin.initializeApp();
 
