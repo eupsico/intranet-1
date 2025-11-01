@@ -1250,6 +1250,9 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 // ====================================================================
 // FUNÇÃO: uploadCurriculo (CHAMA GOOGLE APPS SCRIPT)
 // ====================================================================
+// ====================================================================
+// FUNÇÃO: uploadCurriculo (CHAMA GOOGLE APPS SCRIPT)
+// ====================================================================
 exports.uploadCurriculo = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -1276,8 +1279,8 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       return;
     }
 
-    // 🔹 CHAMAR GOOGLE APPS SCRIPT (COMO FUNCIONA NO SEU CÓDIGO)
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
+    // URL DO SEU GOOGLE APPS SCRIPT (O MESMO QUE FUNCIONA NO FRONTEND)
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec"; // ← COLOQUE SUA URL AQUI
 
     const payload = {
       fileData: fileData,
@@ -1287,13 +1290,16 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       vagaTitulo: vagaTitulo,
     };
 
-    const gasResponse = await fetch(WEB_APP_URL, {
+    const gasResponse = await fetch(GAS_URL, {
       method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(payload),
     });
 
     if (!gasResponse.ok) {
-      throw new Error(`Google Apps Script retornou erro: ${gasResponse.status}`);
+      throw new Error(`GAS retornou ${gasResponse.status}`);
     }
 
     const gasJson = await gasResponse.json();
@@ -1305,18 +1311,17 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
         fileUrl: gasJson.fileUrl
       });
     } else {
-      throw new Error(gasJson.message || 'Erro desconhecido no Google Apps Script');
+      throw new Error(gasJson.message || 'Erro no GAS');
     }
 
   } catch (error) {
     logger.error('❌ Erro na uploadCurriculo:', error);
     res.status(500).json({
       status: 'error',
-      message: `Erro no servidor: ${error.message}`
+      message: `Erro: ${error.message}`
     });
   }
 });
-
 
 
 
