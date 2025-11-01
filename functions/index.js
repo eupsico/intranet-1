@@ -1246,8 +1246,9 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   }
 });
 
+
 // ====================================================================
-// FUNÇÃO: uploadCurriculo (HTTP - SALVA EM GOOGLE DRIVE)
+// FUNÇÃO: uploadCurriculo (CHAMA GOOGLE APPS SCRIPT)
 // ====================================================================
 exports.uploadCurriculo = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -1268,64 +1269,44 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
 
     if (!fileData || !mimeType || !fileName) {
-      res.status(400).json({ status: 'error', message: 'Campos obrigatórios ausentes' });
+      res.status(400).json({ 
+        status: 'error', 
+        message: 'Campos obrigatórios ausentes' 
+      });
       return;
     }
 
-    const auth = new google.auth.GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/drive'],
-    });
-    const drive = google.drive({ version: 'v3', auth });
+    // 🔹 CHAMAR GOOGLE APPS SCRIPT (COMO FUNCIONA NO SEU CÓDIGO)
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
 
-    const DRIVE_FOLDER_ID = '1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF';
-    const buffer = Buffer.from(fileData, 'base64');
+    const payload = {
+      fileData: fileData,
+      mimeType: mimeType,
+      fileName: fileName,
+      nomeCandidato: nomeCandidato,
+      vagaTitulo: vagaTitulo,
+    };
 
-    // Cria pasta diretamente
-    const candidateFolderName = `${vagaTitulo} - ${nomeCandidato}`;
-    const candidateFolderCreated = await drive.files.create({
-      requestBody: {
-        name: candidateFolderName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [DRIVE_FOLDER_ID],
-      },
+    const gasResponse = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
 
-    const candidateFolderId = candidateFolderCreated.data.id;
-    logger.log('✅ Pasta criada: ' + candidateFolderId);
+    if (!gasResponse.ok) {
+      throw new Error(`Google Apps Script retornou erro: ${gasResponse.status}`);
+    }
 
-    // Upload do arquivo
-    const Readable = require('stream').Readable;
-    const readableStream = Readable.from(buffer);
+    const gasJson = await gasResponse.json();
 
-    const fileResponse = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [candidateFolderId],
-      },
-      media: {
-        mimeType: mimeType,
-        body: readableStream,
-      },
-    });
-
-    const fileId = fileResponse.data.id;
-
-    // Compartilha publicamente
-    await drive.permissions.create({
-      fileId: fileId,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-    });
-
-    const fileUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
-
-    res.json({
-      status: 'success',
-      message: 'Arquivo salvo em Google Drive com sucesso!',
-      fileUrl: fileUrl
-    });
+    if (gasJson.status === 'success') {
+      res.json({
+        status: 'success',
+        message: 'Arquivo salvo em Google Drive com sucesso!',
+        fileUrl: gasJson.fileUrl
+      });
+    } else {
+      throw new Error(gasJson.message || 'Erro desconhecido no Google Apps Script');
+    }
 
   } catch (error) {
     logger.error('❌ Erro na uploadCurriculo:', error);
@@ -1335,6 +1316,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
   }
 });
+
 
 
 
