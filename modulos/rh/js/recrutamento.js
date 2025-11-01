@@ -865,6 +865,9 @@ function handleTabClick(e) {
 /**
  * Ponto de entrada do módulo.
  */
+/**
+ * Ponto de entrada do módulo.
+ */
 export async function initRecrutamento(user, userData) {
   console.log("🔹 Iniciando Módulo de Recrutamento e Seleção...");
 
@@ -889,13 +892,12 @@ export async function initRecrutamento(user, userData) {
     document.querySelectorAll(".fechar-modal-candidato").forEach((btn) => {
       btn.addEventListener("click", () => {
         modalCandidato.style.display = "none";
-        // Recarrega a aba ativa após fechar o modal
-        const activeTab =
-          statusCandidaturaTabs.querySelector(".tab-link.active");
+        const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
         if (activeTab) handleTabClick({ currentTarget: activeTab });
       });
     });
   }
-
-  // 4. Se não houve vaga selecionada, a mensagem inicial será exibida.
 }
+
+// ✅ ADICIONE ESTA LINHA PARA COMPATIBILIDADE COM O ROTEADOR
+export { initRecrutamento as init };
