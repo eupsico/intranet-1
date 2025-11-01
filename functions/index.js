@@ -1280,62 +1280,6 @@ exports.importarPacientesBatch = onCall(async (request) => {
 
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', dependendo da coleção final usada pelo front-end
 
-// ---------------------------------------------------------------------------------
-// FUNÇÃO: proxyUpload (Cloud Function Callable)
-// DESCRIÇÃO: Atua como um proxy reverso para enviar o currículo ao Google Apps Script,
-// contornando a restrição de CORS do navegador.
-// ---------------------------------------------------------------------------------
-exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (request) => { 
-  // ATENÇÃO: USE A URL ATUAL E ATIVA DO SEU GOOGLE APPS SCRIPT AQUI.
-  const GAS_WEB_APP_URL =
-    ";
-
-  // 1. Validação e Extração dos Dados
-  if (!request.data || !request.data.fileData) {
-    logger.error("Proxy: Dados ou arquivo Base64 não fornecidos.");
-    throw new HttpsError("invalid-argument", "Dados ou arquivo Base64 não fornecidos.");
-  }
-  
-  const payload = request.data;
-  
-  // 2. Chama o Apps Script (Server-to-Server)
-  try {
-    const gasResponse = await fetch(GAS_WEB_APP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8", 
-      },
-      body: JSON.stringify(payload),
-      timeout: 45000 // 45 segundos de timeout para o fetch
-    });
-    
-    // Verificamos se a resposta GAS foi OK
-    if (!gasResponse.ok) {
-      const errorText = await gasResponse.text();
-      logger.error("Proxy: Erro no Apps Script via Proxy. Status:", gasResponse.status, "Resposta:", errorText.substring(0, 200));
-      // Se a Cloud Function não conseguir se comunicar, retorna um erro interno
-      throw new HttpsError(
-        "internal",
-        "O Apps Script retornou um erro ao processar o upload.",
-        { status: gasResponse.status, details: errorText.substring(0, 200) }
-      );
-    }
-    
-    // 3. Retorna a Resposta do Apps Script (JSON) para o Cliente
-    const gasJson = await gasResponse.json();
-    logger.info("Proxy: Resposta bem-sucedida do Apps Script.", gasJson);
-    return gasJson;
-    
-  } catch (error) {
-    logger.error("Proxy: Erro crítico ao fazer fetch para o Apps Script:", error);
-    if (error instanceof HttpsError) throw error;
-    // Se a falha for de rede/timeout, retornamos um erro genérico
-    throw new HttpsError(
-      "internal",
-      "Falha na comunicação com o servidor de upload (GAS Proxy)."
-    );
-  }
-});
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
@@ -1481,4 +1425,37 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
   }
 });
+exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
+  try {
+    if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
+      );
+    }
 
+    const novaCandidaturaData = {
+      ...data,
+      data_candidatura: FieldValue.serverTimestamp(),
+      status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
+    };
+
+    await db.collection("candidaturas").add(novaCandidaturaData);
+
+    logger.info("Nova candidatura salva com sucesso.", {
+      vagaId: data.vaga_id,
+    });
+
+    return { 
+      success: true, 
+      message: "Candidatura registrada com sucesso!" 
+    };
+  } catch (error) {
+    logger.error("Erro ao processar candidatura:", error);
+    throw new HttpsError(
+      "internal",
+      "Ocorreu um erro interno ao salvar sua candidatura.",
+      error.message
+    );
+  }
+});
