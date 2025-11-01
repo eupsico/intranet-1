@@ -1276,8 +1276,9 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       return;
     }
 
-    // URL DO GOOGLE APPS SCRIPT
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
+    // ✅ COLOQUE A URL NOVA QUE VOCÊ COPIOU AQUI
+   const GAS_URL = "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
+
 
     const payload = {
       fileData: fileData,
@@ -1287,7 +1288,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       vagaTitulo: vagaTitulo,
     };
 
-    logger.log('📤 Enviando para Google Apps Script:', { fileName, nomeCandidato, vagaTitulo });
+    logger.log('📤 Enviando para GAS:', { fileName, nomeCandidato, vagaTitulo });
 
     const gasResponse = await fetch(GAS_URL, {
       method: "POST",
@@ -1298,19 +1299,21 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       timeout: 30000,
     });
 
+    logger.log('📥 Status GAS:', gasResponse.status);
     const responseText = await gasResponse.text();
-    logger.log('📥 Resposta do GAS (raw):', responseText.substring(0, 500));
+    logger.log('📥 Resposta GAS (primeiros 500 chars):', responseText.substring(0, 500));
 
     let gasJson;
     try {
       gasJson = JSON.parse(responseText);
     } catch (e) {
-      logger.error('❌ GAS retornou HTML em vez de JSON:', responseText.substring(0, 200));
-      throw new Error('Google Apps Script retornou HTML. Verifique se a URL está correta.');
+      logger.error('❌ GAS retornou HTML, não JSON!');
+      logger.error('Resposta completa:', responseText.substring(0, 1000));
+      throw new Error(`GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`);
     }
 
     if (gasJson.status === 'success' && gasJson.fileUrl) {
-      logger.log('✅ Arquivo salvo no Drive:', gasJson.fileUrl);
+      logger.log('✅ Sucesso!');
       res.json({
         status: 'success',
         message: 'Arquivo salvo em Google Drive com sucesso!',
