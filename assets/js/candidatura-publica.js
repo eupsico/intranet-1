@@ -1,72 +1,92 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxD92OEse2JY2kOKVqkogzHiCnmullDghB6sPsJCL8iRe48lRlTxYMFFMbU7tUzOUqFA/exec";
+// candidatura-publica.js
+import { firebaseInit } from './firebase-init.js';
 
-const form = document.getElementById("candidatura-form");
-const messageContainer = document.getElementById("message-container");
+const form = document.getElementById('form-candidatura');
+const selectVaga = document.getElementById('select-vaga');
+const vagaGroup = document.getElementById('vaga-select-group');
+const loadingVagas = document.getElementById('loading-vagas');
+const mensagemFeedback = document.getElementById('mensagem-feedback');
+const inputCEP = document.getElementById('cep-candidato');
+const inputRua = document.getElementById('endereco-rua');
+const inputCidade = document.getElementById('cidade-endereco');
+const inputEstado = document.getElementById('estado-endereco');
 
-function showMessage(msg, type = "error") {
-  messageContainer.textContent = msg;
-  messageContainer.className = `alert alert-${type}`;
-  messageContainer.style.display = "block";
-}
+// URL do Apps Script que retorna vagas
+const VAGAS_URL = 'https://script.google.com/macros/s/SEU_SCRIPT_ID/exec?action=vagas';
+const ENVIO_URL = 'https://script.google.com/macros/s/SEU_SCRIPT_ID/exec?action=enviar';
 
-function hideMessage() {
-  messageContainer.style.display = "none";
-}
+// Função para buscar vagas ativas
+async function carregarVagas() {
+  try {
+    const res = await fetch(VAGAS_URL);
+    const vagas = await res.json();
 
-form.addEventListener("submit", async function (e) {
-  e.preventDefault();
-  hideMessage();
-
-  const profissional = document.getElementById("form-profissional").value.trim();
-  const paciente = document.getElementById("form-paciente").value.trim();
-  const mesReferencia = document.getElementById("form-mes").value.trim();
-  const fileInput = document.getElementById("form-arquivo");
-
-  if (!profissional || !paciente || !mesReferencia || !fileInput.files.length) {
-    showMessage("Todos os campos são obrigatórios!");
-    return;
-  }
-
-  const file = fileInput.files[0];
-  const reader = new FileReader();
-
-  reader.onload = async function () {
-    const fileData = reader.result.split(",")[1]; // base64
-
-    const payload = {
-      profissional,
-      paciente,
-      mesReferencia,
-      fileName: file.name,
-      mimeType: file.type,
-      fileData
-    };
-
-    try {
-      const response = await fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+    if (vagas.length) {
+      selectVaga.innerHTML = '<option value="">Selecione a vaga...</option>';
+      vagas.forEach(v => {
+        const option = document.createElement('option');
+        option.value = v.id;
+        option.textContent = v.titulo;
+        selectVaga.appendChild(option);
       });
-
-      const result = await response.json();
-
-      if (result.status === "success") {
-        showMessage(`Candidatura enviada com sucesso! Link do arquivo: ${result.fileUrl}`, "success");
-        form.reset();
-      } else {
-        throw new Error(result.message || "Erro desconhecido no servidor.");
-      }
-
-    } catch (err) {
-      console.error(err);
-      showMessage("Falha no envio: " + err.message);
+      vagaGroup.style.display = 'block';
+    } else {
+      selectVaga.innerHTML = '<option value="">Nenhuma vaga disponível</option>';
     }
-  };
+  } catch (err) {
+    console.error('Erro ao carregar vagas:', err);
+    selectVaga.innerHTML = '<option value="">Erro ao carregar vagas</option>';
+  } finally {
+    loadingVagas.style.display = 'none';
+  }
+}
 
-  reader.onerror = function () {
-    showMessage("Não foi possível ler o arquivo anexado.");
-  };
+// Função para preencher endereço pelo CEP
+async function buscarEndereco(cep) {
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`);
+    const data = await res.json();
+    if (!data.erro) {
+      inputRua.value = data.logradouro;
+      inputCidade.value = data.localidade;
+      inputEstado.value = data.uf;
+    }
+  } catch (err) {
+    console.error('Erro ao buscar CEP:', err);
+  }
+}
 
-  reader.readAsDataURL(file);
+// Evento ao digitar o CEP
+inputCEP.addEventListener('blur', () => {
+  const cep = inputCEP.value;
+  if (cep.length >= 8) buscarEndereco(cep);
 });
+
+// Envio do formulário
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const formData = new FormData(form);
+  mensagemFeedback.innerHTML = 'Enviando...';
+
+  try {
+    const res = await fetch(ENVIO_URL, {
+      method: 'POST',
+      body: formData
+    });
+    const result = await res.json();
+
+    if (result.status === 'success') {
+      mensagemFeedback.innerHTML = `<div class="mensagem-sucesso">Candidatura enviada com sucesso!</div>`;
+      form.reset();
+    } else {
+      mensagemFeedback.innerHTML = `<div class="mensagem-erro">${result.message || 'Erro ao enviar candidatura.'}</div>`;
+    }
+  } catch (err) {
+    mensagemFeedback.innerHTML = `<div class="mensagem-erro">Erro ao enviar candidatura.</div>`;
+    console.error(err);
+  }
+});
+
+// Inicialização
+carregarVagas();
