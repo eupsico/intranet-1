@@ -36,6 +36,9 @@ const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 /**
  * Função que envia o arquivo ao Apps Script via JSON.
  */
+/**
+ * Função que envia o arquivo ao Apps Script SEM causar preflight OPTIONS.
+ */
 function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error("Nenhum arquivo anexado."));
@@ -44,26 +47,23 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
     reader.onload = function (e) {
       const fileData = e.target.result.split(",")[1]; // Remove "data:mime;base64,"
 
-      // 🔹 Envia via JSON (compatível com JSON.parse no Apps Script)
-      const payload = {
-        fileData: fileData,
-        mimeType: file.type,
-        fileName: file.name,
-        nomeCandidato: nomeCandidato,
-        vagaTitulo: vagaTitulo,
-      };
+      // 🔹 Usa FormData (não causa preflight OPTIONS)
+      const formData = new FormData();
+      formData.append('fileData', fileData);
+      formData.append('mimeType', file.type);
+      formData.append('fileName', file.name);
+      formData.append('nomeCandidato', nomeCandidato);
+      formData.append('vagaTitulo', vagaTitulo);
 
-      console.log(`🔵 LOG-CLIENTE: Enviando POST (JSON) para: ${WEB_APP_URL}`);
+      console.log(`🔵 LOG-CLIENTE: Enviando POST (FormData) para: ${WEB_APP_URL}`);
       console.log(`📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
       console.log(`👤 Candidato: ${nomeCandidato}`);
       console.log(`💼 Vaga: ${vagaTitulo}`);
 
+      // 🔑 SEM HEADERS - Evita preflight
       fetch(WEB_APP_URL, {
         method: "POST",
-        headers: {
-          'Content-Type': 'application/json', // 🔑 Indica JSON
-        },
-        body: JSON.stringify(payload), // 🔑 Envia como JSON
+        body: formData, // FormData não precisa de Content-Type manual
       })
         .then((res) => {
           console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
