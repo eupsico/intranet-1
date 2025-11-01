@@ -1280,52 +1280,6 @@ exports.importarPacientesBatch = onCall(async (request) => {
 
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', dependendo da coleção final usada pelo front-end
 
-/**
- * Salva os dados de uma nova candidatura no Firestore.
- * Esta é uma função HTTP Callable e pública (não requer autenticação).
- *
- * @param {object} data - Os dados da candidatura, incluindo link_curriculo_drive.
- * @returns {object} Objeto de sucesso.
- */
-exports.salvarCandidatura = onCall(async (data, context) => {
-  // 1. Validação Crítica no Servidor
-  if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
-    // Usa HttpsError que é importado no seu setup
-    throw new HttpsError(
-      "invalid-argument",
-      "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
-    );
-  }
-
-  try {
-    // 2. Preparar Objeto Final para Salvar
-    const novaCandidaturaData = {
-      ...data,
-      // Sobrescreve a data com o carimbo de data/hora do servidor, usando FieldValue
-      data_candidatura: FieldValue.serverTimestamp(),
-      // Garante que o status inicial seja sempre definido pelo servidor
-      status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
-    };
-
-    // 3. Salvar no Firestore usando a instância 'db'
-    await db.collection(CANDIDATURAS_COLLECTION_NAME).add(novaCandidaturaData);
-
-    logger.info("Nova candidatura salva com sucesso.", {
-      vagaId: data.vaga_id,
-    });
-
-    return { success: true, message: "Candidatura registrada com sucesso!" };
-  } catch (error) {
-    logger.error("Erro ao processar candidatura no backend:", error);
-
-    // Retorna um erro HTTPs para ser capturado pelo front-end
-    throw new HttpsError(
-      "internal",
-      "Ocorreu um erro interno ao salvar sua candidatura.",
-      error.message
-    );
-  }
-});
 // ---------------------------------------------------------------------------------
 // FUNÇÃO: proxyUpload (Cloud Function Callable)
 // DESCRIÇÃO: Atua como um proxy reverso para enviar o currículo ao Google Apps Script,
@@ -1334,7 +1288,7 @@ exports.salvarCandidatura = onCall(async (data, context) => {
 exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (request) => { 
   // ATENÇÃO: USE A URL ATUAL E ATIVA DO SEU GOOGLE APPS SCRIPT AQUI.
   const GAS_WEB_APP_URL =
-    "https://script.google.com/macros/s/AKfycby6TK_5vteV6RPdjvhuCp8bl1V1Vz_Q_Vg1cLBLPyJffkQ7EevTBiGQhvfx97IUeQJKFQ/exec";
+    ";
 
   // 1. Validação e Extração dos Dados
   if (!request.data || !request.data.fileData) {
@@ -1388,7 +1342,10 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const { google } = require('googleapis');
 
-exports.uploadCurriculo = functions.https.onRequest(async (req, res) => {
+// ====================================================================
+// FUNÇÃO: uploadCurriculo - SALVA EM GOOGLE DRIVE
+// ====================================================================
+exports.uploadCurriculo = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -1414,95 +1371,114 @@ exports.uploadCurriculo = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // Obtém credenciais de serviço do Firebase
+    const { google } = require("googleapis");
     const auth = new google.auth.GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
-
     const drive = google.drive({ version: 'v3', auth });
 
-    // ID da pasta no Drive (coloque o seu)
-    const DRIVE_FOLDER_ID = 'SEU_DRIVE_FOLDER_ID_AQUI';
+    // 🔹 COLOQUE O ID DA SUA PASTA DO DRIVE AQUI
+    const DRIVE_FOLDER_ID = '1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF';
 
-    // Converte base64 para buffer
     const buffer = Buffer.from(fileData, 'base64');
 
-    // Estrutura: Candidaturas > Vaga - Candidato
-    let candidaturasFolderId = DRIVE_FOLDER_ID;
-    
-    // Busca pasta "Candidaturas"
+    // ========== BUSCA/CRIA PASTA "Candidaturas" ==========
+    let candidaturasFolderId;
     const candidaturasSearch = await drive.files.list({
       q: `'${DRIVE_FOLDER_ID}' in parents and name='Candidaturas' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       spaces: 'drive',
       fields: 'files(id)',
       pageSize: 1,
+      auth: auth,
     });
 
-    let candidaturasFolder = candidaturasSearch.data.files?.[0];
-    
-    if (!candidaturasFolder) {
-      // Cria pasta "Candidaturas"
+    if (candidaturasSearch.data.files && candidaturasSearch.data.files.length > 0) {
+      candidaturasFolderId = candidaturasSearch.data.files[0].id;
+      logger.log('📁 Pasta Candidaturas encontrada');
+    } else {
       const created = await drive.files.create({
         requestBody: {
           name: 'Candidaturas',
           mimeType: 'application/vnd.google-apps.folder',
           parents: [DRIVE_FOLDER_ID],
         },
+        auth: auth,
       });
       candidaturasFolderId = created.data.id;
-    } else {
-      candidaturasFolderId = candidaturasFolder.id;
+      logger.log('✅ Pasta Candidaturas criada');
     }
 
-    // Cria pasta "Vaga - Candidato"
+    // ========== BUSCA/CRIA PASTA "Vaga - Candidato" ==========
     const candidateFolderName = `${vagaTitulo} - ${nomeCandidato}`;
+    let candidateFolderId;
+    
     const candidateSearch = await drive.files.list({
       q: `'${candidaturasFolderId}' in parents and name='${candidateFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       spaces: 'drive',
       fields: 'files(id)',
       pageSize: 1,
+      auth: auth,
     });
 
-    let candidateFolder = candidateSearch.data.files?.[0];
-    
-    if (!candidateFolder) {
+    if (candidateSearch.data.files && candidateSearch.data.files.length > 0) {
+      candidateFolderId = candidateSearch.data.files[0].id;
+      logger.log('📁 Pasta de candidato encontrada');
+    } else {
       const created = await drive.files.create({
         requestBody: {
           name: candidateFolderName,
           mimeType: 'application/vnd.google-apps.folder',
           parents: [candidaturasFolderId],
         },
+        auth: auth,
       });
-      candidateFolder = created.data;
+      candidateFolderId = created.data.id;
+      logger.log('✅ Pasta de candidato criada');
     }
 
-    // Upload do arquivo
+    // ========== UPLOAD DO ARQUIVO ==========
+    const Readable = require('stream').Readable;
+    const readableStream = Readable.from(buffer);
+
     const fileResponse = await drive.files.create({
       requestBody: {
         name: fileName,
-        parents: [candidateFolder.id],
+        parents: [candidateFolderId],
       },
       media: {
         mimeType: mimeType,
-        body: require('stream').Readable.from(buffer),
+        body: readableStream,
       },
+      auth: auth,
     });
 
-    // Gera link público
     const fileId = fileResponse.data.id;
+    logger.log('✅ Arquivo salvo no Drive');
+
+    // ========== GERA LINK PÚBLICO ==========
+    await drive.permissions.create({
+      fileId: fileId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+      auth: auth,
+    });
+
     const fileUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
 
     res.json({
       status: 'success',
-      message: 'Arquivo salvo em Drive com sucesso!',
+      message: 'Arquivo salvo em Google Drive com sucesso!',
       fileUrl: fileUrl
     });
 
   } catch (error) {
-    console.error('Erro:', error);
+    logger.error('❌ Erro na uploadCurriculo:', error);
     res.status(500).json({
       status: 'error',
       message: `Erro no servidor: ${error.message}`
     });
   }
 });
+
