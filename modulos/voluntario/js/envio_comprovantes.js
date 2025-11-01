@@ -16,7 +16,7 @@ import {
 
 export function init(user, userData) {
   const WEB_APP_URL =
-    "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
+    "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
   let formData = {};
 
   const elements = {
