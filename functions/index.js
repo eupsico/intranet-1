@@ -1268,10 +1268,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
 
     if (!fileData || !mimeType || !fileName) {
-      res.status(400).json({ 
-        status: 'error', 
-        message: 'Campos obrigatórios ausentes' 
-      });
+      res.status(400).json({ status: 'error', message: 'Campos obrigatórios ausentes' });
       return;
     }
 
@@ -1280,36 +1277,23 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
     const drive = google.drive({ version: 'v3', auth });
 
-    const DRIVE_FOLDER_ID = '1F_9FzOhGL2R3UTlCNN_8J53y3LElGop3';
+    const DRIVE_FOLDER_ID = '1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF';
     const buffer = Buffer.from(fileData, 'base64');
 
-    // ========== CRIAR PASTA "Vaga - Candidato" DIRETO ==========
+    // Cria pasta diretamente
     const candidateFolderName = `${vagaTitulo} - ${nomeCandidato}`;
-    
-    const candidateFolderSearch = await drive.files.list({
-      q: `'${DRIVE_FOLDER_ID}' in parents and name='${candidateFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      spaces: 'drive',
-      fields: 'files(id)',
-      pageSize: 1,
+    const candidateFolderCreated = await drive.files.create({
+      requestBody: {
+        name: candidateFolderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [DRIVE_FOLDER_ID],
+      },
     });
 
-    let candidateFolderId;
-    if (candidateFolderSearch.data.files && candidateFolderSearch.data.files.length > 0) {
-      candidateFolderId = candidateFolderSearch.data.files[0].id;
-      logger.log('📁 Pasta de candidato encontrada');
-    } else {
-      const created = await drive.files.create({
-        requestBody: {
-          name: candidateFolderName,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [DRIVE_FOLDER_ID],
-        },
-      });
-      candidateFolderId = created.data.id;
-      logger.log('✅ Pasta de candidato criada');
-    }
+    const candidateFolderId = candidateFolderCreated.data.id;
+    logger.log('✅ Pasta criada: ' + candidateFolderId);
 
-    // ========== UPLOAD DO ARQUIVO ==========
+    // Upload do arquivo
     const Readable = require('stream').Readable;
     const readableStream = Readable.from(buffer);
 
@@ -1325,9 +1309,8 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
 
     const fileId = fileResponse.data.id;
-    logger.log('✅ Arquivo salvo no Drive');
 
-    // ========== GERA LINK PÚBLICO ==========
+    // Compartilha publicamente
     await drive.permissions.create({
       fileId: fileId,
       requestBody: {
@@ -1352,6 +1335,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
   }
 });
+
 
 
 // ====================================================================
