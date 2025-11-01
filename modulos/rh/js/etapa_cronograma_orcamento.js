@@ -28,6 +28,8 @@ async function carregarVagasEmRecrutamento() {
   selectVagas.disabled = true;
 
   try {
+    console.log('🔍 Buscando vagas ativas para cronograma...');
+    
     const q = query(
       collection(db, "vagas"),
       where("status", "in", [
@@ -39,6 +41,7 @@ async function carregarVagasEmRecrutamento() {
     );
 
     const snapshot = await getDocs(q);
+    console.log(`📊 Vagas encontradas: ${snapshot.size}`);
 
     selectVagas.innerHTML = '<option value="" disabled selected>Selecione a Vaga</option>';
 
@@ -64,12 +67,17 @@ async function carregarVagasEmRecrutamento() {
     if (vagaFromUrl) {
       selectVagas.value = vagaFromUrl;
       vagaIdAtual = vagaFromUrl;
+      console.log('✅ Vaga pré-selecionada da URL:', vagaFromUrl);
       // TODO: Carregar dados existentes da vaga
     }
   } catch (error) {
-    console.error("Erro ao carregar vagas:", error);
+    console.error("❌ Erro ao carregar vagas:", error);
     selectVagas.innerHTML = '<option value="" disabled selected>Erro ao carregar lista de vagas</option>';
-    alert("Erro ao carregar lista de vagas. Verifique a conexão.");
+    if (window.showToast) {
+      window.showToast("Erro ao carregar lista de vagas.", "error");
+    } else {
+      alert("Erro ao carregar lista de vagas.");
+    }
   }
 }
 
@@ -114,13 +122,26 @@ async function salvarCronogramaOrcamento(e) {
     const vagaRef = doc(db, "vagas", vagaId);
     await updateDoc(vagaRef, dadosCronograma);
 
-    alert("Cronograma e Orçamento salvos com sucesso! Avançando para a Triagem.");
+    console.log('✅ Cronograma salvo com sucesso!');
+    
+    if (window.showToast) {
+      window.showToast("Cronograma e Orçamento salvos com sucesso!", "success");
+    } else {
+      alert("Cronograma e Orçamento salvos com sucesso! Avançando para a Triagem.");
+    }
 
     // Redireciona para o recrutamento com a aba de triagem
-    window.location.hash = `rh/recrutamento?vaga=${vagaId}&etapa=triagem`;
+    setTimeout(() => {
+      window.location.hash = `rh/recrutamento?vaga=${vagaId}&etapa=triagem`;
+    }, 1500);
   } catch (error) {
-    console.error("Erro ao salvar cronograma/orçamento:", error);
-    alert("Erro ao salvar os dados. Detalhes: " + error.message);
+    console.error("❌ Erro ao salvar cronograma/orçamento:", error);
+    
+    if (window.showToast) {
+      window.showToast("Erro ao salvar os dados: " + error.message, "error");
+    } else {
+      alert("Erro ao salvar os dados. Detalhes: " + error.message);
+    }
 
     btnSalvar.disabled = false;
     btnSalvar.innerHTML = '<i class="fas fa-save me-2"></i> Salvar e Avançar para Triagem';
@@ -138,5 +159,7 @@ export async function init(user, userData) {
   const form = document.getElementById("form-cronograma-orcamento");
   if (form) {
     form.addEventListener("submit", salvarCronogramaOrcamento);
+  } else {
+    console.error("Formulário 'form-cronograma-orcamento' não encontrado!");
   }
 }
