@@ -1248,10 +1248,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 
 
 // ====================================================================
-// FUNÇÃO: uploadCurriculo (CHAMA GOOGLE APPS SCRIPT)
-// ====================================================================
-// ====================================================================
-// FUNÇÃO: uploadCurriculo (CHAMA GOOGLE APPS SCRIPT)
+// FUNÇÃO: uploadCurriculo + salvarCandidatura (AMBAS FUNCIONAIS)
 // ====================================================================
 exports.uploadCurriculo = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -1279,8 +1276,8 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       return;
     }
 
-    // URL DO SEU GOOGLE APPS SCRIPT (O MESMO QUE FUNCIONA NO FRONTEND)
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec"; // ← COLOQUE SUA URL AQUI
+    // URL DO GOOGLE APPS SCRIPT
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOGyDANVS--DeH6T-ZaqFiEmhpBYUJu4P8VT0uevQPwC3tLL5EgappHPI2mhKwPtf1fg/exec";
 
     const payload = {
       fileData: fileData,
@@ -1290,32 +1287,41 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       vagaTitulo: vagaTitulo,
     };
 
+    logger.log('📤 Enviando para Google Apps Script:', { fileName, nomeCandidato, vagaTitulo });
+
     const gasResponse = await fetch(GAS_URL, {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      timeout: 30000,
     });
 
-    if (!gasResponse.ok) {
-      throw new Error(`GAS retornou ${gasResponse.status}`);
+    const responseText = await gasResponse.text();
+    logger.log('📥 Resposta do GAS (raw):', responseText.substring(0, 500));
+
+    let gasJson;
+    try {
+      gasJson = JSON.parse(responseText);
+    } catch (e) {
+      logger.error('❌ GAS retornou HTML em vez de JSON:', responseText.substring(0, 200));
+      throw new Error('Google Apps Script retornou HTML. Verifique se a URL está correta.');
     }
 
-    const gasJson = await gasResponse.json();
-
-    if (gasJson.status === 'success') {
+    if (gasJson.status === 'success' && gasJson.fileUrl) {
+      logger.log('✅ Arquivo salvo no Drive:', gasJson.fileUrl);
       res.json({
         status: 'success',
         message: 'Arquivo salvo em Google Drive com sucesso!',
         fileUrl: gasJson.fileUrl
       });
     } else {
-      throw new Error(gasJson.message || 'Erro no GAS');
+      throw new Error(gasJson.message || 'Erro desconhecido no GAS');
     }
 
   } catch (error) {
-    logger.error('❌ Erro na uploadCurriculo:', error);
+    logger.error('❌ Erro na uploadCurriculo:', error.message);
     res.status(500).json({
       status: 'error',
       message: `Erro: ${error.message}`
@@ -1323,10 +1329,8 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
   }
 });
 
-
-
 // ====================================================================
-// FUNÇÃO: salvarCandidatura
+// FUNÇÃO: salvarCandidatura (SALVA NO FIREBASE)
 // ====================================================================
 exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
   try {
@@ -1337,6 +1341,11 @@ exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
       );
     }
 
+    logger.log('💾 Salvando candidatura no Firebase:', {
+      vaga_id: data.vaga_id,
+      nome_completo: data.nome_completo
+    });
+
     const novaCandidaturaData = {
       ...data,
       data_candidatura: FieldValue.serverTimestamp(),
@@ -1345,7 +1354,7 @@ exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
 
     await db.collection("candidaturas").add(novaCandidaturaData);
 
-    logger.info("Nova candidatura salva com sucesso.", {
+    logger.info("✅ Candidatura salva com sucesso.", {
       vagaId: data.vaga_id,
     });
 
@@ -1354,7 +1363,7 @@ exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
       message: "Candidatura registrada com sucesso!" 
     };
   } catch (error) {
-    logger.error("Erro ao processar candidatura:", error);
+    logger.error("❌ Erro ao processar candidatura:", error);
     throw new HttpsError(
       "internal",
       "Ocorreu um erro interno ao salvar sua candidatura.",
@@ -1362,3 +1371,4 @@ exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
     );
   }
 });
+

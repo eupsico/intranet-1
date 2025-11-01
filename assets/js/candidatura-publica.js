@@ -1,5 +1,6 @@
-// assets/js/candidatura-publica.js
-// Versão: 3.0 - Corrigida para enviar JSON e compatível com CORS
+// ====================================================================
+// assets/js/candidatura-publica.js - VERSÃO COMPLETA
+// ====================================================================
 
 import {
   db,
@@ -11,14 +12,15 @@ import {
   httpsCallable,
 } from "./firebase-init.js";
 
-const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
+const CLOUD_FUNCTION_URL = 
+  "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/uploadCurriculo";
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
+// Elementos do DOM
 const formCandidatura = document.getElementById("form-candidatura");
 const selectVaga = document.getElementById("select-vaga");
 const btnSubmit = document.getElementById("btn-submit");
@@ -33,23 +35,16 @@ const estadoEndereco = document.getElementById("estado-endereco");
 
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
-/**
- * Função que envia o arquivo ao Apps Script via JSON.
- */
-/**
- * Função que envia o arquivo ao Apps Script SEM causar preflight OPTIONS.
- */
-function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
+// ====================================================================
+// FUNÇÃO: Upload Currículo
+// ====================================================================
+function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error("Nenhum arquivo anexado."));
 
     const reader = new FileReader();
     reader.onload = function (e) {
       const fileData = e.target.result.split(",")[1];
-
-      // 🔹 MUDANÇA: Chama Cloud Function em vez de Apps Script
-      const CLOUD_FUNCTION_URL = 
-        " https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/uploadCurriculo";
 
       const payload = {
         fileData: fileData,
@@ -59,8 +54,8 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
         vagaTitulo: vagaTitulo,
       };
 
-      console.log(`🔵 LOG-CLIENTE: Enviando para Cloud Function`);
-      console.log(`📄 Arquivo: ${file.name}`);
+      console.log(`🔵 LOG-CLIENTE: Enviando POST para Cloud Function`);
+      console.log(`📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
       console.log(`👤 Candidato: ${nomeCandidato}`);
       console.log(`💼 Vaga: ${vagaTitulo}`);
 
@@ -72,7 +67,7 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
         body: JSON.stringify(payload),
       })
         .then((res) => {
-          console.log(`✅ Status HTTP: ${res.status}`);
+          console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
           
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -81,31 +76,40 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           return res.json();
         })
         .then((response) => {
-          console.log("📦 Resposta JSON:", response);
+          console.log("📦 LOG-CLIENTE: Resposta JSON da Cloud Function:", response);
           
           if (response.status === "success" && response.fileUrl) {
+            console.log("✅ Currículo salvo no Drive:", response.fileUrl);
             resolve(response.fileUrl);
           } else {
-            reject(new Error(response.message || "Erro desconhecido."));
+            reject(
+              new Error(
+                response.message || "Erro desconhecido na Cloud Function."
+              )
+            );
           }
         })
         .catch((error) => {
-          console.error("💥 Erro na requisição:", error);
-          reject(new Error(`Falha: ${error.message}`));
+          console.error("💥 LOG-CLIENTE: FETCH/REDE FALHOU. DETALHES:", error);
+          reject(
+            new Error(
+              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
+            )
+          );
         });
     };
-
+    
     reader.onerror = function (error) {
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
-
+    
     reader.readAsDataURL(file);
   });
 }
 
-/**
- * Envia os dados da candidatura para o Firebase.
- */
+// ====================================================================
+// FUNÇÃO: Salvar Candidatura no Firebase
+// ====================================================================
 async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   try {
     const result = await salvarCandidaturaCallable(dadosCandidatura);
@@ -134,9 +138,9 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   }
 }
 
-/**
- * Carrega vagas ativas.
- */
+// ====================================================================
+// FUNÇÃO: Carregar Vagas Ativas
+// ====================================================================
 async function carregarVagasAtivas() {
   try {
     const q = query(vagasCollection, where("status", "==", "em-divulgacao"));
@@ -174,9 +178,9 @@ async function carregarVagasAtivas() {
   }
 }
 
-/**
- * Consulta CEP e preenche endereço.
- */
+// ====================================================================
+// FUNÇÃO: Buscar CEP
+// ====================================================================
 async function buscarCEP() {
   const cep = cepCandidato.value.replace(/\D/g, "");
   if (cep.length !== 8) return;
@@ -214,9 +218,9 @@ async function buscarCEP() {
   }
 }
 
-/**
- * Handler principal do formulário.
- */
+// ====================================================================
+// FUNÇÃO: Handler Principal do Formulário
+// ====================================================================
 async function handleCandidatura(e) {
   e.preventDefault();
   btnSubmit.disabled = true;
@@ -226,22 +230,23 @@ async function handleCandidatura(e) {
   const vagaSelectOption = selectVaga.options[selectVaga.selectedIndex];
   const vagaId = selectVaga.value;
   const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo");
+  
+  // Capturar TODOS os campos do formulário
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
   const telefone = document.getElementById("telefone-candidato").value.trim();
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
+  const complemento = document.getElementById("complemento-endereco") ? document.getElementById("complemento-endereco").value.trim() : "";
+  const rua = enderecoRua.value.trim();
   const cidade = cidadeEndereco.value.trim();
   const estado = estadoEndereco.value.trim();
-  const resumoExperiencia = document
-    .getElementById("resumo-experiencia")
-    .value.trim();
-  const habilidades = document
-    .getElementById("habilidades-competencias")
-    .value.trim();
+  const resumoExperiencia = document.getElementById("resumo-experiencia").value.trim();
+  const habilidades = document.getElementById("habilidades-competencias").value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
   const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
 
+  // Validação de campos obrigatórios
   if (
     !vagaId ||
     !nome ||
@@ -264,6 +269,7 @@ async function handleCandidatura(e) {
     return;
   }
 
+  // Validação de tamanho de arquivo
   const maxFileSize = 5 * 1024 * 1024;
   if (arquivoCurriculo.size > maxFileSize) {
     exibirFeedback(
@@ -276,30 +282,31 @@ async function handleCandidatura(e) {
 
   try {
     console.log("🚀 Iniciando upload do currículo...");
-    const linkCurriculoDrive = await uploadCurriculoToAppsScript(
+    const linkCurriculoDrive = await uploadCurriculoToCloudFunction(
       arquivoCurriculo,
       tituloVagaOriginal,
       nome
     );
     console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
-// Procure por esta linha (aproximadamente linha 280-290):
-const novaCandidatura = {
-  vaga_id: vagaId,
-  titulo_vaga_original: tituloVagaOriginal,
-  nome_completo: nome,
-  email: email,
-  telefone_contato: telefone,
-  cep: cep,
-  numero_endereco: numero,
-  cidade: cidade,
-  estado: estado,
-  resumo_experiencia: resumoExperiencia,
-  habilidades_competencias: habilidades,
-  como_conheceu: comoConheceu,
-  link_curriculo_drive: linkCurriculoDrive,  // ← DEIXE ASSIM (agora é do Storage)
-};
-
+    // TODOS OS CAMPOS DA CANDIDATURA
+    const novaCandidatura = {
+      vaga_id: vagaId,
+      titulo_vaga_original: tituloVagaOriginal,
+      nome_completo: nome,
+      email_candidato: email,
+      telefone_contato: telefone,
+      cep: cep,
+      numero_endereco: numero,
+      complemento_endereco: complemento,
+      endereco_rua: rua,
+      cidade: cidade,
+      estado: estado,
+      resumo_experiencia: resumoExperiencia,
+      habilidades_competencias: habilidades,
+      como_conheceu: comoConheceu,
+      link_curriculo_drive: linkCurriculoDrive,
+    };
 
     console.log("🔥 Salvando candidatura no Firebase...");
     await enviarCandidaturaParaFirebase(novaCandidatura);
@@ -313,6 +320,9 @@ const novaCandidatura = {
   }
 }
 
+// ====================================================================
+// FUNÇÃO: Exibir Feedback
+// ====================================================================
 function exibirFeedback(classe, mensagem, reHabilitar) {
   msgFeedback.innerHTML = `<div class="${classe}">${mensagem}</div>`;
   if (reHabilitar) {
@@ -328,6 +338,9 @@ function exibirFeedback(classe, mensagem, reHabilitar) {
   }
 }
 
+// ====================================================================
+// EVENT LISTENERS
+// ====================================================================
 cepCandidato.addEventListener("blur", buscarCEP);
 document.addEventListener("DOMContentLoaded", carregarVagasAtivas);
 formCandidatura.addEventListener("submit", handleCandidatura);
