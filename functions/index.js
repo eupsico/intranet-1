@@ -1382,3 +1382,74 @@ exports.proxyUpload = onCall({ timeoutSeconds: 60, memory: "1GB" }, async (reque
     );
   }
 });
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const fetch = require('node-fetch');
+
+admin.initializeApp();
+
+exports.uploadCurriculo = functions.https.onRequest(async (req, res) => {
+  // CORS headers - Aplicados PRIMEIRO
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.status(200).send('OK');
+    return;
+  }
+
+  // Handle POST
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Método não permitido' });
+    return;
+  }
+
+  try {
+    const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
+
+    if (!fileData || !mimeType || !fileName) {
+      res.status(400).json({ 
+        status: 'error', 
+        message: 'Campos obrigatórios ausentes' 
+      });
+      return;
+    }
+
+    // Converte base64 para buffer
+    const buffer = Buffer.from(fileData, 'base64');
+    
+    // Estrutura de pastas no Storage
+    const bucket = admin.storage().bucket();
+    const path = `candidaturas/${vagaTitulo}/${nomeCandidato}/${fileName}`;
+    const file = bucket.file(path);
+
+    // Upload para Storage
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimeType,
+        metadata: {
+          candidato: nomeCandidato,
+          vaga: vagaTitulo
+        }
+      }
+    });
+
+    // Gera URL de download público
+    const downloadURL = `https://storage.googleapis.com/${bucket.name}/${path}`;
+
+    res.json({
+      status: 'success',
+      message: 'Arquivo salvo com sucesso!',
+      fileUrl: downloadURL
+    });
+
+  } catch (error) {
+    console.error('Erro:', error);
+    res.status(500).json({
+      status: 'error',
+      message: `Erro no servidor: ${error.message}`
+    });
+  }
+});
