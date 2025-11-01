@@ -1,5 +1,5 @@
 // assets/js/candidatura-publica.js
-// Versão: 2.2 - Ajustada para evitar preflight OPTIONS e permitir resposta CORS
+// Versão: 3.0 - Corrigida para enviar JSON e compatível com CORS
 
 import {
   db,
@@ -12,7 +12,7 @@ import {
 } from "./firebase-init.js";
 
 const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwel_QR6LBdcK0dzn1Igp35ZNmqSbrBniM7Q0QXtxbZe_SAvAwh1PStYn4qifF2H7sUYA/exec"; 
+  "https://script.google.com/macros/s/AKfycbySd25abI826LMUg8GxUjlSJLYRG7svuMe1V_9HjrWEddyOw4YFTSBYA-rUHECOwyYukw/exec";
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
@@ -34,7 +34,7 @@ const estadoEndereco = document.getElementById("estado-endereco");
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
 /**
- * Função que envia o arquivo ao Apps Script sem preflight OPTIONS.
+ * Função que envia o arquivo ao Apps Script via JSON.
  */
 function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
@@ -42,25 +42,41 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
 
     const reader = new FileReader();
     reader.onload = function (e) {
-      const fileData = e.target.result.split(",")[1];
+      const fileData = e.target.result.split(",")[1]; // Remove "data:mime;base64,"
 
-      // Envia via FormData (evita preflight)
-      const formData = new FormData();
-      formData.append("fileData", fileData);
-      formData.append("mimeType", file.type);
-      formData.append("fileName", file.name);
-      formData.append("nomeCandidato", nomeCandidato);
-      formData.append("vagaTitulo", vagaTitulo);
+      // 🔹 Envia via JSON (compatível com JSON.parse no Apps Script)
+      const payload = {
+        fileData: fileData,
+        mimeType: file.type,
+        fileName: file.name,
+        nomeCandidato: nomeCandidato,
+        vagaTitulo: vagaTitulo,
+      };
 
-      console.log(`LOG-CLIENTE: Enviando POST (fetch) para: ${WEB_APP_URL}`);
+      console.log(`🔵 LOG-CLIENTE: Enviando POST (JSON) para: ${WEB_APP_URL}`);
+      console.log(`📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+      console.log(`👤 Candidato: ${nomeCandidato}`);
+      console.log(`💼 Vaga: ${vagaTitulo}`);
 
       fetch(WEB_APP_URL, {
         method: "POST",
-        body: formData, // 👈 sem headers personalizados
+        headers: {
+          'Content-Type': 'application/json', // 🔑 Indica JSON
+        },
+        body: JSON.stringify(payload), // 🔑 Envia como JSON
       })
-        .then((res) => res.json())
+        .then((res) => {
+          console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
+          
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+          
+          return res.json();
+        })
         .then((response) => {
-          console.log("LOG-CLIENTE: Resposta JSON do Apps Script:", response);
+          console.log("📦 LOG-CLIENTE: Resposta JSON do Apps Script:", response);
+          
           if (response.status === "success" && response.fileUrl) {
             resolve(response.fileUrl);
           } else {
@@ -72,17 +88,19 @@ function uploadCurriculoToAppsScript(file, vagaTitulo, nomeCandidato) {
           }
         })
         .catch((error) => {
-          console.error("LOG-CLIENTE: 💥 FETCH/REDE FALHOU. DETALHES:", error);
+          console.error("💥 LOG-CLIENTE: FETCH/REDE FALHOU. DETALHES:", error);
           reject(
             new Error(
-              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}.`
+              `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
             )
           );
         });
     };
+    
     reader.onerror = function (error) {
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
+    
     reader.readAsDataURL(file);
   });
 }
@@ -259,11 +277,13 @@ async function handleCandidatura(e) {
   }
 
   try {
+    console.log("🚀 Iniciando upload do currículo...");
     const linkCurriculoDrive = await uploadCurriculoToAppsScript(
       arquivoCurriculo,
       tituloVagaOriginal,
       nome
     );
+    console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
     const novaCandidatura = {
       vaga_id: vagaId,
@@ -281,9 +301,10 @@ async function handleCandidatura(e) {
       link_curriculo_drive: linkCurriculoDrive,
     };
 
+    console.log("🔥 Salvando candidatura no Firebase...");
     await enviarCandidaturaParaFirebase(novaCandidatura);
   } catch (error) {
-    console.error("Erro completo na candidatura:", error);
+    console.error("❌ Erro completo na candidatura:", error);
     exibirFeedback(
       "mensagem-erro",
       `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
@@ -299,6 +320,7 @@ function exibirFeedback(classe, mensagem, reHabilitar) {
   } else if (classe === "mensagem-sucesso") {
     setTimeout(() => {
       msgFeedback.innerHTML = "";
+      btnSubmit.disabled = false;
       carregarVagasAtivas();
     }, 5000);
   } else if (!classe) {
