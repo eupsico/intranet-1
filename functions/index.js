@@ -1281,58 +1281,29 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     const drive = google.drive({ version: 'v3', auth });
 
     const DRIVE_FOLDER_ID = '1F_9FzOhGL2R3UTlCNN_8J53y3LElGop3';
-
     const buffer = Buffer.from(fileData, 'base64');
 
-    // ========== BUSCA/CRIA PASTA "Candidaturas" ==========
-    let candidaturasFolderId;
-    const candidaturasSearch = await drive.files.list({
-      q: `'${DRIVE_FOLDER_ID}' in parents and name='Candidaturas' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      spaces: 'drive',
-      fields: 'files(id)',
-      pageSize: 1,
-      auth: auth,
-    });
-
-    if (candidaturasSearch.data.files && candidaturasSearch.data.files.length > 0) {
-      candidaturasFolderId = candidaturasSearch.data.files[0].id;
-      logger.log('📁 Pasta Candidaturas encontrada');
-    } else {
-      const created = await drive.files.create({
-        requestBody: {
-          name: 'Candidaturas',
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [DRIVE_FOLDER_ID],
-        },
-        auth: auth,
-      });
-      candidaturasFolderId = created.data.id;
-      logger.log('✅ Pasta Candidaturas criada');
-    }
-
-    // ========== BUSCA/CRIA PASTA "Vaga - Candidato" ==========
+    // ========== CRIAR PASTA "Vaga - Candidato" DIRETO ==========
     const candidateFolderName = `${vagaTitulo} - ${nomeCandidato}`;
-    let candidateFolderId;
     
-    const candidateSearch = await drive.files.list({
-      q: `'${candidaturasFolderId}' in parents and name='${candidateFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    const candidateFolderSearch = await drive.files.list({
+      q: `'${DRIVE_FOLDER_ID}' in parents and name='${candidateFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       spaces: 'drive',
       fields: 'files(id)',
       pageSize: 1,
-      auth: auth,
     });
 
-    if (candidateSearch.data.files && candidateSearch.data.files.length > 0) {
-      candidateFolderId = candidateSearch.data.files[0].id;
+    let candidateFolderId;
+    if (candidateFolderSearch.data.files && candidateFolderSearch.data.files.length > 0) {
+      candidateFolderId = candidateFolderSearch.data.files[0].id;
       logger.log('📁 Pasta de candidato encontrada');
     } else {
       const created = await drive.files.create({
         requestBody: {
           name: candidateFolderName,
           mimeType: 'application/vnd.google-apps.folder',
-          parents: [candidaturasFolderId],
+          parents: [DRIVE_FOLDER_ID],
         },
-        auth: auth,
       });
       candidateFolderId = created.data.id;
       logger.log('✅ Pasta de candidato criada');
@@ -1351,7 +1322,6 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
         mimeType: mimeType,
         body: readableStream,
       },
-      auth: auth,
     });
 
     const fileId = fileResponse.data.id;
@@ -1364,7 +1334,6 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
         role: 'reader',
         type: 'anyone',
       },
-      auth: auth,
     });
 
     const fileUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
@@ -1383,6 +1352,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
   }
 });
+
 
 // ====================================================================
 // FUNÇÃO: salvarCandidatura
