@@ -1,5 +1,5 @@
 // --- IMPORTAÇÕES E CONFIGURAÇÃO INICIAL ---
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
 const {
   onDocumentCreated,
   onDocumentUpdated,
@@ -8,16 +8,15 @@ const { logger } = require("firebase-functions");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-const fetch = require('node-fetch');
 
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
 const adminAuth = getAuth();
 
-// ---------------------------------------------
-// FUNÇÃO: gerarUsernameUnico (Função Auxiliar)
-// ---------------------------------------------
+// ====================================================================
+// FUNÇÃO AUXILIAR: gerarUsernameUnico
+// ====================================================================
 async function gerarUsernameUnico(nomeCompleto) {
   const partesNome = nomeCompleto
     .trim()
@@ -83,10 +82,10 @@ async function gerarUsernameUnico(nomeCompleto) {
   }
 }
 
-// -----------------------------------------
+// ====================================================================
 // FUNÇÃO: criarNovoProfissional
-// -----------------------------------------
-exports.criarNovoProfissional = onCall(async (request) => {
+// ====================================================================
+exports.criarNovoProfissional = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
   }
@@ -153,9 +152,9 @@ exports.criarNovoProfissional = onCall(async (request) => {
   }
 });
 
-// -----------------------------------------
+// ====================================================================
 // FUNÇÃO: verificarCpfExistente
-// -----------------------------------------
+// ====================================================================
 exports.verificarCpfExistente = onCall({ cors: true }, async (request) => {
   const cpf = request.data.cpf;
   if (!cpf) {
@@ -194,9 +193,9 @@ exports.verificarCpfExistente = onCall({ cors: true }, async (request) => {
   }
 });
 
-// -----------------------------------------
-// FUNÇÃO: criarCardTrilhaPaciente
-// -----------------------------------------
+// ====================================================================
+// FUNÇÃO: criarCardTrilhaPaciente (Trigger Firestore)
+// ====================================================================
 exports.criarCardTrilhaPaciente = onDocumentCreated(
   "inscricoes/{inscricaoId}",
   async (event) => {
@@ -244,11 +243,10 @@ exports.criarCardTrilhaPaciente = onDocumentCreated(
     }
   }
 );
-// ---------------------------------------------------------------------------------
-// 5. FUNÇÃO: getTodasDisponibilidadesAssistentes (Chamável pelo Cliente)
-// DESCRIÇÃO: Busca a disponibilidade de todos os assistentes sociais ativos.
-// STATUS: Lógica original mantida. A sintaxe do Admin SDK já estava correta.
-// ---------------------------------------------------------------------------------
+
+// ====================================================================
+// FUNÇÃO: getTodasDisponibilidadesAssistentes
+// ====================================================================
 exports.getTodasDisponibilidadesAssistentes = onCall(
   { cors: true },
   async (request) => {
@@ -324,11 +322,9 @@ exports.getTodasDisponibilidadesAssistentes = onCall(
   }
 );
 
-// ---------------------------------------------------------------------------------
-// 6. FUNÇÃO: definirTipoAgenda (Chamável pelo Cliente)
-// DESCRIÇÃO: Configura a agenda de um assistente para um determinado período.
-// STATUS: Lógica original mantida. Ajustado para usar serverTimestamp.
-// ---------------------------------------------------------------------------------
+// ====================================================================
+// FUNÇÃO: definirTipoAgenda
+// ====================================================================
 exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
   logger.info("🔧 Iniciando definirTipoAgenda...");
   if (!request.auth) {
@@ -416,7 +412,7 @@ exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
           inicio,
           fim,
           configuradoPor: adminUid,
-          configuradoEm: FieldValue.serverTimestamp(), // Melhor prática
+          configuradoEm: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
@@ -426,7 +422,7 @@ exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
     logger.info("✅ Batch de agenda commitado com sucesso.");
 
     await db.collection("logsSistema").add({
-      timestamp: FieldValue.serverTimestamp(), // Melhor prática
+      timestamp: FieldValue.serverTimestamp(),
       usuario: adminUid,
       acao: "Configuração de agenda",
       status: "success",
@@ -440,7 +436,7 @@ exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
   } catch (error) {
     logger.error("🔥 ERRO definirTipoAgenda:", error);
     await db.collection("logsSistema").add({
-      timestamp: FieldValue.serverTimestamp(), // Melhor prática
+      timestamp: FieldValue.serverTimestamp(),
       usuario: request.auth?.uid || "desconhecido",
       acao: "Configuração de agenda",
       status: "error",
@@ -454,12 +450,9 @@ exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
     );
   }
 });
-
-// ---------------------------------------------------------------------------------
-// 7. FUNÇÃO: getHorariosPublicos (Chamável pelo Cliente)
-// DESCRIÇÃO: Busca os horários de triagem disponíveis para o público.
-// STATUS: Lógica original mantida, código completo restaurado.
-// ---------------------------------------------------------------------------------
+// ====================================================================
+// FUNÇÃO: getHorariosPublicos
+// ====================================================================
 exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
   try {
     logger.info("Iniciando getHorariosPublicos...");
@@ -468,18 +461,16 @@ exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
     hoje.setHours(0, 0, 0, 0);
     const dataInicio = hoje.toISOString().split("T")[0];
 
-    // --- CORREÇÃO APLICADA AQUI ---
     const configGeralDoc = await db
       .collection("configuracoesSistema")
       .doc("geral")
       .get();
 
-    let minimoHorasAntecedencia = 24; // Valor padrão
-    let quantidadeDiasBusca = 7; // Valor padrão
+    let minimoHorasAntecedencia = 24;
+    let quantidadeDiasBusca = 7;
 
     if (configGeralDoc.exists) {
       const configData = configGeralDoc.data();
-      // Acessa o mapa 'agendamentos' dentro do documento 'geral'
       minimoHorasAntecedencia =
         Number(configData.agendamentos?.minimoHorasAntecedencia) || 24;
       quantidadeDiasBusca =
@@ -489,7 +480,6 @@ exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
         "Documento 'configuracoesSistema/geral' não encontrado. Usando valores padrão (24h/7d)."
       );
     }
-    // --- FIM DA CORREÇÃO ---
 
     const dataFim = new Date(hoje);
     dataFim.setDate(hoje.getDate() + quantidadeDiasBusca);
@@ -564,7 +554,7 @@ exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
 
       for (
         let minutos = inicioEmMinutos;
-        minutos < fimEmMinutos; // Alterado para '<' para não criar slot na hora exata de término
+        minutos < fimEmMinutos;
         minutos += 30
       ) {
         const hAtual = Math.floor(minutos / 60);
@@ -574,7 +564,6 @@ exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
         ).padStart(2, "0")}`;
         const dataHoraSlot = new Date(`${diaConfig.data}T${horaSlot}:00`);
 
-        // Garante que o timezone não afete o cálculo
         const diffMs = dataHoraSlot.getTime() - agora.getTime();
         const diffHoras = diffMs / (1000 * 60 * 60);
 
@@ -605,9 +594,10 @@ exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
     });
   }
 });
-// -----------------------------------------
+
+// ====================================================================
 // FUNÇÃO: agendarTriagemPublico
-// -----------------------------------------
+// ====================================================================
 exports.agendarTriagemPublico = onCall({ cors: true }, async (request) => {
   const {
     cpf,
@@ -618,6 +608,7 @@ exports.agendarTriagemPublico = onCall({ cors: true }, async (request) => {
     nomeCompleto,
     telefone,
   } = request.data;
+
   if (
     !cpf ||
     !assistenteSocialId ||
@@ -678,14 +669,9 @@ exports.agendarTriagemPublico = onCall({ cors: true }, async (request) => {
   }
 });
 
-// ==============================================================================
-//  NOVA FUNÇÃO AUXILIAR: Adicione esta função ao seu arquivo
-// ==============================================================================
-/**
- * Valida um CPF.
- * @param {string} cpf O CPF a ser validado.
- * @return {boolean} Retorna true se o CPF for válido.
- */
+// ====================================================================
+// FUNÇÃO AUXILIAR: validaCPF
+// ====================================================================
 function validaCPF(cpf) {
   cpf = String(cpf).replace(/[^\d]/g, "");
   if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
@@ -707,9 +693,9 @@ function validaCPF(cpf) {
   return true;
 }
 
-// ==============================================================================
-//  FUNÇÃO ATUALIZADA: Substitua sua função 'assinarContrato' por esta
-// ==============================================================================
+// ====================================================================
+// FUNÇÃO: assinarContrato
+// ====================================================================
 exports.assinarContrato = onCall({ cors: true }, async (request) => {
   const {
     pacienteId,
@@ -750,7 +736,6 @@ exports.assinarContrato = onCall({ cors: true }, async (request) => {
       );
     }
 
-    // O objeto 'contratoAssinado' agora usará o 'FieldValue' importado corretamente
     atendimentos[indiceDoAtendimento].contratoAssinado = {
       assinadoEm: new Date(),
       nomeSignatario,
@@ -776,9 +761,9 @@ exports.assinarContrato = onCall({ cors: true }, async (request) => {
   }
 });
 
-// -----------------------------------------
+// ====================================================================
 // FUNÇÃO: registrarDesfechoPb
-// -----------------------------------------
+// ====================================================================
 exports.registrarDesfechoPb = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError(
@@ -816,7 +801,6 @@ exports.registrarDesfechoPb = onCall({ cors: true }, async (request) => {
       );
 
       if (indiceDoAtendimento === -1) {
-        // Se não encontrou, tenta procurar sem a trava do profissionalId (caso seja um admin fazendo a ação)
         const indiceAdmin = atendimentos.findIndex(
           (at) => at.atendimentoId === atendimentoId
         );
@@ -826,18 +810,17 @@ exports.registrarDesfechoPb = onCall({ cors: true }, async (request) => {
             "Atendimento não encontrado ou você não tem permissão para modificá-lo."
           );
         }
-        // Se encontrou (é um admin), usa o indiceAdmin
+
         atendimentos[indiceAdmin].statusAtendimento = "encerrado";
         atendimentos[indiceAdmin].desfecho = {
           tipo: desfecho,
           motivo: motivo || "",
           encaminhamento: encaminhamento || null,
-          responsavelId: profissionalId, // ID de quem executou a ação
+          responsavelId: profissionalId,
           responsavelNome: atendimentos[indiceAdmin].profissionalNome,
           data: FieldValue.serverTimestamp(),
         };
       } else {
-        // Se encontrou (é o próprio profissional), usa o indiceDoAtendimento
         atendimentos[indiceDoAtendimento].statusAtendimento = "encerrado";
         atendimentos[indiceDoAtendimento].desfecho = {
           tipo: desfecho,
@@ -865,10 +848,10 @@ exports.registrarDesfechoPb = onCall({ cors: true }, async (request) => {
     );
   }
 });
-// -----------------------------------------
+// ====================================================================
 // FUNÇÃO: getSupervisorSlots
-// -----------------------------------------
-exports.getSupervisorSlots = onCall(async (request) => {
+// ====================================================================
+exports.getSupervisorSlots = onCall({ cors: true }, async (request) => {
   const supervisorUid = request.data.supervisorUid;
   if (!request.auth) {
     throw new HttpsError(
@@ -956,7 +939,7 @@ exports.getSupervisorSlots = onCall(async (request) => {
         .where(
           "dataAgendamento",
           "==",
-          FieldValue.fromMillis(new Date(slot.date).getTime())
+          new Date(slot.date)
         );
 
       const querySnapshot = await q.get();
@@ -971,7 +954,7 @@ exports.getSupervisorSlots = onCall(async (request) => {
 
     return { slots: finalSlots };
   } catch (error) {
-    console.error("Erro em getSupervisorSlots:", error);
+    logger.error("Erro em getSupervisorSlots:", error);
     throw new HttpsError(
       "internal",
       "Ocorreu um erro ao buscar os horários de supervisão."
@@ -979,9 +962,9 @@ exports.getSupervisorSlots = onCall(async (request) => {
   }
 });
 
-// -----------------------------------------
-// FUNÇÃO: calculateCapacity (Auxiliar)
-// -----------------------------------------
+// ====================================================================
+// FUNÇÃO AUXILIAR: calculateCapacity
+// ====================================================================
 function calculateCapacity(inicio, fim) {
   try {
     const [startH, startM] = inicio.split(":").map(Number);
@@ -999,9 +982,9 @@ function calculateCapacity(inicio, fim) {
   }
 }
 
-// -----------------------------------------
-// FUNÇÃO: gerenciarStatusGeralDoPaciente
-// -----------------------------------------
+// ====================================================================
+// FUNÇÃO: gerenciarStatusGeralDoPaciente (Trigger Firestore)
+// ====================================================================
 exports.gerenciarStatusGeralDoPaciente = onDocumentUpdated(
   "trilhaPaciente/{pacienteId}",
   async (event) => {
@@ -1049,8 +1032,11 @@ exports.gerenciarStatusGeralDoPaciente = onDocumentUpdated(
     }
   }
 );
+
+// ====================================================================
+// FUNÇÃO: getTodosUsuarios
+// ====================================================================
 exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
-  // 1. Verificação de autenticação e permissão de administrador
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
   }
@@ -1067,11 +1053,9 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
       );
     }
 
-    // 2. Lógica principal para buscar usuários
-    const listUsersResult = await adminAuth.listUsers(1000); // Limite de 1000 por chamada
+    const listUsersResult = await adminAuth.listUsers(1000);
     const allUsersData = [];
 
-    // 3. Itera sobre os usuários do Auth e busca dados complementares no Firestore
     for (const userRecord of listUsersResult.users) {
       const userDoc = await db.collection("usuarios").doc(userRecord.uid).get();
       if (userDoc.exists) {
@@ -1083,7 +1067,6 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
           role: (userData.funcoes || []).join(", ") || "Sem função",
         });
       } else {
-        // Caso de um usuário existir no Auth mas não no Firestore
         allUsersData.push({
           uid: userRecord.uid,
           email: userRecord.email,
@@ -1093,20 +1076,20 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
       }
     }
 
-    // 4. Retorna a lista combinada para o cliente
     return allUsersData;
   } catch (error) {
     logger.error("Erro ao listar usuários:", error);
     if (error instanceof HttpsError) {
-      throw error; // Re-lança o erro se já for do tipo HttpsError
+      throw error;
     }
     throw new HttpsError("internal", "Não foi possível listar os usuários.");
   }
 });
-// ==============================================================================
-// DESCRIÇÃO: Processa uma planilha de pacientes e os cria na trilha.
-// ==============================================================================
-exports.importarPacientesBatch = onCall(async (request) => {
+
+// ====================================================================
+// FUNÇÃO: importarPacientesBatch
+// ====================================================================
+exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
   }
@@ -1186,20 +1169,16 @@ exports.importarPacientesBatch = onCall(async (request) => {
       const novoCardRef = db.collection("trilhaPaciente").doc();
       const statusInicial = paciente.status || "inscricao_documentos";
 
-      // --- INÍCIO DA LÓGICA AVANÇADA DE DADOS ---
       const dadosAdicionais = {};
 
-      // 1. Processa campos JSON (atendimentosPB e plantaoInfo)
       try {
         if (paciente.atendimentosPB_JSON) {
-          // Tenta converter o texto JSON em um objeto/array
           const atendimentos = JSON.parse(paciente.atendimentosPB_JSON);
-          // Adiciona um ID único para cada atendimento importado
           atendimentos.forEach((at) => {
             at.atendimentoId = `imp_${novoCardRef.id}_${Math.random()
               .toString(36)
               .substr(2, 9)}`;
-            at.dataInicio = agora; // Define a data de início como o momento da importação
+            at.dataInicio = agora;
           });
           dadosAdicionais.atendimentosPB = atendimentos;
         }
@@ -1215,10 +1194,9 @@ exports.importarPacientesBatch = onCall(async (request) => {
             e.message
           })`
         );
-        continue; // Pula para o próximo paciente
+        continue;
       }
 
-      // 2. Processa a lista de IDs de profissionais
       if (paciente.profissionaisPB_ids) {
         dadosAdicionais.profissionaisPB_ids = (
           paciente.profissionaisPB_ids || ""
@@ -1228,28 +1206,19 @@ exports.importarPacientesBatch = onCall(async (request) => {
           .filter(Boolean);
       }
 
-      // --- FIM DA LÓGICA AVANÇADA ---
-
       const cardData = {
-        // Dados Base
         nomeCompleto: paciente.nomeCompleto,
         cpf: cpf,
         status: statusInicial,
         filaDeOrigem: fila,
-
-        // Dados da Ficha (exemplo, adicione outros campos conforme necessário)
         dataNascimento: paciente.dataNascimento || null,
         telefoneCelular: paciente.telefoneCelular || "",
         email: paciente.email || "",
         motivoBusca: paciente.motivoBusca || "",
-
-        // Dados da Trilha
         timestamp: agora,
         lastUpdate: agora,
         lastUpdatedBy: `Importação em Lote por ${adminUid}`,
         importadoEmLote: true,
-
-        // Incorpora os dados adicionais complexos
         ...dadosAdicionais,
       };
 
@@ -1275,19 +1244,9 @@ exports.importarPacientesBatch = onCall(async (request) => {
     );
   }
 });
-// ATENÇÃO: Esta função deve ser adicionada no seu functions/index.js
-// logo após a inicialização do 'db' e 'initializeApp()'.
-
-const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Ou 'candidatos', dependendo da coleção final usada pelo front-end
-
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-
-admin.initializeApp();
-const { google } = require('googleapis');
 
 // ====================================================================
-// FUNÇÃO: uploadCurriculo - SALVA EM GOOGLE DRIVE
+// FUNÇÃO: uploadCurriculo (HTTP - SALVA EM GOOGLE DRIVE)
 // ====================================================================
 exports.uploadCurriculo = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -1315,13 +1274,11 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       return;
     }
 
-    const { google } = require("googleapis");
     const auth = new google.auth.GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
     const drive = google.drive({ version: 'v3', auth });
 
-    // 🔹 COLOQUE O ID DA SUA PASTA DO DRIVE AQUI
     const DRIVE_FOLDER_ID = '1q5CEbBWBht9R0xKmMHBl-ucWuV6I5ecF';
 
     const buffer = Buffer.from(fileData, 'base64');
@@ -1425,6 +1382,10 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     });
   }
 });
+
+// ====================================================================
+// FUNÇÃO: salvarCandidatura
+// ====================================================================
 exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
   try {
     if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
