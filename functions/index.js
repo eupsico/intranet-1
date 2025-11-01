@@ -1277,7 +1277,7 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
     }
 
     // URL DO GOOGLE APPS SCRIPT
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzOGyDANVS--DeH6T-ZaqFiEmhpBYUJu4P8VT0uevQPwC3tLL5EgappHPI2mhKwPtf1fg/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyV_DMfhuLYjmagAI-tGJfjYE4gtih8nXWcA17qW3SWODXQB1OJJPMYuCNIAKg9waBU/exec";
 
     const payload = {
       fileData: fileData,
