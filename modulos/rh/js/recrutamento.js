@@ -179,9 +179,6 @@ async function carregarVagasAtivas() {
 // FUNÇÕES DE RENDERIZAÇÃO POR ABA
 // =====================================================================
 
-/**
- * Renderiza o conteúdo da aba "Cronograma e Orçamento".
- */
 async function renderizarCronograma() {
   if (!vagaSelecionadaId) {
     conteudoRecrutamento.innerHTML =
@@ -217,37 +214,27 @@ async function renderizarCronograma() {
     }
   } catch (e) {
     console.error("Erro ao carregar cronograma da vaga:", e);
-    // Não interrompe o fluxo, apenas exibe N/A
   }
 
   conteudoRecrutamento.innerHTML = `
     <div class="painel-cronograma card card-shadow p-4">
       <h3>Cronograma e Orçamento da Vaga: ${vagaNome}</h3>
       
-            <div class="detalhes-cronograma-resumo mb-4">
-                <p><strong>Início Previsto do Recrutamento:</strong> ${
-                  dadosCronograma.data_inicio_recrutamento
-                }</p>
-                <p><strong>Término Previsto do Recrutamento:</strong> ${
-                  dadosCronograma.data_fechamento_recrutamento
-                }</p>
-                <p><strong>Contratação Prevista:</strong> ${
-                  dadosCronograma.data_contratacao_prevista
-                }</p>
-                <p><strong>Orçamento Estimado:</strong> R$ ${dadosCronograma.orcamento_previsto.toFixed(
-                  2
-                )} (${dadosCronograma.fonte_orcamento})</p>
-                <p><strong>Observações:</strong> ${
-                  dadosCronograma.detalhes_cronograma
-                }</p>
-            </div>
-            
-      <a href="etapa_cronograma_orcamento.html?vaga=${vagaSelecionadaId}" class="btn btn-primary-eu">
+      <div class="detalhes-cronograma-resumo mb-4">
+        <p><strong>Início Previsto do Recrutamento:</strong> ${dadosCronograma.data_inicio_recrutamento}</p>
+        <p><strong>Término Previsto do Recrutamento:</strong> ${dadosCronograma.data_fechamento_recrutamento}</p>
+        <p><strong>Contratação Prevista:</strong> ${dadosCronograma.data_contratacao_prevista}</p>
+        <p><strong>Orçamento Estimado:</strong> R$ ${dadosCronograma.orcamento_previsto.toFixed(2)} (${dadosCronograma.fonte_orcamento})</p>
+        <p><strong>Observações:</strong> ${dadosCronograma.detalhes_cronograma}</p>
+      </div>
+      
+      <button type="button" class="btn btn-primary" onclick="window.location.hash='rh/etapa_cronograma_orcamento?vaga=${vagaSelecionadaId}'">
         <i class="fas fa-calendar-alt me-2"></i> Editar/Ajustar Cronograma e Orçamento
-      </a>
+      </button>
     </div>
   `;
 }
+
 
 /**
  * Renderiza a listagem de candidatos para a triagem.
