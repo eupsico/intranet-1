@@ -1386,20 +1386,18 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
+const { google } = require('googleapis');
 
 exports.uploadCurriculo = functions.https.onRequest(async (req, res) => {
-  // CORS headers - Aplicados PRIMEIRO
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight
   if (req.method === 'OPTIONS') {
     res.status(200).send('OK');
     return;
   }
 
-  // Handle POST
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Método não permitido' });
     return;
@@ -1416,32 +1414,88 @@ exports.uploadCurriculo = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // Converte base64 para buffer
-    const buffer = Buffer.from(fileData, 'base64');
-    
-    // Estrutura de pastas no Storage
-    const bucket = admin.storage().bucket();
-    const path = `candidaturas/${vagaTitulo}/${nomeCandidato}/${fileName}`;
-    const file = bucket.file(path);
-
-    // Upload para Storage
-    await file.save(buffer, {
-      metadata: {
-        contentType: mimeType,
-        metadata: {
-          candidato: nomeCandidato,
-          vaga: vagaTitulo
-        }
-      }
+    // Obtém credenciais de serviço do Firebase
+    const auth = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/drive'],
     });
 
-    // Gera URL de download público
-    const downloadURL = `https://storage.googleapis.com/${bucket.name}/${path}`;
+    const drive = google.drive({ version: 'v3', auth });
+
+    // ID da pasta no Drive (coloque o seu)
+    const DRIVE_FOLDER_ID = 'SEU_DRIVE_FOLDER_ID_AQUI';
+
+    // Converte base64 para buffer
+    const buffer = Buffer.from(fileData, 'base64');
+
+    // Estrutura: Candidaturas > Vaga - Candidato
+    let candidaturasFolderId = DRIVE_FOLDER_ID;
+    
+    // Busca pasta "Candidaturas"
+    const candidaturasSearch = await drive.files.list({
+      q: `'${DRIVE_FOLDER_ID}' in parents and name='Candidaturas' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      spaces: 'drive',
+      fields: 'files(id)',
+      pageSize: 1,
+    });
+
+    let candidaturasFolder = candidaturasSearch.data.files?.[0];
+    
+    if (!candidaturasFolder) {
+      // Cria pasta "Candidaturas"
+      const created = await drive.files.create({
+        requestBody: {
+          name: 'Candidaturas',
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [DRIVE_FOLDER_ID],
+        },
+      });
+      candidaturasFolderId = created.data.id;
+    } else {
+      candidaturasFolderId = candidaturasFolder.id;
+    }
+
+    // Cria pasta "Vaga - Candidato"
+    const candidateFolderName = `${vagaTitulo} - ${nomeCandidato}`;
+    const candidateSearch = await drive.files.list({
+      q: `'${candidaturasFolderId}' in parents and name='${candidateFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      spaces: 'drive',
+      fields: 'files(id)',
+      pageSize: 1,
+    });
+
+    let candidateFolder = candidateSearch.data.files?.[0];
+    
+    if (!candidateFolder) {
+      const created = await drive.files.create({
+        requestBody: {
+          name: candidateFolderName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [candidaturasFolderId],
+        },
+      });
+      candidateFolder = created.data;
+    }
+
+    // Upload do arquivo
+    const fileResponse = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [candidateFolder.id],
+      },
+      media: {
+        mimeType: mimeType,
+        body: require('stream').Readable.from(buffer),
+      },
+    });
+
+    // Gera link público
+    const fileId = fileResponse.data.id;
+    const fileUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
 
     res.json({
       status: 'success',
-      message: 'Arquivo salvo com sucesso!',
-      fileUrl: downloadURL
+      message: 'Arquivo salvo em Drive com sucesso!',
+      fileUrl: fileUrl
     });
 
   } catch (error) {
