@@ -9,48 +9,25 @@
   <form id="form-cronograma-orcamento" class="formulario-padrao">
     <div class="row">
       <div class="col-md-6 mb-3">
-        <label for="vaga-selecionada" class="form-label"
-          >Vaga em Processo Seletivo</label
-        >
+        <label for="vaga-selecionada" class="form-label">Vaga em Processo Seletivo</label>
         <select class="form-select" id="vaga-selecionada" required disabled>
           <option value="">Carregando...</option>
         </select>
       </div>
       <div class="col-md-6 mb-3">
-        <label for="data-inicio-recrutamento" class="form-label"
-          >Data Prevista de Início do Recrutamento</label
-        >
-        <input
-          type="date"
-          class="form-control"
-          id="data-inicio-recrutamento"
-          required
-        />
+        <label for="data-inicio-recrutamento" class="form-label">Data Prevista de Início do Recrutamento</label>
+        <input type="date" class="form-control" id="data-inicio-recrutamento" required />
       </div>
     </div>
 
     <div class="row">
       <div class="col-md-6 mb-3">
-        <label for="data-fechamento-recrutamento" class="form-label"
-          >Data Prevista de Encerramento do Recrutamento</label
-        >
-        <input
-          type="date"
-          class="form-control"
-          id="data-fechamento-recrutamento"
-          required
-        />
+        <label for="data-fechamento-recrutamento" class="form-label">Data Prevista de Encerramento do Recrutamento</label>
+        <input type="date" class="form-control" id="data-fechamento-recrutamento" required />
       </div>
       <div class="col-md-6 mb-3">
-        <label for="data-contratacao-prevista" class="form-label"
-          >Data Prevista de Contratação</label
-        >
-        <input
-          type="date"
-          class="form-control"
-          id="data-contratacao-prevista"
-          required
-        />
+        <label for="data-contratacao-prevista" class="form-label">Data Prevista de Contratação</label>
+        <input type="date" class="form-control" id="data-contratacao-prevista" required />
       </div>
     </div>
 
@@ -58,53 +35,24 @@
 
     <div class="row">
       <div class="col-md-6 mb-3">
-        <label for="orcamento-previsto" class="form-label"
-          >Orçamento Previsto (R$)</label
-        >
-        <input
-          type="number"
-          step="0.01"
-          class="form-control"
-          id="orcamento-previsto"
-          placeholder="Ex: 500.00"
-          required
-        />
+        <label for="orcamento-previsto" class="form-label">Orçamento Previsto (R$)</label>
+        <input type="number" step="0.01" class="form-control" id="orcamento-previsto" placeholder="Ex: 500.00" required />
       </div>
       <div class="col-md-6 mb-3">
-        <label for="fonte-orcamento" class="form-label"
-          >Fonte do Orçamento</label
-        >
-        <input
-          type="text"
-          class="form-control"
-          id="fonte-orcamento"
-          placeholder="Ex: Área de Marketing/Verba de RH"
-        />
+        <label for="fonte-orcamento" class="form-label">Fonte do Orçamento</label>
+        <input type="text" class="form-control" id="fonte-orcamento" placeholder="Ex: Área de Marketing/Verba de RH" />
       </div>
     </div>
 
     <div class="mb-4">
-      <label for="detalhes-cronograma" class="form-label"
-        >Observações e Detalhes do Cronograma</label
-      >
-      <textarea
-        class="form-control"
-        id="detalhes-cronograma"
-        rows="3"
-        placeholder="Detalhes importantes sobre a urgência ou complexidade do recrutamento."
-      ></textarea>
+      <label for="detalhes-cronograma" class="form-label">Observações e Detalhes do Cronograma</label>
+      <textarea class="form-control" id="detalhes-cronograma" rows="3" placeholder="Detalhes importantes sobre a urgência ou complexidade do recrutamento."></textarea>
     </div>
 
     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-      <button
-        type="submit"
-        id="btn-salvar-cronograma"
-        class="btn btn-primary-eu"
-      >
+      <button type="submit" id="btn-salvar-cronograma" class="btn btn-primary">
         <i class="fas fa-save me-2"></i> Salvar e Avançar para Triagem
       </button>
     </div>
   </form>
 </div>
-
-<script src="../../modulos/rh/js/etapa_cronograma_orcamento.js"></script>
