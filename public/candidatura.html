@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="../assets/css/design-system.css" />
 
     <style>
-      /* Estilos simples para o formulário público */
       body {
         background-color: #f4f7f6;
         font-family: Arial, sans-serif;
@@ -41,7 +40,6 @@
       input[type="email"],
       select,
       textarea {
-        /* Adicionado textarea */
         width: 100%;
         padding: 10px;
         border: 1px solid #ccc;
@@ -82,7 +80,7 @@
         background-color: #ffe6e6;
         color: #c0392b;
         border: 1px solid #c0392b;
-        word-break: break-word; /* Adiciona quebra de linha em caso de erro longo */
+        word-break: break-word;
       }
     </style>
   </head>
@@ -91,11 +89,13 @@
     <div class="container">
       <h2>Formulário de Candidatura EuPsico</h2>
 
-      <form id="form-candidatura" target="hidden_iframe">
+      <!-- Formulário -->
+      <form id="form-candidatura" enctype="multipart/form-data">
         <div id="loading-vagas" class="loading-spinner">
           Carregando vagas disponíveis...
         </div>
 
+        <!-- Seleção de vaga -->
         <div class="form-group" id="vaga-select-group" style="display: none">
           <label for="select-vaga">Selecione a Vaga:</label>
           <select id="select-vaga" required name="vaga-id">
@@ -103,9 +103,10 @@
           </select>
         </div>
 
+        <!-- Campos do candidato -->
         <div class="form-group">
-          <label for="nome-candidato">Nome Completo:</label>
-          <input type="text" id="nome-candidato" required name="nome-candidato" />
+          <label for="form-paciente">Nome Completo:</label>
+          <input type="text" id="form-paciente" required name="paciente" />
         </div>
 
         <div class="form-group">
@@ -114,32 +115,19 @@
         </div>
 
         <div class="form-group">
-          <label for="telefone-candidato"
-            >Telefone (com DDD), de preferência o WhatsApp:</label
-          >
-
-          <input
-            type="text"
-            id="telefone-candidato"
-            required
-            name="telefone-candidato"
-            placeholder="(XX) XXXXX-XXXX"
-          />
+          <label for="telefone-candidato">
+            Telefone (com DDD), de preferência o WhatsApp:
+          </label>
+          <input type="text" id="telefone-candidato" required name="telefone-candidato" placeholder="(XX) XXXXX-XXXX" />
         </div>
 
         <hr />
 
+        <!-- Endereço -->
         <div class="row">
           <div class="col-md-4 form-group">
             <label for="cep-candidato">CEP:</label>
-            <input
-              type="text"
-              id="cep-candidato"
-              required
-              name="cep-candidato"
-              maxlength="9"
-              placeholder="Ex: 00000-000"
-            />
+            <input type="text" id="cep-candidato" required name="cep-candidato" maxlength="9" placeholder="Ex: 00000-000" />
           </div>
 
           <div class="col-md-2 form-group">
@@ -167,82 +155,47 @@
 
         <hr />
 
+        <!-- Experiência -->
         <div class="form-group">
-          <label for="resumo-experiencia"
-            >Resumo da Experiência Profissional (Breve Apresentação
-            Profissional):</label
-          >
-
-          <textarea
-            id="resumo-experiencia"
-            rows="4"
-            required
-            name="resumo-experiencia"
-            placeholder="Fale sobre suas qualificações, tempo de experiência na área e principais conquistas."
-          ></textarea>
+          <label for="resumo-experiencia">Resumo da Experiência Profissional:</label>
+          <textarea id="resumo-experiencia" rows="4" required name="resumo-experiencia" placeholder="Fale sobre suas qualificações, tempo de experiência na área e principais conquistas."></textarea>
         </div>
 
         <div class="form-group">
-          <label for="habilidades-competencias"
-            >Habilidades/Competências (Separe por vírgulas):</label
-          >
-
-          <textarea
-            id="habilidades-competencias"
-            rows="3"
-            required
-            name="habilidades-competencias"
-            placeholder="Ex: Python, Machine Learning, Liderança, Comunicação, Firebase, etc."
-          ></textarea>
+          <label for="habilidades-competencias">Habilidades/Competências:</label>
+          <textarea id="habilidades-competencias" rows="3" required name="habilidades-competencias" placeholder="Ex: Python, Machine Learning, Liderança, Comunicação, Firebase, etc."></textarea>
         </div>
 
         <div class="form-group">
           <label for="como-conheceu">Como conheceu a EuPsico (e a vaga):</label>
-
           <select id="como-conheceu" required name="como-conheceu">
             <option value="">Selecione...</option>
-
             <option value="linkedin">LinkedIn</option>
-
             <option value="instagram">Instagram</option>
-
             <option value="site">Site da EuPsico</option>
-
             <option value="indicacao">Indicação de um Colaborador</option>
-
             <option value="outros">Outros</option>
           </select>
         </div>
 
         <hr />
 
+        <!-- Arquivo para envio -->
         <div class="form-group">
-          <label for="anexo-curriculo"
-            >Anexar Currículo (PDF, DOCX, no máximo 5MB - Será salvo no Google
-            Drive):</label
-          >
-
-          <input
-            type="file"
-            id="anexo-curriculo"
-            accept=".pdf,.docx"
-            name="arquivo-curriculo"
-            required
-          />
+          <label for="form-arquivo">Anexar Currículo (PDF, DOCX, até 5MB):</label>
+          <input type="file" id="form-arquivo" accept=".pdf,.docx" name="arquivo" required />
         </div>
 
-        <button type="submit" id="btn-submit" class="btn-submit" disabled>
+        <button type="submit" id="btn-submit" class="btn-submit">
           Enviar Candidatura
         </button>
 
         <div id="mensagem-feedback"></div>
       </form>
-
-      <iframe name="hidden_iframe" id="hidden_iframe" style="display: none"></iframe>
     </div>
 
+    <!-- Scripts -->
     <script type="module" src="../assets/js/firebase-init.js"></script>
-
     <script type="module" src="../assets/js/candidatura-publica.js"></script>
   </body>
 </html>
