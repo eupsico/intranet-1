@@ -64,41 +64,81 @@ function formatarTimestamp(timestamp) {
   return date.toLocaleDateString("pt-BR");
 }
 
-/**
- * Carrega a lista de vagas com status de recrutamento ativo e popula o filtro.
- */
 async function carregarVagasAtivas() {
   if (!filtroVaga) return;
 
   try {
-    // Filtra vagas com status que indicam um processo de recrutamento ativo:
-    const q = query(
+    console.log('🔍 Buscando vagas ativas...');
+    
+    // ✅ PRIMEIRO: Buscar TODAS as vagas para verificar a estrutura
+    const allVagasSnapshot = await getDocs(vagasCollection);
+    
+    console.log(`📊 Total de vagas no Firestore: ${allVagasSnapshot.size}`);
+    
+    if (!allVagasSnapshot.empty) {
+      const primeiraVaga = allVagasSnapshot.docs[0].data();
+      console.log('🔍 Estrutura da primeira vaga:', primeiraVaga);
+      console.log('🔑 Campos disponíveis:', Object.keys(primeiraVaga));
+    }
+    
+    // ✅ SEGUNDO: Tentar buscar com filtro (ajuste o nome do campo se necessário)
+    // Tente primeiro com "status" (mais comum)
+    let q = query(
       vagasCollection,
-      where("status_vaga", "in", [
+      where("status", "in", [
+        "em-divulgacao",
         "Em Divulgação",
         "Cronograma Pendente",
         "Cronograma Definido (Triagem Pendente)",
         "Entrevista RH Pendente",
         "Testes Pendente",
         "Entrevista Gestor Pendente",
-        "Contratado", // Mantém vagas com processo concluído para visualização
+        "Contratado",
         "Encerrada",
       ])
     );
-    const snapshot = await getDocs(q);
+    
+    let snapshot = await getDocs(q);
+    
+    console.log(`✅ Vagas encontradas com filtro "status": ${snapshot.size}`);
+    
+    // Se não encontrar nada, tenta com "status_vaga"
+    if (snapshot.empty) {
+      console.log('⚠️ Nenhuma vaga encontrada com "status", tentando "status_vaga"...');
+      
+      q = query(
+        vagasCollection,
+        where("status_vaga", "in", [
+          "em-divulgacao",
+          "Em Divulgação",
+          "Cronograma Pendente",
+          "Cronograma Definido (Triagem Pendente)",
+          "Entrevista RH Pendente",
+          "Testes Pendente",
+          "Entrevista Gestor Pendente",
+          "Contratado",
+          "Encerrada",
+        ])
+      );
+      
+      snapshot = await getDocs(q);
+      console.log(`✅ Vagas encontradas com filtro "status_vaga": ${snapshot.size}`);
+    }
 
     let htmlOptions = '<option value="">Selecione uma Vaga...</option>';
 
     if (snapshot.empty) {
-      htmlOptions =
-        '<option value="">Nenhuma vaga em processo de recrutamento.</option>';
+      htmlOptions = '<option value="">Nenhuma vaga em processo de recrutamento.</option>';
     } else {
       snapshot.docs.forEach((doc) => {
         const vaga = doc.data();
-        // Usando vaga.titulo_vaga conforme definido no Plano de Estrutura de Dados
-        htmlOptions += `<option value="${doc.id}">${vaga.titulo_vaga} - (${vaga.status_vaga})</option>`;
+        const titulo = vaga.titulo_vaga || vaga.nome || vaga.titulo || 'Vaga sem título';
+        const status = vaga.status_vaga || vaga.status || 'Status desconhecido';
+        
+        htmlOptions += `<option value="${doc.id}">${titulo} - (${status})</option>`;
       });
     }
+    
     filtroVaga.innerHTML = htmlOptions;
 
     // Tenta carregar vaga do parâmetro da URL ou a primeira vaga
@@ -110,13 +150,11 @@ async function carregarVagasAtivas() {
       filtroVaga.value = vagaSelecionadaId;
       handleFiltroVagaChange();
     } else if (snapshot.size > 0 && filtroVaga.options.length > 1) {
-      // Seleciona a primeira vaga (exceto a opção "Selecione")
       vagaSelecionadaId = snapshot.docs[0].id;
       filtroVaga.value = vagaSelecionadaId;
       handleFiltroVagaChange();
     }
 
-    // Tenta ativar a aba correta se o parâmetro 'etapa' estiver na URL
     const etapaFromUrl = urlParams.get("etapa");
     if (etapaFromUrl) {
       const targetTab = statusCandidaturaTabs.querySelector(
@@ -127,7 +165,7 @@ async function carregarVagasAtivas() {
       }
     }
   } catch (error) {
-    console.error("Erro ao carregar vagas ativas:", error);
+    console.error("❌ Erro ao carregar vagas ativas:", error);
     if (window.showToast) {
       window.showToast("Erro ao carregar lista de vagas.", "error");
     } else {
@@ -135,6 +173,7 @@ async function carregarVagasAtivas() {
     }
   }
 }
+
 
 // =====================================================================
 // FUNÇÕES DE RENDERIZAÇÃO POR ABA
