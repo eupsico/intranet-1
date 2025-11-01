@@ -13,9 +13,6 @@ import {
 
 let vagaIdAtual = null;
 
-/**
- * Carrega as vagas ativas para o processo de recrutamento no dropdown.
- */
 async function carregarVagasEmRecrutamento() {
   const selectVagas = document.getElementById("vaga-selecionada");
   
@@ -30,7 +27,18 @@ async function carregarVagasEmRecrutamento() {
   try {
     console.log('🔍 Buscando vagas ativas para cronograma...');
     
-    const q = query(
+    // ✅ PRIMEIRO: Busca todas as vagas para debug
+    const allSnapshot = await getDocs(collection(db, "vagas"));
+    console.log(`📊 Total de vagas no Firestore: ${allSnapshot.size}`);
+    
+    if (!allSnapshot.empty) {
+      const primeiraVaga = allSnapshot.docs[0].data();
+      console.log('🔍 Estrutura da primeira vaga:', primeiraVaga);
+      console.log('🔑 Campos disponíveis:', Object.keys(primeiraVaga));
+    }
+    
+    // ✅ TENTA COM "status" PRIMEIRO
+    let q = query(
       collection(db, "vagas"),
       where("status", "in", [
         "em-divulgacao",
@@ -40,8 +48,24 @@ async function carregarVagasEmRecrutamento() {
       ])
     );
 
-    const snapshot = await getDocs(q);
-    console.log(`📊 Vagas encontradas: ${snapshot.size}`);
+    let snapshot = await getDocs(q);
+    console.log(`✅ Vagas encontradas com "status": ${snapshot.size}`);
+    
+    // ✅ SE NÃO ENCONTRAR, TENTA COM "status_vaga"
+    if (snapshot.empty) {
+      console.log('⚠️ Tentando com "status_vaga"...');
+      q = query(
+        collection(db, "vagas"),
+        where("status_vaga", "in", [
+          "em-divulgacao",
+          "Em Divulgação",
+          "Cronograma Pendente",
+          "Cronograma Definido (Triagem Pendente)",
+        ])
+      );
+      snapshot = await getDocs(q);
+      console.log(`✅ Vagas encontradas com "status_vaga": ${snapshot.size}`);
+    }
 
     selectVagas.innerHTML = '<option value="" disabled selected>Selecione a Vaga</option>';
 
@@ -68,7 +92,6 @@ async function carregarVagasEmRecrutamento() {
       selectVagas.value = vagaFromUrl;
       vagaIdAtual = vagaFromUrl;
       console.log('✅ Vaga pré-selecionada da URL:', vagaFromUrl);
-      // TODO: Carregar dados existentes da vaga
     }
   } catch (error) {
     console.error("❌ Erro ao carregar vagas:", error);
