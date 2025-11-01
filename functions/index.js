@@ -1335,8 +1335,15 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
 // ====================================================================
 // FUNÇÃO: salvarCandidatura (SALVA NO FIREBASE)
 // ====================================================================
-exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
+
+exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
   try {
+    // ✅ Em Callable Functions, os dados vêm em request.data
+    const data = request.data;
+    
+    logger.log('📥 Recebendo candidatura:', data);
+
+    // Validar campos obrigatórios
     if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
       throw new HttpsError(
         "invalid-argument",
@@ -1344,34 +1351,48 @@ exports.salvarCandidatura = onCall({ cors: true }, async (data, context) => {
       );
     }
 
-    logger.log('💾 Salvando candidatura no Firebase:', {
-      vaga_id: data.vaga_id,
-      nome_completo: data.nome_completo
-    });
-
+    // Preparar dados da candidatura
     const novaCandidaturaData = {
-      ...data,
+      vaga_id: data.vaga_id,
+      titulo_vaga_original: data.titulo_vaga_original || '',
+      nome_completo: data.nome_completo,
+      email_candidato: data.email_candidato || '',
+      telefone_contato: data.telefone_contato || '',
+      cep: data.cep || '',
+      numero_endereco: data.numero_endereco || '',
+      complemento_endereco: data.complemento_endereco || '',
+      endereco_rua: data.endereco_rua || '',
+      cidade: data.cidade || '',
+      estado: data.estado || '',
+      resumo_experiencia: data.resumo_experiencia || '',
+      habilidades_competencias: data.habilidades_competencias || '',
+      como_conheceu: data.como_conheceu || '',
+      link_curriculo_drive: data.link_curriculo_drive,
       data_candidatura: FieldValue.serverTimestamp(),
       status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
     };
 
-    await db.collection("candidaturas").add(novaCandidaturaData);
+    logger.log('💾 Salvando no Firestore...');
 
-    logger.info("✅ Candidatura salva com sucesso.", {
-      vagaId: data.vaga_id,
-    });
+    // Salvar no Firestore
+    const docRef = await db.collection("candidaturas").add(novaCandidaturaData);
+
+    logger.log('✅ Candidatura salva com sucesso! ID:', docRef.id);
 
     return { 
       success: true, 
-      message: "Candidatura registrada com sucesso!" 
+      message: "Candidatura registrada com sucesso!",
+      id: docRef.id
     };
+
   } catch (error) {
     logger.error("❌ Erro ao processar candidatura:", error);
+    
     throw new HttpsError(
       "internal",
-      "Ocorreu um erro interno ao salvar sua candidatura.",
-      error.message
+      "Ocorreu um erro interno ao salvar sua candidatura: " + error.message
     );
   }
 });
+
 
