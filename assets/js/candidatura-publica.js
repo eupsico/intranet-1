@@ -12,7 +12,7 @@ import {
 } from "./firebase-init.js";
 
 const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbxB7aRviy5muNFULBkWOP_mdpm5aeCFXL3ouiadEfNzE8RpSmMJdCSifuuqYRRTqfwpxw/exec"; 
+  "https://script.google.com/macros/s/AKfycbwel_QR6LBdcK0dzn1Igp35ZNmqSbrBniM7Q0QXtxbZe_SAvAwh1PStYn4qifF2H7sUYA/exec"; 
 
 const VAGAS_COLLECTION_NAME = "vagas";
 const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
