@@ -276,7 +276,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
 .rh-card-actions .btn,
 .rh-card-actions .action-button {
-  padding: 10px 20px;
+  padding: 10px 20px; 
   font-size: 0.9em;
   font-weight: 600;
   text-transform: uppercase;
@@ -316,3 +316,101 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   padding-left: 0;
   padding-right: 0;
 }
+/* ... (Seu CSS existente) ... */
+
+/* Ajuste no botão de ação dentro de tabelas e modais */
+td .action-button,
+.modal-footer .action-button {
+  padding: 8px 15px; /* Botões um pouco menores */
+  font-size: 0.85em;
+}
+
+/* Cores para botões Aprovar/Rejeitar */
+.action-button.success {
+  background-color: var(--cor-sucesso);
+}
+.action-button.success:hover {
+  filter: brightness(1.1);
+  background-color: var(--cor-sucesso); /* Mantém a cor no hover */
+}
+.action-button.error {
+  background-color: var(--cor-erro);
+}
+.action-button.error:hover {
+  filter: brightness(1.1);
+  background-color: var(--cor-erro); /* Mantém a cor no hover */
+}
+
+/* --- INÍCIO DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
+
+.action-button.info {
+    background-color: var(--cor-secundaria); /* Azul secundário */
+    color: var(--cor-texto-inverso);
+}
+.action-button.info:hover {
+    filter: brightness(1.1);
+}
+
+.action-button.warning {
+    background-color: var(--cor-alerta);
+    color: #333; /* Cor de texto mais escura para contraste */
+}
+.action-button.warning:hover {
+    filter: brightness(1.1);
+}
+
+/* Novo Estilo de Cartão de Candidato para Triagem */
+.card-candidato-triagem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s;
+}
+
+.card-candidato-triagem:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-candidato-triagem .info-primaria h4 {
+    margin: 0;
+    font-size: 1.1em;
+    color: var(--cor-primaria);
+}
+
+.card-candidato-triagem .info-contato a {
+    display: inline-block;
+    margin-right: 15px;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.card-candidato-triagem .info-contato a.whatsapp {
+    color: var(--cor-sucesso); /* Verde para WhatsApp */
+}
+.card-candidato-triagem .info-contato a.whatsapp:hover {
+    color: #1e8449;
+}
+
+.card-candidato-triagem .acoes-candidato {
+    display: flex;
+    gap: 10px;
+}
+
+/* Adiciona um estilo sutil para o novo checklist */
+.checklist-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--cor-fundo);
+}
+.checklist-item:last-child {
+    border-bottom: none;
+}
+
+/* --- FIM DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
+
+/* ... (Restante do seu CSS) ... */
