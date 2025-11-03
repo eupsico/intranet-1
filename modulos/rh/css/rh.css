@@ -12,9 +12,11 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 .modal-content {
   max-width: 600px;
 }
+
 /* Adicione este bloco de código NO FINAL do seu arquivo */
 .table-section table {
-  min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
+  min-width: 800px;
+  /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
 }
 
 /* --- ESTILOS PARA O DASHBOARD DE OPÇÕES DO RH (Início) --- */
@@ -41,14 +43,16 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  text-decoration: none; /* Garante que links (divs) não tenham sublinhado */
+  text-decoration: none;
+  /* Garante que links (divs) não tenham sublinhado */
   color: var(--cor-texto-principal);
 }
 
 .rh-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  border-color: var(--cor-primaria); /* Destaca a borda no hover */
+  border-color: var(--cor-primaria);
+  /* Destaca a borda no hover */
 }
 
 .rh-card svg {
@@ -89,12 +93,14 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   border-left: 5px solid var(--cor-secundaria);
   /* Adiciona o separador abaixo de cada item */
   border-bottom: 1px solid var(--cor-fundo);
-  margin-bottom: 0; /* Remove a margem do card, usando padding e border-bottom como separador */
+  margin-bottom: 0;
+  /* Remove a margem do card, usando padding e border-bottom como separador */
   display: flex;
   flex-direction: column;
   /* Adiciona padding horizontal para conteúdo, exceto na borda esquerda */
   padding-left: 15px;
 }
+
 /* Remove a borda do último item da lista para manter a limpeza */
 .card-vaga:last-child,
 .card-onboarding:last-child,
@@ -113,7 +119,8 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Agrupador para os botões de ação (Ver Detalhes, Aprovar, etc.) */
 .rh-card-actions {
   display: flex;
-  gap: 10px; /* Espaçamento entre os botões */
+  gap: 10px;
+  /* Espaçamento entre os botões */
   margin-top: 10px;
 }
 
@@ -130,15 +137,18 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
     /* Garante que em telas muito pequenas, use apenas 1 coluna */
     grid-template-columns: 1fr;
   }
+
   .rh-card-actions {
     flex-direction: column;
     gap: 5px;
   }
+
   .rh-card-actions .btn-sm {
     width: 100%;
     text-align: center;
   }
 }
+
 /* modulos/rh/css/rh.css (Bloco a ser INSERIDO ou AJUSTADO) */
 
 /* Garante que os botões dentro das ações de RH fiquem mais proeminentes */
@@ -149,8 +159,10 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   font-size: 0.9em;
   font-weight: 600;
   text-transform: uppercase;
-  display: inline-block; /* Garante que o padding funcione */
-  min-width: 150px; /* Garante que os botões tenham um bom tamanho */
+  display: inline-block;
+  /* Garante que o padding funcione */
+  min-width: 150px;
+  /* Garante que os botões tenham um bom tamanho */
   text-align: center;
 }
 
@@ -159,15 +171,18 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   background-color: var(--cor-primaria);
   color: var(--cor-texto-inverso);
 }
+
 .rh-card-actions .btn-primary:hover {
   background-color: var(--cor-secundaria);
   filter: none;
 }
+
 /* --- CORREÇÃO DE ESTILO DOS BOTÕES DE AÇÃO E MODAL --- */
 
 /* Estilo para o botão principal "Criar Ficha Técnica" */
 .acoes-header .btn-primary {
-  padding: 12px 25px; /* Tamanho maior */
+  padding: 12px 25px;
+  /* Tamanho maior */
   font-size: 1em;
   font-weight: 600;
   background-color: var(--cor-secundaria);
@@ -178,11 +193,14 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
 .modal-footer {
   display: flex;
-  justify-content: flex-end; /* Alinha os botões à direita por padrão */
-  gap: 10px; /* Espaço entre os botões */
+  justify-content: flex-end;
+  /* Alinha os botões à direita por padrão */
+  gap: 10px;
+  /* Espaço entre os botões */
   flex-wrap: wrap;
   padding: 16px;
 }
+
 .modal-footer .btn {
   min-width: 120px;
   height: 40px;
@@ -197,7 +215,8 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 /* 1. Alinhamento dos Botões de Controle de Fluxo (Cancelar, Encerrar) */
 /* Aplicamos o margin-right: auto no Cancelar Vaga para empurrá-lo para a esquerda. */
 .modal-footer #btn-cancelar-vaga {
-  margin-right: auto !important; /* Empurra o botão para a extrema esquerda */
+  margin-right: auto !important;
+  /* Empurra o botão para a extrema esquerda */
 }
 
 /* 2. Wrappers de Injeção Dinâmica (Aprovação Ficha e Arte) */
@@ -219,6 +238,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   padding: 0;
   /* A âncora de alinhamento é feita no JS com um inline style de margin-left: auto; no primeiro botão do grupo. */
 }
+
 .acoes-arte-wrapper .btn {
   min-width: 150px;
 }
@@ -238,15 +258,18 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-principal);
   border: none;
 }
+
 .modal-footer .btn-secondary:hover {
   background-color: #d1d1d1;
   border: none;
 }
+
 .modal-footer .btn-success {
   background-color: var(--cor-secundaria);
   color: var(--cor-texto-inverso);
   border: none;
 }
+
 /* Botão Solicitar Alterações (Ficha e Arte) */
 .modal-footer .btn-alteracao,
 .modal-footer #btn-solicitar-alteracoes-arte {
@@ -268,15 +291,17 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   color: var(--cor-texto-inverso);
   border: none;
 }
+
 .modal-footer .btn-dark {
   background-color: var(--cor-texto-secundario);
   color: var(--cor-texto-inverso);
   border: none;
 }
+
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
 .rh-card-actions .btn,
 .rh-card-actions .action-button {
-  padding: 10px 20px; 
+  padding: 10px 20px;
   font-size: 0.9em;
   font-weight: 600;
   text-transform: uppercase;
@@ -284,6 +309,7 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   min-width: 150px;
   text-align: center;
 }
+
 /* --- ESTILOS PARA CORREÇÃO DE LARGURA DE CAMPOS NO MODAL (vaga-link-arte) --- */
 
 #vaga-link-arte {
@@ -316,12 +342,14 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
   padding-left: 0;
   padding-right: 0;
 }
+
 /* ... (Seu CSS existente) ... */
 
 /* Ajuste no botão de ação dentro de tabelas e modais */
 td .action-button,
 .modal-footer .action-button {
-  padding: 8px 15px; /* Botões um pouco menores */
+  padding: 8px 15px;
+  /* Botões um pouco menores */
   font-size: 0.85em;
 }
 
@@ -329,88 +357,137 @@ td .action-button,
 .action-button.success {
   background-color: var(--cor-sucesso);
 }
+
 .action-button.success:hover {
   filter: brightness(1.1);
-  background-color: var(--cor-sucesso); /* Mantém a cor no hover */
+  background-color: var(--cor-sucesso);
+  /* Mantém a cor no hover */
 }
+
 .action-button.error {
   background-color: var(--cor-erro);
 }
+
 .action-button.error:hover {
   filter: brightness(1.1);
-  background-color: var(--cor-erro); /* Mantém a cor no hover */
+  background-color: var(--cor-erro);
+  /* Mantém a cor no hover */
 }
 
 /* --- INÍCIO DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
 
 .action-button.info {
-    background-color: var(--cor-secundaria); /* Azul secundário */
-    color: var(--cor-texto-inverso);
+  background-color: var(--cor-secundaria);
+  /* Azul secundário */
+  color: var(--cor-texto-inverso);
 }
+
 .action-button.info:hover {
-    filter: brightness(1.1);
+  filter: brightness(1.1);
 }
 
 .action-button.warning {
-    background-color: var(--cor-alerta);
-    color: #333; /* Cor de texto mais escura para contraste */
+  background-color: var(--cor-alerta);
+  color: #333;
+  /* Cor de texto mais escura para contraste */
 }
+
 .action-button.warning:hover {
-    filter: brightness(1.1);
+  filter: brightness(1.1);
 }
 
 /* Novo Estilo de Cartão de Candidato para Triagem */
 .card-candidato-triagem {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    margin-bottom: 15px;
-    background-color: var(--cor-surface);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  background-color: var(--cor-surface);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s;
 }
 
 .card-candidato-triagem:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .card-candidato-triagem .info-primaria h4 {
-    margin: 0;
-    font-size: 1.1em;
-    color: var(--cor-primaria);
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--cor-primaria);
 }
 
 .card-candidato-triagem .info-contato a {
-    display: inline-block;
-    margin-right: 15px;
-    font-size: 0.95em;
-    font-weight: 500;
+  display: inline-block;
+  margin-right: 15px;
+  font-size: 0.95em;
+  font-weight: 500;
 }
 
 .card-candidato-triagem .info-contato a.whatsapp {
-    color: var(--cor-sucesso); /* Verde para WhatsApp */
+  color: var(--cor-sucesso);
+  /* Verde para WhatsApp */
 }
+
 .card-candidato-triagem .info-contato a.whatsapp:hover {
-    color: #1e8449;
+  color: #1e8449;
 }
 
 .card-candidato-triagem .acoes-candidato {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 /* Adiciona um estilo sutil para o novo checklist */
 .checklist-item {
-    padding: 10px;
-    border-bottom: 1px solid var(--cor-fundo);
+  padding: 10px;
+  border-bottom: 1px solid var(--cor-fundo);
 }
+
 .checklist-item:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
+
+/* --- CORREÇÕES E MELHORIAS SOLICITADAS --- */
+
+/* 1. Correção de Layout/Scroll do Modal */
+.modal-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body.modal-body-scroll {
+  min-height: 0;
+  /* Essencial para que o flex item (modal-body) possa rolar corretamente */
+  flex-shrink: 1;
+}
+
+/* 2. Ajuste do Tamanho da Fonte para Resumo e Habilidades (Ficha de Candidatura) */
+.card-body h6 {
+  /* Estilo para os títulos (Resumo da Experiência Profissional e Habilidades/Competências) */
+  font-size: 1em;
+  font-weight: 600;
+  /* Deixa o título mais forte */
+  margin-bottom: 5px;
+  color: var(--cor-texto-principal);
+}
+
+.card-body .text-muted {
+  /* Ajusta o texto de Resumo e Habilidades */
+  font-size: 0.95em !important;
+  /* Tamanho de fonte consistente com outros campos */
+  color: var(--cor-texto-principal) !important;
+  /* Melhora a legibilidade */
+  margin-top: 5px;
+  white-space: pre-wrap;
+  /* Preserva a formatação do texto inserido */
+}
+
+/* 3. Melhoria no Fieldset da Avaliação RH (Aproveita estilos existentes, apenas garante consistência) */
+/* O estilo de Fieldset/Legend já está bem definido no design-system.css, garantindo a separação visual */
+/* --- FIM DAS CORREÇÕES E MELHORIAS SOLICITADAS --- */
 
 /* --- FIM DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
-
-/* ... (Restante do seu CSS) ... */
