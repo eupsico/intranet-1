@@ -1,0 +1,5 @@
+{
+    "terminal.integrated.commandsToSkipShell": [
+        "ditor.formatOnSave\": true, \"editor.detectIndentation\": true, \"editor.tabSize\": 2,"
+    ]
+}
