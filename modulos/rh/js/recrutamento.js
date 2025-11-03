@@ -42,8 +42,6 @@ const modalCandidato = document.getElementById("modal-candidato");
 const modalCandidatoBody = document.getElementById("candidato-modal-body");
 const modalCandidatoFooter = document.getElementById("candidato-modal-footer");
 
-// NOTA: Os elementos do modal de triagem foram movidos para tabTriagem.js
-
 let vagaSelecionadaId = null;
 let currentUserData = {};
 let dadosCandidatoAtual = null; // Variável para armazenar os dados do candidato atualmente no modal
@@ -53,7 +51,7 @@ let dadosCandidatoAtual = null; // Variável para armazenar os dados do candidat
 // =====================================================================
 
 /**
-* Utilitário para formatar o Timestamp (Mantido no principal por ser utilitário)
+* Utilitário para formatar o Timestamp
 */
 function formatarTimestamp(timestamp) {
  if (!timestamp) return "N/A";
@@ -80,12 +78,11 @@ export const getGlobalState = () => ({
     handleTabClick // Permite que a triagem recarregue a aba após salvar
 });
 
-// A função carregarVagasAtivas é essencial para o filtro principal, então é mantida
 async function carregarVagasAtivas() {
  if (!filtroVaga) return;
 
  try {
-    // ... (Lógica de carregar vagas inalterada, omitida por brevidade, mas deve ser copiada integralmente do seu código original)
+    // ... (Lógica de carregar vagas completa, omitida por brevidade no comentário)
     const q = query(
    vagasCollection,
    where("status", "in", [
@@ -171,9 +168,10 @@ async function carregarVagasAtivas() {
 
 
 /**
-* Abre o modal de visualização/detalhes do candidato. (Mantida no principal)
+* Abre o modal de visualização/detalhes do candidato.
+ * 🔴 CORREÇÃO: Função exposta globalmente.
 */
-async function abrirModalCandidato(candidatoId, modo, candidato) {
+export async function abrirModalCandidato(candidatoId, modo, candidato) {
  if (!modalCandidato || !modalCandidatoBody) return;
  
  // Se os dados não foram passados, busca no Firebase
@@ -294,8 +292,12 @@ async function abrirModalCandidato(candidatoId, modo, candidato) {
  modalCandidato.classList.add("is-visible");
 }
 
+// 🔴 CORREÇÃO: Expõe a função globalmente para chamadas via window.abrirModalCandidato
+window.abrirModalCandidato = abrirModalCandidato;
+
+
 /**
-* Reprova uma candidatura em qualquer etapa. (Mantida no principal)
+* Reprova uma candidatura em qualquer etapa. (Mantida no principal e exposta)
 */
 window.reprovarCandidatura = async function (
  candidatoId,
@@ -372,7 +374,6 @@ window.reprovarCandidatura = async function (
 * Lida com a mudança na seleção da vaga.
 */
 function handleFiltroVagaChange() {
- // NOTA: A variável global 'vagaSelecionadaId' é a forma como o estado é compartilhado
  vagaSelecionadaId = filtroVaga.value;
 
  const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
