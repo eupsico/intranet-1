@@ -1,7 +1,7 @@
 // modulos/rh/js/tabs/tabTriagem.js
 
 import { getGlobalState } from '../recrutamento.js';
-// CORREÇÃO: Importa arrayUnion e serverTimestamp explicitamente do init, resolvendo ReferenceError
+// Importa arrayUnion e serverTimestamp explicitamente do init, resolvendo ReferenceError
 import { updateDoc, doc, getDocs, query, where, arrayUnion, serverTimestamp } from "../../../../assets/js/firebase-init.js";
 
 // Elementos do Modal de Triagem (Obtidos globalmente para uso nas funções)
@@ -153,6 +153,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
 /**
 * Lógica de Submissão para salvar a decisão final da Triagem.
+ * CORRIGIDO: Status de retorno atualizado para Entrevistas/Finalizados
 */
 async function submeterAvaliacaoTriagem(e) {
   e.preventDefault();
@@ -171,20 +172,23 @@ async function submeterAvaliacaoTriagem(e) {
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
   
+    // 🔴 CORREÇÃO 2: A lógica de validação de campo obrigatório para Reprovação (motivo_rejeicao)
   if (!decisao && motivoRejeicaoEl.required && !motivoRejeicaoEl.value.trim()) {
     alert("Por favor, preencha o motivo detalhado da reprovação.");
     return;
   }
 
   btnFinalizarTriagem.disabled = true;
-    // 🔴 CORREÇÃO: Altera o texto do botão
   btnFinalizarTriagem.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-  // Determinar o novo status no banco de dados
+  // Determinar o novo status no banco de dados e qual aba deve ser recarregada
   const novoStatusCandidato = decisao
-    ? "Triagem Aprovada (Entrevista Pendente)"
-    : "Triagem Reprovada (Encerrada)";
+    ? "Triagem Aprovada (Entrevista Pendente)" // Deve ir para aba de Entrevistas
+    : "Triagem Reprovada (Encerrada)"; // Deve ir para aba de Finalizados
+    
+    // Define qual aba deve ser ativada/recarregada após a submissão
+    const abaRecarregar = decisao ? "entrevistas" : "finalizados";
 
   // Objeto de avaliação final (inclui o estado atual do checklist)
   const dadosAvaliacao = {
@@ -205,8 +209,7 @@ async function submeterAvaliacaoTriagem(e) {
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       triagem_rh: dadosAvaliacao,
-            // 🔴 CORREÇÃO CRÍTICA DO FIREBASE: Usa Date.now() ou toISOString() em arrayUnion
-            // para evitar o erro de serverTimestamp aninhado.
+            // CORREÇÃO CRÍTICA DO FIREBASE: Usa data do cliente para evitar o erro de serverTimestamp aninhado.
       historico: arrayUnion({
         data: new Date().toISOString(), 
         acao: `Triagem ${decisao ? 'APROVADA' : 'REPROVADA'}. Status: ${novoStatusCandidato}`,
@@ -216,12 +219,24 @@ async function submeterAvaliacaoTriagem(e) {
     
     window.showToast("Decisão da Triagem registrada com sucesso!", "success");
 
-    // Fecha o modal e recarrega a listagem atual para refletir o novo status
+    // Fecha o modal
     modalAvaliacaoTriagem.classList.remove("is-visible");
         
-        // Recarrega a aba Triagem usando a função do controlador principal
-        const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
-        if (activeTab) handleTabClick({ currentTarget: activeTab });
+        // 🔴 CORREÇÃO 3: Recarrega a listagem atual para remover o card da aba Triagem
+        // Em seguida, move para a aba de destino se a decisão foi finalizada
+        
+        // 1. Recarrega a aba de Triagem (para remover o card que acabou de ser movido)
+        renderizarTriagem(getGlobalState());
+        
+        // 2. Se a aba de destino for diferente de "triagem", muda para a aba de destino
+        const currentActiveTab = statusCandidaturaTabs.querySelector(".tab-link.active").getAttribute("data-status");
+        if (currentActiveTab !== abaRecarregar) {
+            const targetTab = statusCandidaturaTabs.querySelector(`[data-status="${abaRecarregar}"]`);
+            if (targetTab) {
+                handleTabClick({ currentTarget: targetTab });
+            }
+        }
+
 
   } catch (error) {
     console.error("Erro ao salvar avaliação de triagem:", error);
@@ -229,7 +244,6 @@ async function submeterAvaliacaoTriagem(e) {
 
   } finally {
     btnFinalizarTriagem.disabled = false;
-        // 🔴 CORREÇÃO: Altera o texto de volta para "Registrar Decisão"
     btnFinalizarTriagem.innerHTML =
       '<i class="fas fa-check-circle me-2"></i> Registrar Decisão';
   }
@@ -252,7 +266,8 @@ export async function renderizarTriagem(state) {
   '<div class="loading-spinner">Carregando candidaturas para Triagem...</div>';
 
  try {
-    // ... (lógica de buscar candidatos inalterada)
+    // ... (restante da função inalterada) ...
+    
   const q = query(
    candidatosCollection,
    where("vaga_id", "==", vagaSelecionadaId), 
