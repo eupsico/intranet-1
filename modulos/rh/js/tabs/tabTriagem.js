@@ -266,16 +266,10 @@ export async function renderizarTriagem(state) {
   '<div class="loading-spinner">Carregando candidaturas para Triagem...</div>';
 
  try {
-    // ... (restante da função inalterada) ...
-    
-  const q = query(
+   const q = query(
    candidatosCollection,
    where("vaga_id", "==", vagaSelecionadaId), 
-   where("status_recrutamento", "in", [
-    "Candidatura Recebida (Triagem Pendente)", 
-    "Triagem Aprovada (Entrevista Pendente)", 
-    "Triagem Reprovada (Encerrada)", 
-   ])
+   where("status_recrutamento", "==", "Candidatura Recebida (Triagem Pendente)")
   );
   const snapshot = await getDocs(q);
     
