@@ -140,159 +140,177 @@
   </div>
 </div>
 <div id="modal-avaliacao-triagem" class="modal-overlay">
-  <div class="modal-content" style="max-width: 900px">
-    <div class="modal-header">
-      <h3 id="avaliacao-modal-title">Avaliação de Triagem - [Nome Candidato]</h3>
-      <button type="button" class="close-modal-btn" data-modal-id="modal-avaliacao-triagem">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="row">
-        <div class="col-lg-6">
-          <div class="card card-shadow mb-4">
-            <div class="card-header bg-card-header-eu">
-              <h5 class="mb-0 text-white">
-                Ficha de Candidatura - 
-                <span id="candidato-modal-nome">Candidato(a)</span>
-              </h5>
-            </div>
-            <div class="card-body">
-              <p class="card-text">
-                <strong>Email:</strong> <span id="modal-dado-email">...</span>
-              </p>
-              <p class="card-text">
-                <strong>Telefone (WhatsApp):</strong>
-                <span id="modal-dado-telefone">...</span>
-              </p>
-              <p class="card-text">
-                <strong>Cidade/Estado:</strong>
-                <span id="modal-dado-cidade-estado">...</span>
-              </p>
-              <p class="card-text">
-                <strong>Como conheceu a EuPsico:</strong>
-                <span id="modal-dado-como-conheceu">...</span>
-              </p>
-
-              <hr />
-              <h6>Resumo da Experiência Profissional:</h6>
-              <p id="modal-dado-resumo-experiencia" class="text-muted small">...</p>
-
-              <h6>Habilidades/Competências:</h6>
-              <p id="modal-dado-habilidades" class="text-muted small">...</p>
-
-              <hr />
-              <a
-                href="#"
-                id="modal-link-curriculo"
-                target="_blank"
-                class="action-button secondary"
-                disabled
-              >
-                <i class="fas fa-file-pdf me-2"></i> Ver Currículo
-              </a>
-            </div>
-          </div>
-        </div>
-        
-        <div class="col-lg-6">
-          <div class="card card-shadow">
-            <div class="card-header bg-info-subtle">
-              <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
-            </div>
-            <div class="card-body">
-              <form id="form-avaliacao-triagem-modal">
-                <input type="hidden" id="candidatura-id-modal" value="">
-                
-                <fieldset class="mb-4">
-                    <legend>Checklist Rápido</legend>
-                    <div id="checklist-triagem-container">
-                        </div>
-                </fieldset>
-
-                <div class="mb-3">
-                  <label for="prerequisitos-atendidos" class="form-label"
-                    >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
-                  >
-                  <textarea
-                    class="form-control"
-                    id="modal-prerequisitos-atendidos"
-                    rows="3"
-                    required
-                  ></textarea>
-                </div>
-    
-                <div class="mb-3">
-                  <label for="comentarios-gerais" class="form-label"
-                    >Comentários Gerais da Triagem</label
-                  >
-                  <textarea
-                    class="form-control"
-                    id="modal-comentarios-gerais"
-                    rows="3"
-                  ></textarea>
-                </div>
-    
-                <div class="mb-3">
-                  <label class="form-label d-block"
-                    >Apto(a) para a Entrevista?</label
-                  >
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="modal-apto-entrevista"
-                      id="modal-apto-sim"
-                      value="Sim"
-                      required
-                    />
-                    <label class="form-check-label" for="modal-apto-sim"
-                      >Sim (Aprovar)</label
-                    >
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      name="modal-apto-entrevista"
-                      id="modal-apto-nao"
-                      value="Não"
-                    />
-                    <label class="form-check-label" for="modal-apto-nao"
-                      >Não (Reprovar)</label
-                    >
-                  </div>
-                </div>
-    
-                <div
-                  class="mb-4"
-                  id="modal-motivo-rejeicao-container"
-                  style="display: none"
-                >
-                  <label for="modal-motivo-rejeicao" class="form-label"
-                    >Motivo Detalhado da Reprovação</label
-                  >
-                  <textarea
-                    class="form-control"
-                    id="modal-motivo-rejeicao"
-                    rows="2"
-                    placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
-                  ></textarea>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="modal-footer">
-      <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-triagem">
-          <i class="fas fa-times me-2"></i> Fechar
-      </button>
-      <button type="submit" id="btn-finalizar-triagem-modal" class="action-button success">
-          <i class="fas fa-check-circle me-2"></i> Registrar Decisão e Salvar
-      </button>
-    </div>
-
+ <div class="modal-content" style="max-width: 900px">
+  <div class="modal-header">
+   <h3 id="avaliacao-modal-title">Avaliação de Triagem - [Nome Candidato]</h3>
+   <button type="button" class="close-modal-btn" data-modal-id="modal-avaliacao-triagem">&times;</button>
   </div>
+  <div class="modal-body">
+   <div class="row">
+    <div class="col-lg-6">
+          <div class="card card-shadow mb-4">
+      <div class="card-header bg-card-header-eu">
+       <h5 class="mb-0 text-white">
+        Ficha de Candidatura - 
+        <span id="candidato-modal-nome">Candidato(a)</span>
+       </h5>
+      </div>
+      <div class="card-body">
+              <p class="card-text">
+        <strong>Email:</strong> <span id="modal-dado-email">...</span>
+       </p>
+       <p class="card-text">
+        <strong>Telefone (WhatsApp):</strong>
+        <span id="modal-dado-telefone">...</span>
+       </p>
+       <p class="card-text">
+        <strong>Cidade/Estado:</strong>
+        <span id="modal-dado-cidade-estado">...</span>
+       </p>
+       <p class="card-text">
+        <strong>Como conheceu a EuPsico:</strong>
+        <span id="modal-dado-como-conheceu">...</span>
+       </p>
+
+       <hr />
+       <h6>Resumo da Experiência Profissional:</h6>
+       <p id="modal-dado-resumo-experiencia" class="text-muted small">...</p>
+
+       <h6>Habilidades/Competências:</h6>
+       <p id="modal-dado-habilidades" class="text-muted small">...</p>
+
+       <hr />
+       <a
+        href="#"
+        id="modal-link-curriculo"
+        target="_blank"
+        class="action-button secondary"
+        disabled
+       >
+        <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+       </a>
+      </div>
+     </div>
+    </div>
+    
+    <div class="col-lg-6">
+     <div class="card card-shadow">
+      <div class="card-header bg-info-subtle">
+       <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
+      </div>
+      <div class="card-body">
+       <form id="form-avaliacao-triagem-modal">
+        <input type="hidden" id="candidatura-id-modal" value="">
+        
+        <fieldset class="mb-4">
+          <legend>Checklist Rápido</legend>
+          <div id="checklist-triagem-container">
+            </div>
+        </fieldset>
+
+        <div class="mb-3">
+         <label for="prerequisitos-atendidos" class="form-label"
+          >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
+         >
+         <textarea
+          class="form-control"
+          id="modal-prerequisitos-atendidos"
+          rows="3"
+          required
+         ></textarea>
+        </div>
+  
+        <div class="mb-3">
+         <label class="form-label d-block"
+          >**Comentários Gerais da Triagem** Apto(a) para a Entrevista?</label
+         >
+                  <div class="form-check form-check-inline">
+          <input
+           class="form-check-input"
+           type="radio"
+           name="modal-apto-entrevista"
+           id="modal-apto-sim"
+           value="Sim"
+           required
+          />
+          <label class="form-check-label" for="modal-apto-sim"
+           >Sim (Aprovar)</label
+          >
+         </div>
+         <div class="form-check form-check-inline">
+          <input
+           class="form-check-input"
+           type="radio"
+           name="modal-apto-entrevista"
+           id="modal-apto-nao"
+           value="Não"
+          />
+          <label class="form-check-label" for="modal-apto-nao"
+           >Não (Reprovar)</label
+          >
+         </div>
+        </div>
+  
+        ****
+        **<div**
+        ** class="mb-3"**
+        ** id="modal-info-aprovacao-container"**
+        ** style="display: none"**
+        **>**
+        ** <label for="modal-info-aprovacao" class="form-label"**
+        **  >Próximos Passos ou Informações de Aprovação</label**
+        ** >**
+        ** <textarea**
+        **  class="form-control"**
+        **  id="modal-info-aprovacao"**
+        **  rows="2"**
+        **  placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."**
+        ** ></textarea>**
+        **</div>**
+  
+        <div
+         class="mb-4"
+         id="modal-motivo-rejeicao-container"
+         style="display: none"
+        >
+         <label for="modal-motivo-rejeicao" class="form-label"
+          >Motivo Detalhado da Reprovação</label
+         >
+         <textarea
+          class="form-control"
+          id="modal-motivo-rejeicao"
+          rows="2"
+          placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
+         ></textarea>
+        </div>
+
+        ****
+        <div class="mb-3">
+         <label for="comentarios-gerais" class="form-label"
+          >Comentários Gerais da Triagem</label
+         >
+         <textarea
+          class="form-control"
+          id="modal-comentarios-gerais"
+          rows="3"
+         ></textarea>
+        </div>
+       </form>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  
+  <div class="modal-footer">
+   <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-triagem">
+     <i class="fas fa-times me-2"></i> Fechar
+   </button>
+   <button type="submit" id="btn-finalizar-triagem-modal" class="action-button success">
+     <i class="fas fa-check-circle me-2"></i> Registrar Decisão e Salvar
+   </button>
+  </div>
+
+ </div>
 </div>
 <script type="module" src="../js/recrutamento.js"></script>
