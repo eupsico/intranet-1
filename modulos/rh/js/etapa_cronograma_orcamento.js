@@ -18,7 +18,8 @@ let vagaIdAtual = null;
 const modalEdicao = document.getElementById("modal-edicao-cronograma");
 const formEdicao = document.getElementById("form-edicao-cronograma");
 const selectVagas = document.getElementById("vaga-selecionada");
-const containerBtnEdicao = document.getElementById("container-btn-edicao");
+// Alterado para pegar o botão que agora está fixo no HTML
+const btnEditarCronograma = document.getElementById("btn-editar-cronograma");
 
 /**
  * Abre o modal de edição e carrega os dados atuais da vaga.
@@ -146,7 +147,8 @@ async function carregarDadosVaga(vagaId, vagaData) {
   document.getElementById("data-inicio-recrutamento").value = vagaData.data_inicio_recrutamento || '';
   document.getElementById("data-fechamento-recrutamento").value = vagaData.data_fechamento_recrutamento || '';
   document.getElementById("data-contratacao-prevista").value = vagaData.data_contratacao_prevista || '';
-  document.getElementById("orcamento-previsto").value = vagaData.orcamento_previsto ? vagaData.orcamento_previsto.toFixed(2) : '';
+  // Se o valor for 0 (zero) ou null/undefined, exibe vazio no formulário. Caso contrário, exibe com 2 casas decimais.
+  document.getElementById("orcamento-previsto").value = vagaData.orcamento_previsto && vagaData.orcamento_previsto !== 0 ? vagaData.orcamento_previsto.toFixed(2) : '';
   document.getElementById("fonte-orcamento").value = vagaData.fonte_orcamento || '';
   document.getElementById("detalhes-cronograma").value = vagaData.detalhes_cronograma || '';
   
@@ -165,17 +167,11 @@ async function carregarDadosVaga(vagaId, vagaData) {
     });
     btnSalvar.style.display = 'none'; // Esconde o botão Salvar e Avançar
 
-    // 2. Cria e configura o botão de edição
-    containerBtnEdicao.innerHTML = `
-      <button type="button" id="btn-editar-cronograma" class="action-button secondary">
-        <i class="fas fa-edit me-2"></i> Edita/Ajustar
-      </button>
-    `;
-
-    const btnEditar = document.getElementById("btn-editar-cronograma");
-    if (btnEditar) {
-        // Passa os dados atuais para a função de abrir modal
-        btnEditar.onclick = () => abrirModalEdicao(vagaId, vagaData);
+    // 2. Configura e exibe o botão de edição
+    if (btnEditarCronograma) {
+        btnEditarCronograma.style.display = 'block';
+        // Configura o evento para abrir o modal
+        btnEditarCronograma.onclick = () => abrirModalEdicao(vagaId, vagaData);
     }
     
   } else {
@@ -184,7 +180,11 @@ async function carregarDadosVaga(vagaId, vagaData) {
         el.disabled = false;
     });
     btnSalvar.style.display = 'block'; // Mostra o botão Salvar e Avançar
-    containerBtnEdicao.innerHTML = ''; // Remove o botão de edição
+    
+    // 2. Esconde o botão de edição
+    if (btnEditarCronograma) {
+        btnEditarCronograma.style.display = 'none';
+    }
   }
 }
 
@@ -194,6 +194,15 @@ async function carregarDadosVaga(vagaId, vagaData) {
 async function handleVagaChange(e) {
   const vagaId = e.target.value;
   if (!vagaId) {
+    // Se nada estiver selecionado, limpa e desabilita tudo
+    document.getElementById("form-cronograma-orcamento").reset();
+    document.getElementById("form-cronograma-orcamento").querySelectorAll('input:not(#vaga-selecionada), textarea').forEach(el => {
+        el.disabled = true;
+    });
+    document.getElementById("btn-salvar-cronograma").style.display = 'none';
+    if (btnEditarCronograma) {
+        btnEditarCronograma.style.display = 'none';
+    }
     return;
   }
   
@@ -205,9 +214,7 @@ async function handleVagaChange(e) {
     const vagaData = JSON.parse(selectedOption.dataset.data);
     await carregarDadosVaga(vagaId, vagaData);
   } else {
-    // Se não tiver dados no dataset (o que não deve ocorrer se o carregarVagas for bem-sucedido)
     console.error("Dados da vaga não encontrados no dataset da opção.");
-    // Aqui você poderia adicionar uma chamada para buscar os dados diretamente do docSnap (como no código original)
   }
 }
 
@@ -225,7 +232,7 @@ async function carregarVagasEmRecrutamento() {
  try {
   console.log('🔍 Buscando vagas ativas para cronograma...');
   
-  // ... Lógica de busca de vagas ...
+    // Lógica de busca de vagas
   let q = query(
    collection(db, "vagas"),
    where("status", "in", [
@@ -259,6 +266,7 @@ async function carregarVagasEmRecrutamento() {
           el.disabled = true;
       });
       document.getElementById("btn-salvar-cronograma").style.display = 'none';
+      if (btnEditarCronograma) btnEditarCronograma.style.display = 'none';
    return;
   }
 
@@ -302,6 +310,7 @@ async function carregarVagasEmRecrutamento() {
           el.disabled = true;
       });
       document.getElementById("btn-salvar-cronograma").style.display = 'none';
+      if (btnEditarCronograma) btnEditarCronograma.style.display = 'none';
     }
     
  } catch (error) {
@@ -316,7 +325,7 @@ async function carregarVagasEmRecrutamento() {
 }
 
 /**
-* Salva os dados de cronograma e orçamento no Firebase.
+* Salva os dados de cronograma e orçamento no Firebase (somente primeira submissão).
 */
 async function salvarCronogramaOrcamento(e) {
  e.preventDefault();
@@ -329,8 +338,7 @@ async function salvarCronogramaOrcamento(e) {
   alert("Por favor, selecione uma vaga.");
   return;
  }
-  // ... (Restante da lógica original de salvamento e redirecionamento, mantida)
-  // ...
+  
   const dataInicio = document.getElementById("data-inicio-recrutamento").value;
   const dataFechamento = document.getElementById("data-fechamento-recrutamento").value;
 
@@ -365,10 +373,20 @@ async function salvarCronogramaOrcamento(e) {
       alert("Cronograma e Orçamento salvos com sucesso! Avançando para a Triagem.");
     }
 
-    // Redireciona para o recrutamento com a aba de triagem
-    setTimeout(() => {
-      window.location.hash = `rh/recrutamento?vaga=${vagaId}&etapa=triagem`;
-    }, 1500);
+    // ATENÇÃO: LINHA REMOVIDA PARA FICAR NA MESMA PÁGINA
+    // setTimeout(() => {
+    //   window.location.hash = `rh/recrutamento?vaga=${vagaId}&etapa=triagem`;
+    // }, 1500);
+
+    // Atualiza a interface da página atual para o modo "Visualização"
+    const selectedOption = selectVagas.querySelector(`option[value="${vagaId}"]`);
+    if (selectedOption) {
+        const newData = JSON.parse(selectedOption.dataset.data);
+        const updatedData = { ...newData, ...dadosCronograma, orcamento_previsto: dadosCronograma.orcamento_previsto };
+        selectedOption.dataset.data = JSON.stringify(updatedData);
+        carregarDadosVaga(vagaId, updatedData);
+    }
+    
   } catch (error) {
     console.error("❌ Erro ao salvar cronograma/orçamento:", error);
     
@@ -400,6 +418,7 @@ export async function init(user, userData) {
 
   // INÍCIO: CONFIGURAÇÃO DO MODAL
   if (selectVagas) {
+    // Adiciona o listener para carregar/exibir o botão de edição
     selectVagas.addEventListener("change", handleVagaChange);
   }
 
