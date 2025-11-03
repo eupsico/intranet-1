@@ -147,16 +147,16 @@
   </div>
   <div class="modal-body">
    <div class="row">
-    <div class="col-lg-6">
-          <div class="card card-shadow mb-4">
-      <div class="card-header bg-card-header-eu">
+        <div class="col-lg-6">
+     <div class="card card-shadow mb-4">
+            <div class="card-header bg-card-header-eu">
        <h5 class="mb-0 text-white">
         Ficha de Candidatura - 
         <span id="candidato-modal-nome">Candidato(a)</span>
        </h5>
       </div>
       <div class="card-body">
-              <p class="card-text">
+       <p class="card-text">
         <strong>Email:</strong> <span id="modal-dado-email">...</span>
        </p>
        <p class="card-text">
@@ -193,7 +193,7 @@
      </div>
     </div>
     
-    <div class="col-lg-6">
+        <div class="col-lg-6">
      <div class="card card-shadow">
       <div class="card-header bg-info-subtle">
        <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
@@ -205,26 +205,26 @@
         <fieldset class="mb-4">
           <legend>Checklist Rápido</legend>
           <div id="checklist-triagem-container">
-            </div>
+                      </div>
         </fieldset>
 
-        <div class="mb-3">
+                <div class="mb-3 form-group">
          <label for="prerequisitos-atendidos" class="form-label"
           >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
          >
          <textarea
           class="form-control"
           id="modal-prerequisitos-atendidos"
-          rows="3"
+          rows="3" 
           required
          ></textarea>
         </div>
   
-        <div class="mb-3">
+                <div class="mb-3 form-group">
          <label class="form-label d-block"
-          >**Comentários Gerais da Triagem** Apto(a) para a Entrevista?</label
+          >Apto(a) para a Entrevista?</label
          >
-                  <div class="form-check form-check-inline">
+         <div class="form-check form-check-inline">
           <input
            class="form-check-input"
            type="radio"
@@ -251,25 +251,24 @@
          </div>
         </div>
   
-        ****
-        **<div**
-        ** class="mb-3"**
-        ** id="modal-info-aprovacao-container"**
-        ** style="display: none"**
-        **>**
-        ** <label for="modal-info-aprovacao" class="form-label"**
-        **  >Próximos Passos ou Informações de Aprovação</label**
-        ** >**
-        ** <textarea**
-        **  class="form-control"**
-        **  id="modal-info-aprovacao"**
-        **  rows="2"**
-        **  placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."**
-        ** ></textarea>**
-        **</div>**
+                <div
+         class="mb-3 form-group"
+         id="modal-info-aprovacao-container"
+         style="display: none"
+        >
+         <label for="modal-info-aprovacao" class="form-label"
+          >Próximos Passos ou Informações de Aprovação</label
+         >
+         <textarea
+          class="form-control"
+          id="modal-info-aprovacao"
+          rows="3"
+          placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."
+         ></textarea>
+        </div>
   
-        <div
-         class="mb-4"
+                <div
+         class="mb-3 form-group"
          id="modal-motivo-rejeicao-container"
          style="display: none"
         >
@@ -279,13 +278,12 @@
          <textarea
           class="form-control"
           id="modal-motivo-rejeicao"
-          rows="2"
+          rows="3"
           placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
          ></textarea>
         </div>
 
-        ****
-        <div class="mb-3">
+                <div class="mb-3 form-group">
          <label for="comentarios-gerais" class="form-label"
           >Comentários Gerais da Triagem</label
          >
@@ -310,7 +308,6 @@
      <i class="fas fa-check-circle me-2"></i> Registrar Decisão e Salvar
    </button>
   </div>
-
  </div>
 </div>
 <script type="module" src="../js/recrutamento.js"></script>
