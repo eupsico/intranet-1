@@ -407,12 +407,12 @@ seletivo.
         const radioSim = document.getElementById("modal-apto-sim");
         const radioNao = document.getElementById("modal-apto-nao");
         
-        // Novos containers de campos
+        // Containers dos campos
         const comentariosGeraisContainer = document.getElementById("modal-comentarios-gerais-container");
-        const comentariosGeraisTextarea = document.getElementById("modal-comentarios-gerais"); // Mantido opcional
+        const comentariosGeraisTextarea = document.getElementById("modal-comentarios-gerais"); 
         
         const motivoContainer = document.getElementById("modal-motivo-rejeicao-container");
-        const motivoTextarea = document.getElementById("modal-motivo-rejeicao"); // O campo de reprovação obrigatório
+        const motivoTextarea = document.getElementById("modal-motivo-rejeicao");
         
         const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
         
@@ -427,7 +427,7 @@ seletivo.
             // Oculta campos de Aprovação/Comentários Gerais
             aprovacaoContainer.style.display = "none";
             comentariosGeraisContainer.style.display = "none"; 
-            comentariosGeraisTextarea.required = false;
+            comentariosGeraisTextarea.required = false; // Garante que não interfira no envio
 
         } else if (radioSim.checked) {
             // 🟢 Aprovação: Mostra Próximos Passos e Comentários Gerais (Opcional).

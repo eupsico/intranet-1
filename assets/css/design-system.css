@@ -920,6 +920,11 @@ legend {
   min-height: 0; /* CORREÇÃO: Garante que a rolagem funcione dentro do layout flex */
 }
 
+.modal-body-scroll {
+ overflow-y: auto;
+ flex-grow: 1;
+}
+
 .modal-footer {
   padding: 15px 25px;
   border-top: 1px solid var(--cor-borda);
@@ -927,6 +932,9 @@ legend {
   justify-content: flex-end;
   gap: 10px;
   background-color: var(--cor-fundo);
+  flex-shrink: 0; /* CRÍTICO: Impede que o footer encolha ou seja rolado */
+ position: sticky; /* Se o modal-content permitir rolagem, isso ajuda */
+ bottom: 0;
 }
 .modal-footer p {
   margin: 0;
