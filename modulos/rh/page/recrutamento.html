@@ -400,6 +400,7 @@ seletivo.
     </form>
   </div>
 </div>
+
 <script>
     // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
     window.toggleMotivoAprovacaoRejeicao = () => {
@@ -408,10 +409,10 @@ seletivo.
         
         // Novos containers de campos
         const comentariosGeraisContainer = document.getElementById("modal-comentarios-gerais-container");
-        const comentariosGeraisTextarea = document.getElementById("modal-comentarios-gerais"); 
+        const comentariosGeraisTextarea = document.getElementById("modal-comentarios-gerais"); // Mantido opcional
         
         const motivoContainer = document.getElementById("modal-motivo-rejeicao-container");
-        const motivoTextarea = document.getElementById("modal-motivo-rejeicao");
+        const motivoTextarea = document.getElementById("modal-motivo-rejeicao"); // O campo de reprovação obrigatório
         
         const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
         
@@ -447,5 +448,4 @@ seletivo.
         }
     };
 </script>
-
 <script type="module" src="../js/recrutamento.js"></script>
