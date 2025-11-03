@@ -308,7 +308,97 @@
 </div>
 </div>
 
-<script>
+<div id="modal-entrevista-rh" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px">
+        <div class="modal-header">
+            <h3 class="modal-title-text">Recrutamento: Entrevista com RH</h3>
+            <button type="button" class="close-modal-btn" data-modal-id="modal-entrevista-rh">&times;</button>
+        </div>
+        <form id="form-avaliacao-entrevista-rh">
+            <input type="hidden" id="candidatura-id-entrevista" name="candidaturaId" value="">
+            <div class="modal-body">
+                <p>Avaliação de aderência cultural, soft skills e aprofundamento do perfil para a vaga Carregando Vaga...</p>
+                <h4 id="entrevista-rh-nome-candidato">Ficha e Notas Rápidas - Candidato(a)</h4>
+
+                <p class="card-text">
+                    <strong>Status Atual:</strong> <span id="entrevista-rh-status-atual">...</span>
+                </p>
+                <p class="card-text">
+                    <strong>Resumo Triagem:</strong> <span id="entrevista-rh-resumo-triagem">...</span>
+                </p>
+                <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="action-button secondary small" disabled>
+                    <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+                </a>
+                
+                <hr>
+
+                <div class="mb-4">
+                    <h4>Agendamento da Entrevista</h4>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label for="data-entrevista-agendada">Data da Entrevista:</label>
+                            <input type="date" id="data-entrevista-agendada" class="form-control">
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label for="hora-entrevista-agendada">Hora da Entrevista:</label>
+                            <input type="time" id="hora-entrevista-agendada" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <h4>Notas da Entrevista:</h4>
+                <div class="row">
+                    <div class="col-md-4 form-group">
+                        <label for="nota-motivacao">Motivação e Propósito (Nota 1-5)</label>
+                        <input type="number" id="nota-motivacao" class="form-control" min="1" max="5">
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label for="nota-aderencia">Aderência Cultural (Valores) (Nota 1-5)</label>
+                        <input type="number" id="nota-aderencia" class="form-control" min="1" max="5">
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label for="nota-comunicacao">Comportamento/Comunicação (Nota 1-5)</label>
+                        <input type="number" id="nota-comunicacao" class="form-control" min="1" max="5">
+                    </div>
+                </div>
+
+                <h4>Avaliação Detalhada e Próxima Etapa</h4>
+                
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label for="pontos-fortes">Principais Pontos Fortes e Destaques (RH)</label>
+                        <textarea id="pontos-fortes" class="form-control" rows="4" placeholder="Ex: Excelente comunicação, alta motivação com o projeto."></textarea>
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label for="pontos-atencao">Pontos de Atenção / Desenvolvimento</label>
+                        <textarea id="pontos-atencao" class="form-control" rows="4" placeholder="Ex: Pouca experiência em gestão de tempo."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label>Resultado da Entrevista</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="resultado_entrevista" id="resultado-aprovado" value="Aprovado" required>
+                        <label class="form-check-label" for="resultado-aprovado">Aprovado(a) para Testes/Estudos de Caso</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="resultado_entrevista" id="resultado-reprovado" value="Reprovado" required>
+                        <label class="form-check-label" for="resultado-reprovado">Reprovado(a) / Rejeitar</label>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="action-button secondary" id="btn-voltar-painel-rh" data-modal-id="modal-entrevista-rh">
+                    Voltar ao Painel
+                </button>
+                <button type="submit" id="btn-registrar-entrevista-rh" class="action-button success">
+                    Registrar e Enviar para Próxima Fase
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <script>
     // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
     window.toggleMotivoAprovacaoRejeicao = () => {
@@ -352,4 +442,5 @@
         }
     };
 </script>
+
 <script type="module" src="../js/recrutamento.js"></script>
