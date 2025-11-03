@@ -180,7 +180,7 @@
    <p id="modal-dado-habilidades" class="text-muted small">...</p>
 
    <hr />
-           </div>
+   </div>
   </div>
   </div>
   
@@ -309,4 +309,34 @@
 
 </div>
 </div>
+
+<script>
+    // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
+    // Ela deve ser definida no escopo global (window) para ser acessível por tabTriagem.js.
+    window.toggleMotivoAprovacaoRejeicao = () => {
+        const radioSim = document.getElementById("modal-apto-sim");
+        const radioNao = document.getElementById("modal-apto-nao");
+        
+        const motivoContainer = document.getElementById("modal-motivo-rejeicao-container");
+        const motivoTextarea = document.getElementById("modal-motivo-rejeicao");
+        const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+        
+        // Retorna se os elementos cruciais não estiverem carregados
+        if (!motivoContainer || !aprovacaoContainer || !radioSim || !radioNao) return;
+
+        if (radioNao.checked) {
+            motivoContainer.style.display = "block";
+            motivoTextarea.required = true;
+            aprovacaoContainer.style.display = "none";
+        } else if (radioSim.checked) {
+            motivoContainer.style.display = "none";
+            motivoTextarea.required = false;
+            aprovacaoContainer.style.display = "block";
+        } else {
+            motivoContainer.style.display = "none";
+            motivoTextarea.required = false;
+            aprovacaoContainer.style.display = "none";
+        }
+    };
+</script>
 <script type="module" src="../js/recrutamento.js"></script>
