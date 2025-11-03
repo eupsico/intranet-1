@@ -4,6 +4,30 @@ import { getGlobalState } from '../recrutamento.js';
 import { getDoc, doc } from "../../../../assets/js/firebase-init.js";
 
 /**
+ * Função para abrir o modal de Edição de Cronograma.
+ * EXPOSTA GLOBALMENTE para ser chamada pelo onclick do HTML.
+ */
+export function abrirModalCronograma(vagaId, dadosCronograma) {
+    
+    const modalCronograma = document.getElementById("modal-edicao-cronograma");
+    if (!modalCronograma) {
+        console.error("Modal de edição de cronograma não encontrado.");
+        return;
+    }
+    
+    // Simplesmente abre o modal. A lógica de preenchimento deve estar aqui.
+    modalCronograma.classList.add('is-visible'); 
+    
+    // Você deve ter lógica para preencher os campos do modal aqui:
+    // Ex: document.getElementById('modal-data-inicio-recrutamento').value = dadosCronograma.data_inicio_recrutamento;
+    
+    console.log(`Abrindo modal Cronograma para Vaga ID: ${vagaId}`);
+}
+
+// 🔴 CORREÇÃO: Expõe a função globalmente para chamadas via onclick
+window.abrirModalCronograma = abrirModalCronograma;
+
+/**
  * Renderiza o cronograma da vaga.
  */
 export async function renderizarCronograma(state) {
