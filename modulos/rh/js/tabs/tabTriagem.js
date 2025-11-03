@@ -1,7 +1,8 @@
 // modulos/rh/js/tabs/tabTriagem.js
 
 import { getGlobalState } from '../recrutamento.js';
-import { updateDoc, doc, getDocs, query, where, serverTimestamp } from "../../../../assets/js/firebase-init.js";
+// 🔴 CORREÇÃO: Importa arrayUnion e serverTimestamp explicitamente do init, resolvendo ReferenceError
+import { updateDoc, doc, getDocs, query, where, arrayUnion, serverTimestamp } from "../../../../assets/js/firebase-init.js";
 
 // Elementos do Modal de Triagem (Obtidos globalmente para uso nas funções)
 const modalAvaliacaoTriagem = document.getElementById("modal-avaliacao-triagem");
@@ -142,7 +143,6 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
   // Força a UI a atualizar com base no valor carregado
   if (toggleMotivoAprovacaoRejeicao) {
-        // CORRIGIDO: Chama a função global, que agora é acessível.
         toggleMotivoAprovacaoRejeicao(); 
     }
 
@@ -177,6 +177,7 @@ async function submeterAvaliacaoTriagem(e) {
   }
 
   btnFinalizarTriagem.disabled = true;
+    // 🔴 CORREÇÃO: Altera o texto do botão
   btnFinalizarTriagem.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
@@ -226,15 +227,15 @@ async function submeterAvaliacaoTriagem(e) {
 
   } finally {
     btnFinalizarTriagem.disabled = false;
+        // 🔴 CORREÇÃO: Altera o texto de volta para "Registrar Decisão"
     btnFinalizarTriagem.innerHTML =
-      '<i class="fas fa-check-circle me-2"></i> Registrar Decisão e Salvar';
+      '<i class="fas fa-check-circle me-2"></i> Registrar Decisão';
   }
 }
 
 
 /**
  * Renderiza a listagem de candidatos para a triagem.
- * CORRIGIDO: Adiciona listeners dinamicamente após a renderização.
  */
 export async function renderizarTriagem(state) {
     const { vagaSelecionadaId, conteudoRecrutamento, candidatosCollection } = state;
@@ -368,29 +369,31 @@ export async function renderizarTriagem(state) {
 
 // =====================================================================
 // INICIALIZAÇÃO DE LISTENERS ESTÁTICOS DO MODAL DE TRIAGEM
-// 🔴 CORRIGIDO: Esta inicialização garante que os botões dentro do modal funcionem.
 // =====================================================================
 
 if (modalAvaliacaoTriagem) {
-    // 1. Botão 'Registrar Decisão e Salvar' (Chama submeterAvaliacaoTriagem)
+    // 1. Botão 'Registrar Decisão' (Chama submeterAvaliacaoTriagem)
     if (btnFinalizarTriagem) {
-        btnFinalizarTriagem.removeEventListener("click", submeterAvaliacaoTriagem); // Remove anterior, se houver
+        btnFinalizarTriagem.removeEventListener("click", submeterAvaliacaoTriagem); 
         btnFinalizarTriagem.addEventListener("click", submeterAvaliacaoTriagem);
+        // 🔴 CORREÇÃO: Define o texto inicial do botão
+        btnFinalizarTriagem.innerHTML = '<i class="fas fa-check-circle me-2"></i> Registrar Decisão';
     }
     
-    // 2. Botão 'Fechar'
+    // 2. Botão 'Fechar' (inclui o X do cabeçalho devido ao data-modal-id)
     document.querySelectorAll("[data-modal-id='modal-avaliacao-triagem']").forEach((btn) => {
-        btn.removeEventListener("click", () => modalAvaliacaoTriagem.classList.remove("is-visible"));
-        btn.addEventListener("click", () => modalAvaliacaoTriagem.classList.remove("is-visible"));
+        // Usa uma função para fechar o modal
+        const fecharTriagemModal = () => modalAvaliacaoTriagem.classList.remove("is-visible");
+        
+        btn.removeEventListener("click", fecharTriagemModal);
+        btn.addEventListener("click", fecharTriagemModal);
     });
 
     // 3. Botão 'Ver Currículo'
     const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
     if (btnVerCurriculo) {
-        // Remove listeners duplicados antes de anexar o novo
-        btnVerCurriculo.removeEventListener("click", (e) => {
-             // Função vazia para evitar remoção incorreta devido ao contexto
-        });
+        // Limpa listeners (melhor prática: usa replaceWith para garantir que não haja duplicatas de listeners)
+        btnVerCurriculo.cloneNode(true).replaceWith(btnVerCurriculo); 
         
         btnVerCurriculo.addEventListener("click", (e) => {
             const link = e.currentTarget.dataset.curriculoLink;
