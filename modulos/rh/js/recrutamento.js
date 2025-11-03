@@ -21,7 +21,7 @@ import { renderizarEntrevistaGestor } from './tabs/tabGestor.js';
 import { renderizarFinalizados } from './tabs/tabFinalizados.js';
 
 // =====================================================================
-// CONSTANTES GLOBAIS E ELEMENTOS DO DOM (REDUZIDOS)
+// CONSTANTES GLOBAIS E ELEMENTOS DO DOM
 // =====================================================================
 
 const VAGAS_COLLECTION_NAME = "vagas";
@@ -82,7 +82,7 @@ async function carregarVagasAtivas() {
  if (!filtroVaga) return;
 
  try {
-    // ... (Lógica de carregar vagas completa, omitida por brevidade no comentário)
+    // ... (Lógica de carregar vagas)
     const q = query(
    vagasCollection,
    where("status", "in", [
@@ -231,16 +231,10 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
      </div>
      <div class="col-md-6">
        <h5>Experiência e Arquivos</h5>
-       <p><strong>Resumo Experiência:</strong> ${
-        candidato.resumo_experiencia || "Não informado"
-       }</p>
-       <p><strong>Habilidades:</strong> ${
-        candidato.habilidades_competencias || "Não informadas"
-       }</p>
+       <p><strong>Resumo Experiência:</strong> ${candidato.resumo_experiencia || "Não informado"}</p>
+       <p><strong>Habilidades:</strong> ${candidato.habilidades_competencias || "Não informadas"}</p>
        <p><strong>Currículo:</strong> 
-         <a href="${
-          candidato.link_curriculo_drive || "#"
-         }" target="_blank" class="action-button secondary ${ 
+         <a href="${candidato.link_curriculo_drive || "#"}" target="_blank" class="action-button secondary ${ 
   !candidato.link_curriculo_drive ? "disabled" : ""
  }">
            <i class="fas fa-file-pdf"></i> Ver Currículo
@@ -257,15 +251,9 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
       candidato.triagem_rh
        ? `
        <h6>Triagem RH</h6>
-       <p><strong>Decisão:</strong> ${
-        candidato.triagem_rh.apto_entrevista
-       } | 
-       <strong>Data:</strong> ${formatarTimestamp(
-        candidato.triagem_rh.data_avaliacao
-       )}</p>
-       <p class="small-info">Comentários: ${
-        candidato.triagem_rh.comentarios_gerais || "N/A"
-       }</p>
+       <p><strong>Decisão:</strong> ${candidato.triagem_rh.apto_entrevista} | 
+       <strong>Data:</strong> ${formatarTimestamp(candidato.triagem_rh.data_avaliacao)}</p>
+       <p class="small-info">Comentários: ${candidato.triagem_rh.comentarios_gerais || "N/A"}</p>
      `
        : "<p>Ainda não avaliado na Triagem RH.</p>"
      }
@@ -275,16 +263,11 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
        ? `
        <h6 class="text-danger">Rejeição Registrada</h6>
        <p><strong>Etapa:</strong> ${candidato.rejeicao.etapa} | 
-       <strong>Data:</strong> ${formatarTimestamp(
-        candidato.rejeicao.data
-       )}</p>
-       <p class="small-info">Justificativa: ${
-        candidato.rejeicao.justificativa || "N/A"
-       }</p>
+       <strong>Data:</strong> ${formatarTimestamp(candidato.rejeicao.data)}</p>
+       <p class="small-info">Justificativa: ${candidato.rejeicao.justificativa || "N/A"}</p>
      `
        : ""
      }
-     
    </div>
  `;
 
@@ -292,7 +275,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
  modalCandidato.classList.add("is-visible");
 }
 
-// 🔴 CORREÇÃO: Expõe a função globalmente para chamadas via window.abrirModalCandidato
+// 🔴 CORREÇÃO 2: Expõe a função globalmente para chamadas via window.abrirModalCandidato
 window.abrirModalCandidato = abrirModalCandidato;
 
 
@@ -464,6 +447,14 @@ export async function initRecrutamento(user, userData) {
    btn.addEventListener("click", handleTabClick);
   });
  }
+
+    // 🔴 CORREÇÃO 3: Anexa listener para fechar o modal de detalhes via o "X" do cabeçalho
+    const closeBtnDetalhes = modalCandidato.querySelector('.close-modal-btn.fechar-modal-candidato');
+    if (closeBtnDetalhes) {
+        closeBtnDetalhes.addEventListener('click', () => {
+            modalCandidato.classList.remove("is-visible");
+        });
+    }
 }
 
 // ✅ ADICIONE ESTA LINHA PARA COMPATIBILIDADE COM O ROTEADOR
