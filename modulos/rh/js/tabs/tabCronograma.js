@@ -24,8 +24,21 @@ export function abrirModalCronograma(vagaId, dadosCronograma) {
     console.log(`Abrindo modal Cronograma para Vaga ID: ${vagaId}`);
 }
 
-// 🔴 CORREÇÃO: Expõe a função globalmente para chamadas via onclick
+/**
+ * Função para fechar o modal de Edição de Cronograma.
+ * EXPOSTA GLOBALMENTE.
+ */
+export function fecharModalCronograma(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('is-visible');
+    }
+}
+
+// 🔴 CORREÇÃO 1: Expõe as funções globalmente para chamadas via onclick
 window.abrirModalCronograma = abrirModalCronograma;
+window.fecharModalCronograma = fecharModalCronograma;
+
 
 /**
  * Renderiza o cronograma da vaga.
@@ -93,4 +106,16 @@ export async function renderizarCronograma(state) {
    </button>
    </div>
  `;
+}
+
+// 🔴 CORREÇÃO 2: Anexa o listener para o "X" e "Cancelar" do modal cronograma (que usa data-modal-id)
+const modalCronograma = document.getElementById("modal-edicao-cronograma");
+if (modalCronograma) {
+    // Escuta cliques dentro do modal
+    modalCronograma.addEventListener('click', (e) => {
+        // Verifica se o clique foi no botão de fechar do cabeçalho ou no botão Cancelar
+        if (e.target.closest('.close-modal-btn') || e.target.closest('[data-modal-id="modal-edicao-cronograma"]')) {
+            fecharModalCronograma("modal-edicao-cronograma");
+        }
+    });
 }
