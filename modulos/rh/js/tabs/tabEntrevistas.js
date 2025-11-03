@@ -4,7 +4,7 @@ import { getGlobalState } from '../recrutamento.js';
 import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
 
 /**
- * Renderiza a listagem de candidatos para Entrevistas e Avaliações.
+ * Renderiza a listagem de candidatos para Entrevistas e Avaliações (Layout de Cartão).
  */
 export async function renderizarEntrevistas(state) {
     const { vagaSelecionadaId, conteudoRecrutamento, candidatosCollection, statusCandidaturaTabs } = state;
@@ -45,58 +45,82 @@ export async function renderizarEntrevistas(state) {
   let listaHtml = `
       <div class="list-candidaturas">
         <h3>Candidaturas em Entrevistas e Testes (${snapshot.size})</h3>
-        <p>Gerencie as etapas de Entrevista com RH, Testes e Estudos de Caso. (Link de etapa a ser criado)</p>
     `;
 
-  snapshot.docs.forEach((doc) => {
-   const cand = doc.data();
+  snapshot.docs.forEach((docSnap) => {
+   const cand = docSnap.data();
+   const candidatoId = docSnap.id;
    const statusAtual = cand.status_recrutamento || "N/A";
-
-   // Lógica para determinar a URL da próxima página (Entrevista RH ou Aplicação de Testes)
-   let proximaEtapaUrl = "";
-   let acaoBotao = "";
-   if (statusAtual.includes("Entrevista Pendente")) {
-    proximaEtapaUrl = `etapa_entrevista_rh.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
-    acaoBotao = "Entrevista RH";
-   } else if (statusAtual.includes("Testes Pendente")) {
-    proximaEtapaUrl = `etapa_aplicacao_testes.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
-    acaoBotao = "Aplicar Testes";
-   } else {
-    proximaEtapaUrl = `etapa_entrevista_rh.html?candidatura=${doc.id}&vaga=${vagaSelecionadaId}`;
-    acaoBotao = "Ver Etapa";
+        
+        let corStatus = "info";
+   if (statusAtual.includes("Aprovada")) {
+    corStatus = "success";
+   } else if (statusAtual.includes("Testes")) {
+    corStatus = "warning";
    }
-
-   let corStatus = "primary";
-   if (statusAtual.includes("Aprovada")) corStatus = "success";
+        
+        // Formatação de contato e WhatsApp, idêntica à Triagem
+   const telefone = cand.telefone_contato ? cand.telefone_contato.replace(/\D/g, '') : '';
+   const linkWhatsApp = telefone ? `https://api.whatsapp.com/send?phone=55${telefone}` : '#';
 
    listaHtml += `
-        <div class="card card-candidato" data-id="${doc.id}">
-          <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
-          <p>Status: <span class="badge bg-${corStatus}">${statusAtual}</span></p>
-          <p class="small-info">Ação: ${acaoBotao}</p>
-          <div class="acoes-candidato">
-          <a href="${proximaEtapaUrl}" class="btn btn-sm btn-info">
-            <i class="fas fa-play me-2"></i> ${acaoBotao}
-          </a>
-          <button class="btn btn-sm btn-outline-secondary btn-ver-detalhes" data-id="${
-           doc.id
-          }">Detalhes</button>
-          </div>
-        </div>
-      `;
+   <div class="card card-candidato-triagem" data-id="${candidatoId}">
+    <div class="info-primaria">
+      <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+      <p>Status: <span class="badge bg-${corStatus}">${statusAtual.replace(
+        "_",
+        " "
+      )}</span></p>
+    </div>
+    
+    <div class="info-contato">
+      <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${!telefone ? 'disabled' : ''}>
+        <i class="fab fa-whatsapp me-1"></i> ${cand.telefone_contato || 'N/A (Sem WhatsApp)'}
+      </a>
+    </div>
+    
+    <div class="acoes-candidato">
+      <button 
+        class="action-button info btn-detalhes-entrevista" 
+        data-id="${candidatoId}"
+        data-candidato-data='${JSON.stringify(cand).replace(/'/g, '&#39;')}'>
+        <i class="fas fa-info-circle me-1"></i> Detalhes
+      </button>
+      <button 
+                data-etapa="${statusAtual}"
+        class="action-button primary btn-avaliar-entrevista" 
+        data-id="${candidatoId}"
+        data-candidato-data='${JSON.stringify(cand).replace(/'/g, '&#39;')}'>
+        <i class="fas fa-calendar-check me-1"></i> ${statusAtual.includes("Entrevista Pendente") ? 'Agendar / Avaliar RH' : 'Avaliar Testes'}
+      </button>
+    </div>
+   </div>
+  `;
   });
 
   listaHtml += "</div>";
   conteudoRecrutamento.innerHTML = listaHtml;
 
-  // 🔴 CORREÇÃO: Listener dinâmico para garantir que o botão funcione após renderização.
-  document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
-   btn.addEventListener("click", (e) => {
-    const candidatoId = e.currentTarget.getAttribute("data-id");
-    // Chama a função global, que foi exposta em recrutamento.js
-    window.abrirModalCandidato(candidatoId, "detalhes"); 
-   });
+  // Configura evento para abrir modal de detalhes (modalCandidato)
+  document.querySelectorAll(".btn-detalhes-entrevista").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const candidatoId = e.currentTarget.getAttribute("data-id");
+      const dados = JSON.parse(e.currentTarget.getAttribute("data-candidato-data").replace(/&#39;/g, "'"));
+      window.abrirModalCandidato(candidatoId, "detalhes", dados); 
+    });
   });
+  
+  // Configura evento para abrir o NOVO modal de Entrevista RH
+  document.querySelectorAll(".btn-avaliar-entrevista").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const candidatoId = e.currentTarget.getAttribute("data-id");
+      const dados = JSON.parse(e.currentTarget.getAttribute("data-candidato-data").replace(/&#39;/g, "'"));
+            
+            // 🔴 CORREÇÃO: Chama a nova função de modal
+      window.abrirModalEntrevistaRH(candidatoId, dados); 
+    });
+  });
+
  } catch (error) {
   console.error("Erro ao renderizar entrevistas:", error);
   conteudoRecrutamento.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista de candidatos para entrevistas: ${error.message}</p>`;
