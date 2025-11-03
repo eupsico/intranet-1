@@ -14,31 +14,34 @@
           <option value="">Carregando...</option>
         </select>
       </div>
+      <div class="col-md-6 mb-3 d-flex align-items-end justify-content-md-end" id="container-btn-edicao">
+        </div>
+      </div>
+    
+    <div class="row">
       <div class="col-md-6 mb-3">
         <label for="data-inicio-recrutamento" class="form-label">Data Prevista de Início do Recrutamento</label>
         <input type="date" class="form-control" id="data-inicio-recrutamento" required />
       </div>
-    </div>
-
-    <div class="row">
       <div class="col-md-6 mb-3">
         <label for="data-fechamento-recrutamento" class="form-label">Data Prevista de Encerramento do Recrutamento</label>
         <input type="date" class="form-control" id="data-fechamento-recrutamento" required />
       </div>
+    </div>
+
+    <div class="row">
       <div class="col-md-6 mb-3">
         <label for="data-contratacao-prevista" class="form-label">Data Prevista de Contratação</label>
         <input type="date" class="form-control" id="data-contratacao-prevista" required />
       </div>
-    </div>
-
-    <h3 class="mt-4 mb-3 titulo-secao-pequeno">Recursos e Orçamento</h3>
-
-    <div class="row">
       <div class="col-md-6 mb-3">
         <label for="orcamento-previsto" class="form-label">Orçamento Previsto (R$)</label>
         <input type="number" step="0.01" class="form-control" id="orcamento-previsto" placeholder="Ex: 500.00" required />
       </div>
-      <div class="col-md-6 mb-3">
+    </div>
+
+    <div class="row">
+       <div class="col-md-12 mb-3">
         <label for="fonte-orcamento" class="form-label">Fonte do Orçamento</label>
         <input type="text" class="form-control" id="fonte-orcamento" placeholder="Ex: Área de Marketing/Verba de RH" />
       </div>
@@ -55,4 +58,65 @@
       </button>
     </div>
   </form>
+</div>
+
+<div id="modal-edicao-cronograma" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title-text">Ajustar Cronograma e Orçamento</h3>
+      <button type="button" class="close-modal-btn" data-modal-id="modal-edicao-cronograma">&times;</button>
+    </div>
+    <form id="form-edicao-cronograma">
+      <div class="modal-body">
+         
+         <div class="modal-section">
+            <h4>Datas Previstas</h4>
+            <div class="details-grid cols-2">
+                <div class="form-group">
+                    <label for="modal-data-inicio-recrutamento" class="form-label">Início do Recrutamento</label>
+                    <input type="date" class="form-control" id="modal-data-inicio-recrutamento" required />
+                </div>
+                <div class="form-group">
+                    <label for="modal-data-fechamento-recrutamento" class="form-label">Encerramento do Recrutamento</label>
+                    <input type="date" class="form-control" id="modal-data-fechamento-recrutamento" required />
+                </div>
+                <div class="form-group">
+                    <label for="modal-data-contratacao-prevista" class="form-label">Contratação</label>
+                    <input type="date" class="form-control" id="modal-data-contratacao-prevista" required />
+                </div>
+            </div>
+         </div>
+
+         <div class="modal-section">
+            <h4>Recursos e Orçamento</h4>
+            <div class="details-grid cols-2">
+                <div class="form-group">
+                    <label for="modal-orcamento-previsto" class="form-label">Orçamento Previsto (R$)</label>
+                    <input type="number" step="0.01" class="form-control" id="modal-orcamento-previsto" placeholder="Ex: 500.00" required />
+                </div>
+                <div class="form-group">
+                    <label for="modal-fonte-orcamento" class="form-label">Fonte do Orçamento</label>
+                    <input type="text" class="form-control" id="modal-fonte-orcamento" placeholder="Ex: Área de Marketing/Verba de RH" />
+                </div>
+            </div>
+         </div>
+
+         <div class="modal-section">
+             <div class="form-group full-width">
+                <label for="modal-detalhes-cronograma" class="form-label">Observações e Detalhes</label>
+                <textarea class="form-control" id="modal-detalhes-cronograma" rows="3" placeholder="Detalhes importantes sobre a urgência ou complexidade do recrutamento."></textarea>
+            </div>
+         </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="action-button secondary" data-modal-id="modal-edicao-cronograma">
+           Cancelar
+        </button>
+        <button type="submit" id="btn-salvar-modal-cronograma" class="action-button">
+          <i class="fas fa-save me-2"></i> Salvar Ajustes
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
