@@ -184,112 +184,110 @@
   </div>
   </div>
   
-    <div class="col-lg-6">
+<div class="col-lg-6">
   <div class="card card-shadow">
    <div class="card-header bg-info-subtle">
-   <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
+    <h5 class="mb-0">Avaliação de Triagem (RH)</h5>
    </div>
    <div class="card-body">
-   <form id="form-avaliacao-triagem-modal">
-    <input type="hidden" id="candidatura-id-modal" value="">
-    
-    <fieldset class="mb-4">
-     <legend>Checklist Rápido</legend>
-     <div id="checklist-triagem-container">
-           </div>
-    </fieldset>
+    <form id="form-avaliacao-triagem-modal">
+     <input type="hidden" id="candidatura-id-modal" value="">
+     
+     <fieldset class="mb-4">
+      <legend>Checklist Rápido</legend>
+      <div id="checklist-triagem-container">
+          </div>
+     </fieldset>
 
-        <div class="mb-3 form-group">
-    <label for="prerequisitos-atendidos" class="form-label"
-     >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
-    >
-    <textarea
-     class="form-control"
-     id="modal-prerequisitos-atendidos"
-     rows="3" 
-     required
-    ></textarea>
-    </div>
+          <div class="mb-3 form-group">
+      <label for="prerequisitos-atendidos" class="form-label"
+       >Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?</label
+      >
+      <textarea
+       class="form-control"
+       id="modal-prerequisitos-atendidos"
+       rows="3" 
+       required
+      ></textarea>
+     </div>
  
-        <div class="mb-3 form-group">
-    <label class="form-label d-block"
-     >Apto(a) para a Entrevista?</label
-    >
-    <div class="form-check form-check-inline">
-     <input
-     class="form-check-input"
-     type="radio"
-     name="modal-apto-entrevista"
-     id="modal-apto-sim"
-     value="Sim"
-     required
-     />
-     <label class="form-check-label" for="modal-apto-sim"
-     >Sim (Aprovar)</label
+          <div class="mb-3 form-group">
+      <label class="form-label d-block"
+       >Apto(a) para a Entrevista?</label
+      >
+      <div class="form-check form-check-inline">
+       <input
+        class="form-check-input"
+        type="radio"
+        name="modal-apto-entrevista"
+        id="modal-apto-sim"
+        value="Sim"
+        required
+       />
+       <label class="form-check-label" for="modal-apto-sim"
+        >Sim (Aprovar)</label
+       >
+      </div>
+      <div class="form-check form-check-inline">
+       <input
+        class="form-check-input"
+        type="radio"
+        name="modal-apto-entrevista"
+        id="modal-apto-nao"
+        value="Não"
+       />
+       <label class="form-check-label" for="modal-apto-nao"
+        >Não (Reprovar)</label
+       >
+      </div>
+     </div>
+ 
+          <div
+      class="mb-3 form-group"
+      id="modal-info-aprovacao-container"
+      style="display: none"
      >
-    </div>
-    <div class="form-check form-check-inline">
-     <input
-     class="form-check-input"
-     type="radio"
-     name="modal-apto-entrevista"
-     id="modal-apto-nao"
-     value="Não"
-     />
-     <label class="form-check-label" for="modal-apto-nao"
-     >Não (Reprovar)</label
+      <label for="modal-info-aprovacao" class="form-label"
+       >Próximos Passos ou Informações de Aprovação</label
+      >
+      <textarea
+       class="form-control"
+       id="modal-info-aprovacao"
+       rows="3"
+       placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."
+      ></textarea>
+     </div>
+ 
+          <div
+      class="mb-3 form-group"
+      id="modal-motivo-rejeicao-container"
+      style="display: none"
      >
-    </div>
-    </div>
- 
-        <div
-    class="mb-3 form-group"
-    id="modal-info-aprovacao-container"
-    style="display: none"
-    >
-    <label for="modal-info-aprovacao" class="form-label"
-     >Próximos Passos ou Informações de Aprovação</label
-    >
-    <textarea
-     class="form-control"
-     id="modal-info-aprovacao"
-     rows="3"
-     placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."
-    ></textarea>
-    </div>
- 
-        <div
-    class="mb-3 form-group"
-    id="modal-motivo-rejeicao-container"
-    style="display: none"
-    >
-    <label for="modal-motivo-rejeicao" class="form-label"
-     >Motivo Detalhado da Reprovação</label
-    >
-    <textarea
-     class="form-control"
-     id="modal-motivo-rejeicao"
-     rows="3"
-     placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
-    ></textarea>
-    </div>
+      <label for="modal-motivo-rejeicao" class="form-label"
+       >Motivo Detalhado da Reprovação (Obrigatório)</label
+      >
+      <textarea
+       class="form-control"
+       id="modal-motivo-rejeicao"
+       rows="3"
+       placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."
+      ></textarea>
+     </div>
 
-        <div class="mb-3 form-group">
-    <label for="comentarios-gerais" class="form-label"
-     >Comentários Gerais da Triagem</label
-    >
-    <textarea
-     class="form-control"
-     id="modal-comentarios-gerais"
-     rows="3"
-    ></textarea>
-    </div>
-   </form>
+          <div class="mb-3 form-group" id="modal-comentarios-gerais-container">
+      <label for="comentarios-gerais" class="form-label"
+       >Comentários Gerais da Triagem</label
+      >
+      <textarea
+       class="form-control"
+       id="modal-comentarios-gerais"
+       rows="3"
+      ></textarea>
+     </div>
+    </form>
    </div>
   </div>
-  </div>
- </div>
- </div>
+</div>
  
  <div class="modal-footer">
     <button 
