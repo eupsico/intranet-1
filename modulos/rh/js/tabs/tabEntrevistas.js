@@ -89,10 +89,11 @@ export async function renderizarEntrevistas(state) {
   listaHtml += "</div>";
   conteudoRecrutamento.innerHTML = listaHtml;
 
+  // 🔴 CORREÇÃO: Listener dinâmico para garantir que o botão funcione após renderização.
   document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
    btn.addEventListener("click", (e) => {
     const candidatoId = e.currentTarget.getAttribute("data-id");
-    // Reutiliza a função global no escopo do window
+    // Chama a função global, que foi exposta em recrutamento.js
     window.abrirModalCandidato(candidatoId, "detalhes"); 
    });
   });
