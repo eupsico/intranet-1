@@ -746,7 +746,7 @@ async function abrirModalCandidato(candidatoId, modo) {
         <div class="row detalhes-candidato-modal">
             <div class="col-md-6">
                 <h5>Informações Pessoais</h5>
-                <p><strong>Email:</strong> ${candidato.email}</p>
+                <p><strong>Email:</strong> ${candidato.email_candidato}</p>
                 <p><strong>Telefone (WhatsApp):</strong> ${
                   candidato.telefone_contato || "N/A"
                 }</p>
