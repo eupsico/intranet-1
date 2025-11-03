@@ -920,7 +920,7 @@ async function abrirModalCandidato(candidatoId, modo, candidato) {
               <p><strong>Currículo:</strong> 
                   <a href="${
                     candidato.link_curriculo_drive || "#"
-                  }" target="_blank" class="action-button info ${
+                  }" target="_blank" class="action-button secondary ${ //troquei info por secondary
     !candidato.link_curriculo_drive ? "disabled" : ""
   }">
                       <i class="fas fa-file-pdf"></i> Ver Currículo
