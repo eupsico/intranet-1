@@ -347,10 +347,10 @@ async function renderizarCronograma() {
         <p><strong>Observações:</strong> ${dadosCronograma.detalhes_cronograma}</p>
       </div>
       
-      <button type="button" class="action-button secondary" 
+      <button type="button" class="action-button secondary hover" 
             onclick='window.abrirModalCronograma("${vagaSelecionadaId}", ${dadosCronogramaJson})'>
         <i class="fas fa-edit me-2"></i> Editar/Ajustar
-      </button>
+        </button>
       </div>
   `;
 }
