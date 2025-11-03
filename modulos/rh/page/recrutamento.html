@@ -149,7 +149,7 @@
    <div class="row">
         <div class="col-lg-6">
      <div class="card card-shadow mb-4">
-            <div class="card-header bg-card-header-eu">
+      <div class="card-header bg-card-header-eu">
        <h5 class="mb-0 text-white">
         Ficha de Candidatura - 
         <span id="candidato-modal-nome">Candidato(a)</span>
@@ -180,15 +180,7 @@
        <p id="modal-dado-habilidades" class="text-muted small">...</p>
 
        <hr />
-       <a
-        href="#"
-        id="modal-link-curriculo"
-        target="_blank"
-        class="action-button secondary"
-        disabled
-       >
-        <i class="fas fa-file-pdf me-2"></i> Ver Currículo
-       </a>
+       ****
       </div>
      </div>
     </div>
@@ -301,13 +293,21 @@
   </div>
   
   <div class="modal-footer">
-   <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-triagem">
+        <button 
+            type="button" 
+            class="action-button info me-auto" 
+            id="btn-ver-curriculo-triagem" 
+            disabled>
+     <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+   </button>
+           <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-triagem">
      <i class="fas fa-times me-2"></i> Fechar
    </button>
    <button type="submit" id="btn-finalizar-triagem-modal" class="action-button success">
      <i class="fas fa-check-circle me-2"></i> Registrar Decisão e Salvar
    </button>
   </div>
+
  </div>
 </div>
 <script type="module" src="../js/recrutamento.js"></script>
