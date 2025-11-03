@@ -1,7 +1,7 @@
 // modulos/rh/js/tabs/tabTriagem.js
 
 import { getGlobalState } from '../recrutamento.js';
-// 🔴 CORREÇÃO: Importa arrayUnion e serverTimestamp explicitamente do init, resolvendo ReferenceError
+// CORREÇÃO: Importa arrayUnion e serverTimestamp explicitamente do init, resolvendo ReferenceError
 import { updateDoc, doc, getDocs, query, where, arrayUnion, serverTimestamp } from "../../../../assets/js/firebase-init.js";
 
 // Elementos do Modal de Triagem (Obtidos globalmente para uso nas funções)
@@ -205,8 +205,10 @@ async function submeterAvaliacaoTriagem(e) {
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       triagem_rh: dadosAvaliacao,
+            // 🔴 CORREÇÃO CRÍTICA DO FIREBASE: Usa Date.now() ou toISOString() em arrayUnion
+            // para evitar o erro de serverTimestamp aninhado.
       historico: arrayUnion({
-        data: serverTimestamp(),
+        data: new Date().toISOString(), 
         acao: `Triagem ${decisao ? 'APROVADA' : 'REPROVADA'}. Status: ${novoStatusCandidato}`,
         usuario: currentUserData.id || "rh_system_user",
       }),
