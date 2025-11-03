@@ -10,7 +10,7 @@ import {
   where,
   getDoc,
   arrayUnion,
-  // Note: arrayRemove is imported in firebase-init but not needed here yet
+  serverTimestamp, // Adicionado para salvar a atualização
 } from "../../../assets/js/firebase-init.js";
 
 // Importa a função para upload de arquivos (a ser implementada ou referenciada)
@@ -42,6 +42,10 @@ const btnGerenciarConteudo = document.getElementById("btn-gestao-conteudo");
 const modalCandidato = document.getElementById("modal-candidato");
 const modalCandidatoBody = document.getElementById("candidato-modal-body");
 const modalCandidatoFooter = document.getElementById("candidato-modal-footer");
+
+// NOVOS: Elementos para o modal de Cronograma (que deve estar no recrutamento.html)
+const modalEdicaoCronograma = document.getElementById("modal-edicao-cronograma");
+const formEdicaoCronograma = document.getElementById("form-edicao-cronograma");
 
 let vagaSelecionadaId = null;
 let currentUserData = {};
@@ -174,6 +178,117 @@ async function carregarVagasAtivas() {
   }
 }
 
+// =====================================================================
+// INÍCIO: LÓGICA DO MODAL DE EDIÇÃO DE CRONOGRAMA
+// =====================================================================
+
+/**
+ * Abre o modal de edição e carrega os dados atuais da vaga.
+ * @param {string} vagaId O ID da vaga para carregar.
+ * @param {object} dadosAtuais Os dados atuais de cronograma e orçamento.
+ */
+window.abrirModalCronograma = function (vagaId, dadosAtuais) {
+    if (!modalEdicaoCronograma) {
+        if (window.showToast) {
+            window.showToast("Erro: O modal de edição (div#modal-edicao-cronograma) não foi encontrado na página. Por favor, adicione a estrutura HTML do modal ao seu recrutamento.html.", "error");
+        } else {
+            alert("Erro: Estrutura do Modal de Edição de Cronograma não encontrada.");
+        }
+        return;
+    }
+    
+    // 1. Preenche os campos do modal com os dados atuais (IDs devem ser os mesmos do HTML do modal)
+    document.getElementById("modal-data-inicio-recrutamento").value = dadosAtuais.data_inicio_recrutamento || '';
+    document.getElementById("modal-data-fechamento-recrutamento").value = dadosAtuais.data_fechamento_recrutamento || '';
+    document.getElementById("modal-data-contratacao-prevista").value = dadosAtuais.data_contratacao_prevista || '';
+    // Garante que o orçamento seja formatado como string, se existir
+    document.getElementById("modal-orcamento-previsto").value = dadosAtuais.orcamento_previsto ? dadosAtuais.orcamento_previsto.toFixed(2) : '';
+    document.getElementById("modal-fonte-orcamento").value = dadosAtuais.fonte_orcamento || '';
+    document.getElementById("modal-detalhes-cronograma").value = dadosAtuais.detalhes_cronograma || '';
+    
+    // 2. Armazena o ID atual para uso na função de salvar
+    modalEdicaoCronograma.dataset.vagaId = vagaId;
+    
+    // 3. Exibe o modal
+    modalEdicaoCronograma.classList.add("is-visible");
+}
+
+/**
+ * Fecha o modal de edição.
+ */
+function fecharModalCronograma() {
+    if (modalEdicaoCronograma) {
+        modalEdicaoCronograma.classList.remove("is-visible");
+    }
+}
+
+/**
+ * Função de salvamento para o modal (Ajustar).
+ */
+async function salvarAjustesCronograma(e) {
+    e.preventDefault();
+
+    const btnSalvarModal = document.getElementById("btn-salvar-modal-cronograma");
+    const vagaId = modalEdicaoCronograma.dataset.vagaId;
+    
+    if (!vagaId) {
+        alert("Erro: ID da vaga não encontrado.");
+        return;
+    }
+    
+    const dataInicio = document.getElementById("modal-data-inicio-recrutamento").value;
+    const dataFechamento = document.getElementById("modal-data-fechamento-recrutamento").value;
+
+    if (!dataInicio || !dataFechamento) {
+        alert("Por favor, preencha as datas de início e encerramento do recrutamento.");
+        return;
+    }
+
+    btnSalvarModal.disabled = true;
+    btnSalvarModal.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+
+    const dadosEdicao = {
+        data_inicio_recrutamento: dataInicio,
+        data_fechamento_recrutamento: dataFechamento,
+        data_contratacao_prevista: document.getElementById("modal-data-contratacao-prevista").value,
+        orcamento_previsto: parseFloat(document.getElementById("modal-orcamento-previsto").value || 0),
+        fonte_orcamento: document.getElementById("modal-fonte-orcamento").value,
+        detalhes_cronograma: document.getElementById("modal-detalhes-cronograma").value,
+        ultima_atualizacao_recrutamento: serverTimestamp(),
+    };
+
+    try {
+        const vagaRef = doc(vagasCollection, vagaId);
+        await updateDoc(vagaRef, dadosEdicao);
+
+        if (window.showToast) {
+            window.showToast("Cronograma e Orçamento ajustados com sucesso!", "success");
+        } else {
+            alert("Cronograma e Orçamento ajustados com sucesso!");
+        }
+
+        // Recarrega a aba Cronograma para atualizar os dados em tela sem sair da página.
+        await renderizarCronograma(); 
+        
+        fecharModalCronograma();
+
+    } catch (error) {
+        console.error("❌ Erro ao salvar ajustes:", error);
+        
+        if (window.showToast) {
+            window.showToast("Erro ao salvar os ajustes: " + error.message, "error");
+        } else {
+            alert("Erro ao salvar os ajustes. Detalhes: " + error.message);
+        }
+    } finally {
+        btnSalvarModal.disabled = false;
+        btnSalvarModal.innerHTML = '<i class="fas fa-save me-2"></i> Salvar Ajustes';
+    }
+}
+// =====================================================================
+// FIM: LÓGICA DO MODAL DE EDIÇÃO DE CRONOGRAMA
+// =====================================================================
+
 
 // =====================================================================
 // FUNÇÕES DE RENDERIZAÇÃO POR ABA
@@ -215,6 +330,10 @@ async function renderizarCronograma() {
   } catch (e) {
     console.error("Erro ao carregar cronograma da vaga:", e);
   }
+  
+  // Serializa o objeto dadosCronograma e escapa as aspas para usar no onclick
+  // Isso permite passar os dados diretamente para a função sem precisar de um novo fetch
+  const dadosCronogramaJson = JSON.stringify(dadosCronograma).replace(/"/g, '&quot;');
 
   conteudoRecrutamento.innerHTML = `
     <div class="painel-cronograma card card-shadow p-4">
@@ -228,10 +347,11 @@ async function renderizarCronograma() {
         <p><strong>Observações:</strong> ${dadosCronograma.detalhes_cronograma}</p>
       </div>
       
-      <button type="button" class="btn btn-primary" onclick="window.location.hash='rh/etapa_cronograma_orcamento?vaga=${vagaSelecionadaId}'">
-        <i class="fas fa-calendar-alt me-2"></i> Editar/Ajustar Cronograma e Orçamento
+      <button type="button" class="action-button secondary" 
+            onclick='window.abrirModalCronograma("${vagaSelecionadaId}", ${dadosCronogramaJson})'>
+        <i class="fas fa-edit me-2"></i> Editar/Ajustar
       </button>
-    </div>
+      </div>
   `;
 }
 
@@ -881,6 +1001,24 @@ export async function initRecrutamento(user, userData) {
         if (activeTab) handleTabClick({ currentTarget: activeTab });
       });
     });
+  }
+  
+  // 4. NOVO: Configurar eventos do Modal de Edição de Cronograma (agora no recrutamento.js)
+  if (formEdicaoCronograma) {
+      formEdicaoCronograma.addEventListener("submit", salvarAjustesCronograma);
+  }
+  
+  if (modalEdicaoCronograma) {
+      // Listeners para fechar o modal (botão X e botão Cancelar)
+      document.querySelectorAll("[data-modal-id='modal-edicao-cronograma']").forEach((btn) => {
+          btn.addEventListener("click", fecharModalCronograma);
+      });
+      // Fechar o modal clicando no overlay
+      modalEdicaoCronograma.addEventListener('click', (e) => {
+        if (e.target === modalEdicaoCronograma) {
+          fecharModalCronograma();
+        }
+      });
   }
 }
 
