@@ -339,4 +339,36 @@
         }
     };
 </script>
+<script>
+    // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
+    // Ela deve ser definida no escopo global (window) para ser acessível pelos módulos JavaScript.
+    window.toggleMotivoAprovacaoRejeicao = () => {
+        const radioSim = document.getElementById("modal-apto-sim");
+        const radioNao = document.getElementById("modal-apto-nao");
+        
+        const motivoContainer = document.getElementById("modal-motivo-rejeicao-container");
+        const motivoTextarea = document.getElementById("modal-motivo-rejeicao");
+        const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+        
+        // Retorna se os elementos cruciais não estiverem carregados
+        if (!motivoContainer || !aprovacaoContainer || !radioSim || !radioNao) return;
+
+        if (radioNao.checked) {
+            // Reprovação: Mostra Motivo e torna obrigatório
+            motivoContainer.style.display = "block";
+            motivoTextarea.required = true;
+            aprovacaoContainer.style.display = "none";
+        } else if (radioSim.checked) {
+            // Aprovação: Mostra Informações Adicionais
+            motivoContainer.style.display = "none";
+            motivoTextarea.required = false;
+            aprovacaoContainer.style.display = "block";
+        } else {
+            // Nenhum selecionado: Oculta ambos
+            motivoContainer.style.display = "none";
+            motivoTextarea.required = false;
+            aprovacaoContainer.style.display = "none";
+        }
+    };
+</script>
 <script type="module" src="../js/recrutamento.js"></script>
