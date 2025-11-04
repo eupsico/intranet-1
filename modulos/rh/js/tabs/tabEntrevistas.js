@@ -1,7 +1,7 @@
 // modulos/rh/js/tabs/tabEntrevistas.js
 
 import { getGlobalState } from "../recrutamento.js";
-// CORREÇÃO DE CAMINHO: Ajustado para 4 níveis (../../../../) para alcançar a pasta assets/
+// CORREÇÃO: Caminho do firebase-init ajustado para 4 níveis (../../../../)
 import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
 import {
   arrayUnion,
@@ -153,7 +153,7 @@ export async function renderizarEntrevistas(state) {
             .replace(/&#39;/g, "'")
         );
 
-        // 🔴 CORREÇÃO: Chama a nova função de modal
+        // 🔴 CORREÇÃO 2: Chama a nova função de modal
         window.abrirModalEntrevistaRH(candidatoId, dados);
       });
     });
@@ -174,29 +174,34 @@ window.abrirModalEntrevistaRH = function (candidatoId, dadosCandidato) {
 
   // 1. Preencher a Ficha e Notas Rápidas
   const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
-  const resumoTriagem = dadosCandidato.triagem_rh?.comentarios_gerais || "N/A";
+  // Tenta obter o motivo de reprovação (novo) ou o comentário geral (antigo)
+  const resumoTriagem =
+    dadosCandidato.triagem_rh?.motivo_rejeicao ||
+    dadosCandidato.triagem_rh?.comentarios_gerais ||
+    "N/A";
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const linkCurriculo = dadosCandidato.link_curriculo_drive || "#";
 
-  document.getElementById("entrevista-rh-nome-candidato").textContent =
-    nomeCompleto;
-
-  // 🔴 CORREÇÃO 3: Injetar Status Atual e Resumo da Triagem
-  document.getElementById("entrevista-rh-status-atual").textContent =
-    statusAtual;
-  document.getElementById("entrevista-rh-resumo-triagem").textContent =
-    resumoTriagem;
-
+  // 🔴 CORREÇÃO 3: Adicionar checagem de null em todos os elementos para evitar falha silenciosa
+  const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
+  const statusEl = document.getElementById("entrevista-rh-status-atual");
+  const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );
+
+  if (nomeEl) nomeEl.textContent = nomeCompleto;
+  if (statusEl) statusEl.textContent = statusAtual;
+  if (resumoEl) resumoEl.textContent = resumoTriagem;
+
   if (btnVerCurriculo) {
     btnVerCurriculo.href = linkCurriculo;
     btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
   }
 
   // 2. Limpar/Resetar Formulário e Pré-preencher agendamento
-  document.getElementById("form-avaliacao-entrevista-rh").reset();
+  const form = document.getElementById("form-avaliacao-entrevista-rh");
+  if (form) form.reset();
 
   // 3. Exibir o Modal
   modalEntrevistaRH.classList.add("is-visible");
