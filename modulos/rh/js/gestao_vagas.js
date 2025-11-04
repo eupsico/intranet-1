@@ -44,7 +44,7 @@ const STATUS_TAB_MAP = {
     "Arte em Criação",
   ],
   "aprovacao-arte": ["Arte Criada (Aguardando Aprovação)"],
-  "em-divulgacao": ["Arte Aprovada (Em Divulgação)"],
+  "em-divulgacao": ["em-divulgacao"], // ✅ MUDE PARA ISSO
   fechadas: ["Vaga Encerrada", "Vaga Cancelada"],
 };
 
@@ -1026,7 +1026,7 @@ async function aprovarArte(vagaId) {
   try {
     const vagaRef = doc(vagasCollection, vagaId);
     await updateDoc(vagaRef, {
-      status: "Arte Aprovada (Em Divulgação)",
+      status: "em-divulgacao",
       data_atualizacao: new Date(),
       historico: arrayUnion({
         data: new Date(),
