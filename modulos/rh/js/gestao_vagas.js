@@ -614,6 +614,256 @@ async function solicitarCorrecaoFicha(vagaId) {
     window.showToast?.(`Erro: ${error.message}`, "error");
   }
 }
+
+// ============================================
+// OPERAÇÕES DE ARTE
+// ============================================
+
+async function abrirModalCriacaoArte(vagaId) {
+  console.log(`🔹 Abrindo modal de criação de arte: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+    vagaAtualId = vagaId;
+
+    document.getElementById("vaga-id-arte-criacao").value = vagaId;
+    document.getElementById("vaga-resumo-arte").value = vaga.resumo || "";
+    document.getElementById("vaga-link-arte").value = "";
+    document.getElementById("vaga-texto-divulgacao").value = "";
+
+    abrirModal(ID_MODAL_CRIACAO_ARTE);
+    console.log("✅ Modal de criação de arte aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function handleEnviarAprovacaoArte(e) {
+  e.preventDefault();
+
+  const vagaId = document.getElementById("vaga-id-arte-criacao").value;
+  const linkArte = document.getElementById("vaga-link-arte").value.trim();
+  const textoDiv = document
+    .getElementById("vaga-texto-divulgacao")
+    .value.trim();
+
+  if (!linkArte || !textoDiv) {
+    window.showToast?.(
+      "Por favor, preencha o link da arte e o texto de divulgação.",
+      "error"
+    );
+    return;
+  }
+
+  console.log(`🔹 Enviando arte para aprovação: ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-enviar-aprovacao-arte");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Arte Criada (Aguardando Aprovação)",
+      arte_link: linkArte,
+      texto_divulgacao: textoDiv,
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Arte enviada para aprovação",
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.("Arte enviada para aprovação!", "success");
+    fecharModal(ID_MODAL_CRIACAO_ARTE);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Arte enviada");
+  } catch (error) {
+    console.error("❌ Erro ao enviar arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i> Enviar para Aprovação';
+    }
+  }
+}
+
+async function visualizarArte(vagaId) {
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) return;
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-arte-aprovacao").value = vagaId;
+    document.getElementById("aprovacao-salario").textContent =
+      vaga.valor_salario || "A combinar";
+    document.getElementById("aprovacao-regime").textContent = capitalize(
+      vaga.regime_trabalho || ""
+    );
+    document.getElementById("aprovacao-modalidade").textContent = capitalize(
+      vaga.modalidade_trabalho || ""
+    );
+    document.getElementById("link-arte-clicavel").href = vaga.arte_link || "#";
+    document.getElementById("aprovacao-texto-divulgacao-visual").textContent =
+      vaga.texto_divulgacao || "N/A";
+
+    abrirModal(ID_MODAL_APROVACAO_ARTE);
+  } catch (error) {
+    console.error("❌ Erro ao visualizar arte:", error);
+  }
+}
+
+async function aprovarArte(vagaId) {
+  console.log(`🔹 Aprovando arte: ${vagaId}`);
+
+  const confirmacao = confirm("Deseja APROVAR a arte de divulgação?");
+  if (!confirmacao) return;
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Arte Aprovada (Em Divulgação)",
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Arte aprovada",
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.(
+      "Arte aprovada! Vaga pronta para divulgação.",
+      "success"
+    );
+    fecharModal(ID_MODAL_APROVACAO_ARTE);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Arte aprovada");
+  } catch (error) {
+    console.error("❌ Erro ao aprovar arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function solicitarCorrecaoArte(vagaId) {
+  console.log(`🔹 Abrindo modal de correção para arte: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-correcao").value = vagaId;
+    document.getElementById("tipo-correcao").value = "arte";
+    document.getElementById(
+      "modal-correcao-title"
+    ).textContent = `Solicitar Correção na Arte - ${vaga.nome || "Vaga"}`;
+    document.getElementById("motivo-correcao").value = "";
+
+    abrirModal(ID_MODAL_CORRECAO);
+    console.log("✅ Modal de correção de arte aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de correção:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function handleSolicitarCorrecao(e) {
+  e.preventDefault();
+
+  const vagaId = document.getElementById("vaga-id-correcao").value;
+  const tipo = document.getElementById("tipo-correcao").value;
+  const motivo = document.getElementById("motivo-correcao").value.trim();
+
+  if (!motivo) {
+    window.showToast?.("Por favor, descreva o motivo da correção.", "error");
+    return;
+  }
+
+  console.log(`🔹 Enviando solicitação de correção (${tipo}): ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-confirmar-correcao");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+
+    let updateData = {};
+    let mensagemSucesso = "";
+
+    if (tipo === "ficha") {
+      updateData = {
+        status: "Em Correção (Ficha Técnica)",
+        feedback_correcao: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Ficha Técnica solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Ficha Técnica enviada!";
+    } else if (tipo === "arte") {
+      updateData = {
+        status: "Em Correção (Arte)",
+        feedback_arte: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Arte solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Arte enviada!";
+    }
+
+    await updateDoc(vagaRef, updateData);
+
+    window.showToast?.(mensagemSucesso, "success");
+    fecharModal(ID_MODAL_CORRECAO);
+    fecharModal(ID_MODAL_APROVACAO_ARTE);
+
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Correção solicitada com sucesso");
+  } catch (error) {
+    console.error("❌ Erro ao solicitar correção:", error);
+    window.showToast?.(`Erro ao enviar solicitação: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i> Enviar Solicitação';
+    }
+  }
+}
+
 // ============================================
 // DIVULGAÇÃO E ENCERRAMENTO
 // ============================================
