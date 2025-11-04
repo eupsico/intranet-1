@@ -203,19 +203,35 @@ function configurarFechamentoModais() {
 /**
  * Carrega departamentos do Firestore
  */
+/**
+ * Carrega departamentos do Firestore
+ * Caminho: configuracoesSistema/geral/listas.departamentos
+ */
 async function carregarDepartamentos() {
   const selectDepartamento = document.getElementById("vaga-departamento");
   if (!selectDepartamento) return;
 
+  console.log("🔹 Carregando departamentos...");
+
   try {
-    const configDoc = await getDoc(
-      doc(configCollection, "departamentos_config")
-    );
+    // ✅ CAMINHO CORRETO: configuracoesSistema -> geral
+    const geralDocRef = doc(configCollection, "geral");
+    const geralSnap = await getDoc(geralDocRef);
 
-    if (configDoc.exists()) {
-      const data = configDoc.data();
-      const departamentos = data.lista || [];
+    if (geralSnap.exists()) {
+      const data = geralSnap.data();
 
+      // ✅ Acessa: listas (map) -> departamentos (array)
+      const departamentos = data.listas?.departamentos || [];
+
+      if (departamentos.length === 0) {
+        selectDepartamento.innerHTML =
+          '<option value="">Nenhum departamento cadastrado</option>';
+        console.warn("⚠️ Array de departamentos está vazio");
+        return;
+      }
+
+      // Limpa e preenche o select
       selectDepartamento.innerHTML =
         '<option value="">Selecione o Departamento</option>';
 
@@ -226,16 +242,26 @@ async function carregarDepartamentos() {
         selectDepartamento.appendChild(option);
       });
 
-      console.log("✅ Departamentos carregados:", departamentos.length);
+      console.log(
+        `✅ ${departamentos.length} departamento(s) carregado(s):`,
+        departamentos
+      );
     } else {
       selectDepartamento.innerHTML =
-        '<option value="">Nenhum departamento cadastrado</option>';
-      console.warn("⚠️ Documento de departamentos não encontrado");
+        '<option value="">Documento "geral" não encontrado</option>';
+      console.error("❌ Documento configuracoesSistema/geral não encontrado");
     }
   } catch (error) {
     console.error("❌ Erro ao carregar departamentos:", error);
     selectDepartamento.innerHTML =
       '<option value="">Erro ao carregar departamentos</option>';
+
+    // Log detalhado do erro
+    if (error.code === "permission-denied") {
+      console.error("⚠️ Permissão negada. Verifique as regras do Firestore.");
+    } else if (error.code === "not-found") {
+      console.error("⚠️ Documento não encontrado.");
+    }
   }
 }
 
