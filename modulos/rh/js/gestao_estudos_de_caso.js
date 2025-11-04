@@ -375,6 +375,10 @@ function fecharModalGerarLink() {
 // INICIALIZAÇÃO
 // ============================================
 
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
 export async function initGestaoEstudos(user, userData) {
   console.log("🔹 Estudos de Caso: Iniciando módulo");
 
@@ -411,11 +415,19 @@ export async function initGestaoEstudos(user, userData) {
     });
   }
 
-  // Garantir que a primeira pergunta exista
-  if (listaPerguntas && listaPerguntas.children.length === 0) {
-    adicionarCampoPergunta();
-    listaPerguntas.querySelector(".btn-remover-pergunta")?.remove();
-    proximoIdPergunta = 2;
+  // ✅ CORRIGIDO: Inicializar perguntas corretamente
+  if (listaPerguntas) {
+    if (listaPerguntas.children.length === 0) {
+      // Se não há perguntas, adiciona a primeira
+      proximoIdPergunta = 1; // ✅ Começa em 1
+      adicionarCampoPergunta(); // Isso criará a Pergunta 1
+
+      // Remove o botão de remoção da primeira pergunta
+      listaPerguntas.querySelector(".btn-remover-pergunta")?.remove();
+
+      proximoIdPergunta = 2; // ✅ Agora a próxima será 2
+      console.log("✅ Primeira pergunta adicionada");
+    }
   }
 
   console.log("✅ Estudos de Caso: Módulo inicializado com sucesso");
