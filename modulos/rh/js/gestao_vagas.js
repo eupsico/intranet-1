@@ -28,7 +28,6 @@ import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 const VAGAS_COLLECTION_NAME = "vagas";
 const CONFIG_COLLECTION_NAME = "configuracoesSistema";
 
-// IDs dos modais
 const ID_MODAL_FICHA_TECNICA = "modal-vaga";
 const ID_MODAL_CRIACAO_ARTE = "modal-criacao-arte";
 const ID_MODAL_APROVACAO_ARTE = "modal-aprovacao-arte";
@@ -36,7 +35,6 @@ const ID_MODAL_DIVULGACAO = "modal-divulgacao";
 const ID_MODAL_FECHADAS = "modal-fechadas";
 const ID_MODAL_CORRECAO = "modal-solicitar-correcao";
 
-// Mapeamento de status para abas
 const STATUS_TAB_MAP = {
   abertas: ["Em Elaboração (Ficha Técnica)"],
   correcao: ["Em Correção (Ficha Técnica)", "Em Correção (Arte)"],
@@ -64,9 +62,6 @@ let statusAbaAtiva = "abertas";
 // FUNÇÕES DE UTILIDADE
 // ============================================
 
-/**
- * Exibe/oculta o loading spinner global
- */
 function showGlobalLoading(show = true) {
   const spinner = document.getElementById("global-loading-spinner");
   if (spinner) {
@@ -74,9 +69,6 @@ function showGlobalLoading(show = true) {
   }
 }
 
-/**
- * Formata data para exibição
- */
 function formatarData(data) {
   if (!data) return "Não definida";
   if (typeof data === "string") {
@@ -89,17 +81,11 @@ function formatarData(data) {
   return data.toLocaleDateString("pt-BR");
 }
 
-/**
- * Capitaliza primeira letra
- */
 function capitalize(str) {
   if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/**
- * Valida campos obrigatórios do formulário
- */
 function validarFormularioVaga() {
   const camposObrigatorios = [
     { id: "vaga-nome", label: "Título da Vaga" },
@@ -121,9 +107,6 @@ function validarFormularioVaga() {
   return true;
 }
 
-/**
- * Limpa o formulário de vaga
- */
 function limparFormularioVaga() {
   const form = document.getElementById("form-vaga");
   if (form) {
@@ -132,9 +115,6 @@ function limparFormularioVaga() {
   }
 }
 
-/**
- * Mostra indicador visual de auto-save
- */
 function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
   let indicador = document.getElementById("autosave-indicator");
 
@@ -179,9 +159,6 @@ function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
 // AUTO-SAVE
 // ============================================
 
-/**
- * Configura auto-save nos campos do formulário de vaga
- */
 function configurarAutoSave() {
   const form = document.getElementById("form-vaga");
   if (!form) return;
@@ -207,9 +184,6 @@ function configurarAutoSave() {
   console.log("✅ Auto-save configurado");
 }
 
-/**
- * Salva automaticamente as alterações da vaga
- */
 async function salvarAutoSave() {
   if (!vagaAtualId) return;
 
@@ -274,13 +248,9 @@ function configurarFechamentoModais() {
 }
 
 // ============================================
-// CARREGAMENTO DE DADOS
+// CARREGAMENTO DE DEPARTAMENTOS
 // ============================================
 
-/**
- * Carrega departamentos do Firestore
- * Estrutura: configuracoesSistema/geral/listas/departamentos
- */
 async function carregarDepartamentos() {
   const selectDepartamento = document.getElementById("vaga-departamento");
   if (!selectDepartamento) {
@@ -301,9 +271,7 @@ async function carregarDepartamentos() {
       if (departamentos.length === 0) {
         selectDepartamento.innerHTML =
           '<option value="">Nenhum departamento cadastrado</option>';
-        console.warn(
-          "⚠️ Array de departamentos está vazio em listas.departamentos"
-        );
+        console.warn("⚠️ Array de departamentos está vazio");
         return;
       }
 
@@ -320,10 +288,8 @@ async function carregarDepartamentos() {
       console.log(`✅ ${departamentos.length} departamento(s) carregado(s)`);
     } else {
       selectDepartamento.innerHTML =
-        '<option value="">Documento "geral" não encontrado</option>';
-      console.error(
-        "❌ Documento configuracoesSistema/geral não existe no Firestore"
-      );
+        '<option value="">Documento não encontrado</option>';
+      console.error("❌ Documento configuracoesSistema/geral não existe");
     }
   } catch (error) {
     console.error("❌ Erro ao carregar departamentos:", error);
@@ -332,8 +298,359 @@ async function carregarDepartamentos() {
   }
 }
 // ============================================
+// CARREGAMENTO DE VAGAS
+// ============================================
+
+async function carregarVagas(statusAba) {
+  console.log(`🔹 Carregando vagas para aba: ${statusAba}`);
+
+  const listaVagas = document.getElementById("lista-vagas");
+
+  showGlobalLoading(true);
+
+  try {
+    const statusFiltro = STATUS_TAB_MAP[statusAba] || [];
+
+    if (statusFiltro.length === 0) {
+      listaVagas.innerHTML =
+        '<p class="alert alert-warning">Status de aba inválido.</p>';
+      showGlobalLoading(false);
+      return;
+    }
+
+    const q = query(vagasCollection, where("status", "in", statusFiltro));
+
+    const snapshot = await getDocs(q);
+
+    // Atualiza contador na aba
+    const tab = document.querySelector(`[data-status="${statusAba}"]`);
+    if (tab) {
+      const icone = tab.querySelector("i")?.outerHTML || "";
+      const textoAba = tab.textContent.split("(")[0].trim();
+      tab.innerHTML = `${icone} ${textoAba} (${snapshot.size})`;
+    }
+
+    if (snapshot.empty) {
+      listaVagas.innerHTML =
+        '<p class="alert alert-info">Nenhuma vaga encontrada para este status.</p>';
+      showGlobalLoading(false);
+      return;
+    }
+
+    let htmlVagas = '<div class="list-vagas-grid">';
+
+    snapshot.forEach((docSnap) => {
+      const vaga = docSnap.data();
+      const vagaId = docSnap.id;
+      htmlVagas += renderizarCardVaga(vagaId, vaga, statusAba);
+    });
+
+    htmlVagas += "</div>";
+    listaVagas.innerHTML = htmlVagas;
+
+    anexarListenersVagas(statusAba);
+
+    console.log(`✅ ${snapshot.size} vaga(s) carregada(s)`);
+  } catch (error) {
+    console.error("❌ Erro ao carregar vagas:", error);
+    listaVagas.innerHTML = `<p class="alert alert-error">Erro ao carregar vagas: ${error.message}</p>`;
+  } finally {
+    showGlobalLoading(false);
+  }
+}
+
+// ============================================
+// RENDERIZAÇÃO DE CARDS
+// ============================================
+
+function renderizarCardVaga(vagaId, vaga, statusAba) {
+  const status = vaga.status || "N/A";
+  const dataCriacao = vaga.data_criacao
+    ? formatarData(vaga.data_criacao.toDate?.() || vaga.data_criacao)
+    : "N/A";
+
+  let corStatus = "info";
+  if (status.includes("Aprovada")) corStatus = "success";
+  else if (status.includes("Correção")) corStatus = "warning";
+  else if (status.includes("Cancelada")) corStatus = "error";
+
+  let botoesAcao = "";
+  let infoExtra = "";
+
+  // ✅ TRATAMENTO ESPECIAL PARA ABA DE CORREÇÃO
+  if (statusAba === "correcao") {
+    const tipoCorrecao = status.includes("Ficha")
+      ? "Ficha Técnica"
+      : "Arte de Divulgação";
+    const feedback = status.includes("Ficha")
+      ? vaga.feedback_correcao
+      : vaga.feedback_arte;
+
+    infoExtra = `
+      <div class="feedback-banner alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <strong>Tipo:</strong> ${tipoCorrecao}<br>
+          <strong>Solicitação:</strong> ${feedback || "Sem detalhes"}
+        </div>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Corrigir
+      </button>
+    `;
+  } else if (statusAba === "abertas") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+        <p><strong>Criada em:</strong> ${dataCriacao}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Editar
+      </button>
+      <button class="action-button success btn-enviar-aprovacao" data-id="${vagaId}">
+        <i class="fas fa-paper-plane me-1"></i> Enviar p/ Aprovação
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-gestao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-vaga" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar
+      </button>
+      <button class="action-button success btn-aprovar-ficha" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-ficha" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "arte-pendente") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-criar-arte" data-id="${vagaId}">
+        <i class="fas fa-palette me-1"></i> Criar Arte
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-arte") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-arte" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar Arte
+      </button>
+      <button class="action-button success btn-aprovar-arte" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar Arte
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-arte" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "em-divulgacao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-gerenciar-divulgacao" data-id="${vagaId}">
+        <i class="fas fa-bullhorn me-1"></i> Gerenciar Divulgação
+      </button>
+    `;
+  } else if (statusAba === "fechadas") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-fechada" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Ver Detalhes
+      </button>
+      <button class="action-button secondary btn-reaproveitar" data-id="${vagaId}">
+        <i class="fas fa-copy me-1"></i> Reaproveitar
+      </button>
+    `;
+  }
+
+  return `
+    <div class="card-vaga-gestao" data-id="${vagaId}">
+      <div class="vaga-header">
+        <h4>${vaga.nome || "Vaga Sem Nome"}</h4>
+        <span class="status-badge status-${corStatus}">${status}</span>
+      </div>
+      
+      ${infoExtra}
+      
+      <div class="vaga-acoes">
+        ${botoesAcao}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// ANEXAÇÃO DE LISTENERS
+// ============================================
+
+function anexarListenersVagas(statusAba) {
+  console.log(`🔹 Anexando listeners para aba: ${statusAba}`);
+
+  document.querySelectorAll(".btn-editar-vaga").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalEdicaoVaga(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-enviar-aprovacao").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await enviarParaAprovacao(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-vaga").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarVaga(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-aprovar-ficha").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await aprovarFichaTecnica(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-solicitar-correcao-ficha").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await solicitarCorrecaoFicha(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-criar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalCriacaoArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-aprovar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await aprovarArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-solicitar-correcao-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await solicitarCorrecaoArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-gerenciar-divulgacao").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalDivulgacao(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-fechada").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarVagaFechada(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-reaproveitar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await reaproveitarVaga(vagaId);
+    });
+  });
+
+  console.log(`✅ Listeners anexados para aba: ${statusAba}`);
+}
+// ============================================
 // OPERAÇÕES DE VAGA
 // ============================================
+
+function coletarDadosFormularioVaga() {
+  return {
+    nome: document.getElementById("vaga-nome").value.trim(),
+    departamento: document.getElementById("vaga-departamento").value,
+    tipo_recrutamento: document.getElementById("vaga-tipo-recrutamento").value,
+    regime_trabalho: document.getElementById("vaga-regime-trabalho").value,
+    modalidade_trabalho: document.getElementById("vaga-modalidade-trabalho")
+      .value,
+    responsabilidades: document
+      .getElementById("vaga-responsabilidades")
+      .value.trim(),
+    resultados: document.getElementById("vaga-resultados").value.trim(),
+    nova_substituicao: document
+      .getElementById("vaga-nova-substituicao")
+      .value.trim(),
+    valor_salario: document.getElementById("vaga-valor-salario").value.trim(),
+    data_fechamento: document.getElementById("vaga-data-fechamento").value,
+    formacao_minima: document
+      .getElementById("vaga-formacao-minima")
+      .value.trim(),
+    conselho: document.getElementById("vaga-conselho").value.trim(),
+    especializacoes: document
+      .getElementById("vaga-especializacoes")
+      .value.trim(),
+    comp_tecnicas: document.getElementById("vaga-comp-tecnicas").value.trim(),
+    comp_comportamentais: document
+      .getElementById("vaga-comp-comportamentais")
+      .value.trim(),
+    certificacoes: document.getElementById("vaga-certificacoes").value.trim(),
+    nivel_experiencia: document.getElementById("vaga-nivel-experiencia").value,
+    contextos_similares: document
+      .getElementById("vaga-contextos-similares")
+      .value.trim(),
+    atuacao_grupos: document.getElementById("vaga-atuacao-grupos").value.trim(),
+    fit_valores: document.getElementById("vaga-fit-valores").value.trim(),
+    estilo_equipe: document.getElementById("vaga-estilo-equipe").value.trim(),
+    perfil_destaque: document
+      .getElementById("vaga-perfil-destaque")
+      .value.trim(),
+    oportunidades: document.getElementById("vaga-oportunidades").value.trim(),
+    desafios: document.getElementById("vaga-desafios").value.trim(),
+    plano_carreira: document.getElementById("vaga-plano-carreira").value.trim(),
+  };
+}
 
 async function abrirModalEdicaoVaga(vagaId) {
   console.log(`🔹 Abrindo modal de edição para vaga: ${vagaId}`);
@@ -457,8 +774,11 @@ async function handleSalvarVaga(e) {
       };
 
       const docRef = await addDoc(vagasCollection, novaVaga);
-      vagaAtualId = docRef.id; // ✅ Define o ID para ativar auto-save
-      window.showToast?.("Vaga criada com sucesso!", "success");
+      vagaAtualId = docRef.id;
+      window.showToast?.(
+        "Vaga criada com sucesso! Auto-save ativado.",
+        "success"
+      );
       console.log("✅ Nova vaga criada:", docRef.id);
     }
 
@@ -480,51 +800,6 @@ async function handleSalvarVaga(e) {
         '<i class="fas fa-save me-2"></i> Salvar e Próxima Etapa';
     }
   }
-}
-
-function coletarDadosFormularioVaga() {
-  return {
-    nome: document.getElementById("vaga-nome").value.trim(),
-    departamento: document.getElementById("vaga-departamento").value,
-    tipo_recrutamento: document.getElementById("vaga-tipo-recrutamento").value,
-    regime_trabalho: document.getElementById("vaga-regime-trabalho").value,
-    modalidade_trabalho: document.getElementById("vaga-modalidade-trabalho")
-      .value,
-    responsabilidades: document
-      .getElementById("vaga-responsabilidades")
-      .value.trim(),
-    resultados: document.getElementById("vaga-resultados").value.trim(),
-    nova_substituicao: document
-      .getElementById("vaga-nova-substituicao")
-      .value.trim(),
-    valor_salario: document.getElementById("vaga-valor-salario").value.trim(),
-    data_fechamento: document.getElementById("vaga-data-fechamento").value,
-    formacao_minima: document
-      .getElementById("vaga-formacao-minima")
-      .value.trim(),
-    conselho: document.getElementById("vaga-conselho").value.trim(),
-    especializacoes: document
-      .getElementById("vaga-especializacoes")
-      .value.trim(),
-    comp_tecnicas: document.getElementById("vaga-comp-tecnicas").value.trim(),
-    comp_comportamentais: document
-      .getElementById("vaga-comp-comportamentais")
-      .value.trim(),
-    certificacoes: document.getElementById("vaga-certificacoes").value.trim(),
-    nivel_experiencia: document.getElementById("vaga-nivel-experiencia").value,
-    contextos_similares: document
-      .getElementById("vaga-contextos-similares")
-      .value.trim(),
-    atuacao_grupos: document.getElementById("vaga-atuacao-grupos").value.trim(),
-    fit_valores: document.getElementById("vaga-fit-valores").value.trim(),
-    estilo_equipe: document.getElementById("vaga-estilo-equipe").value.trim(),
-    perfil_destaque: document
-      .getElementById("vaga-perfil-destaque")
-      .value.trim(),
-    oportunidades: document.getElementById("vaga-oportunidades").value.trim(),
-    desafios: document.getElementById("vaga-desafios").value.trim(),
-    plano_carreira: document.getElementById("vaga-plano-carreira").value.trim(),
-  };
 }
 
 async function enviarParaAprovacao(vagaId) {
@@ -615,6 +890,16 @@ async function solicitarCorrecaoFicha(vagaId) {
   }
 }
 
+async function visualizarVaga(vagaId) {
+  await abrirModalEdicaoVaga(vagaId);
+  document
+    .querySelectorAll(
+      "#form-vaga input, #form-vaga textarea, #form-vaga select"
+    )
+    .forEach((input) => {
+      input.disabled = true;
+    });
+}
 // ============================================
 // OPERAÇÕES DE ARTE
 // ============================================
@@ -632,7 +917,6 @@ async function abrirModalCriacaoArte(vagaId) {
     }
 
     const vaga = vagaSnap.data();
-    vagaAtualId = vagaId;
 
     document.getElementById("vaga-id-arte-criacao").value = vagaId;
     document.getElementById("vaga-resumo-arte").value = vaga.resumo || "";
@@ -648,7 +932,9 @@ async function abrirModalCriacaoArte(vagaId) {
 }
 
 async function handleEnviarAprovacaoArte(e) {
-  e.preventDefault();
+  if (e && e.preventDefault) {
+    e.preventDefault();
+  }
 
   const vagaId = document.getElementById("vaga-id-arte-criacao").value;
   const linkArte = document.getElementById("vaga-link-arte").value.trim();
@@ -863,7 +1149,6 @@ async function handleSolicitarCorrecao(e) {
     }
   }
 }
-
 // ============================================
 // DIVULGAÇÃO E ENCERRAMENTO
 // ============================================
@@ -994,17 +1279,6 @@ async function handleEncerrarVaga() {
 // VISUALIZAÇÃO E REAPROVEITAMENTO
 // ============================================
 
-async function visualizarVaga(vagaId) {
-  await abrirModalEdicaoVaga(vagaId);
-  document
-    .querySelectorAll(
-      "#form-vaga input, #form-vaga textarea, #form-vaga select"
-    )
-    .forEach((input) => {
-      input.disabled = true;
-    });
-}
-
 async function visualizarVagaFechada(vagaId) {
   console.log(`🔹 Visualizando vaga fechada: ${vagaId}`);
 
@@ -1043,12 +1317,12 @@ async function visualizarVagaFechada(vagaId) {
 
     const historico = vaga.historico || [];
     const historicoHtml = historico
-      .map(
-        (item) =>
-          `<p>${formatarData(item.data.toDate?.() || item.data)} - ${
-            item.acao
-          } (${item.usuario})</p>`
-      )
+      .map((item) => {
+        const dataFormatada = item.data?.toDate
+          ? formatarData(item.data.toDate())
+          : formatarData(item.data);
+        return `<p>${dataFormatada} - ${item.acao} (${item.usuario})</p>`;
+      })
       .join("");
 
     document.getElementById("visualizacao-historico").innerHTML =
@@ -1089,6 +1363,8 @@ async function reaproveitarVaga(vagaId) {
     delete novaVaga.data_criacao;
     delete novaVaga.data_atualizacao;
     delete novaVaga.historico;
+    delete novaVaga.feedback_correcao;
+    delete novaVaga.feedback_arte;
 
     novaVaga.status = "Em Elaboração (Ficha Técnica)";
     novaVaga.data_criacao = new Date();
@@ -1132,9 +1408,8 @@ function configurarAbas() {
     });
   });
 }
-
 // ============================================
-// INICIALIZAÇÃO COMPLETA
+// INICIALIZAÇÃO COMPLETA DO MÓDULO
 // ============================================
 
 export async function initGestaoVagas(user, userData) {
@@ -1144,26 +1419,42 @@ export async function initGestaoVagas(user, userData) {
   vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
   configCollection = collection(db, CONFIG_COLLECTION_NAME);
 
+  console.log("✅ Coleções inicializadas");
+
+  // Carrega departamentos
   await carregarDepartamentos();
 
+  // Configura sistema de abas
   configurarAbas();
+
+  // Configura fechamento de modais
   configurarFechamentoModais();
+
+  // Configura auto-save
   configurarAutoSave();
 
-  // Formulários
+  console.log("✅ Configurações básicas concluídas");
+
+  // ============================================
+  // LISTENERS DE FORMULÁRIOS
+  // ============================================
+
   const formVaga = document.getElementById("form-vaga");
   if (formVaga) {
     formVaga.addEventListener("submit", handleSalvarVaga);
+    console.log("✅ Listener: form-vaga");
   }
 
   const formCriacaoArte = document.getElementById("form-criacao-arte");
   if (formCriacaoArte) {
     formCriacaoArte.addEventListener("submit", handleEnviarAprovacaoArte);
+    console.log("✅ Listener: form-criacao-arte");
   }
 
   const formDivulgacao = document.getElementById("form-divulgacao");
   if (formDivulgacao) {
     formDivulgacao.addEventListener("submit", handleSalvarDivulgacao);
+    console.log("✅ Listener: form-divulgacao");
   }
 
   const formSolicitarCorrecao = document.getElementById(
@@ -1171,9 +1462,13 @@ export async function initGestaoVagas(user, userData) {
   );
   if (formSolicitarCorrecao) {
     formSolicitarCorrecao.addEventListener("submit", handleSolicitarCorrecao);
+    console.log("✅ Listener: form-solicitar-correcao");
   }
 
-  // Botões principais
+  // ============================================
+  // LISTENERS DE BOTÕES PRINCIPAIS
+  // ============================================
+
   const btnNovaVaga = document.getElementById("btn-nova-vaga");
   if (btnNovaVaga) {
     btnNovaVaga.addEventListener("click", () => {
@@ -1182,13 +1477,17 @@ export async function initGestaoVagas(user, userData) {
       vagaAtualId = null;
       abrirModal(ID_MODAL_FICHA_TECNICA);
     });
+    console.log("✅ Listener: btn-nova-vaga");
   }
 
   const btnEnviarAprovacaoArte = document.getElementById(
     "btn-enviar-aprovacao-arte"
   );
   if (btnEnviarAprovacaoArte) {
-    btnEnviarAprovacaoArte.addEventListener("click", handleEnviarAprovacaoArte);
+    btnEnviarAprovacaoArte.addEventListener("click", (e) => {
+      handleEnviarAprovacaoArte(e);
+    });
+    console.log("✅ Listener: btn-enviar-aprovacao-arte");
   }
 
   const btnAprovarArteFinal = document.getElementById("btn-aprovar-arte-final");
@@ -1197,6 +1496,7 @@ export async function initGestaoVagas(user, userData) {
       const vagaId = document.getElementById("vaga-id-arte-aprovacao").value;
       await aprovarArte(vagaId);
     });
+    console.log("✅ Listener: btn-aprovar-arte-final");
   }
 
   const btnSolicitarAlteracoesArte = document.getElementById(
@@ -1208,6 +1508,7 @@ export async function initGestaoVagas(user, userData) {
       fecharModal(ID_MODAL_APROVACAO_ARTE);
       await solicitarCorrecaoArte(vagaId);
     });
+    console.log("✅ Listener: btn-solicitar-alteracoes-arte");
   }
 
   const btnSalvarDivulgacao = document.getElementById("btn-salvar-divulgacao");
@@ -1218,11 +1519,13 @@ export async function initGestaoVagas(user, userData) {
         form.dispatchEvent(new Event("submit", { cancelable: true }));
       }
     });
+    console.log("✅ Listener: btn-salvar-divulgacao");
   }
 
   const btnEncerrarVaga = document.getElementById("btn-encerrar-vaga");
   if (btnEncerrarVaga) {
     btnEncerrarVaga.addEventListener("click", handleEncerrarVaga);
+    console.log("✅ Listener: btn-encerrar-vaga");
   }
 
   const btnCancelarVagaFechada = document.getElementById(
@@ -1259,6 +1562,7 @@ export async function initGestaoVagas(user, userData) {
         window.showToast?.(`Erro ao cancelar vaga: ${error.message}`, "error");
       }
     });
+    console.log("✅ Listener: btn-cancelar-vaga-fechada");
   }
 
   const btnReaproveitarVaga = document.getElementById("btn-reaproveitar-vaga");
@@ -1267,12 +1571,18 @@ export async function initGestaoVagas(user, userData) {
       const vagaId = document.getElementById("vaga-id-fechadas").value;
       await reaproveitarVaga(vagaId);
     });
+    console.log("✅ Listener: btn-reaproveitar-vaga");
   }
 
-  // Carrega vagas iniciais
+  console.log("✅ Todos os listeners configurados");
+
+  // ============================================
+  // CARREGAMENTO INICIAL DE VAGAS
+  // ============================================
+
   try {
     await carregarVagas(statusAbaAtiva);
-    console.log("✅ Vagas iniciais carregadas");
+    console.log("✅ Vagas iniciais carregadas com sucesso");
   } catch (error) {
     console.error("❌ Erro ao carregar vagas iniciais:", error);
     const listaVagas = document.getElementById("lista-vagas");
@@ -1285,11 +1595,21 @@ export async function initGestaoVagas(user, userData) {
     }
   }
 
-  console.log("✅ Módulo de Gestão de Vagas inicializado com sucesso!");
+  // ============================================
+  // FINALIZAÇÃO
+  // ============================================
+
+  console.log("✅ ✅ ✅ Módulo de Gestão de Vagas inicializado com sucesso!");
   console.log(`   - Usuário: ${currentUserData?.nome || "Desconhecido"}`);
   console.log(`   - Role: ${currentUserData?.role || "N/A"}`);
   console.log(`   - Aba ativa: ${statusAbaAtiva}`);
 }
 
-// Exportação para compatibilidade
+// ============================================
+// EXPORTAÇÃO PARA COMPATIBILIDADE
+// ============================================
+
+/**
+ * Alias para compatibilidade com o sistema de rotas
+ */
 export { initGestaoVagas as init };
