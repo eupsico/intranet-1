@@ -68,6 +68,47 @@
       <div data-view-id="desligamento"></div>
       <div data-view-id="comunicados"></div>
     </div>
+    <script>
+  // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
+  window.toggleMotivoAprovacaoRejeicao = () => {
+   const radioSim = document.getElementById("modal-apto-sim");
+   const radioNao = document.getElementById("modal-apto-nao");
+
+   // Containers dos campos (USANDO OS IDs CORRETOS)
+   const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
+   const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
+
+   const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+   const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
+
+   if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) return;
+
+   // Remove a obrigatoriedade de ambos por padrão
+   if (reprovacaoTextarea) reprovacaoTextarea.required = false;
+   if (aprovacaoTextarea) aprovacaoTextarea.required = false;
+
+   if (radioNao.checked) {
+    // 🔴 Reprovação: Mostra Motivo Detalhado e torna OBRIGATÓRIO.
+    reprovacaoContainer.style.display = "block";
+    if (reprovacaoTextarea) reprovacaoTextarea.required = true;
+
+    // Oculta Aprovação
+    aprovacaoContainer.style.display = "none";
+
+   } else if (radioSim.checked) {
+    // 🟢 Aprovação: Mostra Próximos Passos (Opcional).
+    aprovacaoContainer.style.display = "block";
+
+    // Oculta Reprovação
+    reprovacaoContainer.style.display = "none";
+
+   } else {
+    // Nenhum selecionado: Oculta todos os campos de texto detalhados
+    reprovacaoContainer.style.display = "none";
+    aprovacaoContainer.style.display = "none";
+   }
+  };
+</script>
     <script type="module" src="../../../assets/js/firebase-init.js"></script>
     <script type="module" src="../../../assets/js/app.js"></script>
   </body>
