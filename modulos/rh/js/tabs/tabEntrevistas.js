@@ -17,6 +17,18 @@ import {
 // Elementos do DOM dos NOVOS Modais: REMOVIDOS daqui para serem buscados DENTRO das funções.
 let dadosCandidatoAtual = null; // Para armazenar dados do candidato atual
 
+// Funções de Fechamento Simples
+function fecharModalAgendamento() {
+  console.log("--- DEBUG RH: Fechando modal-agendamento-rh.");
+  const modal = document.getElementById("modal-agendamento-rh");
+  if (modal) modal.classList.remove("is-visible");
+}
+function fecharModalAvaliacao() {
+  console.log("--- DEBUG RH: Fechando modal-avaliacao-rh.");
+  const modal = document.getElementById("modal-avaliacao-rh");
+  if (modal) modal.classList.remove("is-visible");
+}
+
 /**
  * Renderiza a listagem de candidatos para Entrevistas e Avaliações (Layout de Cartão).
  */
@@ -278,7 +290,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
   if (dataEl) dataEl.value = dataAgendada;
-  if (horaEl) horaEl.value = horaAgendada; // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI, garantindo que o form existe.
+  if (horaEl) horaEl.value = horaAgendada; // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI.
   form.removeEventListener("submit", submeterAgendamentoRH);
   form.addEventListener("submit", submeterAgendamentoRH);
   console.log("--- DEBUG RH: Listener SUBMIT Agendamento anexado.");
@@ -289,9 +301,15 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAgendamento);
       btn.addEventListener("click", fecharModalAgendamento);
-    });
+    }); // 🛑 APLICAÇÃO DA CLASSE (AÇÃO CRÍTICA)
 
   modalAgendamentoRH.classList.add("is-visible");
+
+  // 🛑 NOVO LOG DE VERIFICAÇÃO FINAL
+  console.log(
+    `--- DEBUG RH: VERIFICAÇÃO CLASSE APÓS ADD: ${modalAgendamentoRH.className}`
+  );
+
   console.log("--- DEBUG RH: FIM abrirModalAgendamentoRH. Modal Visível.");
 };
 
@@ -322,7 +340,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId; // 1. Preencher a Ficha e Notas Rápidas
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)"; // Tenta obter o motivo de reprovação (novo) ou o comentário geral (antigo)
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.motivo_rejeicao ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
@@ -368,7 +386,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
         if (radio) radio.checked = true;
       }
     }
-  } // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI, garantindo que o form existe.
+  } // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI.
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
   console.log("--- DEBUG RH: Listener SUBMIT Avaliação anexado.");
@@ -379,25 +397,17 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAvaliacao);
       btn.addEventListener("click", fecharModalAvaliacao);
-    }); // 4. Exibir o Modal
+    }); // 🛑 APLICAÇÃO DA CLASSE (AÇÃO CRÍTICA)
 
   modalAvaliacaoRH.classList.add("is-visible");
+
+  // 🛑 NOVO LOG DE VERIFICAÇÃO FINAL
+  console.log(
+    `--- DEBUG RH: VERIFICAÇÃO CLASSE APÓS ADD: ${modalAvaliacaoRH.className}`
+  );
+
   console.log("--- DEBUG RH: FIM abrirModalAvaliacaoRH. Modal Visível.");
 };
-
-/**
- * Funções de Fechamento Simples
- */
-function fecharModalAgendamento() {
-  console.log("--- DEBUG RH: Fechando modal-agendamento-rh.");
-  const modal = document.getElementById("modal-agendamento-rh");
-  if (modal) modal.classList.remove("is-visible");
-}
-function fecharModalAvaliacao() {
-  console.log("--- DEBUG RH: Fechando modal-avaliacao-rh.");
-  const modal = document.getElementById("modal-avaliacao-rh");
-  if (modal) modal.classList.remove("is-visible");
-}
 
 /**
  * Lógica de Submissão para salvar o AGENDAMENTO da Entrevista RH. (Novo)
