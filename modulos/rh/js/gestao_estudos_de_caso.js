@@ -311,6 +311,10 @@ async function abrirModalEdicaoModelo(id) {
 // CARREGAMENTO DE MODELOS
 // ============================================
 
+// ============================================
+// CARREGAMENTO DE MODELOS
+// ============================================
+
 async function carregarModelosSalvos() {
   listaModelosSalvos.innerHTML =
     '<p><i class="fas fa-spinner fa-spin me-2"></i> Buscando modelos...</p>';
@@ -354,44 +358,41 @@ async function carregarModelosSalvos() {
       const tipoFormatado = modelo.tipo.replace(/-/g, " ").toUpperCase();
 
       htmlTabela += `
-    <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
-      <td>${modelo.titulo}</td>
-      <td>${tipoFormatado}</td>
-      <td>${numPerguntas}</td>
-      <td>${dataFormatada}</td>
-      <td class="text-center">
-        <div class="dropdown">
-          <button 
-            class="btn btn-sm btn-link" 
-            type="button" 
-            id="dropdown-${docSnap.id}"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <i class="fas fa-ellipsis-v"></i>
-          </button>
-          <ul class="dropdown-menu" aria-labelledby="dropdown-${docSnap.id}">
-            <li>
-              <a class="dropdown-item btn-editar-modelo" href="#" data-id="${docSnap.id}">
-                <i class="fas fa-edit me-2"></i> Editar
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item btn-gerar-link" href="#" data-id="${docSnap.id}">
-                <i class="fas fa-link me-2"></i> Gerar Link
-              </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item text-danger btn-excluir-modelo" href="#" data-id="${docSnap.id}">
-                <i class="fas fa-trash me-2"></i> Excluir
-              </a>
-            </li>
-          </ul>
-        </div>
-      </td>
-    </tr>
-  `;
+        <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
+          <td>${modelo.titulo}</td>
+          <td>${tipoFormatado}</td>
+          <td>${numPerguntas}</td>
+          <td>${dataFormatada}</td>
+          <td class="text-center">
+            <div class="btn-group" role="group" aria-label="Ações">
+              <button 
+                type="button" 
+                class="btn btn-sm btn-info btn-editar-modelo" 
+                title="Editar Modelo"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-edit me-1"></i> Editar
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-primary btn-gerar-link" 
+                title="Gerar Link Público"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-link me-1"></i> Link
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-danger btn-excluir-modelo" 
+                title="Excluir Modelo"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-trash me-1"></i> Excluir
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
     });
 
     // ✅ FECHA A TABELA
