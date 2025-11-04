@@ -143,13 +143,13 @@
     <div class="modal-body modal-body-scroll">
       <div class="row">
         <div class="col-lg-6">
-          <div class="card card-shadow mb-4">
-            <div class="card-header bg-card-header-eu">
+          <fieldset class="card card-shadow mb-4">
+            <legend class="card-header bg-card-header-eu">
               <h5 class="mb-0 text-white">
                 Ficha de Candidatura -
                 <span id="candidato-modal-nome">Candidato(a)</span>
               </h5>
-            </div>
+            </legend>
             <div class="card-body">
               <p class="card-text">
                 <strong>Email:</strong> <span id="modal-dado-email">...</span>
@@ -176,7 +176,7 @@
 
               <hr />
             </div>
-          </div>
+          </fieldset>
         </div>
 
         <div class="col-lg-6">
@@ -197,13 +197,13 @@
                     </div>
                     <div class="form-check checklist-item">
                       <input class="form-check-input" type="checkbox" id="check-experiencia">
-                      <label class="form-check-label" for="check-experiencia">Experiência profissional relevante (Min. 6
-                        meses)?</label>
+                      <label class="form-check-label" for="check-experiencia">Experiência profissional relevante (Mínima
+                        exigida)?</label>
                     </div>
                     <div class="form-check checklist-item">
                       <input class="form-check-input" type="checkbox" id="check-disponibilidade">
-                      <label class="form-check-label" for="check-disponibilidade">Informou/Demonstrou disponibilidade de
-                        horário?</label>
+                      <label class="form-check-label" for="check-disponibilidade">Disponibilidade de horário clara e
+                        compatível?</label>
                     </div>
                   </div>
                 </fieldset>
@@ -212,7 +212,7 @@
                   <legend>Critérios e Decisão</legend>
 
                   <div class="mb-3 form-group">
-                    <label for="prerequisitos-atendidos" class="form-label">Quais Pré-requisitos Técnicos o(a)
+                    <label for="modal-prerequisitos-atendidos" class="form-label">Quais Pré-requisitos Técnicos o(a)
                       Candidato(a) Atende?</label>
                     <textarea class="form-control" id="modal-prerequisitos-atendidos" rows="3" required></textarea>
                   </div>
@@ -231,10 +231,10 @@
                     </div>
                   </div>
 
-                  <div class="mb-3 form-group" id="modal-comentarios-gerais-container" style="display: none">
-                    <label for="modal-comentarios-gerais" class="form-label">Motivo Detalhado da Reprovação
+                  <div class="mb-3 form-group" id="modal-motivo-rejeicao-container" style="display: none">
+                    <label for="modal-motivo-rejeicao" class="form-label">Motivo Detalhado da Reprovação
                       (Obrigatório)</label>
-                    <textarea class="form-control" id="modal-comentarios-gerais" rows="3"
+                    <textarea class="form-control" id="modal-motivo-rejeicao" rows="3"
                       placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."></textarea>
                   </div>
 
@@ -366,34 +366,33 @@
 
   <script>
     // Esta função controla a visibilidade dos campos de texto (Aprovação/Reprovação).
-    // Corrigida para mostrar/exigir o campo "Motivo Detalhado da Reprovação" apenas no Não.
     window.toggleMotivoAprovacaoRejeicao = () => {
       const radioSim = document.getElementById("modal-apto-sim");
       const radioNao = document.getElementById("modal-apto-nao");
 
-      // Containers: Reprovado usa o antigo 'modal-comentarios-gerais-container'
-      const reprovacaoContainer = document.getElementById("modal-comentarios-gerais-container");
-      const reprovacaoTextarea = document.getElementById("modal-comentarios-gerais");
+      // Containers dos campos (AGORA USANDO OS IDs CORRETOS)
+      const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
+      const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
 
-      // Aprovado usa o 'modal-info-aprovacao-container'
       const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+      const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
 
-      // Define required como false para ambos inicialmente
-      if (reprovacaoTextarea) reprovacaoTextarea.required = false;
-
-      // Retorna se os elementos cruciais não estiverem carregados
       if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) return;
+
+      // Remove a obrigatoriedade de ambos por padrão
+      if (reprovacaoTextarea) reprovacaoTextarea.required = false;
+      if (aprovacaoTextarea) aprovacaoTextarea.required = false;
 
       if (radioNao.checked) {
         // 🔴 Reprovação: Mostra Motivo Detalhado e torna OBRIGATÓRIO.
         reprovacaoContainer.style.display = "block";
         if (reprovacaoTextarea) reprovacaoTextarea.required = true;
 
-        // Oculta campos de Aprovação
+        // Oculta Aprovação
         aprovacaoContainer.style.display = "none";
 
       } else if (radioSim.checked) {
-        // 🟢 Aprovação: Mostra Próximos Passos.
+        // 🟢 Aprovação: Mostra Próximos Passos (Opcional).
         aprovacaoContainer.style.display = "block";
 
         // Oculta Reprovação
@@ -406,7 +405,7 @@
       }
     };
 
-    // Adiciona listeners para garantir que o toggle funcione ao carregar o modal
+    // Adiciona listeners globais para garantir que o toggle funcione
     document.addEventListener('DOMContentLoaded', () => {
       const radioSim = document.getElementById("modal-apto-sim");
       const radioNao = document.getElementById("modal-apto-nao");
