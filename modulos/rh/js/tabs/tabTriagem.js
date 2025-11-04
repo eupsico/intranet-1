@@ -135,10 +135,13 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   // 2. Popula dados do Candidato (Ficha)
   const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
 
+  // 🔴 CORREÇÃO 1: Injeta o nome do candidato no novo <h4> no corpo do fieldset
+  const candidatoNomeEl = document.getElementById("candidato-modal-nome");
+  if (candidatoNomeEl) candidatoNomeEl.textContent = nomeCompleto;
+
   document.getElementById(
     "avaliacao-modal-title"
   ).textContent = `Avaliação de Currículo - ${nomeCompleto}`;
-  document.getElementById("candidato-modal-nome").textContent = nomeCompleto;
   document.getElementById("modal-dado-email").textContent =
     dadosCandidato.email || "Não informado";
   document.getElementById("modal-dado-telefone").textContent =
@@ -158,25 +161,24 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
   renderizarChecklistTriagem(triagemAnterior.checklist);
 
-  // 🔴 CORREÇÃO 1: Adicionar checagem de null e atualizar IDs para evitar TypeError
-  // Campo Pré-requisitos
+  // 🔴 CORREÇÃO 2: Usa IDs corretos e garante que o valor é populado sem erro
   const prerequisitosEl = document.getElementById(
     "modal-prerequisitos-atendidos"
   );
   if (prerequisitosEl)
     prerequisitosEl.value = triagemAnterior.prerequisitos_atendidos || "";
 
-  // Campo de Reprovação (ID: modal-motivo-rejeicao)
+  // Campo de Reprovação (Motivo Detalhado)
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   if (motivoRejeicaoEl)
     motivoRejeicaoEl.value = triagemAnterior.motivo_rejeicao || "";
 
-  // Campo de Aprovação (ID: modal-info-aprovacao)
+  // Campo de Aprovação (Próximos Passos)
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
   if (infoAprovacaoEl)
     infoAprovacaoEl.value = triagemAnterior.info_aprovacao || "";
 
-  // Lógica dos Rádios e Rejeição
+  // Lógica dos Rádios
   const radioSim = document.getElementById("modal-apto-sim");
   const radioNao = document.getElementById("modal-apto-nao");
 
@@ -191,7 +193,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.disabled = !dadosCandidato.link_curriculo_drive;
   }
 
-  // Força a UI a atualizar com base no valor carregado
+  // 🔴 CRÍTICO: Força a UI a atualizar com base no valor carregado. Isso garante que a CAIXA DE REPROVAÇÃO ABRA.
   if (toggleMotivoAprovacaoRejeicao) {
     toggleMotivoAprovacaoRejeicao();
   }
@@ -202,7 +204,6 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
 /**
  * Lógica de Submissão para salvar a decisão final da Triagem.
- * CORRIGIDO: Status de retorno atualizado para Entrevistas/Finalizados
  */
 async function submeterAvaliacaoTriagem(e) {
   e.preventDefault();
