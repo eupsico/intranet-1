@@ -1757,6 +1757,59 @@ export async function initGestaoVagas(user, userData) {
   console.log(`   - Role: ${currentUserData?.role || "N/A"}`);
   console.log(`   - Aba ativa: ${statusAbaAtiva}`);
 }
+/**
+ * Configura auto-save nos campos do formulário de vaga
+ */
+function configurarAutoSave() {
+  const form = document.getElementById("form-vaga");
+  if (!form) return;
+
+  let saveTimeout;
+  const AUTOSAVE_DELAY = 2000; // 2 segundos após parar de digitar
+
+  // Campos que devem acionar auto-save
+  const campos = form.querySelectorAll("input, textarea, select");
+
+  campos.forEach((campo) => {
+    campo.addEventListener("input", () => {
+      clearTimeout(saveTimeout);
+
+      // Mostra indicador de salvamento pendente
+      mostrarIndicadorAutoSave("Salvando...");
+
+      saveTimeout = setTimeout(async () => {
+        if (vagaAtualId) {
+          await salvarAutoSave();
+        }
+      }, AUTOSAVE_DELAY);
+    });
+  });
+
+  console.log("✅ Auto-save configurado");
+}
+
+/**
+ * Salva automaticamente as alterações da vaga
+ */
+async function salvarAutoSave() {
+  if (!vagaAtualId) return;
+
+  try {
+    const dadosVaga = coletarDadosFormularioVaga();
+    const vagaRef = doc(vagasCollection, vagaAtualId);
+
+    await updateDoc(vagaRef, {
+      ...dadosVaga,
+      data_atualizacao: new Date(),
+    });
+
+    mostrarIndicadorAutoSave("✓ Salvo automaticamente", "success");
+    console.log("✅ Auto-save realizado:", vagaAtualId);
+  } catch (error) {
+    console.error("❌ Erro no auto-save:", error);
+    mostrarIndicadorAutoSave("Erro ao salvar", "error");
+  }
+}
 
 /**
  * Mostra indicador visual de auto-save
@@ -1802,5 +1855,3 @@ function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
     }, 2000);
   }
 }
-
-export { initGestaoVagas as init };
