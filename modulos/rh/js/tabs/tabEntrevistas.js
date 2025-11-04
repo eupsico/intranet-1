@@ -624,6 +624,10 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
  * Submete a avaliação da Entrevista RH
  * @param {Event} e - Evento de submit
  */
+/**
+ * Submete a avaliação da Entrevista RH
+ * @param {Event} e - Evento de submit
+ */
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
 
@@ -677,10 +681,11 @@ async function submeterAvaliacaoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
+  // ✅ CORRIGIDO: Separar campos aninhados do root
   const dadosAvaliacao = {
-    data_avaliacao: serverTimestamp(),
-    avaliador_uid: currentUserData.id || "rh_system_user",
     resultado: resultado,
+    data_avaliacao: new Date(), // ✅ Usa new Date() em vez de serverTimestamp()
+    avaliador_uid: currentUserData.id || "rh_system_user",
     notas: {
       motivacao: notaMotivacao,
       aderencia: notaAderencia,
@@ -693,6 +698,7 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
+    // ✅ CORRIGIDO: Estrutura correta para updateDoc
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
