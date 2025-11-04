@@ -451,11 +451,9 @@ async function submeterAgendamentoRH(e) {
 
   if (!candidaturaId || !btnRegistrarAgendamento) return;
 
-  // 1. Coleta de Dados do Formulário (Apenas agendamento)
   const form = document.getElementById("form-agendamento-entrevista-rh");
   if (!form) return;
 
-  // Os IDs dos campos de data e hora são os mesmos do HTML inicial
   const dataEntrevista = form.querySelector("#data-entrevista-agendada").value;
   const horaEntrevista = form.querySelector("#hora-entrevista-agendada").value;
 
@@ -466,6 +464,7 @@ async function submeterAgendamentoRH(e) {
     );
     return;
   }
+
   console.log(
     `--- DEBUG RH: Submetendo Agendamento para ID: ${candidaturaId}. Data: ${dataEntrevista} ${horaEntrevista}`
   );
@@ -474,7 +473,6 @@ async function submeterAgendamentoRH(e) {
   btnRegistrarAgendamento.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-  // Manter o status atual, pois apenas o agendamento está sendo feito
   const statusAtual =
     dadosCandidatoAtual.status_recrutamento ||
     "Triagem Aprovada (Entrevista Pendente)";
@@ -485,15 +483,14 @@ async function submeterAgendamentoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // Update para o Firestore: Adiciona ou sobrescreve apenas a parte de agendamento dentro de entrevista_rh
+    // ✅ CORREÇÃO: Usar new Date() em vez de serverTimestamp() dentro de arrayUnion
     const updateData = {
-      // Garante que o objeto entrevista_rh exista e atualiza apenas agendamento
       "entrevista_rh.agendamento": {
         data: dataEntrevista,
         hora: horaEntrevista,
       },
       historico: arrayUnion({
-        data: serverTimestamp(),
+        data: new Date(), // ✅ Usa Date() do JavaScript
         acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}. Status: ${statusAtual}`,
         usuario: currentUserData.id || "rh_system_user",
       }),
@@ -507,7 +504,7 @@ async function submeterAgendamentoRH(e) {
     );
     console.log("--- DEBUG RH: SUCESSO - Agendamento salvo no Firestore.");
 
-    // Opcional: Envio de Mensagem de WhatsApp (apenas agendamento)
+    // WhatsApp opcional
     if (dadosCandidatoAtual.telefone_contato) {
       const mensagem = encodeURIComponent(
         `Olá ${
@@ -519,11 +516,9 @@ async function submeterAgendamentoRH(e) {
         ""
       );
       const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagem}`;
-      // Abre o link do WhatsApp em uma nova aba para o usuário enviar manualmente
       window.open(linkWhatsApp, "_blank");
     }
 
-    // Fecha o modal e recarrega a aba atual
     fecharModalAgendamento();
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
