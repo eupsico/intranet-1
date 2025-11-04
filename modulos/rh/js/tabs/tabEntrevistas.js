@@ -628,6 +628,10 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
  * Submete a avaliação da Entrevista RH
  * @param {Event} e - Evento de submit
  */
+/**
+ * Submete a avaliação da Entrevista RH
+ * @param {Event} e - Evento de submit
+ */
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
 
