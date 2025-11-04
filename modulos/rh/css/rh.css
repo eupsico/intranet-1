@@ -800,3 +800,47 @@
     min-width: 100px;
   }
 }
+/* Feedback banner em destaque na aba de correção */
+.feedback-banner {
+  padding: 15px;
+  margin-bottom: 15px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-left: 4px solid #ff9800;
+  border-radius: var(--borda-radius);
+  color: #856404;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.6;
+}
+
+.feedback-banner i {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #ff9800;
+}
+
+.feedback-banner strong {
+  color: #664d03;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Indicador de auto-save */
+#autosave-indicator {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

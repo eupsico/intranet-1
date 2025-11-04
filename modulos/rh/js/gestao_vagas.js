@@ -37,10 +37,13 @@ const ID_MODAL_FECHADAS = "modal-fechadas";
 
 // Mapeamento de status para abas
 const STATUS_TAB_MAP = {
-  abertas: ["Em Elaboração (Ficha Técnica)", "Em Correção (Ficha Técnica)"],
+  abertas: ["Em Elaboração (Ficha Técnica)"], // ✅ APENAS vagas sendo criadas
   correcao: ["Em Correção (Ficha Técnica)", "Em Correção (Arte)"],
-  "aprovacao-gestao": ["Ficha Técnica Aprovada (Aguardando Criação de Arte)"],
-  "arte-pendente": ["Arte em Criação"],
+  "aprovacao-gestao": ["Aguardando Aprovação de Ficha"], // ✅ NOVO status
+  "arte-pendente": [
+    "Ficha Técnica Aprovada (Aguardando Criação de Arte)",
+    "Arte em Criação",
+  ],
   "aprovacao-arte": ["Arte Criada (Aguardando Aprovação)"],
   "em-divulgacao": ["Arte Aprovada (Em Divulgação)"],
   fechadas: ["Vaga Encerrada", "Vaga Cancelada"],
@@ -344,94 +347,39 @@ function renderizarCardVaga(vagaId, vaga, statusAba) {
   else if (status.includes("Cancelada")) corStatus = "error";
 
   let botoesAcao = "";
+  let infoExtra = "";
 
-  // Define botões conforme o status da aba
-  switch (statusAba) {
-    case "abertas":
-      botoesAcao = `
-        <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
-          <i class="fas fa-edit me-1"></i> Editar
-        </button>
-        <button class="action-button success btn-enviar-aprovacao" data-id="${vagaId}">
-          <i class="fas fa-paper-plane me-1"></i> Enviar p/ Aprovação
-        </button>
-      `;
-      break;
+  // ✅ TRATAMENTO ESPECIAL PARA ABA DE CORREÇÃO
+  if (statusAba === "correcao") {
+    // Determina se é correção de Ficha ou Arte
+    const tipoCorrecao = status.includes("Ficha")
+      ? "Ficha Técnica"
+      : "Arte de Divulgação";
+    const feedback = status.includes("Ficha")
+      ? vaga.feedback_correcao
+      : vaga.feedback_arte;
 
-    case "correcao":
-      botoesAcao = `
-        <button class="action-button info btn-ver-feedback" data-id="${vagaId}">
-          <i class="fas fa-exclamation-circle me-1"></i> Ver Feedback
-        </button>
-        <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
-          <i class="fas fa-edit me-1"></i> Corrigir
-        </button>
-      `;
-      break;
-
-    case "aprovacao-gestao":
-      botoesAcao = `
-        <button class="action-button info btn-visualizar-vaga" data-id="${vagaId}">
-          <i class="fas fa-eye me-1"></i> Visualizar
-        </button>
-        <button class="action-button success btn-aprovar-ficha" data-id="${vagaId}">
-          <i class="fas fa-check me-1"></i> Aprovar
-        </button>
-        <button class="action-button warning btn-solicitar-correcao-ficha" data-id="${vagaId}">
-          <i class="fas fa-edit me-1"></i> Solicitar Correção
-        </button>
-      `;
-      break;
-
-    case "arte-pendente":
-      botoesAcao = `
-        <button class="action-button primary btn-criar-arte" data-id="${vagaId}">
-          <i class="fas fa-palette me-1"></i> Criar Arte
-        </button>
-      `;
-      break;
-
-    case "aprovacao-arte":
-      botoesAcao = `
-        <button class="action-button info btn-visualizar-arte" data-id="${vagaId}">
-          <i class="fas fa-eye me-1"></i> Visualizar Arte
-        </button>
-        <button class="action-button success btn-aprovar-arte" data-id="${vagaId}">
-          <i class="fas fa-check me-1"></i> Aprovar Arte
-        </button>
-        <button class="action-button warning btn-solicitar-correcao-arte" data-id="${vagaId}">
-          <i class="fas fa-edit me-1"></i> Solicitar Correção
-        </button>
-      `;
-      break;
-
-    case "em-divulgacao":
-      botoesAcao = `
-        <button class="action-button primary btn-gerenciar-divulgacao" data-id="${vagaId}">
-          <i class="fas fa-bullhorn me-1"></i> Gerenciar Divulgação
-        </button>
-      `;
-      break;
-
-    case "fechadas":
-      botoesAcao = `
-        <button class="action-button info btn-visualizar-fechada" data-id="${vagaId}">
-          <i class="fas fa-eye me-1"></i> Ver Detalhes
-        </button>
-        <button class="action-button secondary btn-reaproveitar" data-id="${vagaId}">
-          <i class="fas fa-copy me-1"></i> Reaproveitar
-        </button>
-      `;
-      break;
-  }
-
-  return `
-    <div class="card-vaga-gestao" data-id="${vagaId}">
-      <div class="vaga-header">
-        <h4>${vaga.nome || "Vaga Sem Nome"}</h4>
-        <span class="status-badge status-${corStatus}">${status}</span>
+    // Banner de feedback em destaque
+    infoExtra = `
+      <div class="feedback-banner alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <strong>Tipo:</strong> ${tipoCorrecao}<br>
+          <strong>Solicitação:</strong> ${feedback || "Sem detalhes"}
+        </div>
       </div>
-      
+    `;
+
+    // Botão de corrigir
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Corrigir
+      </button>
+    `;
+  }
+  // ✅ TRATAMENTO PARA OUTRAS ABAS
+  else if (statusAba === "abertas") {
+    infoExtra = `
       <div class="vaga-info">
         <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
         <p><strong>Regime:</strong> ${capitalize(
@@ -442,6 +390,115 @@ function renderizarCardVaga(vagaId, vaga, statusAba) {
         )}</p>
         <p><strong>Criada em:</strong> ${dataCriacao}</p>
       </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Editar
+      </button>
+      <button class="action-button success btn-enviar-aprovacao" data-id="${vagaId}">
+        <i class="fas fa-paper-plane me-1"></i> Enviar p/ Aprovação
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-gestao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+        <p><strong>Regime:</strong> ${capitalize(
+          vaga.regime_trabalho || "N/A"
+        )}</p>
+        <p><strong>Modalidade:</strong> ${capitalize(
+          vaga.modalidade_trabalho || "N/A"
+        )}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-vaga" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar
+      </button>
+      <button class="action-button success btn-aprovar-ficha" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-ficha" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "arte-pendente") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-criar-arte" data-id="${vagaId}">
+        <i class="fas fa-palette me-1"></i> Criar Arte
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-arte") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-arte" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar Arte
+      </button>
+      <button class="action-button success btn-aprovar-arte" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar Arte
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-arte" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "em-divulgacao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+        <p><strong>Modalidade:</strong> ${capitalize(
+          vaga.modalidade_trabalho || "N/A"
+        )}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-gerenciar-divulgacao" data-id="${vagaId}">
+        <i class="fas fa-bullhorn me-1"></i> Gerenciar Divulgação
+      </button>
+    `;
+  } else if (statusAba === "fechadas") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+        <p><strong>Encerrada em:</strong> ${
+          vaga.data_encerramento
+            ? formatarData(vaga.data_encerramento.toDate())
+            : "N/A"
+        }</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-fechada" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Ver Detalhes
+      </button>
+      <button class="action-button secondary btn-reaproveitar" data-id="${vagaId}">
+        <i class="fas fa-copy me-1"></i> Reaproveitar
+      </button>
+    `;
+  }
+
+  return `
+    <div class="card-vaga-gestao" data-id="${vagaId}">
+      <div class="vaga-header">
+        <h4>${vaga.nome || "Vaga Sem Nome"}</h4>
+        <span class="status-badge status-${corStatus}">${status}</span>
+      </div>
+      
+      ${infoExtra}
       
       <div class="vaga-acoes">
         ${botoesAcao}
@@ -453,110 +510,146 @@ function renderizarCardVaga(vagaId, vaga, statusAba) {
 /**
  * Anexa listeners aos botões de ação das vagas
  */
+/**
+ * Anexa listeners aos botões de ação das vagas
+ * @param {string} statusAba - Status da aba ativa
+ */
 function anexarListenersVagas(statusAba) {
-  // Editar vaga
+  console.log(`🔹 Anexando listeners para aba: ${statusAba}`);
+
+  // ============================================
+  // BOTÃO: EDITAR VAGA
+  // ============================================
   document.querySelectorAll(".btn-editar-vaga").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Editar vaga: ${vagaId}`);
       await abrirModalEdicaoVaga(vagaId);
     });
   });
 
-  // Enviar para aprovação
+  // ============================================
+  // BOTÃO: ENVIAR PARA APROVAÇÃO
+  // ============================================
   document.querySelectorAll(".btn-enviar-aprovacao").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Enviar para Aprovação: ${vagaId}`);
       await enviarParaAprovacao(vagaId);
     });
   });
 
-  // Ver feedback
-  document.querySelectorAll(".btn-ver-feedback").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const vagaId = e.currentTarget.dataset.id;
-      await exibirFeedbackCorrecao(vagaId);
-    });
-  });
-
-  // Visualizar vaga
+  // ============================================
+  // BOTÃO: VISUALIZAR VAGA (Modo Leitura)
+  // ============================================
   document.querySelectorAll(".btn-visualizar-vaga").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Visualizar vaga: ${vagaId}`);
       await visualizarVaga(vagaId);
     });
   });
 
-  // Aprovar ficha
+  // ============================================
+  // BOTÃO: APROVAR FICHA TÉCNICA
+  // ============================================
   document.querySelectorAll(".btn-aprovar-ficha").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Aprovar Ficha: ${vagaId}`);
       await aprovarFichaTecnica(vagaId);
     });
   });
 
-  // Solicitar correção ficha
+  // ============================================
+  // BOTÃO: SOLICITAR CORREÇÃO DA FICHA
+  // ============================================
   document.querySelectorAll(".btn-solicitar-correcao-ficha").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Solicitar Correção da Ficha: ${vagaId}`);
       await solicitarCorrecaoFicha(vagaId);
     });
   });
 
-  // Criar arte
+  // ============================================
+  // BOTÃO: CRIAR ARTE
+  // ============================================
   document.querySelectorAll(".btn-criar-arte").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Criar Arte: ${vagaId}`);
       await abrirModalCriacaoArte(vagaId);
     });
   });
 
-  // Visualizar arte
+  // ============================================
+  // BOTÃO: VISUALIZAR ARTE
+  // ============================================
   document.querySelectorAll(".btn-visualizar-arte").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Visualizar Arte: ${vagaId}`);
       await visualizarArte(vagaId);
     });
   });
 
-  // Aprovar arte
+  // ============================================
+  // BOTÃO: APROVAR ARTE
+  // ============================================
   document.querySelectorAll(".btn-aprovar-arte").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Aprovar Arte: ${vagaId}`);
       await aprovarArte(vagaId);
     });
   });
 
-  // Solicitar correção arte
+  // ============================================
+  // BOTÃO: SOLICITAR CORREÇÃO DA ARTE
+  // ============================================
   document.querySelectorAll(".btn-solicitar-correcao-arte").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Solicitar Correção da Arte: ${vagaId}`);
       await solicitarCorrecaoArte(vagaId);
     });
   });
 
-  // Gerenciar divulgação
+  // ============================================
+  // BOTÃO: GERENCIAR DIVULGAÇÃO
+  // ============================================
   document.querySelectorAll(".btn-gerenciar-divulgacao").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Gerenciar Divulgação: ${vagaId}`);
       await abrirModalDivulgacao(vagaId);
     });
   });
 
-  // Visualizar fechada
+  // ============================================
+  // BOTÃO: VISUALIZAR VAGA FECHADA
+  // ============================================
   document.querySelectorAll(".btn-visualizar-fechada").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Visualizar Vaga Fechada: ${vagaId}`);
       await visualizarVagaFechada(vagaId);
     });
   });
 
-  // Reaproveitar
+  // ============================================
+  // BOTÃO: REAPROVEITAR VAGA
+  // ============================================
   document.querySelectorAll(".btn-reaproveitar").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const vagaId = e.currentTarget.dataset.id;
+      console.log(`🔹 Clicou em Reaproveitar Vaga: ${vagaId}`);
       await reaproveitarVaga(vagaId);
     });
   });
+
+  console.log(`✅ Listeners anexados para aba: ${statusAba}`);
 }
 
 // ============================================
@@ -773,6 +866,9 @@ async function abrirModalEdicaoVaga(vagaId) {
 /**
  * Envia vaga para aprovação de ficha técnica
  */
+/**
+ * Envia vaga para aprovação de ficha técnica
+ */
 async function enviarParaAprovacao(vagaId) {
   console.log(`🔹 Enviando vaga para aprovação: ${vagaId}`);
 
@@ -784,11 +880,11 @@ async function enviarParaAprovacao(vagaId) {
   try {
     const vagaRef = doc(vagasCollection, vagaId);
     await updateDoc(vagaRef, {
-      status: "Ficha Técnica Aprovada (Aguardando Criação de Arte)",
+      status: "Aguardando Aprovação de Ficha", // ✅ NOVO STATUS
       data_atualizacao: new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: "Vaga enviada para aprovação",
+        acao: "Vaga enviada para aprovação da Ficha Técnica",
         usuario: currentUserData?.id || "sistema",
       }),
     });
@@ -1478,6 +1574,7 @@ export async function initGestaoVagas(user, userData) {
 
   // Configura fechamento de modais (X e clique fora)
   configurarFechamentoModais();
+  configurarAutoSave();
 
   // ============================================
   // LISTENERS DE FORMULÁRIOS
@@ -1661,11 +1758,49 @@ export async function initGestaoVagas(user, userData) {
   console.log(`   - Aba ativa: ${statusAbaAtiva}`);
 }
 
-// ============================================
-// EXPORTAÇÃO PARA COMPATIBILIDADE COM ROTEADOR
-// ============================================
-
 /**
- * Alias para compatibilidade com o sistema de rotas
+ * Mostra indicador visual de auto-save
  */
+function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
+  let indicador = document.getElementById("autosave-indicator");
+
+  if (!indicador) {
+    indicador = document.createElement("div");
+    indicador.id = "autosave-indicator";
+    indicador.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      z-index: 10000;
+      transition: opacity 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    `;
+    document.body.appendChild(indicador);
+  }
+
+  // Define cor baseada no tipo
+  const cores = {
+    info: { bg: "#17a2b8", color: "#fff" },
+    success: { bg: "#28a745", color: "#fff" },
+    error: { bg: "#dc3545", color: "#fff" },
+  };
+
+  const cor = cores[tipo] || cores.info;
+  indicador.style.backgroundColor = cor.bg;
+  indicador.style.color = cor.color;
+  indicador.textContent = mensagem;
+  indicador.style.opacity = "1";
+
+  // Remove após 2 segundos se for sucesso
+  if (tipo === "success") {
+    setTimeout(() => {
+      indicador.style.opacity = "0";
+    }, 2000);
+  }
+}
+
 export { initGestaoVagas as init };
