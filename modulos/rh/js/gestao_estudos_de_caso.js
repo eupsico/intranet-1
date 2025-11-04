@@ -1,43 +1,73 @@
-// modulos/rh/js/gestao_estudos_de_caso.js
+/**
+ * Arquivo: modulos/rh/js/gestao_estudos_de_caso.js
+ * Versão: 2.0.0 (Refatorado com Imports Corretos e Sem Dependência do Firebase Global)
+ * Data: 04/11/2025
+ * Descrição: Gerencia a criação e listagem de modelos de avaliação (Estudos de Caso, Testes, etc)
+ */
 
-document.addEventListener("DOMContentLoaded", () => {
-  // 1. Inicialização e Referências
-  if (typeof firebase === "undefined" || !firebase.firestore) {
-    console.error(
-      "ERRO: O SDK do Firebase não está carregado ou configurado corretamente."
-    );
-    alert(
-      "Erro de inicialização: O sistema de banco de dados não está disponível."
-    );
-    return;
+import {
+  db,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  updateDoc,
+  doc,
+  arrayUnion,
+} from "../../../assets/js/firebase-init.js";
+
+// ============================================
+// CONSTANTES
+// ============================================
+
+const COLECAO_ESTUDOS = "estudos_de_caso";
+const estudosCollection = collection(db, COLECAO_ESTUDOS);
+
+// ============================================
+// REFERÊNCIAS DO DOM
+// ============================================
+
+const tabLinks = document.querySelectorAll(".tab-link");
+const tabContents = document.querySelectorAll(".tab-content");
+const formNovoEstudo = document.getElementById("form-novo-estudo");
+const listaPerguntas = document.getElementById("lista-perguntas");
+const btnAdicionarPergunta = document.getElementById("btn-adicionar-pergunta");
+const listaModelosSalvos = document.getElementById("lista-modelos-salvos");
+const modalGerarLink = document.getElementById("modal-gerar-link");
+const linkPublicoInput = document.getElementById("link-publico");
+const btnCopiarLink = document.getElementById("btn-copiar-link");
+const btnFecharModalLink = document.querySelector(".fechar-modal-link");
+
+// ============================================
+// VARIÁVEIS DE ESTADO
+// ============================================
+
+let proximoIdPergunta = 2;
+let currentUserData = {};
+
+// ============================================
+// FUNÇÕES DE UTILIDADE
+// ============================================
+
+function formatarTimestamp(timestamp) {
+  if (!timestamp) return "N/A";
+
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("pt-BR");
+  } catch (error) {
+    console.error("Erro ao formatar timestamp:", error);
+    return "Data inválida";
   }
+}
 
-  const db = firebase.firestore();
-  const COLECAO_ESTUDOS = "estudos_de_caso";
+// ============================================
+// LÓGICA DE ABAS
+// ============================================
 
-  // Referências do DOM - Abas
-  const tabLinks = document.querySelectorAll(".tab-link");
-  const tabContents = document.querySelectorAll(".tab-content");
-
-  // Referências do DOM - Criar Novo
-  const formNovoEstudo = document.getElementById("form-novo-estudo");
-  const listaPerguntas = document.getElementById("lista-perguntas");
-  const btnAdicionarPergunta = document.getElementById(
-    "btn-adicionar-pergunta"
-  );
-
-  // Referências do DOM - Modelos Salvos
-  const listaModelosSalvos = document.getElementById("lista-modelos-salvos");
-  const modalGerarLink = document.getElementById("modal-gerar-link");
-  const linkPublicoInput = document.getElementById("link-publico");
-  const btnCopiarLink = document.getElementById("btn-copiar-link");
-  const btnFecharModalLink = document.querySelector(".fechar-modal-link");
-
-  let proximoIdPergunta = 2; // Começa em 2 porque o HTML já tem a Pergunta 1
-
-  // =================================================================
-  // 2. Lógica de Abas
-  // =================================================================
+function configurarAbas() {
   tabLinks.forEach((link) => {
     link.addEventListener("click", () => {
       const targetTab = link.getAttribute("data-tab");
@@ -56,311 +86,339 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+}
 
-  // =================================================================
-  // 3. Lógica de CRUD Local (Perguntas)
-  // =================================================================
+// ============================================
+// GERENCIAMENTO DE PERGUNTAS
+// ============================================
 
-  /**
-   * Cria e adiciona um novo campo de pergunta ao formulário.
-   */
-  function adicionarCampoPergunta() {
-    const perguntaId = proximoIdPergunta++;
-    const newPerguntaDiv = document.createElement("div");
-    newPerguntaDiv.classList.add("pergunta-item", "form-group");
-    newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
+function adicionarCampoPergunta() {
+  const perguntaId = proximoIdPergunta++;
+  const newPerguntaDiv = document.createElement("div");
+  newPerguntaDiv.classList.add("pergunta-item", "form-group");
+  newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
 
-    newPerguntaDiv.innerHTML = `
-            <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
-            <div class="input-group">
-                <textarea
-                    class="pergunta-texto form-control"
-                    data-id="${perguntaId}"
-                    rows="2"
-                    placeholder="Ex: Qual seria sua primeira ação neste cenário?"
-                    required
-                ></textarea>
-                <button type="button" class="btn btn-danger btn-sm btn-remover-pergunta ms-2" title="Remover Pergunta">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-    listaPerguntas.appendChild(newPerguntaDiv);
+  newPerguntaDiv.innerHTML = `
+    <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
+    <div class="input-group">
+      <textarea
+        class="pergunta-texto form-control"
+        data-id="${perguntaId}"
+        rows="2"
+        placeholder="Ex: Qual seria sua primeira ação neste cenário?"
+        required
+      ></textarea>
+      <button 
+        type="button" 
+        class="btn btn-danger btn-sm btn-remover-pergunta ms-2" 
+        title="Remover Pergunta"
+      >
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  `;
 
-    // Adicionar evento de remoção
-    newPerguntaDiv
-      .querySelector(".btn-remover-pergunta")
-      .addEventListener("click", function () {
-        newPerguntaDiv.remove();
-        reordenarPerguntas();
-      });
-  }
+  listaPerguntas.appendChild(newPerguntaDiv);
 
-  /**
-   * Reordena os labels das perguntas após uma remoção.
-   */
-  function reordenarPerguntas() {
-    const itens = listaPerguntas.querySelectorAll(".pergunta-item");
-    itens.forEach((item, index) => {
-      const numero = index + 1;
-      item.querySelector("label").textContent = `Pergunta ${numero}:`;
-      item.querySelector("textarea").setAttribute("data-id", numero);
-      item.querySelector("textarea").id = `pergunta-${numero}`;
-    });
-    proximoIdPergunta = itens.length + 1;
-  }
-
-  btnAdicionarPergunta.addEventListener("click", adicionarCampoPergunta);
-
-  // Adiciona listener de remoção para a primeira pergunta (se ela tiver botão de remoção)
-  listaPerguntas.querySelectorAll(".btn-remover-pergunta").forEach((btn) => {
-    btn.addEventListener("click", function () {
-      btn.closest(".pergunta-item").remove();
+  // Adicionar evento de remoção
+  newPerguntaDiv
+    .querySelector(".btn-remover-pergunta")
+    .addEventListener("click", function () {
+      newPerguntaDiv.remove();
       reordenarPerguntas();
     });
+}
+
+function reordenarPerguntas() {
+  const itens = listaPerguntas.querySelectorAll(".pergunta-item");
+  itens.forEach((item, index) => {
+    const numero = index + 1;
+    item.querySelector("label").textContent = `Pergunta ${numero}:`;
+    item.querySelector("textarea").setAttribute("data-id", numero);
+    item.querySelector("textarea").id = `pergunta-${numero}`;
   });
+  proximoIdPergunta = itens.length + 1;
+}
 
-  // =================================================================
-  // 4. Lógica de Persistência (Criação/Edição)
-  // =================================================================
+// ============================================
+// SALVAR MODELO
+// ============================================
 
-  /**
-   * Salva ou atualiza o modelo de estudo de caso/avaliação.
-   */
-  async function salvarModelo(e) {
-    e.preventDefault();
+async function salvarModelo(e) {
+  e.preventDefault();
 
-    const btn = formNovoEstudo.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+  console.log("🔹 Estudos: Salvando novo modelo");
 
-    const titulo = document.getElementById("conteudo-titulo").value.trim();
-    const tipo = document.getElementById("conteudo-tipo").value;
-    const textoConteudo = document
-      .getElementById("conteudo-texto")
-      .value.trim();
+  const btn = formNovoEstudo.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
-    // Coleta as perguntas
-    const perguntas = Array.from(
-      listaPerguntas.querySelectorAll(".pergunta-texto")
-    )
-      .map((textarea) => textarea.value.trim())
-      .filter((pergunta) => pergunta.length > 0);
+  const titulo = document.getElementById("conteudo-titulo").value.trim();
+  const tipo = document.getElementById("conteudo-tipo").value;
+  const textoConteudo = document.getElementById("conteudo-texto").value.trim();
 
-    const dadosModelo = {
-      titulo: titulo,
-      tipo: tipo,
-      conteudo_texto: textoConteudo,
-      perguntas: perguntas,
-      data_criacao: firebase.firestore.FieldValue.serverTimestamp(),
-      criado_por_uid: firebase.auth().currentUser
-        ? firebase.auth().currentUser.uid
-        : "rh_system_user",
-      // Adicionar campo para controlar se o modelo está ativo (pode ser usado para soft delete)
-      ativo: true,
-    };
-
-    try {
-      // Em um cenário real, aqui seria verificada se é uma edição ou uma nova criação.
-      // Para simplificar, estamos fazendo apenas a criação (POST).
-      const docRef = await db.collection(COLECAO_ESTUDOS).add(dadosModelo);
-
-      alert(`Modelo "${tipo}" salvo com sucesso! ID: ${docRef.id}`);
-
-      formNovoEstudo.reset();
-      listaPerguntas.innerHTML = ""; // Limpa as perguntas após salvar (e adiciona a primeira de novo se necessário)
-      proximoIdPergunta = 1;
-      adicionarCampoPergunta(); // Adiciona um campo vazio para o próximo uso
-
-      // Alternar para a aba de modelos salvos para visualização
-      document.querySelector('[data-tab="modelos-salvos"]').click();
-    } catch (error) {
-      console.error("Erro ao salvar modelo:", error);
-      alert("Erro ao salvar o modelo de avaliação. Detalhes: " + error.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
-    }
+  // Validação
+  if (!titulo || !tipo || !textoConteudo) {
+    window.showToast?.("Por favor, preencha Título, Tipo e Conteúdo.", "error");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
+    return;
   }
 
-  // Listener de submissão do formulário
-  formNovoEstudo.addEventListener("submit", salvarModelo);
+  // Coleta as perguntas
+  const perguntas = Array.from(
+    listaPerguntas.querySelectorAll(".pergunta-texto")
+  )
+    .map((textarea) => textarea.value.trim())
+    .filter((pergunta) => pergunta.length > 0);
 
-  // =================================================================
-  // 5. Lógica de Listagem e Ações
-  // =================================================================
+  const dadosModelo = {
+    titulo: titulo,
+    tipo: tipo,
+    conteudo_texto: textoConteudo,
+    perguntas: perguntas,
+    data_criacao: new Date(), // ✅ Usa new Date() em vez de serverTimestamp()
+    criado_por_uid: currentUserData?.id || "rh_system_user",
+    ativo: true,
+  };
 
-  /**
-   * Carrega os modelos salvos do Firebase e exibe na tabela.
-   */
-  async function carregarModelosSalvos() {
-    listaModelosSalvos.innerHTML =
-      '<p><i class="fas fa-spinner fa-spin me-2"></i> Buscando modelos...</p>';
+  try {
+    const docRef = await addDoc(estudosCollection, dadosModelo);
 
-    try {
-      const snapshot = await db
-        .collection(COLECAO_ESTUDOS)
-        .where("ativo", "==", true)
-        .orderBy("data_criacao", "desc")
-        .get();
+    window.showToast?.(`Modelo "${tipo}" salvo com sucesso!`, "success");
+    console.log("✅ Estudos: Modelo salvo:", docRef.id);
 
-      if (snapshot.empty) {
-        listaModelosSalvos.innerHTML =
-          '<p class="alert alert-info">Nenhum modelo de avaliação salvo ainda.</p>';
-        return;
-      }
+    formNovoEstudo.reset();
+    listaPerguntas.innerHTML = "";
+    proximoIdPergunta = 1;
+    adicionarCampoPergunta();
 
-      let htmlTabela = `
-                <table class="table table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th>Título</th>
-                            <th>Tipo</th>
-                            <th>Perguntas</th>
-                            <th>Criação</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+    // Alternar para a aba de modelos salvos
+    document.querySelector('[data-tab="modelos-salvos"]').click();
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao salvar modelo:", error);
+    window.showToast?.(`Erro ao salvar o modelo: ${error.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
+  }
+}
 
-      snapshot.forEach((doc) => {
-        const modelo = doc.data();
-        const dataFormatada = formatarTimestamp(modelo.data_criacao);
-        const numPerguntas = modelo.perguntas ? modelo.perguntas.length : 0;
+// ============================================
+// CARREGAMENTO DE MODELOS
+// ============================================
 
-        htmlTabela += `
-                    <tr data-id="${doc.id}" data-tipo="${modelo.tipo}">
-                        <td>${modelo.titulo}</td>
-                        <td>${modelo.tipo.replace(/-/g, " ").toUpperCase()}</td>
-                        <td>${numPerguntas}</td>
-                        <td>${dataFormatada}</td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-info btn-editar-modelo me-2" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary btn-gerar-link me-2" title="Gerar Link Público">
-                                <i class="fas fa-link"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger btn-excluir-modelo" title="Excluir">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-      });
+async function carregarModelosSalvos() {
+  listaModelosSalvos.innerHTML =
+    '<p><i class="fas fa-spinner fa-spin me-2"></i> Buscando modelos...</p>';
 
-      htmlTabela += `</tbody></table>`;
-      listaModelosSalvos.innerHTML = htmlTabela;
+  try {
+    const q = query(
+      estudosCollection,
+      where("ativo", "==", true),
+      orderBy("data_criacao", "desc")
+    );
 
-      // Adicionar listeners aos botões de ação
-      document.querySelectorAll(".btn-gerar-link").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const id = e.currentTarget.closest("tr").getAttribute("data-id");
-          const tipo = e.currentTarget.closest("tr").getAttribute("data-tipo");
-          abrirModalGerarLink(id, tipo);
-        });
-      });
+    const snapshot = await getDocs(q);
 
-      document.querySelectorAll(".btn-excluir-modelo").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const id = e.currentTarget.closest("tr").getAttribute("data-id");
-          excluirModelo(id);
-        });
-      });
-
-      // TODO: Implementar lógica de edição
-      document.querySelectorAll(".btn-editar-modelo").forEach((btn) => {
-        btn.addEventListener("click", () =>
-          alert("Funcionalidade de Edição Pendente.")
-        );
-      });
-    } catch (error) {
-      console.error("Erro ao carregar modelos salvos:", error);
+    if (snapshot.empty) {
       listaModelosSalvos.innerHTML =
-        '<p class="alert alert-danger">Erro ao carregar os modelos. Tente recarregar a página.</p>';
-    }
-  }
-
-  /**
-   * Remove (soft delete) um modelo do Firebase.
-   * @param {string} id - O ID do documento a ser excluído.
-   */
-  async function excluirModelo(id) {
-    if (!confirm("Tem certeza que deseja excluir (desativar) este modelo?")) {
+        '<p class="alert alert-info">Nenhum modelo de avaliação salvo ainda.</p>';
+      console.log("ℹ️ Estudos: Nenhum modelo encontrado");
       return;
     }
 
-    try {
-      // Soft delete: Marca como inativo em vez de remover totalmente
-      await db.collection(COLECAO_ESTUDOS).doc(id).update({
-        ativo: false,
-        data_exclusao: firebase.firestore.FieldValue.serverTimestamp(),
+    let htmlTabela = `
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Tipo</th>
+            <th>Perguntas</th>
+            <th>Criação</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    snapshot.forEach((docSnap) => {
+      const modelo = docSnap.data();
+      const dataFormatada = formatarTimestamp(modelo.data_criacao);
+      const numPerguntas = modelo.perguntas ? modelo.perguntas.length : 0;
+      const tipoFormatado = modelo.tipo.replace(/-/g, " ").toUpperCase();
+
+      htmlTabela += `
+        <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
+          <td>${modelo.titulo}</td>
+          <td>${tipoFormatado}</td>
+          <td>${numPerguntas}</td>
+          <td>${dataFormatada}</td>
+          <td class="text-center">
+            <button 
+              type="button" 
+              class="btn btn-sm btn-info btn-editar-modelo me-2" 
+              title="Editar"
+              disabled
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm btn-primary btn-gerar-link me-2" 
+              title="Gerar Link Público"
+              data-id="${docSnap.id}"
+            >
+              <i class="fas fa-link"></i>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm btn-danger btn-excluir-modelo" 
+              title="Excluir"
+              data-id="${docSnap.id}"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    htmlTabela += `</tbody></table>`;
+    listaModelosSalvos.innerHTML = htmlTabela;
+
+    // Adicionar listeners aos botões de ação
+    document.querySelectorAll(".btn-gerar-link").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const tipo = e.currentTarget.closest("tr").getAttribute("data-tipo");
+        abrirModalGerarLink(id, tipo);
       });
+    });
 
-      alert("Modelo excluído com sucesso (marcado como inativo)!");
-      carregarModelosSalvos(); // Recarrega a lista
-    } catch (error) {
-      console.error("Erro ao excluir modelo:", error);
-      alert("Erro ao excluir o modelo. Detalhes: " + error.message);
-    }
+    document.querySelectorAll(".btn-excluir-modelo").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        excluirModelo(id);
+      });
+    });
+
+    console.log(`✅ Estudos: ${snapshot.size} modelo(s) carregado(s)`);
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao carregar modelos:", error);
+    listaModelosSalvos.innerHTML =
+      '<p class="alert alert-danger">Erro ao carregar os modelos. Tente recarregar a página.</p>';
+  }
+}
+
+// ============================================
+// EXCLUSÃO DE MODELO
+// ============================================
+
+async function excluirModelo(id) {
+  if (!confirm("Tem certeza que deseja excluir (desativar) este modelo?")) {
+    return;
   }
 
-  // =================================================================
-  // 6. Lógica de Geração de Link (Modal)
-  // =================================================================
+  console.log(`🔹 Estudos: Excluindo modelo: ${id}`);
 
-  /**
-   * Abre o modal e gera o link público para a avaliação.
-   * @param {string} id - ID do documento (Estudo de Caso).
-   * @param {string} tipo - Tipo de avaliação.
-   */
-  function abrirModalGerarLink(id, tipo) {
-    // O link público deve apontar para uma página externa que consome este ID
-    // Exemplo: https://meuapp.com/avaliacoes/publico.html?tipo=estudo-caso&id=DOCUMENT_ID
-    const urlBase = window.location.origin.replace("intranet", "public"); // Ajuste conforme seu domínio público
-    const link = `${urlBase}/avaliacao-publica.html?tipo=${tipo}&id=${id}`;
+  try {
+    const modeloRef = doc(estudosCollection, id);
 
-    linkPublicoInput.value = link;
-    modalGerarLink.style.display = "flex";
+    // ✅ Soft delete: Marca como inativo
+    await updateDoc(modeloRef, {
+      ativo: false,
+      data_exclusao: new Date(), // ✅ Usa new Date() em vez de serverTimestamp()
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Modelo desativado (soft delete)",
+        usuario: currentUserData?.id || "rh_system_user",
+      }),
+    });
 
-    // Foco no campo para facilitar a cópia
-    setTimeout(() => linkPublicoInput.select(), 100);
-  }
-
-  /**
-   * Fecha o modal de geração de link.
-   */
-  function fecharModalGerarLink() {
-    modalGerarLink.style.display = "none";
-  }
-
-  // Listeners do Modal
-  btnFecharModalLink.addEventListener("click", fecharModalGerarLink);
-
-  btnCopiarLink.addEventListener("click", () => {
-    linkPublicoInput.select();
-    document.execCommand("copy");
-    btnCopiarLink.textContent = "Copiado!";
-    setTimeout(
-      () =>
-        (btnCopiarLink.innerHTML = '<i class="fas fa-copy"></i> Copiar Link'),
-      2000
+    window.showToast?.(
+      "Modelo excluído com sucesso (marcado como inativo)!",
+      "success"
     );
-  });
+    console.log("✅ Estudos: Modelo excluído");
 
-  // Função de utilidade
-  function formatarTimestamp(timestamp) {
-    if (!timestamp) return "N/A";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("pt-BR");
+    carregarModelosSalvos(); // Recarrega a lista
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao excluir modelo:", error);
+    window.showToast?.(`Erro ao excluir o modelo: ${error.message}`, "error");
+  }
+}
+
+// ============================================
+// GERAÇÃO DE LINK PÚBLICO
+// ============================================
+
+function abrirModalGerarLink(id, tipo) {
+  console.log(`🔹 Estudos: Gerando link para modelo: ${id}`);
+
+  // O link público deve apontar para uma página externa
+  const urlBase = window.location.origin.replace("intranet", "public");
+  const link = `${urlBase}/avaliacao-publica.html?tipo=${tipo}&id=${id}`;
+
+  linkPublicoInput.value = link;
+  modalGerarLink.style.display = "flex";
+
+  // Foco no campo para facilitar a cópia
+  setTimeout(() => linkPublicoInput.select(), 100);
+}
+
+function fecharModalGerarLink() {
+  modalGerarLink.style.display = "none";
+}
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+export async function initGestaoEstudos(user, userData) {
+  console.log("🔹 Estudos de Caso: Iniciando módulo");
+
+  currentUserData = userData || {};
+
+  // Configurar abas
+  configurarAbas();
+
+  // Adicionar listener do formulário
+  if (formNovoEstudo) {
+    formNovoEstudo.addEventListener("submit", salvarModelo);
   }
 
-  // Inicialização: Garante que a primeira pergunta exista ao carregar
-  if (listaPerguntas.children.length === 0) {
+  // Adicionar listener para adicionar pergunta
+  if (btnAdicionarPergunta) {
+    btnAdicionarPergunta.addEventListener("click", adicionarCampoPergunta);
+  }
+
+  // Listeners do Modal de Link
+  if (btnFecharModalLink) {
+    btnFecharModalLink.addEventListener("click", fecharModalGerarLink);
+  }
+
+  if (btnCopiarLink) {
+    btnCopiarLink.addEventListener("click", () => {
+      linkPublicoInput.select();
+      document.execCommand("copy");
+      btnCopiarLink.textContent = "Copiado!";
+      setTimeout(
+        () =>
+          (btnCopiarLink.innerHTML = '<i class="fas fa-copy"></i> Copiar Link'),
+        2000
+      );
+    });
+  }
+
+  // Garantir que a primeira pergunta exista
+  if (listaPerguntas && listaPerguntas.children.length === 0) {
     adicionarCampoPergunta();
-    // Remove o botão de remoção do primeiro item para garantir que sempre haja pelo menos um campo vazio.
     listaPerguntas.querySelector(".btn-remover-pergunta")?.remove();
     proximoIdPergunta = 2;
   }
-});
+
+  console.log("✅ Estudos de Caso: Módulo inicializado com sucesso");
+}
+
+export { initGestaoEstudos as init };
