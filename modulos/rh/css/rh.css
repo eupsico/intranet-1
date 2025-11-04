@@ -5,356 +5,393 @@ Descrição: Estilos principais e compartilhados para o Painel de RH.
 
 /* Garante que o container da view se ajuste bem ao conteúdo das abas e seções */
 .view-rh .view-container {
- padding: 0;
+  padding: 0;
 }
 
 /* Estilo para o modal de edição de profissional */
 .modal-content {
- max-width: 600px;
+  max-width: 600px;
 }
+
 /* Adicione este bloco de código NO FINAL do seu arquivo */
 .table-section table {
- min-width: 800px; /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
+  min-width: 800px;
+  /* Força a tabela a ter uma largura mínima, ativando a rolagem do container */
 }
 
 /* --- ESTILOS PARA O DASHBOARD DE OPÇÕES DO RH (Início) --- */
 
 .rh-dashboard-grid {
- display: grid;
- /* Define 2 colunas como mínimo, mas permite até 3 colunas em telas maiores */
- grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
- gap: 25px;
- margin-top: 20px;
- margin-bottom: 40px;
+  display: grid;
+  /* Define 2 colunas como mínimo, mas permite até 3 colunas em telas maiores */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+  margin-bottom: 40px;
 }
 
 .rh-card {
- /* Herda o background e sombra do design system */
- background-color: var(--cor-surface);
- padding: 30px;
- border-radius: var(--borda-radius);
- box-shadow: var(--sombra-padrao);
- border: 1px solid var(--cor-borda);
- cursor: pointer;
- transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out,
-  border-color 0.2s;
- display: flex;
- flex-direction: column;
- align-items: flex-start;
- text-decoration: none; /* Garante que links (divs) não tenham sublinhado */
- color: var(--cor-texto-principal);
+  /* Herda o background e sombra do design system */
+  background-color: var(--cor-surface);
+  padding: 30px;
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-padrao);
+  border: 1px solid var(--cor-borda);
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out,
+    border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-decoration: none;
+  /* Garante que links (divs) não tenham sublinhado */
+  color: var(--cor-texto-principal);
 }
 
 .rh-card:hover {
- transform: translateY(-5px);
- box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
- border-color: var(--cor-primaria); /* Destaca a borda no hover */
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--cor-primaria);
+  /* Destaca a borda no hover */
 }
 
 .rh-card svg {
- /* Ícones maiores e em cor primária */
- width: 36px;
- height: 36px;
- color: var(--cor-primaria);
- margin-bottom: 15px;
+  /* Ícones maiores e em cor primária */
+  width: 36px;
+  height: 36px;
+  color: var(--cor-primaria);
+  margin-bottom: 15px;
 }
 
 .rh-card h3 {
- margin: 0 0 5px 0;
- font-size: 1.3em;
- color: var(--cor-primaria);
- font-weight: 600;
+  margin: 0 0 5px 0;
+  font-size: 1.3em;
+  color: var(--cor-primaria);
+  font-weight: 600;
 }
 
 .rh-card p {
- margin: 0;
- font-size: 0.95em;
- color: var(--cor-texto-secundario);
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--cor-texto-secundario);
 }
 
 /* --- ESTILOS PARA LISTAS DE ITENS (VAGAS, ONBOARDING, DESLIGAMENTO) --- */
 
 .rh-item-list {
- margin-top: 20px;
- padding: 0;
+  margin-top: 20px;
+  padding: 0;
 }
 
 /* Estilo Base para os Cards de Itens (Vagas, Onboarding, Desligamento) */
 .card-vaga,
 .card-onboarding,
 .card-desligamento {
- /* Usa o fundo do container de listagem, mas adiciona separador */
- background-color: var(--cor-surface);
- padding: 20px 0;
- border-left: 5px solid var(--cor-secundaria);
- /* Adiciona o separador abaixo de cada item */
- border-bottom: 1px solid var(--cor-fundo);
- margin-bottom: 0; /* Remove a margem do card, usando padding e border-bottom como separador */
- display: flex;
- flex-direction: column;
- /* Adiciona padding horizontal para conteúdo, exceto na borda esquerda */
- padding-left: 15px;
+  /* Usa o fundo do container de listagem, mas adiciona separador */
+  background-color: var(--cor-surface);
+  padding: 20px 0;
+  border-left: 5px solid var(--cor-secundaria);
+  /* Adiciona o separador abaixo de cada item */
+  border-bottom: 1px solid var(--cor-fundo);
+  margin-bottom: 0;
+  /* Remove a margem do card, usando padding e border-bottom como separador */
+  display: flex;
+  flex-direction: column;
+  /* Adiciona padding horizontal para conteúdo, exceto na borda esquerda */
+  padding-left: 15px;
 }
+
 /* Remove a borda do último item da lista para manter a limpeza */
 .card-vaga:last-child,
 .card-onboarding:last-child,
 .card-desligamento:last-child {
- border-bottom: none;
+  border-bottom: none;
 }
 
 .card-vaga h4,
 .card-onboarding h4,
 .card-desligamento h4 {
- margin-top: 0;
- color: var(--cor-primaria);
- font-size: 1.1em;
+  margin-top: 0;
+  color: var(--cor-primaria);
+  font-size: 1.1em;
 }
 
 /* Agrupador para os botões de ação (Ver Detalhes, Aprovar, etc.) */
 .rh-card-actions {
- display: flex;
- gap: 10px; /* Espaçamento entre os botões */
- margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  /* Espaçamento entre os botões */
+  margin-top: 10px;
 }
 
 /* Ajuste para botões menores e padronizados dentro das listas */
 .rh-card-actions .btn-sm {
- padding: 6px 12px;
- font-size: 0.85em;
- font-weight: 500;
+  padding: 6px 12px;
+  font-size: 0.85em;
+  font-weight: 500;
 }
 
 /* --- ESTILOS RESPONSIVOS ESPECÍFICOS DO RH (Início) --- */
 @media (max-width: 600px) {
- .rh-dashboard-grid {
-  /* Garante que em telas muito pequenas, use apenas 1 coluna */
-  grid-template-columns: 1fr;
- }
- .rh-card-actions {
-  flex-direction: column;
-  gap: 5px;
- }
- .rh-card-actions .btn-sm {
-  width: 100%;
-  text-align: center;
- }
+  .rh-dashboard-grid {
+    /* Garante que em telas muito pequenas, use apenas 1 coluna */
+    grid-template-columns: 1fr;
+  }
+
+  .rh-card-actions {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .rh-card-actions .btn-sm {
+    width: 100%;
+    text-align: center;
+  }
 }
+
 /* modulos/rh/css/rh.css (Bloco a ser INSERIDO ou AJUSTADO) */
 
 /* Garante que os botões dentro das ações de RH fiquem mais proeminentes */
 .rh-card-actions .btn,
 .rh-card-actions .action-button {
- /* Sobrescreve estilos de botões menores para deixá-los grandes e coloridos */
- padding: 10px 20px;
- font-size: 0.9em;
- font-weight: 600;
- text-transform: uppercase;
- display: inline-block; /* Garante que o padding funcione */
- min-width: 150px; /* Garante que os botões tenham um bom tamanho */
- text-align: center;
+  /* Sobrescreve estilos de botões menores para deixá-los grandes e coloridos */
+  padding: 10px 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+  /* Garante que o padding funcione */
+  min-width: 150px;
+  /* Garante que os botões tenham um bom tamanho */
+  text-align: center;
 }
 
 /* Garante que o botão de detalhes (Ver/Editar) fique azul primário */
 .rh-card-actions .btn-primary {
- background-color: var(--cor-primaria);
- color: var(--cor-texto-inverso);
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
 }
+
 .rh-card-actions .btn-primary:hover {
- background-color: var(--cor-secundaria);
- filter: none;
+  background-color: var(--cor-secundaria);
+  filter: none;
 }
+
 /* --- CORREÇÃO DE ESTILO DOS BOTÕES DE AÇÃO E MODAL --- */
 
 /* Estilo para o botão principal "Criar Ficha Técnica" */
 .acoes-header .btn-primary {
- padding: 12px 25px; /* Tamanho maior */
- font-size: 1em;
- font-weight: 600;
- background-color: var(--cor-secundaria);
- color: var(--cor-texto-inverso);
- border: none;
+  padding: 12px 25px;
+  /* Tamanho maior */
+  font-size: 1em;
+  font-weight: 600;
+  background-color: var(--cor-secundaria);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
 
 /* Garante que os botões do rodapé do modal (Excluir, Cancelar, Salvar) tenham um bom tamanho */
 .modal-footer {
- display: flex;
- justify-content: flex-end; /* Alinha os botões à direita por padrão */
- gap: 10px; /* Espaço entre os botões */
- flex-wrap: wrap;
- padding: 16px;
+  display: flex;
+  justify-content: flex-end;
+  /* Alinha os botões à direita por padrão */
+  gap: 10px;
+  /* Espaço entre os botões */
+  flex-wrap: wrap;
+  padding: 16px;
 }
+
 .modal-footer .btn {
- min-width: 120px;
- height: 40px;
- padding: 0 16px;
- font-size: 0.9em;
- font-weight: 500;
- text-align: center;
- white-space: nowrap;
- box-sizing: border-box;
+  min-width: 120px;
+  height: 40px;
+  padding: 0 16px;
+  font-size: 0.9em;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* 1. Alinhamento dos Botões de Controle de Fluxo (Cancelar, Encerrar) */
 /* Aplicamos o margin-right: auto no Cancelar Vaga para empurrá-lo para a esquerda. */
 .modal-footer #btn-cancelar-vaga {
- margin-right: auto !important; /* Empurra o botão para a extrema esquerda */
+  margin-right: auto !important;
+  /* Empurra o botão para a extrema esquerda */
 }
 
 /* 2. Wrappers de Injeção Dinâmica (Aprovação Ficha e Arte) */
 
 /* Wrapper para Aprovação de Ficha Técnica: Alinha os botões Aprovar/Solicitar à direita do Cancelar Vaga */
 .acoes-aprovacao-ficha-wrapper {
- display: flex;
- gap: 10px;
- margin: 0;
- padding: 0;
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
 }
 
 /* Wrapper para Ações de Arte: Este é o grupo Salvar Link/Obs, Solicitar, Aprovar Arte */
 /* NOVO: Removemos a margem auto do CSS para deixar o JS controlar melhor a injeção */
 .acoes-arte-wrapper {
- display: flex;
- gap: 10px;
- margin: 0;
- padding: 0;
- /* A âncora de alinhamento é feita no JS com um inline style de margin-left: auto; no primeiro botão do grupo. */
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  /* A âncora de alinhamento é feita no JS com um inline style de margin-left: auto; no primeiro botão do grupo. */
 }
+
 .acoes-arte-wrapper .btn {
- min-width: 150px;
+  min-width: 150px;
 }
 
 /* Estilos de Botões */
 
 /* Garante que o botão de Excluir seja corretamente alinhado à esquerda e tenha a cor de erro */
 .modal-footer .btn-excluir {
- background-color: var(--cor-erro);
- color: var(--cor-texto-inverso);
- border: none;
+  background-color: var(--cor-erro);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
 
 /* Garante que o botão de Cancelar (Secundário) tenha a cor correta */
 .modal-footer .btn-secondary {
- background-color: var(--cor-borda);
- color: var(--cor-texto-principal);
- border: none;
+  background-color: var(--cor-borda);
+  color: var(--cor-texto-principal);
+  border: none;
 }
+
 .modal-footer .btn-secondary:hover {
- background-color: #d1d1d1;
- border: none;
+  background-color: #d1d1d1;
+  border: none;
 }
+
 .modal-footer .btn-success {
- background-color: var(--cor-secundaria);
- color: var(--cor-texto-inverso);
- border: none;
+  background-color: var(--cor-secundaria);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
+
 /* Botão Solicitar Alterações (Ficha e Arte) */
 .modal-footer .btn-alteracao,
 .modal-footer #btn-solicitar-alteracoes-arte {
- background-color: var(--cor-alerta);
- color: var(--cor-texto-inverso);
- border: none;
+  background-color: var(--cor-alerta);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
 
 /* Botão Salvar Link/Obs (Fase Arte) */
 .modal-footer #btn-salvar-link-arte {
- background-color: var(--cor-primaria);
- color: var(--cor-texto-inverso);
- border: none;
- min-width: 150px;
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+  border: none;
+  min-width: 150px;
 }
 
 .modal-footer .btn-danger {
- background-color: var(--cor-erro);
- color: var(--cor-texto-inverso);
- border: none;
+  background-color: var(--cor-erro);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
+
 .modal-footer .btn-dark {
- background-color: var(--cor-texto-secundario);
- color: var(--cor-texto-inverso);
- border: none;
+  background-color: var(--cor-texto-secundario);
+  color: var(--cor-texto-inverso);
+  border: none;
 }
+
 /* Garante que os botões de ação nos cards (Ver/Editar e Aprovar) fiquem mais proeminentes */
 .rh-card-actions .btn,
 .rh-card-actions .action-button {
- padding: 10px 20px; 
- font-size: 0.9em;
- font-weight: 600;
- text-transform: uppercase;
- display: inline-block;
- min-width: 150px;
- text-align: center;
+  padding: 10px 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+  min-width: 150px;
+  text-align: center;
 }
+
 /* --- ESTILOS PARA CORREÇÃO DE LARGURA DE CAMPOS NO MODAL (vaga-link-arte) --- */
 
 #vaga-link-arte {
- /* Garante que o campo de input ocupe toda a largura disponível */
- width: 100%;
- /* Remove preenchimentos ou margens que possam causar rolagem horizontal */
- box-sizing: border-box;
- /* Adiciona um pequeno padding interno para estética, se necessário */
- padding: 10px;
- /* Opção: Melhora a fonte e borda para padronizar com outros campos */
- font-size: 1em;
- border: 1px solid var(--cor-borda);
- border-radius: var(--borda-radius);
+  /* Garante que o campo de input ocupe toda a largura disponível */
+  width: 100%;
+  /* Remove preenchimentos ou margens que possam causar rolagem horizontal */
+  box-sizing: border-box;
+  /* Adiciona um pequeno padding interno para estética, se necessário */
+  padding: 10px;
+  /* Opção: Melhora a fonte e borda para padronizar com outros campos */
+  font-size: 1em;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
 }
 
 /* Se 'vaga-resumo-arte' e 'vaga-observacao-arte' forem textareas, também é bom aplicar a regra */
 #vaga-resumo-arte,
 #vaga-observacao-arte {
- width: 100%;
- box-sizing: border-box;
- padding: 10px;
- font-size: 1em;
- border: 1px solid var(--cor-borda);
- border-radius: var(--borda-radius);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  font-size: 1em;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
 }
 
 /* Garante que o container imediato não tenha paddings laterais desnecessários */
 .modal-body .form-group {
- /* Usando a técnica de 'border-box' garante que a largura de 100% seja segura */
- padding-left: 0;
- padding-right: 0;
+  /* Usando a técnica de 'border-box' garante que a largura de 100% seja segura */
+  padding-left: 0;
+  padding-right: 0;
 }
+
 /* ... (Seu CSS existente) ... */
 
 /* Ajuste no botão de ação dentro de tabelas e modais */
 td .action-button,
 .modal-footer .action-button {
- padding: 8px 15px; /* Botões um pouco menores */
- font-size: 0.85em;
+  padding: 8px 15px;
+  /* Botões um pouco menores */
+  font-size: 0.85em;
 }
 
 /* Cores para botões Aprovar/Rejeitar */
 .action-button.success {
- background-color: var(--cor-sucesso);
+  background-color: var(--cor-sucesso);
 }
+
 .action-button.success:hover {
- filter: brightness(1.1);
- background-color: var(--cor-sucesso); /* Mantém a cor no hover */
+  filter: brightness(1.1);
+  background-color: var(--cor-sucesso);
+  /* Mantém a cor no hover */
 }
+
 .action-button.error {
- background-color: var(--cor-erro);
+  background-color: var(--cor-erro);
 }
+
 .action-button.error:hover {
- filter: brightness(1.1);
- background-color: var(--cor-erro); /* Mantém a cor no hover */
+  filter: brightness(1.1);
+  background-color: var(--cor-erro);
+  /* Mantém a cor no hover */
 }
 
 /* --- INÍCIO DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
 
 .action-button.info {
-  background-color: var(--cor-secundaria); /* Azul secundário */
+  background-color: var(--cor-secundaria);
+  /* Azul secundário */
   color: var(--cor-texto-inverso);
 }
+
 .action-button.info:hover {
   filter: brightness(1.1);
 }
 
 .action-button.warning {
   background-color: var(--cor-alerta);
-  color: #333; /* Cor de texto mais escura para contraste */
+  color: #333;
+  /* Cor de texto mais escura para contraste */
 }
+
 .action-button.warning:hover {
   filter: brightness(1.1);
 }
@@ -391,8 +428,10 @@ td .action-button,
 }
 
 .card-candidato-triagem .info-contato a.whatsapp {
-  color: var(--cor-sucesso); /* Verde para WhatsApp */
+  color: var(--cor-sucesso);
+  /* Verde para WhatsApp */
 }
+
 .card-candidato-triagem .info-contato a.whatsapp:hover {
   color: #1e8449;
 }
@@ -407,6 +446,7 @@ td .action-button,
   padding: 10px;
   border-bottom: 1px solid var(--cor-fundo);
 }
+
 .checklist-item:last-child {
   border-bottom: none;
 }
@@ -415,43 +455,42 @@ td .action-button,
 
 /* 1. Correção de Layout/Scroll do Modal (Garantir que o modal-body seja flexível e rolável) */
 .modal-content {
- display: flex;
- flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
+
 .modal-body.modal-body-scroll {
- /* Garante que o corpo do modal possa rolar e se encolher para respeitar o footer */
- overflow-y: auto; 
- flex-grow: 1;
- min-height: 0;
- flex-shrink: 1; 
+  /* Garante que o corpo do modal possa rolar e se encolher para respeitar o footer */
+  overflow-y: auto;
+  flex-grow: 1;
+  min-height: 0;
+  flex-shrink: 1;
 }
 
 /* 2. Ajuste do Tamanho da Fonte para Resumo e Habilidades (Ficha de Candidatura) */
 .card-body h6 {
- /* Estilo para os títulos (Resumo da Experiência Profissional e Habilidades/Competências) */
- font-size: 1em; 
- font-weight: 600; /* Deixa o título mais forte */
- margin-bottom: 5px;
- color: var(--cor-texto-principal); 
+  /* Estilo para os títulos (Resumo da Experiência Profissional e Habilidades/Competências) */
+  font-size: 1em;
+  font-weight: 600;
+  /* Deixa o título mais forte */
+  margin-bottom: 5px;
+  color: var(--cor-texto-principal);
 }
 
 /* Seleciona o parágrafo de conteúdo que está com a classe .text-muted */
 .card-body p.text-muted {
- /* Ajusta o texto de Resumo e Habilidades */
- font-size: 0.95em !important; /* Tamanho de fonte consistente com outros campos (0.95em é o padrão do p.card-text) */
- color: var(--cor-texto-principal) !important; /* Melhora a legibilidade (desfazendo o "muted") */
- margin-top: 5px; 
- white-space: pre-wrap; /* Preserva a formatação do texto inserido */
+  /* Ajusta o texto de Resumo e Habilidades */
+  font-size: 0.95em !important;
+  /* Tamanho de fonte consistente com outros campos (0.95em é o padrão do p.card-text) */
+  color: var(--cor-texto-principal) !important;
+  /* Melhora a legibilidade (desfazendo o "muted") */
+  margin-top: 5px;
+  white-space: pre-wrap;
+  /* Preserva a formatação do texto inserido */
 }
 
 /* 3. Estilo para o fieldset na Ficha de Candidatura (Padroniza com os outros fieldsets) */
-/* Regras removidas/alteradas, pois no HTML a Ficha de Candidatura está agora em um <fieldset> simples */
-/* A Ficha de Candidatura agora terá a aparência padrão de Fieldset (borda fina e legend em azul) */
-
-/* Ajusta o H4 do nome do candidato para ter margem inferior dentro do Fieldset */
-#modal-avaliacao-triagem .col-lg-6 fieldset h4 {
-    margin-bottom: 15px !important;
-}
+/* Não precisa de regras adicionais aqui, pois o HTML usa <fieldset> e o estilo base do design-system já é aplicado. */
 
 /* --- FIM DAS CORREÇÕES E MELHORIAS SOLICITADAS --- */
 
