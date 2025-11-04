@@ -24,9 +24,9 @@
   box-shadow: var(--sombra-padrao);
   border: 1px solid var(--cor-borda);
   cursor: pointer;
-  transition: transform var(--transicao-padrao), 
-              box-shadow var(--transicao-padrao),
-              border-color var(--transicao-padrao);
+  transition: transform var(--transicao-padrao),
+    box-shadow var(--transicao-padrao),
+    border-color var(--transicao-padrao);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
