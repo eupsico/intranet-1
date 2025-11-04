@@ -14,16 +14,7 @@ import {
   serverTimestamp,
 } from "../../../../assets/js/firebase-init.js";
 
-// Elementos do DOM dos NOVOS Modais
-const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
-const btnRegistrarAgendamento = document.getElementById(
-  "btn-registrar-agendamento-rh"
-);
-
-const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
-const btnRegistrarAvaliacao = document.getElementById(
-  "btn-registrar-entrevista-rh" // Mantido ID original no HTML para Avaliação (Registrar Decisão)
-);
+// Elementos do DOM dos NOVOS Modais: REMOVIDOS daqui para serem buscados DENTRO das funções.
 let dadosCandidatoAtual = null; // Para armazenar dados do candidato atual (dadosCandidatoEntrevista renomeado)
 
 /**
@@ -214,7 +205,12 @@ export async function renderizarEntrevistas(state) {
  * EXPOSTA GLOBALMENTE.
  */
 window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
-  if (!modalAgendamentoRH) return;
+  // Busca o elemento do modal dinamicamente
+  const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
+  if (!modalAgendamentoRH) {
+    console.error("Elemento modal-agendamento-rh não encontrado.");
+    return;
+  }
 
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
@@ -230,7 +226,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 
   const nomeEl = document.getElementById("agendamento-rh-nome-candidato");
   const statusEl = document.getElementById("agendamento-rh-status-atual");
-  const resumoEl = document.getElementById("agendamento-rh-resumo-triagem");
+  const resumoEl = document.getElementById("agendamento-rh-resumo-triagem"); // Os campos de data e hora também devem ser buscados, embora o ID seja o mesmo.
   const dataEl = document.getElementById("data-entrevista-agendada");
   const horaEl = document.getElementById("hora-entrevista-agendada");
 
@@ -248,7 +244,12 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
  * EXPOSTA GLOBALMENTE.
  */
 window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
-  if (!modalAvaliacaoRH) return;
+  // Busca o elemento do modal dinamicamente
+  const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
+  if (!modalAvaliacaoRH) {
+    console.error("Elemento modal-avaliacao-rh não encontrado.");
+    return;
+  }
 
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId; // 1. Preencher a Ficha e Notas Rápidas
@@ -281,21 +282,24 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (form) form.reset(); // 3. Preencher dados de avaliação se já existirem
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
-    form.querySelector("#nota-motivacao").value =
-      avaliacaoExistente.notas?.motivacao || "";
-    form.querySelector("#nota-aderencia").value =
-      avaliacaoExistente.notas?.aderencia || "";
-    form.querySelector("#nota-comunicacao").value =
-      avaliacaoExistente.notas?.comunicacao || "";
-    form.querySelector("#pontos-fortes").value =
-      avaliacaoExistente.pontos_fortes || "";
-    form.querySelector("#pontos-atencao").value =
-      avaliacaoExistente.pontos_atencao || "";
-    if (avaliacaoExistente.resultado) {
-      const radio = form.querySelector(
-        `input[name="resultado_entrevista"][value="${avaliacaoExistente.resultado}"]`
-      );
-      if (radio) radio.checked = true;
+    if (form) {
+      // Garante que o formulário foi encontrado antes de tentar preencher
+      form.querySelector("#nota-motivacao").value =
+        avaliacaoExistente.notas?.motivacao || "";
+      form.querySelector("#nota-aderencia").value =
+        avaliacaoExistente.notas?.aderencia || "";
+      form.querySelector("#nota-comunicacao").value =
+        avaliacaoExistente.notas?.comunicacao || "";
+      form.querySelector("#pontos-fortes").value =
+        avaliacaoExistente.pontos_fortes || "";
+      form.querySelector("#pontos-atencao").value =
+        avaliacaoExistente.pontos_atencao || "";
+      if (avaliacaoExistente.resultado) {
+        const radio = form.querySelector(
+          `input[name="resultado_entrevista"][value="${avaliacaoExistente.resultado}"]`
+        );
+        if (radio) radio.checked = true;
+      }
     }
   } // 4. Exibir o Modal
 
@@ -308,6 +312,11 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
 async function submeterAgendamentoRH(e) {
   e.preventDefault();
 
+  const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
+  const btnRegistrarAgendamento = document.getElementById(
+    "btn-registrar-agendamento-rh"
+  );
+
   const state = getGlobalState();
   const {
     candidatosCollection,
@@ -317,10 +326,12 @@ async function submeterAgendamentoRH(e) {
   } = state;
   const candidaturaId = modalAgendamentoRH?.dataset.candidaturaId;
 
-  if (!candidaturaId) return;
+  if (!candidaturaId || !btnRegistrarAgendamento) return;
 
   // 1. Coleta de Dados do Formulário (Apenas agendamento)
   const form = document.getElementById("form-agendamento-entrevista-rh");
+  if (!form) return;
+
   const dataEntrevista = form.querySelector("#data-entrevista-agendada").value;
   const horaEntrevista = form.querySelector("#hora-entrevista-agendada").value;
 
@@ -405,6 +416,11 @@ async function submeterAgendamentoRH(e) {
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
 
+  const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
+  const btnRegistrarAvaliacao = document.getElementById(
+    "btn-registrar-entrevista-rh"
+  );
+
   const state = getGlobalState();
   const {
     candidatosCollection,
@@ -414,10 +430,11 @@ async function submeterAvaliacaoRH(e) {
   } = state;
   const candidaturaId = modalAvaliacaoRH?.dataset.candidaturaId;
 
-  if (!candidaturaId) return;
+  if (!candidaturaId || !btnRegistrarAvaliacao) return;
 
   // 1. Coleta de Dados do Formulário
   const form = document.getElementById("form-avaliacao-entrevista-rh");
+  if (!form) return;
 
   const resultado = form.querySelector(
     'input[name="resultado_entrevista"]:checked'
@@ -427,8 +444,6 @@ async function submeterAvaliacaoRH(e) {
   const notaComunicacao = form.querySelector("#nota-comunicacao").value;
   const pontosFortes = form.querySelector("#pontos-fortes").value;
   const pontosAtencao = form.querySelector("#pontos-atencao").value;
-
-  // Os campos de agendamento foram removidos desta função.
 
   if (!resultado) {
     window.showToast(
@@ -504,45 +519,34 @@ async function submeterAvaliacaoRH(e) {
   }
 }
 
-// Listener para o formulário de Agendamento
-if (modalAgendamentoRH) {
-  document
-    .getElementById("form-agendamento-entrevista-rh")
-    ?.addEventListener("submit", submeterAgendamentoRH);
+// Listener para o formulário de Agendamento (buscando o formulário dinamicamente)
+document
+  .getElementById("form-agendamento-entrevista-rh")
+  ?.addEventListener("submit", submeterAgendamentoRH);
 
-  // Fechamento do Modal (X no cabeçalho e botão 'Cancelar')
-  document
-    .querySelectorAll("[data-modal-id='modal-agendamento-rh']")
-    .forEach((btn) => {
-      btn.addEventListener("click", () =>
-        modalAgendamentoRH.classList.remove("is-visible")
+// Listener para o botão de fechamento do Modal de Agendamento (buscando o modal e botões dinamicamente)
+document
+  .querySelectorAll("[data-modal-id='modal-agendamento-rh']")
+  .forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const modalAgendamentoRH = document.getElementById(
+        "modal-agendamento-rh"
       );
+      if (modalAgendamentoRH) modalAgendamentoRH.classList.remove("is-visible");
     });
-}
+  });
 
-// Listener para o formulário de Avaliação
-if (modalAvaliacaoRH) {
-  // 1. Botão 'Registrar Decisão' (usando submit do form)
-  document
-    .getElementById("form-avaliacao-entrevista-rh")
-    ?.addEventListener("submit", submeterAvaliacaoRH);
+// Listener para o formulário de Avaliação (buscando o formulário dinamicamente)
+document
+  .getElementById("form-avaliacao-entrevista-rh")
+  ?.addEventListener("submit", submeterAvaliacaoRH);
 
-  // 2. Fechamento do Modal (X no cabeçalho e botão 'Voltar ao Painel')
-  document
-    .querySelectorAll("[data-modal-id='modal-avaliacao-rh']")
-    .forEach((btn) => {
-      btn.addEventListener("click", () =>
-        modalAvaliacaoRH.classList.remove("is-visible")
-      );
+// Listener para o botão de fechamento do Modal de Avaliação (buscando o modal e botões dinamicamente)
+document
+  .querySelectorAll("[data-modal-id='modal-avaliacao-rh']")
+  .forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
+      if (modalAvaliacaoRH) modalAvaliacaoRH.classList.remove("is-visible");
     });
-
-  // Listener para o botão 'Voltar ao Painel' no footer
-  const btnVoltarPainel = modalAvaliacaoRH.querySelector(
-    "#btn-voltar-painel-rh"
-  );
-  if (btnVoltarPainel) {
-    btnVoltarPainel.addEventListener("click", () =>
-      modalAvaliacaoRH.classList.remove("is-visible")
-    );
-  }
-}
+  });
