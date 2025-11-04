@@ -56,23 +56,22 @@ function renderizarChecklistTriagem(savedChecks = {}) {
   container.innerHTML = CHECKLIST_TRIAGEM.map((item) => {
     const isChecked = savedChecks[item.id] === true ? "checked" : "";
     return `
-      <div class="form-check checklist-item">
-        <input 
-          class="form-check-input" 
-          type="checkbox" 
-          value="1" 
-          id="${item.id}" 
-          data-check-id="${item.id}"
-          ${isChecked}
-        />
-        <label class="form-check-label" for="${item.id}">
-          ${item.label}
-        </label>
-      </div>
-    `;
-  }).join("");
+ <div class="form-check checklist-item">
+ <input 
+ class="form-check-input" 
+ type="checkbox" 
+ value="1" 
+ id="${item.id}" 
+ data-check-id="${item.id}"
+ ${isChecked}
+ />
+ <label class="form-check-label" for="${item.id}">
+ ${item.label}
+ </label>
+ </div>
+ `;
+  }).join(""); // Adicionar salvamento automático (on change)
 
-  // Adicionar salvamento automático (on change)
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.removeEventListener("change", handleSalvarChecklist);
     checkbox.addEventListener("change", handleSalvarChecklist);
@@ -124,18 +123,14 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   // Acessa a função global de toggle, que foi inserida no HTML
   const { toggleMotivoAprovacaoRejeicao } = window;
 
-  if (!modalAvaliacaoTriagem) return;
+  if (!modalAvaliacaoTriagem) return; // Salva a referência global do candidato para uso no salvamento
 
-  // Salva a referência global do candidato para uso no salvamento
-  dadosCandidatoAtual = dadosCandidato;
+  dadosCandidatoAtual = dadosCandidato; // 1. Configurações Iniciais e IDs
 
-  // 1. Configurações Iniciais e IDs
-  modalAvaliacaoTriagem.dataset.candidaturaId = candidatoId;
+  modalAvaliacaoTriagem.dataset.candidaturaId = candidatoId; // 2. Popula dados do Candidato (Ficha)
 
-  // 2. Popula dados do Candidato (Ficha)
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)"; // 🔴 CORREÇÃO 1: Injeta o nome do candidato no novo SPAN dentro do P (novo formato)
 
-  // 🔴 CORREÇÃO 1: Injeta o nome do candidato no novo <h4> no corpo do fieldset
   const candidatoNomeEl = document.getElementById("candidato-modal-nome");
   if (candidatoNomeEl) candidatoNomeEl.textContent = nomeCompleto;
 
@@ -150,55 +145,52 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
     dadosCandidato.cidade || "Não informada"
   } / ${dadosCandidato.estado || "UF"}`;
   document.getElementById("modal-dado-como-conheceu").textContent =
-    dadosCandidato.como_conheceu || "Não informado";
-  document.getElementById("modal-dado-resumo-experiencia").textContent =
-    dadosCandidato.resumo_experiencia || "Não preenchido no formulário.";
-  document.getElementById("modal-dado-habilidades").textContent =
-    dadosCandidato.habilidades_competencias || "Não preenchidas no formulário.";
+    dadosCandidato.como_conheceu || "Não informado"; // 🔴 CORREÇÃO 2: Campos de Resumo e Habilidades
+  const resumoEl = document.getElementById("modal-dado-resumo-experiencia");
+  const habilidadesEl = document.getElementById("modal-dado-habilidades");
+  if (resumoEl)
+    resumoEl.textContent =
+      dadosCandidato.resumo_experiencia || "Não preenchido no formulário.";
+  if (habilidadesEl)
+    habilidadesEl.textContent =
+      dadosCandidato.habilidades_competencias ||
+      "Não preenchidas no formulário."; // 3. Popula dados de Avaliação (Checklist e Form)
 
-  // 3. Popula dados de Avaliação (Checklist e Form)
   const triagemAnterior = dadosCandidato.triagem_rh || {};
 
-  renderizarChecklistTriagem(triagemAnterior.checklist);
+  renderizarChecklistTriagem(triagemAnterior.checklist); // Campos de Critérios e Decisão (Com checagem de null)
 
-  // 🔴 CORREÇÃO 2: Usa IDs corretos e garante que o valor é populado sem erro
   const prerequisitosEl = document.getElementById(
     "modal-prerequisitos-atendidos"
   );
   if (prerequisitosEl)
-    prerequisitosEl.value = triagemAnterior.prerequisitos_atendidos || "";
+    prerequisitosEl.value = triagemAnterior.prerequisitos_atendidos || ""; // Campo de Reprovação (Motivo Detalhado)
 
-  // Campo de Reprovação (Motivo Detalhado)
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   if (motivoRejeicaoEl)
-    motivoRejeicaoEl.value = triagemAnterior.motivo_rejeicao || "";
+    motivoRejeicaoEl.value = triagemAnterior.motivo_rejeicao || ""; // Campo de Aprovação (Próximos Passos)
 
-  // Campo de Aprovação (Próximos Passos)
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
   if (infoAprovacaoEl)
-    infoAprovacaoEl.value = triagemAnterior.info_aprovacao || "";
+    infoAprovacaoEl.value = triagemAnterior.info_aprovacao || ""; // Lógica dos Rádios
 
-  // Lógica dos Rádios
   const radioSim = document.getElementById("modal-apto-sim");
   const radioNao = document.getElementById("modal-apto-nao");
 
   if (radioSim) radioSim.checked = triagemAnterior.apto_entrevista === "Sim";
-  if (radioNao) radioNao.checked = triagemAnterior.apto_entrevista === "Não";
+  if (radioNao) radioNao.checked = triagemAnterior.apto_entrevista === "Não"; // 🟡 Atualiza o link do currículo no botão do rodapé
 
-  // 🟡 Atualiza o link do currículo no botão do rodapé
   const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
   if (btnVerCurriculo) {
     btnVerCurriculo.dataset.curriculoLink =
       dadosCandidato.link_curriculo_drive || "";
     btnVerCurriculo.disabled = !dadosCandidato.link_curriculo_drive;
-  }
+  } // 🔴 CRÍTICO: Força a UI a atualizar com base no valor carregado. // Isso garante que a CAIXA DE REPROVAÇÃO ABRA, se for o caso.
 
-  // 🔴 CRÍTICO: Força a UI a atualizar com base no valor carregado. Isso garante que a CAIXA DE REPROVAÇÃO ABRA.
   if (toggleMotivoAprovacaoRejeicao) {
     toggleMotivoAprovacaoRejeicao();
-  }
+  } // 4. Exibe o Modal
 
-  // 4. Exibe o Modal
   modalAvaliacaoTriagem.classList.add("is-visible");
 };
 
@@ -216,22 +208,19 @@ async function submeterAvaliacaoTriagem(e) {
   } = getGlobalState();
 
   const candidaturaId = modalAvaliacaoTriagem?.dataset.candidaturaId;
-  if (!candidaturaId) return;
+  if (!candidaturaId) return; // Determinar a decisão
 
-  // Determinar a decisão
   const aptoEntrevista = document.querySelector(
     'input[name="modal-apto-entrevista"]:checked'
   )?.value;
-  const decisao = aptoEntrevista === "Sim";
+  const decisao = aptoEntrevista === "Sim"; // Elementos
 
-  // Elementos
   const prerequisitosEl = document.getElementById(
     "modal-prerequisitos-atendidos"
   );
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
-  const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
+  const infoAprovacaoEl = document.getElementById("modal-info-aprovacao"); // 🔴 Lógica de validação de campo obrigatório para Reprovação
 
-  // 🔴 Lógica de validação de campo obrigatório para Reprovação
   if (
     !decisao &&
     motivoRejeicaoEl?.required &&
@@ -243,20 +232,16 @@ async function submeterAvaliacaoTriagem(e) {
 
   btnFinalizarTriagem.disabled = true;
   btnFinalizarTriagem.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...'; // Determinar o novo status no banco de dados e qual aba deve ser recarregada
 
-  // Determinar o novo status no banco de dados e qual aba deve ser recarregada
   const novoStatusCandidato = decisao
     ? "Triagem Aprovada (Entrevista Pendente)" // Deve ir para aba de Entrevistas
-    : "Triagem Reprovada (Encerrada)"; // Deve ir para aba de Finalizados
+    : "Triagem Reprovada (Encerrada)"; // Deve ir para aba de Finalizados // Define qual aba deve ser ativada/recarregada após a submissão
 
-  // Define qual aba deve ser ativada/recarregada após a submissão
-  const abaRecarregar = decisao ? "entrevistas" : "finalizados";
+  const abaRecarregar = decisao ? "entrevistas" : "finalizados"; // Objeto de avaliação final (inclui o estado atual do checklist)
 
-  // Objeto de avaliação final (inclui o estado atual do checklist)
   const dadosAvaliacao = {
-    prerequisitos_atendidos: prerequisitosEl?.value || "",
-    // Garante que o campo de Reprovação seja mapeado corretamente para o Firebase
+    prerequisitos_atendidos: prerequisitosEl?.value || "", // Garante que o campo de Reprovação seja mapeado corretamente para o Firebase
     motivo_rejeicao: decisao ? "" : motivoRejeicaoEl?.value.trim() || "",
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao
@@ -270,13 +255,11 @@ async function submeterAvaliacaoTriagem(e) {
   };
 
   try {
-    const candidaturaRef = doc(candidatosCollection, candidaturaId);
+    const candidaturaRef = doc(candidatosCollection, candidaturaId); // Atualizar o documento da candidatura
 
-    // Atualizar o documento da candidatura
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
-      triagem_rh: dadosAvaliacao,
-      // CORREÇÃO CRÍTICA DO FIREBASE: Usa data do cliente para evitar o erro de serverTimestamp aninhado.
+      triagem_rh: dadosAvaliacao, // CORREÇÃO CRÍTICA DO FIREBASE: Usa data do cliente para evitar o erro de serverTimestamp aninhado.
       historico: arrayUnion({
         data: new Date().toISOString(),
         acao: `Triagem ${
@@ -286,12 +269,10 @@ async function submeterAvaliacaoTriagem(e) {
       }),
     });
 
-    window.showToast("Decisão da Triagem registrada com sucesso!", "success");
+    window.showToast("Decisão da Triagem registrada com sucesso!", "success"); // Fecha o modal
 
-    // Fecha o modal
-    modalAvaliacaoTriagem.classList.remove("is-visible");
+    modalAvaliacaoTriagem.classList.remove("is-visible"); // 🔴 Recarrega a listagem atual para remover o card da aba Triagem e muda para a próxima aba.
 
-    // 🔴 Recarrega a listagem atual para remover o card da aba Triagem e muda para a próxima aba.
     renderizarTriagem(getGlobalState());
 
     const currentActiveTab = statusCandidaturaTabs
@@ -341,9 +322,8 @@ export async function renderizarTriagem(state) {
         "Candidatura Recebida (Triagem Pendente)"
       )
     );
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q); // Atualiza contagem na aba
 
-    // Atualiza contagem na aba
     const triagemTab = document
       .getElementById("status-candidatura-tabs")
       .querySelector('.tab-link[data-status="triagem"]');
@@ -357,14 +337,13 @@ export async function renderizarTriagem(state) {
     }
 
     let listaHtml = `
-  <div class="list-candidaturas">
-   <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
- `;
+ <div class="list-candidaturas">
+<h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
+`;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
-      const candidatoId = docSnap.id;
-      // ... (lógica de formatação de status e whatsapp inalterada) ...
+      const candidatoId = docSnap.id; // ... (lógica de formatação de status e whatsapp inalterada) ...
       const statusTriagem = cand.status_recrutamento || "Aguardando Triagem";
 
       let corStatus = "secondary";
@@ -389,48 +368,46 @@ export async function renderizarTriagem(state) {
         : "#";
 
       listaHtml += `
-   <div class="card card-candidato-triagem" data-id="${candidatoId}">
-    <div class="info-primaria">
-      <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
-      <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
+<div class="card card-candidato-triagem" data-id="${candidatoId}">
+ <div class="info-primaria">
+ <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+ <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
         "_",
         " "
       )}</span></p>
-    </div>
-    
-    <div class="info-contato">
-      <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
+ </div>
+ 
+ <div class="info-contato">
+ <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
       }>
-        <i class="fab fa-whatsapp me-1"></i> ${
-          cand.telefone_contato || "N/A (Sem WhatsApp)"
-        }
-      </a>
-    </div>
-    
-    <div class="acoes-candidato">
-      <button 
-        class="action-button info btn-detalhes-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-info-circle me-1"></i> Detalhes
-      </button>
-      <button 
-        class="action-button warning btn-avaliar-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-edit me-1"></i> Avaliar Candidatura
-      </button>
-    </div>
-   </div>
-  `;
+ <i class="fab fa-whatsapp me-1"></i> ${
+   cand.telefone_contato || "N/A (Sem WhatsApp)"
+ }
+ </a>
+ </div>
+ 
+ <div class="acoes-candidato">
+ <button 
+ class="action-button info btn-detalhes-triagem" 
+ data-id="${candidatoId}"
+ data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+ <i class="fas fa-info-circle me-1"></i> Detalhes
+ </button>
+ <button 
+ class="action-button warning btn-avaliar-triagem" 
+ data-id="${candidatoId}"
+ data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+ <i class="fas fa-edit me-1"></i> Avaliar Candidatura
+ </button>
+ </div>
+</div>
+ `;
     });
 
     listaHtml += "</div>";
-    conteudoRecrutamento.innerHTML = listaHtml;
+    conteudoRecrutamento.innerHTML = listaHtml; // 🔴 Listeners DYNAMICOS para Detalhes e Avaliar Candidatura // 1. Configura evento para abrir modal de detalhes (modalCandidato)
 
-    // 🔴 Listeners DYNAMICOS para Detalhes e Avaliar Candidatura
-    // 1. Configura evento para abrir modal de detalhes (modalCandidato)
     document.querySelectorAll(".btn-detalhes-triagem").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -441,9 +418,8 @@ export async function renderizarTriagem(state) {
         );
         window.abrirModalCandidato(candidatoId, "detalhes", dados);
       });
-    });
+    }); // 2. Configura evento para abrir o modal de avaliação (modalAvaliacaoTriagem)
 
-    // 2. Configura evento para abrir o modal de avaliação (modalAvaliacaoTriagem)
     document.querySelectorAll(".btn-avaliar-triagem").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -469,13 +445,11 @@ if (modalAvaliacaoTriagem) {
   // 1. Botão 'Registrar Decisão' (Chama submeterAvaliacaoTriagem)
   if (btnFinalizarTriagem) {
     btnFinalizarTriagem.removeEventListener("click", submeterAvaliacaoTriagem);
-    btnFinalizarTriagem.addEventListener("click", submeterAvaliacaoTriagem);
-    // 🔴 Define o texto inicial do botão
+    btnFinalizarTriagem.addEventListener("click", submeterAvaliacaoTriagem); // 🔴 Define o texto inicial do botão
     btnFinalizarTriagem.innerHTML =
       '<i class="fas fa-check-circle me-2"></i> Registrar Decisão';
-  }
+  } // 2. Botão 'Fechar' (inclui o X do cabeçalho devido ao data-modal-id)
 
-  // 2. Botão 'Fechar' (inclui o X do cabeçalho devido ao data-modal-id)
   document
     .querySelectorAll("[data-modal-id='modal-avaliacao-triagem']")
     .forEach((btn) => {
@@ -485,9 +459,8 @@ if (modalAvaliacaoTriagem) {
 
       btn.removeEventListener("click", fecharTriagemModal);
       btn.addEventListener("click", fecharTriagemModal);
-    });
+    }); // 3. Botão 'Ver Currículo'
 
-  // 3. Botão 'Ver Currículo'
   const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
   if (btnVerCurriculo) {
     // Limpa listeners garantindo que não haja duplicatas
@@ -503,13 +476,11 @@ if (modalAvaliacaoTriagem) {
         window.showToast("Link do currículo não disponível.", "warning");
       }
     });
-  }
+  } // 4. Lógica de mostrar/esconder o campo Motivo da Rejeição / Info Aprovação
 
-  // 4. Lógica de mostrar/esconder o campo Motivo da Rejeição / Info Aprovação
   const radioSim = document.getElementById("modal-apto-sim");
-  const radioNao = document.getElementById("modal-apto-nao");
+  const radioNao = document.getElementById("modal-apto-nao"); // 🔴 Anexa listeners de RÁDIO AQUI, se a função global existir
 
-  // 🔴 Anexa listeners de RÁDIO AQUI, se a função global existir
   if (radioSim && window.toggleMotivoAprovacaoRejeicao) {
     radioSim.removeEventListener(
       "change",

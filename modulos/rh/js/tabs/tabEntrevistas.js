@@ -45,9 +45,8 @@ export async function renderizarEntrevistas(state) {
         "Testes Pendente",
       ])
     );
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q); // Atualiza contagem na aba
 
-    // Atualiza contagem na aba
     const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="entrevistas"]'
     );
@@ -60,9 +59,9 @@ export async function renderizarEntrevistas(state) {
     }
 
     let listaHtml = `
-      <div class="list-candidaturas">
-        <h3>Candidaturas em Entrevistas e Testes (${snapshot.size})</h3>
-    `;
+   <div class="list-candidaturas">
+    <h3>Candidaturas em Entrevistas e Testes (${snapshot.size})</h3>
+  `;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -74,9 +73,8 @@ export async function renderizarEntrevistas(state) {
         corStatus = "success";
       } else if (statusAtual.includes("Testes")) {
         corStatus = "warning";
-      }
+      } // Formatação de contato e WhatsApp, idêntica à Triagem
 
-      // Formatação de contato e WhatsApp, idêntica à Triagem
       const telefone = cand.telefone_contato
         ? cand.telefone_contato.replace(/\D/g, "")
         : "";
@@ -85,52 +83,51 @@ export async function renderizarEntrevistas(state) {
         : "#";
 
       listaHtml += `
-   <div class="card card-candidato-triagem" data-id="${candidatoId}">
-    <div class="info-primaria">
-      <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
-      <p>Status: <span class="badge bg-${corStatus}">${statusAtual.replace(
+ <div class="card card-candidato-triagem" data-id="${candidatoId}">
+  <div class="info-primaria">
+   <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+   <p>Status: <span class="badge bg-${corStatus}">${statusAtual.replace(
         "_",
         " "
       )}</span></p>
-    </div>
-    
-    <div class="info-contato">
-      <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
+  </div>
+  
+  <div class="info-contato">
+   <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
       }>
-        <i class="fab fa-whatsapp me-1"></i> ${
-          cand.telefone_contato || "N/A (Sem WhatsApp)"
-        }
-      </a>
-    </div>
-    
-    <div class="acoes-candidato">
-      <button 
-        class="action-button info btn-detalhes-entrevista" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-info-circle me-1"></i> Detalhes
-      </button>
-      <button 
-                data-etapa="${statusAtual}"
-        class="action-button primary btn-avaliar-entrevista" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-calendar-check me-1"></i> ${
-          statusAtual.includes("Entrevista Pendente")
-            ? "Agendar / Avaliar RH"
-            : "Avaliar Testes"
-        }
-      </button>
-    </div>
-   </div>
-  `;
+    <i class="fab fa-whatsapp me-1"></i> ${
+      cand.telefone_contato || "N/A (Sem WhatsApp)"
+    }
+   </a>
+  </div>
+  
+  <div class="acoes-candidato">
+   <button 
+    class="action-button info btn-detalhes-entrevista" 
+    data-id="${candidatoId}"
+    data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+    <i class="fas fa-info-circle me-1"></i> Detalhes
+   </button>
+   <button 
+        data-etapa="${statusAtual}"
+    class="action-button primary btn-avaliar-entrevista" 
+    data-id="${candidatoId}"
+    data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+    <i class="fas fa-calendar-check me-1"></i> ${
+      statusAtual.includes("Entrevista Pendente")
+        ? "Agendar / Avaliar RH"
+        : "Avaliar Testes"
+    }
+   </button>
+  </div>
+ </div>
+ `;
     });
 
     listaHtml += "</div>";
-    conteudoRecrutamento.innerHTML = listaHtml;
+    conteudoRecrutamento.innerHTML = listaHtml; // Configura evento para abrir modal de detalhes (modalCandidato)
 
-    // Configura evento para abrir modal de detalhes (modalCandidato)
     document.querySelectorAll(".btn-detalhes-entrevista").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -141,9 +138,8 @@ export async function renderizarEntrevistas(state) {
         );
         window.abrirModalCandidato(candidatoId, "detalhes", dados);
       });
-    });
+    }); // Configura evento para abrir o NOVO modal de Entrevista RH
 
-    // Configura evento para abrir o NOVO modal de Entrevista RH
     document.querySelectorAll(".btn-avaliar-entrevista").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -151,9 +147,8 @@ export async function renderizarEntrevistas(state) {
           e.currentTarget
             .getAttribute("data-candidato-data")
             .replace(/&#39;/g, "'")
-        );
+        ); // 🔴 Chama a nova função de modal
 
-        // 🔴 CORREÇÃO 2: Chama a nova função de modal
         window.abrirModalEntrevistaRH(candidatoId, dados);
       });
     });
@@ -170,19 +165,16 @@ window.abrirModalEntrevistaRH = function (candidatoId, dadosCandidato) {
   if (!modalEntrevistaRH) return;
 
   dadosCandidatoEntrevista = dadosCandidato;
-  modalEntrevistaRH.dataset.candidaturaId = candidatoId;
+  modalEntrevistaRH.dataset.candidaturaId = candidatoId; // 1. Preencher a Ficha e Notas Rápidas
 
-  // 1. Preencher a Ficha e Notas Rápidas
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
-  // Tenta obter o motivo de reprovação (novo) ou o comentário geral (antigo)
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)"; // Tenta obter o motivo de reprovação (novo) ou o comentário geral (antigo)
   const resumoTriagem =
     dadosCandidato.triagem_rh?.motivo_rejeicao ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
     "N/A";
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
-  const linkCurriculo = dadosCandidato.link_curriculo_drive || "#";
+  const linkCurriculo = dadosCandidato.link_curriculo_drive || "#"; // 🔴 CORREÇÃO 3: Adicionar checagem de null em todos os elementos para evitar falha silenciosa
 
-  // 🔴 CORREÇÃO 3: Adicionar checagem de null em todos os elementos para evitar falha silenciosa
   const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
   const statusEl = document.getElementById("entrevista-rh-status-atual");
   const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
@@ -197,13 +189,11 @@ window.abrirModalEntrevistaRH = function (candidatoId, dadosCandidato) {
   if (btnVerCurriculo) {
     btnVerCurriculo.href = linkCurriculo;
     btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
-  }
+  } // 2. Limpar/Resetar Formulário e Pré-preencher agendamento
 
-  // 2. Limpar/Resetar Formulário e Pré-preencher agendamento
   const form = document.getElementById("form-avaliacao-entrevista-rh");
-  if (form) form.reset();
+  if (form) form.reset(); // 3. Exibir o Modal
 
-  // 3. Exibir o Modal
   modalEntrevistaRH.classList.add("is-visible");
 };
 
@@ -222,9 +212,8 @@ async function submeterAvaliacaoEntrevistaRH(e) {
   } = state;
   const candidaturaId = modalEntrevistaRH?.dataset.candidaturaId;
 
-  if (!candidaturaId) return;
+  if (!candidaturaId) return; // 1. Coleta de Dados do Formulário
 
-  // 1. Coleta de Dados do Formulário
   const form = document.getElementById("form-avaliacao-entrevista-rh");
 
   const resultado = form.querySelector(
@@ -245,9 +234,8 @@ async function submeterAvaliacaoEntrevistaRH(e) {
 
   btnRegistrarEntrevista.disabled = true;
   btnRegistrarEntrevista.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...'; // 2. Determinar Status e Próxima Etapa
 
-  // 2. Determinar Status e Próxima Etapa
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
     ? "Entrevista RH Aprovada (Testes Pendente)"
@@ -291,9 +279,8 @@ async function submeterAvaliacaoEntrevistaRH(e) {
     window.showToast(
       `Avaliação de Entrevista RH registrada. Status: ${novoStatusCandidato}`,
       "success"
-    );
+    ); // 3. Envio da Mensagem de WhatsApp (com agendamento)
 
-    // 3. Envio da Mensagem de WhatsApp (com agendamento)
     if (
       dataEntrevista &&
       horaEntrevista &&
@@ -310,9 +297,8 @@ async function submeterAvaliacaoEntrevistaRH(e) {
       );
       const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagem}`;
       window.open(linkWhatsApp, "_blank");
-    }
+    } // Fecha o modal e recarrega a aba atual
 
-    // Fecha o modal e recarrega a aba atual
     modalEntrevistaRH.classList.remove("is-visible");
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
@@ -340,18 +326,16 @@ if (modalEntrevistaRH) {
       "click",
       submeterAvaliacaoEntrevistaRH
     );
-  }
+  } // 2. Fechamento do Modal (X no cabeçalho e botão 'Voltar ao Painel')
 
-  // 2. Fechamento do Modal (X no cabeçalho e botão 'Voltar ao Painel')
   document
     .querySelectorAll("[data-modal-id='modal-entrevista-rh']")
     .forEach((btn) => {
       btn.addEventListener("click", () =>
         modalEntrevistaRH.classList.remove("is-visible")
       );
-    });
+    }); // Listener para o botão 'Voltar ao Painel' no footer
 
-  // Listener para o botão 'Voltar ao Painel' no footer
   const btnVoltarPainel = modalEntrevistaRH.querySelector(
     "#btn-voltar-painel-rh"
   );
