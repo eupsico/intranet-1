@@ -489,9 +489,45 @@ td .action-button,
   /* Preserva a formatação do texto inserido */
 }
 
-/* 3. Estilo para o fieldset na Ficha de Candidatura (Padroniza com os outros fieldsets) */
-/* Não precisa de regras adicionais aqui, pois o HTML usa <fieldset> e o estilo base do design-system já é aplicado. */
+/*
+ * CORREÇÃO CRÍTICA PARA MODAIS: 
+ * Este bloco garante que o overlay do modal se posicione corretamente na tela
+ * e mude de invisível para visível quando a classe 'is-visible' é aplicada.
+ */
+.modal-overlay {
+    /* Define o modal como uma camada fixa sobre toda a tela */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Fundo semi-transparente para focar no modal */
+    background-color: rgba(0, 0, 0, 0.6);
+    /* Início invisível */
+    visibility: hidden;
+    opacity: 0;
+    /* Garante que o modal fique na frente de todos os outros elementos */
+    z-index: 1050; 
+    /* Transição suave para abertura/fechamento */
+    transition: opacity 0.3s ease-in-out, visibility 0s 0.3s;
+    /* Alinhamento de conteúdo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-/* --- FIM DAS CORREÇÕES E MELHORIAS SOLICITADAS --- */
+/* Estado VISÍVEL do modal */
+.modal-overlay.is-visible {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0s; /* Começa a transição imediatamente */
+}
 
-/* --- FIM DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
+/* Centraliza o conteúdo do modal */
+.modal-content {
+    /* Garante que o conteúdo não seja 100% da tela */
+    position: relative;
+    z-index: 1060; /* Maior que o overlay */
+    max-width: 90%;
+    /* O restante do seu CSS para modal-content já deve ser suficiente */
+}
