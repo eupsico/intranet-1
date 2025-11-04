@@ -251,9 +251,12 @@ export async function renderizarEntrevistas(state) {
 window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   console.log(
     `--- DEBUG RH: INÍCIO abrirModalAgendamentoRH para ID: ${candidatoId}`
-  ); // Busca o elemento do modal dinamicamente
+  );
+
+  // Busca o elemento do modal dinamicamente
   const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
   const form = document.getElementById("form-agendamento-entrevista-rh");
+
   if (!modalAgendamentoRH || !form) {
     window.showToast(
       "Erro: Modal de Agendamento (modal-agendamento-rh) não encontrado.",
@@ -264,6 +267,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
     );
     return;
   }
+
   console.log(
     "--- DEBUG RH: SUCESSO - Elementos do Modal Agendamento encontrados."
   );
@@ -276,7 +280,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
     dadosCandidato.triagem_rh?.motivo_rejeicao ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
     "N/A";
-  const statusAtual = dadosCandidato.status_recrutamento || "N/A"; // Pré-preencher agendamento se já houver
+  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const dataAgendada = dadosCandidato.entrevista_rh?.agendamento?.data || "";
   const horaAgendada = dadosCandidato.entrevista_rh?.agendamento?.hora || "";
 
@@ -290,25 +294,32 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
   if (dataEl) dataEl.value = dataAgendada;
-  if (horaEl) horaEl.value = horaAgendada; // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI.
+  if (horaEl) horaEl.value = horaAgendada;
+
   form.removeEventListener("submit", submeterAgendamentoRH);
   form.addEventListener("submit", submeterAgendamentoRH);
   console.log("--- DEBUG RH: Listener SUBMIT Agendamento anexado.");
 
-  // Anexar listeners de fechar (X no cabeçalho e botão 'Cancelar')
+  // Anexar listeners de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-agendamento-rh']`)
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAgendamento);
       btn.addEventListener("click", fecharModalAgendamento);
-    }); // 🛑 APLICAÇÃO DA CLASSE (AÇÃO CRÍTICA)
+    });
 
-  modalAgendamentoRH.classList.add("is-visible");
-
-  // 🛑 NOVO LOG DE VERIFICAÇÃO FINAL
-  console.log(
-    `--- DEBUG RH: VERIFICAÇÃO CLASSE APÓS ADD: ${modalAgendamentoRH.className}`
-  );
+  // ✅ CORREÇÃO: Buscar o .modal-overlay pai e adicionar is-visible nele
+  const modalOverlay = modalAgendamentoRH.closest(".modal-overlay");
+  if (modalOverlay) {
+    modalOverlay.classList.add("is-visible");
+    console.log("--- DEBUG RH: Classe is-visible adicionada ao modal-overlay.");
+  } else {
+    // Fallback: se não houver overlay pai, adiciona direto no modal
+    modalAgendamentoRH.classList.add("is-visible");
+    console.warn(
+      "--- DEBUG RH: modal-overlay não encontrado, usando fallback."
+    );
+  }
 
   console.log("--- DEBUG RH: FIM abrirModalAgendamentoRH. Modal Visível.");
 };
