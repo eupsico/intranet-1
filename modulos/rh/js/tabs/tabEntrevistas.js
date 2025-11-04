@@ -283,6 +283,14 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   form.addEventListener("submit", submeterAgendamentoRH);
   console.log("--- DEBUG RH: Listener SUBMIT Agendamento anexado.");
 
+  // Anexar listeners de fechar (X no cabeçalho e botão 'Cancelar')
+  document
+    .querySelectorAll(`[data-modal-id='modal-agendamento-rh']`)
+    .forEach((btn) => {
+      btn.removeEventListener("click", fecharModalAgendamento);
+      btn.addEventListener("click", fecharModalAgendamento);
+    });
+
   modalAgendamentoRH.classList.add("is-visible");
   console.log("--- DEBUG RH: FIM abrirModalAgendamentoRH. Modal Visível.");
 };
@@ -363,11 +371,33 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   } // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI, garantindo que o form existe.
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
-  console.log("--- DEBUG RH: Listener SUBMIT Avaliação anexado."); // 4. Exibir o Modal
+  console.log("--- DEBUG RH: Listener SUBMIT Avaliação anexado.");
+
+  // Anexar listeners de fechar (X no cabeçalho e botão 'Voltar ao Painel')
+  document
+    .querySelectorAll(`[data-modal-id='modal-avaliacao-rh']`)
+    .forEach((btn) => {
+      btn.removeEventListener("click", fecharModalAvaliacao);
+      btn.addEventListener("click", fecharModalAvaliacao);
+    }); // 4. Exibir o Modal
 
   modalAvaliacaoRH.classList.add("is-visible");
   console.log("--- DEBUG RH: FIM abrirModalAvaliacaoRH. Modal Visível.");
 };
+
+/**
+ * Funções de Fechamento Simples
+ */
+function fecharModalAgendamento() {
+  console.log("--- DEBUG RH: Fechando modal-agendamento-rh.");
+  const modal = document.getElementById("modal-agendamento-rh");
+  if (modal) modal.classList.remove("is-visible");
+}
+function fecharModalAvaliacao() {
+  console.log("--- DEBUG RH: Fechando modal-avaliacao-rh.");
+  const modal = document.getElementById("modal-avaliacao-rh");
+  if (modal) modal.classList.remove("is-visible");
+}
 
 /**
  * Lógica de Submissão para salvar o AGENDAMENTO da Entrevista RH. (Novo)
@@ -464,7 +494,7 @@ async function submeterAgendamentoRH(e) {
     }
 
     // Fecha o modal e recarrega a aba atual
-    modalAgendamentoRH.classList.remove("is-visible");
+    fecharModalAgendamento();
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
@@ -580,7 +610,7 @@ async function submeterAvaliacaoRH(e) {
     console.log("--- DEBUG RH: SUCESSO - Avaliação salva no Firestore.");
 
     // Fecha o modal e recarrega a aba atual
-    modalAvaliacaoRH.classList.remove("is-visible");
+    fecharModalAvaliacao();
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
@@ -594,29 +624,3 @@ async function submeterAvaliacaoRH(e) {
       '<i class="fas fa-check-circle me-2"></i> Registrar Avaliação';
   }
 }
-
-// Ações de fechamento: Reutilizar o padrão anterior, garantindo que o modal é encontrado dinamicamente.
-
-// Listener para o botão de fechamento do Modal de Agendamento
-document
-  .querySelectorAll("[data-modal-id='modal-agendamento-rh']")
-  .forEach((btn) => {
-    btn.addEventListener("click", () => {
-      console.log("--- DEBUG RH: Fechando modal-agendamento-rh.");
-      const modalAgendamentoRH = document.getElementById(
-        "modal-agendamento-rh"
-      );
-      if (modalAgendamentoRH) modalAgendamentoRH.classList.remove("is-visible");
-    });
-  });
-
-// Listener para o botão de fechamento do Modal de Avaliação
-document
-  .querySelectorAll("[data-modal-id='modal-avaliacao-rh']")
-  .forEach((btn) => {
-    btn.addEventListener("click", () => {
-      console.log("--- DEBUG RH: Fechando modal-avaliacao-rh.");
-      const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
-      if (modalAvaliacaoRH) modalAvaliacaoRH.classList.remove("is-visible");
-    });
-  });
