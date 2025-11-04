@@ -453,15 +453,24 @@ td .action-button,
 
 /* --- CORREÇÕES E MELHORIAS SOLICITADAS --- */
 
-/* 1. Correção de Layout/Scroll do Modal */
+/* 1. Correção de Layout/Scroll do Modal (Garantir que o modal-body seja flexível e rolável) */
 .modal-content {
+  background-color: var(--cor-surface);
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-padrao);
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-body.modal-body-scroll {
+  /* Garante que o corpo do modal possa rolar e se encolher para respeitar o footer */
+  overflow-y: auto;
+  flex-grow: 1;
   min-height: 0;
-  /* Essencial para que o flex item (modal-body) possa rolar corretamente */
   flex-shrink: 1;
 }
 
@@ -475,19 +484,48 @@ td .action-button,
   color: var(--cor-texto-principal);
 }
 
-.card-body .text-muted {
+/* Seleciona o parágrafo de conteúdo que está com a classe .text-muted */
+.card-body p.text-muted {
   /* Ajusta o texto de Resumo e Habilidades */
   font-size: 0.95em !important;
-  /* Tamanho de fonte consistente com outros campos */
+  /* Tamanho de fonte consistente com outros campos (0.95em é o padrão do p.card-text) */
   color: var(--cor-texto-principal) !important;
-  /* Melhora a legibilidade */
+  /* Melhora a legibilidade (desfazendo o "muted") */
   margin-top: 5px;
   white-space: pre-wrap;
   /* Preserva a formatação do texto inserido */
 }
 
-/* 3. Melhoria no Fieldset da Avaliação RH (Aproveita estilos existentes, apenas garante consistência) */
-/* O estilo de Fieldset/Legend já está bem definido no design-system.css, garantindo a separação visual */
+/* 3. Estilo para o fieldset na Ficha de Candidatura (Visualmente agrupa o card) */
+#modal-avaliacao-triagem .col-lg-6 fieldset.card-shadow {
+  border: 1px solid var(--cor-borda);
+  /* Adiciona borda sutil */
+  border-radius: var(--borda-radius);
+  padding: 0;
+  /* Remove padding interno, mantendo o padding do card-body */
+  overflow: hidden;
+  /* Garante que a borda do fieldset não quebre o layout */
+}
+
+/* Reajuste da legend para ficar no topo do card */
+#modal-avaliacao-triagem .col-lg-6 fieldset.card-shadow legend {
+  /* Ocupa a área do antigo card-header */
+  width: 100%;
+  margin-bottom: 0;
+  padding: 15px 25px;
+  font-size: 1.1em;
+  font-weight: 600;
+  /* Herda o background do card-header para parecer um cabeçalho */
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+#modal-avaliacao-triagem .col-lg-6 fieldset.card-shadow legend h5 {
+  margin: 0;
+  font-size: 1em;
+}
+
 /* --- FIM DAS CORREÇÕES E MELHORIAS SOLICITADAS --- */
 
 /* --- FIM DA ALTERAÇÃO: NOVOS ESTILOS PARA BOTÕES DE AÇÃO --- */
