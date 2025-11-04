@@ -56,20 +56,20 @@ function renderizarChecklistTriagem(savedChecks = {}) {
   container.innerHTML = CHECKLIST_TRIAGEM.map((item) => {
     const isChecked = savedChecks[item.id] === true ? "checked" : "";
     return `
- <div class="form-check checklist-item">
- <input 
- class="form-check-input" 
- type="checkbox" 
- value="1" 
- id="${item.id}" 
- data-check-id="${item.id}"
- ${isChecked}
- />
- <label class="form-check-label" for="${item.id}">
- ${item.label}
- </label>
- </div>
- `;
+      <div class="form-check checklist-item">
+        <input 
+          class="form-check-input" 
+          type="checkbox" 
+          value="1" 
+          id="${item.id}" 
+          data-check-id="${item.id}"
+          ${isChecked}
+        />
+        <label class="form-check-label" for="${item.id}">
+          ${item.label}
+        </label>
+      </div>
+    `;
   }).join(""); // Adicionar salvamento automático (on change)
 
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
@@ -129,7 +129,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
   modalAvaliacaoTriagem.dataset.candidaturaId = candidatoId; // 2. Popula dados do Candidato (Ficha)
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)"; // 🔴 CORREÇÃO 1: Injeta o nome do candidato no novo SPAN dentro do P (novo formato)
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)"; // 🔴 CORREÇÃO 1: Injeta o nome do candidato no SPAN que está dentro do P (novo formato)
 
   const candidatoNomeEl = document.getElementById("candidato-modal-nome");
   if (candidatoNomeEl) candidatoNomeEl.textContent = nomeCompleto;
@@ -145,7 +145,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
     dadosCandidato.cidade || "Não informada"
   } / ${dadosCandidato.estado || "UF"}`;
   document.getElementById("modal-dado-como-conheceu").textContent =
-    dadosCandidato.como_conheceu || "Não informado"; // 🔴 CORREÇÃO 2: Campos de Resumo e Habilidades
+    dadosCandidato.como_conheceu || "Não informado"; // 🔴 CORREÇÃO 2: Campos de Resumo e Habilidades (com checagem de null)
   const resumoEl = document.getElementById("modal-dado-resumo-experiencia");
   const habilidadesEl = document.getElementById("modal-dado-habilidades");
   if (resumoEl)
@@ -185,7 +185,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.dataset.curriculoLink =
       dadosCandidato.link_curriculo_drive || "";
     btnVerCurriculo.disabled = !dadosCandidato.link_curriculo_drive;
-  } // 🔴 CRÍTICO: Força a UI a atualizar com base no valor carregado. // Isso garante que a CAIXA DE REPROVAÇÃO ABRA, se for o caso.
+  } // 🔴 CRÍTICO: Força a UI a atualizar com base no valor carregado. // Isso garante que a CAIXA DE REPROVAÇÃO ABRA ao carregar dados antigos.
 
   if (toggleMotivoAprovacaoRejeicao) {
     toggleMotivoAprovacaoRejeicao();
@@ -337,9 +337,9 @@ export async function renderizarTriagem(state) {
     }
 
     let listaHtml = `
- <div class="list-candidaturas">
-<h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
-`;
+  <div class="list-candidaturas">
+   <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
+ `;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -368,41 +368,41 @@ export async function renderizarTriagem(state) {
         : "#";
 
       listaHtml += `
-<div class="card card-candidato-triagem" data-id="${candidatoId}">
- <div class="info-primaria">
- <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
- <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
+   <div class="card card-candidato-triagem" data-id="${candidatoId}">
+    <div class="info-primaria">
+      <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+      <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
         "_",
         " "
       )}</span></p>
- </div>
- 
- <div class="info-contato">
- <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
+    </div>
+    
+    <div class="info-contato">
+      <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
       }>
- <i class="fab fa-whatsapp me-1"></i> ${
-   cand.telefone_contato || "N/A (Sem WhatsApp)"
- }
- </a>
- </div>
- 
- <div class="acoes-candidato">
- <button 
- class="action-button info btn-detalhes-triagem" 
- data-id="${candidatoId}"
- data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
- <i class="fas fa-info-circle me-1"></i> Detalhes
- </button>
- <button 
- class="action-button warning btn-avaliar-triagem" 
- data-id="${candidatoId}"
- data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
- <i class="fas fa-edit me-1"></i> Avaliar Candidatura
- </button>
- </div>
-</div>
- `;
+        <i class="fab fa-whatsapp me-1"></i> ${
+        cand.telefone_contato || "N/A (Sem WhatsApp)"
+      }
+      </a>
+    </div>
+    
+    <div class="acoes-candidato">
+      <button 
+        class="action-button info btn-detalhes-triagem" 
+        data-id="${candidatoId}"
+        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+        <i class="fas fa-info-circle me-1"></i> Detalhes
+      </button>
+      <button 
+        class="action-button warning btn-avaliar-triagem" 
+        data-id="${candidatoId}"
+        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+        <i class="fas fa-edit me-1"></i> Avaliar Candidatura
+      </button>
+    </div>
+   </div>
+  `;
     });
 
     listaHtml += "</div>";
