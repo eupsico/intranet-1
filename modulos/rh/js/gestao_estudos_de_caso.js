@@ -331,43 +331,22 @@ async function carregarModelosSalvos() {
       return;
     }
 
-    htmlTabela += `
-  <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
-    <td>${modelo.titulo}</td>
-    <td>${tipoFormatado}</td>
-    <td>${numPerguntas}</td>
-    <td>${dataFormatada}</td>
-    <td class="text-center">
-      <div class="btn-group" role="group" aria-label="Ações">
-        <button 
-          type="button" 
-          class="btn btn-sm btn-info btn-editar-modelo" 
-          title="Editar Modelo"
-          data-id="${docSnap.id}"
-        >
-          <i class="fas fa-edit me-1"></i> Editar
-        </button>
-        <button 
-          type="button" 
-          class="btn btn-sm btn-primary btn-gerar-link" 
-          title="Gerar Link Público"
-          data-id="${docSnap.id}"
-        >
-          <i class="fas fa-link me-1"></i> Link
-        </button>
-        <button 
-          type="button" 
-          class="btn btn-sm btn-danger btn-excluir-modelo" 
-          title="Excluir Modelo"
-          data-id="${docSnap.id}"
-        >
-          <i class="fas fa-trash me-1"></i> Excluir
-        </button>
-      </div>
-    </td>
-  </tr>
-`;
+    // ✅ INICIALIZA htmlTabela CORRETAMENTE
+    let htmlTabela = `
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Tipo</th>
+            <th>Perguntas</th>
+            <th>Criação</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
 
+    // ✅ PERCORRE CADA MODELO E ADICIONA NA TABELA
     snapshot.forEach((docSnap) => {
       const modelo = docSnap.data();
       const dataFormatada = formatarTimestamp(modelo.data_criacao);
@@ -381,39 +360,42 @@ async function carregarModelosSalvos() {
           <td>${numPerguntas}</td>
           <td>${dataFormatada}</td>
           <td class="text-center">
-            <button 
-              type="button" 
-              class="btn btn-sm btn-info btn-editar-modelo me-2" 
-              title="Editar"
-              data-id="${docSnap.id}"
-            >
-              <i class="fas fa-edit"></i>
-            </button>
-            <button 
-              type="button" 
-              class="btn btn-sm btn-primary btn-gerar-link me-2" 
-              title="Gerar Link Público"
-              data-id="${docSnap.id}"
-            >
-              <i class="fas fa-link"></i>
-            </button>
-            <button 
-              type="button" 
-              class="btn btn-sm btn-danger btn-excluir-modelo" 
-              title="Excluir"
-              data-id="${docSnap.id}"
-            >
-              <i class="fas fa-trash"></i>
-            </button>
+            <div class="btn-group" role="group" aria-label="Ações">
+              <button 
+                type="button" 
+                class="btn btn-sm btn-info btn-editar-modelo" 
+                title="Editar Modelo"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-edit me-1"></i> Editar
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-primary btn-gerar-link" 
+                title="Gerar Link Público"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-link me-1"></i> Link
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-danger btn-excluir-modelo" 
+                title="Excluir Modelo"
+                data-id="${docSnap.id}"
+              >
+                <i class="fas fa-trash me-1"></i> Excluir
+              </button>
+            </div>
           </td>
         </tr>
       `;
     });
 
+    // ✅ FECHA A TABELA
     htmlTabela += `</tbody></table>`;
     listaModelosSalvos.innerHTML = htmlTabela;
 
-    // LISTENERS
+    // ✅ ANEXA LISTENERS AOS BOTÕES
     document.querySelectorAll(".btn-editar-modelo").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
