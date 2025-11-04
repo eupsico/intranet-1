@@ -620,7 +620,7 @@ async function submeterAvaliacaoRH(e) {
         ...dadosAvaliacao, // Sobrescrever com os novos dados de avaliação
       },
       historico: arrayUnion({
-        data: serverTimestamp(),
+        data: new Date(),
         acao: `Avaliação Entrevista RH: ${
           isAprovado ? "APROVADO" : "REPROVADO"
         }. Status: ${novoStatusCandidato}`,
