@@ -198,8 +198,7 @@ export async function renderizarEntrevistas(state) {
     }
 
     let listaHtml = `
-      <div class="list-candidaturas">
-        <h3>Candidaturas em Entrevistas e Testes (${snapshot.size})</h3>
+    
     `;
 
     snapshot.docs.forEach((docSnap) => {
