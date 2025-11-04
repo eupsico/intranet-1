@@ -839,29 +839,32 @@ async function aprovarFichaTecnica(vagaId) {
  * Solicita correção na ficha técnica
  */
 async function solicitarCorrecaoFicha(vagaId) {
-  const motivo = prompt("Descreva o motivo da solicitação de correção:");
-  if (!motivo) return;
-
-  console.log(`🔹 Solicitando correção na ficha: ${vagaId}`);
+  console.log(`🔹 Abrindo modal de correção para ficha: ${vagaId}`);
 
   try {
+    // Carrega dados da vaga para exibir informações
     const vagaRef = doc(vagasCollection, vagaId);
-    await updateDoc(vagaRef, {
-      status: "Em Correção (Ficha Técnica)",
-      feedback_correcao: motivo,
-      data_atualizacao: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Correção solicitada: ${motivo}`,
-        usuario: currentUserData?.id || "sistema",
-      }),
-    });
+    const vagaSnap = await getDoc(vagaRef);
 
-    window.showToast?.("Solicitação de correção enviada!", "success");
-    carregarVagas(statusAbaAtiva);
-    console.log("✅ Correção solicitada");
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    // Configura o modal
+    document.getElementById("vaga-id-correcao").value = vagaId;
+    document.getElementById("tipo-correcao").value = "ficha";
+    document.getElementById(
+      "modal-correcao-title"
+    ).textContent = `Solicitar Correção - ${vaga.nome || "Vaga"}`;
+    document.getElementById("motivo-correcao").value = "";
+
+    abrirModal("modal-solicitar-correcao");
+    console.log("✅ Modal de correção aberto");
   } catch (error) {
-    console.error("❌ Erro ao solicitar correção:", error);
+    console.error("❌ Erro ao abrir modal de correção:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   }
 }
@@ -994,30 +997,112 @@ async function aprovarArte(vagaId) {
  * Solicita correção na arte
  */
 async function solicitarCorrecaoArte(vagaId) {
-  const motivo = prompt("Descreva as alterações solicitadas na arte:");
-  if (!motivo) return;
-
-  console.log(`🔹 Solicitando correção na arte: ${vagaId}`);
+  console.log(`🔹 Abrindo modal de correção para arte: ${vagaId}`);
 
   try {
     const vagaRef = doc(vagasCollection, vagaId);
-    await updateDoc(vagaRef, {
-      status: "Em Correção (Arte)",
-      feedback_arte: motivo,
-      data_atualizacao: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Correção de arte solicitada: ${motivo}`,
-        usuario: currentUserData?.id || "sistema",
-      }),
-    });
+    const vagaSnap = await getDoc(vagaRef);
 
-    window.showToast?.("Solicitação de correção enviada!", "success");
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    // Configura o modal
+    document.getElementById("vaga-id-correcao").value = vagaId;
+    document.getElementById("tipo-correcao").value = "arte";
+    document.getElementById(
+      "modal-correcao-title"
+    ).textContent = `Solicitar Correção na Arte - ${vaga.nome || "Vaga"}`;
+    document.getElementById("motivo-correcao").value = "";
+
+    abrirModal("modal-solicitar-correcao");
+    console.log("✅ Modal de correção de arte aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de correção:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+/**
+ * Processa a solicitação de correção (ficha ou arte)
+ */
+async function handleSolicitarCorrecao(e) {
+  e.preventDefault();
+
+  const vagaId = document.getElementById("vaga-id-correcao").value;
+  const tipo = document.getElementById("tipo-correcao").value;
+  const motivo = document.getElementById("motivo-correcao").value.trim();
+
+  if (!motivo) {
+    window.showToast?.("Por favor, descreva o motivo da correção.", "error");
+    return;
+  }
+
+  console.log(`🔹 Enviando solicitação de correção (${tipo}): ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-confirmar-correcao");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+
+    let updateData = {};
+    let mensagemSucesso = "";
+
+    if (tipo === "ficha") {
+      updateData = {
+        status: "Em Correção (Ficha Técnica)",
+        feedback_correcao: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Ficha Técnica solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Ficha Técnica enviada!";
+    } else if (tipo === "arte") {
+      updateData = {
+        status: "Em Correção (Arte)",
+        feedback_arte: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Arte solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Arte enviada!";
+    }
+
+    await updateDoc(vagaRef, updateData);
+
+    window.showToast?.(mensagemSucesso, "success");
+    fecharModal("modal-solicitar-correcao");
+
+    // Fecha também o modal de aprovação se estiver aberto
+    if (tipo === "arte") {
+      fecharModal("modal-aprovacao-arte");
+    }
+
     carregarVagas(statusAbaAtiva);
-    console.log("✅ Correção de arte solicitada");
+    console.log("✅ Correção solicitada com sucesso");
   } catch (error) {
     console.error("❌ Erro ao solicitar correção:", error);
-    window.showToast?.(`Erro: ${error.message}`, "error");
+    window.showToast?.(`Erro ao enviar solicitação: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i> Enviar Solicitação';
+    }
   }
 }
 
@@ -1362,82 +1447,228 @@ function configurarAbas() {
 /**
  * Inicializa o módulo
  */
+/**
+ * Inicializa o módulo de Gestão de Vagas
+ * @param {Object} user - Objeto do usuário autenticado (Firebase Auth)
+ * @param {Object} userData - Dados adicionais do usuário (Firestore)
+ */
 export async function initGestaoVagas(user, userData) {
   console.log("🔹 Iniciando Módulo de Gestão de Vagas...");
 
+  // ============================================
+  // INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS
+  // ============================================
   currentUserData = userData || {};
   vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
   configCollection = collection(db, CONFIG_COLLECTION_NAME);
 
-  // Carrega departamentos
+  // ============================================
+  // CARREGAMENTO INICIAL
+  // ============================================
+
+  // Carrega departamentos do Firebase
   await carregarDepartamentos();
 
-  // Configura listeners
+  // ============================================
+  // CONFIGURAÇÃO DE LISTENERS GLOBAIS
+  // ============================================
+
+  // Configura sistema de abas
   configurarAbas();
+
+  // Configura fechamento de modais (X e clique fora)
   configurarFechamentoModais();
 
-  // Configura formulários
-  document
-    .getElementById("form-vaga")
-    ?.addEventListener("submit", handleSalvarVaga);
-  document
-    .getElementById("form-criacao-arte")
-    ?.addEventListener("submit", handleEnviarAprovacaoArte);
-  document
-    .getElementById("form-divulgacao")
-    ?.addEventListener("submit", handleSalvarDivulgacao);
+  // ============================================
+  // LISTENERS DE FORMULÁRIOS
+  // ============================================
 
-  document.getElementById("btn-nova-vaga")?.addEventListener("click", () => {
-    limparFormularioVaga();
-    document.getElementById("ficha-title").textContent = "Nova Vaga";
-    abrirModal(ID_MODAL_FICHA_TECNICA);
-  });
+  // Formulário de Ficha Técnica (criar/editar vaga)
+  const formVaga = document.getElementById("form-vaga");
+  if (formVaga) {
+    formVaga.addEventListener("submit", handleSalvarVaga);
+    console.log("✅ Listener: form-vaga");
+  }
 
-  document
-    .getElementById("btn-encerrar-vaga")
-    ?.addEventListener("click", handleEncerrarVaga);
-  document
-    .getElementById("btn-aprovar-arte-final")
-    ?.addEventListener("click", async (e) => {
+  // Formulário de Criação de Arte
+  const formCriacaoArte = document.getElementById("form-criacao-arte");
+  if (formCriacaoArte) {
+    formCriacaoArte.addEventListener("submit", (e) => {
+      e.preventDefault();
+      // handleEnviarAprovacaoArte é chamado pelo botão diretamente
+    });
+    console.log("✅ Listener: form-criacao-arte");
+  }
+
+  // Formulário de Divulgação
+  const formDivulgacao = document.getElementById("form-divulgacao");
+  if (formDivulgacao) {
+    formDivulgacao.addEventListener("submit", handleSalvarDivulgacao);
+    console.log("✅ Listener: form-divulgacao");
+  }
+
+  // Formulário de Solicitação de Correção
+  const formSolicitarCorrecao = document.getElementById(
+    "form-solicitar-correcao"
+  );
+  if (formSolicitarCorrecao) {
+    formSolicitarCorrecao.addEventListener("submit", handleSolicitarCorrecao);
+    console.log("✅ Listener: form-solicitar-correcao");
+  }
+
+  // ============================================
+  // LISTENERS DE BOTÕES PRINCIPAIS
+  // ============================================
+
+  // Botão: Criar Nova Vaga
+  const btnNovaVaga = document.getElementById("btn-nova-vaga");
+  if (btnNovaVaga) {
+    btnNovaVaga.addEventListener("click", () => {
+      limparFormularioVaga();
+      document.getElementById("ficha-title").textContent = "Nova Vaga";
+      vagaAtualId = null;
+      abrirModal(ID_MODAL_FICHA_TECNICA);
+      console.log("🔹 Abrindo modal para nova vaga");
+    });
+    console.log("✅ Listener: btn-nova-vaga");
+  }
+
+  // Botão: Enviar Arte para Aprovação
+  const btnEnviarAprovacaoArte = document.getElementById(
+    "btn-enviar-aprovacao-arte"
+  );
+  if (btnEnviarAprovacaoArte) {
+    btnEnviarAprovacaoArte.addEventListener("click", handleEnviarAprovacaoArte);
+    console.log("✅ Listener: btn-enviar-aprovacao-arte");
+  }
+
+  // Botão: Aprovar Arte Final
+  const btnAprovarArteFinal = document.getElementById("btn-aprovar-arte-final");
+  if (btnAprovarArteFinal) {
+    btnAprovarArteFinal.addEventListener("click", async () => {
       const vagaId = document.getElementById("vaga-id-arte-aprovacao").value;
       await aprovarArte(vagaId);
     });
+    console.log("✅ Listener: btn-aprovar-arte-final");
+  }
 
-  document
-    .getElementById("btn-solicitar-alteracoes-arte")
-    ?.addEventListener("click", async (e) => {
+  // Botão: Solicitar Alterações na Arte
+  const btnSolicitarAlteracoesArte = document.getElementById(
+    "btn-solicitar-alteracoes-arte"
+  );
+  if (btnSolicitarAlteracoesArte) {
+    btnSolicitarAlteracoesArte.addEventListener("click", async () => {
       const vagaId = document.getElementById("vaga-id-arte-aprovacao").value;
+      fecharModal(ID_MODAL_APROVACAO_ARTE); // Fecha o modal de aprovação
       await solicitarCorrecaoArte(vagaId);
     });
+    console.log("✅ Listener: btn-solicitar-alteracoes-arte");
+  }
 
-  document
-    .getElementById("btn-cancelar-vaga-fechada")
-    ?.addEventListener("click", async (e) => {
-      const vagaId = document.getElementById("vaga-id-fechadas").value;
-      const confirmacao = confirm("Tem certeza que deseja CANCELAR esta vaga?");
-      if (confirmacao) {
-        await updateDoc(doc(vagasCollection, vagaId), {
-          status: "Vaga Cancelada",
-          data_cancelamento: new Date(),
-        });
-        window.showToast?.("Vaga cancelada.", "success");
-        fecharModal(ID_MODAL_FECHADAS);
-        carregarVagas(statusAbaAtiva);
+  // Botão: Salvar Divulgação
+  const btnSalvarDivulgacao = document.getElementById("btn-salvar-divulgacao");
+  if (btnSalvarDivulgacao) {
+    btnSalvarDivulgacao.addEventListener("click", async () => {
+      const form = document.getElementById("form-divulgacao");
+      if (form) {
+        form.dispatchEvent(new Event("submit", { cancelable: true }));
       }
     });
+    console.log("✅ Listener: btn-salvar-divulgacao");
+  }
 
-  document
-    .getElementById("btn-reaproveitar-vaga")
-    ?.addEventListener("click", async (e) => {
+  // Botão: Encerrar Vaga
+  const btnEncerrarVaga = document.getElementById("btn-encerrar-vaga");
+  if (btnEncerrarVaga) {
+    btnEncerrarVaga.addEventListener("click", handleEncerrarVaga);
+    console.log("✅ Listener: btn-encerrar-vaga");
+  }
+
+  // Botão: Cancelar Vaga Fechada
+  const btnCancelarVagaFechada = document.getElementById(
+    "btn-cancelar-vaga-fechada"
+  );
+  if (btnCancelarVagaFechada) {
+    btnCancelarVagaFechada.addEventListener("click", async () => {
+      const vagaId = document.getElementById("vaga-id-fechadas").value;
+
+      const confirmacao = confirm(
+        "Tem certeza que deseja CANCELAR esta vaga? Esta ação não pode ser desfeita."
+      );
+
+      if (!confirmacao) return;
+
+      try {
+        const vagaRef = doc(vagasCollection, vagaId);
+        await updateDoc(vagaRef, {
+          status: "Vaga Cancelada",
+          data_cancelamento: new Date(),
+          historico: arrayUnion({
+            data: new Date(),
+            acao: "Vaga cancelada manualmente",
+            usuario: currentUserData?.id || "sistema",
+          }),
+        });
+
+        window.showToast?.("Vaga cancelada com sucesso.", "success");
+        fecharModal(ID_MODAL_FECHADAS);
+        carregarVagas(statusAbaAtiva);
+        console.log("✅ Vaga cancelada:", vagaId);
+      } catch (error) {
+        console.error("❌ Erro ao cancelar vaga:", error);
+        window.showToast?.(`Erro ao cancelar vaga: ${error.message}`, "error");
+      }
+    });
+    console.log("✅ Listener: btn-cancelar-vaga-fechada");
+  }
+
+  // Botão: Reaproveitar Vaga
+  const btnReaproveitarVaga = document.getElementById("btn-reaproveitar-vaga");
+  if (btnReaproveitarVaga) {
+    btnReaproveitarVaga.addEventListener("click", async () => {
       const vagaId = document.getElementById("vaga-id-fechadas").value;
       await reaproveitarVaga(vagaId);
     });
+    console.log("✅ Listener: btn-reaproveitar-vaga");
+  }
 
-  // Carrega vagas iniciais
-  await carregarVagas(statusAbaAtiva);
+  // ============================================
+  // CARREGAMENTO INICIAL DE VAGAS
+  // ============================================
 
-  console.log("✅ Módulo de Gestão de Vagas inicializado");
+  try {
+    await carregarVagas(statusAbaAtiva);
+    console.log("✅ Vagas iniciais carregadas");
+  } catch (error) {
+    console.error("❌ Erro ao carregar vagas iniciais:", error);
+    const listaVagas = document.getElementById("lista-vagas");
+    if (listaVagas) {
+      listaVagas.innerHTML = `
+        <p class="alert alert-error">
+          Erro ao carregar vagas: ${error.message}
+        </p>
+      `;
+    }
+  }
+
+  // ============================================
+  // FINALIZAÇÃO
+  // ============================================
+
+  console.log("✅ Módulo de Gestão de Vagas inicializado com sucesso!");
+  console.log(`   - Usuário: ${currentUserData?.nome || "Desconhecido"}`);
+  console.log(`   - Role: ${currentUserData?.role || "N/A"}`);
+  console.log(`   - Aba ativa: ${statusAbaAtiva}`);
 }
+
+// ============================================
+// EXPORTAÇÃO PARA COMPATIBILIDADE COM ROTEADOR
+// ============================================
+
+/**
+ * Alias para compatibilidade com o sistema de rotas
+ */
+export { initGestaoVagas as init };
 
 // Compatibilidade com roteador
 export { initGestaoVagas as init };

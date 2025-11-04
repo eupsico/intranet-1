@@ -537,6 +537,49 @@
     <div id="global-loading-spinner">
       <div class="spinner"></div>
     </div>
+
+    <!-- Modal: Solicitar Correção -->
+<div id="modal-solicitar-correcao" class="modal-overlay">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="modal-correcao-title">Solicitar Correção</h3>
+      <button type="button" class="close-modal-btn" data-modal="modal-solicitar-correcao" aria-label="Fechar modal">
+        &times;
+      </button>
+    </div>
+    
+    <form id="form-solicitar-correcao">
+      <div class="modal-body">
+        <input type="hidden" id="vaga-id-correcao" />
+        <input type="hidden" id="tipo-correcao" /> <!-- "ficha" ou "arte" -->
+        
+        <fieldset>
+          <legend><i class="fas fa-exclamation-triangle me-2"></i>Motivo da Correção</legend>
+          <div class="form-group">
+            <label for="motivo-correcao" class="form-label">
+              Descreva as alterações ou correções necessárias: *
+            </label>
+            <textarea id="motivo-correcao" class="form-control" rows="6" required
+              placeholder="Seja específico sobre o que precisa ser corrigido ou alterado..."></textarea>
+            <small class="form-text text-muted">
+              Esta mensagem será enviada ao responsável pela correção.
+            </small>
+          </div>
+        </fieldset>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="action-button secondary" data-modal="modal-solicitar-correcao">
+          <i class="fas fa-times me-2"></i> Cancelar
+        </button>
+        <button type="submit" class="action-button warning" id="btn-confirmar-correcao">
+          <i class="fas fa-paper-plane me-2"></i> Enviar Solicitação
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
   </div>
 
   <script type="module" src="../js/gestao_vagas.js"></script>
