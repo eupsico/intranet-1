@@ -1,7 +1,7 @@
 // modulos/rh/js/tabs/tabTriagem.js
 
 import { getGlobalState } from "../recrutamento.js";
-// CORREÇÃO DE CAMINHO: Ajustado para 4 níveis (../../../../) para alcançar a pasta assets/
+// CORREÇÃO: Caminho do firebase-init ajustado para 4 níveis (../../../../)
 import {
   updateDoc,
   doc,
@@ -137,7 +137,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
   document.getElementById(
     "avaliacao-modal-title"
-  ).textContent = `Avaliação de Triagem - ${nomeCompleto}`;
+  ).textContent = `Avaliação de Currículo - ${nomeCompleto}`;
   document.getElementById("candidato-modal-nome").textContent = nomeCompleto;
   document.getElementById("modal-dado-email").textContent =
     dadosCandidato.email || "Não informado";
@@ -158,22 +158,30 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 
   renderizarChecklistTriagem(triagemAnterior.checklist);
 
-  document.getElementById("modal-prerequisitos-atendidos").value =
-    triagemAnterior.prerequisitos_atendidos || "";
-  // Carrega o valor do motivo de reprovação (que agora está no campo modal-comentarios-gerais)
-  document.getElementById("modal-comentarios-gerais").value =
-    triagemAnterior.motivo_rejeicao || "";
+  // 🔴 CORREÇÃO 1: Adicionar checagem de null e atualizar IDs para evitar TypeError
+  // Campo Pré-requisitos
+  const prerequisitosEl = document.getElementById(
+    "modal-prerequisitos-atendidos"
+  );
+  if (prerequisitosEl)
+    prerequisitosEl.value = triagemAnterior.prerequisitos_atendidos || "";
+
+  // Campo de Reprovação (ID: modal-motivo-rejeicao)
+  const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
+  if (motivoRejeicaoEl)
+    motivoRejeicaoEl.value = triagemAnterior.motivo_rejeicao || "";
+
+  // Campo de Aprovação (ID: modal-info-aprovacao)
+  const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
+  if (infoAprovacaoEl)
+    infoAprovacaoEl.value = triagemAnterior.info_aprovacao || "";
 
   // Lógica dos Rádios e Rejeição
-  document.getElementById("modal-apto-sim").checked =
-    triagemAnterior.apto_entrevista === "Sim";
-  document.getElementById("modal-apto-nao").checked =
-    triagemAnterior.apto_entrevista === "Não";
+  const radioSim = document.getElementById("modal-apto-sim");
+  const radioNao = document.getElementById("modal-apto-nao");
 
-  const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
-  if (infoAprovacaoEl) {
-    infoAprovacaoEl.value = triagemAnterior.info_aprovacao || "";
-  }
+  if (radioSim) radioSim.checked = triagemAnterior.apto_entrevista === "Sim";
+  if (radioNao) radioNao.checked = triagemAnterior.apto_entrevista === "Não";
 
   // 🟡 Atualiza o link do currículo no botão do rodapé
   const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
@@ -215,13 +223,19 @@ async function submeterAvaliacaoTriagem(e) {
   )?.value;
   const decisao = aptoEntrevista === "Sim";
 
-  // Elemento que agora armazena o Motivo de Reprovação (anteriormente Comentários Gerais)
-  const motivoRejeicaoEl = document.getElementById("modal-comentarios-gerais");
+  // Elementos
+  const prerequisitosEl = document.getElementById(
+    "modal-prerequisitos-atendidos"
+  );
+  const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
 
-  // 🔴 CORREÇÃO 2: A lógica de validação de campo obrigatório para Reprovação (motivo_rejeicao)
-  // O campo é obrigatório apenas quando Não é selecionado.
-  if (!decisao && motivoRejeicaoEl.required && !motivoRejeicaoEl.value.trim()) {
+  // 🔴 Lógica de validação de campo obrigatório para Reprovação
+  if (
+    !decisao &&
+    motivoRejeicaoEl?.required &&
+    !motivoRejeicaoEl.value.trim()
+  ) {
     alert("Por favor, preencha o motivo detalhado da reprovação.");
     return;
   }
@@ -240,11 +254,9 @@ async function submeterAvaliacaoTriagem(e) {
 
   // Objeto de avaliação final (inclui o estado atual do checklist)
   const dadosAvaliacao = {
-    prerequisitos_atendidos: document.getElementById(
-      "modal-prerequisitos-atendidos"
-    ).value,
+    prerequisitos_atendidos: prerequisitosEl?.value || "",
     // Garante que o campo de Reprovação seja mapeado corretamente para o Firebase
-    motivo_rejeicao: decisao ? "" : motivoRejeicaoEl.value.trim(),
+    motivo_rejeicao: decisao ? "" : motivoRejeicaoEl?.value.trim() || "",
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao
       ? infoAprovacaoEl
@@ -278,13 +290,9 @@ async function submeterAvaliacaoTriagem(e) {
     // Fecha o modal
     modalAvaliacaoTriagem.classList.remove("is-visible");
 
-    // 🔴 CORREÇÃO 3: Recarrega a listagem atual para remover o card da aba Triagem
-    // Em seguida, move para a aba de destino se a decisão foi finalizada
-
-    // 1. Recarrega a aba de Triagem (para remover o card que acabou de ser movido)
+    // 🔴 Recarrega a listagem atual para remover o card da aba Triagem e muda para a próxima aba.
     renderizarTriagem(getGlobalState());
 
-    // 2. Se a aba de destino for diferente de "triagem", muda para a aba de destino
     const currentActiveTab = statusCandidaturaTabs
       .querySelector(".tab-link.active")
       .getAttribute("data-status");
@@ -339,7 +347,7 @@ export async function renderizarTriagem(state) {
       .getElementById("status-candidatura-tabs")
       .querySelector('.tab-link[data-status="triagem"]');
     if (triagemTab)
-      triagemTab.textContent = `2. Triagem de Currículo (${snapshot.size})`;
+      triagemTab.textContent = `2. Avaliação de Currículo (${snapshot.size})`;
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML =
@@ -420,9 +428,7 @@ export async function renderizarTriagem(state) {
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // 🔴 CORREÇÃO: Listeners DYNAMICOS para Detalhes e Avaliar Candidatura
-    // Estes listeners precisam ser reanexados sempre que a lista muda.
-
+    // 🔴 Listeners DYNAMICOS para Detalhes e Avaliar Candidatura
     // 1. Configura evento para abrir modal de detalhes (modalCandidato)
     document.querySelectorAll(".btn-detalhes-triagem").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -432,7 +438,6 @@ export async function renderizarTriagem(state) {
             .getAttribute("data-candidato-data")
             .replace(/&#39;/g, "'")
         );
-        // Chama a função global, que foi corrigida no recrutamento.js
         window.abrirModalCandidato(candidatoId, "detalhes", dados);
       });
     });
@@ -446,7 +451,6 @@ export async function renderizarTriagem(state) {
             .getAttribute("data-candidato-data")
             .replace(/&#39;/g, "'")
         );
-        // Chama a função global
         window.abrirModalAvaliacaoTriagem(candidatoId, dados);
       });
     });
@@ -465,7 +469,7 @@ if (modalAvaliacaoTriagem) {
   if (btnFinalizarTriagem) {
     btnFinalizarTriagem.removeEventListener("click", submeterAvaliacaoTriagem);
     btnFinalizarTriagem.addEventListener("click", submeterAvaliacaoTriagem);
-    // 🔴 CORREÇÃO: Define o texto inicial do botão
+    // 🔴 Define o texto inicial do botão
     btnFinalizarTriagem.innerHTML =
       '<i class="fas fa-check-circle me-2"></i> Registrar Decisão';
   }
@@ -485,10 +489,12 @@ if (modalAvaliacaoTriagem) {
   // 3. Botão 'Ver Currículo'
   const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
   if (btnVerCurriculo) {
-    // Limpa listeners (melhor prática: usa replaceWith para garantir que não haja duplicatas de listeners)
-    btnVerCurriculo.cloneNode(true).replaceWith(btnVerCurriculo);
+    // Limpa listeners garantindo que não haja duplicatas
+    const old_element = btnVerCurriculo;
+    const new_element = old_element.cloneNode(true);
+    old_element.parentNode.replaceChild(new_element, old_element);
 
-    btnVerCurriculo.addEventListener("click", (e) => {
+    new_element.addEventListener("click", (e) => {
       const link = e.currentTarget.dataset.curriculoLink;
       if (link) {
         window.open(link, "_blank");
@@ -502,7 +508,7 @@ if (modalAvaliacaoTriagem) {
   const radioSim = document.getElementById("modal-apto-sim");
   const radioNao = document.getElementById("modal-apto-nao");
 
-  // 🔴 CORREÇÃO: Anexa listeners de RÁDIO AQUI, se a função global existir
+  // 🔴 Anexa listeners de RÁDIO AQUI, se a função global existir
   if (radioSim && window.toggleMotivoAprovacaoRejeicao) {
     radioSim.removeEventListener(
       "change",
