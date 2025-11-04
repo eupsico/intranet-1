@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 4.0.0 (Com Funcionalidade de Enviar Teste Separada)
+ * Versão: 4.1.0 (Completo com Enviar Teste Funcional)
  * Data: 04/11/2025
  * Descrição: Gerencia a aba de Entrevistas, Avaliações e Envio de Testes
  */
@@ -21,6 +21,10 @@ import {
 // VARIÁVEIS DE ESTADO
 // ============================================
 let dadosCandidatoAtual = null;
+
+// ============================================
+// ELEMENTOS DO DOM
+// ============================================
 const modalEnviarTeste = document.getElementById("modal-enviar-teste");
 const formEnviarTeste = document.getElementById("form-enviar-teste");
 
@@ -131,6 +135,10 @@ function fecharModalEnvioTeste() {
   console.log("🔹 Entrevistas: Fechando modal de envio de teste");
   if (modalEnviarTeste) {
     modalEnviarTeste.classList.remove("is-visible");
+    // Limpa o formulário
+    if (formEnviarTeste) {
+      formEnviarTeste.reset();
+    }
   }
 }
 
@@ -521,7 +529,7 @@ async function submeterAgendamentoRH(e) {
 }
 
 // ============================================
-// MODAIS - ENVIAR TESTE (✅ NOVO)
+// MODAIS - ENVIAR TESTE
 // ============================================
 
 /**
@@ -534,23 +542,35 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
 
   try {
     dadosCandidatoAtual = dadosCandidato;
-    modalEnviarTeste.dataset.candidaturaId = candidatoId;
 
-    document.getElementById("teste-nome-candidato").textContent =
-      dadosCandidato.nome_completo || "N/A";
-    document.getElementById("teste-email-candidato").textContent =
-      dadosCandidato.email_candidato || "N/A";
-    document.getElementById("teste-whatsapp-candidato").textContent =
-      dadosCandidato.telefone_contato || "N/A";
+    if (modalEnviarTeste) {
+      modalEnviarTeste.dataset.candidaturaId = candidatoId;
+    }
 
+    // Preenche informações do candidato
+    const nomeEl = document.getElementById("teste-nome-candidato");
+    const emailEl = document.getElementById("teste-email-candidato");
+    const whatsappEl = document.getElementById("teste-whatsapp-candidato");
+
+    if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo || "N/A";
+    if (emailEl) emailEl.textContent = dadosCandidato.email_candidato || "N/A";
+    if (whatsappEl)
+      whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
+
+    // Define data/hora atual
     const agora = new Date();
     const dataFormatada = agora.toISOString().slice(0, 16);
-    document.getElementById("teste-data-envio").value = dataFormatada;
+    const dataInput = document.getElementById("teste-data-envio");
+    if (dataInput) dataInput.value = dataFormatada;
 
+    // Carrega testes disponíveis
     await carregarTestesDisponiveis();
 
-    modalEnviarTeste.classList.add("is-visible");
-    console.log("✅ Modal de envio de teste aberto");
+    // Abre o modal
+    if (modalEnviarTeste) {
+      modalEnviarTeste.classList.add("is-visible");
+    }
+    console.log("✅ Entrevistas: Modal de envio de teste aberto");
   } catch (error) {
     console.error("❌ Erro ao abrir modal de teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
@@ -562,18 +582,22 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
  */
 async function carregarTestesDisponiveis() {
   const selectTeste = document.getElementById("teste-selecionado");
+  if (!selectTeste) {
+    console.error("❌ Select de testes não encontrado");
+    return;
+  }
+
   selectTeste.innerHTML = '<option value="">Carregando testes...</option>';
 
   try {
     const estudosRef = collection(db, "estudos_de_caso");
-
     const q = query(estudosRef, where("ativo", "==", true));
-
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
       selectTeste.innerHTML =
         '<option value="">Nenhum teste disponível</option>';
+      console.log("ℹ️ Nenhum teste disponível");
       return;
     }
 
@@ -589,7 +613,7 @@ async function carregarTestesDisponiveis() {
     });
 
     selectTeste.innerHTML = htmlOptions;
-    console.log("✅ Testes carregados");
+    console.log(`✅ ${snapshot.size} teste(s) carregado(s)`);
   } catch (error) {
     console.error("❌ Erro ao carregar testes:", error);
     selectTeste.innerHTML = '<option value="">Erro ao carregar testes</option>';
@@ -605,27 +629,35 @@ document.addEventListener("change", (e) => {
     const linkInput = document.getElementById("teste-link");
     const linkTeste = option.getAttribute("data-link");
 
-    if (linkTeste) {
-      linkInput.value = linkTeste;
-    } else {
-      linkInput.value = `https://eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
+    if (linkInput) {
+      if (linkTeste) {
+        linkInput.value = linkTeste;
+      } else {
+        linkInput.value = `https://eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
+      }
+      console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
-
-    console.log(`✅ Link do teste atualizado: ${linkInput.value}`);
   }
 });
 
 /**
  * Envia teste via WhatsApp
  */
-window.enviarTesteWhatsApp = async function () {
+document.addEventListener("click", (e) => {
+  if (e.target.id === "btn-enviar-teste-whatsapp") {
+    enviarTesteWhatsApp();
+  }
+});
+
+async function enviarTesteWhatsApp() {
   console.log("🔹 Entrevistas: Enviando teste via WhatsApp");
 
-  const candidatoId = modalEnviarTeste.dataset.candidaturaId;
-  const testeId = document.getElementById("teste-selecionado").value;
-  const linkTeste = document.getElementById("teste-link").value;
-  const telefone = dadosCandidatoAtual.telefone_contato;
-  const mensagemPersonalizada = document.getElementById("teste-mensagem").value;
+  const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
+  const testeId = document.getElementById("teste-selecionado")?.value;
+  const linkTeste = document.getElementById("teste-link")?.value;
+  const telefone = dadosCandidatoAtual?.telefone_contato;
+  const mensagemPersonalizada =
+    document.getElementById("teste-mensagem")?.value;
 
   if (!testeId || !linkTeste || !telefone) {
     window.showToast?.("Preencha todos os campos obrigatórios", "error");
@@ -668,8 +700,10 @@ Se tiver dúvidas, não hesite em nos contactar!
     const mensagemCodificada = encodeURIComponent(mensagemFinal);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
 
+    // Salva no Firestore
     await salvarEnvioTeste(candidatoId, testeId, linkTeste);
 
+    // Abre WhatsApp
     window.open(linkWhatsApp, "_blank");
 
     window.showToast?.("Teste enviado com sucesso! WhatsApp aberto", "success");
@@ -678,7 +712,7 @@ Se tiver dúvidas, não hesite em nos contactar!
     console.error("❌ Erro ao enviar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   }
-};
+}
 
 /**
  * Salva o envio do teste no Firestore
@@ -716,53 +750,54 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
 }
 
 /**
- * Listener para botão "Enviar via WhatsApp"
+ * Listener para botão "Salvar Apenas"
  */
 document.addEventListener("click", (e) => {
-  if (e.target.id === "btn-enviar-teste-whatsapp") {
-    window.enviarTesteWhatsApp();
+  if (e.target.id === "btn-salvar-teste-apenas") {
+    salvarTesteApenas();
   }
 });
 
-/**
- * Submete apenas o formulário (sem WhatsApp)
- */
-if (formEnviarTeste) {
-  formEnviarTeste.addEventListener("submit", async (e) => {
-    e.preventDefault();
+async function salvarTesteApenas() {
+  console.log("🔹 Entrevistas: Salvando teste (sem WhatsApp)");
 
-    console.log("🔹 Entrevistas: Salvando teste (sem WhatsApp)");
+  const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
+  const testeId = document.getElementById("teste-selecionado")?.value;
+  const linkTeste = document.getElementById("teste-link")?.value;
 
-    const candidatoId = modalEnviarTeste.dataset.candidaturaId;
-    const testeId = document.getElementById("teste-selecionado").value;
-    const linkTeste = document.getElementById("teste-link").value;
+  if (!testeId || !linkTeste) {
+    window.showToast?.("Selecione um teste", "error");
+    return;
+  }
 
-    if (!testeId || !linkTeste) {
-      window.showToast?.("Selecione um teste", "error");
-      return;
-    }
+  try {
+    await salvarEnvioTeste(candidatoId, testeId, linkTeste);
+    window.showToast?.("Teste salvo com sucesso!", "success");
 
-    try {
-      await salvarEnvioTeste(candidatoId, testeId, linkTeste);
-      window.showToast?.("Teste salvo com sucesso!", "success");
-
-      fecharModalEnvioTeste();
-      const state = getGlobalState();
-      const { handleTabClick, statusCandidaturaTabs } = state;
-      const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
-      if (activeTab) handleTabClick({ currentTarget: activeTab });
-    } catch (error) {
-      console.error("❌ Erro:", error);
-      window.showToast?.(`Erro: ${error.message}`, "error");
-    }
-  });
+    fecharModalEnvioTeste();
+    const state = getGlobalState();
+    const { handleTabClick, statusCandidaturaTabs } = state;
+    const activeTab = statusCandidaturaTabs?.querySelector(".tab-link.active");
+    if (activeTab) handleTabClick({ currentTarget: activeTab });
+  } catch (error) {
+    console.error("❌ Erro:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
 }
 
-// Listeners para fechar modal de teste
-document.querySelectorAll(".fechar-modal-teste").forEach((btn) => {
-  btn.addEventListener("click", fecharModalEnvioTeste);
+/**
+ * Listeners para fechar modal
+ */
+document.addEventListener("click", (e) => {
+  if (
+    e.target.classList.contains("fechar-modal-teste") ||
+    e.target.parentElement?.classList.contains("fechar-modal-teste")
+  ) {
+    fecharModalEnvioTeste();
+  }
 });
 
+// Fechar ao clicar no overlay
 if (modalEnviarTeste) {
   modalEnviarTeste.addEventListener("click", (e) => {
     if (e.target === modalEnviarTeste) {
