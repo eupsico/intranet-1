@@ -471,16 +471,59 @@ async function excluirModelo(id) {
 // GERAÇÃO DE LINK PÚBLICO
 // ============================================
 
+// ============================================
+// GERAÇÃO DE LINK PÚBLICO
+// ============================================
+
 function abrirModalGerarLink(id, tipo) {
-  console.log(`🔹 Estudos: Gerando link para modelo: ${id}`);
+  console.log(`🔹 Estudos: Gerando link para modelo: ${id}, tipo: ${tipo}`);
 
-  const urlBase = window.location.origin.replace("intranet", "public");
-  const link = `${urlBase}/avaliacao-publica.html?tipo=${tipo}&id=${id}`;
+  try {
+    // ✅ PARA eupsico.org.br (remove "intranet.")
+    let urlBase = window.location.origin;
 
-  linkPublicoInput.value = link;
-  modalGerarLink.style.display = "flex";
+    // Substitui "intranet.eupsico.org.br" por "eupsico.org.br"
+    if (urlBase.includes("intranet.eupsico.org.br")) {
+      urlBase = "https://eupsico.org.br"; // ✅ Link público
+    }
 
-  setTimeout(() => linkPublicoInput.select(), 100);
+    console.log(`✅ URL Base: ${urlBase}`);
+
+    // ✅ Monta o link final
+    const link = `${urlBase}/avaliacao-publica.html?tipo=${tipo}&id=${id}`;
+
+    console.log(`✅ Link gerado: ${link}`);
+
+    // ✅ Preenche o campo input
+    if (linkPublicoInput) {
+      linkPublicoInput.value = link;
+      console.log("✅ Campo de link preenchido");
+    } else {
+      console.error("❌ Campo linkPublicoInput não encontrado");
+    }
+
+    // ✅ ADICIONA NOTIFICAÇÃO INFORMANDO O LINK
+    window.showToast?.(`Link gerado: ${link}`, "info");
+
+    // ✅ Abre o modal
+    if (modalGerarLink) {
+      modalGerarLink.style.display = "flex";
+      console.log("✅ Modal de link aberto");
+    } else {
+      console.error("❌ Modal modalGerarLink não encontrado");
+    }
+
+    // ✅ Seleciona o texto para facilitar cópia
+    setTimeout(() => {
+      if (linkPublicoInput) {
+        linkPublicoInput.select();
+        console.log("✅ Link selecionado para cópia");
+      }
+    }, 100);
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao gerar link:", error);
+    window.showToast?.(`Erro ao gerar link: ${error.message}`, "error");
+  }
 }
 
 function fecharModalGerarLink() {
