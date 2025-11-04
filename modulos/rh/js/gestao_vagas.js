@@ -1669,6 +1669,3 @@ export async function initGestaoVagas(user, userData) {
  * Alias para compatibilidade com o sistema de rotas
  */
 export { initGestaoVagas as init };
-
-// Compatibilidade com roteador
-export { initGestaoVagas as init };
