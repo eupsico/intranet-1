@@ -194,7 +194,11 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
 
 
  modalCandidatoFooter.innerHTML =
+ style="position: sticky; bottom: 0; background-color: #fff; z-index: 10; border-top: 1px solid #dee2e6;">
   '<button type="button" class="action-button secondary fechar-modal-candidato">Fechar</button>';
+  '<button type="button" class="action-button info me-auto" id="btn-ver-curriculo-triagem" disabled>
+        <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+      </button>';'
 
  // CORREÇÃO: Anexar o listener AGORA que o botão existe
  const btnFechar = modalCandidatoFooter.querySelector(".fechar-modal-candidato");
@@ -214,8 +218,13 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
  let contentHtml = `
    <div class="row detalhes-candidato-modal">
      <div class="col-md-6">
-       <h5>Informações Pessoais</h5>
-       <p><strong>Email:</strong> ${candidato.email_candidato}</p>
+      <fieldset class="mb-4"> 
+        <legend>Informações Pessoais</legend>
+        <p class="card-text">
+              <strong>Nome candidato:</strong> <span id="candidato-modal-nome"
+                style="color: var(--cor-primaria); margin-bottom: 15px; font-weight: 600;">Candidato(a)</span>
+          </p>
+          <p><strong>Email:</strong> ${candidato.email_candidato}</p>
        <p><strong>Telefone (WhatsApp):</strong> ${
         candidato.telefone_contato || "N/A"
        }</p>
@@ -228,26 +237,26 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
        <p><strong>Status Atual:</strong> <span class="badge bg-primary">${
         candidato.status_recrutamento || "N/A"
        }</span></p>
+
+
+      </fieldset>
      </div>
      <div class="col-md-6">
-       <h5>Experiência e Arquivos</h5>
-       <p><strong>Resumo Experiência:</strong> ${candidato.resumo_experiencia || "Não informado"}</p>
+      <fieldset class="mb-4">
+        <legend>Experiência e Arquivos</legend>
+        <p><strong>Resumo Experiência:</strong> ${candidato.resumo_experiencia || "Não informado"}</p>
        <p><strong>Habilidades:</strong> ${candidato.habilidades_competencias || "Não informadas"}</p>
-       <p><strong>Currículo:</strong> 
-         <a href="${candidato.link_curriculo_drive || "#"}" target="_blank" class="action-button secondary ${ 
-  !candidato.link_curriculo_drive ? "disabled" : ""
- }">
-           <i class="fas fa-file-pdf"></i> Ver Currículo
-         </a>
-       </p>
+      </fieldset>
      </div>
    </div>
    
    <hr>
    
    <div class="historico-candidatura">
-     <h5>Histórico de Avaliações</h5>
-     ${
+    <div class="col-md-6"><fieldset class="mb-4">
+      <legend>Histórico de Avaliações</legend>
+    </fieldset> </div>
+         ${
       candidato.triagem_rh
        ? `
        <h6>Triagem RH</h6>
@@ -268,6 +277,9 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
      `
        : ""
      }
+    <fieldset class="mb-4">
+    
+
    </div>
  `;
 
