@@ -716,6 +716,15 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
 }
 
 /**
+ * Listener para botão "Enviar via WhatsApp"
+ */
+document.addEventListener("click", (e) => {
+  if (e.target.id === "btn-enviar-teste-whatsapp") {
+    window.enviarTesteWhatsApp();
+  }
+});
+
+/**
  * Submete apenas o formulário (sem WhatsApp)
  */
 if (formEnviarTeste) {
