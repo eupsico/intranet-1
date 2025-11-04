@@ -331,9 +331,11 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   console.log(
     `--- DEBUG RH: INÍCIO abrirModalAvaliacaoRH para ID: ${candidatoId}`
-  ); // Busca o elemento do modal dinamicamente
+  );
+
   const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
   const form = document.getElementById("form-avaliacao-entrevista-rh");
+
   if (!modalAvaliacaoRH || !form) {
     window.showToast(
       "Erro: Modal de Avaliação (modal-avaliacao-rh) não encontrado.",
@@ -344,12 +346,13 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     );
     return;
   }
+
   console.log(
     "--- DEBUG RH: SUCESSO - Elementos do Modal Avaliação encontrados."
   );
 
   dadosCandidatoAtual = dadosCandidato;
-  modalAvaliacaoRH.dataset.candidaturaId = candidatoId; // 1. Preencher a Ficha e Notas Rápidas
+  modalAvaliacaoRH.dataset.candidaturaId = candidatoId;
 
   const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
   const resumoTriagem =
@@ -373,13 +376,13 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (btnVerCurriculo) {
     btnVerCurriculo.href = linkCurriculo;
     btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
-  } // 2. Limpar/Resetar Formulário
+  }
 
-  if (form) form.reset(); // 3. Preencher dados de avaliação se já existirem
+  if (form) form.reset();
+
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
-      // Garante que o formulário foi encontrado antes de tentar preencher
       form.querySelector("#nota-motivacao").value =
         avaliacaoExistente.notas?.motivacao || "";
       form.querySelector("#nota-aderencia").value =
@@ -397,25 +400,31 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
         if (radio) radio.checked = true;
       }
     }
-  } // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI.
+  }
+
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
   console.log("--- DEBUG RH: Listener SUBMIT Avaliação anexado.");
 
-  // Anexar listeners de fechar (X no cabeçalho e botão 'Voltar ao Painel')
   document
     .querySelectorAll(`[data-modal-id='modal-avaliacao-rh']`)
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAvaliacao);
       btn.addEventListener("click", fecharModalAvaliacao);
-    }); // 🛑 APLICAÇÃO DA CLASSE (AÇÃO CRÍTICA)
+    });
 
-  modalAvaliacaoRH.classList.add("is-visible");
-
-  // 🛑 NOVO LOG DE VERIFICAÇÃO FINAL
-  console.log(
-    `--- DEBUG RH: VERIFICAÇÃO CLASSE APÓS ADD: ${modalAvaliacaoRH.className}`
-  );
+  // ✅ CORREÇÃO: Buscar o .modal-overlay pai e adicionar is-visible nele
+  const modalOverlay = modalAvaliacaoRH.closest(".modal-overlay");
+  if (modalOverlay) {
+    modalOverlay.classList.add("is-visible");
+    console.log("--- DEBUG RH: Classe is-visible adicionada ao modal-overlay.");
+  } else {
+    // Fallback: se não houver overlay pai, adiciona direto no modal
+    modalAvaliacaoRH.classList.add("is-visible");
+    console.warn(
+      "--- DEBUG RH: modal-overlay não encontrado, usando fallback."
+    );
+  }
 
   console.log("--- DEBUG RH: FIM abrirModalAvaliacaoRH. Modal Visível.");
 };
