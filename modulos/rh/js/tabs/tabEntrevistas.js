@@ -8,7 +8,7 @@ import {
   where,
   doc,
   updateDoc,
-} from "../../../../assets/js/firebase-init.js"; // Adicionado doc e updateDoc para submissão
+} from "../../../../assets/js/firebase-init.js";
 import {
   arrayUnion,
   serverTimestamp,
@@ -207,8 +207,13 @@ export async function renderizarEntrevistas(state) {
 window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   // Busca o elemento do modal dinamicamente
   const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
-  if (!modalAgendamentoRH) {
-    console.error("Elemento modal-agendamento-rh não encontrado.");
+  const form = document.getElementById("form-agendamento-entrevista-rh");
+  if (!modalAgendamentoRH || !form) {
+    window.showToast(
+      "Erro: Modal de Agendamento (modal-agendamento-rh) não encontrado.",
+      "error"
+    );
+    console.error("Elemento modal-agendamento-rh ou form não encontrado.");
     return;
   }
 
@@ -226,7 +231,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 
   const nomeEl = document.getElementById("agendamento-rh-nome-candidato");
   const statusEl = document.getElementById("agendamento-rh-status-atual");
-  const resumoEl = document.getElementById("agendamento-rh-resumo-triagem"); // Os campos de data e hora também devem ser buscados, embora o ID seja o mesmo.
+  const resumoEl = document.getElementById("agendamento-rh-resumo-triagem");
   const dataEl = document.getElementById("data-entrevista-agendada");
   const horaEl = document.getElementById("hora-entrevista-agendada");
 
@@ -234,7 +239,9 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
   if (dataEl) dataEl.value = dataAgendada;
-  if (horaEl) horaEl.value = horaAgendada;
+  if (horaEl) horaEl.value = horaAgendada; // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI, garantindo que o form existe.
+  form.removeEventListener("submit", submeterAgendamentoRH);
+  form.addEventListener("submit", submeterAgendamentoRH);
 
   modalAgendamentoRH.classList.add("is-visible");
 };
@@ -246,8 +253,13 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   // Busca o elemento do modal dinamicamente
   const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
-  if (!modalAvaliacaoRH) {
-    console.error("Elemento modal-avaliacao-rh não encontrado.");
+  const form = document.getElementById("form-avaliacao-entrevista-rh");
+  if (!modalAvaliacaoRH || !form) {
+    window.showToast(
+      "Erro: Modal de Avaliação (modal-avaliacao-rh) não encontrado.",
+      "error"
+    );
+    console.error("Elemento modal-avaliacao-rh ou form não encontrado.");
     return;
   }
 
@@ -278,7 +290,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
   } // 2. Limpar/Resetar Formulário
 
-  const form = document.getElementById("form-avaliacao-entrevista-rh");
   if (form) form.reset(); // 3. Preencher dados de avaliação se já existirem
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
@@ -301,7 +312,9 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
         if (radio) radio.checked = true;
       }
     }
-  } // 4. Exibir o Modal
+  } // 🛑 CORREÇÃO CRÍTICA: Anexar listener de submit AQUI, garantindo que o form existe.
+  form.removeEventListener("submit", submeterAvaliacaoRH);
+  form.addEventListener("submit", submeterAvaliacaoRH); // 4. Exibir o Modal
 
   modalAvaliacaoRH.classList.add("is-visible");
 };
@@ -332,6 +345,7 @@ async function submeterAgendamentoRH(e) {
   const form = document.getElementById("form-agendamento-entrevista-rh");
   if (!form) return;
 
+  // Os IDs dos campos de data e hora são os mesmos do HTML inicial
   const dataEntrevista = form.querySelector("#data-entrevista-agendada").value;
   const horaEntrevista = form.querySelector("#hora-entrevista-agendada").value;
 
@@ -360,8 +374,11 @@ async function submeterAgendamentoRH(e) {
 
     // Update para o Firestore: Adiciona ou sobrescreve apenas a parte de agendamento dentro de entrevista_rh
     const updateData = {
-      "entrevista_rh.agendamento.data": dataEntrevista,
-      "entrevista_rh.agendamento.hora": horaEntrevista,
+      // Garante que o objeto entrevista_rh exista e atualiza apenas agendamento
+      "entrevista_rh.agendamento": {
+        data: dataEntrevista,
+        hora: horaEntrevista,
+      },
       historico: arrayUnion({
         data: serverTimestamp(),
         acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}. Status: ${statusAtual}`,
@@ -388,6 +405,7 @@ async function submeterAgendamentoRH(e) {
         ""
       );
       const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagem}`;
+      // Abre o link do WhatsApp em uma nova aba para o usuário enviar manualmente
       window.open(linkWhatsApp, "_blank");
     }
 
@@ -482,12 +500,12 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // Update para o Firestore
+    // Update para o Firestore: Manter agendamento anterior e adicionar/atualizar a avaliação
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
-        ...(dadosCandidatoAtual.entrevista_rh || {}), // Manter agendamento e outros dados anteriores se houver
-        ...dadosAvaliacao,
+        ...(dadosCandidatoAtual.entrevista_rh || {}), // Manter o objeto entrevista_rh existente (incluindo agendamento)
+        ...dadosAvaliacao, // Sobrescrever com os novos dados de avaliação
       },
       historico: arrayUnion({
         data: serverTimestamp(),
@@ -519,12 +537,9 @@ async function submeterAvaliacaoRH(e) {
   }
 }
 
-// Listener para o formulário de Agendamento (buscando o formulário dinamicamente)
-document
-  .getElementById("form-agendamento-entrevista-rh")
-  ?.addEventListener("submit", submeterAgendamentoRH);
+// Ações de fechamento: Reutilizar o padrão anterior, garantindo que o modal é encontrado dinamicamente.
 
-// Listener para o botão de fechamento do Modal de Agendamento (buscando o modal e botões dinamicamente)
+// Listener para o botão de fechamento do Modal de Agendamento
 document
   .querySelectorAll("[data-modal-id='modal-agendamento-rh']")
   .forEach((btn) => {
@@ -536,12 +551,7 @@ document
     });
   });
 
-// Listener para o formulário de Avaliação (buscando o formulário dinamicamente)
-document
-  .getElementById("form-avaliacao-entrevista-rh")
-  ?.addEventListener("submit", submeterAvaliacaoRH);
-
-// Listener para o botão de fechamento do Modal de Avaliação (buscando o modal e botões dinamicamente)
+// Listener para o botão de fechamento do Modal de Avaliação
 document
   .querySelectorAll("[data-modal-id='modal-avaliacao-rh']")
   .forEach((btn) => {
