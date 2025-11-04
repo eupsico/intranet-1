@@ -239,9 +239,19 @@
   min-width: 150px;
 }
 
-/* Botão Cancelar Vaga (Alinhado à esquerda no footer) */
-.modal-footer #btn-cancelar-vaga {
-  margin-right: auto !important;
+/* Modal Footer: Fixo no rodapé - SEMPRE VISÍVEL */
+.modal-footer {
+  padding: 15px 25px;
+  border-top: 1px solid var(--cor-borda);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--cor-fundo);
+  flex-shrink: 0; /* 🔴 CRÍTICO: Impede que o footer encolha */
+  position: sticky; /* 🔴 GARANTE que fique visível */
+  bottom: 0;
+  z-index: 10;
 }
 
 /* ============================================
@@ -384,21 +394,38 @@
   padding: 0;
 }
 
-/* Ajuste para modal de profissional */
+/* Modal Content: Garante estrutura flexível */
 .modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  background-color: var(--cor-surface);
+  border-radius: var(--borda-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
   max-width: 800px;
+  margin: auto;
+}
+/* Form dentro do modal: ocupa 100% da altura disponível */
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex-grow: 1;
+  min-height: 0;
 }
 
-/* Ajuste do modal-body para scroll correto */
-.modal-body.modal-body-scroll {
+/* Modal Body: Área rolável */
+.modal-body {
+  padding: 25px;
   overflow-y: auto;
   flex-grow: 1;
   min-height: 0;
-  flex-shrink: 1;
-  max-height: 60vh;
+  max-height: calc(90vh - 160px); /* Altura da tela - header - footer */
 }
 
-/* Garante que o overlay do modal funcione corretamente */
+/* Garante que o overlay do modal funcione */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -414,12 +441,43 @@
   justify-content: center;
   align-items: center;
   padding: 20px;
+  overflow-y: auto; /* 🔴 Permite scroll no overlay se modal for muito grande */
 }
 
 .modal-overlay.is-visible {
   visibility: visible;
   opacity: 1;
   transition-delay: 0s;
+}
+/* Modal Header: Fixo no topo */
+.modal-header {
+  padding: 20px 25px;
+  border-bottom: 1px solid var(--cor-borda);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--cor-primaria);
+  flex-shrink: 0;
+}
+/* Responsividade do Modal */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-body {
+    max-height: calc(95vh - 140px);
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-footer .action-button {
+    width: 100%;
+  }
 }
 
 /* Fim do rh.css */
