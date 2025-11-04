@@ -14,35 +14,35 @@
   --cor-salvar: #9decaf;
   --cor-alerta: #ffc107;
   --cor-erro: #dc3545;
-  
+
   /* Cores de Superfície e Fundos */
   --cor-fundo: #f4f7f9;
   --cor-fundo-box: #e8f0f8;
   --cor-surface: #ffffff;
   --cor-borda: #e0e0e0;
-  
+
   /* Cores de Texto */
   --cor-texto-principal: #54595f;
   --cor-texto-secundario: #666666;
   --cor-texto-terciario: #3d3c3c;
   --cor-texto-inverso: #ffffff;
-  
+
   /* Tipografia */
   --fonte-principal: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --fonte-mono: "Courier New", monospace;
-  
+
   /* Efeitos Visuais */
   --sombra-padrao: 0 4px 12px rgba(0, 0, 0, 0.08);
   --sombra-suave: 0 2px 6px rgba(0, 0, 0, 0.05);
   --borda-radius: 8px;
   --borda-radius-pequeno: 5px;
   --borda-radius-grande: 12px;
-  
+
   /* Layout */
   --sidebar-width-expanded: 250px;
   --sidebar-width-collapsed: 80px;
   --header-height: 70px;
-  
+
   /* Transições */
   --transicao-padrao: 0.2s ease-in-out;
   --transicao-lenta: 0.3s ease;
@@ -833,6 +833,7 @@ legend {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1064,7 +1065,7 @@ legend {
   gap: 15px;
 }
 
-.controls-section > div {
+.controls-section>div {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1139,8 +1140,13 @@ legend {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Footer */
@@ -1292,6 +1298,7 @@ legend {
    17. RESPONSIVIDADE (MOBILE)
    ============================================ */
 @media (max-width: 768px) {
+
   body,
   html {
     overflow-x: hidden;
