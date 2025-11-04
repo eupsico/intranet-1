@@ -432,5 +432,288 @@ export async function initGestaoEstudos(user, userData) {
 
   console.log("✅ Estudos de Caso: Módulo inicializado com sucesso");
 }
+// ============================================
+// EDIÇÃO DE MODELO
+// ============================================
+
+async function abrirModalEdicaoModelo(id) {
+  console.log(`🔹 Estudos: Abrindo modal de edição para: ${id}`);
+
+  try {
+    const modeloRef = doc(estudosCollection, id);
+    const modeloSnap = await getDoc(modeloRef);
+
+    if (!modeloSnap.exists()) {
+      window.showToast?.("Modelo não encontrado.", "error");
+      return;
+    }
+
+    const modelo = modeloSnap.data();
+
+    // Preenche os campos do formulário
+    document.getElementById("conteudo-tipo").value = modelo.tipo;
+    document.getElementById("conteudo-titulo").value = modelo.titulo;
+    document.getElementById("conteudo-texto").value = modelo.conteudo_texto;
+
+    // Limpa e preenche as perguntas
+    listaPerguntas.innerHTML = "";
+    proximoIdPergunta = 1;
+
+    if (modelo.perguntas && modelo.perguntas.length > 0) {
+      modelo.perguntas.forEach((pergunta, index) => {
+        const perguntaId = index + 1;
+        const newPerguntaDiv = document.createElement("div");
+        newPerguntaDiv.classList.add("pergunta-item", "form-group");
+        newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
+
+        newPerguntaDiv.innerHTML = `
+          <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
+          <div class="input-group">
+            <textarea
+              class="pergunta-texto form-control"
+              data-id="${perguntaId}"
+              rows="2"
+              required
+            >${pergunta}</textarea>
+            <button 
+              type="button" 
+              class="btn btn-danger btn-sm btn-remover-pergunta ms-2" 
+              title="Remover Pergunta"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+        listaPerguntas.appendChild(newPerguntaDiv);
+
+        newPerguntaDiv
+          .querySelector(".btn-remover-pergunta")
+          .addEventListener("click", function () {
+            newPerguntaDiv.remove();
+            reordenarPerguntas();
+          });
+      });
+      proximoIdPergunta = modelo.perguntas.length + 1;
+    } else {
+      adicionarCampoPergunta();
+      listaPerguntas.querySelector(".btn-remover-pergunta")?.remove();
+      proximoIdPergunta = 2;
+    }
+
+    // Armazena o ID para saber se é criação ou edição
+    formNovoEstudo.dataset.modeloId = id;
+
+    // Muda o texto do botão de submit
+    const btnSubmit = formNovoEstudo.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+      btnSubmit.innerHTML =
+        '<i class="fas fa-refresh me-2"></i> Atualizar Modelo';
+    }
+
+    // Ativa a aba de criar novo
+    document.querySelector('[data-tab="criar-novo"]').click();
+
+    window.showToast?.("Modelo carregado para edição.", "info");
+    console.log("✅ Estudos: Modelo aberto para edição");
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao carregar modelo:", error);
+    window.showToast?.(`Erro ao carregar modelo: ${error.message}`, "error");
+  }
+}
+
+// ============================================
+// SALVAR MODELO (CRIAÇÃO E EDIÇÃO)
+// ============================================
+
+async function salvarModelo(e) {
+  e.preventDefault();
+
+  console.log("🔹 Estudos: Salvando modelo");
+
+  const btn = formNovoEstudo.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+
+  const titulo = document.getElementById("conteudo-titulo").value.trim();
+  const tipo = document.getElementById("conteudo-tipo").value;
+  const textoConteudo = document.getElementById("conteudo-texto").value.trim();
+  const modeloId = formNovoEstudo.dataset.modeloId; // ID do modelo se for edição
+
+  // Validação
+  if (!titulo || !tipo || !textoConteudo) {
+    window.showToast?.("Por favor, preencha Título, Tipo e Conteúdo.", "error");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
+    return;
+  }
+
+  // Coleta as perguntas
+  const perguntas = Array.from(
+    listaPerguntas.querySelectorAll(".pergunta-texto")
+  )
+    .map((textarea) => textarea.value.trim())
+    .filter((pergunta) => pergunta.length > 0);
+
+  const dadosModelo = {
+    titulo: titulo,
+    tipo: tipo,
+    conteudo_texto: textoConteudo,
+    perguntas: perguntas,
+    data_atualizacao: new Date(), // ✅ Sempre atualiza data
+    criado_por_uid: currentUserData?.id || "rh_system_user",
+    ativo: true,
+  };
+
+  try {
+    if (modeloId) {
+      // ✅ EDIÇÃO: Atualiza o modelo existente
+      const modeloRef = doc(estudosCollection, modeloId);
+      await updateDoc(modeloRef, dadosModelo);
+
+      window.showToast?.(`Modelo "${tipo}" atualizado com sucesso!`, "success");
+      console.log("✅ Estudos: Modelo atualizado:", modeloId);
+    } else {
+      // ✅ CRIAÇÃO: Cria novo modelo
+      dadosModelo.data_criacao = new Date();
+      const docRef = await addDoc(estudosCollection, dadosModelo);
+
+      window.showToast?.(`Modelo "${tipo}" salvo com sucesso!`, "success");
+      console.log("✅ Estudos: Novo modelo salvo:", docRef.id);
+    }
+
+    // Limpa o formulário
+    formNovoEstudo.reset();
+    formNovoEstudo.dataset.modeloId = ""; // ✅ Limpa ID para próxima criação
+    listaPerguntas.innerHTML = "";
+    proximoIdPergunta = 1;
+    adicionarCampoPergunta();
+
+    // Restaura botão de submit
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
+
+    // Alterna para a aba de modelos salvos
+    document.querySelector('[data-tab="modelos-salvos"]').click();
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao salvar modelo:", error);
+    window.showToast?.(`Erro ao salvar o modelo: ${error.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ============================================
+// CARREGAMENTO DE MODELOS (ATUALIZAR LISTENERS)
+// ============================================
+
+async function carregarModelosSalvos() {
+  listaModelosSalvos.innerHTML =
+    '<p><i class="fas fa-spinner fa-spin me-2"></i> Buscando modelos...</p>';
+
+  try {
+    const q = query(
+      estudosCollection,
+      where("ativo", "==", true),
+      orderBy("data_criacao", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      listaModelosSalvos.innerHTML =
+        '<p class="alert alert-info">Nenhum modelo de avaliação salvo ainda.</p>';
+      console.log("ℹ️ Estudos: Nenhum modelo encontrado");
+      return;
+    }
+
+    let htmlTabela = `
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Tipo</th>
+            <th>Perguntas</th>
+            <th>Criação</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    snapshot.forEach((docSnap) => {
+      const modelo = docSnap.data();
+      const dataFormatada = formatarTimestamp(modelo.data_criacao);
+      const numPerguntas = modelo.perguntas ? modelo.perguntas.length : 0;
+      const tipoFormatado = modelo.tipo.replace(/-/g, " ").toUpperCase();
+
+      htmlTabela += `
+        <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
+          <td>${modelo.titulo}</td>
+          <td>${tipoFormatado}</td>
+          <td>${numPerguntas}</td>
+          <td>${dataFormatada}</td>
+          <td class="text-center">
+            <button 
+              type="button" 
+              class="btn btn-sm btn-info btn-editar-modelo me-2" 
+              title="Editar"
+              data-id="${docSnap.id}"
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm btn-primary btn-gerar-link me-2" 
+              title="Gerar Link Público"
+              data-id="${docSnap.id}"
+            >
+              <i class="fas fa-link"></i>
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm btn-danger btn-excluir-modelo" 
+              title="Excluir"
+              data-id="${docSnap.id}"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    htmlTabela += `</tbody></table>`;
+    listaModelosSalvos.innerHTML = htmlTabela;
+
+    // ✅ LISTENERS ATUALIZADOS
+    document.querySelectorAll(".btn-editar-modelo").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        abrirModalEdicaoModelo(id);
+      });
+    });
+
+    document.querySelectorAll(".btn-gerar-link").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const tipo = e.currentTarget.closest("tr").getAttribute("data-tipo");
+        abrirModalGerarLink(id, tipo);
+      });
+    });
+
+    document.querySelectorAll(".btn-excluir-modelo").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        excluirModelo(id);
+      });
+    });
+
+    console.log(`✅ Estudos: ${snapshot.size} modelo(s) carregado(s)`);
+  } catch (error) {
+    console.error("❌ Estudos: Erro ao carregar modelos:", error);
+    listaModelosSalvos.innerHTML =
+      '<p class="alert alert-danger">Erro ao carregar os modelos. Tente recarregar a página.</p>';
+  }
+}
 
 export { initGestaoEstudos as init };
