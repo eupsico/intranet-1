@@ -338,7 +338,7 @@ export async function renderizarTriagem(state) {
 
     let listaHtml = `
  <div class="list-candidaturas">
- <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
+ 
 `;
 
     snapshot.docs.forEach((docSnap) => {
