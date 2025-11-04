@@ -56,20 +56,20 @@ function renderizarChecklistTriagem(savedChecks = {}) {
   container.innerHTML = CHECKLIST_TRIAGEM.map((item) => {
     const isChecked = savedChecks[item.id] === true ? "checked" : "";
     return `
-      <div class="form-check checklist-item">
-        <input 
-          class="form-check-input" 
-          type="checkbox" 
-          value="1" 
-          id="${item.id}" 
-          data-check-id="${item.id}"
-          ${isChecked}
-        />
-        <label class="form-check-label" for="${item.id}">
-          ${item.label}
-        </label>
-      </div>
-    `;
+   <div class="form-check checklist-item">
+    <input 
+     class="form-check-input" 
+     type="checkbox" 
+     value="1" 
+     id="${item.id}" 
+     data-check-id="${item.id}"
+     ${isChecked}
+    />
+    <label class="form-check-label" for="${item.id}">
+     ${item.label}
+    </label>
+   </div>
+  `;
   }).join(""); // Adicionar salvamento automático (on change)
 
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
@@ -337,9 +337,9 @@ export async function renderizarTriagem(state) {
     }
 
     let listaHtml = `
-  <div class="list-candidaturas">
-   <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
- `;
+ <div class="list-candidaturas">
+ <h3>Candidaturas na Fase de Triagem (${snapshot.size})</h3>
+`;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -368,41 +368,41 @@ export async function renderizarTriagem(state) {
         : "#";
 
       listaHtml += `
-   <div class="card card-candidato-triagem" data-id="${candidatoId}">
-    <div class="info-primaria">
-      <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
-      <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
+ <div class="card card-candidato-triagem" data-id="${candidatoId}">
+  <div class="info-primaria">
+   <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+   <p>Status: <span class="badge bg-${corStatus}">${statusTriagem.replace(
         "_",
         " "
       )}</span></p>
-    </div>
-    
-    <div class="info-contato">
-      <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
+  </div>
+  
+  <div class="info-contato">
+   <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
       }>
-        <i class="fab fa-whatsapp me-1"></i> ${
-        cand.telefone_contato || "N/A (Sem WhatsApp)"
-      }
-      </a>
-    </div>
-    
-    <div class="acoes-candidato">
-      <button 
-        class="action-button info btn-detalhes-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-info-circle me-1"></i> Detalhes
-      </button>
-      <button 
-        class="action-button warning btn-avaliar-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
-        <i class="fas fa-edit me-1"></i> Avaliar Candidatura
-      </button>
-    </div>
-   </div>
-  `;
+    <i class="fab fa-whatsapp me-1"></i> ${
+      cand.telefone_contato || "N/A (Sem WhatsApp)"
+    }
+   </a>
+  </div>
+  
+  <div class="acoes-candidato">
+   <button 
+    class="action-button info btn-detalhes-triagem" 
+    data-id="${candidatoId}"
+    data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+    <i class="fas fa-info-circle me-1"></i> Detalhes
+   </button>
+   <button 
+    class="action-button warning btn-avaliar-triagem" 
+    data-id="${candidatoId}"
+    data-candidato-data='${JSON.stringify(cand).replace(/'/g, "&#39;")}'>
+    <i class="fas fa-edit me-1"></i> Avaliar Candidatura
+   </button>
+  </div>
+ </div>
+ `;
     });
 
     listaHtml += "</div>";
