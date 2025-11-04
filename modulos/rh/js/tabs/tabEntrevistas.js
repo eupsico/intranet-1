@@ -1,8 +1,8 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 3.0.0 (Revisão Completa com Mensagem WhatsApp Humanizada)
+ * Versão: 4.0.0 (Com Funcionalidade de Enviar Teste Separada)
  * Data: 04/11/2025
- * Descrição: Gerencia a aba de Entrevistas e Avaliações RH
+ * Descrição: Gerencia a aba de Entrevistas, Avaliações e Envio de Testes
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -13,13 +13,16 @@ import {
   doc,
   updateDoc,
   arrayUnion,
-  serverTimestamp,
+  collection,
+  db,
 } from "../../../../assets/js/firebase-init.js";
 
 // ============================================
 // VARIÁVEIS DE ESTADO
 // ============================================
 let dadosCandidatoAtual = null;
+const modalEnviarTeste = document.getElementById("modal-enviar-teste");
+const formEnviarTeste = document.getElementById("form-enviar-teste");
 
 // ============================================
 // FUNÇÕES DE UTILIDADE
@@ -27,23 +30,14 @@ let dadosCandidatoAtual = null;
 
 /**
  * Formata uma mensagem humanizada de agendamento para WhatsApp
- * @param {Object} candidato - Dados do candidato
- * @param {string} dataEntrevista - Data formatada (YYYY-MM-DD)
- * @param {string} horaEntrevista - Hora formatada (HH:mm)
- * @returns {string} Mensagem formatada para WhatsApp
  */
 function formatarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
-  // Converte data YYYY-MM-DD para formato legível DD/MM/YYYY
   const [ano, mes, dia] = dataEntrevista.split("-");
   const dataFormatada = `${dia}/${mes}/${ano}`;
-
-  // Converte hora HH:mm para formato com descrição
   const [horas, minutos] = horaEntrevista.split(":");
   const horaFormatada = `${horas}h${minutos}`;
-
   const nomeCandidato = candidato.nome_completo || "Candidato(a)";
 
-  // Mensagem humanizada e atrativa
   const mensagem = `
 🎉 *Parabéns ${nomeCandidato}!* 🎉
 
@@ -65,7 +59,7 @@ Estamos ansiosos para conhecê-lo(a) melhor!
 🌐 *Siga a EuPsico nas redes sociais:*
 📱 Instagram: @eupsico
 👔 LinkedIn: /company/eupsico
-🌐 Site: www.eupsico.com.br
+🌐 Site: [www.eupsico.com.br](https://www.eupsico.com.br)
 
 Se tiver dúvidas, entre em contato conosco!
 
@@ -78,9 +72,6 @@ Se tiver dúvidas, entre em contato conosco!
 
 /**
  * Envia mensagem de WhatsApp com agendamento
- * @param {Object} candidato - Dados do candidato
- * @param {string} dataEntrevista - Data da entrevista
- * @param {string} horaEntrevista - Hora da entrevista
  */
 function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   if (!candidato.telefone_contato) {
@@ -91,25 +82,16 @@ function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   }
 
   try {
-    // Formata a mensagem
     const mensagem = formatarMensagemWhatsApp(
       candidato,
       dataEntrevista,
       horaEntrevista
     );
-
-    // Codifica a mensagem para URL
     const mensagemCodificada = encodeURIComponent(mensagem);
-
-    // Limpa o telefone (remove tudo que não é número)
     const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
-
-    // Cria o link do WhatsApp
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
 
-    // Abre em nova aba
     window.open(linkWhatsApp, "_blank");
-
     console.log("✅ Entrevistas: Link WhatsApp gerado com sucesso");
   } catch (error) {
     console.error("❌ Entrevistas: Erro ao gerar mensagem WhatsApp:", error);
@@ -142,13 +124,22 @@ function fecharModalAvaliacao() {
   }
 }
 
+/**
+ * Fecha o modal de envio de teste
+ */
+function fecharModalEnvioTeste() {
+  console.log("🔹 Entrevistas: Fechando modal de envio de teste");
+  if (modalEnviarTeste) {
+    modalEnviarTeste.classList.remove("is-visible");
+  }
+}
+
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
 
 /**
  * Renderiza a listagem de candidatos para Entrevistas e Avaliações
- * @param {Object} state - Estado global do módulo
  */
 export async function renderizarEntrevistas(state) {
   console.log("🔹 Entrevistas: Iniciando renderização");
@@ -177,12 +168,12 @@ export async function renderizarEntrevistas(state) {
         "Triagem Aprovada (Entrevista Pendente)",
         "Entrevista RH Aprovada (Testes Pendente)",
         "Testes Pendente",
+        "Testes Pendente (Enviado)",
       ])
     );
 
     const snapshot = await getDocs(q);
 
-    // Atualiza contagem na aba
     const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="entrevistas"]'
     );
@@ -197,9 +188,7 @@ export async function renderizarEntrevistas(state) {
       return;
     }
 
-    let listaHtml = `
-    
-    `;
+    let listaHtml = '<div class="candidatos-container">';
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -225,7 +214,7 @@ export async function renderizarEntrevistas(state) {
           <div class="info-primaria">
             <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
             <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
-        "_",
+        /_/g,
         " "
       )}</span></p>
           </div>
@@ -252,7 +241,7 @@ export async function renderizarEntrevistas(state) {
             </button>
       `;
 
-      // Lógica de exibição dos botões separados
+      // ✅ LÓGICA DE EXIBIÇÃO DOS BOTÕES
       if (statusAtual.includes("Entrevista Pendente")) {
         listaHtml += `
             <button 
@@ -277,13 +266,13 @@ export async function renderizarEntrevistas(state) {
       } else if (statusAtual.includes("Testes Pendente")) {
         listaHtml += `
             <button 
-              class="action-button primary btn-avaliar-rh" 
+              class="action-button primary btn-enviar-teste" 
               data-id="${candidatoId}"
               data-candidato-data='${JSON.stringify(cand).replace(
                 /'/g,
                 "&#39;"
               )}'>
-              <i class="fas fa-vial me-1"></i> Avaliar Testes
+              <i class="fas fa-vial me-1"></i> Enviar Teste
             </button>
         `;
       } else {
@@ -309,7 +298,6 @@ export async function renderizarEntrevistas(state) {
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // Anexar listeners
     console.log("🔹 Entrevistas: Anexando listeners aos botões");
 
     // Listeners de Detalhes
@@ -335,6 +323,19 @@ export async function renderizarEntrevistas(state) {
             .replace(/&#39;/g, "'")
         );
         window.abrirModalAgendamentoRH(candidatoId, dados);
+      });
+    });
+
+    // ✅ Listeners de Enviar Teste
+    document.querySelectorAll(".btn-enviar-teste").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        const dados = JSON.parse(
+          e.currentTarget
+            .getAttribute("data-candidato-data")
+            .replace(/&#39;/g, "'")
+        );
+        window.abrirModalEnviarTeste(candidatoId, dados);
       });
     });
 
@@ -364,8 +365,6 @@ export async function renderizarEntrevistas(state) {
 
 /**
  * Abre o modal de agendamento da Entrevista RH
- * @param {string} candidatoId - ID do candidato
- * @param {Object} dadosCandidato - Dados do candidato
  */
 window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   console.log(
@@ -395,7 +394,6 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   const dataAgendada = dadosCandidato.entrevista_rh?.agendamento?.data || "";
   const horaAgendada = dadosCandidato.entrevista_rh?.agendamento?.hora || "";
 
-  // Preenche os campos
   const nomeEl = document.getElementById("agendamento-rh-nome-candidato");
   const statusEl = document.getElementById("agendamento-rh-status-atual");
   const resumoEl = document.getElementById("agendamento-rh-resumo-triagem");
@@ -408,11 +406,9 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   if (dataEl) dataEl.value = dataAgendada;
   if (horaEl) horaEl.value = horaAgendada;
 
-  // Anexa listener de submit
   form.removeEventListener("submit", submeterAgendamentoRH);
   form.addEventListener("submit", submeterAgendamentoRH);
 
-  // Anexa listeners de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-agendamento-rh']`)
     .forEach((btn) => {
@@ -420,14 +416,12 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
       btn.addEventListener("click", fecharModalAgendamento);
     });
 
-  // Exibe o modal
   modalAgendamentoRH.classList.add("is-visible");
   console.log("✅ Entrevistas: Modal de agendamento aberto");
 };
 
 /**
  * Submete o agendamento da Entrevista RH
- * @param {Event} e - Evento de submit
  */
 async function submeterAgendamentoRH(e) {
   e.preventDefault();
@@ -498,7 +492,6 @@ async function submeterAgendamentoRH(e) {
     );
     console.log("✅ Entrevistas: Agendamento salvo no Firestore");
 
-    // Envia mensagem de WhatsApp humanizada
     if (dadosCandidatoAtual.telefone_contato) {
       setTimeout(() => {
         enviarMensagemWhatsApp(
@@ -528,13 +521,253 @@ async function submeterAgendamentoRH(e) {
 }
 
 // ============================================
+// MODAIS - ENVIAR TESTE (✅ NOVO)
+// ============================================
+
+/**
+ * Abre o modal para enviar teste
+ */
+window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
+  console.log(
+    `🔹 Entrevistas: Abrindo modal para enviar teste: ${candidatoId}`
+  );
+
+  try {
+    dadosCandidatoAtual = dadosCandidato;
+    modalEnviarTeste.dataset.candidaturaId = candidatoId;
+
+    document.getElementById("teste-nome-candidato").textContent =
+      dadosCandidato.nome_completo || "N/A";
+    document.getElementById("teste-email-candidato").textContent =
+      dadosCandidato.email_candidato || "N/A";
+    document.getElementById("teste-whatsapp-candidato").textContent =
+      dadosCandidato.telefone_contato || "N/A";
+
+    const agora = new Date();
+    const dataFormatada = agora.toISOString().slice(0, 16);
+    document.getElementById("teste-data-envio").value = dataFormatada;
+
+    await carregarTestesDisponiveis();
+
+    modalEnviarTeste.classList.add("is-visible");
+    console.log("✅ Modal de envio de teste aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de teste:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+};
+
+/**
+ * Carrega testes disponíveis da coleção estudos_de_caso
+ */
+async function carregarTestesDisponiveis() {
+  const selectTeste = document.getElementById("teste-selecionado");
+  selectTeste.innerHTML = '<option value="">Carregando testes...</option>';
+
+  try {
+    const estudosRef = collection(db, "estudos_de_caso");
+
+    const q = query(estudosRef, where("ativo", "==", true));
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      selectTeste.innerHTML =
+        '<option value="">Nenhum teste disponível</option>';
+      return;
+    }
+
+    let htmlOptions = '<option value="">Selecione um teste...</option>';
+
+    snapshot.forEach((docSnap) => {
+      const teste = docSnap.data();
+      htmlOptions += `<option value="${docSnap.id}" data-link="${
+        teste.link_teste || ""
+      }" data-tipo="${teste.tipo}">
+        ${teste.titulo} (${teste.tipo.replace(/-/g, " ")})
+      </option>`;
+    });
+
+    selectTeste.innerHTML = htmlOptions;
+    console.log("✅ Testes carregados");
+  } catch (error) {
+    console.error("❌ Erro ao carregar testes:", error);
+    selectTeste.innerHTML = '<option value="">Erro ao carregar testes</option>';
+  }
+}
+
+/**
+ * Atualiza o link quando muda a seleção de teste
+ */
+document.addEventListener("change", (e) => {
+  if (e.target.id === "teste-selecionado") {
+    const option = e.target.selectedOptions[0];
+    const linkInput = document.getElementById("teste-link");
+    const linkTeste = option.getAttribute("data-link");
+
+    if (linkTeste) {
+      linkInput.value = linkTeste;
+    } else {
+      linkInput.value = `https://eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
+    }
+
+    console.log(`✅ Link do teste atualizado: ${linkInput.value}`);
+  }
+});
+
+/**
+ * Envia teste via WhatsApp
+ */
+window.enviarTesteWhatsApp = async function () {
+  console.log("🔹 Entrevistas: Enviando teste via WhatsApp");
+
+  const candidatoId = modalEnviarTeste.dataset.candidaturaId;
+  const testeId = document.getElementById("teste-selecionado").value;
+  const linkTeste = document.getElementById("teste-link").value;
+  const telefone = dadosCandidatoAtual.telefone_contato;
+  const mensagemPersonalizada = document.getElementById("teste-mensagem").value;
+
+  if (!testeId || !linkTeste || !telefone) {
+    window.showToast?.("Preencha todos os campos obrigatórios", "error");
+    return;
+  }
+
+  try {
+    const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";
+    const nomeTesteElement = document.querySelector(
+      `#teste-selecionado option[value="${testeId}"]`
+    );
+    const nomeTeste = nomeTesteElement?.textContent || "Teste";
+
+    const mensagemPadrao = `
+🎯 *Olá ${nomeCandidato}!* 🎯
+
+Chegou a hora de você realizar o próximo teste da sua avaliação! 
+
+📋 *Teste:* ${nomeTeste}
+
+🔗 *Clique no link abaixo para realizar o teste:*
+${linkTeste}
+
+⏱️ *Tempo estimado:* 30-45 minutos
+
+📌 *Instruções:*
+✅ Acesse o link acima
+✅ Leia as instruções com atenção
+✅ Responda com sinceridade
+✅ Nós avaliaremos suas respostas
+
+Se tiver dúvidas, não hesite em nos contactar!
+
+*Boa sorte!* 🍀
+*Equipe de Recrutamento - EuPsico* 💙
+    `.trim();
+
+    const mensagemFinal = mensagemPersonalizada || mensagemPadrao;
+    const telefoneLimpo = telefone.replace(/\D/g, "");
+    const mensagemCodificada = encodeURIComponent(mensagemFinal);
+    const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
+
+    await salvarEnvioTeste(candidatoId, testeId, linkTeste);
+
+    window.open(linkWhatsApp, "_blank");
+
+    window.showToast?.("Teste enviado com sucesso! WhatsApp aberto", "success");
+    console.log("✅ Teste enviado via WhatsApp");
+  } catch (error) {
+    console.error("❌ Erro ao enviar teste:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+};
+
+/**
+ * Salva o envio do teste no Firestore
+ */
+async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
+  console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
+
+  const state = getGlobalState();
+  const { candidatosCollection, currentUserData } = state;
+
+  try {
+    const candidatoRef = doc(candidatosCollection, candidatoId);
+
+    await updateDoc(candidatoRef, {
+      status_recrutamento: "Testes Pendente (Enviado)",
+      testes_enviados: arrayUnion({
+        id: testeId,
+        link: linkTeste,
+        data_envio: new Date(),
+        enviado_por: currentUserData.id || "rh_system_user",
+        status: "enviado",
+      }),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Teste enviado via WhatsApp. Link: ${linkTeste}`,
+        usuario: currentUserData.id || "rh_system_user",
+      }),
+    });
+
+    console.log("✅ Envio de teste salvo no Firestore");
+  } catch (error) {
+    console.error("❌ Erro ao salvar envio:", error);
+    throw error;
+  }
+}
+
+/**
+ * Submete apenas o formulário (sem WhatsApp)
+ */
+if (formEnviarTeste) {
+  formEnviarTeste.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    console.log("🔹 Entrevistas: Salvando teste (sem WhatsApp)");
+
+    const candidatoId = modalEnviarTeste.dataset.candidaturaId;
+    const testeId = document.getElementById("teste-selecionado").value;
+    const linkTeste = document.getElementById("teste-link").value;
+
+    if (!testeId || !linkTeste) {
+      window.showToast?.("Selecione um teste", "error");
+      return;
+    }
+
+    try {
+      await salvarEnvioTeste(candidatoId, testeId, linkTeste);
+      window.showToast?.("Teste salvo com sucesso!", "success");
+
+      fecharModalEnvioTeste();
+      const state = getGlobalState();
+      const { handleTabClick, statusCandidaturaTabs } = state;
+      const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
+      if (activeTab) handleTabClick({ currentTarget: activeTab });
+    } catch (error) {
+      console.error("❌ Erro:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  });
+}
+
+// Listeners para fechar modal de teste
+document.querySelectorAll(".fechar-modal-teste").forEach((btn) => {
+  btn.addEventListener("click", fecharModalEnvioTeste);
+});
+
+if (modalEnviarTeste) {
+  modalEnviarTeste.addEventListener("click", (e) => {
+    if (e.target === modalEnviarTeste) {
+      fecharModalEnvioTeste();
+    }
+  });
+}
+
+// ============================================
 // MODAIS - AVALIAÇÃO
 // ============================================
 
 /**
  * Abre o modal de avaliação da Entrevista RH
- * @param {string} candidatoId - ID do candidato
- * @param {Object} dadosCandidato - Dados do candidato
  */
 window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   console.log(`🔹 Entrevistas: Abrindo modal de avaliação para ${candidatoId}`);
@@ -559,7 +792,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const linkCurriculo = dadosCandidato.link_curriculo_drive || "#";
 
-  // Preenche informações do candidato
   const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
   const statusEl = document.getElementById("entrevista-rh-status-atual");
   const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
@@ -576,10 +808,8 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
   }
 
-  // Reseta o formulário
   if (form) form.reset();
 
-  // Preenche com dados existentes se houver
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
@@ -603,11 +833,9 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     }
   }
 
-  // Anexa listener de submit
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
 
-  // Anexa listeners de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-avaliacao-rh']`)
     .forEach((btn) => {
@@ -615,22 +843,12 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
       btn.addEventListener("click", fecharModalAvaliacao);
     });
 
-  // Exibe o modal
   modalAvaliacaoRH.classList.add("is-visible");
   console.log("✅ Entrevistas: Modal de avaliação aberto");
 };
 
 /**
  * Submete a avaliação da Entrevista RH
- * @param {Event} e - Evento de submit
- */
-/**
- * Submete a avaliação da Entrevista RH
- * @param {Event} e - Evento de submit
- */
-/**
- * Submete a avaliação da Entrevista RH
- * @param {Event} e - Evento de submit
  */
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
@@ -685,10 +903,9 @@ async function submeterAvaliacaoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // ✅ CORRIGIDO: Separar campos aninhados do root
   const dadosAvaliacao = {
     resultado: resultado,
-    data_avaliacao: new Date(), // ✅ Usa new Date() em vez de serverTimestamp()
+    data_avaliacao: new Date(),
     avaliador_uid: currentUserData.id || "rh_system_user",
     notas: {
       motivacao: notaMotivacao,
@@ -702,7 +919,6 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // ✅ CORRIGIDO: Estrutura correta para updateDoc
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
