@@ -3,7 +3,9 @@
   <p class="subtitle">Visão geral e métricas do módulo RH.</p>
 </div>
 
-<!-- ✅ ABAS: Dashboard vs Relatórios -->
+<!-- ============================================
+     ABAS: Dashboard vs Relatórios
+     ============================================ -->
 <div class="tabs-container rh-dashboard-tabs" id="rh-dashboard-tabs">
   <button class="tab-link active" data-tab="dashboard">
     <i class="fas fa-chart-line me-2"></i> Dashboard
@@ -22,7 +24,9 @@
     <div class="card">
       <h3>Profissionais Ativos</h3>
       <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
-      <span class="metric-detail">Voluntários e colaboradores com perfil ativo.</span>
+      <span class="metric-detail"
+        >Voluntários e colaboradores com perfil ativo.</span
+      >
     </div>
     <div class="card">
       <h3>Vagas em Aberto</h3>
@@ -32,12 +36,16 @@
     <div class="card">
       <h3>Colaboradores em Onboarding</h3>
       <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
-      <span class="metric-detail">Profissionais aguardando a finalização do processo.</span>
+      <span class="metric-detail"
+        >Profissionais aguardando a finalização do processo.</span
+      >
     </div>
     <div class="card">
       <h3>Comunicações Recentes</h3>
       <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
-      <span class="metric-detail">Comunicações enviadas na última semana (via módulo Comunicação).</span>
+      <span class="metric-detail"
+        >Comunicações enviadas na última semana (via módulo Comunicação).</span
+      >
     </div>
   </div>
 
@@ -73,7 +81,7 @@
   <!-- FILTROS -->
   <div class="card" style="margin-bottom: 20px; padding: 20px;">
     <h4 style="margin-top: 0;"><i class="fas fa-filter me-2"></i> Filtros</h4>
-
+    
     <div class="row">
       <div class="col-md-4 form-group">
         <label for="rel-filtro-vaga">Filtrar por Vaga:</label>
@@ -126,15 +134,6 @@
       <span class="metric-detail">% de candidatos</span>
     </div>
   </div>
-  <div class="form-group" style="margin-bottom: 15px;">
-    <button class="btn btn-success me-2" onclick="exportarParaExcel([...], 'inscrições.xlsx')">
-      <i class="fas fa-file-excel me-2"></i> Exportar Excel
-    </button>
-    <button class="btn btn-danger me-2" onclick="exportarParaPDF('rel-tabela-inscricoes', 'inscrições.pdf')">
-      <i class="fas fa-file-pdf me-2"></i> Exportar PDF
-    </button>
-  </div>
-
 
   <!-- TABS DE RELATÓRIOS -->
   <div class="tabs-container" id="rel-relatorios-tabs" style="margin-top: 20px;">
@@ -149,11 +148,22 @@
     </button>
   </div>
 
-  <!-- RELATÓRIO 1: INSCRIÇÕES POR VAGA -->
-  <div id="rel-tab-inscricoes" class="tab-content-rel active card" style="margin-top: 0px; padding: 20px;">
-    <h4 style="margin-top: 0;"><i class="fas fa-chart-bar me-2"></i> Inscrições por Vaga</h4>
-    <canvas id="rel-chart-inscricoes"></canvas>
+  <!-- ✅ RELATÓRIO 1: INSCRIÇÕES POR VAGA -->
+  <div id="rel-tab-inscricoes" class="tab-content-rel active card" style="margin-top: 20px; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h4 style="margin: 0;"><i class="fas fa-chart-bar me-2"></i> Inscrições por Vaga</h4>
+      <div>
+        <button class="btn btn-success me-2" onclick="exportarInscricoesExcel()">
+          <i class="fas fa-file-excel me-2"></i> Exportar Excel
+        </button>
+        <button class="btn btn-danger" onclick="exportarInscricoesPDF()">
+          <i class="fas fa-file-pdf me-2"></i> Exportar PDF
+        </button>
+      </div>
+    </div>
 
+    <canvas id="rel-chart-inscricoes"></canvas>
+    
     <div id="rel-tabela-inscricoes" style="margin-top: 20px;">
       <table class="table table-striped table-hover">
         <thead>
@@ -175,9 +185,19 @@
     </div>
   </div>
 
-  <!-- RELATÓRIO 2: LISTA DE CANDIDATOS -->
+  <!-- ✅ RELATÓRIO 2: LISTA DE CANDIDATOS -->
   <div id="rel-tab-candidatos" class="tab-content-rel card" style="margin-top: 20px; padding: 20px; display: none;">
-    <h4 style="margin-top: 0;"><i class="fas fa-users me-2"></i> Lista de Candidatos</h4>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h4 style="margin: 0;"><i class="fas fa-users me-2"></i> Lista de Candidatos</h4>
+      <div>
+        <button class="btn btn-success me-2" onclick="exportarCandidatosExcel()">
+          <i class="fas fa-file-excel me-2"></i> Exportar Excel
+        </button>
+        <button class="btn btn-danger" onclick="exportarCandidatosPDF()">
+          <i class="fas fa-file-pdf me-2"></i> Exportar PDF
+        </button>
+      </div>
+    </div>
 
     <div class="form-group">
       <label for="rel-busca-candidato">Buscar candidato:</label>
@@ -206,9 +226,19 @@
     </div>
   </div>
 
-  <!-- RELATÓRIO 3: RESPOSTAS AOS TESTES -->
+  <!-- ✅ RELATÓRIO 3: RESPOSTAS AOS TESTES -->
   <div id="rel-tab-respostas" class="tab-content-rel card" style="margin-top: 20px; padding: 20px; display: none;">
-    <h4 style="margin-top: 0;"><i class="fas fa-comments me-2"></i> Respostas aos Testes</h4>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h4 style="margin: 0;"><i class="fas fa-comments me-2"></i> Respostas aos Testes</h4>
+      <div>
+        <button class="btn btn-success me-2" onclick="exportarRespostasExcel()">
+          <i class="fas fa-file-excel me-2"></i> Exportar Excel
+        </button>
+        <button class="btn btn-danger" onclick="exportarRespostasPDF()">
+          <i class="fas fa-file-pdf me-2"></i> Exportar PDF
+        </button>
+      </div>
+    </div>
 
     <div class="form-group">
       <label for="rel-filtro-teste">Filtrar por Teste:</label>
@@ -240,95 +270,13 @@
 
 </div>
 
-<!-- ============================================
-     SCRIPTS
-     ============================================ -->
-<script>
-  // Elementos
-  const relDashboardTabs = document.getElementById('rh-dashboard-tabs');
-  const relRelatóriosTabs = document.getElementById('rel-relatorios-tabs');
-
-  // Listeners para abas principais
-  if (relDashboardTabs) {
-    relDashboardTabs.querySelectorAll('.tab-link').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        const tabName = e.target.getAttribute('data-tab');
-
-        // Remove active de todos
-        relDashboardTabs.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
-
-        // Ativa o novo
-        e.target.classList.add('active');
-        document.getElementById(`tab-${tabName}`).style.display = 'block';
-
-        if (tabName === 'relatorios') {
-          carregarRelatorios();
-        }
-      });
-    });
-  }
-
-  // Listeners para abas de relatórios
-  if (relRelatóriosTabs) {
-    relRelatóriosTabs.querySelectorAll('.tab-link').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        const tabName = e.target.getAttribute('data-rel-tab');
-
-        // Remove active
-        relRelatóriosTabs.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content-rel').forEach(t => t.style.display = 'none');
-
-        // Ativa novo
-        e.target.classList.add('active');
-        document.getElementById(`rel-tab-${tabName}`).style.display = 'block';
-      });
-    });
-  }
-
-  // Botão atualizar relatórios
-  document.getElementById('btn-atualizar-relatorios')?.addEventListener('click', carregarRelatorios);
-
-  async function carregarRelatorios() {
-    console.log('🔹 Carregando relatórios de recrutamento...');
-
-    try {
-      const state = window.getGlobalState?.();
-      if (!state) {
-        console.error('❌ Estado global não disponível');
-        return;
-      }
-
-      const { db, collection, getDocs, query, where } = state;
-
-      // ✅ CARREGA DADOS
-      const candidatosSnap = await getDocs(collection(db, 'candidatos'));
-      const tokensSnap = await getDocs(collection(db, 'tokens_acesso'));
-
-      let totalInscritos = candidatosSnap.size;
-      let testesRespondidos = tokensSnap.docs.filter(d => d.data().usado).length;
-      let testesPendentes = tokensSnap.docs.filter(d => !d.data().usado).length;
-      let taxaResposta = totalInscritos > 0 ? Math.round((testesRespondidos / totalInscritos) * 100) : 0;
-
-      // Atualiza cards
-      document.getElementById('rel-total-inscricoes').textContent = totalInscritos;
-      document.getElementById('rel-testes-respondidos').textContent = testesRespondidos;
-      document.getElementById('rel-testes-pendentes').textContent = testesPendentes;
-      document.getElementById('rel-taxa-resposta').textContent = `${taxaResposta}%`;
-
-      console.log('✅ Relatórios carregados');
-    } catch (error) {
-      console.error('❌ Erro ao carregar relatórios:', error);
-    }
-  }
-</script>
-
 <style>
   .tabs-container {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
     border-bottom: 2px solid #e0e0e0;
+    flex-wrap: wrap;
   }
 
   .tab-link {
@@ -357,14 +305,13 @@
     animation: fadeIn 0.3s;
   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
+  .tab-content-rel {
+    animation: fadeIn 0.3s;
+  }
 
-    to {
-      opacity: 1;
-    }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .rh-stats-grid {
@@ -378,7 +325,7 @@
     background: white;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
 
   .metric-value {
@@ -391,5 +338,9 @@
   .metric-detail {
     font-size: 12px;
     color: #999;
+  }
+
+  .btn-block {
+    width: 100%;
   }
 </style>
