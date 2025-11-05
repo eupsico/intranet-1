@@ -844,3 +844,20 @@
     opacity: 1;
   }
 }
+#modal-enviar-teste {
+  display: none !important;  /* Começa escondido */
+}
+
+/* ✅ Quando adiciona is-visible, mostra */
+#modal-enviar-teste.is-visible {
+  display: flex !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+}
