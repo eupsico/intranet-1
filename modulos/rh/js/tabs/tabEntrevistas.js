@@ -711,7 +711,7 @@ async function enviarTesteWhatsApp() {
     );
 
     // ✅ MONTA O LINK COM TOKEN (não com ID)
-    const urlBase = "https://eupsico.github.io/intranet-1/public";
+    const urlBase = "https://intranet.eupsico.org.br/intranet-1/public";
     const linkComToken = `${urlBase}/avaliacao-publica.html?token=${token}`;
 
     const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";

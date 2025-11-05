@@ -527,81 +527,97 @@
     </div>
   </div>
 
-<!-- ✅ NOVO MODAL: ENVIAR TESTE (Usando as mesmas classes dos outros modais) -->
-<div id="modal-enviar-teste" class="modal-overlay">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="teste-titulo-modal">Enviar Teste para Avaliação</h3>
-      <button type="button" class="close-modal-btn fechar-modal-teste">&times;</button>
-    </div>
-    
-    <div class="modal-body">
-      <!-- Informações do Candidato -->
-      <fieldset>
-        <legend><i class="fas fa-user me-2"></i>Informações do Candidato</legend>
-        <div class="details-grid">
-          <p class="card-text">
-            <strong>Nome Completo:</strong><br>
-            <span id="teste-nome-candidato">-</span>
-          </p>
-          <p class="card-text">
-            <strong>Email:</strong><br>
-            <span id="teste-email-candidato">-</span>
-          </p>
-          <p class="card-text">
-            <strong>Telefone (WhatsApp):</strong><br>
-            <span id="teste-whatsapp-candidato">-</span>
-          </p>
-        </div>
-      </fieldset>
-
-      <!-- Formulário de Envio -->
-      <form id="form-enviar-teste">
+  <!-- ✅ NOVO MODAL: ENVIAR TESTE (COM PRAZO) -->
+  <div id="modal-enviar-teste" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="teste-titulo-modal">Enviar Teste para Avaliação</h3>
+        <button type="button" class="close-modal-btn fechar-modal-teste">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Informações do Candidato -->
         <fieldset>
-          <legend><i class="fas fa-list me-2"></i>Selecione o Teste</legend>
-          
-          <div class="form-group">
-            <label for="teste-selecionado">Teste:</label>
-            <select id="teste-selecionado" required>
-              <option value="">Carregando testes...</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="teste-link">Link do Teste:</label>
-            <input 
-              type="text" 
-              id="teste-link" 
-              placeholder="Link será preenchido automaticamente"
-              readonly
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="teste-mensagem">Mensagem Personalizada (Opcional):</label>
-            <textarea 
-              id="teste-mensagem"
-              rows="3"
-              placeholder="Deixe em branco para usar mensagem padrão"
-            ></textarea>
+          <legend><i class="fas fa-user me-2"></i>Informações do Candidato</legend>
+          <div class="details-grid">
+            <p class="card-text">
+              <strong>Nome Completo:</strong><br>
+              <span id="teste-nome-candidato">-</span>
+            </p>
+            <p class="card-text">
+              <strong>Email:</strong><br>
+              <span id="teste-email-candidato">-</span>
+            </p>
+            <p class="card-text">
+              <strong>Telefone (WhatsApp):</strong><br>
+              <span id="teste-whatsapp-candidato">-</span>
+            </p>
           </div>
         </fieldset>
-      </form>
-    </div>
 
-    <div class="modal-footer">
-      <button type="button" class="action-button success me-2" id="btn-enviar-teste-whatsapp">
-        <i class="fab fa-whatsapp me-2"></i> Enviar via WhatsApp
-      </button>
-      <button type="button" class="action-button primary me-2" id="btn-salvar-teste-apenas">
-        <i class="fas fa-save me-2"></i> Salvar Apenas
-      </button>
-      <button type="button" class="action-button secondary fechar-modal-teste">
-        <i class="fas fa-times me-2"></i> Fechar
-      </button>
+        <!-- Formulário de Envio -->
+        <form id="form-enviar-teste">
+          <fieldset>
+            <legend><i class="fas fa-list me-2"></i>Selecione o Teste</legend>
+            
+            <div class="form-group">
+              <label for="teste-selecionado">Teste:</label>
+              <select id="teste-selecionado" required>
+                <option value="">Carregando testes...</option>
+              </select>
+            </div>
+
+            <!-- ✅ NOVO: Exibe o prazo do teste -->
+            <div class="form-group">
+              <label>Prazo para Resposta:</label>
+              <div id="teste-prazo" style="display: none; padding: 10px; background: #e8f4f8; border-left: 4px solid #0078d4; border-radius: 4px;">
+                <i class="fas fa-clock me-2"></i>
+                <strong id="teste-prazo-texto">Prazo: 7 dias</strong>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="teste-link">Link do Teste (Token):</label>
+              <input 
+                type="text" 
+                id="teste-link" 
+                placeholder="Link será preenchido automaticamente com TOKEN"
+                readonly
+                style="background-color: #f0f0f0;"
+              />
+              <small class="form-text text-muted mt-1">
+                <i class="fas fa-shield-alt me-1"></i> Este link é único e seguro para este candidato
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="teste-mensagem">Mensagem Personalizada (Opcional):</label>
+              <textarea 
+                id="teste-mensagem"
+                rows="3"
+                placeholder="Deixe em branco para usar mensagem padrão"
+              ></textarea>
+              <small class="form-text text-muted mt-1">
+                A mensagem padrão incluirá o prazo automaticamente
+              </small>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-button success me-2" id="btn-enviar-teste-whatsapp">
+          <i class="fab fa-whatsapp me-2"></i> Enviar via WhatsApp
+        </button>
+        <button type="button" class="action-button primary me-2" id="btn-salvar-teste-apenas">
+          <i class="fas fa-save me-2"></i> Salvar Apenas
+        </button>
+        <button type="button" class="action-button secondary fechar-modal-teste">
+          <i class="fas fa-times me-2"></i> Fechar
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
   <!-- Script do Módulo -->
   <script type="module" src="../js/recrutamento.js"></script>
