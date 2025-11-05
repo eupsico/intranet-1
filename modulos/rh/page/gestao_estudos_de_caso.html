@@ -59,10 +59,35 @@
             placeholder="Insira o enunciado completo do Estudo de Caso ou o roteiro detalhado da dinâmica."
           ></textarea>
         </div>
+
+        <!-- ✅ NOVO: Campo de Prazo de Validade -->
+        <div class="form-group">
+          <label for="prazo-validade-link">
+            <i class="fas fa-clock me-2"></i> Prazo de Validade do Link (em dias):
+          </label>
+          <input
+            type="number"
+            id="prazo-validade-link"
+            min="1"
+            max="365"
+            value="7"
+            required
+            placeholder="Quantos dias o link será válido?"
+          />
+          <small class="form-text text-muted">
+            A partir do momento que o link for enviado ao candidato. Padrão: 7 dias.
+          </small>
+        </div>
       </fieldset>
 
       <fieldset id="fieldset-perguntas" style="margin-top: 20px">
         <legend>Perguntas para Resposta (Quando aplicável)</legend>
+
+        <p class="info-perguntas" style="color: #666; margin-bottom: 15px;">
+          <i class="fas fa-info-circle me-2"></i>
+          Defina o tipo de pergunta (Dissertativa, Múltipla Escolha, etc) e seu enunciado.
+          Para múltipla escolha, adicione as opções e a resposta correta.
+        </p>
 
         <div id="lista-perguntas">
           <!-- As perguntas serão adicionadas dinamicamente via JavaScript -->

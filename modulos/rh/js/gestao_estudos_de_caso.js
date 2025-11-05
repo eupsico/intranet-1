@@ -1,8 +1,8 @@
 /**
  * Arquivo: modulos/rh/js/gestao_estudos_de_caso.js
- * Versão: 2.1.0 (Com edição funcionando - SEM DUPLICATAS)
- * Data: 04/11/2025
- * Descrição: Gerencia a criação, edição e listagem de modelos de avaliação
+ * Versão: 3.0.0 (Com Prazo de Validade + Tipo de Pergunta)
+ * Data: 05/11/2025
+ * Descrição: Gerencia a criação, edição e listagem de modelos de avaliação com prazo e tipos de pergunta
  */
 
 import {
@@ -96,8 +96,22 @@ function adicionarCampoPergunta() {
   newPerguntaDiv.classList.add("pergunta-item", "form-group");
   newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
 
+  // ✅ HTML ATUALIZADO COM TIPO DE PERGUNTA
   newPerguntaDiv.innerHTML = `
     <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
+    
+    <div class="row mb-2">
+      <div class="col-md-3">
+        <select class="form-control tipo-pergunta" data-id="${perguntaId}" required>
+          <option value="">Selecione o tipo...</option>
+          <option value="dissertativa">Dissertativa</option>
+          <option value="multipla-escolha">Múltipla Escolha</option>
+          <option value="verdadeiro-falso">Verdadeiro/Falso</option>
+          <option value="preenchimento">Preenchimento</option>
+        </select>
+      </div>
+    </div>
+
     <div class="input-group">
       <textarea
         class="pergunta-texto form-control"
@@ -114,10 +128,43 @@ function adicionarCampoPergunta() {
         <i class="fas fa-trash"></i>
       </button>
     </div>
+
+    <!-- ✅ CAMPOS CONDICIONAIS PARA MÚLTIPLA ESCOLHA -->
+    <div class="opcoes-multipla-escolha" style="display: none; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+      <label>Opções (uma por linha):</label>
+      <textarea 
+        class="form-control opcoes-texto" 
+        data-id="${perguntaId}"
+        rows="3"
+        placeholder="Opção 1&#10;Opção 2&#10;Opção 3&#10;Opção 4"
+      ></textarea>
+      
+      <label class="mt-2">Resposta Correta (número da opção, ex: 1):</label>
+      <input 
+        type="number" 
+        class="form-control resposta-correta"
+        data-id="${perguntaId}"
+        min="1"
+        placeholder="1"
+      />
+    </div>
   `;
 
   listaPerguntas.appendChild(newPerguntaDiv);
 
+  // ✅ LISTENER PARA MOSTRAR/OCULTAR OPÇÕES
+  const selectTipo = newPerguntaDiv.querySelector(".tipo-pergunta");
+  const opcoesDiv = newPerguntaDiv.querySelector(".opcoes-multipla-escolha");
+
+  selectTipo.addEventListener("change", (e) => {
+    if (e.target.value === "multipla-escolha") {
+      opcoesDiv.style.display = "block";
+    } else {
+      opcoesDiv.style.display = "none";
+    }
+  });
+
+  // ✅ LISTENER PARA REMOVER PERGUNTA
   newPerguntaDiv
     .querySelector(".btn-remover-pergunta")
     .addEventListener("click", function () {
@@ -138,7 +185,7 @@ function reordenarPerguntas() {
 }
 
 // ============================================
-// SALVAR MODELO (CRIAÇÃO E EDIÇÃO) - ✅ UMA ÚNICA FUNÇÃO
+// SALVAR MODELO (CRIAÇÃO E EDIÇÃO)
 // ============================================
 
 async function salvarModelo(e) {
@@ -153,7 +200,13 @@ async function salvarModelo(e) {
   const titulo = document.getElementById("conteudo-titulo").value.trim();
   const tipo = document.getElementById("conteudo-tipo").value;
   const textoConteudo = document.getElementById("conteudo-texto").value.trim();
-  const modeloId = formNovoEstudo.dataset.modeloId; // ✅ ID se for edição
+
+  // ✅ NOVOS CAMPOS
+  const prazoDias = parseInt(
+    document.getElementById("prazo-validade-link")?.value || "7"
+  );
+
+  const modeloId = formNovoEstudo.dataset.modeloId;
 
   // Validação
   if (!titulo || !tipo || !textoConteudo) {
@@ -163,18 +216,57 @@ async function salvarModelo(e) {
     return;
   }
 
-  // Coleta as perguntas
-  const perguntas = Array.from(
-    listaPerguntas.querySelectorAll(".pergunta-texto")
-  )
-    .map((textarea) => textarea.value.trim())
-    .filter((pergunta) => pergunta.length > 0);
+  // ✅ COLETA AS PERGUNTAS COM TIPO
+  const perguntas = [];
+  listaPerguntas.querySelectorAll(".pergunta-item").forEach((item) => {
+    const tipoPergunta = item.querySelector(".tipo-pergunta")?.value;
+    const textoPergunta = item.querySelector(".pergunta-texto")?.value.trim();
+
+    if (!textoPergunta || !tipoPergunta) {
+      window.showToast?.("Todas as perguntas devem ter tipo definido", "error");
+      throw new Error("Pergunta incompleta");
+    }
+
+    const perguntaObj = {
+      enunciado: textoPergunta,
+      tipo: tipoPergunta,
+      opcoes: [],
+    };
+
+    // ✅ SE FOR MÚLTIPLA ESCOLHA, COLETA OPÇÕES
+    if (tipoPergunta === "multipla-escolha") {
+      const opcoesTexto = item.querySelector(".opcoes-texto")?.value;
+      const respostaCorreta = item.querySelector(".resposta-correta")?.value;
+
+      if (!opcoesTexto || !respostaCorreta) {
+        window.showToast?.(
+          "Múltipla escolha deve ter opções e resposta correta",
+          "error"
+        );
+        throw new Error("Opções incompletas");
+      }
+
+      perguntaObj.opcoes = opcoesTexto
+        .split("\n")
+        .map((opt, idx) => ({
+          id: idx + 1,
+          texto: opt.trim(),
+        }))
+        .filter((opt) => opt.texto);
+
+      perguntaObj.respostaCorreta = parseInt(respostaCorreta);
+    }
+
+    perguntas.push(perguntaObj);
+  });
 
   const dadosModelo = {
     titulo: titulo,
     tipo: tipo,
     conteudo_texto: textoConteudo,
     perguntas: perguntas,
+    // ✅ NOVOS CAMPOS
+    prazo_validade_dias: prazoDias,
     data_atualizacao: new Date(),
     criado_por_uid: currentUserData?.id || "rh_system_user",
     ativo: true,
@@ -182,14 +274,12 @@ async function salvarModelo(e) {
 
   try {
     if (modeloId) {
-      // ✅ EDIÇÃO: Atualiza modelo existente
       const modeloRef = doc(estudosCollection, modeloId);
       await updateDoc(modeloRef, dadosModelo);
 
       window.showToast?.(`Modelo "${tipo}" atualizado com sucesso!`, "success");
       console.log("✅ Estudos: Modelo atualizado:", modeloId);
     } else {
-      // ✅ CRIAÇÃO: Cria novo modelo
       dadosModelo.data_criacao = new Date();
       const docRef = await addDoc(estudosCollection, dadosModelo);
 
@@ -197,17 +287,14 @@ async function salvarModelo(e) {
       console.log("✅ Estudos: Novo modelo salvo:", docRef.id);
     }
 
-    // Limpa o formulário
     formNovoEstudo.reset();
-    formNovoEstudo.dataset.modeloId = ""; // ✅ Limpa ID
+    formNovoEstudo.dataset.modeloId = "";
     listaPerguntas.innerHTML = "";
     proximoIdPergunta = 1;
     adicionarCampoPergunta();
 
-    // Restaura botão
     btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
 
-    // Alterna para modelos salvos
     document.querySelector('[data-tab="modelos-salvos"]').click();
   } catch (error) {
     console.error("❌ Estudos: Erro ao salvar modelo:", error);
@@ -235,12 +322,14 @@ async function abrirModalEdicaoModelo(id) {
 
     const modelo = modeloSnap.data();
 
-    // Preenche os campos do formulário
     document.getElementById("conteudo-tipo").value = modelo.tipo;
     document.getElementById("conteudo-titulo").value = modelo.titulo;
     document.getElementById("conteudo-texto").value = modelo.conteudo_texto;
 
-    // Limpa e preenche as perguntas
+    // ✅ PREENCHE O PRAZO
+    document.getElementById("prazo-validade-link").value =
+      modelo.prazo_validade_dias || "7";
+
     listaPerguntas.innerHTML = "";
     proximoIdPergunta = 1;
 
@@ -251,15 +340,37 @@ async function abrirModalEdicaoModelo(id) {
         newPerguntaDiv.classList.add("pergunta-item", "form-group");
         newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
 
+        // ✅ HTML COM TIPO DE PERGUNTA PREENCHIDO
         newPerguntaDiv.innerHTML = `
           <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
+          
+          <div class="row mb-2">
+            <div class="col-md-3">
+              <select class="form-control tipo-pergunta" data-id="${perguntaId}" required>
+                <option value="">Selecione o tipo...</option>
+                <option value="dissertativa" ${
+                  pergunta.tipo === "dissertativa" ? "selected" : ""
+                }>Dissertativa</option>
+                <option value="multipla-escolha" ${
+                  pergunta.tipo === "multipla-escolha" ? "selected" : ""
+                }>Múltipla Escolha</option>
+                <option value="verdadeiro-falso" ${
+                  pergunta.tipo === "verdadeiro-falso" ? "selected" : ""
+                }>Verdadeiro/Falso</option>
+                <option value="preenchimento" ${
+                  pergunta.tipo === "preenchimento" ? "selected" : ""
+                }>Preenchimento</option>
+              </select>
+            </div>
+          </div>
+
           <div class="input-group">
             <textarea
               class="pergunta-texto form-control"
               data-id="${perguntaId}"
               rows="2"
               required
-            >${pergunta}</textarea>
+            >${pergunta.enunciado}</textarea>
             <button 
               type="button" 
               class="btn btn-danger btn-sm btn-remover-pergunta ms-2" 
@@ -268,9 +379,41 @@ async function abrirModalEdicaoModelo(id) {
               <i class="fas fa-trash"></i>
             </button>
           </div>
+
+          <!-- ✅ CAMPOS CONDICIONAIS -->
+          <div class="opcoes-multipla-escolha" style="display: ${
+            pergunta.tipo === "multipla-escolha" ? "block" : "none"
+          }; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+            <label>Opções (uma por linha):</label>
+            <textarea 
+              class="form-control opcoes-texto" 
+              data-id="${perguntaId}"
+              rows="3"
+            >${pergunta.opcoes.map((opt) => opt.texto).join("\n")}</textarea>
+            
+            <label class="mt-2">Resposta Correta:</label>
+            <input 
+              type="number" 
+              class="form-control resposta-correta"
+              data-id="${perguntaId}"
+              min="1"
+              value="${pergunta.respostaCorreta || ""}"
+            />
+          </div>
         `;
 
         listaPerguntas.appendChild(newPerguntaDiv);
+
+        // ✅ LISTENERS
+        const selectTipo = newPerguntaDiv.querySelector(".tipo-pergunta");
+        const opcoesDiv = newPerguntaDiv.querySelector(
+          ".opcoes-multipla-escolha"
+        );
+
+        selectTipo.addEventListener("change", (e) => {
+          opcoesDiv.style.display =
+            e.target.value === "multipla-escolha" ? "block" : "none";
+        });
 
         newPerguntaDiv
           .querySelector(".btn-remover-pergunta")
@@ -286,17 +429,14 @@ async function abrirModalEdicaoModelo(id) {
       proximoIdPergunta = 2;
     }
 
-    // Armazena o ID para saber se é criação ou edição
     formNovoEstudo.dataset.modeloId = id;
 
-    // Muda o texto do botão de submit
     const btnSubmit = formNovoEstudo.querySelector('button[type="submit"]');
     if (btnSubmit) {
       btnSubmit.innerHTML =
         '<i class="fas fa-refresh me-2"></i> Atualizar Modelo';
     }
 
-    // Ativa a aba de criar novo
     document.querySelector('[data-tab="criar-novo"]').click();
 
     window.showToast?.("Modelo carregado para edição.", "info");
@@ -306,10 +446,6 @@ async function abrirModalEdicaoModelo(id) {
     window.showToast?.(`Erro ao carregar modelo: ${error.message}`, "error");
   }
 }
-
-// ============================================
-// CARREGAMENTO DE MODELOS
-// ============================================
 
 // ============================================
 // CARREGAMENTO DE MODELOS
@@ -335,7 +471,6 @@ async function carregarModelosSalvos() {
       return;
     }
 
-    // ✅ INICIALIZA htmlTabela CORRETAMENTE
     let htmlTabela = `
       <table class="table table-striped table-hover">
         <thead>
@@ -343,6 +478,7 @@ async function carregarModelosSalvos() {
             <th>Título</th>
             <th>Tipo</th>
             <th>Perguntas</th>
+            <th>Prazo (dias)</th>
             <th>Criação</th>
             <th class="text-center">Ações</th>
           </tr>
@@ -350,18 +486,20 @@ async function carregarModelosSalvos() {
         <tbody>
     `;
 
-    // ✅ PERCORRE CADA MODELO E ADICIONA NA TABELA
     snapshot.forEach((docSnap) => {
       const modelo = docSnap.data();
       const dataFormatada = formatarTimestamp(modelo.data_criacao);
       const numPerguntas = modelo.perguntas ? modelo.perguntas.length : 0;
       const tipoFormatado = modelo.tipo.replace(/-/g, " ").toUpperCase();
+      // ✅ EXIBE O PRAZO
+      const prazoDias = modelo.prazo_validade_dias || "7";
 
       htmlTabela += `
         <tr data-id="${docSnap.id}" data-tipo="${modelo.tipo}">
           <td>${modelo.titulo}</td>
           <td>${tipoFormatado}</td>
           <td>${numPerguntas}</td>
+          <td><span class="badge bg-warning">${prazoDias}</span></td>
           <td>${dataFormatada}</td>
           <td class="text-center">
             <div class="btn-group" role="group" aria-label="Ações">
@@ -395,11 +533,9 @@ async function carregarModelosSalvos() {
       `;
     });
 
-    // ✅ FECHA A TABELA
     htmlTabela += `</tbody></table>`;
     listaModelosSalvos.innerHTML = htmlTabela;
 
-    // ✅ ANEXA LISTENERS AOS BOTÕES
     document.querySelectorAll(".btn-editar-modelo").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
@@ -471,30 +607,22 @@ async function excluirModelo(id) {
 // GERAÇÃO DE LINK PÚBLICO
 // ============================================
 
-// ============================================
-// GERAÇÃO DE LINK PÚBLICO
-// ============================================
-
 function abrirModalGerarLink(id, tipo) {
   console.log(`🔹 Estudos: Gerando link para modelo: ${id}, tipo: ${tipo}`);
 
   try {
-    // ✅ PARA eupsico.org.br (remove "intranet.")
     let urlBase = window.location.origin;
 
-    // Substitui "intranet.eupsico.org.br" por "eupsico.org.br"
     if (urlBase.includes("intranet.eupsico.org.br")) {
-      urlBase = "https://eupsico.org.br"; // ✅ Link público
+      urlBase = "https://eupsico.org.br";
     }
 
     console.log(`✅ URL Base: ${urlBase}`);
 
-    // ✅ Monta o link final
     const link = `${urlBase}/avaliacao-publica.html?tipo=${tipo}&id=${id}`;
 
     console.log(`✅ Link gerado: ${link}`);
 
-    // ✅ Preenche o campo input
     if (linkPublicoInput) {
       linkPublicoInput.value = link;
       console.log("✅ Campo de link preenchido");
@@ -502,10 +630,8 @@ function abrirModalGerarLink(id, tipo) {
       console.error("❌ Campo linkPublicoInput não encontrado");
     }
 
-    // ✅ ADICIONA NOTIFICAÇÃO INFORMANDO O LINK
     window.showToast?.(`Link gerado: ${link}`, "info");
 
-    // ✅ Abre o modal
     if (modalGerarLink) {
       modalGerarLink.style.display = "flex";
       console.log("✅ Modal de link aberto");
@@ -513,7 +639,6 @@ function abrirModalGerarLink(id, tipo) {
       console.error("❌ Modal modalGerarLink não encontrado");
     }
 
-    // ✅ Seleciona o texto para facilitar cópia
     setTimeout(() => {
       if (linkPublicoInput) {
         linkPublicoInput.select();
@@ -539,20 +664,16 @@ export async function initGestaoEstudos(user, userData) {
 
   currentUserData = userData || {};
 
-  // Configurar abas
   configurarAbas();
 
-  // Adicionar listener do formulário
   if (formNovoEstudo) {
     formNovoEstudo.addEventListener("submit", salvarModelo);
   }
 
-  // Adicionar listener para adicionar pergunta
   if (btnAdicionarPergunta) {
     btnAdicionarPergunta.addEventListener("click", adicionarCampoPergunta);
   }
 
-  // Listeners do Modal de Link
   if (btnFecharModalLink) {
     btnFecharModalLink.addEventListener("click", fecharModalGerarLink);
   }
@@ -570,7 +691,6 @@ export async function initGestaoEstudos(user, userData) {
     });
   }
 
-  // Inicializar perguntas
   if (listaPerguntas) {
     if (listaPerguntas.children.length === 0) {
       proximoIdPergunta = 1;
