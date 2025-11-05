@@ -1,8 +1,8 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 5.0.0 (Com Sistema de TOKEN e PRAZO de Validade)
+ * Versão: 6.0.0 (Com Cloud Functions Integradas)
  * Data: 05/11/2025
- * Descrição: Gerencia a aba de Entrevistas, Avaliações e Envio de Testes COM TOKEN
+ * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -25,6 +25,15 @@ import {
 let dadosCandidatoAtual = null;
 
 // ============================================
+// CLOUD FUNCTIONS URLS
+// ============================================
+const CLOUD_FUNCTIONS_BASE =
+  "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net";
+const CF_GERAR_TOKEN = `${CLOUD_FUNCTIONS_BASE}/gerarTokenTeste`;
+const CF_VALIDAR_TOKEN = `${CLOUD_FUNCTIONS_BASE}/validarTokenTeste`;
+const CF_SALVAR_RESPOSTAS = `${CLOUD_FUNCTIONS_BASE}/salvarRespostasTeste`;
+
+// ============================================
 // ELEMENTOS DO DOM
 // ============================================
 const modalEnviarTeste = document.getElementById("modal-enviar-teste");
@@ -33,16 +42,6 @@ const formEnviarTeste = document.getElementById("form-enviar-teste");
 // ============================================
 // FUNÇÕES DE UTILIDADE
 // ============================================
-
-/**
- * Gera um TOKEN único para o acesso ao teste
- */
-function gerarTokenAleatorio() {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
-}
 
 /**
  * Formata uma mensagem humanizada de agendamento para WhatsApp
@@ -70,7 +69,7 @@ ${horaFormatada}
 ✅ Prepare-se para conversar sobre seu perfil
 ✅ Tenha seus documentos à mão
 
-Estamos ansiosos para conhecê-lo(a) melhor! 
+Estamos ansiosos para conhecê-lo(a) melhor!
 
 🌐 *Siga a EuPsico nas redes sociais:*
 📱 Instagram: @eupsico
@@ -541,7 +540,7 @@ async function submeterAgendamentoRH(e) {
 }
 
 // ============================================
-// MODAIS - ENVIAR TESTE (COM TOKEN E PRAZO)
+// MODAIS - ENVIAR TESTE (COM CLOUD FUNCTIONS)
 // ============================================
 
 /**
@@ -666,7 +665,8 @@ document.addEventListener("change", (e) => {
 });
 
 /**
- * Envia teste via WhatsApp (COM TOKEN)
+ * ✅ CLOUD FUNCTION: Envia teste via WhatsApp
+ * Chama a Cloud Function "gerarTokenTeste" para criar um token seguro
  */
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-enviar-teste-whatsapp") {
@@ -675,56 +675,61 @@ document.addEventListener("click", (e) => {
 });
 
 async function enviarTesteWhatsApp() {
-  console.log("🔹 Entrevistas: Enviando teste via WhatsApp");
+  console.log(
+    "🔹 Entrevistas: Enviando teste via WhatsApp (com Cloud Function)"
+  );
 
   const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
   const testeId = document.getElementById("teste-selecionado")?.value;
-  const linkTeste = document.getElementById("teste-link")?.value;
   const telefone = dadosCandidatoAtual?.telefone_contato;
   const mensagemPersonalizada =
     document.getElementById("teste-mensagem")?.value;
+  const btnEnviar = document.getElementById("btn-enviar-teste-whatsapp");
 
-  if (!testeId || !linkTeste || !telefone) {
+  if (!testeId || !telefone) {
     window.showToast?.("Preencha todos os campos obrigatórios", "error");
     return;
   }
 
+  btnEnviar.disabled = true;
+  btnEnviar.innerHTML =
+    '<i class="fas fa-spinner fa-spin me-2"></i> Gerando link...';
+
   try {
-    // ✅ GERA TOKEN
-    const token = gerarTokenAleatorio();
-    console.log(`🔹 Token gerado: ${token}`);
+    // ✅ CHAMA CLOUD FUNCTION: gerarTokenTeste
+    console.log(`🔹 Chamando Cloud Function: gerarTokenTeste`);
 
-    // ✅ CARREGA O TESTE PARA PEGAR PRAZO
-    const testeSnap = await getDoc(
-      doc(collection(db, "estudos_de_caso"), testeId)
-    );
-    const teste = testeSnap.data();
-    const prazoDias = teste.prazo_validade_dias || 7;
+    const responseGerarToken = await fetch(CF_GERAR_TOKEN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        candidatoId: candidatoId,
+        testeId: testeId,
+        prazoDias: 7,
+      }),
+    });
 
-    // ✅ SALVA O TOKEN NO FIRESTORE
-    await salvarTokenNoFirebase(
-      token,
-      testeId,
-      candidatoId,
-      dadosCandidatoAtual.nome_completo,
-      prazoDias
-    );
+    const dataToken = await responseGerarToken.json();
 
-    // ✅ MONTA O LINK COM TOKEN (não com ID)
-    const urlBase = "https://intranet.eupsico.org.br/intranet-1/public";
-    const linkComToken = `${urlBase}/avaliacao-publica.html?token=${token}`;
+    if (!dataToken.sucesso) {
+      throw new Error(dataToken.erro || "Erro ao gerar token");
+    }
 
-    const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";
+    console.log("✅ Token gerado pela Cloud Function:", dataToken.token);
+
+    // ✅ USA O LINK RETORNADO PELA CLOUD FUNCTION
+    const linkComToken = dataToken.urlTeste;
     const nomeTesteElement = document.querySelector(
       `#teste-selecionado option[value="${testeId}"]`
     );
     const nomeTeste = nomeTesteElement?.textContent || "Teste";
+    const prazoDias = dataToken.prazoDias || 7;
 
     // ✅ MONTA MENSAGEM COM PRAZO
     const mensagemPadrao = `
-🎯 *Olá ${nomeCandidato}!* 🎯
+🎯 *Olá ${dadosCandidatoAtual.nome_completo || "Candidato"}!* 🎯
 
-Chegou a hora de você realizar o próximo teste da sua avaliação! 
+Chegou a hora de você realizar o próximo teste da sua avaliação!
 
 📋 *Teste:* ${nomeTeste}
 
@@ -755,58 +760,40 @@ Se tiver dúvidas, não hesite em nos contactar!
     // ✅ ABRE WHATSAPP
     window.open(linkWhatsApp, "_blank");
 
-    window.showToast?.("Teste enviado com sucesso! WhatsApp aberto", "success");
-    console.log("✅ Teste enviado via WhatsApp com TOKEN");
+    // ✅ SALVA O ENVIO DO TESTE NO FIRESTORE
+    await salvarEnvioTeste(
+      candidatoId,
+      testeId,
+      linkComToken,
+      dataToken.tokenId
+    );
+
+    window.showToast?.("✅ Teste enviado! WhatsApp aberto", "success");
+    console.log("✅ Teste enviado via WhatsApp com TOKEN da Cloud Function");
+
+    // ✅ Fecha modal após 2 segundos
+    setTimeout(() => {
+      fecharModalEnvioTeste();
+      const state = getGlobalState();
+      const { handleTabClick, statusCandidaturaTabs } = state;
+      const activeTab =
+        statusCandidaturaTabs?.querySelector(".tab-link.active");
+      if (activeTab) handleTabClick({ currentTarget: activeTab });
+    }, 2000);
   } catch (error) {
     console.error("❌ Erro ao enviar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
+  } finally {
+    btnEnviar.disabled = false;
+    btnEnviar.innerHTML =
+      '<i class="fas fa-whatsapp me-2"></i> Enviar via WhatsApp';
   }
 }
 
 /**
- * Salva o TOKEN no Firestore
+ * ✅ Salva o envio do teste no Firestore (histórico)
  */
-async function salvarTokenNoFirebase(
-  token,
-  testeId,
-  candidatoId,
-  nomeCandidato,
-  prazoDias
-) {
-  console.log(`🔹 Salvando token no Firestore...`);
-
-  const state = getGlobalState();
-  const { currentUserData } = state;
-
-  try {
-    const dataExpiracao = new Date();
-    dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
-
-    await addDoc(collection(db, "tokens_acesso"), {
-      token: token,
-      testeId: testeId,
-      candidatoId: candidatoId,
-      nomeCandidato: nomeCandidato,
-      criadorId: currentUserData.id || "rh_system_user",
-      criadoEm: new Date(),
-      expiraEm: dataExpiracao,
-      prazoDias: prazoDias,
-      usado: false,
-      dataUso: null,
-      respostas: {},
-    });
-
-    console.log("✅ Token salvo no Firestore");
-  } catch (error) {
-    console.error("❌ Erro ao salvar token:", error);
-    throw error;
-  }
-}
-
-/**
- * Salva o envio do teste no Firestore (sem TOKEN, apenas histórico)
- */
-async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
+async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
 
   const state = getGlobalState();
@@ -819,6 +806,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
       status_recrutamento: "Testes Pendente (Enviado)",
       testes_enviados: arrayUnion({
         id: testeId,
+        tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
         enviado_por: currentUserData.id || "rh_system_user",
@@ -826,7 +814,10 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
       }),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Teste enviado. Link: ${linkTeste}`,
+        acao: `Teste enviado via Cloud Function. Token: ${tokenId.substring(
+          0,
+          8
+        )}...`,
         usuario: currentUserData.id || "rh_system_user",
       }),
     });
@@ -853,14 +844,19 @@ async function salvarTesteApenas() {
   const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
   const testeId = document.getElementById("teste-selecionado")?.value;
   const linkTeste = document.getElementById("teste-link")?.value;
+  const btnSalvar = document.getElementById("btn-salvar-teste-apenas");
 
   if (!testeId || !linkTeste) {
     window.showToast?.("Selecione um teste", "error");
     return;
   }
 
+  btnSalvar.disabled = true;
+  btnSalvar.innerHTML =
+    '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+
   try {
-    await salvarEnvioTeste(candidatoId, testeId, linkTeste);
+    await salvarEnvioTeste(candidatoId, testeId, linkTeste, "manual-save");
     window.showToast?.("Teste salvo com sucesso!", "success");
 
     fecharModalEnvioTeste();
@@ -871,6 +867,9 @@ async function salvarTesteApenas() {
   } catch (error) {
     console.error("❌ Erro:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
+  } finally {
+    btnSalvar.disabled = false;
+    btnSalvar.innerHTML = '<i class="fas fa-save me-2"></i> Salvar Apenas';
   }
 }
 
