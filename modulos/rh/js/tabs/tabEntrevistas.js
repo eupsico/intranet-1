@@ -633,7 +633,7 @@ document.addEventListener("change", (e) => {
       if (linkTeste) {
         linkInput.value = linkTeste;
       } else {
-        linkInput.value = `https://intranet.eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
+        linkInput.value = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?id=${option.value}`;
       }
       console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
