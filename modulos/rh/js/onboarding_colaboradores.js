@@ -22,7 +22,7 @@ import {
 } from "../../../assets/js/utils/user-management.js";
 
 const onboardingCollection = collection(db, "onboarding");
-const candidatosCollection = collection(db, "candidatos");
+const candidatosCollection = collection(db, "candidaturas");
 const solicitacoesTiCollection = collection(db, "solicitacoes_ti");
 
 const listaOnboarding = document.getElementById("lista-onboarding");

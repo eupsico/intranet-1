@@ -442,7 +442,52 @@ export async function initdashboard(user, userData) {
       });
     }
   }
+  async function criarGraficoInscricoes() {
+    const ctx = document.getElementById("rel-chart-inscricoes");
+    if (!ctx) return;
 
+    const inscricoesPorVaga = {};
+
+    candidaturasCache.forEach((cand) => {
+      const vagaId = cand.vaga_id || "Sem vaga";
+      if (!inscricoesPorVaga[vagaId]) {
+        inscricoesPorVaga[vagaId] = 0;
+      }
+      inscricoesPorVaga[vagaId]++;
+    });
+
+    const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
+      const vaga = vagasCache.find((v) => v.id === vagaId);
+      return vaga?.titulo || vagaId.substring(0, 8);
+    });
+
+    const dados = Object.values(inscricoesPorVaga);
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: vagasNomes,
+        datasets: [
+          {
+            label: "Total de Inscrições",
+            data: dados,
+            backgroundColor: "#667eea",
+            borderColor: "#5568d3",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+  }
   // ============================================
   // FUNÇÃO: Renderizar Inscrições por Vaga
   // ============================================
@@ -525,6 +570,7 @@ export async function initdashboard(user, userData) {
       tabelaBody.innerHTML =
         '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
     }
+    await criarGraficoInscricoes();
   }
 
   // ============================================
