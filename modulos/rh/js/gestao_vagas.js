@@ -1441,7 +1441,7 @@ export async function initGestaoVagas(user, userData) {
 
   const formVaga = document.getElementById("form-vaga");
   if (formVaga) {
-    formVaga.addEventListener("submit", handleSalvarVaga);
+    formVaga.addEventListener("submit", handleSalvarProximaEtapa);
     console.log("✅ Listener: form-vaga");
   }
 
@@ -1603,6 +1603,76 @@ export async function initGestaoVagas(user, userData) {
   console.log(`   - Usuário: ${currentUserData?.nome || "Desconhecido"}`);
   console.log(`   - Role: ${currentUserData?.role || "N/A"}`);
   console.log(`   - Aba ativa: ${statusAbaAtiva}`);
+}
+/**
+ * Função para Salvar E ir para Próxima Etapa
+ */
+async function handleSalvarProximaEtapa(e) {
+  e.preventDefault();
+
+  console.log("🔹 Salvando vaga e mudando para próxima etapa...");
+
+  if (!validarFormularioVaga()) {
+    return;
+  }
+
+  const submitButton = document.getElementById("btn-salvar-vaga");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Salvando e avançando...';
+  }
+
+  try {
+    const dadosVaga = coletarDadosFormularioVaga();
+
+    // Determina o novo status baseado no status atual
+    let novoStatus = "Aguardando Aprovação de Ficha"; // Status padrão
+
+    if (vagaAtualId) {
+      // Busca status atual
+      const vagaRef = doc(vagasCollection, vagaAtualId);
+      const vagaSnap = await getDoc(vagaRef);
+      const statusAtual = vagaSnap.data().status;
+
+      // Define o próximo status baseado no atual
+      if (statusAtual.includes("Correção (Ficha Técnica)")) {
+        novoStatus = "Aguardando Aprovação de Ficha";
+      } else if (statusAtual.includes("Em Elaboração")) {
+        novoStatus = "Aguardando Aprovação de Ficha";
+      } else if (statusAtual.includes("Correção (Arte)")) {
+        novoStatus = "Arte Criada (Aguardando Aprovação)";
+      }
+
+      // Atualiza com o novo status
+      await updateDoc(vagaRef, {
+        ...dadosVaga,
+        status: novoStatus, // ✅ MUDA O STATUS AQUI
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Alterações salvas. Status: ${novoStatus}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      });
+
+      window.showToast?.(`Vaga atualizada! Status: ${novoStatus}`, "success");
+      console.log("✅ Vaga atualizada com novo status:", novoStatus);
+    }
+
+    fecharModal(ID_MODAL_FICHA_TECNICA);
+    limparFormularioVaga();
+    carregarVagas(statusAbaAtiva);
+  } catch (error) {
+    console.error("❌ Erro ao salvar e avançar:", error);
+    window.showToast?.(`Erro ao atualizar vaga: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-save me-2"></i> Salvar e Próxima Etapa';
+    }
+  }
 }
 
 // ============================================
