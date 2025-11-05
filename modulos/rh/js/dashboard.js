@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.3.0 (Carregamento Automático + Cards Responsivos)
+// Versão: 3.4.0 (Corrigido: candidaturasCache → candidatosCache + Gráfico funcionando)
 
 import {
   collection,
@@ -8,6 +8,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  updateDoc,
 } from "../../../assets/js/firebase-init.js";
 
 export async function initdashboard(user, userData) {
@@ -153,16 +154,22 @@ export async function initdashboard(user, userData) {
   }
 
   function exportarTabelaPDF(element, nomeArquivo) {
+    const clone = element.cloneNode(true);
+
+    // Remove elementos desnecessários
+    clone.querySelectorAll("button").forEach((btn) => btn.remove());
+    clone.querySelectorAll("input").forEach((inp) => inp.remove());
+
     const opt = {
       margin: 10,
       filename: nomeArquivo,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
+      html2canvas: { scale: 2, backgroundColor: "#ffffff" },
       jsPDF: { orientation: "landscape", unit: "mm", format: "a4" },
     };
 
     try {
-      html2pdf().set(opt).from(element).save();
+      html2pdf().set(opt).from(clone).save();
       window.showToast?.(
         `✅ Arquivo ${nomeArquivo} gerado com sucesso!`,
         "success"
@@ -313,10 +320,7 @@ export async function initdashboard(user, userData) {
 
     try {
       console.log("📊 Buscando dados do Firestore...");
-      console.log("🔍 db:", db);
-      console.log("🔍 candidatosCollection:", candidatosCollection);
 
-      // ✅ TESTA SE A COLEÇÃO ESTÁ CORRETA
       if (!db) {
         console.error("❌ ERRO: db não está definido!");
         throw new Error("Firestore não foi inicializado");
@@ -328,9 +332,6 @@ export async function initdashboard(user, userData) {
       const vagasRef = collection(db, "vagas");
       const estudosRef = collection(db, "estudos_de_caso");
 
-      console.log("📝 Buscando candidatos de:", candidatosRef.path);
-      console.log("📝 Buscando tokens de:", tokensRef.path);
-
       const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
         await Promise.all([
           getDocs(candidatosRef),
@@ -339,15 +340,10 @@ export async function initdashboard(user, userData) {
           getDocs(estudosRef),
         ]);
 
-      console.log("✅ Snapshot de candidatos recebido");
-
       // ✅ PROCESSA CANDIDATOS
       candidatosCache = [];
       candidatosSnap.docs.forEach((doc) => {
         const data = doc.data();
-        console.log(
-          `📌 Candidato encontrado: ${data.nome_completo} | Vaga: ${data.vaga_id}`
-        );
         candidatosCache.push({
           id: doc.id,
           ...data,
@@ -363,14 +359,6 @@ export async function initdashboard(user, userData) {
       console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
       console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
 
-      // ✅ LOG DE DEBUG COMPLETO
-      if (candidatosCache.length > 0) {
-        console.log("🔍 Primeiro candidato COMPLETO:", candidatosCache[0]);
-        console.log("🔍 Campo vaga_id:", candidatosCache[0].vaga_id);
-      } else {
-        console.warn("⚠️ NENHUM CANDIDATO ENCONTRADO!");
-      }
-
       const totalInscritos = candidatosCache.length;
       const testesRespondidos = tokensCache.filter((t) => t.usado).length;
       const testesPendentes = tokensCache.filter((t) => !t.usado).length;
@@ -378,10 +366,6 @@ export async function initdashboard(user, userData) {
         totalInscritos > 0
           ? Math.round((testesRespondidos / totalInscritos) * 100)
           : 0;
-
-      console.log(
-        `✅ Total: ${totalInscritos} | Respondidos: ${testesRespondidos} | Pendentes: ${testesPendentes} | Taxa: ${taxaResposta}%`
-      );
 
       if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
       if (relTestesRespondidos)
@@ -397,7 +381,6 @@ export async function initdashboard(user, userData) {
       console.log("✅ Relatórios carregados com sucesso");
     } catch (error) {
       console.error("❌ Erro ao carregar relatórios:", error);
-      console.error("Stack:", error.stack);
       window.showToast?.(
         "Erro ao carregar relatórios: " + error.message,
         "error"
@@ -424,7 +407,6 @@ export async function initdashboard(user, userData) {
           `Vaga ${vaga.id.substring(0, 8)}`;
         option.textContent = nomeDaVaga;
         relFiltroVaga.appendChild(option);
-        console.log(`✅ Vaga adicionada: ${nomeDaVaga}`);
       });
     }
 
@@ -440,6 +422,10 @@ export async function initdashboard(user, userData) {
     }
   }
 
+  // ============================================
+  // FUNÇÃO: Criar Gráfico de Inscrições
+  // ============================================
+
   async function criarGraficoInscricoes() {
     const ctx = document.getElementById("rel-chart-inscricoes");
     if (!ctx) {
@@ -447,9 +433,16 @@ export async function initdashboard(user, userData) {
       return;
     }
 
+    // ✅ VERIFICA SE O CHART ESTÁ DISPONÍVEL
+    if (typeof Chart === "undefined") {
+      console.error("❌ Chart.js não foi importado!");
+      return;
+    }
+
     const inscricoesPorVaga = {};
 
-    candidaturasCache.forEach((cand) => {
+    // ✅ CORRIGIDO: candidatosCache em vez de candidaturasCache
+    candidatosCache.forEach((cand) => {
       const vagaId = cand.vaga_id || "Sem vaga";
       inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
     });
@@ -520,7 +513,6 @@ export async function initdashboard(user, userData) {
 
     const inscricoesPorVaga = {};
 
-    // ✅ AGRUPA TODOS OS CANDIDATOS POR VAGA (SEM FILTRO DE STATUS)
     candidatosCache.forEach((cand) => {
       const vagaId = cand.vaga_id || "Sem vaga";
 
@@ -536,10 +528,7 @@ export async function initdashboard(user, userData) {
 
       inscricoesPorVaga[vagaId].total++;
 
-      // ✅ CLASSIFICA PELO STATUS ATUAL
       const status = cand.status_recrutamento || "Candidatura Recebida";
-
-      console.log(`📌 Candidato: ${cand.nome_completo} | Status: ${status}`);
 
       if (
         status.includes("Triagem") ||
@@ -559,8 +548,6 @@ export async function initdashboard(user, userData) {
       }
     });
 
-    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
-
     Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
       const vagaNome =
@@ -571,13 +558,13 @@ export async function initdashboard(user, userData) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-      <td><strong>${vagaNome}</strong></td>
-      <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
-      <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
-      <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
-      <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
-      <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
-    `;
+        <td><strong>${vagaNome}</strong></td>
+        <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
+        <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
+        <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
+        <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
+        <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
+      `;
       tabelaBody.appendChild(tr);
     });
 
@@ -585,6 +572,8 @@ export async function initdashboard(user, userData) {
       tabelaBody.innerHTML =
         '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
     }
+
+    // ✅ CRIA O GRÁFICO APÓS RENDERIZAR A TABELA
     await criarGraficoInscricoes();
   }
 
@@ -631,22 +620,22 @@ export async function initdashboard(user, userData) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-      <td><strong>${cand.nome_completo || "-"}</strong></td>
-      <td>${cand.email_candidato || "-"}</td>
-      <td>${cand.telefone_contato || "-"}</td>
-      <td>${vagaNome}</td>
-      <td><span class="badge bg-info">${
-        cand.status_recrutamento || "Pendente"
-      }</span></td>
-      <td>${statusTeste}</td>
-      <td class="text-center">
-        <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
-          cand.nome_completo
-        }')">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    `;
+        <td><strong>${cand.nome_completo || "-"}</strong></td>
+        <td>${cand.email_candidato || "-"}</td>
+        <td>${cand.telefone_contato || "-"}</td>
+        <td>${vagaNome}</td>
+        <td><span class="badge bg-info">${
+          cand.status_recrutamento || "Pendente"
+        }</span></td>
+        <td>${statusTeste}</td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
+            cand.nome_completo
+          }')">
+            <i class="fas fa-eye"></i>
+          </button>
+        </td>
+      `;
       tabelaBody.appendChild(tr);
     });
   }
