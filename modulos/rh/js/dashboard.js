@@ -940,27 +940,41 @@ export async function initdashboard(user, userData) {
       const dataResposta = token.respondidoEm
         ? new Date(
             token.respondidoEm.toDate?.() || token.respondidoEm
-          ).toLocaleDateString("pt-BR")
+          ).toLocaleDateString("pt-BR", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         : "-";
 
       const tempoSegundos = token.tempoRespostaSegundos || 0;
       const tempoMinutos = Math.floor(tempoSegundos / 60);
       const tempoFormatado =
-        tempoMinutos > 0 ? `${tempoMinutos}min` : `${tempoSegundos}s`;
+        tempoMinutos > 0
+          ? `${tempoMinutos}min ${tempoSegundos % 60}s`
+          : `${tempoSegundos}s`;
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${candidatoNome}</strong></td>
-        <td>${testeNome}</td>
-        <td>${dataResposta}</td>
-        <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-        <td><span class="badge bg-success">✅ Respondido</span></td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-primary" onclick="alert('Ver respostas de: ${candidatoNome}')">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
+      <td><strong>${candidatoNome}</strong></td>
+      <td>${testeNome}</td>
+      <td>${dataResposta}</td>
+      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
+      <td><span class="badge bg-success">✅ Respondido</span></td>
+      <td class="text-center">
+        <button 
+          class="btn btn-sm btn-primary" 
+          title="Ver respostas"
+          onclick="window.abrirModalVerRespostas('${
+            token.id
+          }', '${candidatoNome.replace(/'/g, "\\'")}')">
+          <i class="fas fa-eye"></i>
+        </button>
+      </td>
+    `;
       tabelaBody.appendChild(tr);
     });
 
@@ -1142,6 +1156,424 @@ export async function initdashboard(user, userData) {
         data: desligamentoData,
       },
     };
+  }
+  // ============================================
+  // FUNÇÃO: Visualizar Respostas do Teste
+  // ============================================
+
+  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
+    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
+
+    try {
+      // ✅ Busca o token com as respostas
+      const tokenSnap = await db.collection("tokens_acesso").doc(tokenId).get();
+
+      if (!tokenSnap.exists) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+
+      if (
+        !tokenData.respostas ||
+        Object.keys(tokenData.respostas).length === 0
+      ) {
+        window.showToast?.(
+          "Nenhuma resposta encontrada para este teste",
+          "warning"
+        );
+        return;
+      }
+
+      // ✅ Busca o teste para saber os enunciados
+      const testeSnap = await db
+        .collection("estudos_de_caso")
+        .doc(tokenData.testeId)
+        .get();
+
+      const testeDados = testeSnap.exists ? testeSnap.data() : {};
+
+      // ✅ Cria HTML modal com as respostas
+      let modalHTML = `
+      <div class="modal fade" id="modal-ver-respostas" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="fas fa-eye me-2"></i> Respostas do Teste
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="card mb-3">
+                <div class="card-body">
+                  <p class="mb-2">
+                    <strong>📋 Candidato:</strong> ${candidatoNome}
+                  </p>
+                  <p class="mb-2">
+                    <strong>📝 Teste:</strong> ${testeDados.titulo || "Teste"}
+                  </p>
+                  <p class="mb-2">
+                    <strong>⏱️ Tempo gasto:</strong> ${
+                      tokenData.tempoRespostaSegundos
+                        ? Math.floor(tokenData.tempoRespostaSegundos / 60) +
+                          "min " +
+                          (tokenData.tempoRespostaSegundos % 60) +
+                          "s"
+                        : "-"
+                    }
+                  </p>
+                  <p class="mb-0">
+                    <strong>📅 Data da resposta:</strong> ${
+                      tokenData.respondidoEm
+                        ? new Date(
+                            tokenData.respondidoEm.toDate?.() ||
+                              tokenData.respondidoEm
+                          ).toLocaleDateString("pt-BR", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <hr>
+
+              <h6 class="mb-3"><strong>Respostas Fornecidas:</strong></h6>
+    `;
+
+      // ✅ Adiciona cada resposta
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+
+          modalHTML += `
+          <div class="card mb-3">
+            <div class="card-body">
+              <p class="mb-2">
+                <strong>Pergunta ${index + 1}:</strong><br>
+                ${pergunta.enunciado}
+              </p>
+              <div class="alert alert-info mb-0">
+                <strong>Resposta:</strong><br>
+                ${resposta}
+              </div>
+            </div>
+          </div>
+        `;
+        });
+      } else {
+        modalHTML += `<p class="text-muted">Nenhuma pergunta encontrada.</p>`;
+      }
+
+      modalHTML += `
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+              <button type="button" class="btn btn-primary" onclick="exportarRespostaIndividual('${tokenId}', '${candidatoNome.replace(
+        /'/g,
+        "\\'"
+      )}')">
+                <i class="fas fa-download me-1"></i> Exportar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+      // ✅ Remove modal anterior se existir
+      const modalAntigo = document.getElementById("modal-ver-respostas");
+      if (modalAntigo) {
+        modalAntigo.remove();
+      }
+
+      // ✅ Adiciona novo modal ao DOM
+      document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+      // ✅ Abre o modal
+      const modal = new bootstrap.Modal(
+        document.getElementById("modal-ver-respostas")
+      );
+      modal.show();
+
+      console.log("✅ Modal de respostas aberto");
+    } catch (error) {
+      console.error("❌ Erro ao abrir respostas:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  };
+
+  // ============================================
+  // FUNÇÃO: Exportar Resposta Individual
+  // ============================================
+
+  window.exportarRespostaIndividual = async function (tokenId, candidatoNome) {
+    console.log(`🔹 Exportando resposta individual: ${tokenId}`);
+
+    try {
+      // ✅ Busca o token
+      const tokenSnap = await db.collection("tokens_acesso").doc(tokenId).get();
+
+      if (!tokenSnap.exists) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+
+      // ✅ Busca o teste
+      const testeSnap = await db
+        .collection("estudos_de_caso")
+        .doc(tokenData.testeId)
+        .get();
+
+      const testeDados = testeSnap.exists ? testeSnap.data() : {};
+
+      // ✅ Cria dados para exportação
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR")
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-";
+
+      const dadosExportacao = {
+        Candidato: candidatoNome,
+        Teste: testeDados.titulo || "Teste",
+        "Data da Resposta": dataResposta,
+        "Tempo Gasto": tempoGasto,
+      };
+
+      // ✅ Adiciona cada resposta
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+          const numPergunta = `P${index + 1}: ${pergunta.enunciado}`;
+          dadosExportacao[numPergunta] = resposta;
+        });
+      }
+
+      // ✅ Opções de exportação
+      const opcoes = await Swal.fire({
+        title: "Exportar Respostas",
+        text: "Escolha o formato:",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "📊 Excel (CSV)",
+        denyButtonText: "📄 PDF",
+        cancelButtonText: "Cancelar",
+        showDenyButton: true,
+      });
+
+      if (opcoes.isConfirmed) {
+        // ✅ Exporta para Excel
+        exportarParaExcel(
+          [dadosExportacao],
+          `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
+        );
+      } else if (opcoes.isDenied) {
+        // ✅ Exporta para PDF
+        exportarRespostaPDF(candidatoNome, testeDados, tokenData);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao exportar:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  };
+
+  /**
+   * ✅ Exporta uma resposta individual para PDF
+   */
+  function exportarRespostaPDF(candidatoNome, testeDados, tokenData) {
+    console.log("📄 Exportando resposta individual para PDF...");
+
+    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
+      console.log("⚠️ Carregando jsPDF...");
+
+      const scriptJsPDF = document.createElement("script");
+      scriptJsPDF.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+
+      const scriptAutoTable = document.createElement("script");
+      scriptAutoTable.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
+
+      scriptJsPDF.onload = () => {
+        scriptAutoTable.onload = () => {
+          setTimeout(() => {
+            gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
+          }, 500);
+        };
+        document.head.appendChild(scriptAutoTable);
+      };
+
+      document.head.appendChild(scriptJsPDF);
+    } else {
+      gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
+    }
+  }
+
+  function gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let yPosition = 15;
+
+      // ✅ CABEÇALHO
+      doc.setFontSize(18);
+      doc.setTextColor(102, 126, 234);
+      doc.text("EuPsico", 105, yPosition, { align: "center" });
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
+        align: "center",
+      });
+      yPosition += 8;
+
+      doc.setFontSize(12);
+      doc.setTextColor(51, 51, 51);
+      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
+      yPosition += 10;
+
+      // Linha separadora
+      doc.setDrawColor(102, 126, 234);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPosition - 2, 196, yPosition - 2);
+      yPosition += 5;
+
+      // ✅ INFORMAÇÕES DO CANDIDATO
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+
+      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
+      yPosition += 6;
+
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR")
+        : "-";
+
+      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
+      yPosition += 6;
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-";
+
+      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
+      yPosition += 10;
+
+      // ✅ PERGUNTAS E RESPOSTAS
+      doc.setFontSize(11);
+      doc.setTextColor(102, 126, 234);
+      doc.text("Respostas Fornecidas:", 14, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(9);
+      doc.setTextColor(51, 51, 51);
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+
+          // ✅ PERGUNTA
+          doc.setFont(undefined, "bold");
+          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
+          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
+
+          perguntaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
+          });
+
+          // ✅ RESPOSTA
+          doc.setFont(undefined, "normal");
+          doc.setFillColor(240, 240, 240);
+          const respostaWrapped = doc.splitTextToSize(
+            `Resposta: ${resposta}`,
+            180
+          );
+
+          respostaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
+          });
+
+          yPosition += 3;
+        });
+      }
+
+      yPosition += 5;
+
+      // ✅ RODAPÉ
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+
+        // Linha separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(14, 280, 196, 280);
+
+        doc.text(
+          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
+          105,
+          285,
+          { align: "center" }
+        );
+        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
+        doc.text(
+          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
+          105,
+          293,
+          { align: "center" }
+        );
+      }
+
+      // ✅ SALVA O PDF
+      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
+      window.showToast?.("✅ PDF exportado com sucesso!", "success");
+    } catch (error) {
+      console.error("❌ Erro ao gerar PDF:", error);
+      window.showToast?.("❌ Erro ao exportar PDF", "error");
+    }
   }
 
   // ============================================
