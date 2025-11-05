@@ -287,7 +287,7 @@ export async function initdashboard(user, userData) {
         doc.setPage(i);
         doc.text(`Página ${i} de ${pageCount}`, 148, 200, { align: "center" });
         doc.text(
-          "Relatório gerado automaticamente pelo sistema EuPsico © 2025",
+          "Relatório gerado automaticamente pelo sistema EuPsico © 2025 /nAvenida Inocêncio Seráfico, 141 Centro de Carapicuíba - SP, 06320-290 ",
           148,
           205,
           { align: "center" }
