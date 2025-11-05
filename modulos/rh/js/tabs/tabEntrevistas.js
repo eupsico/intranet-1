@@ -208,7 +208,7 @@ export async function renderizarEntrevistas(state) {
       return;
     }
 
-    let listaHtml = '<div class="candidatos-container">';
+    let listaHtml = '<div class="candidatos-container candidatos-grid">';
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();

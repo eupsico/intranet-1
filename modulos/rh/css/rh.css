@@ -861,3 +861,183 @@
   justify-content: center !important;
   z-index: 9999 !important;
 }
+/* ✅ CARDS DE CANDIDATOS - MENORES E LADO A LADO */
+.candidatos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  padding: 15px 0;
+}
+
+.card-candidato-triagem {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-candidato-triagem:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.info-primaria {
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.info-primaria h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  word-break: break-word;
+}
+
+.info-primaria p {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.info-contato {
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.info-contato a {
+  display: inline-block;
+  padding: 6px 10px;
+  background: #f0f8ff;
+  color: #0078d4;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.info-contato a:hover:not([disabled]) {
+  background: #0078d4;
+  color: white;
+}
+
+.info-contato a[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.acoes-candidato {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.acoes-candidato .action-button {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.acoes-candidato .action-button i {
+  margin-right: 4px;
+}
+
+.acoes-candidato .action-button.info {
+  background: #e8f4f8;
+  color: #0078d4;
+}
+
+.acoes-candidato .action-button.info:hover {
+  background: #0078d4;
+  color: white;
+}
+
+.acoes-candidato .action-button.secondary {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.acoes-candidato .action-button.secondary:hover {
+  background: #e0e0e0;
+}
+
+.acoes-candidato .action-button.primary {
+  background: #667eea;
+  color: white;
+}
+
+.acoes-candidato .action-button.primary:hover {
+  background: #5568d3;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.status-info {
+  background: #cfe9ff;
+  color: #0078d4;
+}
+
+.status-badge.status-success {
+  background: #c6e0b4;
+  color: #1e7e34;
+}
+
+.status-badge.status-warning {
+  background: #ffe8ba;
+  color: #9f5f0f;
+}
+
+/* ✅ RESPONSIVO */
+@media (max-width: 1024px) {
+  .candidatos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .candidatos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .acoes-candidato {
+    flex-direction: row;
+  }
+
+  .acoes-candidato .action-button {
+    flex: 1;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .candidatos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-candidato-triagem {
+    padding: 12px;
+  }
+
+  .acoes-candidato {
+    flex-direction: column;
+  }
+}
