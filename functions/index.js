@@ -1545,6 +1545,10 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
 // CLOUD FUNCTION: Salvar Respostas do Teste
 // ============================================
 
+// ============================================
+// CLOUD FUNCTION: Salvar Respostas do Teste (CORRIGIDA)
+// ============================================
+
 /**
  * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/salvarRespostasTeste
  * Método: POST
@@ -1605,6 +1609,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
       }
 
       // ✅ Atualiza o token como utilizado
+      // ⚠️ IMPORTANTE: Não usar serverTimestamp() aqui, apenas em raiz
       await db
         .collection("tokens_acesso")
         .doc(tokenDoc.id)
@@ -1626,6 +1631,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
       const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
 
       // ✅ Atualiza a candidatura com as respostas
+      // ⚠️ IMPORTANTE: Dentro de arrayUnion, usar new Date() em vez de serverTimestamp()
       await db
         .collection("candidaturas")
         .doc(dadosToken.candidatoId)
@@ -1634,12 +1640,12 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
             testeId: dadosToken.testeId,
             nomeTeste: nomeTeste,
             tokenId: tokenDoc.id,
-            dataResposta: admin.firestore.FieldValue.serverTimestamp(),
+            dataResposta: new Date(), // ✅ CORRIGIDO: usar new Date() em vez de serverTimestamp()
             tempoGasto: tempoGasto || 0,
             respostasCount: Object.keys(respostas || {}).length,
           }),
           historico: admin.firestore.FieldValue.arrayUnion({
-            data: new Date().toISOString(),
+            data: new Date(), // ✅ CORRIGIDO: usar new Date() em vez de serverTimestamp()
             acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
             usuario: "candidato_via_token",
           }),
