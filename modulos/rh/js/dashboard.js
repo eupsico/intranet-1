@@ -316,33 +316,62 @@ export async function initdashboard(user, userData) {
 
     try {
       console.log("📊 Buscando dados do Firestore...");
+      console.log("🔍 db:", db);
+      console.log("🔍 candidatosCollection:", candidatosCollection);
 
-      // ✅ REMOVIDO: Sem filtro de status - busca TODOS os candidatos
+      // ✅ TESTA SE A COLEÇÃO ESTÁ CORRETA
+      if (!db) {
+        console.error("❌ ERRO: db não está definido!");
+        throw new Error("Firestore não foi inicializado");
+      }
+
+      // ✅ BUSCA DIRETAMENTE COM collection() E getDocs()
+      const candidatosRef = collection(db, "candidatos");
+      const tokensRef = collection(db, "tokens_acesso");
+      const vagasRef = collection(db, "vagas");
+      const estudosRef = collection(db, "estudos_de_caso");
+
+      console.log("📝 Buscando candidatos de:", candidatosRef.path);
+      console.log("📝 Buscando tokens de:", tokensRef.path);
+
       const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
         await Promise.all([
-          getDocs(candidatosCollection), // ✅ SEM FILTRO
-          getDocs(tokensAcessoCollection),
-          getDocs(vagasCollection),
-          getDocs(estudosDeCasoCollection),
+          getDocs(candidatosRef),
+          getDocs(tokensRef),
+          getDocs(vagasRef),
+          getDocs(estudosRef),
         ]);
 
-      candidatosCache = candidatosSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+      console.log("✅ Snapshot de candidatos recebido");
+
+      // ✅ PROCESSA CANDIDATOS
+      candidatosCache = [];
+      candidatosSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        console.log(
+          `📌 Candidato encontrado: ${data.nome_completo} | Vaga: ${data.vaga_id}`
+        );
+        candidatosCache.push({
+          id: doc.id,
+          ...data,
+        });
+      });
 
       tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      console.log(`📊 Candidatos total: ${candidatosCache.length}`);
-      console.log(`📊 Tokens: ${tokensCache.length}`);
-      console.log(`📊 Vagas: ${vagasCache.length}`);
-      console.log(`📊 Estudos: ${estudosCache.length}`);
+      console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
+      console.log(`📊 ✅ Tokens: ${tokensCache.length}`);
+      console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
+      console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
 
-      // ✅ LOG PARA DEBUG
+      // ✅ LOG DE DEBUG COMPLETO
       if (candidatosCache.length > 0) {
-        console.log("🔍 Primeiro candidato:", candidatosCache[0]);
+        console.log("🔍 Primeiro candidato COMPLETO:", candidatosCache[0]);
+        console.log("🔍 Campo vaga_id:", candidatosCache[0].vaga_id);
+      } else {
+        console.warn("⚠️ NENHUM CANDIDATO ENCONTRADO!");
       }
 
       const totalInscritos = candidatosCache.length;
@@ -371,6 +400,7 @@ export async function initdashboard(user, userData) {
       console.log("✅ Relatórios carregados com sucesso");
     } catch (error) {
       console.error("❌ Erro ao carregar relatórios:", error);
+      console.error("Stack:", error.stack);
       window.showToast?.(
         "Erro ao carregar relatórios: " + error.message,
         "error"
@@ -921,4 +951,16 @@ export async function initdashboard(user, userData) {
     console.error("Erro ao carregar dados do Dashboard RH:", error);
     window.showToast?.("Erro ao carregar dashboard", "error");
   }
+}
+export async function initdashboard(user, userData) {
+  console.log("📈 Iniciando Dashboard de RH...");
+
+  const db = window.db; // ✅ DEVE VIR DAQUI
+
+  if (!db) {
+    console.error("❌ Firebase não inicializado!");
+    return;
+  }
+
+  // ... resto do código
 }
