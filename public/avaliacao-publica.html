@@ -5,50 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avaliação Pública - EuPsico</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
-    .container-center { background: white; border-radius: 8px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-    h1 { color: #667eea; margin-bottom: 30px; }
-    .alert { margin-bottom: 20px; }
+    body { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      min-height: 100vh; 
+      display: flex; 
+      align-items: center;
+      padding: 20px;
+    }
+    .container-center { 
+      background: white; 
+      border-radius: 8px; 
+      padding: 40px; 
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 { 
+      color: #667eea; 
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .pergunta-item {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      border-left: 4px solid #667eea;
+    }
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    .btn-enviar {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      padding: 12px 30px;
+    }
+    .btn-enviar:hover {
+      background: linear-gradient(135deg, #5568d3 0%, #6a3c8f 100%);
+    }
   </style>
 </head>
 <body>
   <div class="container-center">
-    <h1>🎯 Avaliação - EuPsico</h1>
+    <h1><i class="fas fa-bullseye me-2"></i> Avaliação - EuPsico</h1>
     
-    <div id="conteudo-teste">
-      <p class="spinner-border spinner-border-sm me-2"></p>
+    <!-- CARREGAMENTO -->
+    <div id="carregamento" class="text-center">
+      <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: #667eea;"></i>
       <p>Carregando teste...</p>
     </div>
 
-    <div id="erro-teste" class="alert alert-danger" style="display:none;"></div>
+    <!-- CONTEÚDO DO TESTE -->
+    <div id="conteudo-teste" style="display: none;">
+      <div class="alert alert-info">
+        <h4 id="titulo-teste"></h4>
+        <p id="texto-teste"></p>
+      </div>
+
+      <form id="form-resposta">
+        <!-- As perguntas serão inseridas aqui -->
+        <div id="perguntas-container"></div>
+        
+        <div class="text-center mt-4">
+          <button type="submit" class="btn btn-lg btn-enviar text-white">
+            <i class="fas fa-check me-2"></i> Enviar Respostas
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ERRO -->
+    <div id="erro-teste" class="alert alert-danger" style="display: none;"></div>
+
+    <!-- SUCESSO -->
+    <div id="sucesso-teste" class="alert alert-success" style="display: none;"></div>
   </div>
 
+  <!-- ✅ FIREBASE COMPAT (versão estável para HTML puro) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <script>
-    // Pega os parâmetros da URL
+    // ============================================
+    // INICIALIZAÇÃO FIREBASE
+    // ============================================
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXy_4yVPqyiuVJLv3kT-wXGaajgC3UJ10",
+      authDomain: "eupsico-desenvolvimento.firebaseapp.com",
+      projectId: "eupsico-desenvolvimento",
+      storageBucket: "eupsico-desenvolvimento.appspot.com",
+      messagingSenderId: "1065838851206",
+      appId: "1:1065838851206:web:32b7a40d7f066d0d7c4c86"
+    };
+
+    // ✅ Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ============================================
+    // LÓGICA PRINCIPAL
+    // ============================================
+
     const params = new URLSearchParams(window.location.search);
     const testeId = params.get('id');
     const tipo = params.get('tipo');
 
-    console.log('Teste ID:', testeId);
-    console.log('Tipo:', tipo);
+    console.log('🔹 Teste ID:', testeId);
+    console.log('🔹 Tipo:', tipo);
 
-    if (!testeId) {
-      document.getElementById('conteudo-teste').style.display = 'none';
-      document.getElementById('erro-teste').innerHTML = '❌ Erro: ID do teste não foi fornecido na URL.';
-      document.getElementById('erro-teste').style.display = 'block';
-    } else {
-      // ✅ Aqui você pode carregar o teste do Firebase e exibir
-      // Por enquanto, mostra uma mensagem de sucesso
-      document.getElementById('conteudo-teste').innerHTML = `
-        <div class="alert alert-success">
-          <h4>✅ Teste Carregado com Sucesso!</h4>
-          <p><strong>ID do Teste:</strong> ${testeId}</p>
-          <p><strong>Tipo:</strong> ${tipo || 'Não especificado'}</p>
-          <p>O formulário do teste será exibido aqui em breve.</p>
-        </div>
-      `;
+    async function carregarTeste() {
+      try {
+        if (!testeId) {
+          mostrarErro('❌ Erro: ID do teste não foi fornecido na URL.');
+          return;
+        }
+
+        console.log('🔹 Buscando teste no Firebase...');
+
+        // ✅ Busca o teste no Firebase
+        const testeSnap = await db
+          .collection('estudos_de_caso')
+          .doc(testeId)
+          .get();
+
+        if (!testeSnap.exists) {
+          mostrarErro(`❌ Teste não encontrado. ID: ${testeId}`);
+          return;
+        }
+
+        const teste = testeSnap.data();
+        console.log('✅ Teste carregado:', teste);
+
+        // Preenche as informações
+        document.getElementById('titulo-teste').innerHTML = `
+          <strong>${teste.titulo}</strong><br>
+          <small>${teste.tipo.replace(/-/g, ' ')}</small>
+        `;
+        document.getElementById('texto-teste').textContent = teste.conteudo_texto;
+
+        // Renderiza as perguntas
+        const perguntasContainer = document.getElementById('perguntas-container');
+        perguntasContainer.innerHTML = '';
+
+        if (teste.perguntas && teste.perguntas.length > 0) {
+          teste.perguntas.forEach((pergunta, index) => {
+            const perguntaHtml = `
+              <div class="pergunta-item">
+                <label class="form-label">
+                  <strong>Pergunta ${index + 1}:</strong> ${pergunta}
+                </label>
+                <textarea 
+                  class="form-control" 
+                  name="resposta-${index}"
+                  placeholder="Digite sua resposta aqui..."
+                  required
+                ></textarea>
+              </div>
+            `;
+            perguntasContainer.innerHTML += perguntaHtml;
+          });
+        } else {
+          perguntasContainer.innerHTML = '<p class="alert alert-warning">Este teste não possui perguntas.</p>';
+        }
+
+        // Mostra o conteúdo
+        document.getElementById('carregamento').style.display = 'none';
+        document.getElementById('conteudo-teste').style.display = 'block';
+
+        console.log('✅ Teste renderizado com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao carregar teste:', error);
+        mostrarErro(`❌ Erro ao carregar o teste: ${error.message}`);
+      }
     }
+
+    function mostrarErro(mensagem) {
+      document.getElementById('carregamento').style.display = 'none';
+      document.getElementById('erro-teste').innerHTML = mensagem;
+      document.getElementById('erro-teste').style.display = 'block';
+    }
+
+    // ✅ Listener do formulário
+    document.getElementById('form-resposta')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      console.log('🔹 Enviando respostas...');
+      
+      const formData = new FormData(e.target);
+      const respostas = {};
+      
+      for (let [key, value] of formData.entries()) {
+        respostas[key] = value;
+      }
+
+      console.log('✅ Respostas:', respostas);
+      
+      // Aqui você pode salvar no Firebase se desejar
+      document.getElementById('conteudo-teste').style.display = 'none';
+      document.getElementById('sucesso-teste').innerHTML = `
+        <h4>✅ Respostas Enviadas com Sucesso!</h4>
+        <p>Obrigado por participar da avaliação. Entraremos em contato em breve com o resultado.</p>
+      `;
+      document.getElementById('sucesso-teste').style.display = 'block';
+    });
+
+    // Carrega o teste ao abrir a página
+    carregarTeste();
   </script>
 </body>
 </html>
