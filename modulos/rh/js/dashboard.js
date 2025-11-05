@@ -86,16 +86,71 @@ export async function initdashboard(user, userData) {
   // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV)
   // ============================================
 
-  function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
-    console.log("📊 Exportando para Excel...", dados);
+  function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
+    console.log("📊 Exportando para Excel (XLSX)...", dados);
 
     if (!dados || dados.length === 0) {
       window.showToast?.("Nenhum dado para exportar", "warning");
       return;
     }
 
+    // ✅ Verifica se SheetJS está carregado
+    if (typeof XLSX === "undefined") {
+      console.log("⚠️ Carregando SheetJS...");
+
+      const script = document.createElement("script");
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+
+      script.onload = () => {
+        setTimeout(() => {
+          gerarXLSX(dados, nomeArquivo);
+        }, 500);
+      };
+
+      script.onerror = () => {
+        console.error("❌ Erro ao carregar SheetJS");
+        // Fallback: usa CSV com BOM se SheetJS falhar
+        exportarParaExcelCSV(dados, nomeArquivo.replace(".xlsx", ".csv"));
+      };
+
+      document.head.appendChild(script);
+    } else {
+      gerarXLSX(dados, nomeArquivo);
+    }
+  }
+
+  function gerarXLSX(dados, nomeArquivo) {
+    try {
+      // ✅ Converte dados para formato de worksheet
+      const ws = XLSX.utils.json_to_sheet(dados, {
+        header: 1,
+        cellDates: true,
+      });
+
+      // ✅ Configurações da planilha
+      ws["!cols"] = Object.keys(dados[0] || {}).map(() => ({ wch: 20 })); // Largura das colunas
+
+      // ✅ Cria workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Dados");
+
+      // ✅ Salva o arquivo
+      XLSX.writeFile(wb, nomeArquivo);
+
+      console.log("✅ XLSX gerado com sucesso!");
+      window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
+    } catch (error) {
+      console.error("❌ Erro ao gerar XLSX:", error);
+      window.showToast?.("❌ Erro ao gerar arquivo Excel", "error");
+    }
+  }
+  function exportarParaExcelCSV(dados, nomeArquivo) {
+    console.log("📊 Exportando para CSV com BOM...");
+
     let csv = [];
-    const headers = Object.keys(dados[0]);
+    const headers = Object.keys(dados[0] || {});
+
     csv.push(headers.map((h) => `"${h}"`).join(","));
 
     dados.forEach((linha) => {
@@ -108,12 +163,16 @@ export async function initdashboard(user, userData) {
     });
 
     const csvContent = csv.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
     link.setAttribute("href", url);
-    link.setAttribute("download", nomeArquivo.replace(".xlsx", ".csv"));
+    link.setAttribute("download", nomeArquivo);
     link.style.visibility = "hidden";
 
     document.body.appendChild(link);
@@ -122,7 +181,6 @@ export async function initdashboard(user, userData) {
 
     window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
   }
-
   // ============================================
   // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF)
   // ============================================
