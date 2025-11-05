@@ -1,5 +1,6 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.1.0 (Com Exportação PDF/Excel)
+// Versão: 3.2.0 (Com Exportação PDF/Excel Corrigida)
+// Data: 05/11/2025
 
 import {
   collection,
@@ -24,7 +25,10 @@ export async function initdashboard(user, userData) {
     return;
   }
 
-  // Definição das referências de coleção
+  // ============================================
+  // DEFINIÇÃO DAS COLEÇÕES
+  // ============================================
+
   const usuariosCollection = collection(db, "usuarios");
   const vagasCollection = collection(db, "vagas");
   const onboardingCollection = collection(db, "onboarding");
@@ -34,7 +38,10 @@ export async function initdashboard(user, userData) {
   const tokensAcessoCollection = collection(db, "tokens_acesso");
   const estudosDeCasoCollection = collection(db, "estudos_de_caso");
 
-  // Mapeamento dos elementos do DOM - DASHBOARD
+  // ============================================
+  // MAPEAMENTO DOS ELEMENTOS DO DOM - DASHBOARD
+  // ============================================
+
   const metricAtivos = document.getElementById("rh-metric-ativos");
   const metricVagas = document.getElementById("rh-metric-vagas");
   const metricOnboarding = document.getElementById("rh-metric-onboarding");
@@ -49,7 +56,10 @@ export async function initdashboard(user, userData) {
     .getElementById("rh-desligamento-chart")
     ?.getContext("2d");
 
-  // ✅ NOVOS: Elementos do DOM - RELATÓRIOS
+  // ============================================
+  // MAPEAMENTO DOS ELEMENTOS DO DOM - RELATÓRIOS
+  // ============================================
+
   const relTotalInscricoes = document.getElementById("rel-total-inscricoes");
   const relTestesRespondidos = document.getElementById(
     "rel-testes-respondidos"
@@ -64,59 +74,61 @@ export async function initdashboard(user, userData) {
     "btn-atualizar-relatorios"
   );
 
-  // Estado global dos relatórios
+  // ============================================
+  // ESTADO GLOBAL DOS RELATÓRIOS
+  // ============================================
+
   let candidatosCache = [];
   let tokensCache = [];
   let vagasCache = [];
   let estudosCache = [];
 
   // ============================================
-  // ✅ FUNÇÕES DE EXPORTAÇÃO
+  // FUNÇÕES DE EXPORTAÇÃO
   // ============================================
 
-  // Função auxiliar: Converter data para string
-  function formatarData(data) {
-    if (!data) return "-";
-    const d = data.toDate ? data.toDate() : new Date(data);
-    return d.toLocaleDateString("pt-BR");
-  }
-
-  // ✅ EXPORTAR PARA EXCEL
+  // ✅ Exportar para Excel
   function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
     console.log("📊 Exportando para Excel...");
 
-    // Cria um workbook (usando uma biblioteca simples)
-    let html = '<table border="1"><tr>';
+    if (!dados || dados.length === 0) {
+      window.showToast?.("Nenhum dado para exportar", "warning");
+      return;
+    }
+
+    let html =
+      '<table border="1"><tr style="background-color: #4472C4; color: white;">';
 
     // Cabeçalhos
-    if (dados.length > 0) {
-      Object.keys(dados[0]).forEach((chave) => {
-        html += `<th>${chave}</th>`;
+    Object.keys(dados[0]).forEach((chave) => {
+      html += `<th style="padding: 10px; font-weight: bold;">${chave}</th>`;
+    });
+    html += "</tr>";
+
+    // Dados
+    dados.forEach((linha, index) => {
+      const corFundo = index % 2 === 0 ? "#F2F2F2" : "#FFFFFF";
+      html += `<tr style="background-color: ${corFundo};">`;
+      Object.values(linha).forEach((valor) => {
+        html += `<td style="padding: 8px; border: 1px solid #DDD;">${valor}</td>`;
       });
       html += "</tr>";
-
-      // Dados
-      dados.forEach((linha) => {
-        html += "<tr>";
-        Object.values(linha).forEach((valor) => {
-          html += `<td>${valor}</td>`;
-        });
-        html += "</tr>";
-      });
-    }
+    });
 
     html += "</table>";
 
     // Cria blob e download
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const blob = new Blob([html], {
+      type: "application/vnd.ms-excel;charset=UTF-8",
+    });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = nomeArquivo;
-    document.body.appendChild(a);
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
     window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    document.body.removeChild(link);
 
     window.showToast?.(
       `✅ Arquivo ${nomeArquivo} baixado com sucesso!`,
@@ -124,37 +136,33 @@ export async function initdashboard(user, userData) {
     );
   }
 
-  // ✅ EXPORTAR PARA PDF (usando html2pdf se disponível)
-  function exportarParaPDF(tabela, nomeArquivo = "relatorio.pdf") {
+  // ✅ Exportar para PDF
+  function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
     console.log("📄 Exportando para PDF...");
 
-    // Verifica se html2pdf está disponível
-    if (typeof html2pdf === "undefined") {
-      window.showToast?.(
-        "⚠️ Biblioteca html2pdf não carregada. Instalando...",
-        "warning"
-      );
-
-      // Carrega dinamicamente
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-      script.onload = () => {
-        exportarTabelaPDF(tabela, nomeArquivo);
-      };
-      document.head.appendChild(script);
-    } else {
-      exportarTabelaPDF(tabela, nomeArquivo);
-    }
-  }
-
-  function exportarTabelaPDF(tabela, nomeArquivo) {
-    const element = document.getElementById(tabela);
+    const element = document.getElementById(elementId);
     if (!element) {
       window.showToast?.("❌ Elemento não encontrado para exportar", "error");
       return;
     }
 
+    // Verifica se html2pdf está disponível
+    if (typeof html2pdf === "undefined") {
+      console.log("⚠️ Carregando biblioteca html2pdf...");
+
+      const script = document.createElement("script");
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+      script.onload = () => {
+        exportarTabelaPDF(element, nomeArquivo);
+      };
+      document.head.appendChild(script);
+    } else {
+      exportarTabelaPDF(element, nomeArquivo);
+    }
+  }
+
+  function exportarTabelaPDF(element, nomeArquivo) {
     const opt = {
       margin: 10,
       filename: nomeArquivo,
@@ -163,19 +171,100 @@ export async function initdashboard(user, userData) {
       jsPDF: { orientation: "landscape", unit: "mm", format: "a4" },
     };
 
-    html2pdf().set(opt).from(element).save();
-    window.showToast?.(
-      `✅ Arquivo ${nomeArquivo} gerado com sucesso!`,
-      "success"
-    );
+    try {
+      html2pdf().set(opt).from(element).save();
+      window.showToast?.(
+        `✅ Arquivo ${nomeArquivo} gerado com sucesso!`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
+    }
   }
 
-  // Expõe as funções globalmente
-  window.exportarParaExcel = exportarParaExcel;
-  window.exportarParaPDF = exportarParaPDF;
+  // ✅ Exportar Inscrições para Excel
+  window.exportarInscricoesExcel = function () {
+    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
+    const dados = [];
+
+    tabelaBody.querySelectorAll("tr").forEach((tr) => {
+      const cells = tr.querySelectorAll("td");
+      if (cells.length > 0) {
+        dados.push({
+          Vaga: cells[0].textContent.trim(),
+          "Total de Inscritos": cells[1].textContent.trim().replace(/\D/g, ""),
+          "Em Triagem": cells[2].textContent.trim().replace(/\D/g, ""),
+          Aprovados: cells[3].textContent.trim().replace(/\D/g, ""),
+          Rejeitados: cells[4].textContent.trim().replace(/\D/g, ""),
+          Contratados: cells[5].textContent.trim().replace(/\D/g, ""),
+        });
+      }
+    });
+
+    exportarParaExcel(dados, "inscrições_por_vaga.xlsx");
+  };
+
+  // ✅ Exportar Inscrições para PDF
+  window.exportarInscricoesPDF = function () {
+    exportarParaPDF("rel-tabela-inscricoes", "inscrições_por_vaga.pdf");
+  };
+
+  // ✅ Exportar Candidatos para Excel
+  window.exportarCandidatosExcel = function () {
+    const tabelaBody = document.getElementById("rel-tbody-candidatos");
+    const dados = [];
+
+    tabelaBody.querySelectorAll("tr").forEach((tr) => {
+      const cells = tr.querySelectorAll("td");
+      if (cells.length >= 7) {
+        dados.push({
+          Nome: cells[0].textContent.trim(),
+          Email: cells[1].textContent.trim(),
+          Telefone: cells[2].textContent.trim(),
+          Vaga: cells[3].textContent.trim(),
+          Status: cells[4].textContent.trim(),
+          Teste: cells[5].textContent.trim(),
+        });
+      }
+    });
+
+    exportarParaExcel(dados, "candidatos.xlsx");
+  };
+
+  // ✅ Exportar Candidatos para PDF
+  window.exportarCandidatosPDF = function () {
+    exportarParaPDF("rel-tabela-candidatos", "candidatos.pdf");
+  };
+
+  // ✅ Exportar Respostas para Excel
+  window.exportarRespostasExcel = function () {
+    const tabelaBody = document.getElementById("rel-tbody-respostas");
+    const dados = [];
+
+    tabelaBody.querySelectorAll("tr").forEach((tr) => {
+      const cells = tr.querySelectorAll("td");
+      if (cells.length >= 5) {
+        dados.push({
+          Candidato: cells[0].textContent.trim(),
+          Teste: cells[1].textContent.trim(),
+          "Data de Resposta": cells[2].textContent.trim(),
+          "Tempo Gasto": cells[3].textContent.trim(),
+          Status: cells[4].textContent.trim(),
+        });
+      }
+    });
+
+    exportarParaExcel(dados, "respostas_testes.xlsx");
+  };
+
+  // ✅ Exportar Respostas para PDF
+  window.exportarRespostasPDF = function () {
+    exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
+  };
 
   // ============================================
-  // FUNÇÃO: Listeners de Abas
+  // LISTENERS DE ABAS
   // ============================================
 
   const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
@@ -283,19 +372,19 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // ✅ FUNÇÃO: Popular Filtros (CORRIGIDA)
+  // FUNÇÃO: Popular Filtros
   // ============================================
 
   async function popularFiltros() {
     console.log("🔹 Populando filtros...");
 
-    // Filtro de vagas - ✅ AGORA MOSTRA O TÍTULO CORRETO
+    // Filtro de vagas - CORRIGIDO
     if (relFiltroVaga) {
       relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
       vagasCache.forEach((vaga) => {
         const option = document.createElement("option");
         option.value = vaga.id;
-        // ✅ PRIORIZA 'titulo', depois 'tituloVaga', depois ID
+        // Prioriza 'titulo', depois 'tituloVaga', depois 'nome', depois ID
         const nomeDaVaga =
           vaga.titulo ||
           vaga.tituloVaga ||
@@ -362,7 +451,7 @@ export async function initdashboard(user, userData) {
 
     Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
-      // ✅ CORRIGIDA: Busca o título correto
+      // CORRIGIDA: Busca o título correto
       const vagaNome =
         vaga?.titulo ||
         vaga?.tituloVaga ||
@@ -806,5 +895,6 @@ export async function initdashboard(user, userData) {
     console.log("✅ Dashboard RH carregado com sucesso");
   } catch (error) {
     console.error("Erro ao carregar dados do Dashboard RH:", error);
+    window.showToast?.("Erro ao carregar dashboard", "error");
   }
 }
