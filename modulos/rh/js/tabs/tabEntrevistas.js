@@ -1,8 +1,8 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 4.1.0 (Completo com Enviar Teste Funcional)
- * Data: 04/11/2025
- * Descrição: Gerencia a aba de Entrevistas, Avaliações e Envio de Testes
+ * Versão: 5.0.0 (Com Sistema de TOKEN e PRAZO de Validade)
+ * Data: 05/11/2025
+ * Descrição: Gerencia a aba de Entrevistas, Avaliações e Envio de Testes COM TOKEN
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -15,6 +15,8 @@ import {
   arrayUnion,
   collection,
   db,
+  addDoc,
+  getDoc,
 } from "../../../../assets/js/firebase-init.js";
 
 // ============================================
@@ -31,6 +33,16 @@ const formEnviarTeste = document.getElementById("form-enviar-teste");
 // ============================================
 // FUNÇÕES DE UTILIDADE
 // ============================================
+
+/**
+ * Gera um TOKEN único para o acesso ao teste
+ */
+function gerarTokenAleatorio() {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+}
 
 /**
  * Formata uma mensagem humanizada de agendamento para WhatsApp
@@ -529,7 +541,7 @@ async function submeterAgendamentoRH(e) {
 }
 
 // ============================================
-// MODAIS - ENVIAR TESTE
+// MODAIS - ENVIAR TESTE (COM TOKEN E PRAZO)
 // ============================================
 
 /**
@@ -605,11 +617,16 @@ async function carregarTestesDisponiveis() {
 
     snapshot.forEach((docSnap) => {
       const teste = docSnap.data();
-      htmlOptions += `<option value="${docSnap.id}" data-link="${
-        teste.link_teste || ""
-      }" data-tipo="${teste.tipo}">
-      ${teste.titulo} (${teste.tipo.replace(/-/g, " ")})
-    </option>`;
+      const prazoDias = teste.prazo_validade_dias || "7";
+      htmlOptions += `<option value="${docSnap.id}" 
+        data-link="${teste.link_teste || ""}" 
+        data-tipo="${teste.tipo}"
+        data-prazo="${prazoDias}">
+        ${teste.titulo} (${teste.tipo.replace(
+        /-/g,
+        " "
+      )}) - Prazo: ${prazoDias}d
+      </option>`;
     });
 
     selectTeste.innerHTML = htmlOptions;
@@ -627,21 +644,29 @@ document.addEventListener("change", (e) => {
   if (e.target.id === "teste-selecionado") {
     const option = e.target.selectedOptions[0];
     const linkInput = document.getElementById("teste-link");
+    const prazoDisplay = document.getElementById("teste-prazo");
     const linkTeste = option.getAttribute("data-link");
+    const prazoDias = option.getAttribute("data-prazo") || "7";
 
     if (linkInput) {
       if (linkTeste) {
         linkInput.value = linkTeste;
       } else {
-        linkInput.value = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?id=${option.value}`;
+        linkInput.value = `https://eupsico.github.io/intranet-1/public/avaliacao-publica.html?id=${option.value}`;
       }
       console.log(`✅ Link atualizado: ${linkInput.value}`);
+    }
+
+    // ✅ EXIBE O PRAZO
+    if (prazoDisplay) {
+      prazoDisplay.textContent = `Prazo: ${prazoDias} dias`;
+      prazoDisplay.style.display = "block";
     }
   }
 });
 
 /**
- * Envia teste via WhatsApp
+ * Envia teste via WhatsApp (COM TOKEN)
  */
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-enviar-teste-whatsapp") {
@@ -665,12 +690,37 @@ async function enviarTesteWhatsApp() {
   }
 
   try {
+    // ✅ GERA TOKEN
+    const token = gerarTokenAleatorio();
+    console.log(`🔹 Token gerado: ${token}`);
+
+    // ✅ CARREGA O TESTE PARA PEGAR PRAZO
+    const testeSnap = await getDoc(
+      doc(collection(db, "estudos_de_caso"), testeId)
+    );
+    const teste = testeSnap.data();
+    const prazoDias = teste.prazo_validade_dias || 7;
+
+    // ✅ SALVA O TOKEN NO FIRESTORE
+    await salvarTokenNoFirebase(
+      token,
+      testeId,
+      candidatoId,
+      dadosCandidatoAtual.nome_completo,
+      prazoDias
+    );
+
+    // ✅ MONTA O LINK COM TOKEN (não com ID)
+    const urlBase = "https://eupsico.github.io/intranet-1/public";
+    const linkComToken = `${urlBase}/avaliacao-publica.html?token=${token}`;
+
     const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";
     const nomeTesteElement = document.querySelector(
       `#teste-selecionado option[value="${testeId}"]`
     );
     const nomeTeste = nomeTesteElement?.textContent || "Teste";
 
+    // ✅ MONTA MENSAGEM COM PRAZO
     const mensagemPadrao = `
 🎯 *Olá ${nomeCandidato}!* 🎯
 
@@ -679,9 +729,11 @@ Chegou a hora de você realizar o próximo teste da sua avaliação!
 📋 *Teste:* ${nomeTeste}
 
 🔗 *Clique no link abaixo para realizar o teste:*
-${linkTeste}
+${linkComToken}
 
-⏱️ *Tempo estimado:* 30-45 minutos
+⏱️ *Tempo estimado para responder:* 30-45 minutos
+
+⏰ *Prazo para responder:* ${prazoDias} dias a partir do recebimento deste link
 
 📌 *Instruções:*
 ✅ Acesse o link acima
@@ -700,14 +752,11 @@ Se tiver dúvidas, não hesite em nos contactar!
     const mensagemCodificada = encodeURIComponent(mensagemFinal);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
 
-    // Salva no Firestore
-    await salvarEnvioTeste(candidatoId, testeId, linkTeste);
-
-    // Abre WhatsApp
+    // ✅ ABRE WHATSAPP
     window.open(linkWhatsApp, "_blank");
 
     window.showToast?.("Teste enviado com sucesso! WhatsApp aberto", "success");
-    console.log("✅ Teste enviado via WhatsApp");
+    console.log("✅ Teste enviado via WhatsApp com TOKEN");
   } catch (error) {
     console.error("❌ Erro ao enviar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
@@ -715,7 +764,47 @@ Se tiver dúvidas, não hesite em nos contactar!
 }
 
 /**
- * Salva o envio do teste no Firestore
+ * Salva o TOKEN no Firestore
+ */
+async function salvarTokenNoFirebase(
+  token,
+  testeId,
+  candidatoId,
+  nomeCandidato,
+  prazoDias
+) {
+  console.log(`🔹 Salvando token no Firestore...`);
+
+  const state = getGlobalState();
+  const { currentUserData } = state;
+
+  try {
+    const dataExpiracao = new Date();
+    dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
+
+    await addDoc(collection(db, "tokens_acesso"), {
+      token: token,
+      testeId: testeId,
+      candidatoId: candidatoId,
+      nomeCandidato: nomeCandidato,
+      criadorId: currentUserData.id || "rh_system_user",
+      criadoEm: new Date(),
+      expiraEm: dataExpiracao,
+      prazoDias: prazoDias,
+      usado: false,
+      dataUso: null,
+      respostas: {},
+    });
+
+    console.log("✅ Token salvo no Firestore");
+  } catch (error) {
+    console.error("❌ Erro ao salvar token:", error);
+    throw error;
+  }
+}
+
+/**
+ * Salva o envio do teste no Firestore (sem TOKEN, apenas histórico)
  */
 async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
@@ -737,7 +826,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste) {
       }),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Teste enviado via WhatsApp. Link: ${linkTeste}`,
+        acao: `Teste enviado. Link: ${linkTeste}`,
         usuario: currentUserData.id || "rh_system_user",
       }),
     });
