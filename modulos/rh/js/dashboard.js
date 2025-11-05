@@ -317,9 +317,10 @@ export async function initdashboard(user, userData) {
     try {
       console.log("📊 Buscando dados do Firestore...");
 
+      // ✅ REMOVIDO: Sem filtro de status - busca TODOS os candidatos
       const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
         await Promise.all([
-          getDocs(candidatosCollection),
+          getDocs(candidatosCollection), // ✅ SEM FILTRO
           getDocs(tokensAcessoCollection),
           getDocs(vagasCollection),
           getDocs(estudosDeCasoCollection),
@@ -329,14 +330,20 @@ export async function initdashboard(user, userData) {
         id: d.id,
         ...d.data(),
       }));
+
       tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      console.log(`📊 Candidatos: ${candidatosCache.length}`);
+      console.log(`📊 Candidatos total: ${candidatosCache.length}`);
       console.log(`📊 Tokens: ${tokensCache.length}`);
       console.log(`📊 Vagas: ${vagasCache.length}`);
       console.log(`📊 Estudos: ${estudosCache.length}`);
+
+      // ✅ LOG PARA DEBUG
+      if (candidatosCache.length > 0) {
+        console.log("🔍 Primeiro candidato:", candidatosCache[0]);
+      }
 
       const totalInscritos = candidatosCache.length;
       const testesRespondidos = tokensCache.filter((t) => t.usado).length;
@@ -345,6 +352,10 @@ export async function initdashboard(user, userData) {
         totalInscritos > 0
           ? Math.round((testesRespondidos / totalInscritos) * 100)
           : 0;
+
+      console.log(
+        `✅ Total: ${totalInscritos} | Respondidos: ${testesRespondidos} | Pendentes: ${testesPendentes} | Taxa: ${taxaResposta}%`
+      );
 
       if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
       if (relTestesRespondidos)
@@ -410,14 +421,19 @@ export async function initdashboard(user, userData) {
     console.log("🔹 Renderizando inscrições por vaga...");
 
     const tabelaBody = document.getElementById("rel-tbody-inscricoes");
-    if (!tabelaBody) return;
+    if (!tabelaBody) {
+      console.error("❌ Elemento rel-tbody-inscricoes não encontrado");
+      return;
+    }
 
     tabelaBody.innerHTML = "";
 
     const inscricoesPorVaga = {};
 
+    // ✅ AGRUPA TODOS OS CANDIDATOS POR VAGA (SEM FILTRO DE STATUS)
     candidatosCache.forEach((cand) => {
       const vagaId = cand.vaga_id || "Sem vaga";
+
       if (!inscricoesPorVaga[vagaId]) {
         inscricoesPorVaga[vagaId] = {
           total: 0,
@@ -430,17 +446,30 @@ export async function initdashboard(user, userData) {
 
       inscricoesPorVaga[vagaId].total++;
 
-      const status = cand.status_recrutamento || "";
-      if (status.includes("Triagem") || status === "Candidatura Recebida") {
+      // ✅ CLASSIFICA PELO STATUS ATUAL
+      const status = cand.status_recrutamento || "Candidatura Recebida";
+
+      console.log(`📌 Candidato: ${cand.nome_completo} | Status: ${status}`);
+
+      if (
+        status.includes("Triagem") ||
+        status === "Candidatura Recebida" ||
+        status.includes("recebida")
+      ) {
         inscricoesPorVaga[vagaId].triagem++;
-      } else if (status.includes("Aprovada")) {
+      } else if (
+        status.includes("Aprovada") ||
+        status.includes("Entrevista Pendente")
+      ) {
         inscricoesPorVaga[vagaId].aprovados++;
-      } else if (status.includes("Rejeitado")) {
+      } else if (status.includes("Rejeitado") || status.includes("rejeicao")) {
         inscricoesPorVaga[vagaId].rejeitados++;
       } else if (status.includes("Contratado")) {
         inscricoesPorVaga[vagaId].contratados++;
       }
     });
+
+    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
 
     Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
@@ -452,13 +481,13 @@ export async function initdashboard(user, userData) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${vagaNome}</strong></td>
-        <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
-        <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
-        <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
-        <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
-        <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
-      `;
+      <td><strong>${vagaNome}</strong></td>
+      <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
+      <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
+      <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
+      <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
+      <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
+    `;
       tabelaBody.appendChild(tr);
     });
 
@@ -482,7 +511,15 @@ export async function initdashboard(user, userData) {
   }
 
   function atualizarTabelaCandidatos(candidatos, tabelaBody) {
+    console.log(`🔹 Atualizando tabela com ${candidatos.length} candidatos`);
+
     tabelaBody.innerHTML = "";
+
+    if (candidatos.length === 0) {
+      tabelaBody.innerHTML =
+        '<tr><td colspan="7" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
+      return;
+    }
 
     candidatos.forEach((cand) => {
       const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
@@ -503,29 +540,24 @@ export async function initdashboard(user, userData) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${cand.nome_completo || "-"}</strong></td>
-        <td>${cand.email_candidato || "-"}</td>
-        <td>${cand.telefone_contato || "-"}</td>
-        <td>${vagaNome}</td>
-        <td><span class="badge bg-info">${
-          cand.status_recrutamento || "-"
-        }</span></td>
-        <td>${statusTeste}</td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
-            cand.nome_completo
-          }')">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
+      <td><strong>${cand.nome_completo || "-"}</strong></td>
+      <td>${cand.email_candidato || "-"}</td>
+      <td>${cand.telefone_contato || "-"}</td>
+      <td>${vagaNome}</td>
+      <td><span class="badge bg-info">${
+        cand.status_recrutamento || "Pendente"
+      }</span></td>
+      <td>${statusTeste}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
+          cand.nome_completo
+        }')">
+          <i class="fas fa-eye"></i>
+        </button>
+      </td>
+    `;
       tabelaBody.appendChild(tr);
     });
-
-    if (candidatos.length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
-    }
   }
 
   function filtrarCandidatos(e) {
