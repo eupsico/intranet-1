@@ -608,8 +608,8 @@ async function carregarTestesDisponiveis() {
       htmlOptions += `<option value="${docSnap.id}" data-link="${
         teste.link_teste || ""
       }" data-tipo="${teste.tipo}">
-        ${teste.titulo} (${teste.tipo.replace(/-/g, " ")})
-      </option>`;
+      ${teste.titulo} (${teste.tipo.replace(/-/g, " ")})
+    </option>`;
     });
 
     selectTeste.innerHTML = htmlOptions;
@@ -633,7 +633,7 @@ document.addEventListener("change", (e) => {
       if (linkTeste) {
         linkInput.value = linkTeste;
       } else {
-        linkInput.value = `https://eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
+        linkInput.value = `https://intranet.eupsico.org.br/avaliacao-publica.html?id=${option.value}`;
       }
       console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
