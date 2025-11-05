@@ -952,15 +952,3 @@ export async function initdashboard(user, userData) {
     window.showToast?.("Erro ao carregar dashboard", "error");
   }
 }
-export async function initdashboard(user, userData) {
-  console.log("📈 Iniciando Dashboard de RH...");
-
-  const db = window.db; // ✅ DEVE VIR DAQUI
-
-  if (!db) {
-    console.error("❌ Firebase não inicializado!");
-    return;
-  }
-
-  // ... resto do código
-}
