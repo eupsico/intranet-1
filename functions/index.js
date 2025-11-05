@@ -1409,13 +1409,12 @@ exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
-
 // ============================================
 // CLOUD FUNCTION: Validar Token e Retornar Teste
 // ============================================
 
 /**
- * Endpoint: /validarTokenTeste
+ * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/validarTokenTeste
  * Método: POST
  * Body: { token: "xxx" }
  *
@@ -1476,6 +1475,7 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
         console.log("❌ Token expirado");
         return res.status(403).json({
           erro: "Token expirado. Solicite um novo link.",
+          expiraEm: dataExpiracao?.toISOString(),
         });
       }
 
@@ -1504,7 +1504,7 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
 
       console.log("✅ Token validado com sucesso!");
 
-      // ✅ Retorna dados
+      // ✅ Retorna dados completos
       return res.status(200).json({
         sucesso: true,
         tokenId: tokenDoc.id,
@@ -1527,6 +1527,9 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
         },
         prazoDias: dadosToken.prazoDias || 7,
         expiraEm: dataExpiracao,
+        diasRestantes: Math.ceil(
+          (new Date(dataExpiracao) - agora) / (1000 * 60 * 60 * 24)
+        ),
       });
     } catch (error) {
       console.error("❌ Erro ao validar token:", error);
@@ -1543,9 +1546,9 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
 // ============================================
 
 /**
- * Endpoint: /salvarRespostasTeste
+ * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/salvarRespostasTeste
  * Método: POST
- * Body: { token, respostas, tempoGasto }
+ * Body: { token, respostas, tempoGasto, navegador, ipAddress }
  */
 exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
@@ -1556,7 +1559,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
         });
       }
 
-      const { token, respostas, tempoGasto } = req.body;
+      const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
 
       if (!token) {
         return res.status(400).json({
@@ -1591,7 +1594,15 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
         });
       }
 
+      // ✅ Verifica expiração
       const agora = new Date();
+      const dataExpiracao =
+        dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
+      if (dataExpiracao && agora > new Date(dataExpiracao)) {
+        return res.status(403).json({
+          erro: "Token expirado",
+        });
+      }
 
       // ✅ Atualiza o token como utilizado
       await db
@@ -1602,7 +1613,17 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
           respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
           respostas: respostas || {},
           tempoRespostaSegundos: tempoGasto || 0,
+          navegador: navegador || "desconhecido",
+          ipAddress: ipAddress || "não registrado",
         });
+
+      // ✅ Busca dados do teste
+      const testeSnap = await db
+        .collection("estudos_de_caso")
+        .doc(dadosToken.testeId)
+        .get();
+
+      const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
 
       // ✅ Atualiza a candidatura com as respostas
       await db
@@ -1611,14 +1632,15 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
         .update({
           testes_respondidos: admin.firestore.FieldValue.arrayUnion({
             testeId: dadosToken.testeId,
+            nomeTeste: nomeTeste,
             tokenId: tokenDoc.id,
             dataResposta: admin.firestore.FieldValue.serverTimestamp(),
             tempoGasto: tempoGasto || 0,
             respostasCount: Object.keys(respostas || {}).length,
           }),
           historico: admin.firestore.FieldValue.arrayUnion({
-            data: admin.firestore.FieldValue.serverTimestamp(),
-            acao: `Teste respondido: ${dadosToken.testeId}. Tempo gasto: ${tempoGasto}s`,
+            data: new Date().toISOString(),
+            acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
             usuario: "candidato_via_token",
           }),
         });
@@ -1630,6 +1652,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
         mensagem: "Respostas registradas com sucesso!",
         tokenId: tokenDoc.id,
         dataResposta: agora.toISOString(),
+        tempoGasto: tempoGasto,
       });
     } catch (error) {
       console.error("❌ Erro ao salvar respostas:", error);
@@ -1642,14 +1665,93 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
 });
 
 // ============================================
-// CLOUD FUNCTION: Gerar Token Teste (para testes)
+// CLOUD FUNCTION: Gerar Token Teste
 // ============================================
 
 /**
- * Endpoint: /gerarTokenTeste
+ * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/gerarTokenTeste
  * Método: POST
  * Body: { candidatoId, testeId, prazoDias }
- * Auth: Requer autenticação (apenas RH)
+ */
+exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({
+          erro: "Método não permitido. Use POST.",
+        });
+      }
+
+      const { candidatoId, testeId, prazoDias = 7 } = req.body;
+
+      if (!candidatoId || !testeId) {
+        return res.status(400).json({
+          erro: "candidatoId e testeId são obrigatórios",
+        });
+      }
+
+      console.log(`🔹 Gerando token para candidato: ${candidatoId}`);
+
+      // ✅ Gera token aleatório
+      const token = generateRandomToken();
+
+      // ✅ Calcula data de expiração
+      const dataExpiracao = new Date();
+      dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
+
+      // ✅ Busca dados do candidato
+      const candSnap = await db
+        .collection("candidaturas")
+        .doc(candidatoId)
+        .get();
+
+      const dadosCandidato = candSnap.exists ? candSnap.data() : {};
+
+      // ✅ Cria documento do token
+      const novoToken = await db.collection("tokens_acesso").add({
+        token: token,
+        testeId: testeId,
+        candidatoId: candidatoId,
+        nomeCandidato: dadosCandidato.nome_completo || "Candidato",
+        criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        expiraEm: dataExpiracao,
+        prazoDias: prazoDias,
+        usado: false,
+        respondidoEm: null,
+        respostas: {},
+      });
+
+      console.log("✅ Token gerado com sucesso!");
+
+      // ✅ Retorna URL com token (usando a URL correta)
+      const urlTeste = `https://eupsico.github.io/intranet-1/public/avaliacao-publica.html?token=${token}`;
+
+      return res.status(200).json({
+        sucesso: true,
+        token: token,
+        tokenId: novoToken.id,
+        urlTeste: urlTeste,
+        expiraEm: dataExpiracao.toISOString(),
+        prazoDias: prazoDias,
+        mensagem: "Token gerado com sucesso! Compartilhe o link acima.",
+      });
+    } catch (error) {
+      console.error("❌ Erro ao gerar token:", error);
+      return res.status(500).json({
+        erro: "Erro ao gerar token",
+        detalhes: error.message,
+      });
+    }
+  });
+});
+
+// ============================================
+// CLOUD FUNCTION: Listar Tokens (para debug)
+// ============================================
+
+/**
+ * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/listarTokens
+ * Método: GET
  */
 exports.listarTokens = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
