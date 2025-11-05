@@ -46,6 +46,23 @@
     .btn-enviar:hover {
       background: linear-gradient(135deg, #5568d3 0%, #6a3c8f 100%);
     }
+    .info-candidato {
+      background: #f0f8ff;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      border-left: 4px solid #0078d4;
+    }
+    .tipo-pergunta-badge {
+      display: inline-block;
+      background: #e8f4f8;
+      color: #0078d4;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-left: 10px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -55,11 +72,21 @@
     <!-- CARREGAMENTO -->
     <div id="carregamento" class="text-center">
       <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: #667eea;"></i>
-      <p>Carregando teste...</p>
+      <p>Validando acesso e carregando teste...</p>
     </div>
 
     <!-- CONTEÚDO DO TESTE -->
     <div id="conteudo-teste" style="display: none;">
+      <!-- ✅ NOVO: Informações do candidato -->
+      <div class="info-candidato">
+        <p class="mb-1">
+          <strong>📋 Candidato(a):</strong> <span id="info-candidato-nome">-</span>
+        </p>
+        <p class="mb-0">
+          <strong>⏱️ Prazo:</strong> <span id="info-candidato-prazo">-</span>
+        </p>
+      </div>
+
       <div class="alert alert-info">
         <h4 id="titulo-teste"></h4>
         <p id="texto-teste"></p>
@@ -107,80 +134,207 @@
     const db = firebase.firestore();
 
     // ============================================
-    // LÓGICA PRINCIPAL
+    // LÓGICA PRINCIPAL (COM TOKEN)
     // ============================================
 
     const params = new URLSearchParams(window.location.search);
-    const testeId = params.get('id');
-    const tipo = params.get('tipo');
+    const token = params.get('token');
+    const testeIdAntigo = params.get('id'); // Para backward compatibility
 
-    console.log('🔹 Teste ID:', testeId);
-    console.log('🔹 Tipo:', tipo);
+    let tokenData = null;
+    let testeId = null;
+
+    console.log('🔹 Token recebido:', token);
+    console.log('🔹 ID (backup):', testeIdAntigo);
 
     async function carregarTeste() {
       try {
-        if (!testeId) {
-          mostrarErro('❌ Erro: ID do teste não foi fornecido na URL.');
+        // ✅ 1️⃣ VALIDA O TOKEN
+        if (token) {
+          console.log('🔹 Validando token...');
+          
+          const tokenSnap = await db
+            .collection('tokens_acesso')
+            .doc(token)
+            .get();
+
+          if (!tokenSnap.exists) {
+            mostrarErro('❌ Token inválido ou não encontrado.');
+            console.error('Token não existe no banco');
+            return;
+          }
+
+          tokenData = tokenSnap.data();
+          console.log('🔹 Dados do token:', tokenData);
+
+          // ✅ 2️⃣ VERIFICA SE EXPIROU
+          const agora = new Date();
+          const expiraEm = tokenData.expiraEm.toDate ? tokenData.expiraEm.toDate() : new Date(tokenData.expiraEm);
+
+          if (agora > expiraEm) {
+            mostrarErro('❌ Link expirado! O prazo de resposta já encerrou. Por favor, solicite um novo link ao RH.');
+            console.error('Token expirado');
+            return;
+          }
+
+          console.log('✅ Token válido e não expirado');
+
+          // ✅ 3️⃣ VERIFICA SE JÁ FOI USADO
+          if (tokenData.usado) {
+            mostrarErro('⚠️ Este link já foi utilizado! Você já respondeu a este teste.');
+            console.warn('Token já foi usado');
+            return;
+          }
+
+          // ✅ 4️⃣ PEGA O ID DO TESTE DO TOKEN
+          testeId = tokenData.testeId;
+          console.log('🔹 Carregando teste:', testeId);
+        } else if (testeIdAntigo) {
+          // FALLBACK: Se não houver token, tenta com ID (modo backward compatibility)
+          console.log('⚠️ Usando ID ao invés de TOKEN (modo compatibilidade)');
+          testeId = testeIdAntigo;
+        } else {
+          mostrarErro('❌ Erro: Nenhum token ou ID foi fornecido na URL.');
           return;
         }
 
-        console.log('🔹 Buscando teste no Firebase...');
-
-        // ✅ Busca o teste no Firebase
+        // ✅ 5️⃣ CARREGA O TESTE
         const testeSnap = await db
           .collection('estudos_de_caso')
           .doc(testeId)
           .get();
 
         if (!testeSnap.exists) {
-          mostrarErro(`❌ Teste não encontrado. ID: ${testeId}`);
+          mostrarErro(`❌ Teste não encontrado.`);
           return;
         }
 
         const teste = testeSnap.data();
         console.log('✅ Teste carregado:', teste);
 
-        // Preenche as informações
-        document.getElementById('titulo-teste').innerHTML = `
-          <strong>${teste.titulo}</strong><br>
-          <small>${teste.tipo.replace(/-/g, ' ')}</small>
-        `;
-        document.getElementById('texto-teste').textContent = teste.conteudo_texto;
+        // ✅ 6️⃣ RENDERIZA O TESTE
+        renderizarTeste(teste);
 
-        // Renderiza as perguntas
-        const perguntasContainer = document.getElementById('perguntas-container');
-        perguntasContainer.innerHTML = '';
+        // ✅ 7️⃣ MARCA O TOKEN COMO "EM USO" (se estiver usando token)
+        if (token && tokenData) {
+          await db
+            .collection('tokens_acesso')
+            .doc(token)
+            .update({
+              usado: true,
+              dataUso: new Date(),
+              dataInicioResposta: new Date()
+            });
 
-        if (teste.perguntas && teste.perguntas.length > 0) {
-          teste.perguntas.forEach((pergunta, index) => {
-            const perguntaHtml = `
+          console.log('✅ Token marcado como usado');
+        }
+
+      } catch (error) {
+        console.error('❌ Erro ao carregar teste:', error);
+        mostrarErro(`❌ Erro ao carregar o teste: ${error.message}`);
+      }
+    }
+
+    function renderizarTeste(teste) {
+      // Preenche as informações
+      document.getElementById('titulo-teste').innerHTML = `
+        <strong>${teste.titulo}</strong><br>
+        <small>${teste.tipo.replace(/-/g, ' ')}</small>
+      `;
+      document.getElementById('texto-teste').textContent = teste.conteudo_texto;
+
+      // ✅ NOVO: Exibe informações do candidato
+      if (tokenData) {
+        document.getElementById('info-candidato-nome').textContent = tokenData.nomeCandidato || 'Candidato(a)';
+        const prazoDias = tokenData.prazoDias || 7;
+        const expiraEm = tokenData.expiraEm.toDate ? tokenData.expiraEm.toDate() : new Date(tokenData.expiraEm);
+        const dataFormatada = expiraEm.toLocaleDateString('pt-BR');
+        document.getElementById('info-candidato-prazo').textContent = `${prazoDias} dias (vence em ${dataFormatada})`;
+      }
+
+      // Renderiza as perguntas
+      const perguntasContainer = document.getElementById('perguntas-container');
+      perguntasContainer.innerHTML = '';
+
+      if (teste.perguntas && teste.perguntas.length > 0) {
+        teste.perguntas.forEach((pergunta, index) => {
+          let perguntaHtml = '';
+
+          // ✅ RENDERIZA DIFERENTES TIPOS DE PERGUNTAS
+          if (pergunta.tipo === 'multipla-escolha') {
+            perguntaHtml = `
               <div class="pergunta-item">
                 <label class="form-label">
-                  <strong>Pergunta ${index + 1}:</strong> ${pergunta}
+                  <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+                  <span class="tipo-pergunta-badge">Múltipla Escolha</span>
+                </label>
+                <div class="mt-3">
+            `;
+
+            pergunta.opcoes.forEach((opcao, opcaoIdx) => {
+              perguntaHtml += `
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="resposta-${index}" id="opcao-${index}-${opcaoIdx}" value="${opcao.texto}" required>
+                  <label class="form-check-label" for="opcao-${index}-${opcaoIdx}">
+                    ${opcao.texto}
+                  </label>
+                </div>
+              `;
+            });
+
+            perguntaHtml += `</div></div>`;
+          } else if (pergunta.tipo === 'verdadeiro-falso') {
+            perguntaHtml = `
+              <div class="pergunta-item">
+                <label class="form-label">
+                  <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+                  <span class="tipo-pergunta-badge">Verdadeiro/Falso</span>
+                </label>
+                <div class="mt-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="resposta-${index}" id="verdadeiro-${index}" value="Verdadeiro" required>
+                    <label class="form-check-label" for="verdadeiro-${index}">
+                      ✅ Verdadeiro
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="resposta-${index}" id="falso-${index}" value="Falso" required>
+                    <label class="form-check-label" for="falso-${index}">
+                      ❌ Falso
+                    </label>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            // Dissertativa (padrão)
+            perguntaHtml = `
+              <div class="pergunta-item">
+                <label class="form-label">
+                  <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+                  <span class="tipo-pergunta-badge">Dissertativa</span>
                 </label>
                 <textarea 
-                  class="form-control" 
+                  class="form-control mt-2" 
                   name="resposta-${index}"
                   placeholder="Digite sua resposta aqui..."
                   required
                 ></textarea>
               </div>
             `;
-            perguntasContainer.innerHTML += perguntaHtml;
-          });
-        } else {
-          perguntasContainer.innerHTML = '<p class="alert alert-warning">Este teste não possui perguntas.</p>';
-        }
+          }
 
-        // Mostra o conteúdo
-        document.getElementById('carregamento').style.display = 'none';
-        document.getElementById('conteudo-teste').style.display = 'block';
-
-        console.log('✅ Teste renderizado com sucesso');
-      } catch (error) {
-        console.error('❌ Erro ao carregar teste:', error);
-        mostrarErro(`❌ Erro ao carregar o teste: ${error.message}`);
+          perguntasContainer.innerHTML += perguntaHtml;
+        });
+      } else {
+        perguntasContainer.innerHTML = '<p class="alert alert-warning">Este teste não possui perguntas.</p>';
       }
+
+      // Mostra o conteúdo
+      document.getElementById('carregamento').style.display = 'none';
+      document.getElementById('conteudo-teste').style.display = 'block';
+
+      console.log('✅ Teste renderizado com sucesso');
     }
 
     function mostrarErro(mensagem) {
@@ -204,7 +358,24 @@
 
       console.log('✅ Respostas:', respostas);
       
-      // Aqui você pode salvar no Firebase se desejar
+      // ✅ SALVA AS RESPOSTAS NO TOKEN
+      try {
+        if (token && tokenData) {
+          await db
+            .collection('tokens_acesso')
+            .doc(token)
+            .update({
+              respostas: respostas,
+              respondidoEm: new Date(),
+              tempoRespostaSegundos: Math.floor((new Date() - new Date(tokenData.dataInicioResposta)) / 1000)
+            });
+
+          console.log('✅ Respostas salvas no Firestore');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao salvar respostas:', error);
+      }
+
       document.getElementById('conteudo-teste').style.display = 'none';
       document.getElementById('sucesso-teste').innerHTML = `
         <h4>✅ Respostas Enviadas com Sucesso!</h4>
