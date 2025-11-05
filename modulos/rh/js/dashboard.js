@@ -268,7 +268,7 @@ export async function initdashboard(user, userData) {
         alternateRowStyles: {
           fillColor: [249, 249, 249],
         },
-        margin: { top: 48, left: 14, right: 14 },
+        margin: { top: 48, left: 14, right: 14, bottom: 30 },
         styles: {
           overflow: "linebreak",
           cellWidth: "wrap",
@@ -278,18 +278,35 @@ export async function initdashboard(user, userData) {
         },
       });
 
-      // ✅ RODAPÉ
+      // ✅ RODAPÉ COM ENDEREÇO E CONTATO
       const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(8);
-      doc.setTextColor(153, 153, 153);
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
 
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.text(`Página ${i} de ${pageCount}`, 148, 200, { align: "center" });
+
+        // Linha separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(14, 185, 283, 185);
+
+        // Informações de contato
+        const endereco =
+          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290";
+        const whatsapp = "WhatsApp: 11 99794-9071";
+
+        doc.text(endereco, 148, 190, { align: "center", maxWidth: 260 });
+        doc.text(whatsapp, 148, 194, { align: "center" });
+
+        // Página e copyright
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, 148, 198, { align: "center" });
         doc.text(
-          "Relatório gerado automaticamente pelo sistema EuPsico © 2025 /nAvenida Inocêncio Seráfico, 141 Centro de Carapicuíba - SP, 06320-290 ",
+          "Relatório gerado automaticamente pelo sistema EuPsico © 2025",
           148,
-          205,
+          201,
           { align: "center" }
         );
       }
