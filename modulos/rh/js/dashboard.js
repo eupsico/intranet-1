@@ -334,11 +334,12 @@ export async function initdashboard(user, userData) {
       if (cells.length > 0) {
         dados.push({
           Vaga: cells[0].textContent.trim(),
-          "Total de Inscritos": cells[1].textContent.trim().replace(/\D/g, ""),
-          "Em Triagem": cells[2].textContent.trim().replace(/\D/g, ""),
-          Aprovados: cells[3].textContent.trim().replace(/\D/g, ""),
-          Rejeitados: cells[4].textContent.trim().replace(/\D/g, ""),
-          Contratados: cells[5].textContent.trim().replace(/\D/g, ""),
+          "Total de Inscritos": parseInt(cells[1].textContent.trim()) || 0,
+          "Em Triagem": parseInt(cells[2].textContent.trim()) || 0,
+          Aprovados: parseInt(cells[3].textContent.trim()) || 0,
+          Rejeitados: parseInt(cells[4].textContent.trim()) || 0,
+          Contratados: parseInt(cells[5].textContent.trim()) || 0,
+          "Data do Relatório": new Date().toLocaleDateString("pt-BR"),
         });
       }
     });
@@ -346,29 +347,115 @@ export async function initdashboard(user, userData) {
     exportarParaExcel(dados, "inscricoes_por_vaga.csv");
   };
 
+  window.exportarRespostasExcel = function () {
+    const tabelaBody = document.getElementById("rel-tbody-respostas");
+    const dados = [];
+
+    tabelaBody.querySelectorAll("tr").forEach((tr) => {
+      const cells = tr.querySelectorAll("td");
+      if (cells.length >= 5) {
+        dados.push({
+          Candidato: cells[0].textContent.trim(),
+          Teste: cells[1].textContent.trim(),
+          "Data de Resposta": cells[2].textContent.trim(),
+          "Tempo Gasto": cells[3].textContent.trim(),
+          Status: cells[4].textContent.trim(),
+        });
+      }
+    });
+
+    exportarParaExcel(dados, "respostas_testes.csv");
+  };
+
   window.exportarInscricoesPDF = function () {
     exportarParaPDF("rel-tabela-inscricoes", "inscricoes_por_vaga.pdf");
   };
 
   window.exportarCandidatosExcel = function () {
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
+    console.log("📊 Exportando Lista de Candidatos com todos os dados...");
+
     const dados = [];
 
-    tabelaBody.querySelectorAll("tr").forEach((tr) => {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length >= 6) {
-        dados.push({
-          Nome: cells[0].textContent.trim(),
-          Email: cells[1].textContent.trim(),
-          Telefone: cells[2].textContent.trim(),
-          Vaga: cells[3].textContent.trim(),
-          Status: cells[4].textContent.trim(),
-          Teste: cells[5].textContent.trim(),
-        });
+    // ✅ PEGA TODOS OS CANDIDATOS DO CACHE (com dados completos)
+    candidatosCache.forEach((candidato) => {
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
+
+      const testeEnviado = tokensCache.some(
+        (t) => t.candidatoId === candidato.id
+      );
+      const testeRespondido = tokensCache.some(
+        (t) => t.candidatoId === candidato.id && t.usado
+      );
+
+      let statusTeste = "Não enviado";
+      if (testeEnviado && testeRespondido) {
+        statusTeste = "Respondido";
+      } else if (testeEnviado) {
+        statusTeste = "Enviado";
       }
+
+      // ✅ EXTRAI TODOS OS CAMPOS DISPONÍVEIS DO FORMULÁRIO
+      dados.push({
+        "Nome Completo": candidato.nome_completo || "-",
+        Email: candidato.email_candidato || "-",
+        Telefone: candidato.telefone_contato || "-",
+        WhatsApp: candidato.telefone_contato || "-",
+        CPF: candidato.cpf || "-",
+        Cidade: candidato.cidade || "-",
+        Estado: candidato.estado || "-",
+        CEP: candidato.cep || "-",
+        Endereço: candidato.endereco || "-",
+        "Data de Nascimento": candidato.data_nascimento || "-",
+        Gênero: candidato.genero || "-",
+        Nacionalidade: candidato.nacionalidade || "-",
+
+        // Dados Profissionais
+        Vaga: vagaNome,
+        "Formação Profissional": candidato.formacao_profissional || "-",
+        "Conselho Profissional": candidato.conselho_profissional || "-",
+        "Número do Conselho": candidato.numero_conselho || "-",
+        Profissão: candidato.profissao || "-",
+        "Anos de Experiência": candidato.anos_experiencia || "-",
+        "Experiência Profissional": candidato.resumo_experiencia || "-",
+        Habilidades: candidato.habilidades_competencias || "-",
+        "Expectativa Salarial": candidato.expectativa_salarial || "-",
+
+        // Disponibilidade
+        "Como Conheceu a EuPsico": candidato.como_conheceu || "-",
+        Disponibilidade: candidato.disponibilidade || "-",
+        "Pode Trabalhar Finais de Semana":
+          candidato.trabalha_finais_semana === true ? "Sim" : "Não",
+        "Pode Trabalhar Feriados":
+          candidato.trabalha_feriados === true ? "Sim" : "Não",
+
+        // Status
+        "Status do Recrutamento": candidato.status_recrutamento || "-",
+        "Status do Teste": statusTeste,
+        "Data da Candidatura": candidato.data_candidatura
+          ? new Date(
+              candidato.data_candidatura.toDate?.() ||
+                candidato.data_candidatura
+            ).toLocaleDateString("pt-BR")
+          : "-",
+
+        // Links
+        "Link do Currículo": candidato.link_curriculo_drive || "-",
+        "Link do Portfolio": candidato.link_portfolio || "-",
+        LinkedIn: candidato.linkedin || "-",
+
+        // Informações adicionais
+        Observações: candidato.observacoes || "-",
+        "Fonte da Inscrição": candidato.fonte_inscricao || "-",
+      });
     });
 
-    exportarParaExcel(dados, "candidatos.csv");
+    if (dados.length === 0) {
+      window.showToast?.("⚠️ Nenhum candidato para exportar", "warning");
+      return;
+    }
+
+    exportarParaExcel(dados, "candidatos_completo.csv");
   };
 
   window.exportarCandidatosPDF = function () {
