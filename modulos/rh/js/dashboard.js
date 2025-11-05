@@ -140,12 +140,14 @@ export async function initdashboard(user, userData) {
 
     if (typeof html2pdf === "undefined") {
       console.log("⚠️ Carregando biblioteca html2pdf...");
-
       const script = document.createElement("script");
       script.src =
         "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
       script.onload = () => {
         exportarTabelaPDF(element, nomeArquivo);
+      };
+      script.onerror = () => {
+        window.showToast?.("Erro ao carregar biblioteca PDF", "error");
       };
       document.head.appendChild(script);
     } else {
@@ -154,28 +156,140 @@ export async function initdashboard(user, userData) {
   }
 
   function exportarTabelaPDF(element, nomeArquivo) {
+    console.log("📄 Gerando PDF com html2pdf...");
+
+    // ✅ CLONE o elemento para manipulação
     const clone = element.cloneNode(true);
 
     // Remove elementos desnecessários
-    clone.querySelectorAll("button").forEach((btn) => btn.remove());
-    clone.querySelectorAll("input").forEach((inp) => inp.remove());
+    clone
+      .querySelectorAll(
+        "button, input[type='text'], input[type='date'], input[type='time'], select, .form-control"
+      )
+      .forEach((el) => {
+        el.remove();
+      });
 
+    // ✅ CRIA WRAPPER COM CABEÇALHO
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `
+    font-family: Arial, sans-serif;
+    width: 100%;
+    padding: 20px;
+    background: white;
+  `;
+
+    // ✅ CABEÇALHO
+    const cabecalho = document.createElement("div");
+    cabecalho.style.cssText = `
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 15px;
+  `;
+
+    cabecalho.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px; gap: 15px;">
+      <img src="assets/img/logo-eupsico.png" alt="Logo EuPsico" style="height: 50px; width: auto;">
+      <div style="text-align: left;">
+        <h2 style="margin: 0; color: #667eea; font-size: 18px;">EuPsico</h2>
+        <p style="margin: 0; color: #666; font-size: 12px;">Grupo de atendimento multidisciplinar</p>
+      </div>
+    </div>
+    <h3 style="margin: 10px 0; color: #333; font-size: 16px;">${nomeArquivo
+      .replace(".pdf", "")
+      .replace(/_/g, " ")
+      .toUpperCase()}</h3>
+    <p style="margin: 5px 0; color: #999; font-size: 11px;">Data: ${new Date().toLocaleDateString(
+      "pt-BR"
+    )}</p>
+  `;
+
+    wrapper.appendChild(cabecalho);
+
+    // ✅ CONTEÚDO AJUSTADO
+    const conteudo = document.createElement("div");
+    conteudo.style.cssText = `
+    width: 100%;
+    overflow: visible;
+  `;
+
+    // Copia o conteúdo do clone
+    conteudo.innerHTML = clone.innerHTML;
+
+    // ✅ AJUSTA TABELAS PARA CABER NA PÁGINA
+    conteudo.querySelectorAll("table").forEach((table) => {
+      table.style.cssText = `
+      width: 100% !important;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 11px;
+    `;
+
+      table.querySelectorAll("thead th").forEach((th) => {
+        th.style.cssText = `
+        background-color: #667eea !important;
+        color: white !important;
+        padding: 8px !important;
+        text-align: left;
+        border: 1px solid #667eea;
+      `;
+      });
+
+      table.querySelectorAll("tbody td").forEach((td) => {
+        td.style.cssText = `
+        padding: 6px !important;
+        border: 1px solid #ddd;
+        word-wrap: break-word;
+        max-width: 120px;
+      `;
+      });
+
+      table.querySelectorAll("tbody tr:nth-child(even)").forEach((tr) => {
+        tr.style.backgroundColor = "#f9f9f9";
+      });
+    });
+
+    wrapper.appendChild(conteudo);
+
+    // ✅ OPÇÕES DO HTML2PDF
     const opt = {
-      margin: 10,
+      margin: [10, 10, 10, 10],
       filename: nomeArquivo,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, backgroundColor: "#ffffff" },
-      jsPDF: { orientation: "landscape", unit: "mm", format: "a4" },
+      html2canvas: {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      },
+      jsPDF: {
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      },
     };
 
     try {
-      html2pdf().set(opt).from(clone).save();
-      window.showToast?.(
-        `✅ Arquivo ${nomeArquivo} gerado com sucesso!`,
-        "success"
-      );
+      // ✅ GERA O PDF
+      html2pdf()
+        .set(opt)
+        .from(wrapper)
+        .save()
+        .then(() => {
+          console.log("✅ PDF gerado com sucesso");
+          window.showToast?.(
+            `✅ Arquivo ${nomeArquivo} gerado com sucesso!`,
+            "success"
+          );
+        })
+        .catch((error) => {
+          console.error("❌ Erro ao gerar PDF:", error);
+          window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
+        });
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
+      console.error("❌ Erro ao gerar PDF:", error);
       window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
     }
   }
