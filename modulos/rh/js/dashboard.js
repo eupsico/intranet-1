@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.4.0 (Corrigido: candidaturasCache → candidatosCache + Gráfico funcionando)
+// Versão: 3.5.0 (Exportação PDF Corrigida com jsPDF + autoTable)
 
 import {
   collection,
@@ -8,7 +8,6 @@ import {
   getDocs,
   doc,
   getDoc,
-  updateDoc,
 } from "../../../assets/js/firebase-init.js";
 
 export async function initdashboard(user, userData) {
@@ -84,10 +83,10 @@ export async function initdashboard(user, userData) {
   let estudosCache = [];
 
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO
+  // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV)
   // ============================================
 
-  function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
+  function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
     console.log("📊 Exportando para Excel...", dados);
 
     if (!dados || dados.length === 0) {
@@ -95,18 +94,13 @@ export async function initdashboard(user, userData) {
       return;
     }
 
-    // ✅ USAR CSV EM VEZ DE HTML (mais compatível)
     let csv = [];
-
-    // Cabeçalhos
     const headers = Object.keys(dados[0]);
     csv.push(headers.map((h) => `"${h}"`).join(","));
 
-    // Dados
     dados.forEach((linha) => {
       const row = headers.map((h) => {
         let valor = linha[h] || "";
-        // Escapa aspas e quebras de linha
         valor = String(valor).replace(/"/g, '""');
         return `"${valor}"`;
       });
@@ -129,6 +123,10 @@ export async function initdashboard(user, userData) {
     window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
   }
 
+  // ============================================
+  // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF)
+  // ============================================
+
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
     console.log("📄 Exportando para PDF...", elementId);
 
@@ -139,202 +137,176 @@ export async function initdashboard(user, userData) {
       return;
     }
 
-    // Verifica se há dados na tabela
     const tabela = element.querySelector("table");
-    if (tabela && tabela.querySelectorAll("tbody tr").length === 0) {
+    if (!tabela) {
+      window.showToast?.(
+        "⚠️ Nenhuma tabela encontrada para exportar",
+        "warning"
+      );
+      return;
+    }
+
+    const linhas = tabela.querySelectorAll("tbody tr");
+    if (linhas.length === 0) {
       window.showToast?.("⚠️ Nenhum dado para exportar", "warning");
       return;
     }
 
-    if (typeof html2pdf === "undefined") {
-      console.log("⚠️ Carregando biblioteca html2pdf...");
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-      script.onload = () => {
-        setTimeout(() => {
-          exportarTabelaPDF(element, nomeArquivo);
-        }, 500);
+    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
+      console.log("⚠️ Carregando jsPDF e autoTable...");
+
+      const scriptJsPDF = document.createElement("script");
+      scriptJsPDF.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+
+      const scriptAutoTable = document.createElement("script");
+      scriptAutoTable.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
+
+      scriptJsPDF.onload = () => {
+        scriptAutoTable.onload = () => {
+          setTimeout(() => {
+            gerarPDFComJsPDF(tabela, nomeArquivo);
+          }, 500);
+        };
+        scriptAutoTable.onerror = () => {
+          console.error("❌ Erro ao carregar autoTable");
+          window.showToast?.("Erro ao carregar biblioteca PDF", "error");
+        };
+        document.head.appendChild(scriptAutoTable);
       };
-      script.onerror = () => {
-        console.error("❌ Erro ao carregar html2pdf");
+
+      scriptJsPDF.onerror = () => {
+        console.error("❌ Erro ao carregar jsPDF");
         window.showToast?.("Erro ao carregar biblioteca PDF", "error");
       };
-      document.head.appendChild(script);
+
+      document.head.appendChild(scriptJsPDF);
     } else {
-      exportarTabelaPDF(element, nomeArquivo);
+      gerarPDFComJsPDF(tabela, nomeArquivo);
     }
   }
 
-  function exportarTabelaPDF(element, nomeArquivo) {
-    console.log("📄 Gerando PDF com html2pdf...");
-
+  function gerarPDFComJsPDF(tabela, nomeArquivo) {
     try {
-      // ✅ CRIA CONTEÚDO HTML PURO (sem tentar carregar imagem)
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = `
-      font-family: Arial, sans-serif;
-      width: 100%;
-      padding: 20px;
-      background: white;
-      color: #333;
-    `;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
 
-      // ✅ CABEÇALHO SEM IMAGEM
-      const cabecalho = document.createElement("div");
-      cabecalho.style.cssText = `
-      text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #667eea;
-      padding-bottom: 20px;
-    `;
+      // ✅ CABEÇALHO
+      doc.setFontSize(18);
+      doc.setTextColor(102, 126, 234);
+      doc.text("EuPsico", 148, 15, { align: "center" });
 
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Grupo de atendimento multidisciplinar", 148, 22, {
+        align: "center",
+      });
+
+      doc.setFontSize(14);
+      doc.setTextColor(51, 51, 51);
       const tituloRelatorio = nomeArquivo
         .replace(".pdf", "")
         .replace(/_/g, " ")
         .toUpperCase();
+      doc.text(tituloRelatorio, 148, 32, { align: "center" });
 
-      cabecalho.innerHTML = `
-      <h2 style="margin: 0 0 5px 0; color: #667eea; font-size: 20px; font-weight: bold;">
-        EuPsico
-      </h2>
-      <p style="margin: 0 0 15px 0; color: #666; font-size: 12px; font-weight: normal;">
-        Grupo de atendimento multidisciplinar
-      </p>
-      <h3 style="margin: 10px 0; color: #333; font-size: 16px; font-weight: bold;">
-        ${tituloRelatorio}
-      </h3>
-      <p style="margin: 5px 0; color: #999; font-size: 11px;">
-        Data: ${new Date().toLocaleDateString(
-          "pt-BR"
-        )} | Hora: ${new Date().toLocaleTimeString("pt-BR")}
-      </p>
-    `;
+      doc.setFontSize(9);
+      doc.setTextColor(153, 153, 153);
+      const dataHora = `Data: ${new Date().toLocaleDateString(
+        "pt-BR"
+      )} | Hora: ${new Date().toLocaleTimeString("pt-BR")}`;
+      doc.text(dataHora, 148, 38, { align: "center" });
 
-      wrapper.appendChild(cabecalho);
+      // Linha separadora
+      doc.setDrawColor(102, 126, 234);
+      doc.setLineWidth(0.5);
+      doc.line(14, 42, 283, 42);
 
-      // ✅ CONTEÚDO AJUSTADO
-      const conteudo = document.createElement("div");
-      conteudo.style.cssText = `
-      width: 100%;
-      overflow: visible;
-    `;
+      // ✅ EXTRAI DADOS DA TABELA
+      const cabecalhos = [];
+      const linhas = [];
 
-      // ✅ CLONE E COPIA TODO O CONTEÚDO
-      const elementClone = element.cloneNode(true);
-
-      // Remove elementos desnecessários
-      elementClone
-        .querySelectorAll("button, input, select, .form-control, .btn")
-        .forEach((el) => {
-          el.style.display = "none";
-        });
-
-      // ✅ FORMATA TABELAS
-      elementClone.querySelectorAll("table").forEach((table) => {
-        table.style.cssText = `
-        width: 100% !important;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-        font-size: 10px;
-        table-layout: fixed;
-      `;
-
-        table.querySelectorAll("thead").forEach((thead) => {
-          thead.style.backgroundColor = "#667eea";
-          thead.style.color = "white";
-        });
-
-        table.querySelectorAll("th").forEach((th) => {
-          th.style.cssText = `
-          background-color: #667eea !important;
-          color: white !important;
-          padding: 8px !important;
-          text-align: left;
-          border: 1px solid #667eea;
-          font-weight: bold;
-          word-wrap: break-word;
-        `;
-        });
-
-        table.querySelectorAll("td").forEach((td) => {
-          td.style.cssText = `
-          padding: 6px !important;
-          border: 1px solid #ddd;
-          word-wrap: break-word;
-          word-break: break-word;
-          overflow-wrap: break-word;
-        `;
-        });
-
-        table.querySelectorAll("tbody tr:nth-child(even)").forEach((tr) => {
-          tr.style.backgroundColor = "#f9f9f9";
-        });
-
-        table.querySelectorAll("tbody tr:nth-child(odd)").forEach((tr) => {
-          tr.style.backgroundColor = "#ffffff";
-        });
+      tabela.querySelectorAll("thead th").forEach((th) => {
+        cabecalhos.push(th.textContent.trim());
       });
 
-      conteudo.appendChild(elementClone);
-      wrapper.appendChild(conteudo);
+      tabela.querySelectorAll("tbody tr").forEach((tr) => {
+        const linha = [];
+        tr.querySelectorAll("td").forEach((td) => {
+          const texto = td.textContent.trim();
+          linha.push(texto);
+        });
+        if (linha.length > 0) {
+          linhas.push(linha);
+        }
+      });
+
+      console.log("📊 Cabeçalhos:", cabecalhos);
+      console.log("📊 Linhas:", linhas.length);
+
+      // ✅ CRIA A TABELA COM AUTOTABLE
+      doc.autoTable({
+        head: [cabecalhos],
+        body: linhas,
+        startY: 48,
+        theme: "striped",
+        headStyles: {
+          fillColor: [102, 126, 234],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 3,
+        },
+        alternateRowStyles: {
+          fillColor: [249, 249, 249],
+        },
+        margin: { top: 48, left: 14, right: 14 },
+        styles: {
+          overflow: "linebreak",
+          cellWidth: "wrap",
+        },
+        columnStyles: {
+          0: { cellWidth: "auto" },
+        },
+      });
 
       // ✅ RODAPÉ
-      const rodape = document.createElement("div");
-      rodape.style.cssText = `
-      text-align: center;
-      margin-top: 30px;
-      padding-top: 15px;
-      border-top: 1px solid #ddd;
-      font-size: 10px;
-      color: #999;
-    `;
-      rodape.innerHTML = `
-      <p style="margin: 0;">Relatório gerado automaticamente pelo sistema EuPsico</p>
-      <p style="margin: 5px 0 0 0;">Todos os direitos reservados &copy; 2025</p>
-    `;
-      wrapper.appendChild(rodape);
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(153, 153, 153);
 
-      // ✅ OPÇÕES DO HTML2PDF
-      const opt = {
-        margin: [15, 10, 15, 10],
-        filename: nomeArquivo,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          logging: false,
-          useCORS: true,
-          allowTaint: true,
-          willReadFrequently: true,
-        },
-        jsPDF: {
-          orientation: "landscape",
-          unit: "mm",
-          format: "a4",
-        },
-      };
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(`Página ${i} de ${pageCount}`, 148, 200, { align: "center" });
+        doc.text(
+          "Relatório gerado automaticamente pelo sistema EuPsico © 2025",
+          148,
+          205,
+          { align: "center" }
+        );
+      }
 
-      console.log("✅ Iniciando geração do PDF...");
-
-      // ✅ GERA O PDF
-      html2pdf()
-        .set(opt)
-        .from(wrapper)
-        .save()
-        .then(() => {
-          console.log("✅ PDF gerado com sucesso!");
-          window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
-        })
-        .catch((error) => {
-          console.error("❌ Erro ao gerar PDF:", error);
-          window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
-        });
+      // ✅ SALVA O PDF
+      doc.save(nomeArquivo);
+      console.log("✅ PDF gerado com sucesso!");
+      window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
     } catch (error) {
-      console.error("❌ Erro crítico ao gerar PDF:", error);
+      console.error("❌ Erro ao gerar PDF:", error);
       window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
     }
   }
+
+  // ============================================
+  // FUNÇÕES DE EXPORTAÇÃO INDIVIDUAIS
+  // ============================================
 
   window.exportarInscricoesExcel = function () {
     const tabelaBody = document.getElementById("rel-tbody-inscricoes");
@@ -354,11 +326,11 @@ export async function initdashboard(user, userData) {
       }
     });
 
-    exportarParaExcel(dados, "inscrições_por_vaga.xlsx");
+    exportarParaExcel(dados, "inscricoes_por_vaga.csv");
   };
 
   window.exportarInscricoesPDF = function () {
-    exportarParaPDF("rel-tabela-inscricoes", "inscrições_por_vaga.pdf");
+    exportarParaPDF("rel-tabela-inscricoes", "inscricoes_por_vaga.pdf");
   };
 
   window.exportarCandidatosExcel = function () {
@@ -367,7 +339,7 @@ export async function initdashboard(user, userData) {
 
     tabelaBody.querySelectorAll("tr").forEach((tr) => {
       const cells = tr.querySelectorAll("td");
-      if (cells.length >= 7) {
+      if (cells.length >= 6) {
         dados.push({
           Nome: cells[0].textContent.trim(),
           Email: cells[1].textContent.trim(),
@@ -379,7 +351,7 @@ export async function initdashboard(user, userData) {
       }
     });
 
-    exportarParaExcel(dados, "candidatos.xlsx");
+    exportarParaExcel(dados, "candidatos.csv");
   };
 
   window.exportarCandidatosPDF = function () {
@@ -403,7 +375,7 @@ export async function initdashboard(user, userData) {
       }
     });
 
-    exportarParaExcel(dados, "respostas_testes.xlsx");
+    exportarParaExcel(dados, "respostas_testes.csv");
   };
 
   window.exportarRespostasPDF = function () {
@@ -432,7 +404,6 @@ export async function initdashboard(user, userData) {
         e.target.classList.add("active");
         document.getElementById(`tab-${tabName}`).style.display = "block";
 
-        // ✅ CARREGA AUTOMATICAMENTE AO ABRIR ABA DE RELATÓRIOS
         if (tabName === "relatorios") {
           console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
           carregarRelatorios();
@@ -482,7 +453,6 @@ export async function initdashboard(user, userData) {
         throw new Error("Firestore não foi inicializado");
       }
 
-      // ✅ BUSCA DIRETAMENTE COM collection() E getDocs()
       const candidatosRef = collection(db, "candidaturas");
       const tokensRef = collection(db, "tokens_acesso");
       const vagasRef = collection(db, "vagas");
@@ -496,7 +466,6 @@ export async function initdashboard(user, userData) {
           getDocs(estudosRef),
         ]);
 
-      // ✅ PROCESSA CANDIDATOS
       candidatosCache = [];
       candidatosSnap.docs.forEach((doc) => {
         const data = doc.data();
@@ -589,7 +558,6 @@ export async function initdashboard(user, userData) {
       return;
     }
 
-    // ✅ VERIFICA SE O CHART ESTÁ DISPONÍVEL
     if (typeof Chart === "undefined") {
       console.error("❌ Chart.js não foi importado!");
       return;
@@ -597,7 +565,6 @@ export async function initdashboard(user, userData) {
 
     const inscricoesPorVaga = {};
 
-    // ✅ CORRIGIDO: candidatosCache em vez de candidaturasCache
     candidatosCache.forEach((cand) => {
       const vagaId = cand.vaga_id || "Sem vaga";
       inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
@@ -612,12 +579,10 @@ export async function initdashboard(user, userData) {
 
     console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
 
-    // ✅ DESTROI O GRÁFICO ANTERIOR SE EXISTIR
     if (window.graficoInscricoes) {
       window.graficoInscricoes.destroy();
     }
 
-    // ✅ CRIA NOVO GRÁFICO
     window.graficoInscricoes = new Chart(ctx, {
       type: "bar",
       data: {
@@ -704,6 +669,8 @@ export async function initdashboard(user, userData) {
       }
     });
 
+    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
+
     Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
       const vagaNome =
@@ -729,7 +696,6 @@ export async function initdashboard(user, userData) {
         '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
     }
 
-    // ✅ CRIA O GRÁFICO APÓS RENDERIZAR A TABELA
     await criarGraficoInscricoes();
   }
 
