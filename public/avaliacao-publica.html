@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avaliação Pública - EuPsico</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
+    .container-center { background: white; border-radius: 8px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+    h1 { color: #667eea; margin-bottom: 30px; }
+    .alert { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container-center">
+    <h1>🎯 Avaliação - EuPsico</h1>
+    
+    <div id="conteudo-teste">
+      <p class="spinner-border spinner-border-sm me-2"></p>
+      <p>Carregando teste...</p>
+    </div>
+
+    <div id="erro-teste" class="alert alert-danger" style="display:none;"></div>
+  </div>
+
+  <script>
+    // Pega os parâmetros da URL
+    const params = new URLSearchParams(window.location.search);
+    const testeId = params.get('id');
+    const tipo = params.get('tipo');
+
+    console.log('Teste ID:', testeId);
+    console.log('Tipo:', tipo);
+
+    if (!testeId) {
+      document.getElementById('conteudo-teste').style.display = 'none';
+      document.getElementById('erro-teste').innerHTML = '❌ Erro: ID do teste não foi fornecido na URL.';
+      document.getElementById('erro-teste').style.display = 'block';
+    } else {
+      // ✅ Aqui você pode carregar o teste do Firebase e exibir
+      // Por enquanto, mostra uma mensagem de sucesso
+      document.getElementById('conteudo-teste').innerHTML = `
+        <div class="alert alert-success">
+          <h4>✅ Teste Carregado com Sucesso!</h4>
+          <p><strong>ID do Teste:</strong> ${testeId}</p>
+          <p><strong>Tipo:</strong> ${tipo || 'Não especificado'}</p>
+          <p>O formulário do teste será exibido aqui em breve.</p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
