@@ -1,5 +1,9 @@
 // --- IMPORTAÇÕES E CONFIGURAÇÃO INICIAL ---
-const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
+const {
+  onCall,
+  HttpsError,
+  onRequest,
+} = require("firebase-functions/v2/https");
 const {
   onDocumentCreated,
   onDocumentUpdated,
@@ -937,11 +941,7 @@ exports.getSupervisorSlots = onCall({ cors: true }, async (request) => {
     const slotChecks = potentialSlots.map(async (slot) => {
       const q = agendamentosRef
         .where("supervisorUid", "==", supervisorUid)
-        .where(
-          "dataAgendamento",
-          "==",
-          new Date(slot.date)
-        );
+        .where("dataAgendamento", "==", new Date(slot.date));
 
       const querySnapshot = await q.get();
       return {
@@ -1246,39 +1246,39 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   }
 });
 
-
 // ====================================================================
 // FUNÇÃO: uploadCurriculo + salvarCandidatura (AMBAS FUNCIONAIS)
 // ====================================================================
 exports.uploadCurriculo = onRequest(async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).send('OK');
+  if (req.method === "OPTIONS") {
+    res.status(200).send("OK");
     return;
   }
 
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Método não permitido' });
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Método não permitido" });
     return;
   }
 
   try {
-    const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
+    const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } =
+      req.body;
 
     if (!fileData || !mimeType || !fileName) {
-      res.status(400).json({ 
-        status: 'error', 
-        message: 'Campos obrigatórios ausentes' 
+      res.status(400).json({
+        status: "error",
+        message: "Campos obrigatórios ausentes",
       });
       return;
     }
 
     // ✅ COLOQUE A URL NOVA QUE VOCÊ COPIOU AQUI
-   const GAS_URL = "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
-
+    const GAS_URL =
+      "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
 
     const payload = {
       fileData: fileData,
@@ -1288,46 +1288,54 @@ exports.uploadCurriculo = onRequest(async (req, res) => {
       vagaTitulo: vagaTitulo,
     };
 
-    logger.log('📤 Enviando para GAS:', { fileName, nomeCandidato, vagaTitulo });
+    logger.log("📤 Enviando para GAS:", {
+      fileName,
+      nomeCandidato,
+      vagaTitulo,
+    });
 
     const gasResponse = await fetch(GAS_URL, {
       method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
       timeout: 30000,
     });
 
-    logger.log('📥 Status GAS:', gasResponse.status);
+    logger.log("📥 Status GAS:", gasResponse.status);
     const responseText = await gasResponse.text();
-    logger.log('📥 Resposta GAS (primeiros 500 chars):', responseText.substring(0, 500));
+    logger.log(
+      "📥 Resposta GAS (primeiros 500 chars):",
+      responseText.substring(0, 500)
+    );
 
     let gasJson;
     try {
       gasJson = JSON.parse(responseText);
     } catch (e) {
-      logger.error('❌ GAS retornou HTML, não JSON!');
-      logger.error('Resposta completa:', responseText.substring(0, 1000));
-      throw new Error(`GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`);
+      logger.error("❌ GAS retornou HTML, não JSON!");
+      logger.error("Resposta completa:", responseText.substring(0, 1000));
+      throw new Error(
+        `GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`
+      );
     }
 
-    if (gasJson.status === 'success' && gasJson.fileUrl) {
-      logger.log('✅ Sucesso!');
+    if (gasJson.status === "success" && gasJson.fileUrl) {
+      logger.log("✅ Sucesso!");
       res.json({
-        status: 'success',
-        message: 'Arquivo salvo em Google Drive com sucesso!',
-        fileUrl: gasJson.fileUrl
+        status: "success",
+        message: "Arquivo salvo em Google Drive com sucesso!",
+        fileUrl: gasJson.fileUrl,
       });
     } else {
-      throw new Error(gasJson.message || 'Erro desconhecido no GAS');
+      throw new Error(gasJson.message || "Erro desconhecido no GAS");
     }
-
   } catch (error) {
-    logger.error('❌ Erro na uploadCurriculo:', error.message);
+    logger.error("❌ Erro na uploadCurriculo:", error.message);
     res.status(500).json({
-      status: 'error',
-      message: `Erro: ${error.message}`
+      status: "error",
+      message: `Erro: ${error.message}`,
     });
   }
 });
@@ -1340,8 +1348,8 @@ exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
   try {
     // ✅ Em Callable Functions, os dados vêm em request.data
     const data = request.data;
-    
-    logger.log('📥 Recebendo candidatura:', data);
+
+    logger.log("📥 Recebendo candidatura:", data);
 
     // Validar campos obrigatórios
     if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
@@ -1354,45 +1362,377 @@ exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
     // Preparar dados da candidatura
     const novaCandidaturaData = {
       vaga_id: data.vaga_id,
-      titulo_vaga_original: data.titulo_vaga_original || '',
+      titulo_vaga_original: data.titulo_vaga_original || "",
       nome_completo: data.nome_completo,
-      email_candidato: data.email_candidato || '',
-      telefone_contato: data.telefone_contato || '',
-      cep: data.cep || '',
-      numero_endereco: data.numero_endereco || '',
-      complemento_endereco: data.complemento_endereco || '',
-      endereco_rua: data.endereco_rua || '',
-      cidade: data.cidade || '',
-      estado: data.estado || '',
-      resumo_experiencia: data.resumo_experiencia || '',
-      habilidades_competencias: data.habilidades_competencias || '',
-      como_conheceu: data.como_conheceu || '',
+      email_candidato: data.email_candidato || "",
+      telefone_contato: data.telefone_contato || "",
+      cep: data.cep || "",
+      numero_endereco: data.numero_endereco || "",
+      complemento_endereco: data.complemento_endereco || "",
+      endereco_rua: data.endereco_rua || "",
+      cidade: data.cidade || "",
+      estado: data.estado || "",
+      resumo_experiencia: data.resumo_experiencia || "",
+      habilidades_competencias: data.habilidades_competencias || "",
+      como_conheceu: data.como_conheceu || "",
       link_curriculo_drive: data.link_curriculo_drive,
       data_candidatura: FieldValue.serverTimestamp(),
       status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
     };
 
-    logger.log('💾 Salvando no Firestore...');
+    logger.log("💾 Salvando no Firestore...");
 
     // Salvar no Firestore
     const docRef = await db.collection("candidaturas").add(novaCandidaturaData);
 
-    logger.log('✅ Candidatura salva com sucesso! ID:', docRef.id);
+    logger.log("✅ Candidatura salva com sucesso! ID:", docRef.id);
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "Candidatura registrada com sucesso!",
-      id: docRef.id
+      id: docRef.id,
     };
-
   } catch (error) {
     logger.error("❌ Erro ao processar candidatura:", error);
-    
+
     throw new HttpsError(
       "internal",
       "Ocorreu um erro interno ao salvar sua candidatura: " + error.message
     );
   }
 });
+// functions/index.js
+// Arquivo: Firebase Cloud Functions
+// Versão: 1.0.0
+// Descrição: Valida TOKEN e retorna dados do teste
 
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const cors = require("cors")({ origin: true });
 
+admin.initializeApp();
+const db = admin.firestore();
+
+// ============================================
+// CLOUD FUNCTION: Validar Token e Retornar Teste
+// ============================================
+
+/**
+ * Endpoint: /validarTokenTeste
+ * Método: POST
+ * Body: { token: "xxx" }
+ *
+ * Retorna dados do teste se o token for válido
+ */
+exports.validarTokenTeste = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      // ✅ Apenas POST permitido
+      if (req.method !== "POST") {
+        return res.status(405).json({
+          erro: "Método não permitido. Use POST.",
+        });
+      }
+
+      const { token } = req.body;
+
+      // ✅ Valida se token foi informado
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({
+          erro: "Token inválido ou não informado",
+        });
+      }
+
+      console.log(`🔹 Validando token: ${token.substring(0, 10)}...`);
+
+      // ✅ Busca o token no Firestore
+      const tokenSnap = await db
+        .collection("tokens_acesso")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+
+      if (tokenSnap.empty) {
+        console.log("❌ Token não encontrado");
+        return res.status(404).json({
+          erro: "Token inválido ou expirado",
+        });
+      }
+
+      const tokenDoc = tokenSnap.docs[0];
+      const dadosToken = tokenDoc.data();
+
+      // ✅ Verifica se o token foi usado
+      if (dadosToken.usado === true) {
+        console.log("❌ Token já foi utilizado");
+        return res.status(403).json({
+          erro: "Este teste já foi respondido",
+        });
+      }
+
+      // ✅ Verifica se o token expirou
+      const agora = new Date();
+      const dataExpiracao =
+        dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
+
+      if (dataExpiracao && agora > new Date(dataExpiracao)) {
+        console.log("❌ Token expirado");
+        return res.status(403).json({
+          erro: "Token expirado. Solicite um novo link.",
+        });
+      }
+
+      // ✅ Busca o teste
+      const testeSnap = await db
+        .collection("estudos_de_caso")
+        .doc(dadosToken.testeId)
+        .get();
+
+      if (!testeSnap.exists) {
+        console.log("❌ Teste não encontrado");
+        return res.status(404).json({
+          erro: "Teste não encontrado",
+        });
+      }
+
+      const dadosTeste = testeSnap.data();
+
+      // ✅ Busca dados do candidato
+      const candidatoSnap = await db
+        .collection("candidaturas")
+        .doc(dadosToken.candidatoId)
+        .get();
+
+      const dadosCandidato = candidatoSnap.exists ? candidatoSnap.data() : {};
+
+      console.log("✅ Token validado com sucesso!");
+
+      // ✅ Retorna dados
+      return res.status(200).json({
+        sucesso: true,
+        tokenId: tokenDoc.id,
+        candidato: {
+          id: dadosToken.candidatoId,
+          nome:
+            dadosToken.nomeCandidato ||
+            dadosCandidato.nome_completo ||
+            "Candidato",
+          email: dadosCandidato.email_candidato || "não informado",
+        },
+        teste: {
+          id: dadosToken.testeId,
+          titulo: dadosTeste.titulo || "Teste",
+          descricao: dadosTeste.descricao || "",
+          tipo: dadosTeste.tipo || "estudoDeCaso",
+          conteudo: dadosTeste.conteudo || "",
+          perguntas: dadosTeste.perguntas || [],
+          tempoLimite: dadosTeste.tempo_limite_minutos || 45,
+        },
+        prazoDias: dadosToken.prazoDias || 7,
+        expiraEm: dataExpiracao,
+      });
+    } catch (error) {
+      console.error("❌ Erro ao validar token:", error);
+      return res.status(500).json({
+        erro: "Erro interno do servidor",
+        detalhes: error.message,
+      });
+    }
+  });
+});
+
+// ============================================
+// CLOUD FUNCTION: Salvar Respostas do Teste
+// ============================================
+
+/**
+ * Endpoint: /salvarRespostasTeste
+ * Método: POST
+ * Body: { token, respostas, tempoGasto }
+ */
+exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({
+          erro: "Método não permitido. Use POST.",
+        });
+      }
+
+      const { token, respostas, tempoGasto } = req.body;
+
+      if (!token) {
+        return res.status(400).json({
+          erro: "Token não informado",
+        });
+      }
+
+      console.log(
+        `🔹 Salvando respostas do token: ${token.substring(0, 10)}...`
+      );
+
+      // ✅ Busca o token
+      const tokenSnap = await db
+        .collection("tokens_acesso")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+
+      if (tokenSnap.empty) {
+        return res.status(404).json({
+          erro: "Token não encontrado",
+        });
+      }
+
+      const tokenDoc = tokenSnap.docs[0];
+      const dadosToken = tokenDoc.data();
+
+      // ✅ Verifica se já foi respondido
+      if (dadosToken.usado === true) {
+        return res.status(403).json({
+          erro: "Este teste já foi respondido",
+        });
+      }
+
+      const agora = new Date();
+
+      // ✅ Atualiza o token como utilizado
+      await db
+        .collection("tokens_acesso")
+        .doc(tokenDoc.id)
+        .update({
+          usado: true,
+          respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
+          respostas: respostas || {},
+          tempoRespostaSegundos: tempoGasto || 0,
+        });
+
+      // ✅ Atualiza a candidatura com as respostas
+      await db
+        .collection("candidaturas")
+        .doc(dadosToken.candidatoId)
+        .update({
+          testes_respondidos: admin.firestore.FieldValue.arrayUnion({
+            testeId: dadosToken.testeId,
+            tokenId: tokenDoc.id,
+            dataResposta: admin.firestore.FieldValue.serverTimestamp(),
+            tempoGasto: tempoGasto || 0,
+            respostasCount: Object.keys(respostas || {}).length,
+          }),
+          historico: admin.firestore.FieldValue.arrayUnion({
+            data: admin.firestore.FieldValue.serverTimestamp(),
+            acao: `Teste respondido: ${dadosToken.testeId}. Tempo gasto: ${tempoGasto}s`,
+            usuario: "candidato_via_token",
+          }),
+        });
+
+      console.log("✅ Respostas salvas com sucesso!");
+
+      return res.status(200).json({
+        sucesso: true,
+        mensagem: "Respostas registradas com sucesso!",
+        tokenId: tokenDoc.id,
+        dataResposta: agora.toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Erro ao salvar respostas:", error);
+      return res.status(500).json({
+        erro: "Erro ao salvar respostas",
+        detalhes: error.message,
+      });
+    }
+  });
+});
+
+// ============================================
+// CLOUD FUNCTION: Gerar Token Teste (para testes)
+// ============================================
+
+/**
+ * Endpoint: /gerarTokenTeste
+ * Método: POST
+ * Body: { candidatoId, testeId, prazoDias }
+ * Auth: Requer autenticação (apenas RH)
+ */
+exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({
+          erro: "Método não permitido. Use POST.",
+        });
+      }
+
+      const { candidatoId, testeId, prazoDias = 7 } = req.body;
+
+      if (!candidatoId || !testeId) {
+        return res.status(400).json({
+          erro: "candidatoId e testeId são obrigatórios",
+        });
+      }
+
+      console.log(`🔹 Gerando token para candidato: ${candidatoId}`);
+
+      // ✅ Gera token aleatório
+      const token = generateRandomToken();
+
+      // ✅ Calcula data de expiração
+      const dataExpiracao = new Date();
+      dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
+
+      // ✅ Busca dados do candidato
+      const candSnap = await db
+        .collection("candidaturas")
+        .doc(candidatoId)
+        .get();
+
+      const dadosCandidato = candSnap.exists ? candSnap.data() : {};
+
+      // ✅ Cria documento do token
+      const novoToken = await db.collection("tokens_acesso").add({
+        token: token,
+        testeId: testeId,
+        candidatoId: candidatoId,
+        nomeCandidato: dadosCandidato.nome_completo || "Candidato",
+        criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        expiraEm: dataExpiracao,
+        prazoDias: prazoDias,
+        usado: false,
+        respondidoEm: null,
+        respostas: {},
+      });
+
+      console.log("✅ Token gerado com sucesso!");
+
+      // ✅ Retorna URL com token
+      const urlTeste = `https://eupsico.github.io/intranet-1/public/avaliacao-publica.html?token=${token}`;
+
+      return res.status(200).json({
+        sucesso: true,
+        token: token,
+        tokenId: novoToken.id,
+        urlTeste: urlTeste,
+        expiraEm: dataExpiracao.toISOString(),
+        mensagem: "Token gerado com sucesso! Compartilhe o link acima.",
+      });
+    } catch (error) {
+      console.error("❌ Erro ao gerar token:", error);
+      return res.status(500).json({
+        erro: "Erro ao gerar token",
+        detalhes: error.message,
+      });
+    }
+  });
+});
+
+// ============================================
+// HELPER: Gerar Token Aleatório
+// ============================================
+
+function generateRandomToken() {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+}
