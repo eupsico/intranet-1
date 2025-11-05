@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.5.0 (Exportação PDF Corrigida com jsPDF + autoTable)
+// Versão: 3.6.0 (PDF + Rodapé + Excel UTF-8 com BOM + Dados Completos)
 
 import {
   collection,
@@ -83,106 +83,96 @@ export async function initdashboard(user, userData) {
   let estudosCache = [];
 
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV)
+  // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV com BOM UTF-8)
   // ============================================
 
-  function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
-    console.log("📊 Exportando para Excel (XLSX)...", dados);
+  function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
+    console.log("📊 Exportando para Excel (CSV UTF-8 com BOM)...", dados);
 
     if (!dados || dados.length === 0) {
       window.showToast?.("Nenhum dado para exportar", "warning");
       return;
     }
 
-    // ✅ Verifica se SheetJS está carregado
-    if (typeof XLSX === "undefined") {
-      console.log("⚠️ Carregando SheetJS...");
-
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-
-      script.onload = () => {
-        setTimeout(() => {
-          gerarXLSX(dados, nomeArquivo);
-        }, 500);
-      };
-
-      script.onerror = () => {
-        console.error("❌ Erro ao carregar SheetJS");
-        // Fallback: usa CSV com BOM se SheetJS falhar
-        exportarParaExcelCSV(dados, nomeArquivo.replace(".xlsx", ".csv"));
-      };
-
-      document.head.appendChild(script);
-    } else {
-      gerarXLSX(dados, nomeArquivo);
-    }
-  }
-
-  function gerarXLSX(dados, nomeArquivo) {
     try {
-      // ✅ Converte dados para formato de worksheet
-      const ws = XLSX.utils.json_to_sheet(dados, {
-        header: 1,
-        cellDates: true,
+      let csv = [];
+      const headers = Object.keys(dados[0]);
+
+      // ✅ Adiciona BOM (Byte Order Mark) para UTF-8
+      // Isso faz o Excel reconhecer corretamente os acentos
+      const headerRow = headers
+        .map((h) => {
+          let header = String(h).replace(/"/g, '""');
+          return `"${header}"`;
+        })
+        .join(",");
+
+      csv.push(headerRow);
+
+      // ✅ Processa cada linha de dados
+      dados.forEach((linha) => {
+        const row = headers
+          .map((h) => {
+            let valor = linha[h] || "";
+
+            // Converte valores especiais
+            if (valor === null || valor === undefined) {
+              valor = "";
+            } else if (typeof valor === "object") {
+              valor = JSON.stringify(valor);
+            } else {
+              valor = String(valor);
+            }
+
+            // Escapa aspas duplas
+            valor = valor.replace(/"/g, '""');
+
+            return `"${valor}"`;
+          })
+          .join(",");
+
+        csv.push(row);
       });
 
-      // ✅ Configurações da planilha
-      ws["!cols"] = Object.keys(dados[0] || {}).map(() => ({ wch: 20 })); // Largura das colunas
+      const csvContent = csv.join("\n");
 
-      // ✅ Cria workbook
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Dados");
+      // ✅ BOM UTF-8 (\uFEFF) faz Excel reconhecer acentos corretamente
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
 
-      // ✅ Salva o arquivo
-      XLSX.writeFile(wb, nomeArquivo);
+      // ✅ Download do arquivo
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
 
-      console.log("✅ XLSX gerado com sucesso!");
-      window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
+      link.setAttribute("href", url);
+
+      // ✅ Muda extensão para .csv
+      const nomeComExtenso = nomeArquivo.includes(".")
+        ? nomeArquivo
+        : nomeArquivo + ".csv";
+
+      link.setAttribute("download", nomeComExtenso);
+      link.style.visibility = "hidden";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Libera memória
+      URL.revokeObjectURL(url);
+
+      console.log("✅ CSV gerado com sucesso!");
+      window.showToast?.(`✅ Arquivo ${nomeComExtenso} baixado!`, "success");
     } catch (error) {
-      console.error("❌ Erro ao gerar XLSX:", error);
-      window.showToast?.("❌ Erro ao gerar arquivo Excel", "error");
+      console.error("❌ Erro ao gerar CSV:", error);
+      window.showToast?.("❌ Erro ao exportar arquivo", "error");
     }
   }
-  function exportarParaExcelCSV(dados, nomeArquivo) {
-    console.log("📊 Exportando para CSV com BOM...");
 
-    let csv = [];
-    const headers = Object.keys(dados[0] || {});
-
-    csv.push(headers.map((h) => `"${h}"`).join(","));
-
-    dados.forEach((linha) => {
-      const row = headers.map((h) => {
-        let valor = linha[h] || "";
-        valor = String(valor).replace(/"/g, '""');
-        return `"${valor}"`;
-      });
-      csv.push(row.join(","));
-    });
-
-    const csvContent = csv.join("\n");
-    const BOM = "\uFEFF";
-    const blob = new Blob([BOM + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute("href", url);
-    link.setAttribute("download", nomeArquivo);
-    link.style.visibility = "hidden";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
-  }
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF)
+  // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF + autoTable)
   // ============================================
 
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
@@ -326,7 +316,7 @@ export async function initdashboard(user, userData) {
         alternateRowStyles: {
           fillColor: [249, 249, 249],
         },
-        margin: { top: 48, left: 14, right: 14, bottom: 30 },
+        margin: { top: 48, left: 14, right: 14, bottom: 35 },
         styles: {
           overflow: "linebreak",
           cellWidth: "wrap",
@@ -336,7 +326,7 @@ export async function initdashboard(user, userData) {
         },
       });
 
-      // ✅ RODAPÉ COM ENDEREÇO E CONTATO
+      // ✅ RODAPÉ COM ENDEREÇO, WHATSAPP E CONTATO
       const pageCount = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(100, 100, 100);
@@ -347,24 +337,24 @@ export async function initdashboard(user, userData) {
         // Linha separadora
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
-        doc.line(14, 185, 283, 185);
+        doc.line(14, 182, 283, 182);
 
-        // Informações de contato
+        // ✅ Informações de contato
         const endereco =
           "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290";
         const whatsapp = "WhatsApp: 11 99794-9071";
 
-        doc.text(endereco, 148, 190, { align: "center", maxWidth: 260 });
-        doc.text(whatsapp, 148, 194, { align: "center" });
+        doc.text(endereco, 148, 187, { align: "center", maxWidth: 260 });
+        doc.text(whatsapp, 148, 191, { align: "center" });
 
         // Página e copyright
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${i} de ${pageCount}`, 148, 198, { align: "center" });
+        doc.text(`Página ${i} de ${pageCount}`, 148, 195, { align: "center" });
         doc.text(
           "Relatório gerado automaticamente pelo sistema EuPsico © 2025",
           148,
-          201,
+          198,
           { align: "center" }
         );
       }
@@ -380,11 +370,18 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO INDIVIDUAIS
+  // FUNÇÕES DE EXPORTAÇÃO INDIVIDUAIS - EXCEL
   // ============================================
 
   window.exportarInscricoesExcel = function () {
+    console.log("📊 Exportando Inscrições por Vaga...");
+
     const tabelaBody = document.getElementById("rel-tbody-inscricoes");
+    if (!tabelaBody) {
+      window.showToast?.("Tabela não encontrada", "error");
+      return;
+    }
+
     const dados = [];
 
     tabelaBody.querySelectorAll("tr").forEach((tr) => {
@@ -402,27 +399,12 @@ export async function initdashboard(user, userData) {
       }
     });
 
+    if (dados.length === 0) {
+      window.showToast?.("Nenhum dado para exportar", "warning");
+      return;
+    }
+
     exportarParaExcel(dados, "inscricoes_por_vaga.csv");
-  };
-
-  window.exportarRespostasExcel = function () {
-    const tabelaBody = document.getElementById("rel-tbody-respostas");
-    const dados = [];
-
-    tabelaBody.querySelectorAll("tr").forEach((tr) => {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length >= 5) {
-        dados.push({
-          Candidato: cells[0].textContent.trim(),
-          Teste: cells[1].textContent.trim(),
-          "Data de Resposta": cells[2].textContent.trim(),
-          "Tempo Gasto": cells[3].textContent.trim(),
-          Status: cells[4].textContent.trim(),
-        });
-      }
-    });
-
-    exportarParaExcel(dados, "respostas_testes.csv");
   };
 
   window.exportarInscricoesPDF = function () {
@@ -434,7 +416,6 @@ export async function initdashboard(user, userData) {
 
     const dados = [];
 
-    // ✅ PEGA TODOS OS CANDIDATOS DO CACHE (com dados completos)
     candidatosCache.forEach((candidato) => {
       const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
       const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
@@ -453,7 +434,6 @@ export async function initdashboard(user, userData) {
         statusTeste = "Enviado";
       }
 
-      // ✅ EXTRAI TODOS OS CAMPOS DISPONÍVEIS DO FORMULÁRIO
       dados.push({
         "Nome Completo": candidato.nome_completo || "-",
         Email: candidato.email_candidato || "-",
@@ -467,8 +447,6 @@ export async function initdashboard(user, userData) {
         "Data de Nascimento": candidato.data_nascimento || "-",
         Gênero: candidato.genero || "-",
         Nacionalidade: candidato.nacionalidade || "-",
-
-        // Dados Profissionais
         Vaga: vagaNome,
         "Formação Profissional": candidato.formacao_profissional || "-",
         "Conselho Profissional": candidato.conselho_profissional || "-",
@@ -478,16 +456,12 @@ export async function initdashboard(user, userData) {
         "Experiência Profissional": candidato.resumo_experiencia || "-",
         Habilidades: candidato.habilidades_competencias || "-",
         "Expectativa Salarial": candidato.expectativa_salarial || "-",
-
-        // Disponibilidade
         "Como Conheceu a EuPsico": candidato.como_conheceu || "-",
         Disponibilidade: candidato.disponibilidade || "-",
         "Pode Trabalhar Finais de Semana":
           candidato.trabalha_finais_semana === true ? "Sim" : "Não",
         "Pode Trabalhar Feriados":
           candidato.trabalha_feriados === true ? "Sim" : "Não",
-
-        // Status
         "Status do Recrutamento": candidato.status_recrutamento || "-",
         "Status do Teste": statusTeste,
         "Data da Candidatura": candidato.data_candidatura
@@ -496,13 +470,9 @@ export async function initdashboard(user, userData) {
                 candidato.data_candidatura
             ).toLocaleDateString("pt-BR")
           : "-",
-
-        // Links
         "Link do Currículo": candidato.link_curriculo_drive || "-",
         "Link do Portfolio": candidato.link_portfolio || "-",
         LinkedIn: candidato.linkedin || "-",
-
-        // Informações adicionais
         Observações: candidato.observacoes || "-",
         "Fonte da Inscrição": candidato.fonte_inscricao || "-",
       });
@@ -521,7 +491,14 @@ export async function initdashboard(user, userData) {
   };
 
   window.exportarRespostasExcel = function () {
+    console.log("📊 Exportando Respostas aos Testes...");
+
     const tabelaBody = document.getElementById("rel-tbody-respostas");
+    if (!tabelaBody) {
+      window.showToast?.("Tabela não encontrada", "error");
+      return;
+    }
+
     const dados = [];
 
     tabelaBody.querySelectorAll("tr").forEach((tr) => {
@@ -536,6 +513,11 @@ export async function initdashboard(user, userData) {
         });
       }
     });
+
+    if (dados.length === 0) {
+      window.showToast?.("Nenhum dado para exportar", "warning");
+      return;
+    }
 
     exportarParaExcel(dados, "respostas_testes.csv");
   };
