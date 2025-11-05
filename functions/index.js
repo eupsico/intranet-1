@@ -1651,71 +1651,42 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
  * Body: { candidatoId, testeId, prazoDias }
  * Auth: Requer autenticação (apenas RH)
  */
-exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
+exports.listarTokens = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     try {
-      if (req.method !== "POST") {
-        return res.status(405).json({
-          erro: "Método não permitido. Use POST.",
-        });
+      const { status, candidatoId } = req.query;
+
+      let q = db.collection("tokens_acesso");
+
+      if (status === "usado") {
+        q = q.where("usado", "==", true);
+      } else if (status === "pendente") {
+        q = q.where("usado", "==", false);
       }
 
-      const { candidatoId, testeId, prazoDias = 7 } = req.body;
-
-      if (!candidatoId || !testeId) {
-        return res.status(400).json({
-          erro: "candidatoId e testeId são obrigatórios",
-        });
+      if (candidatoId) {
+        q = q.where("candidatoId", "==", candidatoId);
       }
 
-      console.log(`🔹 Gerando token para candidato: ${candidatoId}`);
+      const snapshot = await q.limit(50).get();
 
-      // ✅ Gera token aleatório
-      const token = generateRandomToken();
-
-      // ✅ Calcula data de expiração
-      const dataExpiracao = new Date();
-      dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
-
-      // ✅ Busca dados do candidato
-      const candSnap = await db
-        .collection("candidaturas")
-        .doc(candidatoId)
-        .get();
-
-      const dadosCandidato = candSnap.exists ? candSnap.data() : {};
-
-      // ✅ Cria documento do token
-      const novoToken = await db.collection("tokens_acesso").add({
-        token: token,
-        testeId: testeId,
-        candidatoId: candidatoId,
-        nomeCandidato: dadosCandidato.nome_completo || "Candidato",
-        criadoEm: admin.firestore.FieldValue.serverTimestamp(),
-        expiraEm: dataExpiracao,
-        prazoDias: prazoDias,
-        usado: false,
-        respondidoEm: null,
-        respostas: {},
+      const tokens = [];
+      snapshot.forEach((doc) => {
+        tokens.push({
+          id: doc.id,
+          ...doc.data(),
+        });
       });
-
-      console.log("✅ Token gerado com sucesso!");
-
-      // ✅ Retorna URL com token
-      const urlTeste = `https://eupsico.github.io/intranet-1/public/avaliacao-publica.html?token=${token}`;
 
       return res.status(200).json({
         sucesso: true,
-        token: token,
-        tokenId: novoToken.id,
-        urlTeste: urlTeste,
-        expiraEm: dataExpiracao.toISOString(),
-        mensagem: "Token gerado com sucesso! Compartilhe o link acima.",
+        total: tokens.length,
+        tokens: tokens,
       });
     } catch (error) {
-      console.error("❌ Erro ao gerar token:", error);
+      console.error("❌ Erro ao listar tokens:", error);
       return res.status(500).json({
-        erro: "Erro ao gerar token",
+        erro: "Erro ao listar tokens",
         detalhes: error.message,
       });
     }
@@ -1731,5 +1702,5 @@ function generateRandomToken() {
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15)
-  );
+  ).substring(0, 50);
 }
