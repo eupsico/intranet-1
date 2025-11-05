@@ -1,6 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.2.0 (Com Exportação PDF/Excel Corrigida)
-// Data: 05/11/2025
+// Versão: 3.3.0 (Carregamento Automático + Cards Responsivos)
 
 import {
   collection,
@@ -87,7 +86,6 @@ export async function initdashboard(user, userData) {
   // FUNÇÕES DE EXPORTAÇÃO
   // ============================================
 
-  // ✅ Exportar para Excel
   function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
     console.log("📊 Exportando para Excel...");
 
@@ -99,13 +97,11 @@ export async function initdashboard(user, userData) {
     let html =
       '<table border="1"><tr style="background-color: #4472C4; color: white;">';
 
-    // Cabeçalhos
     Object.keys(dados[0]).forEach((chave) => {
       html += `<th style="padding: 10px; font-weight: bold;">${chave}</th>`;
     });
     html += "</tr>";
 
-    // Dados
     dados.forEach((linha, index) => {
       const corFundo = index % 2 === 0 ? "#F2F2F2" : "#FFFFFF";
       html += `<tr style="background-color: ${corFundo};">`;
@@ -117,7 +113,6 @@ export async function initdashboard(user, userData) {
 
     html += "</table>";
 
-    // Cria blob e download
     const blob = new Blob([html], {
       type: "application/vnd.ms-excel;charset=UTF-8",
     });
@@ -136,7 +131,6 @@ export async function initdashboard(user, userData) {
     );
   }
 
-  // ✅ Exportar para PDF
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
     console.log("📄 Exportando para PDF...");
 
@@ -146,7 +140,6 @@ export async function initdashboard(user, userData) {
       return;
     }
 
-    // Verifica se html2pdf está disponível
     if (typeof html2pdf === "undefined") {
       console.log("⚠️ Carregando biblioteca html2pdf...");
 
@@ -183,7 +176,6 @@ export async function initdashboard(user, userData) {
     }
   }
 
-  // ✅ Exportar Inscrições para Excel
   window.exportarInscricoesExcel = function () {
     const tabelaBody = document.getElementById("rel-tbody-inscricoes");
     const dados = [];
@@ -205,12 +197,10 @@ export async function initdashboard(user, userData) {
     exportarParaExcel(dados, "inscrições_por_vaga.xlsx");
   };
 
-  // ✅ Exportar Inscrições para PDF
   window.exportarInscricoesPDF = function () {
     exportarParaPDF("rel-tabela-inscricoes", "inscrições_por_vaga.pdf");
   };
 
-  // ✅ Exportar Candidatos para Excel
   window.exportarCandidatosExcel = function () {
     const tabelaBody = document.getElementById("rel-tbody-candidatos");
     const dados = [];
@@ -232,12 +222,10 @@ export async function initdashboard(user, userData) {
     exportarParaExcel(dados, "candidatos.xlsx");
   };
 
-  // ✅ Exportar Candidatos para PDF
   window.exportarCandidatosPDF = function () {
     exportarParaPDF("rel-tabela-candidatos", "candidatos.pdf");
   };
 
-  // ✅ Exportar Respostas para Excel
   window.exportarRespostasExcel = function () {
     const tabelaBody = document.getElementById("rel-tbody-respostas");
     const dados = [];
@@ -258,13 +246,12 @@ export async function initdashboard(user, userData) {
     exportarParaExcel(dados, "respostas_testes.xlsx");
   };
 
-  // ✅ Exportar Respostas para PDF
   window.exportarRespostasPDF = function () {
     exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
   };
 
   // ============================================
-  // LISTENERS DE ABAS
+  // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
   // ============================================
 
   const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
@@ -285,7 +272,9 @@ export async function initdashboard(user, userData) {
         e.target.classList.add("active");
         document.getElementById(`tab-${tabName}`).style.display = "block";
 
+        // ✅ CARREGA AUTOMATICAMENTE AO ABRIR ABA DE RELATÓRIOS
         if (tabName === "relatorios") {
+          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
           carregarRelatorios();
         }
       });
@@ -326,6 +315,8 @@ export async function initdashboard(user, userData) {
     console.log("🔹 Carregando relatórios de recrutamento...");
 
     try {
+      console.log("📊 Buscando dados do Firestore...");
+
       const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
         await Promise.all([
           getDocs(candidatosCollection),
@@ -341,6 +332,11 @@ export async function initdashboard(user, userData) {
       tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      console.log(`📊 Candidatos: ${candidatosCache.length}`);
+      console.log(`📊 Tokens: ${tokensCache.length}`);
+      console.log(`📊 Vagas: ${vagasCache.length}`);
+      console.log(`📊 Estudos: ${estudosCache.length}`);
 
       const totalInscritos = candidatosCache.length;
       const testesRespondidos = tokensCache.filter((t) => t.usado).length;
@@ -378,13 +374,11 @@ export async function initdashboard(user, userData) {
   async function popularFiltros() {
     console.log("🔹 Populando filtros...");
 
-    // Filtro de vagas - CORRIGIDO
     if (relFiltroVaga) {
       relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
       vagasCache.forEach((vaga) => {
         const option = document.createElement("option");
         option.value = vaga.id;
-        // Prioriza 'titulo', depois 'tituloVaga', depois 'nome', depois ID
         const nomeDaVaga =
           vaga.titulo ||
           vaga.tituloVaga ||
@@ -396,7 +390,6 @@ export async function initdashboard(user, userData) {
       });
     }
 
-    // Filtro de testes
     if (relFiltroTeste) {
       relFiltroTeste.innerHTML = '<option value="">Todos os testes</option>';
       estudosCache.forEach((teste) => {
@@ -451,7 +444,6 @@ export async function initdashboard(user, userData) {
 
     Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
-      // CORRIGIDA: Busca o título correto
       const vagaNome =
         vaga?.titulo ||
         vaga?.tituloVaga ||
