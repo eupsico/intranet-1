@@ -87,48 +87,45 @@ export async function initdashboard(user, userData) {
   // ============================================
 
   function exportarParaExcel(dados, nomeArquivo = "relatorio.xlsx") {
-    console.log("📊 Exportando para Excel...");
+    console.log("📊 Exportando para Excel...", dados);
 
     if (!dados || dados.length === 0) {
       window.showToast?.("Nenhum dado para exportar", "warning");
       return;
     }
 
-    let html =
-      '<table border="1"><tr style="background-color: #4472C4; color: white;">';
+    // ✅ USAR CSV EM VEZ DE HTML (mais compatível)
+    let csv = [];
 
-    Object.keys(dados[0]).forEach((chave) => {
-      html += `<th style="padding: 10px; font-weight: bold;">${chave}</th>`;
-    });
-    html += "</tr>";
+    // Cabeçalhos
+    const headers = Object.keys(dados[0]);
+    csv.push(headers.map((h) => `"${h}"`).join(","));
 
-    dados.forEach((linha, index) => {
-      const corFundo = index % 2 === 0 ? "#F2F2F2" : "#FFFFFF";
-      html += `<tr style="background-color: ${corFundo};">`;
-      Object.values(linha).forEach((valor) => {
-        html += `<td style="padding: 8px; border: 1px solid #DDD;">${valor}</td>`;
+    // Dados
+    dados.forEach((linha) => {
+      const row = headers.map((h) => {
+        let valor = linha[h] || "";
+        // Escapa aspas e quebras de linha
+        valor = String(valor).replace(/"/g, '""');
+        return `"${valor}"`;
       });
-      html += "</tr>";
+      csv.push(row.join(","));
     });
 
-    html += "</table>";
-
-    const blob = new Blob([html], {
-      type: "application/vnd.ms-excel;charset=UTF-8",
-    });
-    const url = window.URL.createObjectURL(blob);
+    const csvContent = csv.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.href = url;
-    link.download = nomeArquivo;
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", nomeArquivo.replace(".xlsx", ".csv"));
+    link.style.visibility = "hidden";
+
     document.body.appendChild(link);
     link.click();
-    window.URL.revokeObjectURL(url);
     document.body.removeChild(link);
 
-    window.showToast?.(
-      `✅ Arquivo ${nomeArquivo} baixado com sucesso!`,
-      "success"
-    );
+    window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
   }
 
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
@@ -442,28 +439,37 @@ export async function initdashboard(user, userData) {
       });
     }
   }
+
   async function criarGraficoInscricoes() {
     const ctx = document.getElementById("rel-chart-inscricoes");
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("❌ Canvas rel-chart-inscricoes não encontrado");
+      return;
+    }
 
     const inscricoesPorVaga = {};
 
     candidaturasCache.forEach((cand) => {
       const vagaId = cand.vaga_id || "Sem vaga";
-      if (!inscricoesPorVaga[vagaId]) {
-        inscricoesPorVaga[vagaId] = 0;
-      }
-      inscricoesPorVaga[vagaId]++;
+      inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
     });
 
     const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
       const vaga = vagasCache.find((v) => v.id === vagaId);
-      return vaga?.titulo || vagaId.substring(0, 8);
+      return vaga?.titulo || vaga?.nome || vagaId.substring(0, 8);
     });
 
     const dados = Object.values(inscricoesPorVaga);
 
-    new Chart(ctx, {
+    console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
+
+    // ✅ DESTROI O GRÁFICO ANTERIOR SE EXISTIR
+    if (window.graficoInscricoes) {
+      window.graficoInscricoes.destroy();
+    }
+
+    // ✅ CRIA NOVO GRÁFICO
+    window.graficoInscricoes = new Chart(ctx, {
       type: "bar",
       data: {
         labels: vagasNomes,
@@ -483,11 +489,20 @@ export async function initdashboard(user, userData) {
         scales: {
           y: {
             beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: true,
           },
         },
       },
     });
   }
+
   // ============================================
   // FUNÇÃO: Renderizar Inscrições por Vaga
   // ============================================
