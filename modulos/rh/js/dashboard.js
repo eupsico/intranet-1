@@ -33,7 +33,7 @@ export async function initdashboard(user, userData) {
   const onboardingCollection = collection(db, "onboarding");
   const comunicadosCollection = collection(db, "comunicados");
   const desligamentosCollection = collection(db, "desligamentos");
-  const candidatosCollection = collection(db, "candidatos");
+  const candidatosCollection = collection(db, "candidaturas");
   const tokensAcessoCollection = collection(db, "tokens_acesso");
   const estudosDeCasoCollection = collection(db, "estudos_de_caso");
 
@@ -326,7 +326,7 @@ export async function initdashboard(user, userData) {
       }
 
       // ✅ BUSCA DIRETAMENTE COM collection() E getDocs()
-      const candidatosRef = collection(db, "candidatos");
+      const candidatosRef = collection(db, "candidaturas");
       const tokensRef = collection(db, "tokens_acesso");
       const vagasRef = collection(db, "vagas");
       const estudosRef = collection(db, "estudos_de_caso");
