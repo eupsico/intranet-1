@@ -917,7 +917,7 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÃO: Renderizar Respostas aos Testes
+  // FUNÇÃO: Renderizar Respostas aos Testes (COM ÍCONE CLARO)
   // ============================================
 
   async function renderizarRespostasAosTestes() {
@@ -934,7 +934,8 @@ export async function initdashboard(user, userData) {
       const candidato = candidatosCache.find((c) => c.id === token.candidatoId);
       const teste = estudosCache.find((t) => t.id === token.testeId);
 
-      const candidatoNome = candidato?.nome_completo || "-";
+      const candidatoNome =
+        candidato?.nome_completo || token.nomeCandidato || "-";
       const testeNome = teste?.titulo || teste?.nome || "-";
 
       const dataResposta = token.respondidoEm
@@ -967,11 +968,11 @@ export async function initdashboard(user, userData) {
       <td class="text-center">
         <button 
           class="btn btn-sm btn-primary" 
-          title="Ver respostas"
+          title="Ver Respostas"
           onclick="window.abrirModalVerRespostas('${
             token.id
           }', '${candidatoNome.replace(/'/g, "\\'")}')">
-          <i class="fas fa-eye"></i>
+          <i class="fas fa-eye me-1"></i> Ver Respostas
         </button>
       </td>
     `;
@@ -1284,7 +1285,7 @@ export async function initdashboard(user, userData) {
   };
 
   // ============================================
-  // FUNÇÃO: Exportar Resposta Individual (CORRIGIDA)
+  // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS)
   // ============================================
 
   window.exportarRespostaIndividual = async function (
@@ -1299,7 +1300,7 @@ export async function initdashboard(user, userData) {
         return;
       }
 
-      // ✅ Busca o token com o ID do documento
+      // ✅ Busca o token
       const tokenDocRef = doc(db, "tokens_acesso", tokenDocId);
       const tokenSnap = await getDoc(tokenDocRef);
 
@@ -1309,18 +1310,16 @@ export async function initdashboard(user, userData) {
       }
 
       const tokenData = tokenSnap.data();
-
       console.log("✅ Token encontrado:", tokenData);
 
       // ✅ Busca o teste
       const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
       const testeSnap = await getDoc(testeRef);
-
       const testeDados = testeSnap.exists() ? testeSnap.data() : {};
 
       console.log("✅ Teste encontrado:", testeDados);
 
-      // ✅ Cria dados para exportação
+      // ✅ Formata data e tempo
       const dataResposta = tokenData.respondidoEm
         ? new Date(
             tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
@@ -1339,28 +1338,24 @@ export async function initdashboard(user, userData) {
           }s`
         : "-";
 
-      // ✅ Primeiro objeto com informações gerais
-      const infoGeral = {
-        "Nome do Candidato": candidatoNome,
+      // ✅ Cria linha única para Excel com TODAS as colunas
+      const linhaExcel = {
+        Candidato: candidatoNome,
         Teste: testeDados.titulo || "Teste",
         "Data da Resposta": dataResposta,
         "Tempo Gasto": tempoGasto,
         Status: "Respondido",
       };
 
-      // ✅ Dados para Excel com respostas
-      const dadosExcel = { ...infoGeral };
-
-      // ✅ Adiciona cada resposta
+      // ✅ Adiciona cada RESPOSTA como coluna no Excel
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
           const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          const numPergunta = `P${index + 1}: ${pergunta.enunciado}`;
-          dadosExcel[numPergunta] = resposta;
+          linhaExcel[`P${index + 1}: ${pergunta.enunciado}`] = resposta;
         });
       }
 
-      console.log("📊 Dados para exportação:", dadosExcel);
+      console.log("📊 Dados para exportação:", linhaExcel);
 
       // ✅ Pergunta qual formato exportar
       const { isConfirmed, isDenied } = await Swal.fire({
@@ -1377,7 +1372,7 @@ export async function initdashboard(user, userData) {
       if (isConfirmed) {
         console.log("📊 Exportando para Excel...");
         exportarParaExcel(
-          [dadosExcel],
+          [linhaExcel],
           `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
         );
       } else if (isDenied) {
