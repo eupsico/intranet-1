@@ -1159,45 +1159,29 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste (CORRIGIDA)
+  // FUNÇÃO: Visualizar Respostas do Teste (SEM BOOTSTRAP)
   // ============================================
 
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
 
     try {
-      // ✅ Inicializa Firestore
       if (!db) {
         console.error("❌ ERRO: Firestore não inicializado!");
         window.showToast?.("Erro: Firestore não está pronto", "error");
         return;
       }
 
-      // ✅ Busca o token com as respostas
-      const tokensRef = collection(db, "tokens_acesso");
-      const tokenQuery = query(tokensRef, where("id", "==", tokenId));
-      const tokenSnap = await getDocs(tokenQuery);
+      // ✅ Busca o token
+      const tokenDocRef = doc(db, "tokens_acesso", tokenId);
+      const tokenSnap = await getDoc(tokenDocRef);
 
-      let tokenData = null;
-      let tokenDocId = null;
-
-      if (!tokenSnap.empty) {
-        tokenData = tokenSnap.docs[0].data();
-        tokenDocId = tokenSnap.docs[0].id;
-      } else {
-        // Tenta buscar direto pelo ID do documento
-        const tokenDocSnap = await getDoc(doc(db, "tokens_acesso", tokenId));
-        if (tokenDocSnap.exists()) {
-          tokenData = tokenDocSnap.data();
-          tokenDocId = tokenId;
-        }
-      }
-
-      if (!tokenData) {
+      if (!tokenSnap.exists()) {
         window.showToast?.("Token não encontrado", "error");
         return;
       }
 
+      const tokenData = tokenSnap.data();
       console.log("✅ Token encontrado:", tokenData);
 
       if (
@@ -1211,125 +1195,86 @@ export async function initdashboard(user, userData) {
         return;
       }
 
-      // ✅ Busca o teste para saber os enunciados
+      // ✅ Busca o teste
       const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
       const testeSnap = await getDoc(testeRef);
-
       const testeDados = testeSnap.exists() ? testeSnap.data() : {};
 
       console.log("✅ Teste carregado:", testeDados);
 
-      // ✅ Cria HTML modal com as respostas
-      let modalHTML = `
-      <div class="modal fade" id="modal-ver-respostas-${tokenId}" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">
-                <i class="fas fa-eye me-2"></i> Respostas do Teste
-              </h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-              <div class="card mb-3">
-                <div class="card-body">
-                  <p class="mb-2">
-                    <strong>📋 Candidato:</strong> ${candidatoNome}
-                  </p>
-                  <p class="mb-2">
-                    <strong>📝 Teste:</strong> ${testeDados.titulo || "Teste"}
-                  </p>
-                  <p class="mb-2">
-                    <strong>⏱️ Tempo gasto:</strong> ${
-                      tokenData.tempoRespostaSegundos
-                        ? Math.floor(tokenData.tempoRespostaSegundos / 60) +
-                          "min " +
-                          (tokenData.tempoRespostaSegundos % 60) +
-                          "s"
-                        : "-"
-                    }
-                  </p>
-                  <p class="mb-0">
-                    <strong>📅 Data da resposta:</strong> ${
-                      tokenData.respondidoEm
-                        ? new Date(
-                            tokenData.respondidoEm.toDate?.() ||
-                              tokenData.respondidoEm
-                          ).toLocaleDateString("pt-BR", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "-"
-                    }
-                  </p>
-                </div>
-              </div>
+      // ✅ Cria HTML do modal com SweetAlert2
+      let perguntasHTML = "";
 
-              <hr>
-
-              <h6 class="mb-3"><strong>Respostas Fornecidas:</strong></h6>
-    `;
-
-      // ✅ Adiciona cada resposta
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
           const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-
-          modalHTML += `
-          <div class="card mb-3">
-            <div class="card-body">
-              <p class="mb-2">
-                <strong>Pergunta ${index + 1}:</strong><br>
-                ${pergunta.enunciado}
-              </p>
-              <div class="alert alert-info mb-0">
-                <strong>Resposta:</strong><br>
-                ${resposta}
-              </div>
+          perguntasHTML += `
+          <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; text-align: left;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+              <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+            </p>
+            <div style="background: white; padding: 10px; border-radius: 4px; color: #555;">
+              <strong>Resposta:</strong> ${resposta}
             </div>
           </div>
         `;
         });
       } else {
-        modalHTML += `<p class="text-muted">Nenhuma pergunta encontrada.</p>`;
+        perguntasHTML =
+          '<p style="color: #999; text-align: center;">Nenhuma pergunta encontrada.</p>';
       }
 
-      modalHTML += `
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-              <button type="button" class="btn btn-primary" onclick="window.exportarRespostaIndividual('${tokenDocId}', '${candidatoNome.replace(
-        /'/g,
-        "\\'"
-      )}')">
-                <i class="fas fa-download me-1"></i> Exportar
-              </button>
-            </div>
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-";
+
+      // ✅ Abre com SweetAlert2
+      await Swal.fire({
+        title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
+        html: `
+        <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+          <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+            <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+              testeDados.titulo || "Teste"
+            }</p>
+            <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+            <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
           </div>
+          
+          <hr style="margin: 20px 0;">
+          
+          <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+          
+          ${perguntasHTML}
         </div>
-      </div>
-    `;
-
-      // ✅ Remove modal anterior se existir
-      const modalAntigo = document.getElementById(
-        `modal-ver-respostas-${tokenId}`
-      );
-      if (modalAntigo) {
-        modalAntigo.remove();
-      }
-
-      // ✅ Adiciona novo modal ao DOM
-      document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-      // ✅ Abre o modal
-      const modal = new bootstrap.Modal(
-        document.getElementById(`modal-ver-respostas-${tokenId}`)
-      );
-      modal.show();
+      `,
+        width: "800px",
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
+        cancelButtonText: "Fechar",
+        confirmButtonColor: "#667eea",
+        cancelButtonColor: "#6c757d",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.exportarRespostaIndividual(tokenId, candidatoNome);
+        }
+      });
 
       console.log("✅ Modal de respostas aberto");
     } catch (error) {
