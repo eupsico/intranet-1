@@ -234,6 +234,7 @@ export async function initdashboard(user, userData) {
       gerarPDFComJsPDF(tabela, nomeArquivo);
     }
   }
+
   function gerarPDFComJsPDF(tabela, nomeArquivo) {
     try {
       const { jsPDF } = window.jspdf;
@@ -555,7 +556,6 @@ export async function initdashboard(user, userData) {
       },
     });
   }
-
   // ============================================
   // RELATÓRIOS - CARREGAR DADOS
   // ============================================
@@ -644,6 +644,7 @@ export async function initdashboard(user, userData) {
       });
     }
   }
+
   // ============================================
   // RELATÓRIOS - ABAS E NAVEGAÇÃO
   // ============================================
@@ -801,7 +802,7 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // ABA: RESPOSTAS AOS TESTES (CORRIGIDA)
+  // ABA: RESPOSTAS AOS TESTES (✅ CORRIGIDA)
   // ============================================
 
   async function renderizarRespostasAosTestes() {
@@ -868,9 +869,8 @@ export async function initdashboard(user, userData) {
         '<tr><td colspan="6" class="text-center text-muted">Nenhuma resposta encontrada</td></tr>';
     }
   }
-
   // ============================================
-  // MODAL: VER RESPOSTAS DO TESTE (CORRIGIDA - BOOTSTRAP)
+  // MODAL: VER RESPOSTAS DO TESTE (✅ CORRIGIDA - BOOTSTRAP)
   // ============================================
 
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
@@ -1017,8 +1017,9 @@ export async function initdashboard(user, userData) {
       window.showToast?.(`Erro: ${error.message}`, "error");
     }
   };
+
   // ============================================
-  // EXPORTAR RESPOSTA INDIVIDUAL (CORRIGIDA)
+  // EXPORTAR RESPOSTA INDIVIDUAL (✅ CORRIGIDA)
   // ============================================
 
   window.exportarRespostaIndividual = async function (
@@ -1129,7 +1130,7 @@ export async function initdashboard(user, userData) {
   };
 
   // ============================================
-  // EXPORTAR PDF INDIVIDUAL (CORRIGIDA)
+  // EXPORTAR PDF INDIVIDUAL (✅ CORRIGIDA)
   // ============================================
 
   function exportarRespostaPDFIndividual(
@@ -1171,7 +1172,6 @@ export async function initdashboard(user, userData) {
       );
     }
   }
-
   function gerarPDFRespostasIndividualFinal(
     candidatoNome,
     testeDados,
@@ -1371,6 +1371,7 @@ export async function initdashboard(user, userData) {
 
     console.log("✅ Filtros configurados");
   }
+
   // ============================================
   // BOTÕES DE EXPORTAÇÃO
   // ============================================
@@ -1470,7 +1471,6 @@ export async function initdashboard(user, userData) {
 
     console.log("✅ Botões de exportação configurados");
   }
-
   // ============================================
   // INICIALIZAÇÃO DO DASHBOARD
   // ============================================
@@ -1499,6 +1499,44 @@ export async function initdashboard(user, userData) {
         "error"
       );
     }
+  }
+
+  // ============================================
+  // LISTENERS DE ABAS DO DASHBOARD PRINCIPAL
+  // ============================================
+
+  const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
+  const relRelatoriosTabs = document.getElementById("rel-relatorios-tabs");
+
+  if (relDashboardTabs) {
+    relDashboardTabs.querySelectorAll(".tab-link").forEach((tab) => {
+      tab.addEventListener("click", (e) => {
+        const tabName = e.target.getAttribute("data-tab");
+
+        // Remove active de todas as abas
+        relDashboardTabs
+          .querySelectorAll(".tab-link")
+          .forEach((t) => t.classList.remove("active"));
+
+        // Esconde todos os conteúdos
+        document
+          .querySelectorAll('[id^="tab-"]')
+          .forEach((t) => (t.style.display = "none"));
+
+        // Ativa a aba clicada
+        e.target.classList.add("active");
+        const tabContent = document.getElementById(`tab-${tabName}`);
+        if (tabContent) {
+          tabContent.style.display = "block";
+        }
+
+        // Se for a aba de relatórios, carrega os dados
+        if (tabName === "relatorios") {
+          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
+          carregarRelatorios();
+        }
+      });
+    });
   }
 
   // ============================================
