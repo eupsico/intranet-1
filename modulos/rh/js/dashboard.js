@@ -1,1897 +1,1615 @@
-// Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.6.0 (PDF + Rodapé + Excel UTF-8 com BOM + Dados Completos)
+/**
+ * Arquivo: modulos/rh/js/gestao_vagas.js
+ * Versão: 4.0.0 (Auto-save, Feedback em Destaque, Status Separados)
+ * Data: 04/11/2025
+ * Descrição: Gerenciamento completo do ciclo de vida de vagas
+ */
 
 import {
+  db,
   collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  doc,
   query,
   where,
-  getDocs,
-  doc,
   getDoc,
+  arrayUnion,
+  arrayRemove,
 } from "../../../assets/js/firebase-init.js";
 
-export async function initdashboard(user, userData) {
-  console.log("📈 Iniciando Dashboard de RH...");
+import { fetchUsersByRole } from "../../../assets/js/utils/user-management.js";
 
-  const db = window.db;
+// ============================================
+// CONSTANTES GLOBAIS
+// ============================================
 
-  if (!db) {
-    console.error(
-      "Firebase Firestore não inicializado. Não é possível carregar os dados."
-    );
-    document.getElementById("content-area").innerHTML =
-      "<h2>Erro</h2><p>Falha ao conectar com o banco de dados.</p>";
+const VAGAS_COLLECTION_NAME = "vagas";
+const CONFIG_COLLECTION_NAME = "configuracoesSistema";
+
+const ID_MODAL_FICHA_TECNICA = "modal-vaga";
+const ID_MODAL_CRIACAO_ARTE = "modal-criacao-arte";
+const ID_MODAL_APROVACAO_ARTE = "modal-aprovacao-arte";
+const ID_MODAL_DIVULGACAO = "modal-divulgacao";
+const ID_MODAL_FECHADAS = "modal-fechadas";
+const ID_MODAL_CORRECAO = "modal-solicitar-correcao";
+
+const STATUS_TAB_MAP = {
+  abertas: ["Em Elaboração (Ficha Técnica)"],
+  correcao: ["Em Correção (Ficha Técnica)", "Em Correção (Arte)"],
+  "aprovacao-gestao": ["Aguardando Aprovação de Ficha"],
+  "arte-pendente": [
+    "Ficha Técnica Aprovada (Aguardando Criação de Arte)",
+    "Arte em Criação",
+  ],
+  "aprovacao-arte": ["Arte Criada (Aguardando Aprovação)"],
+  "em-divulgacao": ["em-divulgacao"], // ✅ MUDE PARA ISSO
+  fechadas: ["Vaga Encerrada", "Vaga Cancelada"],
+};
+
+// ============================================
+// VARIÁVEIS DE ESTADO
+// ============================================
+
+let vagasCollection;
+let configCollection;
+let currentUserData = null;
+let vagaAtualId = null;
+let statusAbaAtiva = "abertas";
+
+// ============================================
+// FUNÇÕES DE UTILIDADE
+// ============================================
+
+function showGlobalLoading(show = true) {
+  const spinner = document.getElementById("global-loading-spinner");
+  if (spinner) {
+    spinner.style.display = show ? "flex" : "none";
+  }
+}
+
+function formatarData(data) {
+  if (!data) return "Não definida";
+  if (typeof data === "string") {
+    const [ano, mes, dia] = data.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+  if (data.toDate) {
+    return data.toDate().toLocaleDateString("pt-BR");
+  }
+  return data.toLocaleDateString("pt-BR");
+}
+
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function validarFormularioVaga() {
+  const camposObrigatorios = [
+    { id: "vaga-nome", label: "Título da Vaga" },
+    { id: "vaga-departamento", label: "Departamento" },
+    { id: "vaga-tipo-recrutamento", label: "Tipo de Recrutamento" },
+    { id: "vaga-regime-trabalho", label: "Regime de Trabalho" },
+    { id: "vaga-modalidade-trabalho", label: "Modalidade de Trabalho" },
+    { id: "vaga-responsabilidades", label: "Responsabilidades" },
+  ];
+
+  for (const campo of camposObrigatorios) {
+    const elemento = document.getElementById(campo.id);
+    if (!elemento || !elemento.value.trim()) {
+      window.showToast?.(`O campo "${campo.label}" é obrigatório.`, "error");
+      elemento?.focus();
+      return false;
+    }
+  }
+  return true;
+}
+
+function limparFormularioVaga() {
+  const form = document.getElementById("form-vaga");
+  if (form) {
+    form.reset();
+    vagaAtualId = null;
+  }
+}
+
+function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
+  let indicador = document.getElementById("autosave-indicator");
+
+  if (!indicador) {
+    indicador = document.createElement("div");
+    indicador.id = "autosave-indicator";
+    indicador.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      z-index: 10000;
+      transition: opacity 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    `;
+    document.body.appendChild(indicador);
+  }
+
+  const cores = {
+    info: { bg: "#17a2b8", color: "#fff" },
+    success: { bg: "#28a745", color: "#fff" },
+    error: { bg: "#dc3545", color: "#fff" },
+  };
+
+  const cor = cores[tipo] || cores.info;
+  indicador.style.backgroundColor = cor.bg;
+  indicador.style.color = cor.color;
+  indicador.textContent = mensagem;
+  indicador.style.opacity = "1";
+
+  if (tipo === "success") {
+    setTimeout(() => {
+      indicador.style.opacity = "0";
+    }, 2000);
+  }
+}
+
+// ============================================
+// AUTO-SAVE
+// ============================================
+
+function configurarAutoSave() {
+  const form = document.getElementById("form-vaga");
+  if (!form) return;
+
+  let saveTimeout;
+  const AUTOSAVE_DELAY = 2000;
+
+  const campos = form.querySelectorAll("input, textarea, select");
+
+  campos.forEach((campo) => {
+    campo.addEventListener("input", () => {
+      clearTimeout(saveTimeout);
+      mostrarIndicadorAutoSave("Salvando...");
+
+      saveTimeout = setTimeout(async () => {
+        if (vagaAtualId) {
+          await salvarAutoSave();
+        }
+      }, AUTOSAVE_DELAY);
+    });
+  });
+
+  console.log("✅ Auto-save configurado");
+}
+
+async function salvarAutoSave() {
+  if (!vagaAtualId) return;
+
+  try {
+    const dadosVaga = coletarDadosFormularioVaga();
+    const vagaRef = doc(vagasCollection, vagaAtualId);
+
+    await updateDoc(vagaRef, {
+      ...dadosVaga,
+      data_atualizacao: new Date(),
+    });
+
+    mostrarIndicadorAutoSave("✓ Salvo automaticamente", "success");
+    console.log("✅ Auto-save realizado:", vagaAtualId);
+  } catch (error) {
+    console.error("❌ Erro no auto-save:", error);
+    mostrarIndicadorAutoSave("Erro ao salvar", "error");
+  }
+}
+
+// ============================================
+// GERENCIAMENTO DE MODAIS
+// ============================================
+
+function abrirModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.add("is-visible");
+    console.log(`✅ Modal ${modalId} aberto`);
+  } else {
+    console.error(`❌ Modal ${modalId} não encontrado`);
+  }
+}
+
+function fecharModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove("is-visible");
+    console.log(`🔹 Modal ${modalId} fechado`);
+  }
+}
+
+function configurarFechamentoModais() {
+  document.querySelectorAll(".close-modal-btn, [data-modal]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const modalId =
+        e.target.dataset.modal ||
+        e.target.closest("[data-modal]")?.dataset.modal;
+      if (modalId) {
+        fecharModal(modalId);
+      }
+    });
+  });
+
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove("is-visible");
+      }
+    });
+  });
+}
+
+// ============================================
+// CARREGAMENTO DE DEPARTAMENTOS
+// ============================================
+
+async function carregarDepartamentos() {
+  const selectDepartamento = document.getElementById("vaga-departamento");
+  if (!selectDepartamento) {
+    console.warn("⚠️ Elemento select #vaga-departamento não encontrado");
     return;
   }
 
-  // ============================================
-  // DEFINIÇÃO DAS COLEÇÕES
-  // ============================================
+  console.log("🔹 Carregando departamentos do Firebase...");
 
-  const usuariosCollection = collection(db, "usuarios");
-  const vagasCollection = collection(db, "vagas");
-  const onboardingCollection = collection(db, "onboarding");
-  const comunicadosCollection = collection(db, "comunicados");
-  const desligamentosCollection = collection(db, "desligamentos");
-  const candidatosCollection = collection(db, "candidaturas");
-  const tokensAcessoCollection = collection(db, "tokens_acesso");
-  const estudosDeCasoCollection = collection(db, "estudos_de_caso");
+  try {
+    const geralDocRef = doc(configCollection, "geral");
+    const geralSnap = await getDoc(geralDocRef);
 
-  // ============================================
-  // MAPEAMENTO DOS ELEMENTOS DO DOM - DASHBOARD
-  // ============================================
+    if (geralSnap.exists()) {
+      const data = geralSnap.data();
+      const departamentos = data.listas?.departamentos || [];
 
-  const metricAtivos = document.getElementById("rh-metric-ativos");
-  const metricVagas = document.getElementById("rh-metric-vagas");
-  const metricOnboarding = document.getElementById("rh-metric-onboarding");
-  const metricComunicados = document.getElementById("rh-metric-comunicados");
-  const funcoesChartCtx = document
-    .getElementById("rh-funcoes-chart")
-    ?.getContext("2d");
-  const rhProfissaoChartCtx = document
-    .getElementById("rh-profissao-chart")
-    ?.getContext("2d");
-  const desligamentoChartCtx = document
-    .getElementById("rh-desligamento-chart")
-    ?.getContext("2d");
+      if (departamentos.length === 0) {
+        selectDepartamento.innerHTML =
+          '<option value="">Nenhum departamento cadastrado</option>';
+        console.warn("⚠️ Array de departamentos está vazio");
+        return;
+      }
 
-  // ============================================
-  // MAPEAMENTO DOS ELEMENTOS DO DOM - RELATÓRIOS
-  // ============================================
+      selectDepartamento.innerHTML =
+        '<option value="">Selecione o Departamento</option>';
 
-  const relTotalInscricoes = document.getElementById("rel-total-inscricoes");
-  const relTestesRespondidos = document.getElementById(
-    "rel-testes-respondidos"
-  );
-  const relTestesPendentes = document.getElementById("rel-testes-pendentes");
-  const relTaxaResposta = document.getElementById("rel-taxa-resposta");
-  const relFiltroVaga = document.getElementById("rel-filtro-vaga");
-  const relFiltroStatus = document.getElementById("rel-filtro-status");
-  const relBuscaCandidato = document.getElementById("rel-busca-candidato");
-  const relFiltroTeste = document.getElementById("rel-filtro-teste");
-  const btnAtualizarRelatorios = document.getElementById(
-    "btn-atualizar-relatorios"
-  );
-
-  // ============================================
-  // ESTADO GLOBAL DOS RELATÓRIOS
-  // ============================================
-
-  let candidatosCache = [];
-  let tokensCache = [];
-  let vagasCache = [];
-  let estudosCache = [];
-
-  // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV com BOM UTF-8)
-  // ============================================
-
-  function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
-    console.log("📊 Exportando para Excel (CSV UTF-8 com BOM)...", dados);
-
-    if (!dados || dados.length === 0) {
-      window.showToast?.("Nenhum dado para exportar", "warning");
-      return;
-    }
-
-    try {
-      let csv = [];
-      const headers = Object.keys(dados[0]);
-
-      // ✅ Adiciona BOM (Byte Order Mark) para UTF-8
-      // Isso faz o Excel reconhecer corretamente os acentos
-      const headerRow = headers
-        .map((h) => {
-          let header = String(h).replace(/"/g, '""');
-          return `"${header}"`;
-        })
-        .join(",");
-
-      csv.push(headerRow);
-
-      // ✅ Processa cada linha de dados
-      dados.forEach((linha) => {
-        const row = headers
-          .map((h) => {
-            let valor = linha[h] || "";
-
-            // Converte valores especiais
-            if (valor === null || valor === undefined) {
-              valor = "";
-            } else if (typeof valor === "object") {
-              valor = JSON.stringify(valor);
-            } else {
-              valor = String(valor);
-            }
-
-            // Escapa aspas duplas
-            valor = valor.replace(/"/g, '""');
-
-            return `"${valor}"`;
-          })
-          .join(",");
-
-        csv.push(row);
+      departamentos.forEach((dept) => {
+        const option = document.createElement("option");
+        option.value = dept;
+        option.textContent = dept;
+        selectDepartamento.appendChild(option);
       });
 
-      const csvContent = csv.join("\n");
-
-      // ✅ BOM UTF-8 (\uFEFF) faz Excel reconhecer acentos corretamente
-      const BOM = "\uFEFF";
-      const blob = new Blob([BOM + csvContent], {
-        type: "text/csv;charset=utf-8;",
-      });
-
-      // ✅ Download do arquivo
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-
-      link.setAttribute("href", url);
-
-      // ✅ Muda extensão para .csv
-      const nomeComExtenso = nomeArquivo.includes(".")
-        ? nomeArquivo
-        : nomeArquivo + ".csv";
-
-      link.setAttribute("download", nomeComExtenso);
-      link.style.visibility = "hidden";
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Libera memória
-      URL.revokeObjectURL(url);
-
-      console.log("✅ CSV gerado com sucesso!");
-      window.showToast?.(`✅ Arquivo ${nomeComExtenso} baixado!`, "success");
-    } catch (error) {
-      console.error("❌ Erro ao gerar CSV:", error);
-      window.showToast?.("❌ Erro ao exportar arquivo", "error");
-    }
-  }
-
-  // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF + autoTable)
-  // ============================================
-
-  function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
-    console.log("📄 Exportando para PDF...", elementId);
-
-    const element = document.getElementById(elementId);
-    if (!element) {
-      console.error("❌ Elemento não encontrado:", elementId);
-      window.showToast?.("❌ Elemento não encontrado para exportar", "error");
-      return;
-    }
-
-    const tabela = element.querySelector("table");
-    if (!tabela) {
-      window.showToast?.(
-        "⚠️ Nenhuma tabela encontrada para exportar",
-        "warning"
-      );
-      return;
-    }
-
-    const linhas = tabela.querySelectorAll("tbody tr");
-    if (linhas.length === 0) {
-      window.showToast?.("⚠️ Nenhum dado para exportar", "warning");
-      return;
-    }
-
-    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF e autoTable...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFComJsPDF(tabela, nomeArquivo);
-          }, 500);
-        };
-        scriptAutoTable.onerror = () => {
-          console.error("❌ Erro ao carregar autoTable");
-          window.showToast?.("Erro ao carregar biblioteca PDF", "error");
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      scriptJsPDF.onerror = () => {
-        console.error("❌ Erro ao carregar jsPDF");
-        window.showToast?.("Erro ao carregar biblioteca PDF", "error");
-      };
-
-      document.head.appendChild(scriptJsPDF);
+      console.log(`✅ ${departamentos.length} departamento(s) carregado(s)`);
     } else {
-      gerarPDFComJsPDF(tabela, nomeArquivo);
+      selectDepartamento.innerHTML =
+        '<option value="">Documento não encontrado</option>';
+      console.error("❌ Documento configuracoesSistema/geral não existe");
     }
+  } catch (error) {
+    console.error("❌ Erro ao carregar departamentos:", error);
+    selectDepartamento.innerHTML =
+      '<option value="">Erro ao carregar departamentos</option>';
   }
+}
+// ============================================
+// CARREGAMENTO DE VAGAS
+// ============================================
 
-  function gerarPDFComJsPDF(tabela, nomeArquivo) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      });
+async function carregarVagas(statusAba) {
+  console.log(`🔹 Carregando vagas para aba: ${statusAba}`);
 
-      // ✅ CABEÇALHO
-      doc.setFontSize(18);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico", 148, 15, { align: "center" });
+  const listaVagas = document.getElementById("lista-vagas");
 
-      doc.setFontSize(10);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Grupo de atendimento multidisciplinar", 148, 22, {
-        align: "center",
-      });
+  showGlobalLoading(true);
 
-      doc.setFontSize(14);
-      doc.setTextColor(51, 51, 51);
-      const tituloRelatorio = nomeArquivo
-        .replace(".pdf", "")
-        .replace(/_/g, " ")
-        .toUpperCase();
-      doc.text(tituloRelatorio, 148, 32, { align: "center" });
+  try {
+    const statusFiltro = STATUS_TAB_MAP[statusAba] || [];
 
-      doc.setFontSize(9);
-      doc.setTextColor(153, 153, 153);
-      const dataHora = `Data: ${new Date().toLocaleDateString(
-        "pt-BR"
-      )} | Hora: ${new Date().toLocaleTimeString("pt-BR")}`;
-      doc.text(dataHora, 148, 38, { align: "center" });
-
-      // Linha separadora
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(14, 42, 283, 42);
-
-      // ✅ EXTRAI DADOS DA TABELA
-      const cabecalhos = [];
-      const linhas = [];
-
-      tabela.querySelectorAll("thead th").forEach((th) => {
-        cabecalhos.push(th.textContent.trim());
-      });
-
-      tabela.querySelectorAll("tbody tr").forEach((tr) => {
-        const linha = [];
-        tr.querySelectorAll("td").forEach((td) => {
-          const texto = td.textContent.trim();
-          linha.push(texto);
-        });
-        if (linha.length > 0) {
-          linhas.push(linha);
-        }
-      });
-
-      console.log("📊 Cabeçalhos:", cabecalhos);
-      console.log("📊 Linhas:", linhas.length);
-
-      // ✅ CRIA A TABELA COM AUTOTABLE
-      doc.autoTable({
-        head: [cabecalhos],
-        body: linhas,
-        startY: 48,
-        theme: "striped",
-        headStyles: {
-          fillColor: [102, 126, 234],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 9,
-        },
-        bodyStyles: {
-          fontSize: 8,
-          cellPadding: 3,
-        },
-        alternateRowStyles: {
-          fillColor: [249, 249, 249],
-        },
-        margin: { top: 48, left: 14, right: 14, bottom: 35 },
-        styles: {
-          overflow: "linebreak",
-          cellWidth: "wrap",
-        },
-        columnStyles: {
-          0: { cellWidth: "auto" },
-        },
-      });
-
-      // ✅ RODAPÉ COM ENDEREÇO, WHATSAPP E CONTATO
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(7);
-      doc.setTextColor(100, 100, 100);
-
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-
-        // Linha separadora
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(14, 182, 283, 182);
-
-        // ✅ Informações de contato
-        const endereco =
-          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290";
-        const whatsapp = "WhatsApp: 11 99794-9071";
-
-        doc.text(endereco, 148, 187, { align: "center", maxWidth: 260 });
-        doc.text(whatsapp, 148, 191, { align: "center" });
-
-        // Página e copyright
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${i} de ${pageCount}`, 148, 195, { align: "center" });
-        doc.text(
-          "Relatório gerado automaticamente pelo sistema EuPsico © 2025",
-          148,
-          198,
-          { align: "center" }
-        );
-      }
-
-      // ✅ SALVA O PDF
-      doc.save(nomeArquivo);
-      console.log("✅ PDF gerado com sucesso!");
-      window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
-    }
-  }
-
-  // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO INDIVIDUAIS - EXCEL
-  // ============================================
-
-  window.exportarInscricoesExcel = function () {
-    console.log("📊 Exportando Inscrições por Vaga...");
-
-    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
-    if (!tabelaBody) {
-      window.showToast?.("Tabela não encontrada", "error");
+    if (statusFiltro.length === 0) {
+      listaVagas.innerHTML =
+        '<p class="alert alert-warning">Status de aba inválido.</p>';
+      showGlobalLoading(false);
       return;
     }
 
-    const dados = [];
+    const q = query(vagasCollection, where("status", "in", statusFiltro));
 
-    tabelaBody.querySelectorAll("tr").forEach((tr) => {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length > 0) {
-        dados.push({
-          Vaga: cells[0].textContent.trim(),
-          "Total de Inscritos": parseInt(cells[1].textContent.trim()) || 0,
-          "Em Triagem": parseInt(cells[2].textContent.trim()) || 0,
-          Aprovados: parseInt(cells[3].textContent.trim()) || 0,
-          Rejeitados: parseInt(cells[4].textContent.trim()) || 0,
-          Contratados: parseInt(cells[5].textContent.trim()) || 0,
-          "Data do Relatório": new Date().toLocaleDateString("pt-BR"),
-        });
-      }
+    const snapshot = await getDocs(q);
+
+    // Atualiza contador na aba
+    const tab = document.querySelector(`[data-status="${statusAba}"]`);
+    if (tab) {
+      const icone = tab.querySelector("i")?.outerHTML || "";
+      const textoAba = tab.textContent.split("(")[0].trim();
+      tab.innerHTML = `${icone} ${textoAba} (${snapshot.size})`;
+    }
+
+    if (snapshot.empty) {
+      listaVagas.innerHTML =
+        '<p class="alert alert-info">Nenhuma vaga encontrada para este status.</p>';
+      showGlobalLoading(false);
+      return;
+    }
+
+    let htmlVagas = '<div class="list-vagas-grid">';
+
+    snapshot.forEach((docSnap) => {
+      const vaga = docSnap.data();
+      const vagaId = docSnap.id;
+      htmlVagas += renderizarCardVaga(vagaId, vaga, statusAba);
     });
 
-    if (dados.length === 0) {
-      window.showToast?.("Nenhum dado para exportar", "warning");
-      return;
-    }
+    htmlVagas += "</div>";
+    listaVagas.innerHTML = htmlVagas;
 
-    exportarParaExcel(dados, "inscricoes_por_vaga.csv");
+    anexarListenersVagas(statusAba);
+
+    console.log(`✅ ${snapshot.size} vaga(s) carregada(s)`);
+  } catch (error) {
+    console.error("❌ Erro ao carregar vagas:", error);
+    listaVagas.innerHTML = `<p class="alert alert-error">Erro ao carregar vagas: ${error.message}</p>`;
+  } finally {
+    showGlobalLoading(false);
+  }
+}
+
+// ============================================
+// RENDERIZAÇÃO DE CARDS
+// ============================================
+
+function renderizarCardVaga(vagaId, vaga, statusAba) {
+  const status = vaga.status || "N/A";
+  const dataCriacao = vaga.data_criacao
+    ? formatarData(vaga.data_criacao.toDate?.() || vaga.data_criacao)
+    : "N/A";
+
+  let corStatus = "info";
+  if (status.includes("Aprovada")) corStatus = "success";
+  else if (status.includes("Correção")) corStatus = "warning";
+  else if (status.includes("Cancelada")) corStatus = "error";
+
+  let botoesAcao = "";
+  let infoExtra = "";
+
+  // ✅ TRATAMENTO ESPECIAL PARA ABA DE CORREÇÃO
+  if (statusAba === "correcao") {
+    const tipoCorrecao = status.includes("Ficha")
+      ? "Ficha Técnica"
+      : "Arte de Divulgação";
+    const feedback = status.includes("Ficha")
+      ? vaga.feedback_correcao
+      : vaga.feedback_arte;
+
+    infoExtra = `
+      <div class="feedback-banner alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <strong>Tipo:</strong> ${tipoCorrecao}<br>
+          <strong>Solicitação:</strong> ${feedback || "Sem detalhes"}
+        </div>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Corrigir
+      </button>
+    `;
+  } else if (statusAba === "abertas") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+        <p><strong>Criada em:</strong> ${dataCriacao}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-editar-vaga" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Editar
+      </button>
+      <button class="action-button success btn-enviar-aprovacao" data-id="${vagaId}">
+        <i class="fas fa-paper-plane me-1"></i> Enviar p/ Aprovação
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-gestao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-vaga" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar
+      </button>
+      <button class="action-button success btn-aprovar-ficha" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-ficha" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "arte-pendente") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-criar-arte" data-id="${vagaId}">
+        <i class="fas fa-palette me-1"></i> Criar Arte
+      </button>
+    `;
+  } else if (statusAba === "aprovacao-arte") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-arte" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Visualizar Arte
+      </button>
+      <button class="action-button success btn-aprovar-arte" data-id="${vagaId}">
+        <i class="fas fa-check me-1"></i> Aprovar Arte
+      </button>
+      <button class="action-button warning btn-solicitar-correcao-arte" data-id="${vagaId}">
+        <i class="fas fa-edit me-1"></i> Solicitar Correção
+      </button>
+    `;
+  } else if (statusAba === "em-divulgacao") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button primary btn-gerenciar-divulgacao" data-id="${vagaId}">
+        <i class="fas fa-bullhorn me-1"></i> Gerenciar Divulgação
+      </button>
+    `;
+  } else if (statusAba === "fechadas") {
+    infoExtra = `
+      <div class="vaga-info">
+        <p><strong>Departamento:</strong> ${vaga.departamento || "N/A"}</p>
+      </div>
+    `;
+
+    botoesAcao = `
+      <button class="action-button info btn-visualizar-fechada" data-id="${vagaId}">
+        <i class="fas fa-eye me-1"></i> Ver Detalhes
+      </button>
+      <button class="action-button secondary btn-reaproveitar" data-id="${vagaId}">
+        <i class="fas fa-copy me-1"></i> Reaproveitar
+      </button>
+    `;
+  }
+
+  return `
+    <div class="card-vaga-gestao" data-id="${vagaId}">
+      <div class="vaga-header">
+        <h4>${vaga.nome || "Vaga Sem Nome"}</h4>
+        <span class="status-badge status-${corStatus}">${status}</span>
+      </div>
+      
+      ${infoExtra}
+      
+      <div class="vaga-acoes">
+        ${botoesAcao}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// ANEXAÇÃO DE LISTENERS
+// ============================================
+
+function anexarListenersVagas(statusAba) {
+  console.log(`🔹 Anexando listeners para aba: ${statusAba}`);
+
+  document.querySelectorAll(".btn-editar-vaga").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalEdicaoVaga(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-enviar-aprovacao").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await enviarParaAprovacao(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-vaga").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarVaga(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-aprovar-ficha").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await aprovarFichaTecnica(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-solicitar-correcao-ficha").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await solicitarCorrecaoFicha(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-criar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalCriacaoArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-aprovar-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await aprovarArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-solicitar-correcao-arte").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await solicitarCorrecaoArte(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-gerenciar-divulgacao").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await abrirModalDivulgacao(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-visualizar-fechada").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await visualizarVagaFechada(vagaId);
+    });
+  });
+
+  document.querySelectorAll(".btn-reaproveitar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const vagaId = e.currentTarget.dataset.id;
+      await reaproveitarVaga(vagaId);
+    });
+  });
+
+  console.log(`✅ Listeners anexados para aba: ${statusAba}`);
+}
+// ============================================
+// OPERAÇÕES DE VAGA
+// ============================================
+
+function coletarDadosFormularioVaga() {
+  return {
+    nome: document.getElementById("vaga-nome").value.trim(),
+    departamento: document.getElementById("vaga-departamento").value,
+    tipo_recrutamento: document.getElementById("vaga-tipo-recrutamento").value,
+    regime_trabalho: document.getElementById("vaga-regime-trabalho").value,
+    modalidade_trabalho: document.getElementById("vaga-modalidade-trabalho")
+      .value,
+    responsabilidades: document
+      .getElementById("vaga-responsabilidades")
+      .value.trim(),
+    resultados: document.getElementById("vaga-resultados").value.trim(),
+    nova_substituicao: document
+      .getElementById("vaga-nova-substituicao")
+      .value.trim(),
+    valor_salario: document.getElementById("vaga-valor-salario").value.trim(),
+    data_fechamento: document.getElementById("vaga-data-fechamento").value,
+    formacao_minima: document
+      .getElementById("vaga-formacao-minima")
+      .value.trim(),
+    conselho: document.getElementById("vaga-conselho").value.trim(),
+    especializacoes: document
+      .getElementById("vaga-especializacoes")
+      .value.trim(),
+    comp_tecnicas: document.getElementById("vaga-comp-tecnicas").value.trim(),
+    comp_comportamentais: document
+      .getElementById("vaga-comp-comportamentais")
+      .value.trim(),
+    certificacoes: document.getElementById("vaga-certificacoes").value.trim(),
+    nivel_experiencia: document.getElementById("vaga-nivel-experiencia").value,
+    contextos_similares: document
+      .getElementById("vaga-contextos-similares")
+      .value.trim(),
+    atuacao_grupos: document.getElementById("vaga-atuacao-grupos").value.trim(),
+    fit_valores: document.getElementById("vaga-fit-valores").value.trim(),
+    estilo_equipe: document.getElementById("vaga-estilo-equipe").value.trim(),
+    perfil_destaque: document
+      .getElementById("vaga-perfil-destaque")
+      .value.trim(),
+    oportunidades: document.getElementById("vaga-oportunidades").value.trim(),
+    desafios: document.getElementById("vaga-desafios").value.trim(),
+    plano_carreira: document.getElementById("vaga-plano-carreira").value.trim(),
   };
+}
 
-  window.exportarInscricoesPDF = function () {
-    exportarParaPDF("rel-tabela-inscricoes", "inscricoes_por_vaga.pdf");
-  };
+async function abrirModalEdicaoVaga(vagaId) {
+  console.log(`🔹 Abrindo modal de edição para vaga: ${vagaId}`);
 
-  window.exportarCandidatosExcel = function () {
-    console.log("📊 Exportando Lista de Candidatos com todos os dados...");
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
 
-    const dados = [];
-
-    candidatosCache.forEach((candidato) => {
-      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
-
-      const testeEnviado = tokensCache.some(
-        (t) => t.candidatoId === candidato.id
-      );
-      const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === candidato.id && t.usado
-      );
-
-      let statusTeste = "Não enviado";
-      if (testeEnviado && testeRespondido) {
-        statusTeste = "Respondido";
-      } else if (testeEnviado) {
-        statusTeste = "Enviado";
-      }
-
-      dados.push({
-        "Nome Completo": candidato.nome_completo || "-",
-        Email: candidato.email_candidato || "-",
-        Telefone: candidato.telefone_contato || "-",
-        WhatsApp: candidato.telefone_contato || "-",
-        CPF: candidato.cpf || "-",
-        Cidade: candidato.cidade || "-",
-        Estado: candidato.estado || "-",
-        CEP: candidato.cep || "-",
-        Endereço: candidato.endereco || "-",
-        "Data de Nascimento": candidato.data_nascimento || "-",
-        Gênero: candidato.genero || "-",
-        Nacionalidade: candidato.nacionalidade || "-",
-        Vaga: vagaNome,
-        "Formação Profissional": candidato.formacao_profissional || "-",
-        "Conselho Profissional": candidato.conselho_profissional || "-",
-        "Número do Conselho": candidato.numero_conselho || "-",
-        Profissão: candidato.profissao || "-",
-        "Anos de Experiência": candidato.anos_experiencia || "-",
-        "Experiência Profissional": candidato.resumo_experiencia || "-",
-        Habilidades: candidato.habilidades_competencias || "-",
-        "Expectativa Salarial": candidato.expectativa_salarial || "-",
-        "Como Conheceu a EuPsico": candidato.como_conheceu || "-",
-        Disponibilidade: candidato.disponibilidade || "-",
-        "Pode Trabalhar Finais de Semana":
-          candidato.trabalha_finais_semana === true ? "Sim" : "Não",
-        "Pode Trabalhar Feriados":
-          candidato.trabalha_feriados === true ? "Sim" : "Não",
-        "Status do Recrutamento": candidato.status_recrutamento || "-",
-        "Status do Teste": statusTeste,
-        "Data da Candidatura": candidato.data_candidatura
-          ? new Date(
-              candidato.data_candidatura.toDate?.() ||
-                candidato.data_candidatura
-            ).toLocaleDateString("pt-BR")
-          : "-",
-        "Link do Currículo": candidato.link_curriculo_drive || "-",
-        "Link do Portfolio": candidato.link_portfolio || "-",
-        LinkedIn: candidato.linkedin || "-",
-        Observações: candidato.observacoes || "-",
-        "Fonte da Inscrição": candidato.fonte_inscricao || "-",
-      });
-    });
-
-    if (dados.length === 0) {
-      window.showToast?.("⚠️ Nenhum candidato para exportar", "warning");
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
       return;
     }
 
-    exportarParaExcel(dados, "candidatos_completo.csv");
-  };
+    const vaga = vagaSnap.data();
+    vagaAtualId = vagaId;
 
-  window.exportarCandidatosPDF = function () {
-    exportarParaPDF("rel-tabela-candidatos", "candidatos.pdf");
-  };
+    document.getElementById("vaga-nome").value = vaga.nome || "";
+    document.getElementById("vaga-departamento").value =
+      vaga.departamento || "";
+    document.getElementById("vaga-tipo-recrutamento").value =
+      vaga.tipo_recrutamento || "";
+    document.getElementById("vaga-regime-trabalho").value =
+      vaga.regime_trabalho || "";
+    document.getElementById("vaga-modalidade-trabalho").value =
+      vaga.modalidade_trabalho || "";
+    document.getElementById("vaga-responsabilidades").value =
+      vaga.responsabilidades || "";
+    document.getElementById("vaga-resultados").value = vaga.resultados || "";
+    document.getElementById("vaga-nova-substituicao").value =
+      vaga.nova_substituicao || "";
+    document.getElementById("vaga-valor-salario").value =
+      vaga.valor_salario || "";
+    document.getElementById("vaga-data-fechamento").value =
+      vaga.data_fechamento || "";
+    document.getElementById("vaga-formacao-minima").value =
+      vaga.formacao_minima || "";
+    document.getElementById("vaga-conselho").value = vaga.conselho || "";
+    document.getElementById("vaga-especializacoes").value =
+      vaga.especializacoes || "";
+    document.getElementById("vaga-comp-tecnicas").value =
+      vaga.comp_tecnicas || "";
+    document.getElementById("vaga-comp-comportamentais").value =
+      vaga.comp_comportamentais || "";
+    document.getElementById("vaga-certificacoes").value =
+      vaga.certificacoes || "";
+    document.getElementById("vaga-nivel-experiencia").value =
+      vaga.nivel_experiencia || "";
+    document.getElementById("vaga-contextos-similares").value =
+      vaga.contextos_similares || "";
+    document.getElementById("vaga-atuacao-grupos").value =
+      vaga.atuacao_grupos || "";
+    document.getElementById("vaga-fit-valores").value = vaga.fit_valores || "";
+    document.getElementById("vaga-estilo-equipe").value =
+      vaga.estilo_equipe || "";
+    document.getElementById("vaga-perfil-destaque").value =
+      vaga.perfil_destaque || "";
+    document.getElementById("vaga-oportunidades").value =
+      vaga.oportunidades || "";
+    document.getElementById("vaga-desafios").value = vaga.desafios || "";
+    document.getElementById("vaga-plano-carreira").value =
+      vaga.plano_carreira || "";
 
-  window.exportarRespostasExcel = function () {
-    console.log("📊 Exportando Respostas aos Testes...");
+    document.getElementById("ficha-title").textContent = `Editando: ${
+      vaga.nome || "Vaga"
+    }`;
 
-    const tabelaBody = document.getElementById("rel-tbody-respostas");
-    if (!tabelaBody) {
-      window.showToast?.("Tabela não encontrada", "error");
-      return;
-    }
+    abrirModal(ID_MODAL_FICHA_TECNICA);
+    console.log("✅ Modal de edição aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de edição:", error);
+    window.showToast?.(`Erro ao carregar vaga: ${error.message}`, "error");
+  }
+}
 
-    const dados = [];
+async function handleSalvarVaga(e) {
+  e.preventDefault();
 
-    tabelaBody.querySelectorAll("tr").forEach((tr) => {
-      const cells = tr.querySelectorAll("td");
-      if (cells.length >= 5) {
-        dados.push({
-          Candidato: cells[0].textContent.trim(),
-          Teste: cells[1].textContent.trim(),
-          "Data de Resposta": cells[2].textContent.trim(),
-          "Tempo Gasto": cells[3].textContent.trim(),
-          Status: cells[4].textContent.trim(),
-        });
-      }
-    });
+  console.log("🔹 Salvando vaga...");
 
-    if (dados.length === 0) {
-      window.showToast?.("Nenhum dado para exportar", "warning");
-      return;
-    }
-
-    exportarParaExcel(dados, "respostas_testes.csv");
-  };
-
-  window.exportarRespostasPDF = function () {
-    exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
-  };
-
-  // ============================================
-  // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
-  // ============================================
-
-  const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
-  const relRelatóriosTabs = document.getElementById("rel-relatorios-tabs");
-
-  if (relDashboardTabs) {
-    relDashboardTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-tab");
-
-        relDashboardTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll('[id^="tab-"]')
-          .forEach((t) => (t.style.display = "none"));
-
-        e.target.classList.add("active");
-        document.getElementById(`tab-${tabName}`).style.display = "block";
-
-        if (tabName === "relatorios") {
-          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
-          carregarRelatorios();
-        }
-      });
-    });
+  if (!validarFormularioVaga()) {
+    return;
   }
 
-  if (relRelatóriosTabs) {
-    relRelatóriosTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-rel-tab");
-
-        relRelatóriosTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-content-rel")
-          .forEach((t) => (t.style.display = "none"));
-
-        e.target.classList.add("active");
-        document.getElementById(`rel-tab-${tabName}`).style.display = "block";
-      });
-    });
+  const submitButton = document.getElementById("btn-salvar-vaga");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
   }
 
-  if (btnAtualizarRelatorios) {
-    btnAtualizarRelatorios.addEventListener("click", carregarRelatorios);
-  }
+  try {
+    const dadosVaga = coletarDadosFormularioVaga();
 
-  if (relBuscaCandidato) {
-    relBuscaCandidato.addEventListener("input", filtrarCandidatos);
-  }
-
-  // ============================================
-  // FUNÇÃO: Carregar Relatórios
-  // ============================================
-
-  async function carregarRelatorios() {
-    console.log("🔹 Carregando relatórios de recrutamento...");
-
-    try {
-      console.log("📊 Buscando dados do Firestore...");
-
-      if (!db) {
-        console.error("❌ ERRO: db não está definido!");
-        throw new Error("Firestore não foi inicializado");
-      }
-
-      const candidatosRef = collection(db, "candidaturas");
-      const tokensRef = collection(db, "tokens_acesso");
-      const vagasRef = collection(db, "vagas");
-      const estudosRef = collection(db, "estudos_de_caso");
-
-      const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
-        await Promise.all([
-          getDocs(candidatosRef),
-          getDocs(tokensRef),
-          getDocs(vagasRef),
-          getDocs(estudosRef),
-        ]);
-
-      candidatosCache = [];
-      candidatosSnap.docs.forEach((doc) => {
-        const data = doc.data();
-        candidatosCache.push({
-          id: doc.id,
-          ...data,
-        });
+    if (vagaAtualId) {
+      const vagaRef = doc(vagasCollection, vagaAtualId);
+      await updateDoc(vagaRef, {
+        ...dadosVaga,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: "Ficha Técnica salva",
+          usuario: currentUserData?.id || "sistema",
+        }),
       });
 
-      tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-      console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
-      console.log(`📊 ✅ Tokens: ${tokensCache.length}`);
-      console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
-      console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
-
-      const totalInscritos = candidatosCache.length;
-      const testesRespondidos = tokensCache.filter((t) => t.usado).length;
-      const testesPendentes = tokensCache.filter((t) => !t.usado).length;
-      const taxaResposta =
-        totalInscritos > 0
-          ? Math.round((testesRespondidos / totalInscritos) * 100)
-          : 0;
-
-      if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
-      if (relTestesRespondidos)
-        relTestesRespondidos.textContent = testesRespondidos;
-      if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
-      if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
-
-      popularFiltros();
-      renderizarInscricoesPorVaga();
-      renderizarListaCandidatos();
-      renderizarRespostasAosTestes();
-
-      console.log("✅ Relatórios carregados com sucesso");
-    } catch (error) {
-      console.error("❌ Erro ao carregar relatórios:", error);
-      window.showToast?.(
-        "Erro ao carregar relatórios: " + error.message,
-        "error"
-      );
-    }
-  }
-
-  // ============================================
-  // FUNÇÃO: Popular Filtros
-  // ============================================
-
-  async function popularFiltros() {
-    console.log("🔹 Populando filtros...");
-
-    if (relFiltroVaga) {
-      relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
-      vagasCache.forEach((vaga) => {
-        const option = document.createElement("option");
-        option.value = vaga.id;
-        const nomeDaVaga =
-          vaga.titulo ||
-          vaga.tituloVaga ||
-          vaga.nome ||
-          `Vaga ${vaga.id.substring(0, 8)}`;
-        option.textContent = nomeDaVaga;
-        relFiltroVaga.appendChild(option);
-      });
-    }
-
-    if (relFiltroTeste) {
-      relFiltroTeste.innerHTML = '<option value="">Todos os testes</option>';
-      estudosCache.forEach((teste) => {
-        const option = document.createElement("option");
-        option.value = teste.id;
-        option.textContent =
-          teste.titulo || teste.nome || `Teste ${teste.id.substring(0, 8)}`;
-        relFiltroTeste.appendChild(option);
-      });
-    }
-  }
-
-  // ============================================
-  // FUNÇÃO: Criar Gráfico de Inscrições
-  // ============================================
-
-  async function criarGraficoInscricoes() {
-    const ctx = document.getElementById("rel-chart-inscricoes");
-    if (!ctx) {
-      console.error("❌ Canvas rel-chart-inscricoes não encontrado");
-      return;
-    }
-
-    if (typeof Chart === "undefined") {
-      console.error("❌ Chart.js não foi importado!");
-      return;
-    }
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-      inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
-    });
-
-    const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      return vaga?.titulo || vaga?.nome || vagaId.substring(0, 8);
-    });
-
-    const dados = Object.values(inscricoesPorVaga);
-
-    console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
-
-    if (window.graficoInscricoes) {
-      window.graficoInscricoes.destroy();
-    }
-
-    window.graficoInscricoes = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: vagasNomes,
-        datasets: [
+      window.showToast?.("Vaga atualizada com sucesso!", "success");
+      console.log("✅ Vaga atualizada:", vagaAtualId);
+    } else {
+      const novaVaga = {
+        ...dadosVaga,
+        status: "Em Elaboração (Ficha Técnica)",
+        data_criacao: new Date(),
+        criado_por: currentUserData?.id || "sistema",
+        historico: [
           {
-            label: "Total de Inscrições",
-            data: dados,
-            backgroundColor: "#667eea",
-            borderColor: "#5568d3",
-            borderWidth: 1,
+            data: new Date(),
+            acao: "Vaga criada",
+            usuario: currentUserData?.id || "sistema",
           },
         ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1,
-            },
-          },
-        },
-        plugins: {
-          legend: {
-            display: true,
-          },
-        },
-      },
-    });
-  }
+      };
 
-  // ============================================
-  // FUNÇÃO: Renderizar Inscrições por Vaga
-  // ============================================
-
-  async function renderizarInscricoesPorVaga() {
-    console.log("🔹 Renderizando inscrições por vaga...");
-
-    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
-    if (!tabelaBody) {
-      console.error("❌ Elemento rel-tbody-inscricoes não encontrado");
-      return;
-    }
-
-    tabelaBody.innerHTML = "";
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-
-      if (!inscricoesPorVaga[vagaId]) {
-        inscricoesPorVaga[vagaId] = {
-          total: 0,
-          triagem: 0,
-          aprovados: 0,
-          rejeitados: 0,
-          contratados: 0,
-        };
-      }
-
-      inscricoesPorVaga[vagaId].total++;
-
-      const status = cand.status_recrutamento || "Candidatura Recebida";
-
-      if (
-        status.includes("Triagem") ||
-        status === "Candidatura Recebida" ||
-        status.includes("recebida")
-      ) {
-        inscricoesPorVaga[vagaId].triagem++;
-      } else if (
-        status.includes("Aprovada") ||
-        status.includes("Entrevista Pendente")
-      ) {
-        inscricoesPorVaga[vagaId].aprovados++;
-      } else if (status.includes("Rejeitado") || status.includes("rejeicao")) {
-        inscricoesPorVaga[vagaId].rejeitados++;
-      } else if (status.includes("Contratado")) {
-        inscricoesPorVaga[vagaId].contratados++;
-      }
-    });
-
-    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
-
-    Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      const vagaNome =
-        vaga?.titulo ||
-        vaga?.tituloVaga ||
-        vaga?.nome ||
-        `Vaga ${vagaId.substring(0, 8)}`;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${vagaNome}</strong></td>
-        <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
-        <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
-        <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
-        <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
-        <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
-      `;
-      tabelaBody.appendChild(tr);
-    });
-
-    if (Object.keys(inscricoesPorVaga).length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
-    }
-
-    await criarGraficoInscricoes();
-  }
-
-  // ============================================
-  // FUNÇÃO: Renderizar Lista de Candidatos
-  // ============================================
-
-  async function renderizarListaCandidatos() {
-    console.log("🔹 Renderizando lista de candidatos...");
-
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    if (!tabelaBody) return;
-
-    atualizarTabelaCandidatos(candidatosCache, tabelaBody);
-  }
-
-  function atualizarTabelaCandidatos(candidatos, tabelaBody) {
-    console.log(`🔹 Atualizando tabela com ${candidatos.length} candidatos`);
-
-    tabelaBody.innerHTML = "";
-
-    if (candidatos.length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
-      return;
-    }
-
-    candidatos.forEach((cand) => {
-      const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
-
-      const testeEnviado = tokensCache.some((t) => t.candidatoId === cand.id);
-      const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === cand.id && t.usado
+      const docRef = await addDoc(vagasCollection, novaVaga);
+      vagaAtualId = docRef.id;
+      window.showToast?.(
+        "Vaga criada com sucesso! Auto-save ativado.",
+        "success"
       );
+      console.log("✅ Nova vaga criada:", docRef.id);
+    }
 
-      let statusTeste = '<span class="badge bg-secondary">Não enviado</span>';
-      if (testeEnviado && testeRespondido) {
-        statusTeste = '<span class="badge bg-success">✅ Respondido</span>';
-      } else if (testeEnviado) {
-        statusTeste =
-          '<span class="badge bg-warning text-dark">⏳ Enviado</span>';
-      }
+    fecharModal(ID_MODAL_FICHA_TECNICA);
+    limparFormularioVaga();
+    carregarVagas(statusAbaAtiva);
+  } catch (error) {
+    console.error("❌ Erro ao salvar vaga:", error);
 
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${cand.nome_completo || "-"}</strong></td>
-        <td>${cand.email_candidato || "-"}</td>
-        <td>${cand.telefone_contato || "-"}</td>
-        <td>${vagaNome}</td>
-        <td><span class="badge bg-info">${
-          cand.status_recrutamento || "Pendente"
-        }</span></td>
-        <td>${statusTeste}</td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
-            cand.nome_completo
-          }')">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
-      tabelaBody.appendChild(tr);
-    });
-  }
-
-  function filtrarCandidatos(e) {
-    const termo = e.target.value.toLowerCase();
-    const candidatosFiltrados = candidatosCache.filter((c) =>
-      (c.nome_completo || "").toLowerCase().includes(termo)
-    );
-
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    atualizarTabelaCandidatos(candidatosFiltrados, tabelaBody);
-  }
-
-  // ============================================
-  // FUNÇÃO: Renderizar Respostas aos Testes (COM ÍCONE CLARO)
-  // ============================================
-
-  async function renderizarRespostasAosTestes() {
-    console.log("🔹 Renderizando respostas aos testes...");
-
-    const tabelaBody = document.getElementById("rel-tbody-respostas");
-    if (!tabelaBody) return;
-
-    tabelaBody.innerHTML = "";
-
-    tokensCache.forEach((token) => {
-      if (!token.usado) return;
-
-      const candidato = candidatosCache.find((c) => c.id === token.candidatoId);
-      const teste = estudosCache.find((t) => t.id === token.testeId);
-
-      const candidatoNome =
-        candidato?.nome_completo || token.nomeCandidato || "-";
-      const testeNome = teste?.titulo || teste?.nome || "-";
-
-      const dataResposta = token.respondidoEm
-        ? new Date(
-            token.respondidoEm.toDate?.() || token.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const tempoSegundos = token.tempoRespostaSegundos || 0;
-      const tempoMinutos = Math.floor(tempoSegundos / 60);
-      const tempoFormatado =
-        tempoMinutos > 0
-          ? `${tempoMinutos}min ${tempoSegundos % 60}s`
-          : `${tempoSegundos}s`;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-      <td><strong>${candidatoNome}</strong></td>
-      <td>${testeNome}</td>
-      <td>${dataResposta}</td>
-      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-      <td><span class="badge bg-success">✅ Respondido</span></td>
-      <td class="text-center">
-        <button 
-          class="btn btn-sm btn-primary" 
-          title="Ver Respostas"
-          onclick="window.abrirModalVerRespostas('${
-            token.id
-          }', '${candidatoNome.replace(/'/g, "\\'")}')">
-          <i class="fas fa-eye me-1"></i> Ver Respostas
-        </button>
-      </td>
-    `;
-      tabelaBody.appendChild(tr);
-    });
-
-    if (tokensCache.filter((t) => t.usado).length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhuma resposta encontrada</td></tr>';
+    if (error.code === "permission-denied") {
+      window.showToast?.("Você não tem permissão para esta ação.", "error");
+    } else {
+      window.showToast?.(`Erro ao salvar vaga: ${error.message}`, "error");
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-save me-2"></i> Salvar e Próxima Etapa';
     }
   }
+}
 
-  // ============================================
-  // FUNÇÃO ORIGINAL: Busca de dados do Dashboard
-  // ============================================
+async function enviarParaAprovacao(vagaId) {
+  console.log(`🔹 Enviando vaga para aprovação: ${vagaId}`);
 
-  async function fetchRHDashboardData() {
-    const ativosQuery = query(
-      usuariosCollection,
-      where("inativo", "==", false)
-    );
+  const confirmacao = confirm(
+    "Deseja enviar esta vaga para aprovação da Ficha Técnica?"
+  );
+  if (!confirmacao) return;
 
-    const vagasQuery = query(
-      vagasCollection,
-      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
-    );
-
-    const onboardingQuery = query(
-      onboardingCollection,
-      where("faseAtual", "in", [
-        "pendente-docs",
-        "em-integracao",
-        "acompanhamento",
-      ])
-    );
-
-    const comunicadosQuery = query(comunicadosCollection);
-    const todosUsuariosQuery = query(
-      usuariosCollection,
-      where("inativo", "==", false)
-    );
-
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    const desligamentosQuery = query(
-      desligamentosCollection,
-      where("dataEfetiva", ">=", oneYearAgo)
-    );
-
-    const [
-      ativosSnap,
-      vagasSnap,
-      onboardingSnap,
-      comunicadosSnap,
-      todosUsuariosSnap,
-      desligamentosSnap,
-    ] = await Promise.all([
-      getDocs(ativosQuery),
-      getDocs(vagasQuery),
-      getDocs(onboardingQuery),
-      getDocs(comunicadosQuery),
-      getDocs(todosUsuariosQuery),
-      getDocs(desligamentosQuery),
-    ]);
-
-    const funcoesMap = {};
-    const profissaoMap = {};
-
-    todosUsuariosSnap.forEach((doc) => {
-      const user = doc.data();
-      const funcoes = user.funcoes || [];
-      const profissao = user.profissao || "Não Informado";
-
-      funcoes.forEach((role) => {
-        const displayRole =
-          {
-            psicologo_voluntario: "Psicólogo Voluntário",
-            psicologo_plantonista: "Psicólogo Plantonista",
-            supervisor: "Supervisor",
-            admin: "Admin",
-            rh: "RH",
-            gestor: "Gestor",
-          }[role] ||
-          role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
-
-        funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
-      });
-
-      const displayProfissao =
-        profissao.charAt(0).toUpperCase() + profissao.slice(1);
-      profissaoMap[displayProfissao] =
-        (profissaoMap[displayProfissao] || 0) + 1;
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Aguardando Aprovação de Ficha",
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Vaga enviada para aprovação da Ficha Técnica",
+        usuario: currentUserData?.id || "sistema",
+      }),
     });
 
-    const funcoesLabels = Object.keys(funcoesMap);
-    const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
+    window.showToast?.("Vaga enviada para aprovação!", "success");
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Vaga enviada para aprovação");
+  } catch (error) {
+    console.error("❌ Erro ao enviar para aprovação:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
 
-    const profissaoLabels = Object.keys(profissaoMap);
-    const profissaoData = profissaoLabels.map((label) => profissaoMap[label]);
+async function aprovarFichaTecnica(vagaId) {
+  console.log(`🔹 Aprovando ficha técnica: ${vagaId}`);
 
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const monthNames = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
+  const confirmacao = confirm("Deseja APROVAR a Ficha Técnica desta vaga?");
+  if (!confirmacao) return;
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Ficha Técnica Aprovada (Aguardando Criação de Arte)",
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Ficha Técnica aprovada",
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.(
+      "Ficha Técnica aprovada! Aguardando criação da arte.",
+      "success"
+    );
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Ficha Técnica aprovada");
+  } catch (error) {
+    console.error("❌ Erro ao aprovar ficha:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function solicitarCorrecaoFicha(vagaId) {
+  console.log(`🔹 Abrindo modal de correção para ficha: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-correcao").value = vagaId;
+    document.getElementById("tipo-correcao").value = "ficha";
+    document.getElementById(
+      "modal-correcao-title"
+    ).textContent = `Solicitar Correção - ${vaga.nome || "Vaga"}`;
+    document.getElementById("motivo-correcao").value = "";
+
+    abrirModal(ID_MODAL_CORRECAO);
+    console.log("✅ Modal de correção aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de correção:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function visualizarVaga(vagaId) {
+  await abrirModalEdicaoVaga(vagaId);
+  document
+    .querySelectorAll(
+      "#form-vaga input, #form-vaga textarea, #form-vaga select"
+    )
+    .forEach((input) => {
+      input.disabled = true;
+    });
+}
+// ============================================
+// OPERAÇÕES DE ARTE
+// ============================================
+
+async function abrirModalCriacaoArte(vagaId) {
+  console.log(`🔹 Abrindo modal de criação de arte: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-arte-criacao").value = vagaId;
+    document.getElementById("vaga-resumo-arte").value = vaga.resumo || "";
+    document.getElementById("vaga-link-arte").value = "";
+    document.getElementById("vaga-texto-divulgacao").value = "";
+
+    abrirModal(ID_MODAL_CRIACAO_ARTE);
+    console.log("✅ Modal de criação de arte aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function handleEnviarAprovacaoArte(e) {
+  if (e && e.preventDefault) {
+    e.preventDefault();
+  }
+
+  const vagaId = document.getElementById("vaga-id-arte-criacao").value;
+  const linkArte = document.getElementById("vaga-link-arte").value.trim();
+  const textoDiv = document
+    .getElementById("vaga-texto-divulgacao")
+    .value.trim();
+
+  if (!linkArte || !textoDiv) {
+    window.showToast?.(
+      "Por favor, preencha o link da arte e o texto de divulgação.",
+      "error"
+    );
+    return;
+  }
+
+  console.log(`🔹 Enviando arte para aprovação: ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-enviar-aprovacao-arte");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Arte Criada (Aguardando Aprovação)",
+      arte_link: linkArte,
+      texto_divulgacao: textoDiv,
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Arte enviada para aprovação",
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.("Arte enviada para aprovação!", "success");
+    fecharModal(ID_MODAL_CRIACAO_ARTE);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Arte enviada");
+  } catch (error) {
+    console.error("❌ Erro ao enviar arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i> Enviar para Aprovação';
+    }
+  }
+}
+
+async function visualizarArte(vagaId) {
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) return;
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-arte-aprovacao").value = vagaId;
+    document.getElementById("aprovacao-salario").textContent =
+      vaga.valor_salario || "A combinar";
+    document.getElementById("aprovacao-regime").textContent = capitalize(
+      vaga.regime_trabalho || ""
+    );
+    document.getElementById("aprovacao-modalidade").textContent = capitalize(
+      vaga.modalidade_trabalho || ""
+    );
+    document.getElementById("link-arte-clicavel").href = vaga.arte_link || "#";
+    document.getElementById("aprovacao-texto-divulgacao-visual").textContent =
+      vaga.texto_divulgacao || "N/A";
+
+    abrirModal(ID_MODAL_APROVACAO_ARTE);
+  } catch (error) {
+    console.error("❌ Erro ao visualizar arte:", error);
+  }
+}
+
+async function aprovarArte(vagaId) {
+  console.log(`🔹 Aprovando arte: ${vagaId}`);
+
+  const confirmacao = confirm("Deseja APROVAR a arte de divulgação?");
+  if (!confirmacao) return;
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "em-divulgacao",
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: "Arte aprovada",
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.(
+      "Arte aprovada! Vaga pronta para divulgação.",
+      "success"
+    );
+    fecharModal(ID_MODAL_APROVACAO_ARTE);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Arte aprovada");
+  } catch (error) {
+    console.error("❌ Erro ao aprovar arte:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function solicitarCorrecaoArte(vagaId) {
+  console.log(`🔹 Abrindo modal de correção para arte: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-correcao").value = vagaId;
+    document.getElementById("tipo-correcao").value = "arte";
+    document.getElementById(
+      "modal-correcao-title"
+    ).textContent = `Solicitar Correção na Arte - ${vaga.nome || "Vaga"}`;
+    document.getElementById("motivo-correcao").value = "";
+
+    abrirModal(ID_MODAL_CORRECAO);
+    console.log("✅ Modal de correção de arte aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de correção:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function handleSolicitarCorrecao(e) {
+  e.preventDefault();
+
+  const vagaId = document.getElementById("vaga-id-correcao").value;
+  const tipo = document.getElementById("tipo-correcao").value;
+  const motivo = document.getElementById("motivo-correcao").value.trim();
+
+  if (!motivo) {
+    window.showToast?.("Por favor, descreva o motivo da correção.", "error");
+    return;
+  }
+
+  console.log(`🔹 Enviando solicitação de correção (${tipo}): ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-confirmar-correcao");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+
+    let updateData = {};
+    let mensagemSucesso = "";
+
+    if (tipo === "ficha") {
+      updateData = {
+        status: "Em Correção (Ficha Técnica)",
+        feedback_correcao: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Ficha Técnica solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Ficha Técnica enviada!";
+    } else if (tipo === "arte") {
+      updateData = {
+        status: "Em Correção (Arte)",
+        feedback_arte: motivo,
+        data_atualizacao: new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Correção de Arte solicitada: ${motivo}`,
+          usuario: currentUserData?.id || "sistema",
+        }),
+      };
+      mensagemSucesso = "Solicitação de correção da Arte enviada!";
+    }
+
+    await updateDoc(vagaRef, updateData);
+
+    window.showToast?.(mensagemSucesso, "success");
+    fecharModal(ID_MODAL_CORRECAO);
+    fecharModal(ID_MODAL_APROVACAO_ARTE);
+
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Correção solicitada com sucesso");
+  } catch (error) {
+    console.error("❌ Erro ao solicitar correção:", error);
+    window.showToast?.(`Erro ao enviar solicitação: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-paper-plane me-2"></i> Enviar Solicitação';
+    }
+  }
+}
+// ============================================
+// DIVULGAÇÃO E ENCERRAMENTO
+// ============================================
+
+async function abrirModalDivulgacao(vagaId) {
+  console.log(`🔹 Abrindo modal de divulgação: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+
+    document.getElementById("vaga-id-divulgacao").value = vagaId;
+    document.getElementById("divulgacao-link-clicavel").href =
+      vaga.arte_link || "#";
+    document.getElementById("divulgacao-texto-aprovado").textContent =
+      vaga.texto_divulgacao || "N/A";
+    document.getElementById("vaga-periodo-divulgacao").value =
+      vaga.periodo_divulgacao || "";
+
+    const canaisSelect = document.getElementById("vaga-canais-divulgacao");
+    const canais = vaga.canais_divulgacao || [];
+    Array.from(canaisSelect.options).forEach((option) => {
+      option.selected = canais.includes(option.value);
+    });
+
+    abrirModal(ID_MODAL_DIVULGACAO);
+    console.log("✅ Modal de divulgação aberto");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de divulgação:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function handleSalvarDivulgacao(e) {
+  e.preventDefault();
+
+  const vagaId = document.getElementById("vaga-id-divulgacao").value;
+  const periodo = document
+    .getElementById("vaga-periodo-divulgacao")
+    .value.trim();
+  const canaisSelect = document.getElementById("vaga-canais-divulgacao");
+  const canais = Array.from(canaisSelect.selectedOptions).map(
+    (opt) => opt.value
+  );
+
+  if (!periodo || canais.length === 0) {
+    window.showToast?.("Por favor, preencha todos os campos.", "error");
+    return;
+  }
+
+  console.log(`🔹 Salvando divulgação: ${vagaId}`);
+
+  const submitButton = document.getElementById("btn-salvar-divulgacao");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+  }
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      periodo_divulgacao: periodo,
+      canais_divulgacao: canais,
+      data_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Divulgação registrada nos canais: ${canais.join(", ")}`,
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.("Divulgação salva com sucesso!", "success");
+    fecharModal(ID_MODAL_DIVULGACAO);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Divulgação salva");
+  } catch (error) {
+    console.error("❌ Erro ao salvar divulgação:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML =
+        '<i class="fas fa-save me-2"></i> Salvar Divulgação';
+    }
+  }
+}
+
+async function handleEncerrarVaga() {
+  const vagaId = document.getElementById("vaga-id-divulgacao").value;
+  const motivo = prompt("Qual o motivo do encerramento da vaga?");
+
+  if (!motivo) return;
+
+  console.log(`🔹 Encerrando vaga: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    await updateDoc(vagaRef, {
+      status: "Vaga Encerrada",
+      motivo_encerramento: motivo,
+      data_encerramento: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Vaga encerrada: ${motivo}`,
+        usuario: currentUserData?.id || "sistema",
+      }),
+    });
+
+    window.showToast?.("Vaga encerrada com sucesso!", "success");
+    fecharModal(ID_MODAL_DIVULGACAO);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Vaga encerrada");
+  } catch (error) {
+    console.error("❌ Erro ao encerrar vaga:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+// ============================================
+// VISUALIZAÇÃO E REAPROVEITAMENTO
+// ============================================
+
+async function visualizarVagaFechada(vagaId) {
+  console.log(`🔹 Visualizando vaga fechada: ${vagaId}`);
+
+  try {
+    const vagaRef = doc(vagasCollection, vagaId);
+    const vagaSnap = await getDoc(vagaRef);
+
+    if (!vagaSnap.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
+    }
+
+    const vaga = vagaSnap.data();
+    vagaAtualId = vagaId;
+
+    const fichaParts = [
+      `<p><strong>Cargo:</strong> ${vaga.nome}</p>`,
+      `<p><strong>Departamento:</strong> ${vaga.departamento}</p>`,
+      `<p><strong>Regime:</strong> ${capitalize(vaga.regime_trabalho)}</p>`,
+      `<p><strong>Salário:</strong> ${vaga.valor_salario || "A combinar"}</p>`,
     ];
 
-    const monthlyDataMap = {};
-    const labels = [];
+    document.getElementById("visualizacao-ficha-completa").innerHTML =
+      fichaParts.join("");
 
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(currentYear, currentMonth - i, 1);
-      const yearMonthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
-      monthlyDataMap[yearMonthKey] = 0;
-      labels.push(
-        `${monthNames[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`
-      );
+    const arteParts = [
+      `<p><strong>Link:</strong> <a href="${vaga.arte_link}" target="_blank">Ver Arte</a></p>`,
+      `<p><strong>Texto:</strong> ${vaga.texto_divulgacao || "N/A"}</p>`,
+      `<p><strong>Canais:</strong> ${
+        (vaga.canais_divulgacao || []).join(", ") || "N/A"
+      }</p>`,
+    ];
+
+    document.getElementById("visualizacao-arte-completa").innerHTML =
+      arteParts.join("");
+
+    const historico = vaga.historico || [];
+    const historicoHtml = historico
+      .map((item) => {
+        const dataFormatada = item.data?.toDate
+          ? formatarData(item.data.toDate())
+          : formatarData(item.data);
+        return `<p>${dataFormatada} - ${item.acao} (${item.usuario})</p>`;
+      })
+      .join("");
+
+    document.getElementById("visualizacao-historico").innerHTML =
+      historicoHtml || "<p>Sem histórico</p>";
+
+    document.getElementById("vaga-id-fechadas").value = vagaId;
+    document.getElementById(
+      "fechadas-title"
+    ).textContent = `Vaga: ${vaga.nome}`;
+
+    abrirModal(ID_MODAL_FECHADAS);
+    console.log("✅ Vaga fechada visualizada");
+  } catch (error) {
+    console.error("❌ Erro ao visualizar vaga:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+async function reaproveitarVaga(vagaId) {
+  console.log(`🔹 Reaproveitando vaga: ${vagaId}`);
+
+  const confirmacao = confirm(
+    "Deseja reaproveitar esta vaga? Uma cópia será criada em status 'Em Elaboração'."
+  );
+  if (!confirmacao) return;
+
+  try {
+    const vagaOriginal = await getDoc(doc(vagasCollection, vagaId));
+
+    if (!vagaOriginal.exists()) {
+      window.showToast?.("Vaga não encontrada.", "error");
+      return;
     }
 
-    desligamentosSnap.forEach((doc) => {
-      const desligamento = doc.data();
-      let effectiveDate;
+    const dados = vagaOriginal.data();
+    const novaVaga = { ...dados };
+    delete novaVaga.status;
+    delete novaVaga.data_criacao;
+    delete novaVaga.data_atualizacao;
+    delete novaVaga.historico;
+    delete novaVaga.feedback_correcao;
+    delete novaVaga.feedback_arte;
 
-      if (
-        desligamento.dataEfetiva &&
-        typeof desligamento.dataEfetiva.toDate === "function"
-      ) {
-        effectiveDate = desligamento.dataEfetiva.toDate();
-      } else if (desligamento.dataEfetiva instanceof Date) {
-        effectiveDate = desligamento.dataEfetiva;
-      } else {
-        return;
-      }
+    novaVaga.status = "Em Elaboração (Ficha Técnica)";
+    novaVaga.data_criacao = new Date();
+    novaVaga.vaga_original_id = vagaId;
+    novaVaga.historico = [
+      {
+        data: new Date(),
+        acao: `Reaproveitada da vaga ${dados.nome}`,
+        usuario: currentUserData?.id || "sistema",
+      },
+    ];
 
-      const yearMonthKey = `${effectiveDate.getFullYear()}-${
-        effectiveDate.getMonth() + 1
-      }`;
+    const docRef = await addDoc(vagasCollection, novaVaga);
 
-      if (monthlyDataMap.hasOwnProperty(yearMonthKey)) {
-        monthlyDataMap[yearMonthKey]++;
+    window.showToast?.("Vaga reaproveitada com sucesso!", "success");
+    fecharModal(ID_MODAL_FECHADAS);
+    carregarVagas(statusAbaAtiva);
+    console.log("✅ Vaga reaproveitada:", docRef.id);
+  } catch (error) {
+    console.error("❌ Erro ao reaproveitar vaga:", error);
+    window.showToast?.(`Erro: ${error.message}`, "error");
+  }
+}
+
+// ============================================
+// GERENCIAMENTO DE ABAS
+// ============================================
+
+function configurarAbas() {
+  document.querySelectorAll(".tab-link").forEach((tab) => {
+    tab.addEventListener("click", (e) => {
+      const status = e.currentTarget.getAttribute("data-status");
+      statusAbaAtiva = status;
+
+      document
+        .querySelectorAll(".tab-link")
+        .forEach((t) => t.classList.remove("active"));
+      e.currentTarget.classList.add("active");
+
+      carregarVagas(status);
+    });
+  });
+}
+// ============================================
+// INICIALIZAÇÃO COMPLETA DO MÓDULO
+// ============================================
+
+export async function initGestaoVagas(user, userData) {
+  console.log("🔹 Iniciando Módulo de Gestão de Vagas...");
+
+  currentUserData = userData || {};
+  vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
+  configCollection = collection(db, CONFIG_COLLECTION_NAME);
+
+  console.log("✅ Coleções inicializadas");
+
+  // Carrega departamentos
+  await carregarDepartamentos();
+
+  // Configura sistema de abas
+  configurarAbas();
+
+  // Configura fechamento de modais
+  configurarFechamentoModais();
+
+  // Configura auto-save
+  configurarAutoSave();
+
+  console.log("✅ Configurações básicas concluídas");
+
+  // ============================================
+  // LISTENERS DE FORMULÁRIOS
+  // ============================================
+
+  const formVaga = document.getElementById("form-vaga");
+  if (formVaga) {
+    formVaga.addEventListener("submit", handleSalvarVaga);
+    console.log("✅ Listener: form-vaga");
+  }
+
+  const formCriacaoArte = document.getElementById("form-criacao-arte");
+  if (formCriacaoArte) {
+    formCriacaoArte.addEventListener("submit", handleEnviarAprovacaoArte);
+    console.log("✅ Listener: form-criacao-arte");
+  }
+
+  const formDivulgacao = document.getElementById("form-divulgacao");
+  if (formDivulgacao) {
+    formDivulgacao.addEventListener("submit", handleSalvarDivulgacao);
+    console.log("✅ Listener: form-divulgacao");
+  }
+
+  const formSolicitarCorrecao = document.getElementById(
+    "form-solicitar-correcao"
+  );
+  if (formSolicitarCorrecao) {
+    formSolicitarCorrecao.addEventListener("submit", handleSolicitarCorrecao);
+    console.log("✅ Listener: form-solicitar-correcao");
+  }
+
+  // ============================================
+  // LISTENERS DE BOTÕES PRINCIPAIS
+  // ============================================
+
+  const btnNovaVaga = document.getElementById("btn-nova-vaga");
+  if (btnNovaVaga) {
+    btnNovaVaga.addEventListener("click", () => {
+      limparFormularioVaga();
+      document.getElementById("ficha-title").textContent = "Nova Vaga";
+      vagaAtualId = null;
+      abrirModal(ID_MODAL_FICHA_TECNICA);
+    });
+    console.log("✅ Listener: btn-nova-vaga");
+  }
+
+  const btnEnviarAprovacaoArte = document.getElementById(
+    "btn-enviar-aprovacao-arte"
+  );
+  if (btnEnviarAprovacaoArte) {
+    btnEnviarAprovacaoArte.addEventListener("click", (e) => {
+      handleEnviarAprovacaoArte(e);
+    });
+    console.log("✅ Listener: btn-enviar-aprovacao-arte");
+  }
+
+  const btnAprovarArteFinal = document.getElementById("btn-aprovar-arte-final");
+  if (btnAprovarArteFinal) {
+    btnAprovarArteFinal.addEventListener("click", async () => {
+      const vagaId = document.getElementById("vaga-id-arte-aprovacao").value;
+      await aprovarArte(vagaId);
+    });
+    console.log("✅ Listener: btn-aprovar-arte-final");
+  }
+
+  const btnSolicitarAlteracoesArte = document.getElementById(
+    "btn-solicitar-alteracoes-arte"
+  );
+  if (btnSolicitarAlteracoesArte) {
+    btnSolicitarAlteracoesArte.addEventListener("click", async () => {
+      const vagaId = document.getElementById("vaga-id-arte-aprovacao").value;
+      fecharModal(ID_MODAL_APROVACAO_ARTE);
+      await solicitarCorrecaoArte(vagaId);
+    });
+    console.log("✅ Listener: btn-solicitar-alteracoes-arte");
+  }
+
+  const btnSalvarDivulgacao = document.getElementById("btn-salvar-divulgacao");
+  if (btnSalvarDivulgacao) {
+    btnSalvarDivulgacao.addEventListener("click", async () => {
+      const form = document.getElementById("form-divulgacao");
+      if (form) {
+        form.dispatchEvent(new Event("submit", { cancelable: true }));
       }
     });
+    console.log("✅ Listener: btn-salvar-divulgacao");
+  }
 
-    const desligamentoData = labels.map((label) => {
-      const [monthName, yearShort] = label.split("/");
-      const monthIndex = monthNames.findIndex((name) => name === monthName);
-      const year = parseInt(
-        yearShort.length === 2 ? `20${yearShort}` : yearShort
+  const btnEncerrarVaga = document.getElementById("btn-encerrar-vaga");
+  if (btnEncerrarVaga) {
+    btnEncerrarVaga.addEventListener("click", handleEncerrarVaga);
+    console.log("✅ Listener: btn-encerrar-vaga");
+  }
+
+  const btnCancelarVagaFechada = document.getElementById(
+    "btn-cancelar-vaga-fechada"
+  );
+  if (btnCancelarVagaFechada) {
+    btnCancelarVagaFechada.addEventListener("click", async () => {
+      const vagaId = document.getElementById("vaga-id-fechadas").value;
+
+      const confirmacao = confirm(
+        "Tem certeza que deseja CANCELAR esta vaga? Esta ação não pode ser desfeita."
       );
-      const yearMonthKey = `${year}-${monthIndex + 1}`;
-      return monthlyDataMap[yearMonthKey] || 0;
+
+      if (!confirmacao) return;
+
+      try {
+        const vagaRef = doc(vagasCollection, vagaId);
+        await updateDoc(vagaRef, {
+          status: "Vaga Cancelada",
+          data_cancelamento: new Date(),
+          historico: arrayUnion({
+            data: new Date(),
+            acao: "Vaga cancelada manualmente",
+            usuario: currentUserData?.id || "sistema",
+          }),
+        });
+
+        window.showToast?.("Vaga cancelada com sucesso.", "success");
+        fecharModal(ID_MODAL_FECHADAS);
+        carregarVagas(statusAbaAtiva);
+        console.log("✅ Vaga cancelada:", vagaId);
+      } catch (error) {
+        console.error("❌ Erro ao cancelar vaga:", error);
+        window.showToast?.(`Erro ao cancelar vaga: ${error.message}`, "error");
+      }
     });
-
-    return {
-      ativos: ativosSnap.size,
-      vagas: vagasSnap.size,
-      onboarding: onboardingSnap.size,
-      comunicados: comunicadosSnap.size,
-
-      funcoesData: {
-        labels: funcoesLabels,
-        data: funcoesData,
-      },
-      profissaoData: {
-        labels: profissaoLabels,
-        data: profissaoData,
-      },
-      desligamentoData: {
-        labels: labels,
-        data: desligamentoData,
-      },
-    };
+    console.log("✅ Listener: btn-cancelar-vaga-fechada");
   }
 
-  // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste (SEM BOOTSTRAP)
-  // ============================================
-
-  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
-    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
-
-    try {
-      if (!db) {
-        console.error("❌ ERRO: Firestore não inicializado!");
-        window.showToast?.("Erro: Firestore não está pronto", "error");
-        return;
-      }
-
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenId);
-      const tokenSnap = await getDoc(tokenDocRef);
-
-      if (!tokenSnap.exists()) {
-        window.showToast?.("Token não encontrado", "error");
-        return;
-      }
-
-      const tokenData = tokenSnap.data();
-      console.log("✅ Token encontrado:", tokenData);
-
-      if (
-        !tokenData.respostas ||
-        Object.keys(tokenData.respostas).length === 0
-      ) {
-        window.showToast?.(
-          "Nenhuma resposta encontrada para este teste",
-          "warning"
-        );
-        return;
-      }
-
-      // ✅ Busca o teste
-      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
-      const testeSnap = await getDoc(testeRef);
-      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
-
-      console.log("✅ Teste carregado:", testeDados);
-
-      // ✅ Cria HTML do modal com SweetAlert2
-      let perguntasHTML = "";
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          perguntasHTML += `
-          <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; text-align: left;">
-            <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-              <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-            </p>
-            <div style="background: white; padding: 10px; border-radius: 4px; color: #555;">
-              <strong>Resposta:</strong> ${resposta}
-            </div>
-          </div>
-        `;
-        });
-      } else {
-        perguntasHTML =
-          '<p style="color: #999; text-align: center;">Nenhuma pergunta encontrada.</p>';
-      }
-
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      // ✅ Abre com SweetAlert2
-      await Swal.fire({
-        title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
-        html: `
-        <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-          <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-            <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-              testeDados.titulo || "Teste"
-            }</p>
-            <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-            <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-          </div>
-          
-          <hr style="margin: 20px 0;">
-          
-          <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-          
-          ${perguntasHTML}
-        </div>
-      `,
-        width: "800px",
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
-        cancelButtonText: "Fechar",
-        confirmButtonColor: "#667eea",
-        cancelButtonColor: "#6c757d",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.exportarRespostaIndividual(tokenId, candidatoNome);
-        }
-      });
-
-      console.log("✅ Modal de respostas aberto");
-    } catch (error) {
-      console.error("❌ Erro ao abrir respostas:", error);
-      window.showToast?.(`Erro: ${error.message}`, "error");
-    }
-  };
-
-  // ============================================
-  // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS)
-  // ============================================
-
-  window.exportarRespostaIndividual = async function (
-    tokenDocId,
-    candidatoNome
-  ) {
-    console.log(`🔹 Exportando resposta individual: ${tokenDocId}`);
-
-    try {
-      if (!db) {
-        console.error("❌ ERRO: Firestore não inicializado!");
-        return;
-      }
-
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenDocId);
-      const tokenSnap = await getDoc(tokenDocRef);
-
-      if (!tokenSnap.exists()) {
-        window.showToast?.("Token não encontrado", "error");
-        return;
-      }
-
-      const tokenData = tokenSnap.data();
-      console.log("✅ Token encontrado:", tokenData);
-
-      // ✅ Busca o teste
-      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
-      const testeSnap = await getDoc(testeRef);
-      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
-
-      console.log("✅ Teste encontrado:", testeDados);
-
-      // ✅ Formata data e tempo
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      // ✅ Cria linha única para Excel com TODAS as colunas
-      const linhaExcel = {
-        Candidato: candidatoNome,
-        Teste: testeDados.titulo || "Teste",
-        "Data da Resposta": dataResposta,
-        "Tempo Gasto": tempoGasto,
-        Status: "Respondido",
-      };
-
-      // ✅ Adiciona cada RESPOSTA como coluna no Excel
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          linhaExcel[`P${index + 1}: ${pergunta.enunciado}`] = resposta;
-        });
-      }
-
-      console.log("📊 Dados para exportação:", linhaExcel);
-
-      // ✅ Pergunta qual formato exportar
-      const { isConfirmed, isDenied } = await Swal.fire({
-        title: "Exportar Respostas",
-        text: "Escolha o formato para exportação:",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "📊 Excel (CSV)",
-        denyButtonText: "📄 PDF",
-        cancelButtonText: "Cancelar",
-        showDenyButton: true,
-      });
-
-      if (isConfirmed) {
-        console.log("📊 Exportando para Excel...");
-        exportarParaExcel(
-          [linhaExcel],
-          `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
-        );
-      } else if (isDenied) {
-        console.log("📄 Exportando para PDF...");
-        exportarRespostaPDFIndividual(
-          candidatoNome,
-          testeDados,
-          tokenData,
-          dataResposta,
-          tempoGasto
-        );
-      }
-    } catch (error) {
-      console.error("❌ Erro ao exportar:", error);
-      window.showToast?.(`Erro: ${error.message}`, "error");
-    }
-  };
-
-  /**
-   * ✅ Exporta resposta individual para PDF
-   */
-  function exportarRespostaPDFIndividual(
-    candidatoNome,
-    testeDados,
-    tokenData,
-    dataResposta,
-    tempoGasto
-  ) {
-    console.log("📄 Exportando resposta individual para PDF...");
-
-    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFRespostasIndividualCorrigido(
-              candidatoNome,
-              testeDados,
-              tokenData,
-              dataResposta,
-              tempoGasto
-            );
-          }, 500);
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      document.head.appendChild(scriptJsPDF);
-    } else {
-      gerarPDFRespostasIndividualCorrigido(
-        candidatoNome,
-        testeDados,
-        tokenData,
-        dataResposta,
-        tempoGasto
-      );
-    }
+  const btnReaproveitarVaga = document.getElementById("btn-reaproveitar-vaga");
+  if (btnReaproveitarVaga) {
+    btnReaproveitarVaga.addEventListener("click", async () => {
+      const vagaId = document.getElementById("vaga-id-fechadas").value;
+      await reaproveitarVaga(vagaId);
+    });
+    console.log("✅ Listener: btn-reaproveitar-vaga");
   }
 
-  function gerarPDFRespostasIndividualCorrigido(
-    candidatoNome,
-    testeDados,
-    tokenData,
-    dataResposta,
-    tempoGasto
-  ) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let yPosition = 15;
-
-      // ✅ CABEÇALHO
-      doc.setFontSize(18);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico", 105, yPosition, { align: "center" });
-      yPosition += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
-        align: "center",
-      });
-      yPosition += 8;
-
-      doc.setFontSize(12);
-      doc.setTextColor(51, 51, 51);
-      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
-
-      // Linha separadora
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
-
-      // ✅ INFORMAÇÕES DO CANDIDATO
-      doc.setFontSize(10);
-      doc.setTextColor(51, 51, 51);
-
-      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
-
-      // ✅ PERGUNTAS E RESPOSTAS
-      doc.setFontSize(11);
-      doc.setTextColor(102, 126, 234);
-      doc.text("Respostas Fornecidas:", 14, yPosition);
-      yPosition += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(51, 51, 51);
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-
-          // ✅ PERGUNTA
-          doc.setFont(undefined, "bold");
-          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
-          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
-
-          perguntaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          // ✅ RESPOSTA
-          doc.setFont(undefined, "normal");
-          doc.setFillColor(240, 240, 240);
-          const respostaWrapped = doc.splitTextToSize(
-            `Resposta: ${resposta}`,
-            180
-          );
-
-          respostaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          yPosition += 3;
-        });
-      } else {
-        doc.text("Nenhuma resposta encontrada.", 14, yPosition);
-      }
-
-      yPosition += 5;
-
-      // ✅ RODAPÉ
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-
-        // Linha separadora
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(14, 280, 196, 280);
-
-        doc.text(
-          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
-          105,
-          285,
-          { align: "center" }
-        );
-        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
-        doc.text(
-          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
-          105,
-          293,
-          { align: "center" }
-        );
-      }
-
-      // ✅ SALVA O PDF
-      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
-      window.showToast?.("✅ PDF exportado com sucesso!", "success");
-
-      console.log("✅ PDF gerado com sucesso!");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao exportar PDF", "error");
-    }
-  }
-
-  /**
-   * ✅ Exporta uma resposta individual para PDF
-   */
-  function exportarRespostaPDF(candidatoNome, testeDados, tokenData) {
-    console.log("📄 Exportando resposta individual para PDF...");
-
-    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
-          }, 500);
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      document.head.appendChild(scriptJsPDF);
-    } else {
-      gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
-    }
-  }
-
-  function gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let yPosition = 15;
-
-      // ✅ CABEÇALHO
-      doc.setFontSize(18);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico", 105, yPosition, { align: "center" });
-      yPosition += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
-        align: "center",
-      });
-      yPosition += 8;
-
-      doc.setFontSize(12);
-      doc.setTextColor(51, 51, 51);
-      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
-
-      // Linha separadora
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
-
-      // ✅ INFORMAÇÕES DO CANDIDATO
-      doc.setFontSize(10);
-      doc.setTextColor(51, 51, 51);
-
-      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
-      yPosition += 6;
-
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR")
-        : "-";
-
-      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
-      yPosition += 6;
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
-
-      // ✅ PERGUNTAS E RESPOSTAS
-      doc.setFontSize(11);
-      doc.setTextColor(102, 126, 234);
-      doc.text("Respostas Fornecidas:", 14, yPosition);
-      yPosition += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(51, 51, 51);
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-
-          // ✅ PERGUNTA
-          doc.setFont(undefined, "bold");
-          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
-          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
-
-          perguntaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          // ✅ RESPOSTA
-          doc.setFont(undefined, "normal");
-          doc.setFillColor(240, 240, 240);
-          const respostaWrapped = doc.splitTextToSize(
-            `Resposta: ${resposta}`,
-            180
-          );
-
-          respostaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          yPosition += 3;
-        });
-      }
-
-      yPosition += 5;
-
-      // ✅ RODAPÉ
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-
-        // Linha separadora
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(14, 280, 196, 280);
-
-        doc.text(
-          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
-          105,
-          285,
-          { align: "center" }
-        );
-        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
-        doc.text(
-          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
-          105,
-          293,
-          { align: "center" }
-        );
-      }
-
-      // ✅ SALVA O PDF
-      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
-      window.showToast?.("✅ PDF exportado com sucesso!", "success");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao exportar PDF", "error");
-    }
-  }
+  console.log("✅ Todos os listeners configurados");
 
   // ============================================
-  // INICIALIZAÇÃO
+  // CARREGAMENTO INICIAL DE VAGAS
   // ============================================
 
   try {
-    const data = await fetchRHDashboardData();
-
-    if (metricAtivos) metricAtivos.textContent = data.ativos;
-    if (metricVagas) metricVagas.textContent = data.vagas;
-    if (metricOnboarding) metricOnboarding.textContent = data.onboarding;
-    if (metricComunicados) metricComunicados.textContent = data.comunicados;
-
-    if (funcoesChartCtx) {
-      new Chart(funcoesChartCtx, {
-        type: "doughnut",
-        data: {
-          labels: data.funcoesData.labels,
-          datasets: [
-            {
-              label: "Total",
-              data: data.funcoesData.data,
-              backgroundColor: [
-                "#4e73df",
-                "#1cc88a",
-                "#36b9cc",
-                "#f6c23e",
-                "#6f42c1",
-                "#20c997",
-              ],
-              hoverOffset: 4,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: "bottom",
-              labels: {
-                padding: 20,
-              },
-            },
-            title: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    if (rhProfissaoChartCtx) {
-      new Chart(rhProfissaoChartCtx, {
-        type: "bar",
-        data: {
-          labels: data.profissaoData.labels,
-          datasets: [
-            {
-              label: "Profissionais Ativos",
-              data: data.profissaoData.data,
-              backgroundColor: "#1d70b7",
-              borderColor: "#04396d",
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: "y",
-          scales: {
-            x: {
-              beginAtZero: true,
-              precision: 0,
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    if (desligamentoChartCtx) {
-      new Chart(desligamentoChartCtx, {
-        type: "bar",
-        data: {
-          labels: data.desligamentoData.labels,
-          datasets: [
-            {
-              label: "Desligamentos",
-              data: data.desligamentoData.data,
-              backgroundColor: "#e74a3b",
-              borderColor: "#e74a3b",
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              precision: 0,
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    console.log("✅ Dashboard RH carregado com sucesso");
+    await carregarVagas(statusAbaAtiva);
+    console.log("✅ Vagas iniciais carregadas com sucesso");
   } catch (error) {
-    console.error("Erro ao carregar dados do Dashboard RH:", error);
-    window.showToast?.("Erro ao carregar dashboard", "error");
+    console.error("❌ Erro ao carregar vagas iniciais:", error);
+    const listaVagas = document.getElementById("lista-vagas");
+    if (listaVagas) {
+      listaVagas.innerHTML = `
+        <p class="alert alert-error">
+          Erro ao carregar vagas: ${error.message}
+        </p>
+      `;
+    }
   }
+
+  // ============================================
+  // FINALIZAÇÃO
+  // ============================================
+
+  console.log("✅ ✅ ✅ Módulo de Gestão de Vagas inicializado com sucesso!");
+  console.log(`   - Usuário: ${currentUserData?.nome || "Desconhecido"}`);
+  console.log(`   - Role: ${currentUserData?.role || "N/A"}`);
+  console.log(`   - Aba ativa: ${statusAbaAtiva}`);
 }
+
+// ============================================
+// EXPORTAÇÃO PARA COMPATIBILIDADE
+// ============================================
+
+/**
+ * Alias para compatibilidade com o sistema de rotas
+ */
+export { initGestaoVagas as init };
