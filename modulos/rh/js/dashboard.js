@@ -1157,23 +1157,48 @@ export async function initdashboard(user, userData) {
       },
     };
   }
+
   // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste
+  // FUNÇÃO: Visualizar Respostas do Teste (CORRIGIDA)
   // ============================================
 
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
 
     try {
-      // ✅ Busca o token com as respostas
-      const tokenSnap = await db.collection("tokens_acesso").doc(tokenId).get();
+      // ✅ Inicializa Firestore
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        window.showToast?.("Erro: Firestore não está pronto", "error");
+        return;
+      }
 
-      if (!tokenSnap.exists) {
+      // ✅ Busca o token com as respostas
+      const tokensRef = collection(db, "tokens_acesso");
+      const tokenQuery = query(tokensRef, where("id", "==", tokenId));
+      const tokenSnap = await getDocs(tokenQuery);
+
+      let tokenData = null;
+      let tokenDocId = null;
+
+      if (!tokenSnap.empty) {
+        tokenData = tokenSnap.docs[0].data();
+        tokenDocId = tokenSnap.docs[0].id;
+      } else {
+        // Tenta buscar direto pelo ID do documento
+        const tokenDocSnap = await getDoc(doc(db, "tokens_acesso", tokenId));
+        if (tokenDocSnap.exists()) {
+          tokenData = tokenDocSnap.data();
+          tokenDocId = tokenId;
+        }
+      }
+
+      if (!tokenData) {
         window.showToast?.("Token não encontrado", "error");
         return;
       }
 
-      const tokenData = tokenSnap.data();
+      console.log("✅ Token encontrado:", tokenData);
 
       if (
         !tokenData.respostas ||
@@ -1187,16 +1212,16 @@ export async function initdashboard(user, userData) {
       }
 
       // ✅ Busca o teste para saber os enunciados
-      const testeSnap = await db
-        .collection("estudos_de_caso")
-        .doc(tokenData.testeId)
-        .get();
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
 
-      const testeDados = testeSnap.exists ? testeSnap.data() : {};
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste carregado:", testeDados);
 
       // ✅ Cria HTML modal com as respostas
       let modalHTML = `
-      <div class="modal fade" id="modal-ver-respostas" tabindex="-1">
+      <div class="modal fade" id="modal-ver-respostas-${tokenId}" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
           <div class="modal-content">
             <div class="modal-header">
@@ -1277,7 +1302,7 @@ export async function initdashboard(user, userData) {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-              <button type="button" class="btn btn-primary" onclick="exportarRespostaIndividual('${tokenId}', '${candidatoNome.replace(
+              <button type="button" class="btn btn-primary" onclick="window.exportarRespostaIndividual('${tokenDocId}', '${candidatoNome.replace(
         /'/g,
         "\\'"
       )}')">
@@ -1290,7 +1315,9 @@ export async function initdashboard(user, userData) {
     `;
 
       // ✅ Remove modal anterior se existir
-      const modalAntigo = document.getElementById("modal-ver-respostas");
+      const modalAntigo = document.getElementById(
+        `modal-ver-respostas-${tokenId}`
+      );
       if (modalAntigo) {
         modalAntigo.remove();
       }
@@ -1300,7 +1327,7 @@ export async function initdashboard(user, userData) {
 
       // ✅ Abre o modal
       const modal = new bootstrap.Modal(
-        document.getElementById("modal-ver-respostas")
+        document.getElementById(`modal-ver-respostas-${tokenId}`)
       );
       modal.show();
 
@@ -1312,36 +1339,53 @@ export async function initdashboard(user, userData) {
   };
 
   // ============================================
-  // FUNÇÃO: Exportar Resposta Individual
+  // FUNÇÃO: Exportar Resposta Individual (CORRIGIDA)
   // ============================================
 
-  window.exportarRespostaIndividual = async function (tokenId, candidatoNome) {
-    console.log(`🔹 Exportando resposta individual: ${tokenId}`);
+  window.exportarRespostaIndividual = async function (
+    tokenDocId,
+    candidatoNome
+  ) {
+    console.log(`🔹 Exportando resposta individual: ${tokenDocId}`);
 
     try {
-      // ✅ Busca o token
-      const tokenSnap = await db.collection("tokens_acesso").doc(tokenId).get();
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        return;
+      }
 
-      if (!tokenSnap.exists) {
+      // ✅ Busca o token com o ID do documento
+      const tokenDocRef = doc(db, "tokens_acesso", tokenDocId);
+      const tokenSnap = await getDoc(tokenDocRef);
+
+      if (!tokenSnap.exists()) {
         window.showToast?.("Token não encontrado", "error");
         return;
       }
 
       const tokenData = tokenSnap.data();
 
-      // ✅ Busca o teste
-      const testeSnap = await db
-        .collection("estudos_de_caso")
-        .doc(tokenData.testeId)
-        .get();
+      console.log("✅ Token encontrado:", tokenData);
 
-      const testeDados = testeSnap.exists ? testeSnap.data() : {};
+      // ✅ Busca o teste
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
+
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste encontrado:", testeDados);
 
       // ✅ Cria dados para exportação
       const dataResposta = tokenData.respondidoEm
         ? new Date(
             tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR")
+          ).toLocaleDateString("pt-BR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         : "-";
 
       const tempoGasto = tokenData.tempoRespostaSegundos
@@ -1350,26 +1394,33 @@ export async function initdashboard(user, userData) {
           }s`
         : "-";
 
-      const dadosExportacao = {
-        Candidato: candidatoNome,
+      // ✅ Primeiro objeto com informações gerais
+      const infoGeral = {
+        "Nome do Candidato": candidatoNome,
         Teste: testeDados.titulo || "Teste",
         "Data da Resposta": dataResposta,
         "Tempo Gasto": tempoGasto,
+        Status: "Respondido",
       };
+
+      // ✅ Dados para Excel com respostas
+      const dadosExcel = { ...infoGeral };
 
       // ✅ Adiciona cada resposta
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
           const resposta = tokenData.respostas[`resposta-${index}`] || "-";
           const numPergunta = `P${index + 1}: ${pergunta.enunciado}`;
-          dadosExportacao[numPergunta] = resposta;
+          dadosExcel[numPergunta] = resposta;
         });
       }
 
-      // ✅ Opções de exportação
-      const opcoes = await Swal.fire({
+      console.log("📊 Dados para exportação:", dadosExcel);
+
+      // ✅ Pergunta qual formato exportar
+      const { isConfirmed, isDenied } = await Swal.fire({
         title: "Exportar Respostas",
-        text: "Escolha o formato:",
+        text: "Escolha o formato para exportação:",
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "📊 Excel (CSV)",
@@ -1378,21 +1429,225 @@ export async function initdashboard(user, userData) {
         showDenyButton: true,
       });
 
-      if (opcoes.isConfirmed) {
-        // ✅ Exporta para Excel
+      if (isConfirmed) {
+        console.log("📊 Exportando para Excel...");
         exportarParaExcel(
-          [dadosExportacao],
+          [dadosExcel],
           `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
         );
-      } else if (opcoes.isDenied) {
-        // ✅ Exporta para PDF
-        exportarRespostaPDF(candidatoNome, testeDados, tokenData);
+      } else if (isDenied) {
+        console.log("📄 Exportando para PDF...");
+        exportarRespostaPDFIndividual(
+          candidatoNome,
+          testeDados,
+          tokenData,
+          dataResposta,
+          tempoGasto
+        );
       }
     } catch (error) {
       console.error("❌ Erro ao exportar:", error);
       window.showToast?.(`Erro: ${error.message}`, "error");
     }
   };
+
+  /**
+   * ✅ Exporta resposta individual para PDF
+   */
+  function exportarRespostaPDFIndividual(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
+    console.log("📄 Exportando resposta individual para PDF...");
+
+    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
+      console.log("⚠️ Carregando jsPDF...");
+
+      const scriptJsPDF = document.createElement("script");
+      scriptJsPDF.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+
+      const scriptAutoTable = document.createElement("script");
+      scriptAutoTable.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
+
+      scriptJsPDF.onload = () => {
+        scriptAutoTable.onload = () => {
+          setTimeout(() => {
+            gerarPDFRespostasIndividualCorrigido(
+              candidatoNome,
+              testeDados,
+              tokenData,
+              dataResposta,
+              tempoGasto
+            );
+          }, 500);
+        };
+        document.head.appendChild(scriptAutoTable);
+      };
+
+      document.head.appendChild(scriptJsPDF);
+    } else {
+      gerarPDFRespostasIndividualCorrigido(
+        candidatoNome,
+        testeDados,
+        tokenData,
+        dataResposta,
+        tempoGasto
+      );
+    }
+  }
+
+  function gerarPDFRespostasIndividualCorrigido(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let yPosition = 15;
+
+      // ✅ CABEÇALHO
+      doc.setFontSize(18);
+      doc.setTextColor(102, 126, 234);
+      doc.text("EuPsico", 105, yPosition, { align: "center" });
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
+        align: "center",
+      });
+      yPosition += 8;
+
+      doc.setFontSize(12);
+      doc.setTextColor(51, 51, 51);
+      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
+      yPosition += 10;
+
+      // Linha separadora
+      doc.setDrawColor(102, 126, 234);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPosition - 2, 196, yPosition - 2);
+      yPosition += 5;
+
+      // ✅ INFORMAÇÕES DO CANDIDATO
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+
+      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
+      yPosition += 10;
+
+      // ✅ PERGUNTAS E RESPOSTAS
+      doc.setFontSize(11);
+      doc.setTextColor(102, 126, 234);
+      doc.text("Respostas Fornecidas:", 14, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(9);
+      doc.setTextColor(51, 51, 51);
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+
+          // ✅ PERGUNTA
+          doc.setFont(undefined, "bold");
+          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
+          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
+
+          perguntaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
+          });
+
+          // ✅ RESPOSTA
+          doc.setFont(undefined, "normal");
+          doc.setFillColor(240, 240, 240);
+          const respostaWrapped = doc.splitTextToSize(
+            `Resposta: ${resposta}`,
+            180
+          );
+
+          respostaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
+          });
+
+          yPosition += 3;
+        });
+      } else {
+        doc.text("Nenhuma resposta encontrada.", 14, yPosition);
+      }
+
+      yPosition += 5;
+
+      // ✅ RODAPÉ
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+
+        // Linha separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(14, 280, 196, 280);
+
+        doc.text(
+          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
+          105,
+          285,
+          { align: "center" }
+        );
+        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
+        doc.text(
+          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
+          105,
+          293,
+          { align: "center" }
+        );
+      }
+
+      // ✅ SALVA O PDF
+      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
+      window.showToast?.("✅ PDF exportado com sucesso!", "success");
+
+      console.log("✅ PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao gerar PDF:", error);
+      window.showToast?.("❌ Erro ao exportar PDF", "error");
+    }
+  }
 
   /**
    * ✅ Exporta uma resposta individual para PDF
