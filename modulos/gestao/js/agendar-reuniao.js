@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.0 - Adicionada Reunião com Voluntário
+// VERSÃO 2.0 - Adicionada "Reunião com Voluntário" mantendo as existentes
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -39,25 +39,42 @@ async function carregarGestores() {
 function renderizarFormularioAgendamento() {
   const container = document.getElementById("agendar-reuniao-container");
   container.innerHTML = `
-    <div class="form-container">
-      <h2>Agendar Nova Reunião</h2>
-      <form id="form-agendamento">
-        <div class="form-group">
-          <label for="tipo-reuniao">Tipo de Reunião *</label>
-          <select id="tipo-reuniao" required>
-            <option value="">Selecione...</option>
-            <option value="Reunião Técnica">Reunião Técnica</option>
-            <option value="Reunião com Voluntário">Reunião com Voluntário</option>
-          </select>
-        </div>
+        <form id="form-agendamento">
+            <h3>Agendar Nova Reunião</h3>
+            <div class="form-group">
+                <label for="tipo-reuniao">Tipo de Reunião</label>
+                <select id="tipo-reuniao" class="form-control" required>
+                    <option value="" disabled selected>Selecione...</option>
+                    <option value="Reunião Técnica">Reunião Técnica</option>
+                    <option value="Reunião Conselho administrativo">Reunião Conselho Administrativo</option>
+                    <option value="Reunião com Gestor">Reunião com Gestor</option>
+                    <option value="Reunião com Voluntário">Reunião com Voluntário</option>
+                </select>
+            </div>
 
-        <div id="campos-dinamicos"></div>
+            <div class="form-row cols-3" id="data-hora-container">
+                <div class="form-group">
+                    <label for="data-reuniao">Data da Reunião</label>
+                    <input type="date" id="data-reuniao" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="hora-inicio">Hora de Início</label>
+                    <input type="time" id="hora-inicio" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="hora-fim">Hora de Fim</label>
+                    <input type="time" id="hora-fim" class="form-control" required>
+                </div>
+            </div>
 
-        <button type="submit" class="btn-primary">Criar Agendamento</button>
-      </form>
-    </div>
-    <div id="link-gerado-container"></div>
-  `;
+            <div id="campos-dinamicos"></div>
+
+            <div class="button-bar">
+                <button type="submit" class="action-button save-btn">Agendar Reunião</button>
+            </div>
+            <div id="agendamento-feedback" class="status-message" style="margin-top: 15px;"></div>
+        </form>
+    `;
 
   document
     .getElementById("tipo-reuniao")
@@ -70,80 +87,80 @@ function renderizarFormularioAgendamento() {
 function renderizarCamposDinamicos() {
   const tipo = document.getElementById("tipo-reuniao").value;
   const container = document.getElementById("campos-dinamicos");
+  const dataHoraContainer = document.getElementById("data-hora-container");
 
   if (tipo === "Reunião Técnica") {
+    dataHoraContainer.style.display = "flex";
     container.innerHTML = `
-      <div class="form-group">
-        <label for="data-reuniao">Data da Reunião *</label>
-        <input type="date" id="data-reuniao" required />
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="hora-inicio">Hora de Início *</label>
-          <input type="time" id="hora-inicio" required />
-        </div>
-        <div class="form-group">
-          <label for="hora-fim">Hora de Fim *</label>
-          <input type="time" id="hora-fim" required />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="tema">Tema *</label>
-        <input type="text" id="tema" placeholder="Digite o tema da reunião" required />
-      </div>
-
-      <div class="form-group">
-        <label for="descricao">Descrição</label>
-        <textarea id="descricao" rows="4" placeholder="Detalhes adicionais (opcional)"></textarea>
-      </div>
-    `;
+            <div class="form-group">
+                <label for="facilitador">Facilitador do Treinamento</label>
+                <input type="text" id="facilitador" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="tema-reuniao">Tema da Reunião</label>
+                <textarea id="tema-reuniao" class="form-control" rows="3" required></textarea>
+            </div>
+        `;
+  } else if (
+    tipo === "Reunião Conselho administrativo" ||
+    tipo === "Reunião com Gestor"
+  ) {
+    dataHoraContainer.style.display = "flex";
+    container.innerHTML = `
+            <div class="form-group">
+                <label for="pauta-reuniao">Pauta da Reunião</label>
+                <textarea id="pauta-reuniao" class="form-control" rows="4" required></textarea>
+            </div>
+        `;
   } else if (tipo === "Reunião com Voluntário") {
+    dataHoraContainer.style.display = "none";
+
     const gestoresOptions = gestores
       .map((g) => `<option value="${g.id}">${g.nome}</option>`)
       .join("");
 
     container.innerHTML = `
-      <div class="form-group">
-        <label for="gestor-responsavel">Gestor Responsável *</label>
-        <select id="gestor-responsavel" required>
-          <option value="">Selecione o gestor...</option>
-          ${gestoresOptions}
-        </select>
-      </div>
+            <div class="form-group">
+                <label for="gestor-responsavel">Gestor Responsável *</label>
+                <select id="gestor-responsavel" class="form-control" required>
+                    <option value="">Selecione o gestor...</option>
+                    ${gestoresOptions}
+                </select>
+            </div>
 
-      <div class="form-group">
-        <label>
-          <input type="checkbox" id="exibir-gestor" checked />
-          Exibir nome do gestor no link de agendamento
-        </label>
-      </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="exibir-gestor" checked />
+                    Exibir nome do gestor no link de agendamento
+                </label>
+            </div>
 
-      <div class="form-group">
-        <label for="descricao-voluntario">Descrição da Reunião (opcional)</label>
-        <textarea id="descricao-voluntario" rows="4" placeholder="Deixe em branco para usar texto padrão"></textarea>
-      </div>
+            <div class="form-group">
+                <label for="descricao-voluntario">Descrição da Reunião (opcional)</label>
+                <textarea id="descricao-voluntario" class="form-control" rows="4" placeholder="Deixe em branco para usar texto padrão"></textarea>
+                <small style="color: #666; font-size: 0.9em;">Se deixar em branco, será usado um texto padrão convidativo.</small>
+            </div>
 
-      <div class="form-group">
-        <label>Datas e Horários Disponíveis *</label>
-        <div id="slots-container">
-          <div class="slot-item">
-            <input type="date" class="slot-data" required />
-            <input type="time" class="slot-hora-inicio" required />
-            <span class="slot-separator">até</span>
-            <input type="time" class="slot-hora-fim" required />
-            <button type="button" class="btn-remove-slot" onclick="this.parentElement.remove()">✕</button>
-          </div>
-        </div>
-        <button type="button" id="btn-adicionar-slot" class="btn-secondary">+ Adicionar Horário</button>
-      </div>
-    `;
+            <div class="form-group">
+                <label>Datas e Horários Disponíveis *</label>
+                <div id="slots-container" style="margin-bottom: 1rem;">
+                    <div class="slot-item" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
+                        <input type="date" class="slot-data form-control" style="flex: 2;" required />
+                        <input type="time" class="slot-hora-inicio form-control" style="flex: 1;" required />
+                        <span>até</span>
+                        <input type="time" class="slot-hora-fim form-control" style="flex: 1;" required />
+                        <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
+                    </div>
+                </div>
+                <button type="button" id="btn-adicionar-slot" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
+            </div>
+        `;
 
     document
       .getElementById("btn-adicionar-slot")
       .addEventListener("click", adicionarSlot);
   } else {
+    dataHoraContainer.style.display = "flex";
     container.innerHTML = "";
   }
 }
@@ -152,12 +169,14 @@ function adicionarSlot() {
   const slotsContainer = document.getElementById("slots-container");
   const novoSlot = document.createElement("div");
   novoSlot.className = "slot-item";
+  novoSlot.style.cssText =
+    "display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;";
   novoSlot.innerHTML = `
-    <input type="date" class="slot-data" required />
-    <input type="time" class="slot-hora-inicio" required />
-    <span class="slot-separator">até</span>
-    <input type="time" class="slot-hora-fim" required />
-    <button type="button" class="btn-remove-slot" onclick="this.parentElement.remove()">✕</button>
+    <input type="date" class="slot-data form-control" style="flex: 2;" required />
+    <input type="time" class="slot-hora-inicio form-control" style="flex: 1;" required />
+    <span>até</span>
+    <input type="time" class="slot-hora-fim form-control" style="flex: 1;" required />
+    <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
   `;
   slotsContainer.appendChild(novoSlot);
 }
@@ -167,60 +186,81 @@ async function salvarAgendamento(e) {
 
   const tipo = document.getElementById("tipo-reuniao").value;
 
-  if (tipo === "Reunião Técnica") {
-    await salvarReuniaoTecnica();
-  } else if (tipo === "Reunião com Voluntário") {
-    await salvarReuniaoVoluntario();
+  if (tipo === "Reunião com Voluntário") {
+    await salvarReuniaoVoluntario(e);
+  } else {
+    await salvarReuniaoTradicional(e);
   }
 }
 
-async function salvarReuniaoTecnica() {
-  const data = {
-    tipo: "Reunião Técnica",
+async function salvarReuniaoTradicional(e) {
+  const feedbackEl = document.getElementById("agendamento-feedback");
+  const saveButton = e.target.querySelector('button[type="submit"]');
+  saveButton.disabled = true;
+  saveButton.textContent = "A agendar...";
+  feedbackEl.textContent = "";
+  feedbackEl.className = "status-message";
+
+  const tipo = document.getElementById("tipo-reuniao").value;
+
+  const dadosAgendamento = {
+    tipo: tipo,
     dataReuniao: document.getElementById("data-reuniao").value,
     horaInicio: document.getElementById("hora-inicio").value,
     horaFim: document.getElementById("hora-fim").value,
-    tema: document.getElementById("tema").value,
-    descricao: document.getElementById("descricao").value || "",
-    criadoEm: serverTimestamp(),
+    status: "Agendada",
+    createdAt: serverTimestamp(),
+    pontos: "",
+    decisoes: "",
+    participantes: "",
+    planoDeAcao: [],
+    encaminhamentos: [],
+    feedbacks: [],
   };
 
+  if (tipo === "Reunião Técnica") {
+    dadosAgendamento.responsavelTecnica =
+      document.getElementById("facilitador").value;
+    dadosAgendamento.pauta = document.getElementById("tema-reuniao").value;
+  } else {
+    dadosAgendamento.pauta = document.getElementById("pauta-reuniao").value;
+  }
+
   try {
-    const docRef = await addDoc(collection(firestoreDb, "gestao_atas"), data);
-    const linkFeedback = `${window.location.origin}/feedback.html?ataId=${docRef.id}`;
-
-    document.getElementById("link-gerado-container").innerHTML = `
-      <div class="success-message">
-        <h3>✓ Reunião Técnica agendada com sucesso!</h3>
-        <p><strong>Link para Feedback:</strong></p>
-        <input type="text" value="${linkFeedback}" readonly onclick="this.select()" />
-        <button onclick="navigator.clipboard.writeText('${linkFeedback}'); alert('Link copiado!')">
-          Copiar Link
-        </button>
-      </div>
-    `;
-
-    document.getElementById("form-agendamento").reset();
+    await addDoc(collection(firestoreDb, "gestao_atas"), dadosAgendamento);
+    feedbackEl.textContent = "Reunião agendada com sucesso!";
+    feedbackEl.classList.add("alert", "alert-success");
+    e.target.reset();
     document.getElementById("campos-dinamicos").innerHTML = "";
   } catch (error) {
-    console.error("[AGENDAR] Erro ao salvar reunião técnica:", error);
-    alert("Erro ao agendar reunião. Tente novamente.");
+    console.error("Erro ao agendar reunião:", error);
+    feedbackEl.textContent = "Erro ao agendar a reunião. Tente novamente.";
+    feedbackEl.classList.add("alert", "alert-danger");
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Agendar Reunião";
+    setTimeout(() => (feedbackEl.textContent = ""), 4000);
   }
 }
 
-async function salvarReuniaoVoluntario() {
+async function salvarReuniaoVoluntario(e) {
+  const feedbackEl = document.getElementById("agendamento-feedback");
+  const saveButton = e.target.querySelector('button[type="submit"]');
+  saveButton.disabled = true;
+  saveButton.textContent = "A criar agendamento...";
+  feedbackEl.textContent = "";
+  feedbackEl.className = "status-message";
+
   const gestorId = document.getElementById("gestor-responsavel").value;
   const gestorNome = gestores.find((g) => g.id === gestorId)?.nome || "";
   const exibirGestor = document.getElementById("exibir-gestor").checked;
   const descricaoCustom = document.getElementById("descricao-voluntario").value;
 
-  const descricaoPadrao = `
-    Olá! Esta é uma reunião de alinhamento com nossa equipe, um momento especial para que possamos dialogar sobre mudanças, compartilhar perspectivas de futuro e, principalmente, ouvir você.
-    
-    Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos conhecer suas ideias, ouvir suas sugestões e entender como podemos apoiá-lo(a) ainda mais nessa jornada.
-    
-    Escolha abaixo o melhor horário para você e vamos conversar!
-  `;
+  const descricaoPadrao = `Olá! Esta é uma reunião de alinhamento com nossa equipe, um momento especial para que possamos dialogar sobre mudanças, compartilhar perspectivas de futuro e, principalmente, ouvir você.
+
+Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos conhecer suas ideias, ouvir suas sugestões e entender como podemos apoiá-lo(a) ainda mais nessa jornada.
+
+Escolha abaixo o melhor horário para você e vamos conversar!`;
 
   const slots = [];
   document.querySelectorAll(".slot-item").forEach((slot) => {
@@ -234,7 +274,10 @@ async function salvarReuniaoVoluntario() {
   });
 
   if (slots.length === 0) {
-    alert("Adicione pelo menos uma data e horário.");
+    feedbackEl.textContent = "Adicione pelo menos uma data e horário.";
+    feedbackEl.classList.add("alert", "alert-danger");
+    saveButton.disabled = false;
+    saveButton.textContent = "Agendar Reunião";
     return;
   }
 
@@ -253,23 +296,28 @@ async function salvarReuniaoVoluntario() {
       collection(firestoreDb, "agendamentos_voluntarios"),
       data
     );
-    const linkAgendamento = `${window.location.origin}/agendar-voluntario.html?agendamentoId=${docRef.id}`;
 
-    document.getElementById("link-gerado-container").innerHTML = `
-      <div class="success-message">
-        <h3>✓ Reunião com Voluntário criada com sucesso!</h3>
-        <p><strong>Link de Inscrição:</strong></p>
-        <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" />
-        <button onclick="navigator.clipboard.writeText('${linkAgendamento}'); alert('Link copiado!')">
+    const linkAgendamento = `${window.location.origin}/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
+
+    feedbackEl.innerHTML = `
+      <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+        <strong>✓ Reunião com Voluntário criada com sucesso!</strong>
+        <p style="margin: 0.5rem 0;"><strong>Link de Inscrição:</strong></p>
+        <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;" />
+        <button onclick="navigator.clipboard.writeText('${linkAgendamento}'); alert('Link copiado!')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
           Copiar Link
         </button>
       </div>
     `;
 
-    document.getElementById("form-agendamento").reset();
+    e.target.reset();
     document.getElementById("campos-dinamicos").innerHTML = "";
   } catch (error) {
-    console.error("[AGENDAR] Erro ao salvar reunião com voluntário:", error);
-    alert("Erro ao criar agendamento. Tente novamente.");
+    console.error("[AGENDAR] Erro ao criar reunião com voluntário:", error);
+    feedbackEl.textContent = "Erro ao criar agendamento. Tente novamente.";
+    feedbackEl.classList.add("alert", "alert-danger");
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Agendar Reunião";
   }
 }
