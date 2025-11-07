@@ -920,10 +920,6 @@ export async function initdashboard(user, userData) {
     atualizarTabelaCandidatos(candidatosFiltrados, tabelaBody);
   }
 
-  // ============================================
-  // FUNÇÃO: Renderizar Respostas aos Testes COM NOTA
-  // ============================================
-
   async function renderizarRespostasAosTestes() {
     console.log("🔹 Renderizando respostas aos testes...");
     const tabelaBody = document.getElementById("rel-tbody-respostas");
@@ -961,7 +957,7 @@ export async function initdashboard(user, userData) {
           ? `${tempoMinutos}min ${tempoSegundos % 60}s`
           : `${tempoSegundos}s`;
 
-      // ✅ CALCULA NOTA (se houver gabarito)
+      // ✅ CALCULA NOTA (CORRIGIDO para tratar objetos)
       let notaHTML = '<span class="badge bg-secondary">-</span>';
 
       if (teste?.perguntas && token.respostas) {
@@ -969,10 +965,27 @@ export async function initdashboard(user, userData) {
         let totalComGabarito = 0;
 
         teste.perguntas.forEach((pergunta, index) => {
-          const respostaCorreta = pergunta.respostaCorreta || pergunta.gabarito;
+          let respostaCorreta = pergunta.respostaCorreta || pergunta.gabarito;
+
+          // ✅ CORRIGIDO: Extrai texto se for objeto
+          if (typeof respostaCorreta === "object" && respostaCorreta !== null) {
+            respostaCorreta =
+              respostaCorreta.texto || respostaCorreta.resposta || null;
+          }
+
           if (respostaCorreta) {
             totalComGabarito++;
-            const respostaCandidato = token.respostas[`resposta-${index}`];
+
+            let respostaCandidato = token.respostas[`resposta-${index}`];
+
+            // ✅ CORRIGIDO: Extrai texto se for objeto
+            if (
+              typeof respostaCandidato === "object" &&
+              respostaCandidato !== null
+            ) {
+              respostaCandidato =
+                respostaCandidato.texto || respostaCandidato.resposta;
+            }
 
             if (
               String(respostaCandidato).trim().toLowerCase() ===
@@ -1003,7 +1016,7 @@ export async function initdashboard(user, userData) {
       <td>${testeNome}</td>
       <td>${dataResposta}</td>
       <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-      <td>${notaHTML}</td>
+      <td class="text-center">${notaHTML}</td>
       <td><span class="badge bg-success">✅ Respondido</span></td>
       <td class="text-center">
         <button 
@@ -1234,7 +1247,7 @@ export async function initdashboard(user, userData) {
   };
 
   // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO
+  // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO (CORRIGIDO)
   // ============================================
 
   async function abrirModalVerRespostasInterno(tokenId, candidatoNome) {
@@ -1287,14 +1300,38 @@ export async function initdashboard(user, userData) {
         totalPerguntas = testeDados.perguntas.length;
 
         testeDados.perguntas.forEach((pergunta, index) => {
-          const respostaCandidato =
-            tokenData.respostas[`resposta-${index}`] || "-";
-          const respostaCorreta =
+          // ✅ CORRIGIDO: Trata resposta do candidato
+          let respostaCandidato = tokenData.respostas[`resposta-${index}`];
+
+          // Se for objeto, extrai o texto da resposta
+          if (
+            typeof respostaCandidato === "object" &&
+            respostaCandidato !== null
+          ) {
+            respostaCandidato =
+              respostaCandidato.texto ||
+              respostaCandidato.resposta ||
+              JSON.stringify(respostaCandidato);
+          }
+
+          respostaCandidato = respostaCandidato || "-";
+
+          // ✅ CORRIGIDO: Trata resposta correta
+          let respostaCorreta =
             pergunta.respostaCorreta || pergunta.gabarito || null;
+
+          // Se for objeto, extrai o texto
+          if (typeof respostaCorreta === "object" && respostaCorreta !== null) {
+            respostaCorreta =
+              respostaCorreta.texto ||
+              respostaCorreta.resposta ||
+              JSON.stringify(respostaCorreta);
+          }
 
           console.log(`📝 Pergunta ${index + 1}:`, {
             respostaCandidato,
             respostaCorreta,
+            pergunta,
           });
 
           // ✅ Verifica se há resposta correta definida
@@ -1328,30 +1365,44 @@ export async function initdashboard(user, userData) {
             iconeResposta = "ℹ️";
           }
 
+          // ✅ CORRIGIDO: Trata as opções
+          let opcoesHTML = "";
+
+          if (
+            pergunta.opcoes &&
+            Array.isArray(pergunta.opcoes) &&
+            pergunta.opcoes.length > 0
+          ) {
+            const opcoesTexto = pergunta.opcoes.map((opcao) => {
+              // Se for objeto, extrai o texto
+              if (typeof opcao === "object" && opcao !== null) {
+                return (
+                  opcao.texto ||
+                  opcao.resposta ||
+                  opcao.label ||
+                  JSON.stringify(opcao)
+                );
+              }
+              return String(opcao);
+            });
+
+            opcoesHTML = `
+          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+            <strong>Opções:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+            </ul>
+          </div>
+          `;
+          }
+
           perguntasHTML += `
         <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
           <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
             <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
           </p>
           
-          ${
-            pergunta.opcoes && pergunta.opcoes.length > 0
-              ? `
-          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
-            <strong>Opções:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-              ${pergunta.opcoes
-                .map(
-                  (opcao) => `
-                <li>${opcao}</li>
-              `
-                )
-                .join("")}
-            </ul>
-          </div>
-          `
-              : ""
-          }
+          ${opcoesHTML}
           
           <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
             <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
@@ -1462,7 +1513,7 @@ export async function initdashboard(user, userData) {
         cancelButtonColor: "#6c757d",
       }).then((result) => {
         if (result.isConfirmed) {
-          window.exportarRespostaIndividual(tokenId, candidatoNome);
+          window.exportarRespostaIndividual?.(tokenId, candidatoNome);
         }
       });
 
