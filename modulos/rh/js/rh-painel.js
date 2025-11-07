@@ -1,42 +1,38 @@
 /**
  * Arquivo: modulos/rh/js/rh-painel.js
- * Versão: 2.9.0 (Correção: Caminho correto do dashboard)
+ * Versão: 2.10.0 (Restauração completa + correções de path)
+ * Data: 07/11/2025
  */
 
-console.log("🟢 1. rh-painel.js carregado");
+import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 export function initrhPanel(user, db, userData) {
-  console.log("🟢 2. initrhPanel chamado");
-  console.log("🟢 3. User:", user?.uid);
-  console.log("🟢 4. UserData:", userData);
+  console.log("🔹 RH Panel: Inicializando painel de RH...");
 
   window.db = db;
-  console.log("🟢 5. window.db definido");
 
-  const userRoles = userData?.funcoes || [];
-  console.log("🟢 6. Roles do usuário:", userRoles);
-
+  const userRoles = userData.funcoes || [];
   const contentArea = document.getElementById("content-area");
   const sidebarMenu = document.getElementById("sidebar-menu");
 
-  console.log("🟢 7. contentArea encontrado:", !!contentArea);
-  console.log("🟢 8. sidebarMenu encontrado:", !!sidebarMenu);
-
-  if (!contentArea || !sidebarMenu) {
-    console.error("❌ ERRO: Elementos não encontrados!");
-    return;
-  }
-
-  let isLoadingModule = false;
-  let lastLoadedModule = null;
-  let loadAttempts = 0;
-  const MAX_LOAD_ATTEMPTS = 3;
-
+  // ============================================
+  // ÍCONES SVG DO MENU
+  // ============================================
   const icons = {
     voltar: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z"/></svg>`,
     dashboard: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>`,
+    gestao_vagas: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 0h-4V4h4v2z"/></svg>`,
+    recrutamento: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+    gestao_estudos_de_caso: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>`,
+    onboarding_colaboradores: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
+    desligamento: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>`,
+    gestao_profissionais: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+    comunicados: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>`,
   };
 
+  // ============================================
+  // DEFINIÇÃO DE VIEWS E PERMISSÕES
+  // ============================================
   const views = [
     {
       id: "dashboard",
@@ -44,51 +40,123 @@ export function initrhPanel(user, db, userData) {
       roles: ["admin", "rh"],
       icon: icons.dashboard,
     },
+    {
+      id: "gestao_vagas",
+      name: "1. Criação e Arte de Vagas",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_vagas,
+    },
+    {
+      id: "recrutamento",
+      name: "2. Recrutamento e Fluxo",
+      roles: ["admin", "rh"],
+      icon: icons.recrutamento,
+    },
+    {
+      id: "gestao_estudos_de_caso",
+      name: "3. Gerenciar Estudos/Testes",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_estudos_de_caso,
+    },
+    {
+      id: "gestao_profissionais",
+      name: "Profissionais",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_profissionais,
+    },
+    {
+      id: "onboarding_colaboradores",
+      name: "Onboarding",
+      roles: ["admin", "rh"],
+      icon: icons.onboarding_colaboradores,
+    },
+    {
+      id: "desligamento",
+      name: "Desligamento",
+      roles: ["admin", "rh"],
+      icon: icons.desligamento,
+    },
+    {
+      id: "comunicados",
+      name: "Comunicação",
+      roles: ["admin", "rh"],
+      icon: icons.comunicados,
+    },
+    {
+      id: "etapa_cronograma_orcamento",
+      name: "Cronograma e Orçamento",
+      roles: ["admin", "rh"],
+      icon: null,
+      hideInMenu: true,
+    },
   ];
 
-  console.log("🟢 9. Views definidas:", views.length);
-
+  // ============================================
+  // FUNÇÃO DE NOTIFICAÇÃO (TOAST)
+  // ============================================
   window.showToast = function (message, type = "success") {
-    console.log(`📢 Toast (${type}):`, message);
-    const colors = {
-      success: "#28a745",
-      error: "#dc3545",
-      warning: "#ffc107",
-      info: "#17a2b8",
-    };
-
     const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
     toast.innerHTML = `
       <div style="
         position: fixed;
         top: 20px;
         right: 20px;
         padding: 15px 20px;
-        background: ${colors[type]};
+        background: ${
+          type === "success"
+            ? "#28a745"
+            : type === "error"
+            ? "#dc3545"
+            : type === "warning"
+            ? "#ffc107"
+            : "#17a2b8"
+        };
         color: white;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         z-index: 10000;
         font-weight: 500;
         max-width: 350px;
+        animation: slideIn 0.3s ease-out;
       ">
         ${message}
       </div>
     `;
+
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => {
+      toast.style.animation = "slideOut 0.3s ease-in";
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   };
 
+  // ============================================
+  // RENDERIZAR MENU LATERAL
+  // ============================================
   function renderSidebarMenu() {
-    console.log("🟢 10. Renderizando menu...");
+    if (!sidebarMenu) return;
 
     const allowedViews = views.filter((view) => {
-      const hasRole = view.roles.some((role) => userRoles.includes(role));
-      console.log(`   - View "${view.id}": hasRole=${hasRole}`);
-      return hasRole;
+      if (view.hideInMenu) return false;
+      return view.roles.some((role) => userRoles.includes(role));
     });
 
-    console.log("🟢 11. Views permitidas:", allowedViews.length);
+    if (allowedViews.length === 0) {
+      sidebarMenu.innerHTML = `
+        <li>
+          <a href="#/main" class="back-link">
+            ${icons.voltar}
+            <span>Voltar a página inicial</span>
+          </a>
+        </li>
+        <li class="menu-separator"></li>
+        <li style="padding: 15px; color: var(--cor-texto-secundario); font-size: 0.9rem;">
+          Você não tem permissão para acessar nenhuma seção deste módulo.
+        </li>
+      `;
+      return;
+    }
 
     let menuHTML = `
       <li>
@@ -100,34 +168,28 @@ export function initrhPanel(user, db, userData) {
       <li class="menu-separator"></li>
     `;
 
-    if (allowedViews.length === 0) {
+    allowedViews.forEach((view) => {
       menuHTML += `
-        <li style="padding: 15px; color: #666; font-size: 0.9rem;">
-          Você não tem permissão para acessar nenhuma seção deste módulo.
+        <li>
+          <a href="#/rh/${view.id}" data-view="${view.id}">
+            ${view.icon}
+            <span>${view.name}</span>
+          </a>
         </li>
       `;
-    } else {
-      allowedViews.forEach((view) => {
-        menuHTML += `
-          <li>
-            <a href="#/rh/${view.id}" data-view="${view.id}">
-              ${view.icon}
-              <span>${view.name}</span>
-            </a>
-          </li>
-        `;
-      });
-    }
+    });
 
     sidebarMenu.innerHTML = menuHTML;
-    console.log("🟢 12. Menu renderizado");
+    updateActiveMenuItem();
   }
 
+  // ============================================
+  // ATUALIZAR ITEM ATIVO DO MENU
+  // ============================================
   function updateActiveMenuItem() {
     const currentHash = window.location.hash.replace("#/rh/", "");
-    console.log("🟢 13. Atualizando item ativo:", currentHash);
-
     const menuLinks = sidebarMenu?.querySelectorAll("a[data-view]");
+
     menuLinks?.forEach((link) => {
       const viewId = link.getAttribute("data-view");
       if (viewId === currentHash) {
@@ -138,215 +200,163 @@ export function initrhPanel(user, db, userData) {
     });
   }
 
+  // ============================================
+  // VERIFICAR PERMISSÃO DO USUÁRIO
+  // ============================================
   function hasPermission(viewId) {
     const view = views.find((v) => v.id === viewId);
     if (!view) return false;
     return view.roles.some((role) => userRoles.includes(role));
   }
 
+  // ============================================
+  // CARREGAR MÓDULO DINÂMICO
+  // ============================================
   async function loadModule(viewId) {
-    console.log(`🟢 14. loadModule chamado para: "${viewId}"`);
-    console.log(`   - isLoadingModule: ${isLoadingModule}`);
-    console.log(`   - lastLoadedModule: ${lastLoadedModule}`);
-    console.log(`   - loadAttempts: ${loadAttempts}`);
+    console.log(`📦 RH Panel: Carregando módulo "${viewId}"...`);
 
-    if (loadAttempts >= MAX_LOAD_ATTEMPTS) {
-      console.error("❌ LOOP DETECTADO! Máximo de tentativas atingido.");
-      contentArea.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-          <h2 style="color: #dc3545;">⚠️ Erro de Carregamento</h2>
-          <p>O módulo entrou em loop. Verifique o console para mais detalhes.</p>
-          <button onclick="location.reload()" style="
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
-          ">Recarregar Página</button>
-        </div>
-      `;
-      return;
-    }
-
-    if (isLoadingModule) {
-      console.warn("⚠️ Carregamento já em andamento. Aguarde...");
-      return;
-    }
-
-    if (lastLoadedModule === viewId) {
-      console.log(
-        `✅ Módulo "${viewId}" já carregado. Apenas atualizando menu.`
-      );
-      updateActiveMenuItem();
-      return;
-    }
-
-    loadAttempts++;
-    isLoadingModule = true;
-
-    console.log(`🟢 15. Verificando permissão para "${viewId}"...`);
     if (!hasPermission(viewId)) {
-      console.error(`❌ Sem permissão para "${viewId}"`);
       contentArea.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-          <h2 style="color: #dc3545;">🔒 Sem Permissão</h2>
-          <p>Você não tem permissão para visualizar este módulo.</p>
+        <div class="alert alert-error">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>Você não tem permissão para visualizar este módulo.</span>
         </div>
       `;
-      isLoadingModule = false;
       return;
     }
-
-    console.log(`🟢 16. Permissão OK para "${viewId}"`);
 
     const view = views.find((v) => v.id === viewId);
     if (!view) {
-      console.error(`❌ View "${viewId}" não encontrada`);
       contentArea.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-          <h2 style="color: #dc3545;">❌ Módulo Não Encontrado</h2>
-          <p>O módulo "${viewId}" não existe.</p>
+        <div class="alert alert-error">
+          <i class="fas fa-times-circle"></i>
+          <span>Módulo "${viewId}" não encontrado.</span>
         </div>
       `;
-      isLoadingModule = false;
       return;
     }
 
-    console.log(`🟢 17. View encontrada:`, view.name);
-
-    // ✅ CORREÇÃO: Caminhos corretos baseados na estrutura do projeto
-    const moduleFiles = {
-      dashboard: {
-        html: "../page/dashboard.html", // ✅ Caminho correto
-        js: "./dashboard.js", // ✅ Caminho correto
+    // ✅ CORREÇÃO: Mapeamento com caminhos corretos
+    const moduleMapping = {
+      dashboard: { html: "../page/dashboard.html", js: "./dashboard.js" },
+      gestao_vagas: {
+        html: "../page/gestao-vagas.html",
+        js: "./gestao-vagas.js",
+      },
+      recrutamento: {
+        html: "../page/recrutamento.html",
+        js: "./recrutamento.js",
+      },
+      gestao_estudos_de_caso: {
+        html: "../page/gestao-estudos-de-caso.html",
+        js: "./gestao-estudos-de-caso.js",
+      },
+      gestao_profissionais: {
+        html: "../page/gestao-profissionais.html",
+        js: "./gestao-profissionais.js",
+      },
+      onboarding_colaboradores: {
+        html: "../page/onboarding-colaboradores.html",
+        js: "./onboarding-colaboradores.js",
+      },
+      desligamento: {
+        html: "../page/desligamento.html",
+        js: "./desligamento.js",
+      },
+      comunicados: { html: "../page/comunicados.html", js: "./comunicados.js" },
+      etapa_cronograma_orcamento: {
+        html: "../page/etapa-cronograma-orcamento.html",
+        js: "./etapa-cronograma-orcamento.js",
       },
     };
 
-    const moduleFile = moduleFiles[viewId];
-    if (!moduleFile) {
-      console.error(`❌ Arquivo não mapeado para "${viewId}"`);
+    const moduleFiles = moduleMapping[viewId];
+    if (!moduleFiles) {
       contentArea.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-          <h2 style="color: #dc3545;">❌ Arquivo Não Mapeado</h2>
-          <p>O arquivo do módulo "${viewId}" não foi configurado.</p>
+        <div class="alert alert-error">
+          <i class="fas fa-times-circle"></i>
+          <span>Arquivo do módulo "${viewId}" não mapeado.</span>
         </div>
       `;
-      isLoadingModule = false;
       return;
     }
 
-    console.log(`🟢 18. Arquivo HTML:`, moduleFile.html);
-    console.log(`🟢 18. Arquivo JS:`, moduleFile.js);
-
     try {
-      // CARREGAR HTML
-      console.log(`🟢 19. Carregando HTML:`, moduleFile.html);
-
-      const htmlResponse = await fetch(moduleFile.html);
-      console.log(
-        `🟢 20. Resposta HTML: ${htmlResponse.status} ${htmlResponse.statusText}`
-      );
-
+      // Carrega o HTML do módulo
+      console.log(`📄 RH Panel: Carregando HTML: ${moduleFiles.html}`);
+      const htmlResponse = await fetch(moduleFiles.html);
       if (!htmlResponse.ok) {
         throw new Error(
-          `Erro HTTP ${htmlResponse.status}: ${htmlResponse.statusText}`
+          `Erro ao carregar HTML: ${htmlResponse.status} ${htmlResponse.statusText}`
         );
       }
 
       const htmlContent = await htmlResponse.text();
-      console.log(`🟢 21. HTML carregado (${htmlContent.length} caracteres)`);
-
       contentArea.innerHTML = htmlContent;
-      console.log(`🟢 22. HTML inserido no DOM`);
 
-      // CARREGAR E EXECUTAR JS
-      const initFunctionName = "initDashboard";
-      console.log(`🟢 23. Importando módulo JS:`, moduleFile.js);
-      console.log(`🟢 24. Procurando função:`, initFunctionName);
+      // Nome da função de inicialização
+      const initFunctionName =
+        viewId === "dashboard"
+          ? "initDashboard"
+          : `init${viewId
+              .split("_")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join("")}`;
 
-      const cacheBuster = `?t=${Date.now()}`;
-      const module = await import(`${moduleFile.js}${cacheBuster}`);
-      console.log(
-        `🟢 25. Módulo importado. Funções disponíveis:`,
-        Object.keys(module)
-      );
+      console.log(`🔧 RH Panel: Importando módulo JS: ${moduleFiles.js}`);
+      console.log(`🔧 RH Panel: Procurando função: ${initFunctionName}`);
+
+      // Importa o módulo JS
+      const module = await import(`${moduleFiles.js}?t=${Date.now()}`);
 
       if (typeof module[initFunctionName] !== "function") {
         throw new Error(
-          `Função "${initFunctionName}" não encontrada. Disponíveis: ${Object.keys(
-            module
-          ).join(", ")}`
+          `Função "${initFunctionName}" não encontrada em ${moduleFiles.js}`
         );
       }
 
-      console.log(
-        `🟢 26. Função encontrada! Executando ${initFunctionName}...`
-      );
+      console.log(`✅ RH Panel: Executando ${initFunctionName}...`);
       await module[initFunctionName](user, userData);
 
-      lastLoadedModule = viewId;
-      loadAttempts = 0;
-      console.log(`🟢 27. ✅ Módulo "${viewId}" carregado com SUCESSO!`);
-
+      console.log(`✅ RH Panel: Módulo "${viewId}" carregado com sucesso!`);
       updateActiveMenuItem();
     } catch (error) {
-      console.error(`❌ ERRO ao carregar módulo "${viewId}":`, error);
-      console.error(`   Stack:`, error.stack);
-
+      console.error(`❌ RH Panel: Erro ao carregar módulo "${viewId}":`, error);
       contentArea.innerHTML = `
-        <div style="padding: 40px;">
-          <h2 style="color: #dc3545;">❌ Erro ao Carregar Módulo</h2>
-          <p><strong>Módulo:</strong> ${view.name}</p>
-          <p><strong>Erro:</strong> ${error.message}</p>
-          <details style="margin-top: 20px;">
-            <summary style="cursor: pointer; color: #667eea;">Ver Stack Trace</summary>
-            <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow: auto; margin-top: 10px;">${error.stack}</pre>
-          </details>
-          <button onclick="location.reload()" style="
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
-          ">Recarregar Página</button>
+        <div class="alert alert-error">
+          <i class="fas fa-times-circle"></i>
+          <div>
+            <strong>Erro ao carregar módulo "${view.name}"</strong>
+            <p>${error.message}</p>
+            <small>Verifique o console para mais detalhes.</small>
+          </div>
         </div>
       `;
-    } finally {
-      isLoadingModule = false;
-      console.log(`🟢 28. isLoadingModule resetado para false`);
     }
   }
 
+  // ============================================
+  // ROTEAMENTO POR HASH
+  // ============================================
   function handleRouting() {
     const hash = window.location.hash;
-    console.log(`🟢 29. handleRouting chamado. Hash:`, hash);
+    console.log(`🔄 RH Panel: Hash detectado: ${hash}`);
 
     if (hash.startsWith("#/rh/")) {
       const viewId = hash.replace("#/rh/", "");
-      console.log(`🟢 30. Detectado viewId:`, viewId);
       loadModule(viewId);
     } else if (!hash || hash === "#/rh" || hash === "#/rh/") {
-      console.log(
-        `🟢 31. Hash vazio ou #/rh. Redirecionando para dashboard...`
-      );
+      console.log("🔄 RH Panel: Redirecionando para dashboard...");
       window.location.hash = "#/rh/dashboard";
-    } else {
-      console.log(`🟢 32. Hash não reconhecido:`, hash);
     }
   }
 
-  console.log("🟢 33. Iniciando renderização do menu...");
+  // ============================================
+  // INICIALIZAÇÃO
+  // ============================================
   renderSidebarMenu();
-
-  console.log("🟢 34. Configurando event listener para hashchange...");
   window.addEventListener("hashchange", handleRouting);
-
-  console.log("🟢 35. Chamando handleRouting inicial...");
   handleRouting();
 
-  console.log("🟢 36. ✅ initrhPanel concluído!");
+  console.log("✅ RH Panel: Painel inicializado com sucesso!");
 }
