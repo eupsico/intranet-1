@@ -1,7 +1,6 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.7.0 (Correção: erro indexOf em abrirModalVerRespostas)
+// Versão: 3.6.1 (Correção: respostas.forEach)
 
-// ✅ IMPORTA DO FIREBASE-INIT.JS
 import {
   collection,
   query,
@@ -44,12 +43,32 @@ export async function initDashboard(user, userData) {
   const metricOnboarding = document.getElementById("rh-metric-onboarding");
   const metricComunicados = document.getElementById("rh-metric-comunicados");
 
+  const funcoesChartCtx = document
+    .getElementById("rh-funcoes-chart")
+    ?.getContext("2d");
+  const rhProfissaoChartCtx = document
+    .getElementById("rh-profissao-chart")
+    ?.getContext("2d");
+  const desligamentoChartCtx = document
+    .getElementById("rh-desligamento-chart")
+    ?.getContext("2d");
+
   // ============================================
   // MAPEAMENTO DOS ELEMENTOS DO DOM - RELATÓRIOS
   // ============================================
-  const relFiltroVagaCand = document.getElementById("rel-filtro-vaga-cand");
-  const relFiltroCandidato = document.getElementById("rel-filtro-candidato");
+  const relTotalInscricoes = document.getElementById("rel-total-inscricoes");
+  const relTestesRespondidos = document.getElementById(
+    "rel-testes-respondidos"
+  );
+  const relTestesPendentes = document.getElementById("rel-testes-pendentes");
+  const relTaxaResposta = document.getElementById("rel-taxa-resposta");
+  const relFiltroVaga = document.getElementById("rel-filtro-vaga");
+  const relFiltroStatus = document.getElementById("rel-filtro-status");
+  const relBuscaCandidato = document.getElementById("rel-busca-candidato");
   const relFiltroTeste = document.getElementById("rel-filtro-teste");
+  const btnAtualizarRelatorios = document.getElementById(
+    "btn-atualizar-relatorios"
+  );
 
   // ============================================
   // ESTADO GLOBAL DOS RELATÓRIOS
@@ -60,7 +79,7 @@ export async function initDashboard(user, userData) {
   let estudosCache = [];
 
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV com BOM UTF-8)
+  // FUNÇÕES DE EXPORTAÇÃO - EXCEL
   // ============================================
   function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
     console.log("📊 Exportando para Excel (CSV UTF-8 com BOM)...", dados);
@@ -128,7 +147,7 @@ export async function initDashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF + autoTable)
+  // FUNÇÕES DE EXPORTAÇÃO - PDF
   // ============================================
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
     console.log("📄 Exportando para PDF...", elementId);
@@ -409,8 +428,9 @@ export async function initDashboard(user, userData) {
   window.exportarRespostasPDF = function () {
     exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
   };
+
   // ============================================
-  // 🆕 NOVA FUNÇÃO: MODAL DE DETALHES DO CANDIDATO
+  // MODAL DE DETALHES DO CANDIDATO
   // ============================================
   window.abrirModalDetalhesCandidato = async function (candidatoId) {
     console.log("🔍 Abrindo detalhes do candidato:", candidatoId);
@@ -429,7 +449,6 @@ export async function initDashboard(user, userData) {
     const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
     const vagaNome = vaga?.titulo || vaga?.tituloVaga || "Não especificada";
 
-    // Busca informações sobre testes
     const tokenCandidato = tokensCache.find(
       (t) => t.candidatoId === candidato.id
     );
@@ -507,21 +526,24 @@ export async function initDashboard(user, userData) {
     });
   };
 
+  // ============================================
+  // 🆕 FUNÇÃO: MODAL VER RESPOSTAS (✅ CORRIGIDA)
+  // ============================================
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(
-      "🔍 Abrindo respostas - Token:",
-      tokenId,
-      "Candidato:",
-      candidatoNome
+      "🔍 Abrindo respostas do candidato:",
+      candidatoNome,
+      "Token:",
+      tokenId
     );
 
     try {
       const tokenDoc = await getDoc(doc(db, "tokens_acesso", tokenId));
-
       if (!tokenDoc.exists()) {
         Swal.fire({
           icon: "error",
           title: "Token não encontrado",
+          text: "Não foi possível localizar o token de acesso.",
           confirmButtonColor: "#667eea",
         });
         return;
@@ -529,17 +551,17 @@ export async function initDashboard(user, userData) {
 
       const tokenData = tokenDoc.data();
 
-      // ✅ CORREÇÃO: Garante que respostas seja um array
+      // ✅ CORREÇÃO: Garantir que respostas seja um array
       let respostas = tokenData.respostas || [];
       if (!Array.isArray(respostas)) {
-        console.warn("⚠️ Respostas não é array, convertendo:", respostas);
+        console.warn("⚠️ Respostas não é um array:", respostas);
         respostas = [];
       }
 
       const tempoGasto = tokenData.tempoGasto || "Não registrado";
 
-      // Busca nome do estudo
-      let estudoNome = "Teste desconhecido";
+      // ✅ CORREÇÃO: Verifica se estudoDeCasoId existe
+      let estudoNome = "Estudo não encontrado";
       if (tokenData.estudoDeCasoId) {
         try {
           const estudoDoc = await getDoc(
@@ -549,7 +571,10 @@ export async function initDashboard(user, userData) {
             estudoNome = estudoDoc.data().titulo || "Sem título";
           }
         } catch (err) {
-          console.warn("⚠️ Erro ao buscar estudo:", err);
+          console.warn(
+            "⚠️ Aviso: Não foi possível carregar dados do estudo:",
+            err
+          );
         }
       }
 
@@ -563,14 +588,14 @@ export async function initDashboard(user, userData) {
         return;
       }
 
-      // Monta HTML
+      // Monta HTML das respostas
       let htmlRespostas = `
-      <div style="text-align: left; padding: 15px;">
-        <h4 style="color: #667eea;">📝 ${estudoNome}</h4>
-        <p><strong>Candidato:</strong> ${candidatoNome}</p>
-        <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-        <hr style="margin: 15px 0;">
-    `;
+        <div style="text-align: left; padding: 15px;">
+          <h4 style="color: #667eea;">📝 ${estudoNome}</h4>
+          <p><strong>Candidato:</strong> ${candidatoNome}</p>
+          <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <hr style="margin: 15px 0;">
+      `;
 
       respostas.forEach((resposta, index) => {
         const numero = index + 1;
@@ -578,15 +603,15 @@ export async function initDashboard(user, userData) {
         const respostaCandidato = resposta.resposta || "Não respondida";
 
         htmlRespostas += `
-        <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-left: 3px solid #667eea;">
-          <p style="margin: 0; font-weight: bold;">Pergunta ${numero}:</p>
-          <p style="margin: 5px 0 10px 0;">${pergunta}</p>
-          <p style="margin: 0; color: #555;"><strong>Resposta:</strong></p>
-          <p style="margin: 5px 0; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px;">
-            ${respostaCandidato}
-          </p>
-        </div>
-      `;
+          <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-left: 3px solid #667eea;">
+            <p style="margin: 0; font-weight: bold;">Pergunta ${numero}:</p>
+            <p style="margin: 5px 0 10px 0;">${pergunta}</p>
+            <p style="margin: 0; color: #555;"><strong>Resposta:</strong></p>
+            <p style="margin: 5px 0; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px;">
+              ${respostaCandidato}
+            </p>
+          </div>
+        `;
       });
 
       htmlRespostas += `</div>`;
@@ -608,140 +633,6 @@ export async function initDashboard(user, userData) {
       });
     }
   };
-
-  // ============================================
-  // 🆕 EXPORTAR RESPOSTA INDIVIDUAL - PDF
-  // ============================================
-  function exportarRespostaIndividualPDF(
-    tokenData,
-    candidatoNome,
-    estudoNome,
-    respostas,
-    tempoGasto
-  ) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      // Cabeçalho
-      doc.setFontSize(16);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico - Respostas do Teste", 105, 20, { align: "center" });
-
-      doc.setFontSize(12);
-      doc.setTextColor(51, 51, 51);
-      doc.text(`Teste: ${estudoNome}`, 20, 35);
-      doc.text(`Candidato: ${candidatoNome}`, 20, 42);
-      doc.text(`Tempo gasto: ${tempoGasto}`, 20, 49);
-
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(20, 53, 190, 53);
-
-      // Respostas
-      let yPos = 60;
-      doc.setFontSize(10);
-
-      respostas.forEach((resposta, index) => {
-        const numero = index + 1;
-        const pergunta = resposta.pergunta || `Pergunta ${numero}`;
-        const respostaCandidato = resposta.resposta || "Não respondida";
-
-        // Verifica espaço na página
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        // Pergunta
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(51, 51, 51);
-        doc.text(`Pergunta ${numero}:`, 20, yPos);
-        yPos += 5;
-
-        doc.setFont("helvetica", "normal");
-        const perguntaLines = doc.splitTextToSize(pergunta, 170);
-        doc.text(perguntaLines, 20, yPos);
-        yPos += perguntaLines.length * 5 + 3;
-
-        // Resposta
-        doc.setFont("helvetica", "bold");
-        doc.text("Resposta:", 20, yPos);
-        yPos += 5;
-
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(85, 85, 85);
-        const respostaLines = doc.splitTextToSize(respostaCandidato, 170);
-        doc.text(respostaLines, 20, yPos);
-        yPos += respostaLines.length * 5 + 8;
-
-        // Linha separadora
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.3);
-        doc.line(20, yPos, 190, yPos);
-        yPos += 8;
-      });
-
-      // Rodapé
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.text(`Página ${i} de ${pageCount}`, 105, 287, { align: "center" });
-      }
-
-      const nomeArquivo = `respostas_${candidatoNome
-        .replace(/\s+/g, "_")
-        .toLowerCase()}.pdf`;
-      doc.save(nomeArquivo);
-
-      window.showToast?.(`✅ PDF ${nomeArquivo} baixado!`, "success");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF individual:", error);
-      window.showToast?.("❌ Erro ao exportar PDF", "error");
-    }
-  }
-
-  // ============================================
-  // 🆕 EXPORTAR RESPOSTA INDIVIDUAL - EXCEL
-  // ============================================
-  function exportarRespostaIndividualExcel(
-    tokenData,
-    candidatoNome,
-    estudoNome,
-    respostas,
-    tempoGasto
-  ) {
-    const dados = [];
-
-    dados.push({
-      Candidato: candidatoNome,
-      Teste: estudoNome,
-      "Tempo Gasto": tempoGasto,
-      Pergunta: "",
-      Resposta: "",
-    });
-
-    respostas.forEach((resposta, index) => {
-      dados.push({
-        Candidato: "",
-        Teste: "",
-        "Tempo Gasto": "",
-        Pergunta: resposta.pergunta || `Pergunta ${index + 1}`,
-        Resposta: resposta.resposta || "Não respondida",
-      });
-    });
-
-    const nomeArquivo = `respostas_${candidatoNome
-      .replace(/\s+/g, "_")
-      .toLowerCase()}.csv`;
-    exportarParaExcel(dados, nomeArquivo);
-  }
 
   // ============================================
   // FUNÇÃO: CARREGAR DASHBOARD (ABA 1)
@@ -778,11 +669,8 @@ export async function initDashboard(user, userData) {
       const comunicados = await getDocs(qComunicados);
       if (metricComunicados) metricComunicados.textContent = comunicados.size;
 
-      // Carregar tabelas
-      await carregarTabelaVagas(vagas);
-      await carregarTabelaOnboarding(onboarding);
-      await carregarTabelaComunicados(comunicados);
-      await carregarTabelaDesligamentos();
+      // Carregar gráficos
+      await carregarGraficos(ativos);
 
       console.log("✅ Dashboard carregado com sucesso!");
     } catch (error) {
@@ -792,139 +680,85 @@ export async function initDashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÕES AUXILIARES: TABELAS DO DASHBOARD
+  // FUNÇÃO: CARREGAR GRÁFICOS
   // ============================================
-  async function carregarTabelaVagas(vagas) {
-    const tbody = document.getElementById("rh-vagas-tbody");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    if (vagas.size === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">Nenhuma vaga em aberto.</td></tr>';
+  async function carregarGraficos(ativos) {
+    if (!funcoesChartCtx || !rhProfissaoChartCtx || !desligamentoChartCtx) {
+      console.warn("⚠️ Canvas dos gráficos não encontrados");
       return;
     }
 
-    vagas.forEach((doc) => {
-      const vaga = doc.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${vaga.titulo || vaga.tituloVaga || "-"}</td>
-        <td>${vaga.departamento || "-"}</td>
-        <td><span class="badge bg-success">Aberta</span></td>
-        <td>${
-          vaga.dataAbertura
-            ? new Date(
-                vaga.dataAbertura.toDate?.() || vaga.dataAbertura
-              ).toLocaleDateString("pt-BR")
-            : "-"
-        }</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function carregarTabelaOnboarding(onboarding) {
-    const tbody = document.getElementById("rh-onboarding-tbody");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    if (onboarding.size === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="4">Nenhum colaborador em onboarding.</td></tr>';
-      return;
-    }
-
-    onboarding.forEach((doc) => {
-      const dados = doc.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${dados.nomeColaborador || "-"}</td>
-        <td>${dados.departamento || "-"}</td>
-        <td>${
-          dados.dataInicio
-            ? new Date(
-                dados.dataInicio.toDate?.() || dados.dataInicio
-              ).toLocaleDateString("pt-BR")
-            : "-"
-        }</td>
-        <td><span class="badge bg-warning">Em Andamento</span></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function carregarTabelaComunicados(comunicados) {
-    const tbody = document.getElementById("rh-comunicados-tbody");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    if (comunicados.size === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="3">Nenhum comunicado recente.</td></tr>';
-      return;
-    }
-
-    comunicados.forEach((doc) => {
-      const com = doc.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${com.assunto || "-"}</td>
-        <td>${
-          com.dataEnvio
-            ? new Date(
-                com.dataEnvio.toDate?.() || com.dataEnvio
-              ).toLocaleDateString("pt-BR")
-            : "-"
-        }</td>
-        <td>${com.remetenteNome || "-"}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function carregarTabelaDesligamentos() {
-    const tbody = document.getElementById("rh-desligamentos-tbody");
-    if (!tbody) return;
-
-    try {
-      const umMesAtras = new Date();
-      umMesAtras.setMonth(umMesAtras.getMonth() - 1);
-
-      const qDesligamentos = query(
-        desligamentosCollection,
-        where("dataDesligamento", ">=", umMesAtras)
-      );
-      const desligamentos = await getDocs(qDesligamentos);
-
-      tbody.innerHTML = "";
-      if (desligamentos.size === 0) {
-        tbody.innerHTML =
-          '<tr><td colspan="4">Nenhum desligamento recente.</td></tr>';
-        return;
-      }
-
-      desligamentos.forEach((doc) => {
-        const desl = doc.data();
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${desl.nomeColaborador || "-"}</td>
-          <td>${desl.departamento || "-"}</td>
-          <td>${
-            desl.dataDesligamento
-              ? new Date(
-                  desl.dataDesligamento.toDate?.() || desl.dataDesligamento
-                ).toLocaleDateString("pt-BR")
-              : "-"
-          }</td>
-          <td>${desl.motivo || "-"}</td>
-        `;
-        tbody.appendChild(tr);
+    // Gráfico: Distribuição por Função
+    const funcoesCounts = {};
+    ativos.forEach((doc) => {
+      const funcoes = doc.data().funcoes || [];
+      funcoes.forEach((funcao) => {
+        funcoesCounts[funcao] = (funcoesCounts[funcao] || 0) + 1;
       });
-    } catch (error) {
-      console.error("❌ Erro ao carregar desligamentos:", error);
-      tbody.innerHTML =
-        '<tr><td colspan="4">Erro ao carregar desligamentos.</td></tr>';
-    }
+    });
+
+    new Chart(funcoesChartCtx, {
+      type: "bar",
+      data: {
+        labels: Object.keys(funcoesCounts),
+        datasets: [
+          {
+            label: "Quantidade",
+            data: Object.values(funcoesCounts),
+            backgroundColor: "rgba(102, 126, 234, 0.7)",
+          },
+        ],
+      },
+    });
+
+    // Gráfico: Distribuição por Profissão
+    const profissoesCounts = {};
+    ativos.forEach((doc) => {
+      const profissao = doc.data().profissao || "Não informado";
+      profissoesCounts[profissao] = (profissoesCounts[profissao] || 0) + 1;
+    });
+
+    new Chart(rhProfissaoChartCtx, {
+      type: "pie",
+      data: {
+        labels: Object.keys(profissoesCounts),
+        datasets: [
+          {
+            data: Object.values(profissoesCounts),
+            backgroundColor: ["#667eea", "#764ba2", "#f093fb", "#4facfe"],
+          },
+        ],
+      },
+    });
+
+    // Gráfico: Desligamentos (últimos 12 meses)
+    const desligamentos = await getDocs(desligamentosCollection);
+    const desligamentosPorMes = {};
+    desligamentos.forEach((doc) => {
+      const data = doc.data().dataDesligamento?.toDate();
+      if (data) {
+        const mes = data.toLocaleDateString("pt-BR", {
+          month: "short",
+          year: "numeric",
+        });
+        desligamentosPorMes[mes] = (desligamentosPorMes[mes] || 0) + 1;
+      }
+    });
+
+    new Chart(desligamentoChartCtx, {
+      type: "line",
+      data: {
+        labels: Object.keys(desligamentosPorMes),
+        datasets: [
+          {
+            label: "Desligamentos",
+            data: Object.values(desligamentosPorMes),
+            borderColor: "#f093fb",
+            fill: false,
+          },
+        ],
+      },
+    });
   }
 
   // ============================================
@@ -934,7 +768,6 @@ export async function initDashboard(user, userData) {
     console.log("📊 Carregando Relatórios de Recrutamento...");
 
     try {
-      // Buscar dados
       const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
         await Promise.all([
           getDocs(candidatosCollection),
@@ -943,7 +776,6 @@ export async function initDashboard(user, userData) {
           getDocs(estudosDeCasoCollection),
         ]);
 
-      // Armazenar em cache
       candidatosCache = candidatosSnap.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -952,10 +784,7 @@ export async function initDashboard(user, userData) {
         id: doc.id,
         ...doc.data(),
       }));
-      vagasCache = vagasSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      vagasCache = vagasSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       estudosCache = estudosSnap.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -968,17 +797,81 @@ export async function initDashboard(user, userData) {
         estudos: estudosCache.length,
       });
 
-      // Renderizar relatórios
-      renderizarListaCandidatos();
+      // Atualizar métricas consolidadas
+      atualizarMetricasConsolidadas();
+
+      // Renderizar tabelas
       renderizarInscricoesPorVaga();
+      renderizarListaCandidatos();
       renderizarRespostasTestes();
+
+      // Preencher filtros
       preencherFiltros();
 
-      console.log("✅ Relatórios renderizados com sucesso!");
+      console.log("✅ Relatórios carregados com sucesso!");
     } catch (error) {
       console.error("❌ Erro ao carregar relatórios:", error);
       window.showToast?.("Erro ao carregar relatórios", "error");
     }
+  }
+
+  // ============================================
+  // ATUALIZAR MÉTRICAS CONSOLIDADAS
+  // ============================================
+  function atualizarMetricasConsolidadas() {
+    const totalInscricoes = candidatosCache.length;
+    const testesRespondidos = tokensCache.filter((t) => t.usado).length;
+    const testesPendentes = totalInscricoes - testesRespondidos;
+    const taxaResposta =
+      totalInscricoes > 0
+        ? ((testesRespondidos / totalInscricoes) * 100).toFixed(0)
+        : 0;
+
+    if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscricoes;
+    if (relTestesRespondidos)
+      relTestesRespondidos.textContent = testesRespondidos;
+    if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
+    if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
+  }
+
+  // ============================================
+  // RENDERIZAR: INSCRIÇÕES POR VAGA
+  // ============================================
+  function renderizarInscricoesPorVaga() {
+    const tbody = document.getElementById("rel-tbody-inscricoes");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const inscricoesPorVaga = {};
+    candidatosCache.forEach((candidato) => {
+      const vagaId = candidato.vaga_id;
+      if (!inscricoesPorVaga[vagaId]) {
+        inscricoesPorVaga[vagaId] = 0;
+      }
+      inscricoesPorVaga[vagaId]++;
+    });
+
+    const vagasComInscricoes = Object.keys(inscricoesPorVaga);
+
+    if (vagasComInscricoes.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="2">Nenhuma inscrição encontrada.</td></tr>';
+      return;
+    }
+
+    vagasComInscricoes.forEach((vagaId) => {
+      const vaga = vagasCache.find((v) => v.id === vagaId);
+      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "Vaga desconhecida";
+      const numInscricoes = inscricoesPorVaga[vagaId];
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${vagaNome}</td>
+        <td>${numInscricoes}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   // ============================================
@@ -1035,48 +928,7 @@ export async function initDashboard(user, userData) {
   }
 
   // ============================================
-  // RENDERIZAR: INSCRIÇÕES POR VAGA
-  // ============================================
-  function renderizarInscricoesPorVaga() {
-    const tbody = document.getElementById("rel-tbody-inscricoes");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((candidato) => {
-      const vagaId = candidato.vaga_id;
-      if (!inscricoesPorVaga[vagaId]) {
-        inscricoesPorVaga[vagaId] = 0;
-      }
-      inscricoesPorVaga[vagaId]++;
-    });
-
-    const vagasComInscricoes = Object.keys(inscricoesPorVaga);
-
-    if (vagasComInscricoes.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="2">Nenhuma inscrição encontrada.</td></tr>';
-      return;
-    }
-
-    vagasComInscricoes.forEach((vagaId) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "Vaga desconhecida";
-      const numInscricoes = inscricoesPorVaga[vagaId];
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${vagaNome}</td>
-        <td>${numInscricoes}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ============================================
-  // RENDERIZAR: RESPOSTAS AOS TESTES
+  // RENDERIZAR: RESPOSTAS TESTES
   // ============================================
   function renderizarRespostasTestes() {
     const tbody = document.getElementById("rel-tbody-respostas");
@@ -1105,7 +957,6 @@ export async function initDashboard(user, userData) {
             "pt-BR"
           )
         : "-";
-
       const tempoGasto = token.tempoGasto || "Não registrado";
 
       const tr = document.createElement("tr");
@@ -1129,18 +980,16 @@ export async function initDashboard(user, userData) {
   // PREENCHER FILTROS
   // ============================================
   function preencherFiltros() {
-    // Filtro de vagas (para candidatos)
-    if (relFiltroVagaCand) {
-      relFiltroVagaCand.innerHTML = '<option value="">Todas as vagas</option>';
+    if (relFiltroVaga) {
+      relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
       vagasCache.forEach((vaga) => {
         const option = document.createElement("option");
         option.value = vaga.id;
         option.textContent = vaga.titulo || vaga.tituloVaga || "Sem título";
-        relFiltroVagaCand.appendChild(option);
+        relFiltroVaga.appendChild(option);
       });
     }
 
-    // Filtro de testes (para respostas)
     if (relFiltroTeste) {
       relFiltroTeste.innerHTML = '<option value="">Todos os testes</option>';
       estudosCache.forEach((estudo) => {
@@ -1153,136 +1002,6 @@ export async function initDashboard(user, userData) {
   }
 
   // ============================================
-  // EVENTOS: FILTROS
-  // ============================================
-  if (relFiltroCandidato) {
-    relFiltroCandidato.addEventListener("input", aplicarFiltrosCandidatos);
-  }
-  if (relFiltroVagaCand) {
-    relFiltroVagaCand.addEventListener("change", aplicarFiltrosCandidatos);
-  }
-  if (relFiltroTeste) {
-    relFiltroTeste.addEventListener("change", aplicarFiltrosTestes);
-  }
-
-  function aplicarFiltrosCandidatos() {
-    const termoBusca = relFiltroCandidato?.value.toLowerCase() || "";
-    const vagaSelecionada = relFiltroVagaCand?.value || "";
-
-    const candidatosFiltrados = candidatosCache.filter((candidato) => {
-      const nomeMatch = candidato.nome_completo
-        ?.toLowerCase()
-        .includes(termoBusca);
-      const vagaMatch = vagaSelecionada
-        ? candidato.vaga_id === vagaSelecionada
-        : true;
-      return nomeMatch && vagaMatch;
-    });
-
-    const tbody = document.getElementById("rel-tbody-candidatos");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-
-    if (candidatosFiltrados.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="7">Nenhum candidato encontrado com os filtros aplicados.</td></tr>';
-      return;
-    }
-
-    candidatosFiltrados.forEach((candidato) => {
-      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
-
-      const testeEnviado = tokensCache.some(
-        (t) => t.candidatoId === candidato.id
-      );
-      const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === candidato.id && t.usado
-      );
-
-      let badgeTeste = '<span class="badge bg-secondary">Não enviado</span>';
-      if (testeEnviado && testeRespondido) {
-        badgeTeste = '<span class="badge bg-success">✅ Respondido</span>';
-      } else if (testeEnviado) {
-        badgeTeste = '<span class="badge bg-warning">📤 Enviado</span>';
-      }
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${candidato.nome_completo || "-"}</td>
-        <td>${candidato.email_candidato || "-"}</td>
-        <td>${candidato.telefone_contato || "-"}</td>
-        <td>${vagaNome}</td>
-        <td>${candidato.status_recrutamento || "-"}</td>
-        <td>${badgeTeste}</td>
-        <td>
-          <button class="btn btn-sm btn-primary" onclick="abrirModalDetalhesCandidato('${
-            candidato.id
-          }')" title="Ver detalhes">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function aplicarFiltrosTestes() {
-    const testeSelecionado = relFiltroTeste?.value || "";
-
-    const tokensFiltrados = tokensCache.filter((token) => {
-      if (!token.usado) return false;
-      if (testeSelecionado && token.estudoDeCasoId !== testeSelecionado)
-        return false;
-      return true;
-    });
-
-    const tbody = document.getElementById("rel-tbody-respostas");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-
-    if (tokensFiltrados.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="6">Nenhuma resposta encontrada com os filtros aplicados.</td></tr>';
-      return;
-    }
-
-    tokensFiltrados.forEach((token) => {
-      const candidato = candidatosCache.find((c) => c.id === token.candidatoId);
-      const candidatoNome =
-        candidato?.nome_completo || "Candidato desconhecido";
-
-      const estudo = estudosCache.find((e) => e.id === token.estudoDeCasoId);
-      const estudoNome = estudo?.titulo || "Teste desconhecido";
-
-      const dataResposta = token.dataUso
-        ? new Date(token.dataUso.toDate?.() || token.dataUso).toLocaleString(
-            "pt-BR"
-          )
-        : "-";
-
-      const tempoGasto = token.tempoGasto || "Não registrado";
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${candidatoNome}</td>
-        <td>${estudoNome}</td>
-        <td>${dataResposta}</td>
-        <td>${tempoGasto}</td>
-        <td><span class="badge bg-success">✅ Respondido</span></td>
-        <td>
-          <button class="btn btn-sm btn-primary" onclick="abrirModalVerRespostas('${token.id}', '${candidatoNome}')" title="Ver respostas">
-            <i class="fas fa-eye"></i> Ver Respostas
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ============================================
   // EVENTOS: TROCA DE ABAS
   // ============================================
   const tabLinks = document.querySelectorAll(".tab-link");
@@ -1292,18 +1011,15 @@ export async function initDashboard(user, userData) {
     link.addEventListener("click", () => {
       const targetTab = link.getAttribute("data-tab");
 
-      // Remove active de todas as abas
       tabLinks.forEach((l) => l.classList.remove("active"));
       tabContents.forEach((c) => c.classList.remove("active"));
 
-      // Adiciona active na aba clicada
       link.classList.add("active");
       const targetContent = document.getElementById(`tab-${targetTab}`);
       if (targetContent) {
         targetContent.classList.add("active");
       }
 
-      // Carrega dados conforme a aba
       if (targetTab === "dashboard") {
         carregarDashboard();
       } else if (targetTab === "relatorios") {
@@ -1316,6 +1032,6 @@ export async function initDashboard(user, userData) {
   // INICIALIZAÇÃO
   // ============================================
   console.log("🚀 Iniciando Dashboard de RH...");
-  await carregarDashboard(); // Carrega a aba dashboard por padrão
+  await carregarDashboard();
   console.log("✅ Dashboard de RH inicializado com sucesso!");
 }
