@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recrutamento e Seleção - EuPsico</title>
+  <!-- Este arquivo é carregado dinamicamente dentro do painel RH -->
+</head>
+
+<body>
+
+  <div class="painel-recrutamento">
+    <h2 class="painel-titulo">Recrutamento e Seleção</h2>
+
+    <!-- Descrição do Módulo -->
+    <div class="description-box">
+      <p>
+        Este painel gerencia o processo seletivo para vagas em divulgação, desde o
+        estabelecimento de cronogramas, triagem de candidatos, até a entrevista
+        final e contratação.
+      </p>
+    </div>
+
+    <!-- Filtro de Vaga -->
+    <div class="acoes-header">
+      <div class="form-group">
+        <label for="filtro-vaga" class="form-label">Filtrar por Vaga:</label>
+        <select id="filtro-vaga" class="select-filtro">
+          <option value="">Selecione uma Vaga...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Abas de Navegação (Etapas do Recrutamento) -->
+    <div class="tabs-container status-tabs" id="status-candidatura-tabs">
+      <button class="tab-link active" data-status="cronograma">
+        <i class="fas fa-calendar-alt me-2"></i> 1. Cronograma e Orçamento
+      </button>
+      <button class="tab-link" data-status="triagem">
+        <i class="fas fa-search me-2"></i> 2. Avaliação de Currículo (0)
+      </button>
+      <button class="tab-link" data-status="entrevistas">
+        <i class="fas fa-comments me-2"></i> 3. Entrevistas e Avaliações (0)
+      </button>
+      <button class="tab-link" data-status="gestor">
+        <i class="fas fa-user-tie me-2"></i> 4. Entrevista com Gestor (0)
+      </button>
+      <button class="tab-link" data-status="finalizados">
+        <i class="fas fa-check-circle me-2"></i> 5. Finalizados (0)
+      </button>
+
+      <button class="tab-link action-button secondary" data-status="gestao-conteudo" id="btn-gestao-conteudo"
+        style="margin-left: auto">
+        <i class="fas fa-tools me-2"></i> Gerenciar Estudos/Testes
+      </button>
+    </div>
+
+    <!-- Área de Conteúdo Dinâmico (Carregado pelas tabs) -->
+    <div id="conteudo-recrutamento" class="tab-content active">
+      <p id="mensagem-inicial" class="alert alert-info">
+        Selecione uma vaga no filtro acima para iniciar a visualização do processo seletivo.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ============================================
+     MODAIS
+     ============================================ -->
+
+  <!-- Modal de Detalhes do Candidato -->
+  <div id="modal-candidato" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px">
+      <div class="modal-header">
+        <h3 id="candidato-nome-titulo">Detalhes da Candidatura</h3>
+        <button type="button" class="close-modal-btn fechar-modal-candidato" aria-label="Fechar modal">
+          &times;
+        </button>
+      </div>
+
+      <div class="modal-body modal-body-scroll" id="candidato-modal-body">
+        <!-- Conteúdo carregado dinamicamente -->
+      </div>
+
+      <div class="modal-footer" id="candidato-modal-footer">
+        <button type="button" class="action-button secondary fechar-modal-candidato">
+          <i class="fas fa-times me-2"></i> Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Edição de Cronograma e Orçamento -->
+  <div id="modal-edicao-cronograma" class="modal-overlay">
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+      <div class="modal-header">
+        <h3 class="modal-title-text">Ajustar Cronograma e Orçamento</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-edicao-cronograma" aria-label="Fechar modal">
+          &times;
+        </button>
+      </div>
+
+      <form id="form-edicao-cronograma">
+        <div class="modal-body">
+
+          <!-- Seção: Datas Previstas -->
+          <fieldset>
+            <legend><i class="fas fa-calendar-alt me-2"></i>Datas Previstas</legend>
+            <div class="details-grid cols-2">
+              <div class="form-group">
+                <label for="modal-data-inicio-recrutamento" class="form-label">
+                  Início do Recrutamento
+                </label>
+                <input type="date" class="form-control" id="modal-data-inicio-recrutamento" required />
+              </div>
+              <div class="form-group">
+                <label for="modal-data-fechamento-recrutamento" class="form-label">
+                  Encerramento do Recrutamento
+                </label>
+                <input type="date" class="form-control" id="modal-data-fechamento-recrutamento" required />
+              </div>
+              <div class="form-group">
+                <label for="modal-data-contratacao-prevista" class="form-label">
+                  Contratação Prevista
+                </label>
+                <input type="date" class="form-control" id="modal-data-contratacao-prevista" required />
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Seção: Recursos e Orçamento -->
+          <fieldset>
+            <legend><i class="fas fa-dollar-sign me-2"></i>Recursos e Orçamento</legend>
+            <div class="details-grid cols-2">
+              <div class="form-group">
+                <label for="modal-orcamento-previsto" class="form-label">
+                  Orçamento Previsto (R$)
+                </label>
+                <input type="number" step="0.01" class="form-control" id="modal-orcamento-previsto"
+                  placeholder="Ex: 500.00" required />
+              </div>
+              <div class="form-group">
+                <label for="modal-fonte-orcamento" class="form-label">
+                  Fonte do Orçamento
+                </label>
+                <input type="text" class="form-control" id="modal-fonte-orcamento"
+                  placeholder="Ex: Área de Marketing/Verba de RH" />
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Seção: Observações -->
+          <fieldset>
+            <legend><i class="fas fa-sticky-note me-2"></i>Observações</legend>
+            <div class="form-group">
+              <label for="modal-detalhes-cronograma" class="form-label">
+                Observações e Detalhes
+              </label>
+              <textarea class="form-control" id="modal-detalhes-cronograma" rows="4"
+                placeholder="Detalhes importantes sobre a urgência ou complexidade do recrutamento."></textarea>
+            </div>
+          </fieldset>
+
+        </div>
+
+        <!-- 🔴 CORREÇÃO: Footer DENTRO do form mas FORA do modal-body -->
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-edicao-cronograma">
+            <i class="fas fa-times me-2"></i> Cancelar
+          </button>
+          <button type="submit" id="btn-salvar-modal-cronograma" class="action-button success">
+            <i class="fas fa-save me-2"></i> Salvar Ajustes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Avaliação de Triagem (Currículo) -->
+  <div id="modal-avaliacao-triagem" class="modal-overlay">
+    <div class="modal-content" style="max-width: 1000px">
+      <div class="modal-header">
+        <h3 id="avaliacao-modal-title">Avaliação de Currículo - [Nome Candidato]</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-avaliacao-triagem" aria-label="Fechar modal">
+          &times;
+        </button>
+      </div>
+
+      <div class="modal-body modal-body-scroll">
+        <div class="row">
+
+          <!-- Coluna 1: Ficha de Candidatura -->
+          <div class="col-lg-6">
+            <fieldset>
+              <legend><i class="fas fa-user me-2"></i>Ficha de Candidatura</legend>
+              <div class="details-grid">
+                <p class="card-text">
+                  <strong>Nome candidato:</strong><br>
+                  <span id="candidato-modal-nome" style="color: var(--cor-primaria); font-weight: 600;">
+                    Candidato(a)
+                  </span>
+                </p>
+                <p class="card-text">
+                  <strong>Email:</strong><br>
+                  <span id="modal-dado-email">...</span>
+                </p>
+                <p class="card-text">
+                  <strong>Telefone (WhatsApp):</strong><br>
+                  <span id="modal-dado-telefone">...</span>
+                </p>
+                <p class="card-text">
+                  <strong>Cidade/Estado:</strong><br>
+                  <span id="modal-dado-cidade-estado">...</span>
+                </p>
+                <p class="card-text">
+                  <strong>Como conheceu a EuPsico:</strong><br>
+                  <span id="modal-dado-como-conheceu">...</span>
+                </p>
+                <p class="card-text">
+                  <strong>Resumo da Experiência Profissional:</strong><br>
+                  <span id="modal-dado-resumo-experiencia" class="text-muted">...</span>
+                </p>
+                <p class="card-text">
+                  <strong>Habilidades/Competências:</strong><br>
+                  <span id="modal-dado-habilidades" class="text-muted">...</span>
+                </p>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- Coluna 2: Formulário de Avaliação -->
+          <div class="col-lg-6">
+            <form id="form-avaliacao-triagem-modal">
+              <input type="hidden" id="candidatura-id-modal" value="">
+
+              <!-- Checklist Rápido -->
+              <fieldset>
+                <legend><i class="fas fa-tasks me-2"></i>Checklist Rápido</legend>
+                <div id="checklist-triagem-container">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="check-formacao">
+                    <label class="form-check-label" for="check-formacao">
+                      Formação de acordo com a vaga?
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="check-experiencia">
+                    <label class="form-check-label" for="check-experiencia">
+                      Experiência profissional relevante (Mínima exigida)?
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="check-disponibilidade">
+                    <label class="form-check-label" for="check-disponibilidade">
+                      Disponibilidade de horário clara e compatível?
+                    </label>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- Critérios e Decisão -->
+              <fieldset>
+                <legend><i class="fas fa-clipboard-check me-2"></i>Critérios e Decisão</legend>
+
+                <div class="form-group">
+                  <label for="modal-prerequisitos-atendidos" class="form-label">
+                    Quais Pré-requisitos Técnicos o(a) Candidato(a) Atende?
+                  </label>
+                  <textarea class="form-control" id="modal-prerequisitos-atendidos" rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Apto(a) para a Entrevista?</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="modal-apto-entrevista" id="modal-apto-sim"
+                      value="Sim" required onchange="window.toggleMotivoAprovacaoRejeicao()" />
+                    <label class="form-check-label" for="modal-apto-sim">
+                      <i class="fas fa-check-circle text-success me-1"></i> Sim (Aprovar)
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="modal-apto-entrevista" id="modal-apto-nao"
+                      value="Não" onchange="window.toggleMotivoAprovacaoRejeicao()" />
+                    <label class="form-check-label" for="modal-apto-nao">
+                      <i class="fas fa-times-circle text-danger me-1"></i> Não (Reprovar)
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Campo de Reprovação (Oculto por padrão) -->
+                <div class="form-group" id="modal-motivo-rejeicao-container" style="display: none">
+                  <label for="modal-motivo-rejeicao" class="form-label">
+                    Motivo Detalhado da Reprovação (Obrigatório)
+                  </label>
+                  <textarea class="form-control" id="modal-motivo-rejeicao" rows="3"
+                    placeholder="Descreva o motivo da reprovação (Ex: Falha em pré-requisito técnico, salário incompatível, etc.)."></textarea>
+                </div>
+
+                <!-- Campo de Aprovação (Oculto por padrão) -->
+                <div class="form-group" id="modal-info-aprovacao-container" style="display: none">
+                  <label for="modal-info-aprovacao" class="form-label">
+                    Próximos Passos ou Informações de Aprovação (Opcional)
+                  </label>
+                  <textarea class="form-control" id="modal-info-aprovacao" rows="3"
+                    placeholder="Ex: Agendar entrevista RH para próxima semana, foco em habilidades X e Y."></textarea>
+                </div>
+
+              </fieldset>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-button info me-auto" id="btn-ver-curriculo-triagem" disabled>
+          <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+        </button>
+        <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-triagem">
+          <i class="fas fa-times me-2"></i> Fechar
+        </button>
+        <button type="submit" id="btn-finalizar-triagem-modal" class="action-button success">
+          <i class="fas fa-check-circle me-2"></i> Registrar Decisão
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal de Agendamento da Entrevista RH -->
+  <div id="modal-agendamento-rh" class="modal-overlay">
+    <div class="modal-content" style="max-width: 700px">
+      <div class="modal-header">
+        <h3 class="modal-title-text">Agendamento da Entrevista com RH</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-agendamento-rh" aria-label="Fechar modal">
+          &times;
+        </button>
+      </div>
+
+      <form id="form-agendamento-entrevista-rh">
+        <input type="hidden" id="candidatura-id-agendamento" name="candidaturaId" value="">
+
+        <div class="modal-body">
+
+          <!-- Informações do Candidato -->
+          <fieldset>
+            <legend><i class="fas fa-user me-2"></i>Informações do Candidato</legend>
+            <div class="details-grid">
+              <p class="card-text">
+                <strong>Nome:</strong><br>
+                <span id="agendamento-rh-nome-candidato" style="color: var(--cor-primaria); font-weight: 600;">
+                  Candidato(a)
+                </span>
+              </p>
+              <p class="card-text">
+                <strong>Status Atual:</strong><br>
+                <span id="agendamento-rh-status-atual">...</span>
+              </p>
+              <p class="card-text">
+                <strong>Resumo da Triagem:</strong><br>
+                <span id="agendamento-rh-resumo-triagem" class="text-muted">...</span>
+              </p>
+            </div>
+          </fieldset>
+
+          <!-- Data e Horário -->
+          <fieldset>
+            <legend><i class="fas fa-calendar-alt me-2"></i>Data e Horário da Entrevista</legend>
+            <div class="row">
+              <div class="col-md-6 form-group">
+                <label for="data-entrevista-agendada" class="form-label">
+                  Data da Entrevista
+                </label>
+                <input type="date" id="data-entrevista-agendada" class="form-control" required>
+              </div>
+              <div class="col-md-6 form-group">
+                <label for="hora-entrevista-agendada" class="form-label">
+                  Hora da Entrevista
+                </label>
+                <input type="time" id="hora-entrevista-agendada" class="form-control" required>
+              </div>
+            </div>
+          </fieldset>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-agendamento-rh">
+            <i class="fas fa-times me-2"></i> Cancelar
+          </button>
+          <button type="submit" id="btn-registrar-agendamento-rh" class="action-button primary">
+            <i class="fas fa-calendar-alt me-2"></i> Agendar Entrevista
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Avaliação da Entrevista RH -->
+  <div id="modal-avaliacao-rh" class="modal-overlay">
+    <div class="modal-content" style="max-width: 1000px">
+      <div class="modal-header">
+        <h3 class="modal-title-text">Avaliação da Entrevista com RH</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-avaliacao-rh" aria-label="Fechar modal">
+          &times;
+        </button>
+      </div>
+
+      <form id="form-avaliacao-entrevista-rh">
+        <input type="hidden" id="candidatura-id-entrevista" name="candidaturaId" value="">
+
+        <div class="modal-body">
+          <p class="description-box">
+            Avaliação de aderência cultural, soft skills e aprofundamento do perfil para a vaga.
+          </p>
+
+          <div class="row">
+
+            <!-- Coluna 1: Ficha do Candidato -->
+            <div class="col-lg-6">
+              <fieldset>
+                <legend><i class="fas fa-user me-2"></i>Ficha do Candidato</legend>
+                <div class="details-grid">
+                  <p class="card-text">
+                    <strong>Nome:</strong><br>
+                    <span id="entrevista-rh-nome-candidato" style="color: var(--cor-primaria); font-weight: 600;">
+                      Candidato(a)
+                    </span>
+                  </p>
+                  <p class="card-text">
+                    <strong>Status Atual:</strong><br>
+                    <span id="entrevista-rh-status-atual">...</span>
+                  </p>
+                  <p class="card-text">
+                    <strong>Resumo da Triagem:</strong><br>
+                    <span id="entrevista-rh-resumo-triagem" class="text-muted">...</span>
+                  </p>
+                  <p class="card-text">
+                    <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="action-button secondary small"
+                      disabled>
+                      <i class="fas fa-file-pdf me-2"></i> Ver Currículo
+                    </a>
+                  </p>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Coluna 2: Notas da Entrevista -->
+            <div class="col-lg-6">
+              <fieldset>
+                <legend><i class="fas fa-star me-2"></i>Notas da Entrevista</legend>
+                <p class="text-muted small mb-3">Avalie de 1 a 5 os seguintes critérios:</p>
+                <div class="row">
+                  <div class="col-md-4 form-group">
+                    <label for="nota-motivacao" class="form-label">Motivação</label>
+                    <input type="number" id="nota-motivacao" class="form-control" min="1" max="5" placeholder="1-5">
+                  </div>
+                  <div class="col-md-4 form-group">
+                    <label for="nota-aderencia" class="form-label">Aderência Cultural</label>
+                    <input type="number" id="nota-aderencia" class="form-control" min="1" max="5" placeholder="1-5">
+                  </div>
+                  <div class="col-md-4 form-group">
+                    <label for="nota-comunicacao" class="form-label">Comunicação</label>
+                    <input type="number" id="nota-comunicacao" class="form-control" min="1" max="5" placeholder="1-5">
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+
+          <!-- Avaliação Detalhada -->
+          <fieldset>
+            <legend><i class="fas fa-clipboard-check me-2"></i>Avaliação Detalhada</legend>
+            <div class="row">
+              <div class="col-md-6 form-group">
+                <label for="pontos-fortes" class="form-label">
+                  Principais Pontos Fortes e Destaques
+                </label>
+                <textarea id="pontos-fortes" class="form-control" rows="4"
+                  placeholder="Ex: Excelente comunicação, alta motivação com o projeto..."></textarea>
+              </div>
+              <div class="col-md-6 form-group">
+                <label for="pontos-atencao" class="form-label">
+                  Pontos de Atenção / Desenvolvimento
+                </label>
+                <textarea id="pontos-atencao" class="form-control" rows="4"
+                  placeholder="Ex: Pouca experiência em gestão de tempo..."></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Decisão Final -->
+          <fieldset>
+            <legend><i class="fas fa-gavel me-2"></i>Decisão Final</legend>
+            <div class="form-group">
+              <label class="form-label">Resultado da Entrevista:</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="resultado_entrevista" id="resultado-aprovado"
+                  value="Aprovado" required>
+                <label class="form-check-label" for="resultado-aprovado">
+                  <i class="fas fa-check-circle text-success me-1"></i>
+                  Aprovado(a) para Testes/Estudos de Caso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="resultado_entrevista" id="resultado-reprovado"
+                  value="Reprovado" required>
+                <label class="form-check-label" for="resultado-reprovado">
+                  <i class="fas fa-times-circle text-danger me-1"></i>
+                  Reprovado(a) / Rejeitar
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-rh">
+            <i class="fas fa-arrow-left me-2"></i> Voltar ao Painel
+          </button>
+          <button type="submit" id="btn-registrar-entrevista-rh" class="action-button success">
+            <i class="fas fa-check-circle me-2"></i> Registrar Avaliação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ✅ NOVO MODAL: ENVIAR TESTE (COM PRAZO) -->
+  <div id="modal-enviar-teste" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="teste-titulo-modal">Enviar Teste para Avaliação</h3>
+        <button type="button" class="close-modal-btn fechar-modal-teste">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Informações do Candidato -->
+        <fieldset>
+          <legend><i class="fas fa-user me-2"></i>Informações do Candidato</legend>
+          <div class="details-grid">
+            <p class="card-text">
+              <strong>Nome Completo:</strong><br>
+              <span id="teste-nome-candidato">-</span>
+            </p>
+            <p class="card-text">
+              <strong>Email:</strong><br>
+              <span id="teste-email-candidato">-</span>
+            </p>
+            <p class="card-text">
+              <strong>Telefone (WhatsApp):</strong><br>
+              <span id="teste-whatsapp-candidato">-</span>
+            </p>
+          </div>
+        </fieldset>
+
+        <!-- Formulário de Envio -->
+        <form id="form-enviar-teste">
+          <fieldset>
+            <legend><i class="fas fa-list me-2"></i>Selecione o Teste</legend>
+            
+            <div class="form-group">
+              <label for="teste-selecionado">Teste:</label>
+              <select id="teste-selecionado" required>
+                <option value="">Carregando testes...</option>
+              </select>
+            </div>
+
+            <!-- ✅ NOVO: Exibe o prazo do teste -->
+            <div class="form-group">
+              <label>Prazo para Resposta:</label>
+              <div id="teste-prazo" style="display: none; padding: 10px; background: #e8f4f8; border-left: 4px solid #0078d4; border-radius: 4px;">
+                <i class="fas fa-clock me-2"></i>
+                <strong id="teste-prazo-texto">Prazo: 7 dias</strong>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="teste-link">Link do Teste (Token):</label>
+              <input 
+                type="text" 
+                id="teste-link" 
+                placeholder="Link será preenchido automaticamente com TOKEN"
+                readonly
+                style="background-color: #f0f0f0;"
+              />
+              <small class="form-text text-muted mt-1">
+                <i class="fas fa-shield-alt me-1"></i> Este link é único e seguro para este candidato
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="teste-mensagem">Mensagem Personalizada (Opcional):</label>
+              <textarea 
+                id="teste-mensagem"
+                rows="3"
+                placeholder="Deixe em branco para usar mensagem padrão"
+              ></textarea>
+              <small class="form-text text-muted mt-1">
+                A mensagem padrão incluirá o prazo automaticamente
+              </small>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-button success me-2" id="btn-enviar-teste-whatsapp">
+          <i class="fab fa-whatsapp me-2"></i> Enviar via WhatsApp
+        </button>
+        <button type="button" class="action-button primary me-2" id="btn-salvar-teste-apenas">
+          <i class="fas fa-save me-2"></i> Salvar Apenas
+        </button>
+        <button type="button" class="action-button secondary fechar-modal-teste">
+          <i class="fas fa-times me-2"></i> Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script do Módulo -->
+  <script type="module" src="../js/recrutamento.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Recursos Humanos - EuPsico</title>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="../../../assets/css/design-system.css" />
+  <link rel="stylesheet" href="../css/rh.css" />
+
+  <!-- Bibliotecas Externas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+  <div id="app">
+    <!-- View de Login (gerenciada por app.js) -->
+    <div id="login-view"></div>
+
+    <!-- Dashboard View -->
+    <div id="dashboard-view">
+      <div class="layout-container">
+
+        <!-- Sidebar -->
+        <nav class="sidebar">
+          <div class="sidebar-content-wrapper">
+            <ul id="sidebar-menu" class="sidebar-menu"></ul>
+          </div>
+        </nav>
+
+        <!-- Overlay Mobile -->
+        <div id="menu-overlay" class="menu-overlay"></div>
+
+        <!-- Header -->
+        <header class="header">
+          <div class="header-start">
+            <button id="sidebar-toggle" type="button" title="Alternar menu" aria-label="Alternar menu lateral">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div id="page-title-container"></div>
+          </div>
+
+          <div class="user-profile-header">
+            <img id="user-photo-header" src="" alt="Foto do usuário" />
+            <span id="user-greeting"></span>
+            <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
+          </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+          <div id="content-area" class="tab-content-area">
+            <div class="loading-spinner"></div>
+          </div>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Container oculto para views carregadas dinamicamente -->
+  <div id="rh-views" style="display: none">
+    <div data-view-id="gestao_profissionais"></div>
+    <div data-view-id="gestao_vagas"></div>
+    <div data-view-id="onboarding_colaboradores"></div>
+    <div data-view-id="desligamento"></div>
+    <div data-view-id="comunicados"></div>
+  </div>
+
+  <!-- Script para Toggle de Campos de Formulário (Triagem) -->
+  <script>
+    /**
+     * Controla a visibilidade dos campos de Aprovação/Reprovação na Triagem.
+     * Esta função é chamada quando o usuário seleciona Sim/Não no radio button.
+     */
+    window.toggleMotivoAprovacaoRejeicao = function () {
+      const radioSim = document.getElementById("modal-apto-sim");
+      const radioNao = document.getElementById("modal-apto-nao");
+
+      const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
+      const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
+
+      const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+      const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
+
+      // Verificação de segurança
+      if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) {
+        console.warn("toggleMotivoAprovacaoRejeicao: Elementos não encontrados.");
+        return;
+      }
+
+      // Remove obrigatoriedade por padrão
+      if (reprovacaoTextarea) reprovacaoTextarea.required = false;
+      if (aprovacaoTextarea) aprovacaoTextarea.required = false;
+
+      if (radioNao.checked) {
+        // Reprovação: Mostra motivo detalhado (OBRIGATÓRIO)
+        reprovacaoContainer.style.display = "block";
+        if (reprovacaoTextarea) reprovacaoTextarea.required = true;
+        aprovacaoContainer.style.display = "none";
+
+      } else if (radioSim.checked) {
+        // Aprovação: Mostra próximos passos (OPCIONAL)
+        aprovacaoContainer.style.display = "block";
+        reprovacaoContainer.style.display = "none";
+
+      } else {
+        // Nenhum selecionado: Oculta ambos
+        reprovacaoContainer.style.display = "none";
+        aprovacaoContainer.style.display = "none";
+      }
+    };
+  </script>
+
+  <!-- Scripts Principais -->
+  <script type="module" src="../../../assets/js/firebase-init.js"></script>
+  <script type="module" src="../../../assets/js/app.js"></script>
+</body>
+
+</html>
