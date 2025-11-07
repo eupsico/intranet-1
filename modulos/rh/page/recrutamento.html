@@ -90,7 +90,8 @@
       </div>
     </div>
   </div>
-<!-- ✅ MODAL: AVALIAÇÃO DE TESTE -->
+
+  <!-- ✅ MODAL: AVALIAÇÃO DE TESTE (COM GESTOR) -->
 <div id="modal-avaliacao-teste" class="modal-overlay">
   <div class="modal-content modal-lg">
     <div class="modal-header">
@@ -156,6 +157,37 @@
             </div>
           </div>
 
+          <!-- ✅ NOVO: SELECT DE GESTORES -->
+          <div class="form-group">
+            <label for="avaliacao-teste-gestor">
+              <i class="fas fa-user-tie me-2"></i>
+              <strong>Selecionar Gestor Responsável:</strong>
+            </label>
+            <div class="select-with-action">
+              <select
+                id="avaliacao-teste-gestor"
+                class="form-control"
+                required
+              >
+                <option value="">Selecione um gestor...</option>
+              </select>
+              <button
+                type="button"
+                id="btn-whatsapp-gestor-avaliacao"
+                class="btn btn-success btn-sm"
+                onclick="enviarWhatsAppGestor()"
+                disabled
+                title="Notificar gestor via WhatsApp"
+              >
+                <i class="fab fa-whatsapp me-1"></i> Notificar
+              </button>
+            </div>
+            <small class="form-text text-muted">
+              Selecione o gestor que realizará a entrevista final com o
+              candidato.
+            </small>
+          </div>
+
           <div class="form-group">
             <label for="avaliacao-teste-observacoes"
               >Observações (opcional):</label
@@ -189,6 +221,7 @@
     </div>
   </div>
 </div>
+
 
   <!-- Modal de Edição de Cronograma e Orçamento -->
   <div id="modal-edicao-cronograma" class="modal-overlay">
