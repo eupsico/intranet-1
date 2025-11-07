@@ -42,7 +42,7 @@ export async function renderizarEntrevistaGestor(state) {
         '<p class="alert alert-warning">Nenhuma candidato na fase de Entrevista com Gestor.</p>';
       return;
     }
-
+    let listaHtml = `<div class="list-candidaturas">`;
     snapshot.docs.forEach((doc) => {
       const cand = doc.data();
       const statusAtual = cand.status_recrutamento || "N/A";
