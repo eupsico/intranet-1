@@ -183,46 +183,47 @@
     
   </div>
 
-  <!-- ✅ RELATÓRIO 2: LISTA DE CANDIDATOS -->
-  <div id="rel-tab-candidatos" class="tab-content-rel card" style="margin-top: 20px; padding: 25px; display: none;">
-    <div class="relatorio-header">
-      <h4 style="margin: 0;"><i class="fas fa-users me-2"></i> Lista de Candidatos</h4>
-      <div class="btn-group-export">
-        <button class="btn btn-success btn-export" onclick="exportarCandidatosExcel()" title="Exportar para Excel">
-          <i class="fas fa-file-excel me-1"></i> Excel
-        </button>
-        <button class="btn btn-danger btn-export" onclick="exportarCandidatosPDF()" title="Exportar para PDF">
-          <i class="fas fa-file-pdf me-1"></i> PDF
-        </button>
-      </div>
-    </div>
-
-    <div class="form-group" style="margin-top: 15px;">
-      <label for="rel-busca-candidato"><i class="fas fa-search me-2"></i>Buscar candidato:</label>
-      <input type="text" id="rel-busca-candidato" class="form-control" placeholder="Digite o nome do candidato...">
-    </div>
-
-    <div id="rel-tabela-candidatos" style="margin-top: 15px; overflow-x: auto;">
-      <table class="table table-striped table-hover">
-        <thead class="table-header">
-          <tr>
-            <th>Nome</th>
-            <th>Email</th>
-            <th>Telefone</th>
-            <th>Vaga</th>
-            <th>Status</th>
-            <th>Teste</th>
-            <th class="text-center">Ações</th>
-          </tr>
-        </thead>
-        <tbody id="rel-tbody-candidatos">
-          <tr>
-            <td colspan="7" class="text-center text-muted">Carregando dados...</td>
-          </tr>
-        </tbody>
-      </table>
+<!-- ✅ RELATÓRIO 2: LISTA DE CANDIDATOS -->
+<div id="rel-tab-candidatos" class="tab-content-rel card" style="margin-top: 20px; padding: 25px; display: none;">
+  <div class="relatorio-header">
+    <h4 style="margin: 0;"><i class="fas fa-users me-2"></i> Lista de Candidatos</h4>
+    <div class="btn-group-export">
+      <button class="btn btn-success btn-export" onclick="exportarCandidatosExcel()" title="Exportar para Excel">
+        <i class="fas fa-file-excel me-1"></i> Excel
+      </button>
+      <button class="btn btn-danger btn-export" onclick="exportarCandidatosPDF()" title="Exportar para PDF">
+        <i class="fas fa-file-pdf me-1"></i> PDF
+      </button>
     </div>
   </div>
+
+  <div class="form-group" style="margin-top: 15px;">
+    <label for="rel-busca-candidato"><i class="fas fa-search me-2"></i>Buscar candidato:</label>
+    <input type="text" id="rel-busca-candidato" class="form-control" placeholder="Digite o nome do candidato...">
+  </div>
+
+  <div id="rel-tabela-candidatos" style="margin-top: 15px; overflow-x: auto;">
+    <table class="table table-striped table-hover">
+      <thead class="table-header">
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Telefone</th>
+          <th>Vaga</th>
+          <th>Status</th>
+          <th>Teste</th>
+          <!-- ✅ REMOVIDA COLUNA "AÇÕES" -->
+        </tr>
+      </thead>
+      <tbody id="rel-tbody-candidatos">
+        <tr>
+          <td colspan="6" class="text-center text-muted">Carregando dados...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 
   <!-- ✅ RELATÓRIO 3: RESPOSTAS AOS TESTES -->
   <div id="rel-tab-respostas" class="tab-content-rel card" style="margin-top: 20px; padding: 25px; display: none;">

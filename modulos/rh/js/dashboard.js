@@ -844,7 +844,7 @@ export async function initdashboard(user, userData) {
   }
 
   // ============================================
-  // FUNÇÃO: Renderizar Lista de Candidatos
+  // FUNÇÃO: Renderizar Lista de Candidatos (CORRIGIDA)
   // ============================================
 
   async function renderizarListaCandidatos() {
@@ -863,13 +863,23 @@ export async function initdashboard(user, userData) {
 
     if (candidatos.length === 0) {
       tabelaBody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
+        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
       return;
     }
 
     candidatos.forEach((cand) => {
+      // ✅ CORRIGIDO: Busca melhorada da vaga
       const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
+      const vagaNome =
+        vaga?.titulo ||
+        vaga?.tituloVaga ||
+        vaga?.nome ||
+        cand.vaga_id ||
+        "Sem vaga";
+
+      console.log(
+        `📋 Candidato: ${cand.nome_completo}, Vaga ID: ${cand.vaga_id}, Vaga Nome: ${vagaNome}`
+      );
 
       const testeEnviado = tokensCache.some((t) => t.candidatoId === cand.id);
       const testeRespondido = tokensCache.some(
@@ -885,23 +895,17 @@ export async function initdashboard(user, userData) {
       }
 
       const tr = document.createElement("tr");
+      // ✅ REMOVIDA COLUNA "AÇÕES" (colspan ajustado de 7 para 6)
       tr.innerHTML = `
-        <td><strong>${cand.nome_completo || "-"}</strong></td>
-        <td>${cand.email_candidato || "-"}</td>
-        <td>${cand.telefone_contato || "-"}</td>
-        <td>${vagaNome}</td>
-        <td><span class="badge bg-info">${
-          cand.status_recrutamento || "Pendente"
-        }</span></td>
-        <td>${statusTeste}</td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
-            cand.nome_completo
-          }')">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
+      <td><strong>${cand.nome_completo || "-"}</strong></td>
+      <td>${cand.email_candidato || "-"}</td>
+      <td>${cand.telefone_contato || "-"}</td>
+      <td><strong>${vagaNome}</strong></td>
+      <td><span class="badge bg-info">${
+        cand.status_recrutamento || "Pendente"
+      }</span></td>
+      <td>${statusTeste}</td>
+    `;
       tabelaBody.appendChild(tr);
     });
   }
@@ -1158,14 +1162,41 @@ export async function initdashboard(user, userData) {
       },
     };
   }
-
   // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste (SEM BOOTSTRAP)
+  // FUNÇÃO: Visualizar Respostas do Teste (COM CARREGAMENTO DINÂMICO DE SWEETALERT2)
   // ============================================
 
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
 
+    // ✅ VERIFICA SE SWEETALERT2 ESTÁ CARREGADO
+    if (typeof Swal === "undefined") {
+      console.log("⚠️ Carregando SweetAlert2...");
+
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
+      script.onload = () => {
+        console.log("✅ SweetAlert2 carregado");
+        // Tenta novamente após carregar
+        abrirModalVerRespostasInterno(tokenId, candidatoNome);
+      };
+      script.onerror = () => {
+        console.error("❌ Erro ao carregar SweetAlert2");
+        if (window.showToast) {
+          window.showToast("Erro ao carregar componente de modal", "error");
+        } else {
+          alert("Erro ao carregar componente de modal");
+        }
+      };
+      document.head.appendChild(script);
+      return;
+    }
+
+    // Se já está carregado, executa direto
+    abrirModalVerRespostasInterno(tokenId, candidatoNome);
+  };
+
+  async function abrirModalVerRespostasInterno(tokenId, candidatoNome) {
     try {
       if (!db) {
         console.error("❌ ERRO: Firestore não inicializado!");
@@ -1210,15 +1241,15 @@ export async function initdashboard(user, userData) {
         testeDados.perguntas.forEach((pergunta, index) => {
           const resposta = tokenData.respostas[`resposta-${index}`] || "-";
           perguntasHTML += `
-          <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; text-align: left;">
-            <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-              <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-            </p>
-            <div style="background: white; padding: 10px; border-radius: 4px; color: #555;">
-              <strong>Resposta:</strong> ${resposta}
-            </div>
+        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; text-align: left;">
+          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+          </p>
+          <div style="background: white; padding: 10px; border-radius: 4px; color: #555;">
+            <strong>Resposta:</strong> ${resposta}
           </div>
-        `;
+        </div>
+      `;
         });
       } else {
         perguntasHTML =
@@ -1248,23 +1279,23 @@ export async function initdashboard(user, userData) {
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-        <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-          <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-            <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-              testeDados.titulo || "Teste"
-            }</p>
-            <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-            <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-          </div>
-          
-          <hr style="margin: 20px 0;">
-          
-          <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-          
-          ${perguntasHTML}
+      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+            testeDados.titulo || "Teste"
+          }</p>
+          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
         </div>
-      `,
+        
+        <hr style="margin: 20px 0;">
+        
+        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+        
+        ${perguntasHTML}
+      </div>
+    `,
         width: "800px",
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
@@ -1282,7 +1313,7 @@ export async function initdashboard(user, userData) {
       console.error("❌ Erro ao abrir respostas:", error);
       window.showToast?.(`Erro: ${error.message}`, "error");
     }
-  };
+  }
 
   // ============================================
   // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS)
