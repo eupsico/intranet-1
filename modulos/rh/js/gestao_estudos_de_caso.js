@@ -96,7 +96,7 @@ function adicionarCampoPergunta() {
   newPerguntaDiv.classList.add("pergunta-item", "form-group");
   newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
 
-  // ✅ HTML ATUALIZADO COM TIPO DE PERGUNTA
+  // ✅ HTML ATUALIZADO: Resposta Correta para TODOS os tipos
   newPerguntaDiv.innerHTML = `
     <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
     
@@ -129,17 +129,17 @@ function adicionarCampoPergunta() {
       </button>
     </div>
 
-    <!-- ✅ CAMPOS CONDICIONAIS PARA MÚLTIPLA ESCOLHA -->
-    <div class="opcoes-multipla-escolha" style="display: none; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 5px;">
-      <label>Opções (uma por linha):</label>
+    <!-- ✅ CAMPOS CONDICIONAIS: Múltipla Escolha -->
+    <div class="campos-multipla-escolha" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">
+      <label><strong>Opções (uma por linha):</strong></label>
       <textarea 
         class="form-control opcoes-texto" 
         data-id="${perguntaId}"
-        rows="3"
+        rows="4"
         placeholder="Opção 1&#10;Opção 2&#10;Opção 3&#10;Opção 4"
       ></textarea>
       
-      <label class="mt-2">Resposta Correta (número da opção, ex: 1):</label>
+      <label class="mt-2"><strong>Resposta Correta (número da opção, ex: 1):</strong></label>
       <input 
         type="number" 
         class="form-control resposta-correta"
@@ -148,19 +148,82 @@ function adicionarCampoPergunta() {
         placeholder="1"
       />
     </div>
+
+    <!-- ✅ CAMPOS CONDICIONAIS: Verdadeiro/Falso -->
+    <div class="campos-verdadeiro-falso" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;">
+      <label><strong>Resposta Correta:</strong></label>
+      <select class="form-control resposta-correta-vf" data-id="${perguntaId}">
+        <option value="">Selecione...</option>
+        <option value="Verdadeiro">Verdadeiro</option>
+        <option value="Falso">Falso</option>
+      </select>
+    </div>
+
+    <!-- ✅ CAMPOS CONDICIONAIS: Preenchimento -->
+    <div class="campos-preenchimento" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+      <label><strong>Resposta Padrão/Esperada:</strong></label>
+      <input 
+        type="text" 
+        class="form-control resposta-padrao"
+        data-id="${perguntaId}"
+        placeholder="Ex: Multitarefa"
+      />
+      <small class="form-text text-muted">
+        Digite a resposta esperada (não diferencia maiúsculas/minúsculas).
+      </small>
+    </div>
+
+    <!-- ✅ CAMPOS CONDICIONAIS: Dissertativa -->
+    <div class="campos-dissertativa" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #6c757d;">
+      <label><strong>Resposta Padrão/Modelo (opcional):</strong></label>
+      <textarea 
+        class="form-control resposta-padrao-dissertativa"
+        data-id="${perguntaId}"
+        rows="3"
+        placeholder="Digite uma resposta modelo/padrão para referência (opcional)"
+      ></textarea>
+      <small class="form-text text-muted">
+        Esta resposta serve como referência. Questões dissertativas não são corrigidas automaticamente.
+      </small>
+    </div>
   `;
 
   listaPerguntas.appendChild(newPerguntaDiv);
 
-  // ✅ LISTENER PARA MOSTRAR/OCULTAR OPÇÕES
+  // ✅ LISTENER PARA MOSTRAR/OCULTAR CAMPOS CONDICIONAIS
   const selectTipo = newPerguntaDiv.querySelector(".tipo-pergunta");
-  const opcoesDiv = newPerguntaDiv.querySelector(".opcoes-multipla-escolha");
+  const camposMultipla = newPerguntaDiv.querySelector(
+    ".campos-multipla-escolha"
+  );
+  const camposVF = newPerguntaDiv.querySelector(".campos-verdadeiro-falso");
+  const camposPreenchimento = newPerguntaDiv.querySelector(
+    ".campos-preenchimento"
+  );
+  const camposDissertativa = newPerguntaDiv.querySelector(
+    ".campos-dissertativa"
+  );
 
   selectTipo.addEventListener("change", (e) => {
-    if (e.target.value === "multipla-escolha") {
-      opcoesDiv.style.display = "block";
-    } else {
-      opcoesDiv.style.display = "none";
+    // Esconde todos
+    camposMultipla.style.display = "none";
+    camposVF.style.display = "none";
+    camposPreenchimento.style.display = "none";
+    camposDissertativa.style.display = "none";
+
+    // Mostra o relevante
+    switch (e.target.value) {
+      case "multipla-escolha":
+        camposMultipla.style.display = "block";
+        break;
+      case "verdadeiro-falso":
+        camposVF.style.display = "block";
+        break;
+      case "preenchimento":
+        camposPreenchimento.style.display = "block";
+        break;
+      case "dissertativa":
+        camposDissertativa.style.display = "block";
+        break;
     }
   });
 
@@ -187,7 +250,6 @@ function reordenarPerguntas() {
 // ============================================
 // SALVAR MODELO (CRIAÇÃO E EDIÇÃO)
 // ============================================
-
 async function salvarModelo(e) {
   e.preventDefault();
 
@@ -200,8 +262,6 @@ async function salvarModelo(e) {
   const titulo = document.getElementById("conteudo-titulo").value.trim();
   const tipo = document.getElementById("conteudo-tipo").value;
   const textoConteudo = document.getElementById("conteudo-texto").value.trim();
-
-  // ✅ NOVOS CAMPOS
   const prazoDias = parseInt(
     document.getElementById("prazo-validade-link")?.value || "7"
   );
@@ -216,56 +276,121 @@ async function salvarModelo(e) {
     return;
   }
 
-  // ✅ COLETA AS PERGUNTAS COM TIPO
+  // ✅ COLETA AS PERGUNTAS COM RESPOSTA CORRETA
   const perguntas = [];
-  listaPerguntas.querySelectorAll(".pergunta-item").forEach((item) => {
-    const tipoPergunta = item.querySelector(".tipo-pergunta")?.value;
-    const textoPergunta = item.querySelector(".pergunta-texto")?.value.trim();
 
-    if (!textoPergunta || !tipoPergunta) {
-      window.showToast?.("Todas as perguntas devem ter tipo definido", "error");
-      throw new Error("Pergunta incompleta");
-    }
+  try {
+    listaPerguntas.querySelectorAll(".pergunta-item").forEach((item) => {
+      const tipoPergunta = item.querySelector(".tipo-pergunta")?.value;
+      const textoPergunta = item.querySelector(".pergunta-texto")?.value.trim();
 
-    const perguntaObj = {
-      enunciado: textoPergunta,
-      tipo: tipoPergunta,
-      opcoes: [],
-    };
-
-    // ✅ SE FOR MÚLTIPLA ESCOLHA, COLETA OPÇÕES
-    if (tipoPergunta === "multipla-escolha") {
-      const opcoesTexto = item.querySelector(".opcoes-texto")?.value;
-      const respostaCorreta = item.querySelector(".resposta-correta")?.value;
-
-      if (!opcoesTexto || !respostaCorreta) {
-        window.showToast?.(
-          "Múltipla escolha deve ter opções e resposta correta",
-          "error"
-        );
-        throw new Error("Opções incompletas");
+      if (!textoPergunta || !tipoPergunta) {
+        throw new Error("Todas as perguntas devem ter tipo e texto definidos");
       }
 
-      perguntaObj.opcoes = opcoesTexto
-        .split("\n")
-        .map((opt, idx) => ({
-          id: idx + 1,
-          texto: opt.trim(),
-        }))
-        .filter((opt) => opt.texto);
+      const perguntaObj = {
+        enunciado: textoPergunta,
+        tipo: tipoPergunta,
+        opcoes: [],
+        respostaCorreta: null,
+      };
 
-      perguntaObj.respostaCorreta = parseInt(respostaCorreta);
-    }
+      // ✅ COLETA RESPOSTA CORRETA CONFORME O TIPO
+      switch (tipoPergunta) {
+        case "multipla-escolha":
+          const opcoesTexto = item.querySelector(".opcoes-texto")?.value;
+          const numRespostaCorreta =
+            item.querySelector(".resposta-correta")?.value;
 
-    perguntas.push(perguntaObj);
-  });
+          if (!opcoesTexto || !numRespostaCorreta) {
+            throw new Error(
+              "Múltipla escolha deve ter opções e número da resposta correta"
+            );
+          }
+
+          perguntaObj.opcoes = opcoesTexto
+            .split("\n")
+            .map((opt, idx) => ({
+              id: idx + 1,
+              texto: opt.trim(),
+            }))
+            .filter((opt) => opt.texto);
+
+          const numeroResposta = parseInt(numRespostaCorreta);
+
+          // Valida se o número está dentro do range de opções
+          if (
+            numeroResposta < 1 ||
+            numeroResposta > perguntaObj.opcoes.length
+          ) {
+            throw new Error(
+              `Resposta correta deve estar entre 1 e ${perguntaObj.opcoes.length}`
+            );
+          }
+
+          // Guarda o número da opção correta
+          perguntaObj.respostaCorreta = numeroResposta;
+          break;
+
+        case "verdadeiro-falso":
+          const respostaVF = item.querySelector(".resposta-correta-vf")?.value;
+
+          if (!respostaVF) {
+            throw new Error(
+              "Verdadeiro/Falso deve ter resposta correta definida"
+            );
+          }
+
+          perguntaObj.respostaCorreta = respostaVF;
+          perguntaObj.opcoes = [
+            { id: 1, texto: "Verdadeiro" },
+            { id: 2, texto: "Falso" },
+          ];
+          break;
+
+        case "preenchimento":
+          const respostaPadrao = item
+            .querySelector(".resposta-padrao")
+            ?.value?.trim();
+
+          if (!respostaPadrao) {
+            throw new Error(
+              "Preenchimento deve ter uma resposta padrão definida"
+            );
+          }
+
+          perguntaObj.respostaCorreta = respostaPadrao;
+          break;
+
+        case "dissertativa":
+          // Dissertativa é opcional (não há correção automática)
+          const respostaDissertativa = item
+            .querySelector(".resposta-padrao-dissertativa")
+            ?.value?.trim();
+
+          if (respostaDissertativa) {
+            perguntaObj.respostaCorreta = respostaDissertativa;
+          }
+          break;
+
+        default:
+          throw new Error(`Tipo de pergunta desconhecido: ${tipoPergunta}`);
+      }
+
+      perguntas.push(perguntaObj);
+    });
+  } catch (error) {
+    window.showToast?.(error.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Conteúdo';
+    return;
+  }
 
   const dadosModelo = {
     titulo: titulo,
     tipo: tipo,
     conteudo_texto: textoConteudo,
     perguntas: perguntas,
-    // ✅ NOVOS CAMPOS
     prazo_validade_dias: prazoDias,
     data_atualizacao: new Date(),
     criado_por_uid: currentUserData?.id || "rh_system_user",
@@ -307,7 +432,6 @@ async function salvarModelo(e) {
 // ============================================
 // EDIÇÃO DE MODELO
 // ============================================
-
 async function abrirModalEdicaoModelo(id) {
   console.log(`🔹 Estudos: Abrindo modal de edição para: ${id}`);
 
@@ -325,8 +449,6 @@ async function abrirModalEdicaoModelo(id) {
     document.getElementById("conteudo-tipo").value = modelo.tipo;
     document.getElementById("conteudo-titulo").value = modelo.titulo;
     document.getElementById("conteudo-texto").value = modelo.conteudo_texto;
-
-    // ✅ PREENCHE O PRAZO
     document.getElementById("prazo-validade-link").value =
       modelo.prazo_validade_dias || "7";
 
@@ -340,7 +462,29 @@ async function abrirModalEdicaoModelo(id) {
         newPerguntaDiv.classList.add("pergunta-item", "form-group");
         newPerguntaDiv.setAttribute("data-pergunta-id", perguntaId);
 
-        // ✅ HTML COM TIPO DE PERGUNTA PREENCHIDO
+        // ✅ Determina visibilidade dos campos
+        const showMultipla = pergunta.tipo === "multipla-escolha";
+        const showVF = pergunta.tipo === "verdadeiro-falso";
+        const showPreenchimento = pergunta.tipo === "preenchimento";
+        const showDissertativa = pergunta.tipo === "dissertativa";
+
+        // ✅ Prepara valores
+        const opcoesTextoValue =
+          showMultipla && pergunta.opcoes
+            ? pergunta.opcoes.map((opt) => opt.texto).join("\n")
+            : "";
+
+        const respostaCorretaMultipla = showMultipla
+          ? pergunta.respostaCorreta || ""
+          : "";
+        const respostaCorretaVF = showVF ? pergunta.respostaCorreta || "" : "";
+        const respostaPadraoPreench = showPreenchimento
+          ? pergunta.respostaCorreta || ""
+          : "";
+        const respostaDissert = showDissertativa
+          ? pergunta.respostaCorreta || ""
+          : "";
+
         newPerguntaDiv.innerHTML = `
           <label for="pergunta-${perguntaId}">Pergunta ${perguntaId}:</label>
           
@@ -365,40 +509,54 @@ async function abrirModalEdicaoModelo(id) {
           </div>
 
           <div class="input-group">
-            <textarea
-              class="pergunta-texto form-control"
-              data-id="${perguntaId}"
-              rows="2"
-              required
-            >${pergunta.enunciado}</textarea>
-            <button 
-              type="button" 
-              class="btn btn-danger btn-sm btn-remover-pergunta ms-2" 
-              title="Remover Pergunta"
-            >
+            <textarea class="pergunta-texto form-control" data-id="${perguntaId}" rows="2" required>${
+          pergunta.enunciado
+        }</textarea>
+            <button type="button" class="btn btn-danger btn-sm btn-remover-pergunta ms-2" title="Remover Pergunta">
               <i class="fas fa-trash"></i>
             </button>
           </div>
 
-          <!-- ✅ CAMPOS CONDICIONAIS -->
-          <div class="opcoes-multipla-escolha" style="display: ${
-            pergunta.tipo === "multipla-escolha" ? "block" : "none"
-          }; margin-top: 10px; background: #f8f9fa; padding: 10px; border-radius: 5px;">
-            <label>Opções (uma por linha):</label>
-            <textarea 
-              class="form-control opcoes-texto" 
-              data-id="${perguntaId}"
-              rows="3"
-            >${pergunta.opcoes.map((opt) => opt.texto).join("\n")}</textarea>
-            
-            <label class="mt-2">Resposta Correta:</label>
-            <input 
-              type="number" 
-              class="form-control resposta-correta"
-              data-id="${perguntaId}"
-              min="1"
-              value="${pergunta.respostaCorreta || ""}"
-            />
+          <!-- Múltipla Escolha -->
+          <div class="campos-multipla-escolha" style="display: ${
+            showMultipla ? "block" : "none"
+          }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">
+            <label><strong>Opções (uma por linha):</strong></label>
+            <textarea class="form-control opcoes-texto" data-id="${perguntaId}" rows="4">${opcoesTextoValue}</textarea>
+            <label class="mt-2"><strong>Resposta Correta (número da opção):</strong></label>
+            <input type="number" class="form-control resposta-correta" data-id="${perguntaId}" min="1" value="${respostaCorretaMultipla}" />
+          </div>
+
+          <!-- Verdadeiro/Falso -->
+          <div class="campos-verdadeiro-falso" style="display: ${
+            showVF ? "block" : "none"
+          }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;">
+            <label><strong>Resposta Correta:</strong></label>
+            <select class="form-control resposta-correta-vf" data-id="${perguntaId}">
+              <option value="">Selecione...</option>
+              <option value="Verdadeiro" ${
+                respostaCorretaVF === "Verdadeiro" ? "selected" : ""
+              }>Verdadeiro</option>
+              <option value="Falso" ${
+                respostaCorretaVF === "Falso" ? "selected" : ""
+              }>Falso</option>
+            </select>
+          </div>
+
+          <!-- Preenchimento -->
+          <div class="campos-preenchimento" style="display: ${
+            showPreenchimento ? "block" : "none"
+          }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+            <label><strong>Resposta Padrão/Esperada:</strong></label>
+            <input type="text" class="form-control resposta-padrao" data-id="${perguntaId}" value="${respostaPadraoPreench}" />
+          </div>
+
+          <!-- Dissertativa -->
+          <div class="campos-dissertativa" style="display: ${
+            showDissertativa ? "block" : "none"
+          }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #6c757d;">
+            <label><strong>Resposta Padrão/Modelo (opcional):</strong></label>
+            <textarea class="form-control resposta-padrao-dissertativa" data-id="${perguntaId}" rows="3">${respostaDissert}</textarea>
           </div>
         `;
 
@@ -406,13 +564,39 @@ async function abrirModalEdicaoModelo(id) {
 
         // ✅ LISTENERS
         const selectTipo = newPerguntaDiv.querySelector(".tipo-pergunta");
-        const opcoesDiv = newPerguntaDiv.querySelector(
-          ".opcoes-multipla-escolha"
+        const camposMultipla = newPerguntaDiv.querySelector(
+          ".campos-multipla-escolha"
+        );
+        const camposVF = newPerguntaDiv.querySelector(
+          ".campos-verdadeiro-falso"
+        );
+        const camposPreenchimento = newPerguntaDiv.querySelector(
+          ".campos-preenchimento"
+        );
+        const camposDissertativa = newPerguntaDiv.querySelector(
+          ".campos-dissertativa"
         );
 
         selectTipo.addEventListener("change", (e) => {
-          opcoesDiv.style.display =
-            e.target.value === "multipla-escolha" ? "block" : "none";
+          camposMultipla.style.display = "none";
+          camposVF.style.display = "none";
+          camposPreenchimento.style.display = "none";
+          camposDissertativa.style.display = "none";
+
+          switch (e.target.value) {
+            case "multipla-escolha":
+              camposMultipla.style.display = "block";
+              break;
+            case "verdadeiro-falso":
+              camposVF.style.display = "block";
+              break;
+            case "preenchimento":
+              camposPreenchimento.style.display = "block";
+              break;
+            case "dissertativa":
+              camposDissertativa.style.display = "block";
+              break;
+          }
         });
 
         newPerguntaDiv
