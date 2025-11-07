@@ -2025,7 +2025,7 @@ legend {
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background-color: var(--cor-fundo);
+  background-color: var(--color-teal-300);
 }
 
 .login-card {
