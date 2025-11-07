@@ -1,6 +1,7 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.8.0 (Correção: Importa do firebase-init.js)
+// Versão: 3.7.0 (Correção: erro indexOf em abrirModalVerRespostas)
 
+// ✅ IMPORTA DO FIREBASE-INIT.JS
 import {
   collection,
   query,
@@ -507,7 +508,7 @@ export async function initDashboard(user, userData) {
   };
 
   // ============================================
-  // 🆕 FUNÇÃO: MODAL VER RESPOSTAS (CORRIGIDA)
+  // 🆕 FUNÇÃO: MODAL VER RESPOSTAS (✅ CORRIGIDA)
   // ============================================
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(
@@ -534,13 +535,23 @@ export async function initDashboard(user, userData) {
       const respostas = tokenData.respostas || [];
       const tempoGasto = tokenData.tempoGasto || "Não registrado";
 
-      // Busca informações do estudo de caso
-      const estudoDoc = await getDoc(
-        doc(db, "estudos_de_caso", tokenData.estudoDeCasoId)
-      );
-      const estudoNome = estudoDoc.exists()
-        ? estudoDoc.data().titulo
-        : "Estudo não encontrado";
+      // ✅ CORREÇÃO: Verifica se estudoDeCasoId existe antes de buscar
+      let estudoNome = "Estudo não encontrado";
+      if (tokenData.estudoDeCasoId) {
+        try {
+          const estudoDoc = await getDoc(
+            doc(db, "estudos_de_caso", tokenData.estudoDeCasoId)
+          );
+          if (estudoDoc.exists()) {
+            estudoNome = estudoDoc.data().titulo || "Sem título";
+          }
+        } catch (err) {
+          console.warn(
+            "⚠️ Aviso: Não foi possível carregar dados do estudo:",
+            err
+          );
+        }
+      }
 
       if (respostas.length === 0) {
         Swal.fire({
