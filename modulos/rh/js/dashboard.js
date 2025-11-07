@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.6.0 (PDF + Rodapé + Excel UTF-8 com BOM + Dados Completos)
+// Versão: 3.7.0 (Correções: Modal Detalhes + Ver Respostas Estilizado + Exportação Individual)
 
 import {
   collection,
@@ -10,11 +10,10 @@ import {
   getDoc,
 } from "../../../assets/js/firebase-init.js";
 
-export async function initdashboard(user, userData) {
+export async function initDashboard(user, userData) {
   console.log("📈 Iniciando Dashboard de RH...");
 
   const db = window.db;
-
   if (!db) {
     console.error(
       "Firebase Firestore não inicializado. Não é possível carregar os dados."
@@ -27,7 +26,6 @@ export async function initdashboard(user, userData) {
   // ============================================
   // DEFINIÇÃO DAS COLEÇÕES
   // ============================================
-
   const usuariosCollection = collection(db, "usuarios");
   const vagasCollection = collection(db, "vagas");
   const onboardingCollection = collection(db, "onboarding");
@@ -40,25 +38,14 @@ export async function initdashboard(user, userData) {
   // ============================================
   // MAPEAMENTO DOS ELEMENTOS DO DOM - DASHBOARD
   // ============================================
-
   const metricAtivos = document.getElementById("rh-metric-ativos");
   const metricVagas = document.getElementById("rh-metric-vagas");
   const metricOnboarding = document.getElementById("rh-metric-onboarding");
   const metricComunicados = document.getElementById("rh-metric-comunicados");
-  const funcoesChartCtx = document
-    .getElementById("rh-funcoes-chart")
-    ?.getContext("2d");
-  const rhProfissaoChartCtx = document
-    .getElementById("rh-profissao-chart")
-    ?.getContext("2d");
-  const desligamentoChartCtx = document
-    .getElementById("rh-desligamento-chart")
-    ?.getContext("2d");
 
   // ============================================
   // MAPEAMENTO DOS ELEMENTOS DO DOM - RELATÓRIOS
   // ============================================
-
   const relTotalInscricoes = document.getElementById("rel-total-inscricoes");
   const relTestesRespondidos = document.getElementById(
     "rel-testes-respondidos"
@@ -66,8 +53,9 @@ export async function initdashboard(user, userData) {
   const relTestesPendentes = document.getElementById("rel-testes-pendentes");
   const relTaxaResposta = document.getElementById("rel-taxa-resposta");
   const relFiltroVaga = document.getElementById("rel-filtro-vaga");
+  const relFiltroVagaCand = document.getElementById("rel-filtro-vaga-cand");
   const relFiltroStatus = document.getElementById("rel-filtro-status");
-  const relBuscaCandidato = document.getElementById("rel-busca-candidato");
+  const relFiltroCandidato = document.getElementById("rel-filtro-candidato");
   const relFiltroTeste = document.getElementById("rel-filtro-teste");
   const btnAtualizarRelatorios = document.getElementById(
     "btn-atualizar-relatorios"
@@ -76,7 +64,6 @@ export async function initdashboard(user, userData) {
   // ============================================
   // ESTADO GLOBAL DOS RELATÓRIOS
   // ============================================
-
   let candidatosCache = [];
   let tokensCache = [];
   let vagasCache = [];
@@ -85,7 +72,6 @@ export async function initdashboard(user, userData) {
   // ============================================
   // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV com BOM UTF-8)
   // ============================================
-
   function exportarParaExcel(dados, nomeArquivo = "relatorio.csv") {
     console.log("📊 Exportando para Excel (CSV UTF-8 com BOM)...", dados);
 
@@ -99,14 +85,12 @@ export async function initdashboard(user, userData) {
       const headers = Object.keys(dados[0]);
 
       // ✅ Adiciona BOM (Byte Order Mark) para UTF-8
-      // Isso faz o Excel reconhecer corretamente os acentos
       const headerRow = headers
         .map((h) => {
           let header = String(h).replace(/"/g, '""');
           return `"${header}"`;
         })
         .join(",");
-
       csv.push(headerRow);
 
       // ✅ Processa cada linha de dados
@@ -114,8 +98,6 @@ export async function initdashboard(user, userData) {
         const row = headers
           .map((h) => {
             let valor = linha[h] || "";
-
-            // Converte valores especiais
             if (valor === null || valor === undefined) {
               valor = "";
             } else if (typeof valor === "object") {
@@ -123,44 +105,30 @@ export async function initdashboard(user, userData) {
             } else {
               valor = String(valor);
             }
-
-            // Escapa aspas duplas
             valor = valor.replace(/"/g, '""');
-
             return `"${valor}"`;
           })
           .join(",");
-
         csv.push(row);
       });
 
       const csvContent = csv.join("\n");
-
-      // ✅ BOM UTF-8 (\uFEFF) faz Excel reconhecer acentos corretamente
       const BOM = "\uFEFF";
       const blob = new Blob([BOM + csvContent], {
         type: "text/csv;charset=utf-8;",
       });
 
-      // ✅ Download do arquivo
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
-
       link.setAttribute("href", url);
-
-      // ✅ Muda extensão para .csv
       const nomeComExtenso = nomeArquivo.includes(".")
         ? nomeArquivo
         : nomeArquivo + ".csv";
-
       link.setAttribute("download", nomeComExtenso);
       link.style.visibility = "hidden";
-
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      // Libera memória
       URL.revokeObjectURL(url);
 
       console.log("✅ CSV gerado com sucesso!");
@@ -174,7 +142,6 @@ export async function initdashboard(user, userData) {
   // ============================================
   // FUNÇÕES DE EXPORTAÇÃO - PDF (JSPDF + autoTable)
   // ============================================
-
   function exportarParaPDF(elementId, nomeArquivo = "relatorio.pdf") {
     console.log("📄 Exportando para PDF...", elementId);
 
@@ -201,38 +168,12 @@ export async function initdashboard(user, userData) {
     }
 
     if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF e autoTable...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFComJsPDF(tabela, nomeArquivo);
-          }, 500);
-        };
-        scriptAutoTable.onerror = () => {
-          console.error("❌ Erro ao carregar autoTable");
-          window.showToast?.("Erro ao carregar biblioteca PDF", "error");
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      scriptJsPDF.onerror = () => {
-        console.error("❌ Erro ao carregar jsPDF");
-        window.showToast?.("Erro ao carregar biblioteca PDF", "error");
-      };
-
-      document.head.appendChild(scriptJsPDF);
-    } else {
-      gerarPDFComJsPDF(tabela, nomeArquivo);
+      console.log("⚠️ Bibliotecas PDF já devem estar carregadas no HTML");
+      window.showToast?.("Bibliotecas PDF não carregadas", "error");
+      return;
     }
+
+    gerarPDFComJsPDF(tabela, nomeArquivo);
   }
 
   function gerarPDFComJsPDF(tabela, nomeArquivo) {
@@ -270,7 +211,6 @@ export async function initdashboard(user, userData) {
       )} | Hora: ${new Date().toLocaleTimeString("pt-BR")}`;
       doc.text(dataHora, 148, 38, { align: "center" });
 
-      // Linha separadora
       doc.setDrawColor(102, 126, 234);
       doc.setLineWidth(0.5);
       doc.line(14, 42, 283, 42);
@@ -326,20 +266,17 @@ export async function initdashboard(user, userData) {
         },
       });
 
-      // ✅ RODAPÉ COM ENDEREÇO, WHATSAPP E CONTATO
+      // ✅ RODAPÉ
       const pageCount = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(100, 100, 100);
 
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-
-        // Linha separadora
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
         doc.line(14, 182, 283, 182);
 
-        // ✅ Informações de contato
         const endereco =
           "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290";
         const whatsapp = "WhatsApp: 11 99794-9071";
@@ -347,7 +284,6 @@ export async function initdashboard(user, userData) {
         doc.text(endereco, 148, 187, { align: "center", maxWidth: 260 });
         doc.text(whatsapp, 148, 191, { align: "center" });
 
-        // Página e copyright
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
         doc.text(`Página ${i} de ${pageCount}`, 148, 195, { align: "center" });
@@ -359,7 +295,6 @@ export async function initdashboard(user, userData) {
         );
       }
 
-      // ✅ SALVA O PDF
       doc.save(nomeArquivo);
       console.log("✅ PDF gerado com sucesso!");
       window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
@@ -372,10 +307,8 @@ export async function initdashboard(user, userData) {
   // ============================================
   // FUNÇÕES DE EXPORTAÇÃO INDIVIDUAIS - EXCEL
   // ============================================
-
   window.exportarInscricoesExcel = function () {
     console.log("📊 Exportando Inscrições por Vaga...");
-
     const tabelaBody = document.getElementById("rel-tbody-inscricoes");
     if (!tabelaBody) {
       window.showToast?.("Tabela não encontrada", "error");
@@ -383,18 +316,12 @@ export async function initdashboard(user, userData) {
     }
 
     const dados = [];
-
     tabelaBody.querySelectorAll("tr").forEach((tr) => {
       const cells = tr.querySelectorAll("td");
       if (cells.length > 0) {
         dados.push({
           Vaga: cells[0].textContent.trim(),
-          "Total de Inscritos": parseInt(cells[1].textContent.trim()) || 0,
-          "Em Triagem": parseInt(cells[2].textContent.trim()) || 0,
-          Aprovados: parseInt(cells[3].textContent.trim()) || 0,
-          Rejeitados: parseInt(cells[4].textContent.trim()) || 0,
-          Contratados: parseInt(cells[5].textContent.trim()) || 0,
-          "Data do Relatório": new Date().toLocaleDateString("pt-BR"),
+          "Número de Inscrições": cells[1].textContent.trim(),
         });
       }
     });
@@ -415,7 +342,6 @@ export async function initdashboard(user, userData) {
     console.log("📊 Exportando Lista de Candidatos com todos os dados...");
 
     const dados = [];
-
     candidatosCache.forEach((candidato) => {
       const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
       const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
@@ -429,39 +355,16 @@ export async function initdashboard(user, userData) {
 
       let statusTeste = "Não enviado";
       if (testeEnviado && testeRespondido) {
-        statusTeste = "Respondido";
+        statusTeste = "✅ Respondido";
       } else if (testeEnviado) {
-        statusTeste = "Enviado";
+        statusTeste = "📤 Enviado";
       }
 
       dados.push({
         "Nome Completo": candidato.nome_completo || "-",
         Email: candidato.email_candidato || "-",
         Telefone: candidato.telefone_contato || "-",
-        WhatsApp: candidato.telefone_contato || "-",
-        CPF: candidato.cpf || "-",
-        Cidade: candidato.cidade || "-",
-        Estado: candidato.estado || "-",
-        CEP: candidato.cep || "-",
-        Endereço: candidato.endereco || "-",
-        "Data de Nascimento": candidato.data_nascimento || "-",
-        Gênero: candidato.genero || "-",
-        Nacionalidade: candidato.nacionalidade || "-",
         Vaga: vagaNome,
-        "Formação Profissional": candidato.formacao_profissional || "-",
-        "Conselho Profissional": candidato.conselho_profissional || "-",
-        "Número do Conselho": candidato.numero_conselho || "-",
-        Profissão: candidato.profissao || "-",
-        "Anos de Experiência": candidato.anos_experiencia || "-",
-        "Experiência Profissional": candidato.resumo_experiencia || "-",
-        Habilidades: candidato.habilidades_competencias || "-",
-        "Expectativa Salarial": candidato.expectativa_salarial || "-",
-        "Como Conheceu a EuPsico": candidato.como_conheceu || "-",
-        Disponibilidade: candidato.disponibilidade || "-",
-        "Pode Trabalhar Finais de Semana":
-          candidato.trabalha_finais_semana === true ? "Sim" : "Não",
-        "Pode Trabalhar Feriados":
-          candidato.trabalha_feriados === true ? "Sim" : "Não",
         "Status do Recrutamento": candidato.status_recrutamento || "-",
         "Status do Teste": statusTeste,
         "Data da Candidatura": candidato.data_candidatura
@@ -470,11 +373,6 @@ export async function initdashboard(user, userData) {
                 candidato.data_candidatura
             ).toLocaleDateString("pt-BR")
           : "-",
-        "Link do Currículo": candidato.link_curriculo_drive || "-",
-        "Link do Portfolio": candidato.link_portfolio || "-",
-        LinkedIn: candidato.linkedin || "-",
-        Observações: candidato.observacoes || "-",
-        "Fonte da Inscrição": candidato.fonte_inscricao || "-",
       });
     });
 
@@ -492,7 +390,6 @@ export async function initdashboard(user, userData) {
 
   window.exportarRespostasExcel = function () {
     console.log("📊 Exportando Respostas aos Testes...");
-
     const tabelaBody = document.getElementById("rel-tbody-respostas");
     if (!tabelaBody) {
       window.showToast?.("Tabela não encontrada", "error");
@@ -500,7 +397,6 @@ export async function initdashboard(user, userData) {
     }
 
     const dados = [];
-
     tabelaBody.querySelectorAll("tr").forEach((tr) => {
       const cells = tr.querySelectorAll("td");
       if (cells.length >= 5) {
@@ -527,1371 +423,936 @@ export async function initdashboard(user, userData) {
   };
 
   // ============================================
-  // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
+  // 🆕 NOVA FUNÇÃO: MODAL DE DETALHES DO CANDIDATO
   // ============================================
+  window.abrirModalDetalhesCandidato = async function (candidatoId) {
+    console.log("🔍 Abrindo detalhes do candidato:", candidatoId);
 
-  const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
-  const relRelatóriosTabs = document.getElementById("rel-relatorios-tabs");
+    const candidato = candidatosCache.find((c) => c.id === candidatoId);
+    if (!candidato) {
+      Swal.fire({
+        icon: "error",
+        title: "Candidato não encontrado",
+        text: "Não foi possível localizar este candidato na lista.",
+        confirmButtonColor: "#667eea",
+      });
+      return;
+    }
 
-  if (relDashboardTabs) {
-    relDashboardTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-tab");
+    const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+    const vagaNome = vaga?.titulo || vaga?.tituloVaga || "Não especificada";
 
-        relDashboardTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll('[id^="tab-"]')
-          .forEach((t) => (t.style.display = "none"));
+    // Busca informações sobre testes
+    const tokenCandidato = tokensCache.find(
+      (t) => t.candidatoId === candidato.id
+    );
+    let statusTeste = "Teste não enviado";
+    let dataTeste = "-";
+    let tempoGasto = "-";
 
-        e.target.classList.add("active");
-        document.getElementById(`tab-${tabName}`).style.display = "block";
-
-        if (tabName === "relatorios") {
-          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
-          carregarRelatorios();
+    if (tokenCandidato) {
+      if (tokenCandidato.usado) {
+        statusTeste = "✅ Teste respondido";
+        if (tokenCandidato.dataUso) {
+          dataTeste = new Date(
+            tokenCandidato.dataUso.toDate?.() || tokenCandidato.dataUso
+          ).toLocaleString("pt-BR");
         }
-      });
+        if (tokenCandidato.tempoGasto) {
+          tempoGasto = tokenCandidato.tempoGasto;
+        }
+      } else {
+        statusTeste = "📤 Teste enviado (Aguardando resposta)";
+      }
+    }
+
+    const dataCandidatura = candidato.data_candidatura
+      ? new Date(
+          candidato.data_candidatura.toDate?.() || candidato.data_candidatura
+        ).toLocaleDateString("pt-BR")
+      : "-";
+
+    Swal.fire({
+      title: `<strong>Detalhes do Candidato</strong>`,
+      html: `
+        <div style="text-align: left; padding: 10px;">
+          <h4 style="color: #667eea; margin-bottom: 15px;">${
+            candidato.nome_completo || "Nome não informado"
+          }</h4>
+          
+          <p><strong>📧 Email:</strong> ${candidato.email_candidato || "-"}</p>
+          <p><strong>📱 Telefone:</strong> ${
+            candidato.telefone_contato || "-"
+          }</p>
+          <p><strong>💼 Vaga:</strong> ${vagaNome}</p>
+          <p><strong>📊 Status do Recrutamento:</strong> ${
+            candidato.status_recrutamento || "-"
+          }</p>
+          <p><strong>📅 Data da Candidatura:</strong> ${dataCandidatura}</p>
+          
+          <hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">
+          
+          <h5 style="color: #667eea;">Status do Teste:</h5>
+          <p><strong>${statusTeste}</strong></p>
+          ${
+            tokenCandidato && tokenCandidato.usado
+              ? `
+            <p><strong>📅 Data de resposta:</strong> ${dataTeste}</p>
+            <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          `
+              : ""
+          }
+          
+          ${
+            candidato.observacoes
+              ? `
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">
+            <h5 style="color: #667eea;">Observações:</h5>
+            <p>${candidato.observacoes}</p>
+          `
+              : ""
+          }
+        </div>
+      `,
+      width: "600px",
+      confirmButtonColor: "#667eea",
+      confirmButtonText: "Fechar",
     });
-  }
-
-  if (relRelatóriosTabs) {
-    relRelatóriosTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-rel-tab");
-
-        relRelatóriosTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-content-rel")
-          .forEach((t) => (t.style.display = "none"));
-
-        e.target.classList.add("active");
-        document.getElementById(`rel-tab-${tabName}`).style.display = "block";
-      });
-    });
-  }
-
-  if (btnAtualizarRelatorios) {
-    btnAtualizarRelatorios.addEventListener("click", carregarRelatorios);
-  }
-
-  if (relBuscaCandidato) {
-    relBuscaCandidato.addEventListener("input", filtrarCandidatos);
-  }
+  };
 
   // ============================================
-  // FUNÇÃO: Carregar Relatórios
+  // 🆕 FUNÇÃO: MODAL VER RESPOSTAS (CORRIGIDA)
   // ============================================
-
-  async function carregarRelatorios() {
-    console.log("🔹 Carregando relatórios de recrutamento...");
+  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
+    console.log(
+      "🔍 Abrindo respostas do candidato:",
+      candidatoNome,
+      "Token:",
+      tokenId
+    );
 
     try {
-      console.log("📊 Buscando dados do Firestore...");
-
-      if (!db) {
-        console.error("❌ ERRO: db não está definido!");
-        throw new Error("Firestore não foi inicializado");
+      // Busca o token e as respostas
+      const tokenDoc = await getDoc(doc(db, "tokens_acesso", tokenId));
+      if (!tokenDoc.exists()) {
+        Swal.fire({
+          icon: "error",
+          title: "Token não encontrado",
+          text: "Não foi possível localizar o token de acesso.",
+          confirmButtonColor: "#667eea",
+        });
+        return;
       }
 
-      const candidatosRef = collection(db, "candidaturas");
-      const tokensRef = collection(db, "tokens_acesso");
-      const vagasRef = collection(db, "vagas");
-      const estudosRef = collection(db, "estudos_de_caso");
+      const tokenData = tokenDoc.data();
+      const respostas = tokenData.respostas || [];
+      const tempoGasto = tokenData.tempoGasto || "Não registrado";
 
-      const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
-        await Promise.all([
-          getDocs(candidatosRef),
-          getDocs(tokensRef),
-          getDocs(vagasRef),
-          getDocs(estudosRef),
-        ]);
+      // Busca informações do estudo de caso
+      const estudoDoc = await getDoc(
+        doc(db, "estudos_de_caso", tokenData.estudoDeCasoId)
+      );
+      const estudoNome = estudoDoc.exists()
+        ? estudoDoc.data().titulo
+        : "Estudo não encontrado";
 
-      candidatosCache = [];
-      candidatosSnap.docs.forEach((doc) => {
-        const data = doc.data();
-        candidatosCache.push({
-          id: doc.id,
-          ...data,
+      if (respostas.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sem respostas",
+          text: "Este candidato ainda não respondeu ao teste.",
+          confirmButtonColor: "#667eea",
         });
+        return;
+      }
+
+      // Monta HTML das respostas
+      let htmlRespostas = `
+        <div style="text-align: left; padding: 15px;">
+          <h4 style="color: #667eea;">📝 ${estudoNome}</h4>
+          <p><strong>Candidato:</strong> ${candidatoNome}</p>
+          <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <hr style="margin: 15px 0;">
+      `;
+
+      respostas.forEach((resposta, index) => {
+        const numero = index + 1;
+        const pergunta = resposta.pergunta || `Pergunta ${numero}`;
+        const respostaCandidato = resposta.resposta || "Não respondida";
+
+        htmlRespostas += `
+          <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-left: 3px solid #667eea;">
+            <p style="margin: 0; font-weight: bold;">Pergunta ${numero}:</p>
+            <p style="margin: 5px 0 10px 0;">${pergunta}</p>
+            <p style="margin: 0; color: #555;"><strong>Resposta:</strong></p>
+            <p style="margin: 5px 0; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px;">
+              ${respostaCandidato}
+            </p>
+          </div>
+        `;
       });
 
-      tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      htmlRespostas += `
+        </div>
+        <div style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+          <p style="margin: 0; font-size: 12px; color: #666;">
+            💡 <strong>Dica:</strong> Você pode exportar essas respostas individualmente clicando em "Exportar" abaixo.
+          </p>
+        </div>
+      `;
 
-      console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
-      console.log(`📊 ✅ Tokens: ${tokensCache.length}`);
-      console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
-      console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
-
-      const totalInscritos = candidatosCache.length;
-      const testesRespondidos = tokensCache.filter((t) => t.usado).length;
-      const testesPendentes = tokensCache.filter((t) => !t.usado).length;
-      const taxaResposta =
-        totalInscritos > 0
-          ? Math.round((testesRespondidos / totalInscritos) * 100)
-          : 0;
-
-      if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
-      if (relTestesRespondidos)
-        relTestesRespondidos.textContent = testesRespondidos;
-      if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
-      if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
-
-      popularFiltros();
-      renderizarInscricoesPorVaga();
-      renderizarListaCandidatos();
-      renderizarRespostasAosTestes();
-
-      console.log("✅ Relatórios carregados com sucesso");
+      // Exibe modal com botões de exportação
+      Swal.fire({
+        title: "Respostas do Teste",
+        html: htmlRespostas,
+        width: "700px",
+        confirmButtonColor: "#667eea",
+        confirmButtonText: "Fechar",
+        showDenyButton: true,
+        denyButtonText: "📄 Exportar PDF",
+        showCancelButton: true,
+        cancelButtonText: "📊 Exportar Excel",
+        cancelButtonColor: "#28a745",
+        denyButtonColor: "#dc3545",
+      }).then((result) => {
+        if (result.isDenied) {
+          // Exportar PDF individual
+          exportarRespostaIndividualPDF(
+            tokenData,
+            candidatoNome,
+            estudoNome,
+            respostas,
+            tempoGasto
+          );
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          // Exportar Excel individual
+          exportarRespostaIndividualExcel(
+            tokenData,
+            candidatoNome,
+            estudoNome,
+            respostas,
+            tempoGasto
+          );
+        }
+      });
     } catch (error) {
-      console.error("❌ Erro ao carregar relatórios:", error);
-      window.showToast?.(
-        "Erro ao carregar relatórios: " + error.message,
-        "error"
-      );
+      console.error("❌ Erro ao abrir respostas:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Erro ao carregar respostas",
+        text: error.message,
+        confirmButtonColor: "#667eea",
+      });
+    }
+  };
+
+  // ============================================
+  // 🆕 EXPORTAR RESPOSTA INDIVIDUAL - PDF
+  // ============================================
+  function exportarRespostaIndividualPDF(
+    tokenData,
+    candidatoNome,
+    estudoNome,
+    respostas,
+    tempoGasto
+  ) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Cabeçalho
+      doc.setFontSize(16);
+      doc.setTextColor(102, 126, 234);
+      doc.text("EuPsico - Respostas do Teste", 105, 20, { align: "center" });
+
+      doc.setFontSize(12);
+      doc.setTextColor(51, 51, 51);
+      doc.text(`Teste: ${estudoNome}`, 20, 35);
+      doc.text(`Candidato: ${candidatoNome}`, 20, 42);
+      doc.text(`Tempo gasto: ${tempoGasto}`, 20, 49);
+
+      doc.setDrawColor(102, 126, 234);
+      doc.setLineWidth(0.5);
+      doc.line(20, 53, 190, 53);
+
+      // Respostas
+      let yPos = 60;
+      doc.setFontSize(10);
+
+      respostas.forEach((resposta, index) => {
+        const numero = index + 1;
+        const pergunta = resposta.pergunta || `Pergunta ${numero}`;
+        const respostaCandidato = resposta.resposta || "Não respondida";
+
+        // Verifica espaço na página
+        if (yPos > 250) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Pergunta
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(51, 51, 51);
+        doc.text(`Pergunta ${numero}:`, 20, yPos);
+        yPos += 5;
+
+        doc.setFont("helvetica", "normal");
+        const perguntaLines = doc.splitTextToSize(pergunta, 170);
+        doc.text(perguntaLines, 20, yPos);
+        yPos += perguntaLines.length * 5 + 3;
+
+        // Resposta
+        doc.setFont("helvetica", "bold");
+        doc.text("Resposta:", 20, yPos);
+        yPos += 5;
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(85, 85, 85);
+        const respostaLines = doc.splitTextToSize(respostaCandidato, 170);
+        doc.text(respostaLines, 20, yPos);
+        yPos += respostaLines.length * 5 + 8;
+
+        // Linha separadora
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.line(20, yPos, 190, yPos);
+        yPos += 8;
+      });
+
+      // Rodapé
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(`Página ${i} de ${pageCount}`, 105, 287, { align: "center" });
+      }
+
+      const nomeArquivo = `respostas_${candidatoNome
+        .replace(/\s+/g, "_")
+        .toLowerCase()}.pdf`;
+      doc.save(nomeArquivo);
+
+      window.showToast?.(`✅ PDF ${nomeArquivo} baixado!`, "success");
+    } catch (error) {
+      console.error("❌ Erro ao gerar PDF individual:", error);
+      window.showToast?.("❌ Erro ao exportar PDF", "error");
     }
   }
 
   // ============================================
-  // FUNÇÃO: Popular Filtros
+  // 🆕 EXPORTAR RESPOSTA INDIVIDUAL - EXCEL
   // ============================================
+  function exportarRespostaIndividualExcel(
+    tokenData,
+    candidatoNome,
+    estudoNome,
+    respostas,
+    tempoGasto
+  ) {
+    const dados = [];
 
-  async function popularFiltros() {
-    console.log("🔹 Populando filtros...");
+    dados.push({
+      Candidato: candidatoNome,
+      Teste: estudoNome,
+      "Tempo Gasto": tempoGasto,
+      Pergunta: "",
+      Resposta: "",
+    });
 
-    if (relFiltroVaga) {
-      relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
+    respostas.forEach((resposta, index) => {
+      dados.push({
+        Candidato: "",
+        Teste: "",
+        "Tempo Gasto": "",
+        Pergunta: resposta.pergunta || `Pergunta ${index + 1}`,
+        Resposta: resposta.resposta || "Não respondida",
+      });
+    });
+
+    const nomeArquivo = `respostas_${candidatoNome
+      .replace(/\s+/g, "_")
+      .toLowerCase()}.csv`;
+    exportarParaExcel(dados, nomeArquivo);
+  }
+
+  // ============================================
+  // FUNÇÃO: CARREGAR DASHBOARD (ABA 1)
+  // ============================================
+  async function carregarDashboard() {
+    console.log("📊 Carregando métricas do Dashboard...");
+
+    try {
+      // Profissionais ativos
+      const qAtivos = query(
+        usuariosCollection,
+        where("perfil", "in", ["Voluntário", "Colaborador"]),
+        where("ativo", "==", true)
+      );
+      const ativos = await getDocs(qAtivos);
+      if (metricAtivos) metricAtivos.textContent = ativos.size;
+
+      // Vagas em aberto
+      const qVagas = query(vagasCollection, where("status", "==", "Aberta"));
+      const vagas = await getDocs(qVagas);
+      if (metricVagas) metricVagas.textContent = vagas.size;
+
+      // Colaboradores em onboarding
+      const onboarding = await getDocs(onboardingCollection);
+      if (metricOnboarding) metricOnboarding.textContent = onboarding.size;
+
+      // Comunicados recentes (última semana)
+      const umaSemanaAtras = new Date();
+      umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+      const qComunicados = query(
+        comunicadosCollection,
+        where("dataEnvio", ">=", umaSemanaAtras)
+      );
+      const comunicados = await getDocs(qComunicados);
+      if (metricComunicados) metricComunicados.textContent = comunicados.size;
+
+      // Carregar tabelas
+      await carregarTabelaVagas(vagas);
+      await carregarTabelaOnboarding(onboarding);
+      await carregarTabelaComunicados(comunicados);
+      await carregarTabelaDesligamentos();
+
+      console.log("✅ Dashboard carregado com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao carregar dashboard:", error);
+      window.showToast?.("Erro ao carregar métricas", "error");
+    }
+  }
+
+  // ============================================
+  // FUNÇÕES AUXILIARES: TABELAS DO DASHBOARD
+  // ============================================
+  async function carregarTabelaVagas(vagas) {
+    const tbody = document.getElementById("rh-vagas-tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    if (vagas.size === 0) {
+      tbody.innerHTML = '<tr><td colspan="4">Nenhuma vaga em aberto.</td></tr>';
+      return;
+    }
+
+    vagas.forEach((doc) => {
+      const vaga = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${vaga.titulo || vaga.tituloVaga || "-"}</td>
+        <td>${vaga.departamento || "-"}</td>
+        <td><span class="badge bg-success">Aberta</span></td>
+        <td>${
+          vaga.dataAbertura
+            ? new Date(
+                vaga.dataAbertura.toDate?.() || vaga.dataAbertura
+              ).toLocaleDateString("pt-BR")
+            : "-"
+        }</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function carregarTabelaOnboarding(onboarding) {
+    const tbody = document.getElementById("rh-onboarding-tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    if (onboarding.size === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="4">Nenhum colaborador em onboarding.</td></tr>';
+      return;
+    }
+
+    onboarding.forEach((doc) => {
+      const dados = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${dados.nomeColaborador || "-"}</td>
+        <td>${dados.departamento || "-"}</td>
+        <td>${
+          dados.dataInicio
+            ? new Date(
+                dados.dataInicio.toDate?.() || dados.dataInicio
+              ).toLocaleDateString("pt-BR")
+            : "-"
+        }</td>
+        <td><span class="badge bg-warning">Em Andamento</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function carregarTabelaComunicados(comunicados) {
+    const tbody = document.getElementById("rh-comunicados-tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    if (comunicados.size === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="3">Nenhum comunicado recente.</td></tr>';
+      return;
+    }
+
+    comunicados.forEach((doc) => {
+      const com = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${com.assunto || "-"}</td>
+        <td>${
+          com.dataEnvio
+            ? new Date(
+                com.dataEnvio.toDate?.() || com.dataEnvio
+              ).toLocaleDateString("pt-BR")
+            : "-"
+        }</td>
+        <td>${com.remetenteNome || "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function carregarTabelaDesligamentos() {
+    const tbody = document.getElementById("rh-desligamentos-tbody");
+    if (!tbody) return;
+
+    try {
+      const umMesAtras = new Date();
+      umMesAtras.setMonth(umMesAtras.getMonth() - 1);
+
+      const qDesligamentos = query(
+        desligamentosCollection,
+        where("dataDesligamento", ">=", umMesAtras)
+      );
+      const desligamentos = await getDocs(qDesligamentos);
+
+      tbody.innerHTML = "";
+      if (desligamentos.size === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="4">Nenhum desligamento recente.</td></tr>';
+        return;
+      }
+
+      desligamentos.forEach((doc) => {
+        const desl = doc.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${desl.nomeColaborador || "-"}</td>
+          <td>${desl.departamento || "-"}</td>
+          <td>${
+            desl.dataDesligamento
+              ? new Date(
+                  desl.dataDesligamento.toDate?.() || desl.dataDesligamento
+                ).toLocaleDateString("pt-BR")
+              : "-"
+          }</td>
+          <td>${desl.motivo || "-"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (error) {
+      console.error("❌ Erro ao carregar desligamentos:", error);
+      tbody.innerHTML =
+        '<tr><td colspan="4">Erro ao carregar desligamentos.</td></tr>';
+    }
+  }
+
+  // ============================================
+  // FUNÇÃO: CARREGAR RELATÓRIOS (ABA 2)
+  // ============================================
+  async function carregarRelatorios() {
+    console.log("📊 Carregando Relatórios de Recrutamento...");
+
+    try {
+      // Buscar dados
+      const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
+        await Promise.all([
+          getDocs(candidatosCollection),
+          getDocs(tokensAcessoCollection),
+          getDocs(vagasCollection),
+          getDocs(estudosDeCasoCollection),
+        ]);
+
+      // Armazenar em cache
+      candidatosCache = candidatosSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      tokensCache = tokensSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      vagasCache = vagasSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      estudosCache = estudosSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      console.log("✅ Dados carregados:", {
+        candidatos: candidatosCache.length,
+        tokens: tokensCache.length,
+        vagas: vagasCache.length,
+        estudos: estudosCache.length,
+      });
+
+      // Renderizar relatórios
+      renderizarListaCandidatos();
+      renderizarInscricoesPorVaga();
+      renderizarRespostasTestes();
+      preencherFiltros();
+
+      console.log("✅ Relatórios renderizados com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao carregar relatórios:", error);
+      window.showToast?.("Erro ao carregar relatórios", "error");
+    }
+  }
+
+  // ============================================
+  // RENDERIZAR: LISTA DE CANDIDATOS
+  // ============================================
+  function renderizarListaCandidatos() {
+    const tbody = document.getElementById("rel-tbody-candidatos");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (candidatosCache.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="7">Nenhum candidato encontrado.</td></tr>';
+      return;
+    }
+
+    candidatosCache.forEach((candidato) => {
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
+
+      const testeEnviado = tokensCache.some(
+        (t) => t.candidatoId === candidato.id
+      );
+      const testeRespondido = tokensCache.some(
+        (t) => t.candidatoId === candidato.id && t.usado
+      );
+
+      let badgeTeste = '<span class="badge bg-secondary">Não enviado</span>';
+      if (testeEnviado && testeRespondido) {
+        badgeTeste = '<span class="badge bg-success">✅ Respondido</span>';
+      } else if (testeEnviado) {
+        badgeTeste = '<span class="badge bg-warning">📤 Enviado</span>';
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${candidato.nome_completo || "-"}</td>
+        <td>${candidato.email_candidato || "-"}</td>
+        <td>${candidato.telefone_contato || "-"}</td>
+        <td>${vagaNome}</td>
+        <td>${candidato.status_recrutamento || "-"}</td>
+        <td>${badgeTeste}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="abrirModalDetalhesCandidato('${
+            candidato.id
+          }')" title="Ver detalhes">
+            <i class="fas fa-eye"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============================================
+  // RENDERIZAR: INSCRIÇÕES POR VAGA
+  // ============================================
+  function renderizarInscricoesPorVaga() {
+    const tbody = document.getElementById("rel-tbody-inscricoes");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const inscricoesPorVaga = {};
+
+    candidatosCache.forEach((candidato) => {
+      const vagaId = candidato.vaga_id;
+      if (!inscricoesPorVaga[vagaId]) {
+        inscricoesPorVaga[vagaId] = 0;
+      }
+      inscricoesPorVaga[vagaId]++;
+    });
+
+    const vagasComInscricoes = Object.keys(inscricoesPorVaga);
+
+    if (vagasComInscricoes.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="2">Nenhuma inscrição encontrada.</td></tr>';
+      return;
+    }
+
+    vagasComInscricoes.forEach((vagaId) => {
+      const vaga = vagasCache.find((v) => v.id === vagaId);
+      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "Vaga desconhecida";
+      const numInscricoes = inscricoesPorVaga[vagaId];
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${vagaNome}</td>
+        <td>${numInscricoes}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============================================
+  // RENDERIZAR: RESPOSTAS AOS TESTES
+  // ============================================
+  function renderizarRespostasTestes() {
+    const tbody = document.getElementById("rel-tbody-respostas");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const tokensUsados = tokensCache.filter((t) => t.usado);
+
+    if (tokensUsados.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6">Nenhuma resposta de teste encontrada.</td></tr>';
+      return;
+    }
+
+    tokensUsados.forEach((token) => {
+      const candidato = candidatosCache.find((c) => c.id === token.candidatoId);
+      const candidatoNome =
+        candidato?.nome_completo || "Candidato desconhecido";
+
+      const estudo = estudosCache.find((e) => e.id === token.estudoDeCasoId);
+      const estudoNome = estudo?.titulo || "Teste desconhecido";
+
+      const dataResposta = token.dataUso
+        ? new Date(token.dataUso.toDate?.() || token.dataUso).toLocaleString(
+            "pt-BR"
+          )
+        : "-";
+
+      const tempoGasto = token.tempoGasto || "Não registrado";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${candidatoNome}</td>
+        <td>${estudoNome}</td>
+        <td>${dataResposta}</td>
+        <td>${tempoGasto}</td>
+        <td><span class="badge bg-success">✅ Respondido</span></td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="abrirModalVerRespostas('${token.id}', '${candidatoNome}')" title="Ver respostas">
+            <i class="fas fa-eye"></i> Ver Respostas
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============================================
+  // PREENCHER FILTROS
+  // ============================================
+  function preencherFiltros() {
+    // Filtro de vagas (para candidatos)
+    if (relFiltroVagaCand) {
+      relFiltroVagaCand.innerHTML = '<option value="">Todas as vagas</option>';
       vagasCache.forEach((vaga) => {
         const option = document.createElement("option");
         option.value = vaga.id;
-        const nomeDaVaga =
-          vaga.titulo ||
-          vaga.tituloVaga ||
-          vaga.nome ||
-          `Vaga ${vaga.id.substring(0, 8)}`;
-        option.textContent = nomeDaVaga;
-        relFiltroVaga.appendChild(option);
+        option.textContent = vaga.titulo || vaga.tituloVaga || "Sem título";
+        relFiltroVagaCand.appendChild(option);
       });
     }
 
+    // Filtro de testes (para respostas)
     if (relFiltroTeste) {
       relFiltroTeste.innerHTML = '<option value="">Todos os testes</option>';
-      estudosCache.forEach((teste) => {
+      estudosCache.forEach((estudo) => {
         const option = document.createElement("option");
-        option.value = teste.id;
-        option.textContent =
-          teste.titulo || teste.nome || `Teste ${teste.id.substring(0, 8)}`;
+        option.value = estudo.id;
+        option.textContent = estudo.titulo || "Sem título";
         relFiltroTeste.appendChild(option);
       });
     }
   }
 
   // ============================================
-  // FUNÇÃO: Criar Gráfico de Inscrições
+  // EVENTOS: FILTROS
   // ============================================
-
-  async function criarGraficoInscricoes() {
-    const ctx = document.getElementById("rel-chart-inscricoes");
-    if (!ctx) {
-      console.error("❌ Canvas rel-chart-inscricoes não encontrado");
-      return;
-    }
-
-    if (typeof Chart === "undefined") {
-      console.error("❌ Chart.js não foi importado!");
-      return;
-    }
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-      inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
-    });
-
-    const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      return vaga?.titulo || vaga?.nome || vagaId.substring(0, 8);
-    });
-
-    const dados = Object.values(inscricoesPorVaga);
-
-    console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
-
-    if (window.graficoInscricoes) {
-      window.graficoInscricoes.destroy();
-    }
-
-    window.graficoInscricoes = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: vagasNomes,
-        datasets: [
-          {
-            label: "Total de Inscrições",
-            data: dados,
-            backgroundColor: "#667eea",
-            borderColor: "#5568d3",
-            borderWidth: 1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1,
-            },
-          },
-        },
-        plugins: {
-          legend: {
-            display: true,
-          },
-        },
-      },
-    });
+  if (relFiltroCandidato) {
+    relFiltroCandidato.addEventListener("input", aplicarFiltrosCandidatos);
+  }
+  if (relFiltroVagaCand) {
+    relFiltroVagaCand.addEventListener("change", aplicarFiltrosCandidatos);
+  }
+  if (relFiltroTeste) {
+    relFiltroTeste.addEventListener("change", aplicarFiltrosTestes);
   }
 
-  // ============================================
-  // FUNÇÃO: Renderizar Inscrições por Vaga
-  // ============================================
+  function aplicarFiltrosCandidatos() {
+    const termoBusca = relFiltroCandidato?.value.toLowerCase() || "";
+    const vagaSelecionada = relFiltroVagaCand?.value || "";
 
-  async function renderizarInscricoesPorVaga() {
-    console.log("🔹 Renderizando inscrições por vaga...");
+    const candidatosFiltrados = candidatosCache.filter((candidato) => {
+      const nomeMatch = candidato.nome_completo
+        ?.toLowerCase()
+        .includes(termoBusca);
+      const vagaMatch = vagaSelecionada
+        ? candidato.vaga_id === vagaSelecionada
+        : true;
+      return nomeMatch && vagaMatch;
+    });
 
-    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
-    if (!tabelaBody) {
-      console.error("❌ Elemento rel-tbody-inscricoes não encontrado");
+    const tbody = document.getElementById("rel-tbody-candidatos");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (candidatosFiltrados.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="7">Nenhum candidato encontrado com os filtros aplicados.</td></tr>';
       return;
     }
 
-    tabelaBody.innerHTML = "";
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-
-      if (!inscricoesPorVaga[vagaId]) {
-        inscricoesPorVaga[vagaId] = {
-          total: 0,
-          triagem: 0,
-          aprovados: 0,
-          rejeitados: 0,
-          contratados: 0,
-        };
-      }
-
-      inscricoesPorVaga[vagaId].total++;
-
-      const status = cand.status_recrutamento || "Candidatura Recebida";
-
-      if (
-        status.includes("Triagem") ||
-        status === "Candidatura Recebida" ||
-        status.includes("recebida")
-      ) {
-        inscricoesPorVaga[vagaId].triagem++;
-      } else if (
-        status.includes("Aprovada") ||
-        status.includes("Entrevista Pendente")
-      ) {
-        inscricoesPorVaga[vagaId].aprovados++;
-      } else if (status.includes("Rejeitado") || status.includes("rejeicao")) {
-        inscricoesPorVaga[vagaId].rejeitados++;
-      } else if (status.includes("Contratado")) {
-        inscricoesPorVaga[vagaId].contratados++;
-      }
-    });
-
-    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
-
-    Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      const vagaNome =
-        vaga?.titulo ||
-        vaga?.tituloVaga ||
-        vaga?.nome ||
-        `Vaga ${vagaId.substring(0, 8)}`;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${vagaNome}</strong></td>
-        <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
-        <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
-        <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
-        <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
-        <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
-      `;
-      tabelaBody.appendChild(tr);
-    });
-
-    if (Object.keys(inscricoesPorVaga).length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
-    }
-
-    await criarGraficoInscricoes();
-  }
-
-  // ============================================
-  // FUNÇÃO: Renderizar Lista de Candidatos
-  // ============================================
-
-  async function renderizarListaCandidatos() {
-    console.log("🔹 Renderizando lista de candidatos...");
-
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    if (!tabelaBody) return;
-
-    atualizarTabelaCandidatos(candidatosCache, tabelaBody);
-  }
-
-  function atualizarTabelaCandidatos(candidatos, tabelaBody) {
-    console.log(`🔹 Atualizando tabela com ${candidatos.length} candidatos`);
-
-    tabelaBody.innerHTML = "";
-
-    if (candidatos.length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
-      return;
-    }
-
-    candidatos.forEach((cand) => {
-      const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
+    candidatosFiltrados.forEach((candidato) => {
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
       const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
 
-      const testeEnviado = tokensCache.some((t) => t.candidatoId === cand.id);
+      const testeEnviado = tokensCache.some(
+        (t) => t.candidatoId === candidato.id
+      );
       const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === cand.id && t.usado
+        (t) => t.candidatoId === candidato.id && t.usado
       );
 
-      let statusTeste = '<span class="badge bg-secondary">Não enviado</span>';
+      let badgeTeste = '<span class="badge bg-secondary">Não enviado</span>';
       if (testeEnviado && testeRespondido) {
-        statusTeste = '<span class="badge bg-success">✅ Respondido</span>';
+        badgeTeste = '<span class="badge bg-success">✅ Respondido</span>';
       } else if (testeEnviado) {
-        statusTeste =
-          '<span class="badge bg-warning text-dark">⏳ Enviado</span>';
+        badgeTeste = '<span class="badge bg-warning">📤 Enviado</span>';
       }
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${cand.nome_completo || "-"}</strong></td>
-        <td>${cand.email_candidato || "-"}</td>
-        <td>${cand.telefone_contato || "-"}</td>
+        <td>${candidato.nome_completo || "-"}</td>
+        <td>${candidato.email_candidato || "-"}</td>
+        <td>${candidato.telefone_contato || "-"}</td>
         <td>${vagaNome}</td>
-        <td><span class="badge bg-info">${
-          cand.status_recrutamento || "Pendente"
-        }</span></td>
-        <td>${statusTeste}</td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-primary" onclick="alert('Ver detalhes de: ${
-            cand.nome_completo
-          }')">
+        <td>${candidato.status_recrutamento || "-"}</td>
+        <td>${badgeTeste}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="abrirModalDetalhesCandidato('${
+            candidato.id
+          }')" title="Ver detalhes">
             <i class="fas fa-eye"></i>
           </button>
         </td>
       `;
-      tabelaBody.appendChild(tr);
+      tbody.appendChild(tr);
     });
   }
 
-  function filtrarCandidatos(e) {
-    const termo = e.target.value.toLowerCase();
-    const candidatosFiltrados = candidatosCache.filter((c) =>
-      (c.nome_completo || "").toLowerCase().includes(termo)
-    );
+  function aplicarFiltrosTestes() {
+    const testeSelecionado = relFiltroTeste?.value || "";
 
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    atualizarTabelaCandidatos(candidatosFiltrados, tabelaBody);
-  }
+    const tokensFiltrados = tokensCache.filter((token) => {
+      if (!token.usado) return false;
+      if (testeSelecionado && token.estudoDeCasoId !== testeSelecionado)
+        return false;
+      return true;
+    });
 
-  // ============================================
-  // FUNÇÃO: Renderizar Respostas aos Testes (COM ÍCONE CLARO)
-  // ============================================
+    const tbody = document.getElementById("rel-tbody-respostas");
+    if (!tbody) return;
 
-  async function renderizarRespostasAosTestes() {
-    console.log("🔹 Renderizando respostas aos testes...");
+    tbody.innerHTML = "";
 
-    const tabelaBody = document.getElementById("rel-tbody-respostas");
-    if (!tabelaBody) return;
+    if (tokensFiltrados.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6">Nenhuma resposta encontrada com os filtros aplicados.</td></tr>';
+      return;
+    }
 
-    tabelaBody.innerHTML = "";
-
-    tokensCache.forEach((token) => {
-      if (!token.usado) return;
-
+    tokensFiltrados.forEach((token) => {
       const candidato = candidatosCache.find((c) => c.id === token.candidatoId);
-      const teste = estudosCache.find((t) => t.id === token.testeId);
-
       const candidatoNome =
-        candidato?.nome_completo || token.nomeCandidato || "-";
-      const testeNome = teste?.titulo || teste?.nome || "-";
+        candidato?.nome_completo || "Candidato desconhecido";
 
-      const dataResposta = token.respondidoEm
-        ? new Date(
-            token.respondidoEm.toDate?.() || token.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+      const estudo = estudosCache.find((e) => e.id === token.estudoDeCasoId);
+      const estudoNome = estudo?.titulo || "Teste desconhecido";
+
+      const dataResposta = token.dataUso
+        ? new Date(token.dataUso.toDate?.() || token.dataUso).toLocaleString(
+            "pt-BR"
+          )
         : "-";
 
-      const tempoSegundos = token.tempoRespostaSegundos || 0;
-      const tempoMinutos = Math.floor(tempoSegundos / 60);
-      const tempoFormatado =
-        tempoMinutos > 0
-          ? `${tempoMinutos}min ${tempoSegundos % 60}s`
-          : `${tempoSegundos}s`;
+      const tempoGasto = token.tempoGasto || "Não registrado";
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-      <td><strong>${candidatoNome}</strong></td>
-      <td>${testeNome}</td>
-      <td>${dataResposta}</td>
-      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-      <td><span class="badge bg-success">✅ Respondido</span></td>
-      <td class="text-center">
-        <button 
-          class="btn btn-sm btn-primary" 
-          title="Ver Respostas"
-          onclick="window.abrirModalVerRespostas('${
-            token.id
-          }', '${candidatoNome.replace(/'/g, "\\'")}')">
-          <i class="fas fa-eye me-1"></i> Ver Respostas
-        </button>
-      </td>
-    `;
-      tabelaBody.appendChild(tr);
+        <td>${candidatoNome}</td>
+        <td>${estudoNome}</td>
+        <td>${dataResposta}</td>
+        <td>${tempoGasto}</td>
+        <td><span class="badge bg-success">✅ Respondido</span></td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="abrirModalVerRespostas('${token.id}', '${candidatoNome}')" title="Ver respostas">
+            <i class="fas fa-eye"></i> Ver Respostas
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
     });
-
-    if (tokensCache.filter((t) => t.usado).length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhuma resposta encontrada</td></tr>';
-    }
   }
 
   // ============================================
-  // FUNÇÃO ORIGINAL: Busca de dados do Dashboard
+  // EVENTOS: TROCA DE ABAS
   // ============================================
+  const tabLinks = document.querySelectorAll(".tab-link");
+  const tabContents = document.querySelectorAll(".tab-content");
 
-  async function fetchRHDashboardData() {
-    const ativosQuery = query(
-      usuariosCollection,
-      where("inativo", "==", false)
-    );
+  tabLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      const targetTab = link.getAttribute("data-tab");
 
-    const vagasQuery = query(
-      vagasCollection,
-      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
-    );
+      // Remove active de todas as abas
+      tabLinks.forEach((l) => l.classList.remove("active"));
+      tabContents.forEach((c) => c.classList.remove("active"));
 
-    const onboardingQuery = query(
-      onboardingCollection,
-      where("faseAtual", "in", [
-        "pendente-docs",
-        "em-integracao",
-        "acompanhamento",
-      ])
-    );
-
-    const comunicadosQuery = query(comunicadosCollection);
-    const todosUsuariosQuery = query(
-      usuariosCollection,
-      where("inativo", "==", false)
-    );
-
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    const desligamentosQuery = query(
-      desligamentosCollection,
-      where("dataEfetiva", ">=", oneYearAgo)
-    );
-
-    const [
-      ativosSnap,
-      vagasSnap,
-      onboardingSnap,
-      comunicadosSnap,
-      todosUsuariosSnap,
-      desligamentosSnap,
-    ] = await Promise.all([
-      getDocs(ativosQuery),
-      getDocs(vagasQuery),
-      getDocs(onboardingQuery),
-      getDocs(comunicadosQuery),
-      getDocs(todosUsuariosQuery),
-      getDocs(desligamentosQuery),
-    ]);
-
-    const funcoesMap = {};
-    const profissaoMap = {};
-
-    todosUsuariosSnap.forEach((doc) => {
-      const user = doc.data();
-      const funcoes = user.funcoes || [];
-      const profissao = user.profissao || "Não Informado";
-
-      funcoes.forEach((role) => {
-        const displayRole =
-          {
-            psicologo_voluntario: "Psicólogo Voluntário",
-            psicologo_plantonista: "Psicólogo Plantonista",
-            supervisor: "Supervisor",
-            admin: "Admin",
-            rh: "RH",
-            gestor: "Gestor",
-          }[role] ||
-          role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
-
-        funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
-      });
-
-      const displayProfissao =
-        profissao.charAt(0).toUpperCase() + profissao.slice(1);
-      profissaoMap[displayProfissao] =
-        (profissaoMap[displayProfissao] || 0) + 1;
-    });
-
-    const funcoesLabels = Object.keys(funcoesMap);
-    const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
-
-    const profissaoLabels = Object.keys(profissaoMap);
-    const profissaoData = profissaoLabels.map((label) => profissaoMap[label]);
-
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const monthNames = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
-    ];
-
-    const monthlyDataMap = {};
-    const labels = [];
-
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(currentYear, currentMonth - i, 1);
-      const yearMonthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
-      monthlyDataMap[yearMonthKey] = 0;
-      labels.push(
-        `${monthNames[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`
-      );
-    }
-
-    desligamentosSnap.forEach((doc) => {
-      const desligamento = doc.data();
-      let effectiveDate;
-
-      if (
-        desligamento.dataEfetiva &&
-        typeof desligamento.dataEfetiva.toDate === "function"
-      ) {
-        effectiveDate = desligamento.dataEfetiva.toDate();
-      } else if (desligamento.dataEfetiva instanceof Date) {
-        effectiveDate = desligamento.dataEfetiva;
-      } else {
-        return;
+      // Adiciona active na aba clicada
+      link.classList.add("active");
+      const targetContent = document.getElementById(`tab-${targetTab}`);
+      if (targetContent) {
+        targetContent.classList.add("active");
       }
 
-      const yearMonthKey = `${effectiveDate.getFullYear()}-${
-        effectiveDate.getMonth() + 1
-      }`;
-
-      if (monthlyDataMap.hasOwnProperty(yearMonthKey)) {
-        monthlyDataMap[yearMonthKey]++;
+      // Carrega dados conforme a aba
+      if (targetTab === "dashboard") {
+        carregarDashboard();
+      } else if (targetTab === "relatorios") {
+        carregarRelatorios();
       }
     });
-
-    const desligamentoData = labels.map((label) => {
-      const [monthName, yearShort] = label.split("/");
-      const monthIndex = monthNames.findIndex((name) => name === monthName);
-      const year = parseInt(
-        yearShort.length === 2 ? `20${yearShort}` : yearShort
-      );
-      const yearMonthKey = `${year}-${monthIndex + 1}`;
-      return monthlyDataMap[yearMonthKey] || 0;
-    });
-
-    return {
-      ativos: ativosSnap.size,
-      vagas: vagasSnap.size,
-      onboarding: onboardingSnap.size,
-      comunicados: comunicadosSnap.size,
-
-      funcoesData: {
-        labels: funcoesLabels,
-        data: funcoesData,
-      },
-      profissaoData: {
-        labels: profissaoLabels,
-        data: profissaoData,
-      },
-      desligamentoData: {
-        labels: labels,
-        data: desligamentoData,
-      },
-    };
-  }
-
-  // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste (SEM BOOTSTRAP)
-  // ============================================
-
-  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
-    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
-
-    try {
-      if (!db) {
-        console.error("❌ ERRO: Firestore não inicializado!");
-        window.showToast?.("Erro: Firestore não está pronto", "error");
-        return;
-      }
-
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenId);
-      const tokenSnap = await getDoc(tokenDocRef);
-
-      if (!tokenSnap.exists()) {
-        window.showToast?.("Token não encontrado", "error");
-        return;
-      }
-
-      const tokenData = tokenSnap.data();
-      console.log("✅ Token encontrado:", tokenData);
-
-      if (
-        !tokenData.respostas ||
-        Object.keys(tokenData.respostas).length === 0
-      ) {
-        window.showToast?.(
-          "Nenhuma resposta encontrada para este teste",
-          "warning"
-        );
-        return;
-      }
-
-      // ✅ Busca o teste
-      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
-      const testeSnap = await getDoc(testeRef);
-      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
-
-      console.log("✅ Teste carregado:", testeDados);
-
-      // ✅ Cria HTML do modal com SweetAlert2
-      let perguntasHTML = "";
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          perguntasHTML += `
-          <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #667eea; text-align: left;">
-            <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-              <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-            </p>
-            <div style="background: white; padding: 10px; border-radius: 4px; color: #555;">
-              <strong>Resposta:</strong> ${resposta}
-            </div>
-          </div>
-        `;
-        });
-      } else {
-        perguntasHTML =
-          '<p style="color: #999; text-align: center;">Nenhuma pergunta encontrada.</p>';
-      }
-
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      // ✅ Abre com SweetAlert2
-      await Swal.fire({
-        title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
-        html: `
-        <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-          <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-            <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-              testeDados.titulo || "Teste"
-            }</p>
-            <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-            <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-          </div>
-          
-          <hr style="margin: 20px 0;">
-          
-          <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-          
-          ${perguntasHTML}
-        </div>
-      `,
-        width: "800px",
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
-        cancelButtonText: "Fechar",
-        confirmButtonColor: "#667eea",
-        cancelButtonColor: "#6c757d",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.exportarRespostaIndividual(tokenId, candidatoNome);
-        }
-      });
-
-      console.log("✅ Modal de respostas aberto");
-    } catch (error) {
-      console.error("❌ Erro ao abrir respostas:", error);
-      window.showToast?.(`Erro: ${error.message}`, "error");
-    }
-  };
-
-  // ============================================
-  // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS)
-  // ============================================
-
-  window.exportarRespostaIndividual = async function (
-    tokenDocId,
-    candidatoNome
-  ) {
-    console.log(`🔹 Exportando resposta individual: ${tokenDocId}`);
-
-    try {
-      if (!db) {
-        console.error("❌ ERRO: Firestore não inicializado!");
-        return;
-      }
-
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenDocId);
-      const tokenSnap = await getDoc(tokenDocRef);
-
-      if (!tokenSnap.exists()) {
-        window.showToast?.("Token não encontrado", "error");
-        return;
-      }
-
-      const tokenData = tokenSnap.data();
-      console.log("✅ Token encontrado:", tokenData);
-
-      // ✅ Busca o teste
-      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
-      const testeSnap = await getDoc(testeRef);
-      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
-
-      console.log("✅ Teste encontrado:", testeDados);
-
-      // ✅ Formata data e tempo
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      // ✅ Cria linha única para Excel com TODAS as colunas
-      const linhaExcel = {
-        Candidato: candidatoNome,
-        Teste: testeDados.titulo || "Teste",
-        "Data da Resposta": dataResposta,
-        "Tempo Gasto": tempoGasto,
-        Status: "Respondido",
-      };
-
-      // ✅ Adiciona cada RESPOSTA como coluna no Excel
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          linhaExcel[`P${index + 1}: ${pergunta.enunciado}`] = resposta;
-        });
-      }
-
-      console.log("📊 Dados para exportação:", linhaExcel);
-
-      // ✅ Pergunta qual formato exportar
-      const { isConfirmed, isDenied } = await Swal.fire({
-        title: "Exportar Respostas",
-        text: "Escolha o formato para exportação:",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "📊 Excel (CSV)",
-        denyButtonText: "📄 PDF",
-        cancelButtonText: "Cancelar",
-        showDenyButton: true,
-      });
-
-      if (isConfirmed) {
-        console.log("📊 Exportando para Excel...");
-        exportarParaExcel(
-          [linhaExcel],
-          `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
-        );
-      } else if (isDenied) {
-        console.log("📄 Exportando para PDF...");
-        exportarRespostaPDFIndividual(
-          candidatoNome,
-          testeDados,
-          tokenData,
-          dataResposta,
-          tempoGasto
-        );
-      }
-    } catch (error) {
-      console.error("❌ Erro ao exportar:", error);
-      window.showToast?.(`Erro: ${error.message}`, "error");
-    }
-  };
-
-  /**
-   * ✅ Exporta resposta individual para PDF
-   */
-  function exportarRespostaPDFIndividual(
-    candidatoNome,
-    testeDados,
-    tokenData,
-    dataResposta,
-    tempoGasto
-  ) {
-    console.log("📄 Exportando resposta individual para PDF...");
-
-    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFRespostasIndividualCorrigido(
-              candidatoNome,
-              testeDados,
-              tokenData,
-              dataResposta,
-              tempoGasto
-            );
-          }, 500);
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      document.head.appendChild(scriptJsPDF);
-    } else {
-      gerarPDFRespostasIndividualCorrigido(
-        candidatoNome,
-        testeDados,
-        tokenData,
-        dataResposta,
-        tempoGasto
-      );
-    }
-  }
-
-  function gerarPDFRespostasIndividualCorrigido(
-    candidatoNome,
-    testeDados,
-    tokenData,
-    dataResposta,
-    tempoGasto
-  ) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let yPosition = 15;
-
-      // ✅ CABEÇALHO
-      doc.setFontSize(18);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico", 105, yPosition, { align: "center" });
-      yPosition += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
-        align: "center",
-      });
-      yPosition += 8;
-
-      doc.setFontSize(12);
-      doc.setTextColor(51, 51, 51);
-      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
-
-      // Linha separadora
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
-
-      // ✅ INFORMAÇÕES DO CANDIDATO
-      doc.setFontSize(10);
-      doc.setTextColor(51, 51, 51);
-
-      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
-
-      // ✅ PERGUNTAS E RESPOSTAS
-      doc.setFontSize(11);
-      doc.setTextColor(102, 126, 234);
-      doc.text("Respostas Fornecidas:", 14, yPosition);
-      yPosition += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(51, 51, 51);
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-
-          // ✅ PERGUNTA
-          doc.setFont(undefined, "bold");
-          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
-          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
-
-          perguntaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          // ✅ RESPOSTA
-          doc.setFont(undefined, "normal");
-          doc.setFillColor(240, 240, 240);
-          const respostaWrapped = doc.splitTextToSize(
-            `Resposta: ${resposta}`,
-            180
-          );
-
-          respostaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          yPosition += 3;
-        });
-      } else {
-        doc.text("Nenhuma resposta encontrada.", 14, yPosition);
-      }
-
-      yPosition += 5;
-
-      // ✅ RODAPÉ
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-
-        // Linha separadora
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(14, 280, 196, 280);
-
-        doc.text(
-          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
-          105,
-          285,
-          { align: "center" }
-        );
-        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
-        doc.text(
-          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
-          105,
-          293,
-          { align: "center" }
-        );
-      }
-
-      // ✅ SALVA O PDF
-      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
-      window.showToast?.("✅ PDF exportado com sucesso!", "success");
-
-      console.log("✅ PDF gerado com sucesso!");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao exportar PDF", "error");
-    }
-  }
-
-  /**
-   * ✅ Exporta uma resposta individual para PDF
-   */
-  function exportarRespostaPDF(candidatoNome, testeDados, tokenData) {
-    console.log("📄 Exportando resposta individual para PDF...");
-
-    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
-      console.log("⚠️ Carregando jsPDF...");
-
-      const scriptJsPDF = document.createElement("script");
-      scriptJsPDF.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-
-      const scriptAutoTable = document.createElement("script");
-      scriptAutoTable.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
-
-      scriptJsPDF.onload = () => {
-        scriptAutoTable.onload = () => {
-          setTimeout(() => {
-            gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
-          }, 500);
-        };
-        document.head.appendChild(scriptAutoTable);
-      };
-
-      document.head.appendChild(scriptJsPDF);
-    } else {
-      gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
-    }
-  }
-
-  function gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData) {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let yPosition = 15;
-
-      // ✅ CABEÇALHO
-      doc.setFontSize(18);
-      doc.setTextColor(102, 126, 234);
-      doc.text("EuPsico", 105, yPosition, { align: "center" });
-      yPosition += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(102, 102, 102);
-      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
-        align: "center",
-      });
-      yPosition += 8;
-
-      doc.setFontSize(12);
-      doc.setTextColor(51, 51, 51);
-      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
-
-      // Linha separadora
-      doc.setDrawColor(102, 126, 234);
-      doc.setLineWidth(0.5);
-      doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
-
-      // ✅ INFORMAÇÕES DO CANDIDATO
-      doc.setFontSize(10);
-      doc.setTextColor(51, 51, 51);
-
-      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
-      yPosition += 6;
-
-      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
-      yPosition += 6;
-
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR")
-        : "-";
-
-      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
-      yPosition += 6;
-
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
-      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
-
-      // ✅ PERGUNTAS E RESPOSTAS
-      doc.setFontSize(11);
-      doc.setTextColor(102, 126, 234);
-      doc.text("Respostas Fornecidas:", 14, yPosition);
-      yPosition += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(51, 51, 51);
-
-      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
-        testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-
-          // ✅ PERGUNTA
-          doc.setFont(undefined, "bold");
-          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
-          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
-
-          perguntaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          // ✅ RESPOSTA
-          doc.setFont(undefined, "normal");
-          doc.setFillColor(240, 240, 240);
-          const respostaWrapped = doc.splitTextToSize(
-            `Resposta: ${resposta}`,
-            180
-          );
-
-          respostaWrapped.forEach((line) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 15;
-            }
-            doc.text(line, 14, yPosition);
-            yPosition += 5;
-          });
-
-          yPosition += 3;
-        });
-      }
-
-      yPosition += 5;
-
-      // ✅ RODAPÉ
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-
-        // Linha separadora
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(14, 280, 196, 280);
-
-        doc.text(
-          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
-          105,
-          285,
-          { align: "center" }
-        );
-        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
-        doc.text(
-          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
-          105,
-          293,
-          { align: "center" }
-        );
-      }
-
-      // ✅ SALVA O PDF
-      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
-      window.showToast?.("✅ PDF exportado com sucesso!", "success");
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao exportar PDF", "error");
-    }
-  }
+  });
 
   // ============================================
   // INICIALIZAÇÃO
   // ============================================
-
-  try {
-    const data = await fetchRHDashboardData();
-
-    if (metricAtivos) metricAtivos.textContent = data.ativos;
-    if (metricVagas) metricVagas.textContent = data.vagas;
-    if (metricOnboarding) metricOnboarding.textContent = data.onboarding;
-    if (metricComunicados) metricComunicados.textContent = data.comunicados;
-
-    if (funcoesChartCtx) {
-      new Chart(funcoesChartCtx, {
-        type: "doughnut",
-        data: {
-          labels: data.funcoesData.labels,
-          datasets: [
-            {
-              label: "Total",
-              data: data.funcoesData.data,
-              backgroundColor: [
-                "#4e73df",
-                "#1cc88a",
-                "#36b9cc",
-                "#f6c23e",
-                "#6f42c1",
-                "#20c997",
-              ],
-              hoverOffset: 4,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: "bottom",
-              labels: {
-                padding: 20,
-              },
-            },
-            title: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    if (rhProfissaoChartCtx) {
-      new Chart(rhProfissaoChartCtx, {
-        type: "bar",
-        data: {
-          labels: data.profissaoData.labels,
-          datasets: [
-            {
-              label: "Profissionais Ativos",
-              data: data.profissaoData.data,
-              backgroundColor: "#1d70b7",
-              borderColor: "#04396d",
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: "y",
-          scales: {
-            x: {
-              beginAtZero: true,
-              precision: 0,
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    if (desligamentoChartCtx) {
-      new Chart(desligamentoChartCtx, {
-        type: "bar",
-        data: {
-          labels: data.desligamentoData.labels,
-          datasets: [
-            {
-              label: "Desligamentos",
-              data: data.desligamentoData.data,
-              backgroundColor: "#e74a3b",
-              borderColor: "#e74a3b",
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              precision: 0,
-            },
-          },
-          plugins: {
-            legend: {
-              display: false,
-            },
-          },
-        },
-      });
-    }
-
-    console.log("✅ Dashboard RH carregado com sucesso");
-  } catch (error) {
-    console.error("Erro ao carregar dados do Dashboard RH:", error);
-    window.showToast?.("Erro ao carregar dashboard", "error");
-  }
+  console.log("🚀 Iniciando Dashboard de RH...");
+  await carregarDashboard(); // Carrega a aba dashboard por padrão
+  console.log("✅ Dashboard de RH inicializado com sucesso!");
 }
