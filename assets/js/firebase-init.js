@@ -40,13 +40,13 @@ import {
 
 // 2. Configuração do Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAgKkdUC3yMvmAv5aJcCqIX3sCHscpTVTc",
-  authDomain: "intranet-eupsico.firebaseapp.com",
-  projectId: "intranet-eupsico",
-  storageBucket: "intranet-eupsico.firebasestorage.app",
-  messagingSenderId: "502550515569",
-  appId: "1:502550515569:web:5afd12db3c3aae3eed1f43",
-  measurementId: "G-F7QBQB61MW",
+  apiKey: "AIzaSyDJqPJjDDIGo7uRewh3pw1SQZOpMgQJs5M",
+  authDomain: "eupsico-agendamentos-d2048.firebaseapp.com",
+  databaseURL: "https://eupsico-agendamentos-d2048-default-rtdb.firebaseio.com",
+  projectId: "eupsico-agendamentos-d2048",
+  storageBucket: "eupsico-agendamentos-d2048.appspot.com",
+  messagingSenderId: "1041518416343",
+  appId: "1:1041518416343:web:087006662ffcfa12d7bb92",
 };
 
 // 3. Inicializa o Firebase
