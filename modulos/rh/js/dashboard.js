@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.7.0 (Correções: Modal Detalhes + Ver Respostas Estilizado + Exportação Individual)
+// Versão: 3.8.0 (Correção: Importa do firebase-init.js)
 
 import {
   collection,
@@ -46,20 +46,9 @@ export async function initDashboard(user, userData) {
   // ============================================
   // MAPEAMENTO DOS ELEMENTOS DO DOM - RELATÓRIOS
   // ============================================
-  const relTotalInscricoes = document.getElementById("rel-total-inscricoes");
-  const relTestesRespondidos = document.getElementById(
-    "rel-testes-respondidos"
-  );
-  const relTestesPendentes = document.getElementById("rel-testes-pendentes");
-  const relTaxaResposta = document.getElementById("rel-taxa-resposta");
-  const relFiltroVaga = document.getElementById("rel-filtro-vaga");
   const relFiltroVagaCand = document.getElementById("rel-filtro-vaga-cand");
-  const relFiltroStatus = document.getElementById("rel-filtro-status");
   const relFiltroCandidato = document.getElementById("rel-filtro-candidato");
   const relFiltroTeste = document.getElementById("rel-filtro-teste");
-  const btnAtualizarRelatorios = document.getElementById(
-    "btn-atualizar-relatorios"
-  );
 
   // ============================================
   // ESTADO GLOBAL DOS RELATÓRIOS
@@ -84,7 +73,6 @@ export async function initDashboard(user, userData) {
       let csv = [];
       const headers = Object.keys(dados[0]);
 
-      // ✅ Adiciona BOM (Byte Order Mark) para UTF-8
       const headerRow = headers
         .map((h) => {
           let header = String(h).replace(/"/g, '""');
@@ -93,7 +81,6 @@ export async function initDashboard(user, userData) {
         .join(",");
       csv.push(headerRow);
 
-      // ✅ Processa cada linha de dados
       dados.forEach((linha) => {
         const row = headers
           .map((h) => {
@@ -185,7 +172,7 @@ export async function initDashboard(user, userData) {
         format: "a4",
       });
 
-      // ✅ CABEÇALHO
+      // CABEÇALHO
       doc.setFontSize(18);
       doc.setTextColor(102, 126, 234);
       doc.text("EuPsico", 148, 15, { align: "center" });
@@ -215,7 +202,7 @@ export async function initDashboard(user, userData) {
       doc.setLineWidth(0.5);
       doc.line(14, 42, 283, 42);
 
-      // ✅ EXTRAI DADOS DA TABELA
+      // EXTRAI DADOS DA TABELA
       const cabecalhos = [];
       const linhas = [];
 
@@ -237,7 +224,7 @@ export async function initDashboard(user, userData) {
       console.log("📊 Cabeçalhos:", cabecalhos);
       console.log("📊 Linhas:", linhas.length);
 
-      // ✅ CRIA A TABELA COM AUTOTABLE
+      // CRIA A TABELA COM AUTOTABLE
       doc.autoTable({
         head: [cabecalhos],
         body: linhas,
@@ -266,7 +253,7 @@ export async function initDashboard(user, userData) {
         },
       });
 
-      // ✅ RODAPÉ
+      // RODAPÉ
       const pageCount = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(100, 100, 100);
@@ -421,7 +408,6 @@ export async function initDashboard(user, userData) {
   window.exportarRespostasPDF = function () {
     exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
   };
-
   // ============================================
   // 🆕 NOVA FUNÇÃO: MODAL DE DETALHES DO CANDIDATO
   // ============================================
