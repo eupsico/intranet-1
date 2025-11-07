@@ -1,260 +1,234 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Recursos Humanos - EuPsico Intranet</title>
-    
-    <!-- Design System CSS -->
-    <link rel="stylesheet" href="../../../assets/css/design-system.css">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- SweetAlert2 (necessário para modais) -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- jsPDF e jsPDF-autoTable (necessários para exportação PDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-</head>
-<body>
-    <div class="page-header">
-        <h2>Dashboard de Recursos Humanos</h2>
-        <p class="subtitle">Visão geral e métricas do módulo RH.</p>
-    </div>
+<!-- Conteúdo do Dashboard de RH (carregado dinamicamente) -->
+<div class="page-header">
+    <h2>Dashboard de Recursos Humanos</h2>
+    <p class="subtitle">Visão geral e métricas do módulo RH.</p>
+</div>
 
-    <!-- ABAS: Dashboard vs Relatórios -->
-    <div class="tabs-container rh-dashboard-tabs" id="rh-dashboard-tabs">
-        <button class="tab-link active" data-tab="dashboard">
-            <i class="fas fa-chart-line me-2"></i> Dashboard
-        </button>
-        <button class="tab-link" data-tab="relatorios">
-            <i class="fas fa-file-chart-line me-2"></i> Relatórios de Recrutamento
-        </button>
-    </div>
+<!-- ABAS: Dashboard vs Relatórios -->
+<div class="tabs-container rh-dashboard-tabs" id="rh-dashboard-tabs">
+    <button class="tab-link active" data-tab="dashboard">
+        <i class="fas fa-chart-line me-2"></i> Dashboard
+    </button>
+    <button class="tab-link" data-tab="relatorios">
+        <i class="fas fa-file-chart-line me-2"></i> Relatórios de Recrutamento
+    </button>
+</div>
 
-    <!-- ABA 1: DASHBOARD ORIGINAL -->
-    <div id="tab-dashboard" class="tab-content active">
-        <div class="summary-cards rh-stats-grid">
-            <div class="card">
-                <h3>Profissionais Ativos</h3>
-                <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
-                <span class="metric-detail">Voluntários e colaboradores com perfil ativo.</span>
-            </div>
-            <div class="card">
-                <h3>Vagas em Aberto</h3>
-                <p class="metric-value" id="rh-metric-vagas">Carregando...</p>
-                <span class="metric-detail">Total de vagas disponíveis atualmente.</span>
-            </div>
-            <div class="card">
-                <h3>Colaboradores em Onboarding</h3>
-                <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
-                <span class="metric-detail">Profissionais aguardando a finalização do processo.</span>
-            </div>
-            <div class="card">
-                <h3>Comunicados Enviados</h3>
-                <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
-                <span class="metric-detail">Comunicações enviadas na última semana (via módulo Comunicação).</span>
-            </div>
+<!-- ABA 1: DASHBOARD ORIGINAL -->
+<div id="tab-dashboard" class="tab-content active">
+    <div class="summary-cards rh-stats-grid">
+        <div class="card">
+            <h3>Profissionais Ativos</h3>
+            <p class="metric-value" id="rh-metric-ativos">Carregando...</p>
+            <span class="metric-detail">Voluntários e colaboradores com perfil ativo.</span>
         </div>
-
-        <!-- Vagas em Aberto -->
         <div class="card">
             <h3>Vagas em Aberto</h3>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Título da Vaga</th>
-                            <th>Departamento</th>
-                            <th>Status</th>
-                            <th>Data de Abertura</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rh-vagas-tbody">
-                        <tr><td colspan="4">Carregando vagas...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <p class="metric-value" id="rh-metric-vagas">Carregando...</p>
+            <span class="metric-detail">Total de vagas disponíveis atualmente.</span>
         </div>
-
-        <!-- Colaboradores em Onboarding -->
         <div class="card">
             <h3>Colaboradores em Onboarding</h3>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Departamento</th>
-                            <th>Data de Início</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rh-onboarding-tbody">
-                        <tr><td colspan="4">Carregando dados...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <p class="metric-value" id="rh-metric-onboarding">Carregando...</p>
+            <span class="metric-detail">Profissionais aguardando a finalização do processo.</span>
         </div>
-
-        <!-- Comunicados Recentes -->
         <div class="card">
-            <h3>Comunicados Recentes (Última Semana)</h3>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Assunto</th>
-                            <th>Data de Envio</th>
-                            <th>Enviado por</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rh-comunicados-tbody">
-                        <tr><td colspan="3">Carregando comunicados...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Desligamentos Recentes -->
-        <div class="card">
-            <h3>Desligamentos Recentes (Último Mês)</h3>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Departamento</th>
-                            <th>Data de Desligamento</th>
-                            <th>Motivo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rh-desligamentos-tbody">
-                        <tr><td colspan="4">Carregando dados...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <h3>Comunicados Enviados</h3>
+            <p class="metric-value" id="rh-metric-comunicados">Carregando...</p>
+            <span class="metric-detail">Comunicações enviadas na última semana (via módulo Comunicação).</span>
         </div>
     </div>
 
-    <!-- ABA 2: RELATÓRIOS DE RECRUTAMENTO -->
-    <div id="tab-relatorios" class="tab-content">
-        
-        <!-- Seção: Lista de Candidatos -->
-        <div class="card mb-4">
-            <h3>Lista de Candidatos</h3>
-            <div class="export-buttons-container">
-                <button class="btn btn-success btn-export" onclick="exportarCandidatosExcel()">
-                    <i class="fas fa-file-excel"></i> Excel
-                </button>
-                <button class="btn btn-danger btn-export" onclick="exportarCandidatosPDF()">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-            </div>
-
-            <!-- Filtros -->
-            <div class="filters-container">
-                <label for="rel-filtro-candidato">Buscar candidato:</label>
-                <input type="text" id="rel-filtro-candidato" class="form-control" placeholder="Digite o nome do candidato...">
-
-                <label for="rel-filtro-vaga-cand">Filtrar por Vaga:</label>
-                <select id="rel-filtro-vaga-cand" class="form-control">
-                    <option value="">Todas as vagas</option>
-                </select>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table" id="rel-tabela-candidatos">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Email</th>
-                            <th>Telefone</th>
-                            <th>Vaga</th>
-                            <th>Status</th>
-                            <th>Teste</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rel-tbody-candidatos">
-                        <tr><td colspan="7">Carregando candidatos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+    <!-- Vagas em Aberto -->
+    <div class="card">
+        <h3>Vagas em Aberto</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Título da Vaga</th>
+                        <th>Departamento</th>
+                        <th>Status</th>
+                        <th>Data de Abertura</th>
+                    </tr>
+                </thead>
+                <tbody id="rh-vagas-tbody">
+                    <tr><td colspan="4">Carregando vagas...</td></tr>
+                </tbody>
+            </table>
         </div>
-
-        <!-- Seção: Inscrições por Vaga -->
-        <div class="card mb-4">
-            <h3>Inscrições por Vaga</h3>
-            <div class="export-buttons-container">
-                <button class="btn btn-success btn-export" onclick="exportarInscricoesExcel()">
-                    <i class="fas fa-file-excel"></i> Excel
-                </button>
-                <button class="btn btn-danger btn-export" onclick="exportarInscricoesPDF()">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table" id="rel-tabela-inscricoes">
-                    <thead>
-                        <tr>
-                            <th>Vaga</th>
-                            <th>Número de Inscrições</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rel-tbody-inscricoes">
-                        <tr><td colspan="2">Carregando inscrições...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Seção: Respostas aos Testes -->
-        <div class="card mb-4">
-            <h3>Respostas aos Testes</h3>
-            <div class="export-buttons-container">
-                <button class="btn btn-success btn-export" onclick="exportarRespostasExcel()">
-                    <i class="fas fa-file-excel"></i> Excel
-                </button>
-                <button class="btn btn-danger btn-export" onclick="exportarRespostasPDF()">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </button>
-            </div>
-
-            <!-- Filtro por Teste -->
-            <div class="filters-container">
-                <label for="rel-filtro-teste">Filtrar por Teste:</label>
-                <select id="rel-filtro-teste" class="form-control">
-                    <option value="">Todos os testes</option>
-                </select>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table" id="rel-tabela-respostas">
-                    <thead>
-                        <tr>
-                            <th>Candidato</th>
-                            <th>Teste</th>
-                            <th>Data de Resposta</th>
-                            <th>Tempo Gasto</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rel-tbody-respostas">
-                        <tr><td colspan="6">Carregando respostas...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Firebase e Dashboard JS -->
-    <script type="module" src="../../../assets/js/firebase-init.js"></script>
-    <script type="module" src="dashboard.js"></script>
-</body>
-</html>
+    <!-- Colaboradores em Onboarding -->
+    <div class="card">
+        <h3>Colaboradores em Onboarding</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Departamento</th>
+                        <th>Data de Início</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="rh-onboarding-tbody">
+                    <tr><td colspan="4">Carregando dados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Comunicados Recentes -->
+    <div class="card">
+        <h3>Comunicados Recentes (Última Semana)</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Assunto</th>
+                        <th>Data de Envio</th>
+                        <th>Enviado por</th>
+                    </tr>
+                </thead>
+                <tbody id="rh-comunicados-tbody">
+                    <tr><td colspan="3">Carregando comunicados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Desligamentos Recentes -->
+    <div class="card">
+        <h3>Desligamentos Recentes (Último Mês)</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Departamento</th>
+                        <th>Data de Desligamento</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody id="rh-desligamentos-tbody">
+                    <tr><td colspan="4">Carregando dados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ABA 2: RELATÓRIOS DE RECRUTAMENTO -->
+<div id="tab-relatorios" class="tab-content">
+    
+    <!-- Seção: Lista de Candidatos -->
+    <div class="card mb-4">
+        <h3>Lista de Candidatos</h3>
+        <div class="export-buttons-container">
+            <button class="btn btn-success btn-export" onclick="exportarCandidatosExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-export" onclick="exportarCandidatosPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-container">
+            <label for="rel-filtro-candidato">Buscar candidato:</label>
+            <input type="text" id="rel-filtro-candidato" class="form-control" placeholder="Digite o nome do candidato...">
+
+            <label for="rel-filtro-vaga-cand">Filtrar por Vaga:</label>
+            <select id="rel-filtro-vaga-cand" class="form-control">
+                <option value="">Todas as vagas</option>
+            </select>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" id="rel-tabela-candidatos">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Vaga</th>
+                        <th>Status</th>
+                        <th>Teste</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="rel-tbody-candidatos">
+                    <tr><td colspan="7">Carregando candidatos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Seção: Inscrições por Vaga -->
+    <div class="card mb-4">
+        <h3>Inscrições por Vaga</h3>
+        <div class="export-buttons-container">
+            <button class="btn btn-success btn-export" onclick="exportarInscricoesExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-export" onclick="exportarInscricoesPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" id="rel-tabela-inscricoes">
+                <thead>
+                    <tr>
+                        <th>Vaga</th>
+                        <th>Número de Inscrições</th>
+                    </tr>
+                </thead>
+                <tbody id="rel-tbody-inscricoes">
+                    <tr><td colspan="2">Carregando inscrições...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Seção: Respostas aos Testes -->
+    <div class="card mb-4">
+        <h3>Respostas aos Testes</h3>
+        <div class="export-buttons-container">
+            <button class="btn btn-success btn-export" onclick="exportarRespostasExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-export" onclick="exportarRespostasPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+
+        <!-- Filtro por Teste -->
+        <div class="filters-container">
+            <label for="rel-filtro-teste">Filtrar por Teste:</label>
+            <select id="rel-filtro-teste" class="form-control">
+                <option value="">Todos os testes</option>
+            </select>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" id="rel-tabela-respostas">
+                <thead>
+                    <tr>
+                        <th>Candidato</th>
+                        <th>Teste</th>
+                        <th>Data de Resposta</th>
+                        <th>Tempo Gasto</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="rel-tbody-respostas">
+                    <tr><td colspan="6">Carregando respostas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
