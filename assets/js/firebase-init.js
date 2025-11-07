@@ -89,4 +89,5 @@ export {
   writeBatch,
   FieldValue,
   arrayRemove,
+  getAuth,
 };
