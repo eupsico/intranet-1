@@ -262,6 +262,7 @@ export async function renderizarEntrevistas(state) {
 
       // ✅ LÓGICA DE EXIBIÇÃO DOS BOTÕES
       if (statusAtual.includes("Entrevista Pendente")) {
+        // Candidato aguardando agendamento ou realização da entrevista RH
         listaHtml += `
             <button 
               class="action-button secondary btn-agendar-rh" 
@@ -282,7 +283,11 @@ export async function renderizarEntrevistas(state) {
               <i class="fas fa-edit me-1"></i> Avaliar RH
             </button>
         `;
-      } else if (statusAtual.includes("Testes Pendente")) {
+      } else if (
+        statusAtual === "Entrevista RH Aprovada (Testes Pendente)" ||
+        statusAtual === "Testes Pendente"
+      ) {
+        // Candidato pronto para receber teste
         listaHtml += `
             <button 
               class="action-button primary btn-enviar-teste" 
@@ -294,7 +299,21 @@ export async function renderizarEntrevistas(state) {
               <i class="fas fa-vial me-1"></i> Enviar Teste
             </button>
         `;
+      } else if (statusAtual === "Testes Pendente (Enviado)") {
+        // ✅ NOVO: Candidato já recebeu teste, aguardando avaliação
+        listaHtml += `
+            <button 
+              class="action-button success btn-avaliar-teste" 
+              data-id="${candidatoId}"
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
+              <i class="fas fa-clipboard-check me-1"></i> Avaliar Teste
+            </button>
+        `;
       } else {
+        // Outros status - apenas ver avaliação
         listaHtml += `
             <button 
               class="action-button primary btn-avaliar-rh" 
@@ -345,7 +364,7 @@ export async function renderizarEntrevistas(state) {
       });
     });
 
-    // ✅ Listeners de Enviar Teste
+    // Listeners de Enviar Teste
     document.querySelectorAll(".btn-enviar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -358,7 +377,20 @@ export async function renderizarEntrevistas(state) {
       });
     });
 
-    // Listeners de Avaliar
+    // ✅ NOVO: Listeners de Avaliar Teste
+    document.querySelectorAll(".btn-avaliar-teste").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+        const dados = JSON.parse(
+          e.currentTarget
+            .getAttribute("data-candidato-data")
+            .replace(/&#39;/g, "'")
+        );
+        window.abrirModalAvaliacaoTeste(candidatoId, dados);
+      });
+    });
+
+    // Listeners de Avaliar RH
     document.querySelectorAll(".btn-avaliar-rh").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -438,6 +470,196 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   modalAgendamentoRH.classList.add("is-visible");
   console.log("✅ Entrevistas: Modal de agendamento aberto");
 };
+// ============================================
+// MODAIS - AVALIAÇÃO DE TESTE
+// ============================================
+
+/**
+ * Abre o modal de avaliação do teste
+ */
+window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
+  console.log(
+    `🔹 Entrevistas: Abrindo modal de avaliação de teste para ${candidatoId}`
+  );
+
+  const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
+  const form = document.getElementById("form-avaliacao-teste");
+
+  if (!modalAvaliacaoTeste || !form) {
+    window.showToast?.(
+      "Erro: Modal de Avaliação de Teste não encontrado.",
+      "error"
+    );
+    console.error(
+      "❌ Entrevistas: Elemento modal-avaliacao-teste não encontrado"
+    );
+    return;
+  }
+
+  dadosCandidatoAtual = dadosCandidato;
+  modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
+
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
+
+  // Preenche informações do candidato
+  const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
+  const statusEl = document.getElementById("avaliacao-teste-status-atual");
+
+  if (nomeEl) nomeEl.textContent = nomeCompleto;
+  if (statusEl) statusEl.textContent = statusAtual;
+
+  // Exibe informações sobre os testes enviados
+  const testesEnviados = dadosCandidato.testes_enviados || [];
+  const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
+
+  if (infoTestesEl && testesEnviados.length > 0) {
+    const ultimoTeste = testesEnviados[testesEnviados.length - 1];
+    const dataEnvio = ultimoTeste.data_envio?.toDate
+      ? ultimoTeste.data_envio.toDate().toLocaleDateString("pt-BR")
+      : "N/A";
+
+    infoTestesEl.innerHTML = `
+      <div class="info-box">
+        <p><strong>📝 Teste Enviado:</strong> ${ultimoTeste.id || "N/A"}</p>
+        <p><strong>📅 Data de Envio:</strong> ${dataEnvio}</p>
+        <p><strong>🔗 Link:</strong> <a href="${
+          ultimoTeste.link || "#"
+        }" target="_blank">Ver Teste</a></p>
+      </div>
+    `;
+  }
+
+  // Reseta o formulário
+  if (form) form.reset();
+
+  // Configura listener do formulário
+  form.removeEventListener("submit", submeterAvaliacaoTeste);
+  form.addEventListener("submit", submeterAvaliacaoTeste);
+
+  // Configura listener de fechar
+  document
+    .querySelectorAll(`[data-modal-id='modal-avaliacao-teste']`)
+    .forEach((btn) => {
+      btn.removeEventListener("click", fecharModalAvaliacaoTeste);
+      btn.addEventListener("click", fecharModalAvaliacaoTeste);
+    });
+
+  modalAvaliacaoTeste.classList.add("is-visible");
+  console.log("✅ Entrevistas: Modal de avaliação de teste aberto");
+};
+
+/**
+ * Fecha o modal de avaliação de teste
+ */
+function fecharModalAvaliacaoTeste() {
+  console.log("🔹 Entrevistas: Fechando modal de avaliação de teste");
+  const modalOverlay = document.getElementById("modal-avaliacao-teste");
+  if (modalOverlay) {
+    modalOverlay.classList.remove("is-visible");
+  }
+}
+
+/**
+ * Submete a avaliação do teste
+ */
+async function submeterAvaliacaoTeste(e) {
+  e.preventDefault();
+
+  console.log("🔹 Entrevistas: Submetendo avaliação de teste");
+
+  const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
+  const btnRegistrarAvaliacao = document.getElementById(
+    "btn-registrar-avaliacao-teste"
+  );
+
+  const state = getGlobalState();
+  const {
+    candidatosCollection,
+    currentUserData,
+    handleTabClick,
+    statusCandidaturaTabs,
+  } = state;
+  const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
+
+  if (!candidaturaId || !btnRegistrarAvaliacao) return;
+
+  const form = document.getElementById("form-avaliacao-teste");
+  if (!form) return;
+
+  const resultado = form.querySelector(
+    'input[name="resultado_teste"]:checked'
+  )?.value;
+  const observacoes = form.querySelector("#avaliacao-teste-observacoes")?.value;
+
+  if (!resultado) {
+    window.showToast?.("Por favor, selecione o Resultado do Teste.", "error");
+    return;
+  }
+
+  btnRegistrarAvaliacao.disabled = true;
+  btnRegistrarAvaliacao.innerHTML =
+    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+
+  // ✅ Define próximo status baseado na decisão
+  const isAprovado = resultado === "Aprovado";
+  const novoStatusCandidato = isAprovado
+    ? "Teste Aprovado (Entrevista com Gestor Pendente)"
+    : "Finalizado (Reprovado no Teste)";
+
+  const abaRecarregar = statusCandidaturaTabs
+    .querySelector(".tab-link.active")
+    .getAttribute("data-status");
+
+  const dadosAvaliacaoTeste = {
+    resultado: resultado,
+    data_avaliacao: new Date(),
+    avaliador_uid: currentUserData.id || "rh_system_user",
+    observacoes: observacoes || "",
+  };
+
+  try {
+    const candidaturaRef = doc(candidatosCollection, candidaturaId);
+
+    await updateDoc(candidaturaRef, {
+      status_recrutamento: novoStatusCandidato,
+      avaliacao_teste: dadosAvaliacaoTeste,
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Avaliação do Teste: ${
+          isAprovado ? "APROVADO" : "REPROVADO"
+        }. Novo Status: ${novoStatusCandidato}`,
+        usuario: currentUserData.id || "rh_system_user",
+      }),
+    });
+
+    window.showToast?.(
+      `Teste ${
+        isAprovado ? "aprovado" : "reprovado"
+      }! Status atualizado: ${novoStatusCandidato}`,
+      "success"
+    );
+    console.log("✅ Entrevistas: Avaliação de teste salva no Firestore");
+
+    fecharModalAvaliacaoTeste();
+
+    // Recarrega a aba ativa
+    const activeTab = statusCandidaturaTabs.querySelector(
+      `[data-status="${abaRecarregar}"]`
+    );
+    if (activeTab) handleTabClick({ currentTarget: activeTab });
+  } catch (error) {
+    console.error("❌ Entrevistas: Erro ao salvar avaliação de teste:", error);
+    window.showToast?.(
+      `Erro ao registrar a avaliação: ${error.message}`,
+      "error"
+    );
+  } finally {
+    btnRegistrarAvaliacao.disabled = false;
+    btnRegistrarAvaliacao.innerHTML =
+      '<i class="fas fa-check-circle me-2"></i> Registrar Avaliação';
+  }
+}
 
 /**
  * Submete o agendamento da Entrevista RH
