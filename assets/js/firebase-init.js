@@ -90,4 +90,5 @@ export {
   FieldValue,
   arrayRemove,
   getAuth,
+  getFirestore,
 };
