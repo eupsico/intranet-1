@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.1 - Cada horário com gestor específico
+// VERSÃO 2.2 - Corrigido erro de validação de campos ocultos
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -92,8 +92,17 @@ function renderizarCamposDinamicos() {
   const container = document.getElementById("campos-dinamicos");
   const dataHoraContainer = document.getElementById("data-hora-container");
 
+  // Campos de data e hora
+  const dataInput = document.getElementById("data-reuniao");
+  const horaInicioInput = document.getElementById("hora-inicio");
+  const horaFimInput = document.getElementById("hora-fim");
+
   if (tipo === "Reunião Técnica") {
     dataHoraContainer.style.display = "flex";
+    dataInput.required = true;
+    horaInicioInput.required = true;
+    horaFimInput.required = true;
+
     container.innerHTML = `
             <div class="form-group">
                 <label for="facilitador">Facilitador do Treinamento</label>
@@ -109,6 +118,10 @@ function renderizarCamposDinamicos() {
     tipo === "Reunião com Gestor"
   ) {
     dataHoraContainer.style.display = "flex";
+    dataInput.required = true;
+    horaInicioInput.required = true;
+    horaFimInput.required = true;
+
     container.innerHTML = `
             <div class="form-group">
                 <label for="pauta-reuniao">Pauta da Reunião</label>
@@ -117,6 +130,10 @@ function renderizarCamposDinamicos() {
         `;
   } else if (tipo === "Reunião com Voluntário") {
     dataHoraContainer.style.display = "none";
+    // Remove o required dos campos ocultos
+    dataInput.required = false;
+    horaInicioInput.required = false;
+    horaFimInput.required = false;
 
     container.innerHTML = `
             <div class="form-group">
@@ -146,6 +163,9 @@ function renderizarCamposDinamicos() {
       .addEventListener("click", adicionarSlot);
   } else {
     dataHoraContainer.style.display = "flex";
+    dataInput.required = true;
+    horaInicioInput.required = true;
+    horaFimInput.required = true;
     container.innerHTML = "";
   }
 }
