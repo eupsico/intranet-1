@@ -1,7 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/rh-painel.js
- * Versão: 2.8.0 (DEBUG - Identificar Loop)
- * Data: 07/11/2025
+ * Versão: 2.9.0 (Correção: Caminho correto do dashboard)
  */
 
 console.log("🟢 1. rh-painel.js carregado");
@@ -11,7 +10,6 @@ export function initrhPanel(user, db, userData) {
   console.log("🟢 3. User:", user?.uid);
   console.log("🟢 4. UserData:", userData);
 
-  // Torna o db acessível globalmente
   window.db = db;
   console.log("🟢 5. window.db definido");
 
@@ -24,35 +22,21 @@ export function initrhPanel(user, db, userData) {
   console.log("🟢 7. contentArea encontrado:", !!contentArea);
   console.log("🟢 8. sidebarMenu encontrado:", !!sidebarMenu);
 
-  if (!contentArea) {
-    console.error("❌ ERRO: content-area não encontrado!");
+  if (!contentArea || !sidebarMenu) {
+    console.error("❌ ERRO: Elementos não encontrados!");
     return;
   }
 
-  if (!sidebarMenu) {
-    console.error("❌ ERRO: sidebar-menu não encontrado!");
-    return;
-  }
-
-  // ============================================
-  // PROTEÇÃO CONTRA LOOP
-  // ============================================
   let isLoadingModule = false;
   let lastLoadedModule = null;
   let loadAttempts = 0;
   const MAX_LOAD_ATTEMPTS = 3;
 
-  // ============================================
-  // ÍCONES SVG
-  // ============================================
   const icons = {
     voltar: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z"/></svg>`,
     dashboard: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>`,
   };
 
-  // ============================================
-  // VIEWS SIMPLIFICADAS (APENAS DASHBOARD)
-  // ============================================
   const views = [
     {
       id: "dashboard",
@@ -64,9 +48,6 @@ export function initrhPanel(user, db, userData) {
 
   console.log("🟢 9. Views definidas:", views.length);
 
-  // ============================================
-  // FUNÇÃO TOAST
-  // ============================================
   window.showToast = function (message, type = "success") {
     console.log(`📢 Toast (${type}):`, message);
     const colors = {
@@ -98,9 +79,6 @@ export function initrhPanel(user, db, userData) {
     setTimeout(() => toast.remove(), 3000);
   };
 
-  // ============================================
-  // RENDERIZAR MENU
-  // ============================================
   function renderSidebarMenu() {
     console.log("🟢 10. Renderizando menu...");
 
@@ -145,9 +123,6 @@ export function initrhPanel(user, db, userData) {
     console.log("🟢 12. Menu renderizado");
   }
 
-  // ============================================
-  // ATUALIZAR ITEM ATIVO
-  // ============================================
   function updateActiveMenuItem() {
     const currentHash = window.location.hash.replace("#/rh/", "");
     console.log("🟢 13. Atualizando item ativo:", currentHash);
@@ -163,25 +138,18 @@ export function initrhPanel(user, db, userData) {
     });
   }
 
-  // ============================================
-  // VERIFICAR PERMISSÃO
-  // ============================================
   function hasPermission(viewId) {
     const view = views.find((v) => v.id === viewId);
     if (!view) return false;
     return view.roles.some((role) => userRoles.includes(role));
   }
 
-  // ============================================
-  // CARREGAR MÓDULO (VERSÃO DEBUG)
-  // ============================================
   async function loadModule(viewId) {
     console.log(`🟢 14. loadModule chamado para: "${viewId}"`);
     console.log(`   - isLoadingModule: ${isLoadingModule}`);
     console.log(`   - lastLoadedModule: ${lastLoadedModule}`);
     console.log(`   - loadAttempts: ${loadAttempts}`);
 
-    // PROTEÇÃO CONTRA LOOP
     if (loadAttempts >= MAX_LOAD_ATTEMPTS) {
       console.error("❌ LOOP DETECTADO! Máximo de tentativas atingido.");
       contentArea.innerHTML = `
@@ -248,12 +216,15 @@ export function initrhPanel(user, db, userData) {
 
     console.log(`🟢 17. View encontrada:`, view.name);
 
-    // MAPEAMENTO DE ARQUIVOS
-    const moduleMapping = {
-      dashboard: "../js/dashboard.js",
+    // ✅ CORREÇÃO: Caminhos corretos baseados na estrutura do projeto
+    const moduleFiles = {
+      dashboard: {
+        html: "../page/dashboard.html", // ✅ Caminho correto
+        js: "./dashboard.js", // ✅ Caminho correto
+      },
     };
 
-    const moduleFile = moduleMapping[viewId];
+    const moduleFile = moduleFiles[viewId];
     if (!moduleFile) {
       console.error(`❌ Arquivo não mapeado para "${viewId}"`);
       contentArea.innerHTML = `
@@ -266,14 +237,14 @@ export function initrhPanel(user, db, userData) {
       return;
     }
 
-    console.log(`🟢 18. Arquivo mapeado:`, moduleFile);
+    console.log(`🟢 18. Arquivo HTML:`, moduleFile.html);
+    console.log(`🟢 18. Arquivo JS:`, moduleFile.js);
 
     try {
       // CARREGAR HTML
-      const htmlFile = moduleFile.replace(".js", ".html");
-      console.log(`🟢 19. Carregando HTML:`, htmlFile);
+      console.log(`🟢 19. Carregando HTML:`, moduleFile.html);
 
-      const htmlResponse = await fetch(htmlFile);
+      const htmlResponse = await fetch(moduleFile.html);
       console.log(
         `🟢 20. Resposta HTML: ${htmlResponse.status} ${htmlResponse.statusText}`
       );
@@ -290,14 +261,13 @@ export function initrhPanel(user, db, userData) {
       contentArea.innerHTML = htmlContent;
       console.log(`🟢 22. HTML inserido no DOM`);
 
-      // NOME DA FUNÇÃO DE INICIALIZAÇÃO
+      // CARREGAR E EXECUTAR JS
       const initFunctionName = "initDashboard";
-      console.log(`🟢 23. Importando módulo JS:`, moduleFile);
+      console.log(`🟢 23. Importando módulo JS:`, moduleFile.js);
       console.log(`🟢 24. Procurando função:`, initFunctionName);
 
-      // IMPORTAR MÓDULO JS
       const cacheBuster = `?t=${Date.now()}`;
-      const module = await import(`${moduleFile}${cacheBuster}`);
+      const module = await import(`${moduleFile.js}${cacheBuster}`);
       console.log(
         `🟢 25. Módulo importado. Funções disponíveis:`,
         Object.keys(module)
@@ -317,7 +287,7 @@ export function initrhPanel(user, db, userData) {
       await module[initFunctionName](user, userData);
 
       lastLoadedModule = viewId;
-      loadAttempts = 0; // Reset após sucesso
+      loadAttempts = 0;
       console.log(`🟢 27. ✅ Módulo "${viewId}" carregado com SUCESSO!`);
 
       updateActiveMenuItem();
@@ -330,7 +300,10 @@ export function initrhPanel(user, db, userData) {
           <h2 style="color: #dc3545;">❌ Erro ao Carregar Módulo</h2>
           <p><strong>Módulo:</strong> ${view.name}</p>
           <p><strong>Erro:</strong> ${error.message}</p>
-          <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow: auto;">${error.stack}</pre>
+          <details style="margin-top: 20px;">
+            <summary style="cursor: pointer; color: #667eea;">Ver Stack Trace</summary>
+            <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow: auto; margin-top: 10px;">${error.stack}</pre>
+          </details>
           <button onclick="location.reload()" style="
             padding: 10px 20px;
             background: #667eea;
@@ -348,9 +321,6 @@ export function initrhPanel(user, db, userData) {
     }
   }
 
-  // ============================================
-  // ROTEAMENTO
-  // ============================================
   function handleRouting() {
     const hash = window.location.hash;
     console.log(`🟢 29. handleRouting chamado. Hash:`, hash);
@@ -369,9 +339,6 @@ export function initrhPanel(user, db, userData) {
     }
   }
 
-  // ============================================
-  // INICIALIZAÇÃO
-  // ============================================
   console.log("🟢 33. Iniciando renderização do menu...");
   renderSidebarMenu();
 
