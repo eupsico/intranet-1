@@ -507,36 +507,39 @@ export async function initDashboard(user, userData) {
     });
   };
 
-  // ============================================
-  // 🆕 FUNÇÃO: MODAL VER RESPOSTAS (✅ CORRIGIDA)
-  // ============================================
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
     console.log(
-      "🔍 Abrindo respostas do candidato:",
-      candidatoNome,
-      "Token:",
-      tokenId
+      "🔍 Abrindo respostas - Token:",
+      tokenId,
+      "Candidato:",
+      candidatoNome
     );
 
     try {
-      // Busca o token e as respostas
       const tokenDoc = await getDoc(doc(db, "tokens_acesso", tokenId));
+
       if (!tokenDoc.exists()) {
         Swal.fire({
           icon: "error",
           title: "Token não encontrado",
-          text: "Não foi possível localizar o token de acesso.",
           confirmButtonColor: "#667eea",
         });
         return;
       }
 
       const tokenData = tokenDoc.data();
-      const respostas = tokenData.respostas || [];
+
+      // ✅ CORREÇÃO: Garante que respostas seja um array
+      let respostas = tokenData.respostas || [];
+      if (!Array.isArray(respostas)) {
+        console.warn("⚠️ Respostas não é array, convertendo:", respostas);
+        respostas = [];
+      }
+
       const tempoGasto = tokenData.tempoGasto || "Não registrado";
 
-      // ✅ CORREÇÃO: Verifica se estudoDeCasoId existe antes de buscar
-      let estudoNome = "Estudo não encontrado";
+      // Busca nome do estudo
+      let estudoNome = "Teste desconhecido";
       if (tokenData.estudoDeCasoId) {
         try {
           const estudoDoc = await getDoc(
@@ -546,10 +549,7 @@ export async function initDashboard(user, userData) {
             estudoNome = estudoDoc.data().titulo || "Sem título";
           }
         } catch (err) {
-          console.warn(
-            "⚠️ Aviso: Não foi possível carregar dados do estudo:",
-            err
-          );
+          console.warn("⚠️ Erro ao buscar estudo:", err);
         }
       }
 
@@ -563,14 +563,14 @@ export async function initDashboard(user, userData) {
         return;
       }
 
-      // Monta HTML das respostas
+      // Monta HTML
       let htmlRespostas = `
-        <div style="text-align: left; padding: 15px;">
-          <h4 style="color: #667eea;">📝 ${estudoNome}</h4>
-          <p><strong>Candidato:</strong> ${candidatoNome}</p>
-          <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-          <hr style="margin: 15px 0;">
-      `;
+      <div style="text-align: left; padding: 15px;">
+        <h4 style="color: #667eea;">📝 ${estudoNome}</h4>
+        <p><strong>Candidato:</strong> ${candidatoNome}</p>
+        <p><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+        <hr style="margin: 15px 0;">
+    `;
 
       respostas.forEach((resposta, index) => {
         const numero = index + 1;
@@ -578,59 +578,25 @@ export async function initDashboard(user, userData) {
         const respostaCandidato = resposta.resposta || "Não respondida";
 
         htmlRespostas += `
-          <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-left: 3px solid #667eea;">
-            <p style="margin: 0; font-weight: bold;">Pergunta ${numero}:</p>
-            <p style="margin: 5px 0 10px 0;">${pergunta}</p>
-            <p style="margin: 0; color: #555;"><strong>Resposta:</strong></p>
-            <p style="margin: 5px 0; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px;">
-              ${respostaCandidato}
-            </p>
-          </div>
-        `;
-      });
-
-      htmlRespostas += `
-        </div>
-        <div style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
-          <p style="margin: 0; font-size: 12px; color: #666;">
-            💡 <strong>Dica:</strong> Você pode exportar essas respostas individualmente clicando em "Exportar" abaixo.
+        <div style="margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-left: 3px solid #667eea;">
+          <p style="margin: 0; font-weight: bold;">Pergunta ${numero}:</p>
+          <p style="margin: 5px 0 10px 0;">${pergunta}</p>
+          <p style="margin: 0; color: #555;"><strong>Resposta:</strong></p>
+          <p style="margin: 5px 0; padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px;">
+            ${respostaCandidato}
           </p>
         </div>
       `;
+      });
 
-      // Exibe modal com botões de exportação
+      htmlRespostas += `</div>`;
+
       Swal.fire({
         title: "Respostas do Teste",
         html: htmlRespostas,
         width: "700px",
         confirmButtonColor: "#667eea",
         confirmButtonText: "Fechar",
-        showDenyButton: true,
-        denyButtonText: "📄 Exportar PDF",
-        showCancelButton: true,
-        cancelButtonText: "📊 Exportar Excel",
-        cancelButtonColor: "#28a745",
-        denyButtonColor: "#dc3545",
-      }).then((result) => {
-        if (result.isDenied) {
-          // Exportar PDF individual
-          exportarRespostaIndividualPDF(
-            tokenData,
-            candidatoNome,
-            estudoNome,
-            respostas,
-            tempoGasto
-          );
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-          // Exportar Excel individual
-          exportarRespostaIndividualExcel(
-            tokenData,
-            candidatoNome,
-            estudoNome,
-            respostas,
-            tempoGasto
-          );
-        }
       });
     } catch (error) {
       console.error("❌ Erro ao abrir respostas:", error);
