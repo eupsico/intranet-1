@@ -2018,5 +2018,65 @@ legend {
   margin-top: var(--space-20);
 }
 
-/* FIM DO DESIGN SYSTEM REFATORADO */
-```
+/* --- ESTILOS ADICIONAIS PARA A TELA DE LOGIN --- */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: var(--cor-fundo);
+}
+
+.login-card {
+  background-color: var(--cor-surface);
+  padding: 40px 30px;
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-padrao);
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+}
+
+.login-logo {
+  max-width: 180px;
+  margin-bottom: 20px;
+}
+
+.login-card h2 {
+  margin-bottom: 10px;
+  color: var(--cor-texto-principal);
+}
+
+.login-card p {
+  color: var(--cor-texto-secundario);
+  margin-bottom: 15px;
+}
+
+.login-email-info {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--cor-primaria);
+  background-color: var(--cor-fundo);
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 20px;
+  margin-bottom: 25px;
+}
+
+.login-button {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+  border: none;
+  padding: 12px 25px;
+  border-radius: var(--borda-radius);
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.login-button:hover {
+  filter: brightness(1.2);
+}
