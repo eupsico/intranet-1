@@ -258,7 +258,50 @@ async function salvarReuniaoTradicional(e) {
     setTimeout(() => (feedbackEl.textContent = ""), 4000);
   }
 }
+function gerarSlotsAutomaticos(
+  data,
+  horaInicio,
+  horaFim,
+  gestorId,
+  gestorNome
+) {
+  const slots = [];
+  const INTERVALO_MINUTOS = 30;
 
+  // Converter horários para minutos
+  const [horaIni, minIni] = horaInicio.split(":").map(Number);
+  const [horaFim, minFim] = horaFim.split(":").map(Number);
+
+  let minutoAtual = horaIni * 60 + minIni;
+  const minutoFinal = horaFim * 60 + minFim;
+
+  while (minutoAtual < minutoFinal) {
+    const minutoProximo = minutoAtual + INTERVALO_MINUTOS;
+
+    // Converter minutos de volta para HH:MM
+    const horaInicioSlot = `${String(Math.floor(minutoAtual / 60)).padStart(
+      2,
+      "0"
+    )}:${String(minutoAtual % 60).padStart(2, "0")}`;
+    const horaFimSlot = `${String(Math.floor(minutoProximo / 60)).padStart(
+      2,
+      "0"
+    )}:${String(minutoProximo % 60).padStart(2, "0")}`;
+
+    slots.push({
+      data,
+      horaInicio: horaInicioSlot,
+      horaFim: horaFimSlot,
+      gestorId,
+      gestorNome,
+      vagas: [],
+    });
+
+    minutoAtual = minutoProximo;
+  }
+
+  return slots;
+}
 async function salvarReuniaoVoluntario(e) {
   const feedbackEl = document.getElementById("agendamento-feedback");
   const saveButton = e.target.querySelector('button[type="submit"]');
@@ -276,7 +319,9 @@ Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos con
 
 Escolha abaixo o melhor horário para você e vamos conversar!`;
 
-  const slots = [];
+  let slots = [];
+
+  // ✅ MODIFICADO: Agora gera slots automáticos de 30 minutos
   document.querySelectorAll(".slot-item").forEach((slot) => {
     const data = slot.querySelector(".slot-data").value;
     const horaInicio = slot.querySelector(".slot-hora-inicio").value;
@@ -285,14 +330,17 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
 
     if (data && horaInicio && horaFim && gestorId) {
       const gestor = gestores.find((g) => g.id === gestorId);
-      slots.push({
+
+      // Gera slots automáticos de 30 minutos
+      const slotsGerados = gerarSlotsAutomaticos(
         data,
         horaInicio,
         horaFim,
         gestorId,
-        gestorNome: gestor?.nome || "",
-        vagas: [],
-      });
+        gestor?.nome || ""
+      );
+
+      slots = slots.concat(slotsGerados);
     }
   });
 
@@ -318,12 +366,12 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
       data
     );
 
-    // ✅ CORRIGIDO: Adiciona /public/ no caminho
     const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
 
     feedbackEl.innerHTML = `
       <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
         <strong>✓ Reunião com Voluntário criada com sucesso!</strong>
+        <p style="margin: 0.5rem 0;">Foram criados <strong>${slots.length} horários</strong> disponíveis de 30 minutos cada.</p>
         <p style="margin: 0.5rem 0;"><strong>Link de Inscrição:</strong></p>
         <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;" />
         <button onclick="navigator.clipboard.writeText('${linkAgendamento}'); alert('Link copiado!')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
