@@ -47,12 +47,6 @@ export async function renderizarEntrevistaGestor(state) {
       return;
     }
 
-    let listaHtml = `
-      <div class="list-candidaturas">
-        <h3>Candidaturas na Fase Entrevista com Gestor (${snapshot.size})</h3>
-        <p>Avaliação final antes da comunicação e contratação.</p>
-    `;
-
     snapshot.docs.forEach((doc) => {
       const cand = doc.data();
       const statusAtual = cand.status_recrutamento || "N/A";
