@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.0 - Adicionada "Reunião com Voluntário" mantendo as existentes
+// VERSÃO 2.1 - Cada horário com gestor específico
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -23,13 +23,16 @@ async function carregarGestores() {
   try {
     const q = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
     const snapshot = await getDocs(q);
+
     gestores = snapshot.docs
       .map((doc) => ({
         id: doc.id,
         nome: doc.data().nome,
-        cargo: doc.data().cargo,
+        funcoes: doc.data().funcoes || [],
       }))
-      .filter((u) => u.cargo && u.cargo.toLowerCase().includes("gestor"));
+      .filter((u) => u.funcoes.includes("gestor"));
+
+    console.log("[AGENDAR] Gestores carregados:", gestores);
   } catch (error) {
     console.error("[AGENDAR] Erro ao carregar gestores:", error);
     gestores = [];
@@ -115,19 +118,7 @@ function renderizarCamposDinamicos() {
   } else if (tipo === "Reunião com Voluntário") {
     dataHoraContainer.style.display = "none";
 
-    const gestoresOptions = gestores
-      .map((g) => `<option value="${g.id}">${g.nome}</option>`)
-      .join("");
-
     container.innerHTML = `
-            <div class="form-group">
-                <label for="gestor-responsavel">Gestor Responsável *</label>
-                <select id="gestor-responsavel" class="form-control" required>
-                    <option value="">Selecione o gestor...</option>
-                    ${gestoresOptions}
-                </select>
-            </div>
-
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="exibir-gestor" checked />
@@ -142,15 +133,9 @@ function renderizarCamposDinamicos() {
             </div>
 
             <div class="form-group">
-                <label>Datas e Horários Disponíveis *</label>
+                <label>Datas, Horários e Gestores Disponíveis *</label>
                 <div id="slots-container" style="margin-bottom: 1rem;">
-                    <div class="slot-item" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-                        <input type="date" class="slot-data form-control" style="flex: 2;" required />
-                        <input type="time" class="slot-hora-inicio form-control" style="flex: 1;" required />
-                        <span>até</span>
-                        <input type="time" class="slot-hora-fim form-control" style="flex: 1;" required />
-                        <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
-                    </div>
+                    ${criarSlotHTML()}
                 </div>
                 <button type="button" id="btn-adicionar-slot" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
             </div>
@@ -165,20 +150,31 @@ function renderizarCamposDinamicos() {
   }
 }
 
+function criarSlotHTML() {
+  const gestoresOptions = gestores
+    .map((g) => `<option value="${g.id}">${g.nome}</option>`)
+    .join("");
+
+  return `
+    <div class="slot-item" style="display: grid; grid-template-columns: 1fr 1fr auto 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
+      <input type="date" class="slot-data form-control" required />
+      <input type="time" class="slot-hora-inicio form-control" required />
+      <span>até</span>
+      <input type="time" class="slot-hora-fim form-control" required />
+      <select class="slot-gestor form-control" required>
+        <option value="">Selecione o gestor...</option>
+        ${gestoresOptions}
+      </select>
+      <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
+    </div>
+  `;
+}
+
 function adicionarSlot() {
   const slotsContainer = document.getElementById("slots-container");
   const novoSlot = document.createElement("div");
-  novoSlot.className = "slot-item";
-  novoSlot.style.cssText =
-    "display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;";
-  novoSlot.innerHTML = `
-    <input type="date" class="slot-data form-control" style="flex: 2;" required />
-    <input type="time" class="slot-hora-inicio form-control" style="flex: 1;" required />
-    <span>até</span>
-    <input type="time" class="slot-hora-fim form-control" style="flex: 1;" required />
-    <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
-  `;
-  slotsContainer.appendChild(novoSlot);
+  novoSlot.innerHTML = criarSlotHTML();
+  slotsContainer.appendChild(novoSlot.firstElementChild);
 }
 
 async function salvarAgendamento(e) {
@@ -251,8 +247,6 @@ async function salvarReuniaoVoluntario(e) {
   feedbackEl.textContent = "";
   feedbackEl.className = "status-message";
 
-  const gestorId = document.getElementById("gestor-responsavel").value;
-  const gestorNome = gestores.find((g) => g.id === gestorId)?.nome || "";
   const exibirGestor = document.getElementById("exibir-gestor").checked;
   const descricaoCustom = document.getElementById("descricao-voluntario").value;
 
@@ -267,14 +261,23 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
     const data = slot.querySelector(".slot-data").value;
     const horaInicio = slot.querySelector(".slot-hora-inicio").value;
     const horaFim = slot.querySelector(".slot-hora-fim").value;
+    const gestorId = slot.querySelector(".slot-gestor").value;
 
-    if (data && horaInicio && horaFim) {
-      slots.push({ data, horaInicio, horaFim, vagas: [] });
+    if (data && horaInicio && horaFim && gestorId) {
+      const gestor = gestores.find((g) => g.id === gestorId);
+      slots.push({
+        data,
+        horaInicio,
+        horaFim,
+        gestorId,
+        gestorNome: gestor?.nome || "",
+        vagas: [],
+      });
     }
   });
 
   if (slots.length === 0) {
-    feedbackEl.textContent = "Adicione pelo menos uma data e horário.";
+    feedbackEl.textContent = "Adicione pelo menos uma data, horário e gestor.";
     feedbackEl.classList.add("alert", "alert-danger");
     saveButton.disabled = false;
     saveButton.textContent = "Agendar Reunião";
@@ -283,8 +286,6 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
 
   const data = {
     tipo: "Reunião com Voluntário",
-    gestorId,
-    gestorNome,
     exibirGestor,
     descricao: descricaoCustom || descricaoPadrao,
     slots,
