@@ -1,11 +1,11 @@
 /**
  * Arquivo: modulos/rh/js/rh-painel.js
- * Versão: 2.6.0 (Correção: Carregamento do Dashboard)
+ * Versão: 2.7.0 (Correção: Proteção contra Loop Infinito)
  * Data: 07/11/2025
  * Descrição: Gerenciador principal do painel RH com roteamento por hash
  */
 
-import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { arrayUnion } from "../../../assets/js/firebase-init.js";
 
 /**
  * Inicializa o painel de RH e configura o sistema de roteamento
@@ -22,6 +22,10 @@ export function initrhPanel(user, db, userData) {
   const userRoles = userData.funcoes || [];
   const contentArea = document.getElementById("content-area");
   const sidebarMenu = document.getElementById("sidebar-menu");
+
+  // ✅ PROTEÇÃO CONTRA LOOP INFINITO
+  let isLoadingModule = false;
+  let lastLoadedModule = null;
 
   // ============================================
   // ÍCONES SVG DO MENU
@@ -90,7 +94,6 @@ export function initrhPanel(user, db, userData) {
       roles: ["admin", "rh"],
       icon: icons.comunicados,
     },
-    // Rota oculta para cronograma (não aparece no menu)
     {
       id: "etapa_cronograma_orcamento",
       name: "Cronograma e Orçamento",
@@ -103,11 +106,6 @@ export function initrhPanel(user, db, userData) {
   // ============================================
   // FUNÇÃO DE NOTIFICAÇÃO (TOAST)
   // ============================================
-  /**
-   * Exibe notificações temporárias na tela
-   * @param {string} message - Mensagem a ser exibida
-   * @param {string} type - Tipo de notificação: success, error, warning, info
-   */
   window.showToast = function (message, type = "success") {
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
@@ -194,8 +192,6 @@ export function initrhPanel(user, db, userData) {
     });
 
     sidebarMenu.innerHTML = menuHTML;
-
-    // Marca o item ativo
     updateActiveMenuItem();
   }
 
@@ -204,9 +200,9 @@ export function initrhPanel(user, db, userData) {
   // ============================================
   function updateActiveMenuItem() {
     const currentHash = window.location.hash.replace("#/rh/", "");
-    const menuLinks = sidebarMenu.querySelectorAll("a[data-view]");
+    const menuLinks = sidebarMenu?.querySelectorAll("a[data-view]");
 
-    menuLinks.forEach((link) => {
+    menuLinks?.forEach((link) => {
       const viewId = link.getAttribute("data-view");
       if (viewId === currentHash) {
         link.classList.add("active");
@@ -229,7 +225,26 @@ export function initrhPanel(user, db, userData) {
   // CARREGAR MÓDULO DINÂMICO
   // ============================================
   async function loadModule(viewId) {
+    // ✅ PROTEÇÃO: Evita carregar o mesmo módulo repetidamente
+    if (isLoadingModule) {
+      console.warn("⚠️ RH Panel: Carregamento já em andamento. Aguarde...");
+      return;
+    }
+
+    if (lastLoadedModule === viewId) {
+      console.log(`✅ RH Panel: Módulo "${viewId}" já está carregado.`);
+      updateActiveMenuItem();
+      return;
+    }
+
+    isLoadingModule = true;
     console.log(`📦 RH Panel: Carregando módulo "${viewId}"...`);
+
+    if (!contentArea) {
+      console.error("❌ RH Panel: content-area não encontrado!");
+      isLoadingModule = false;
+      return;
+    }
 
     if (!hasPermission(viewId)) {
       contentArea.innerHTML = `
@@ -238,6 +253,7 @@ export function initrhPanel(user, db, userData) {
           <span>Você não tem permissão para visualizar este módulo.</span>
         </div>
       `;
+      isLoadingModule = false;
       return;
     }
 
@@ -249,20 +265,20 @@ export function initrhPanel(user, db, userData) {
           <span>Módulo "${viewId}" não encontrado.</span>
         </div>
       `;
+      isLoadingModule = false;
       return;
     }
 
-    // ✅ CORREÇÃO: Mapeamento correto do dashboard
     const moduleMapping = {
-      dashboard: "./dashboard.js",
-      gestao_vagas: "./gestao-vagas.js",
-      recrutamento: "./recrutamento.js",
-      gestao_estudos_de_caso: "./gestao-estudos-de-caso.js",
-      gestao_profissionais: "./gestao-profissionais.js",
-      onboarding_colaboradores: "./onboarding-colaboradores.js",
-      desligamento: "./desligamento.js",
-      comunicados: "./comunicados.js",
-      etapa_cronograma_orcamento: "./etapa-cronograma-orcamento.js",
+      dashboard: "../js/dashboard.js",
+      gestao_vagas: "../js/gestao-vagas.js",
+      recrutamento: "../js/recrutamento.js",
+      gestao_estudos_de_caso: "../js/gestao-estudos-de-caso.js",
+      gestao_profissionais: "../js/gestao-profissionais.js",
+      onboarding_colaboradores: "../js/onboarding-colaboradores.js",
+      desligamento: "../js/desligamento.js",
+      comunicados: "../js/comunicados.js",
+      etapa_cronograma_orcamento: "../js/etapa-cronograma-orcamento.js",
     };
 
     const moduleFile = moduleMapping[viewId];
@@ -273,46 +289,50 @@ export function initrhPanel(user, db, userData) {
           <span>Arquivo do módulo "${viewId}" não mapeado.</span>
         </div>
       `;
+      isLoadingModule = false;
       return;
     }
 
     try {
       // Carrega o HTML do módulo
       const htmlFile = moduleFile.replace(".js", ".html");
+      console.log(`📄 RH Panel: Carregando HTML: ${htmlFile}`);
+
       const htmlResponse = await fetch(htmlFile);
       if (!htmlResponse.ok) {
-        throw new Error(`Erro ao carregar HTML: ${htmlResponse.status}`);
+        throw new Error(
+          `Erro ao carregar HTML: ${htmlResponse.status} ${htmlResponse.statusText}`
+        );
       }
+
       const htmlContent = await htmlResponse.text();
       contentArea.innerHTML = htmlContent;
 
-      // ✅ CORREÇÃO: Nome correto da função de inicialização
+      // Nome da função de inicialização
       const initFunctionName =
         viewId === "dashboard"
-          ? "initDashboard" // Nome correto para dashboard
+          ? "initDashboard"
           : `init${viewId
               .split("_")
               .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
               .join("")}`;
 
-      console.log(`🔧 RH Panel: Procurando função "${initFunctionName}"...`);
+      console.log(`🔧 RH Panel: Importando módulo JS: ${moduleFile}`);
+      console.log(`🔧 RH Panel: Procurando função: ${initFunctionName}`);
 
-      // Importa o módulo JS
-      const module = await import(moduleFile);
+      // Importa o módulo JS com cache-busting
+      const module = await import(`${moduleFile}?t=${Date.now()}`);
 
       if (typeof module[initFunctionName] !== "function") {
         throw new Error(
-          `⚠️ RH Panel: Função de inicialização "${initFunctionName}" não encontrada em ${moduleFile}`
+          `Função "${initFunctionName}" não encontrada em ${moduleFile}`
         );
       }
 
-      console.log(
-        `✅ RH Panel: Função "${initFunctionName}" encontrada. Executando...`
-      );
-
-      // Executa a função de inicialização
+      console.log(`✅ RH Panel: Executando ${initFunctionName}...`);
       await module[initFunctionName](user, userData);
 
+      lastLoadedModule = viewId;
       console.log(`✅ RH Panel: Módulo "${viewId}" carregado com sucesso!`);
       updateActiveMenuItem();
     } catch (error) {
@@ -327,6 +347,8 @@ export function initrhPanel(user, db, userData) {
           </div>
         </div>
       `;
+    } finally {
+      isLoadingModule = false;
     }
   }
 
@@ -335,13 +357,14 @@ export function initrhPanel(user, db, userData) {
   // ============================================
   function handleRouting() {
     const hash = window.location.hash;
-    console.log(`🔄 RH Panel: Hash detectado: ${hash}`);
+    console.log(`🔄 RH Panel: Roteamento detectado: ${hash}`);
 
     if (hash.startsWith("#/rh/")) {
       const viewId = hash.replace("#/rh/", "");
       loadModule(viewId);
-    } else {
+    } else if (!hash || hash === "#/rh" || hash === "#/rh/") {
       // Redireciona para o dashboard por padrão
+      console.log("🔄 RH Panel: Redirecionando para dashboard...");
       window.location.hash = "#/rh/dashboard";
     }
   }
@@ -349,8 +372,13 @@ export function initrhPanel(user, db, userData) {
   // ============================================
   // INICIALIZAÇÃO
   // ============================================
+  console.log("🚀 RH Panel: Renderizando menu...");
   renderSidebarMenu();
+
+  console.log("🚀 RH Panel: Configurando listeners...");
   window.addEventListener("hashchange", handleRouting);
+
+  console.log("🚀 RH Panel: Iniciando roteamento...");
   handleRouting();
 
   console.log("✅ RH Panel: Painel inicializado com sucesso!");
