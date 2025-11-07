@@ -1,129 +1,113 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painel de Recursos Humanos - EuPsico</title>
-
-  <!-- Stylesheets -->
-  <link rel="stylesheet" href="../../../assets/css/design-system.css" />
-  <link rel="stylesheet" href="../css/rh.css" />
-
-  <!-- Bibliotecas Externas -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel RH - EuPsico Intranet</title>
+    <link rel="stylesheet" href="../../../assets/css/design-system.css" />
+    <link rel="stylesheet" href="../css/rh.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- ✅ BIBLIOTECAS ADICIONADAS (SweetAlert2, jsPDF, jsPDF-autoTable) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
-
 <body>
-  <div id="app">
-    <!-- View de Login (gerenciada por app.js) -->
-    <div id="login-view"></div>
+    <div id="app">
+        <!-- Container principal usando o layout do design system -->
+        <div class="layout-container" id="layout-container">
+            
+            <!-- Sidebar (Menu Lateral) -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-content-wrapper">
+                    <nav>
+                        <ul class="sidebar-menu" id="sidebar-menu">
+                            <!-- Menu será preenchido dinamicamente pelo rh-painel.js -->
+                        </ul>
+                    </nav>
+                </div>
+            </aside>
 
-    <!-- Dashboard View -->
-    <div id="dashboard-view">
-      <div class="layout-container">
+            <!-- Header (Cabeçalho) -->
+            <header class="header">
+                <div class="header-start">
+                    <button id="sidebar-toggle" aria-label="Alternar menu">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                    </button>
+                    
+                    <img src="../../../assets/images/logo-eupsico.png" alt="EuPsico" class="header-logo">
+                    
+                    <div id="page-title-container">
+                        <h1>RH</h1>
+                        <p>Recursos Humanos</p>
+                    </div>
+                </div>
 
-        <!-- Sidebar -->
-        <nav class="sidebar">
-          <div class="sidebar-content-wrapper">
-            <ul id="sidebar-menu" class="sidebar-menu"></ul>
-          </div>
-        </nav>
+                <div class="user-profile-header">
+                    <span id="user-greeting">Olá, Usuário</span>
+                    <button class="logout-button-dashboard" onclick="window.location.href='../../../index.html'">
+                        Sair
+                    </button>
+                </div>
+            </header>
 
-        <!-- Overlay Mobile -->
-        <div id="menu-overlay" class="menu-overlay"></div>
+            <!-- Área de Conteúdo Principal -->
+            <main class="main-content" id="content-area">
+                <!-- Conteúdo será carregado dinamicamente aqui -->
+                <div class="loading-spinner"></div>
+            </main>
+        </div>
 
-        <!-- Header -->
-        <header class="header">
-          <div class="header-start">
-            <button id="sidebar-toggle" type="button" title="Alternar menu" aria-label="Alternar menu lateral">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-            <div id="page-title-container"></div>
-          </div>
+        <!-- Overlay para mobile -->
+        <div class="menu-overlay" id="menu-overlay"></div>
 
-          <div class="user-profile-header">
-            <img id="user-photo-header" src="" alt="Foto do usuário" />
-            <span id="user-greeting"></span>
-            <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
-          </div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="main-content">
-          <div id="content-area" class="tab-content-area">
-            <div class="loading-spinner"></div>
-          </div>
-        </main>
-
-      </div>
+        <!-- Container oculto para views carregadas dinamicamente -->
+        <div id="dynamic-views" style="display: none;"></div>
     </div>
-  </div>
 
-  <!-- Container oculto para views carregadas dinamicamente -->
-  <div id="rh-views" style="display: none">
-    <div data-view-id="gestao_profissionais"></div>
-    <div data-view-id="gestao_vagas"></div>
-    <div data-view-id="onboarding_colaboradores"></div>
-    <div data-view-id="desligamento"></div>
-    <div data-view-id="comunicados"></div>
-  </div>
-
-  <!-- Script para Toggle de Campos de Formulário (Triagem) -->
-  <script>
-    /**
-     * Controla a visibilidade dos campos de Aprovação/Reprovação na Triagem.
-     * Esta função é chamada quando o usuário seleciona Sim/Não no radio button.
-     */
-    window.toggleMotivoAprovacaoRejeicao = function () {
-      const radioSim = document.getElementById("modal-apto-sim");
-      const radioNao = document.getElementById("modal-apto-nao");
-
-      const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
-      const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
-
-      const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
-      const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
-
-      // Verificação de segurança
-      if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) {
-        console.warn("toggleMotivoAprovacaoRejeicao: Elementos não encontrados.");
-        return;
-      }
-
-      // Remove obrigatoriedade por padrão
-      if (reprovacaoTextarea) reprovacaoTextarea.required = false;
-      if (aprovacaoTextarea) aprovacaoTextarea.required = false;
-
-      if (radioNao.checked) {
-        // Reprovação: Mostra motivo detalhado (OBRIGATÓRIO)
-        reprovacaoContainer.style.display = "block";
-        if (reprovacaoTextarea) reprovacaoTextarea.required = true;
-        aprovacaoContainer.style.display = "none";
-
-      } else if (radioSim.checked) {
-        // Aprovação: Mostra próximos passos (OPCIONAL)
-        aprovacaoContainer.style.display = "block";
-        reprovacaoContainer.style.display = "none";
-
-      } else {
-        // Nenhum selecionado: Oculta ambos
-        reprovacaoContainer.style.display = "none";
-        aprovacaoContainer.style.display = "none";
-      }
-    };
-  </script>
-
-  <!-- Scripts Principais -->
-  <script type="module" src="../../../assets/js/firebase-init.js"></script>
-  <script type="module" src="../../../assets/js/app.js"></script>
+    <!-- Firebase e Scripts -->
+    <script type="module" src="../../../assets/js/firebase-init.js"></script>
+    <script type="module" src="../js/rh-painel.js"></script>
+    
+    <script type="module">
+        import { initrhPanel } from '../js/rh-painel.js';
+        
+        window.addEventListener('firebaseReady', (event) => {
+            const { user, db, userData } = event.detail;
+            
+            const userGreeting = document.getElementById('user-greeting');
+            if (userGreeting && userData) {
+                userGreeting.textContent = `Olá, ${userData.nome?.split(' ')[0] || 'Usuário'}`;
+            }
+            
+            initrhPanel(user, db, userData);
+        });
+        
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const layoutContainer = document.getElementById('layout-container');
+        const sidebar = document.getElementById('sidebar');
+        const menuOverlay = document.getElementById('menu-overlay');
+        
+        if (sidebarToggle && layoutContainer) {
+            sidebarToggle.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar?.classList.toggle('is-visible');
+                    layoutContainer?.classList.toggle('mobile-menu-open');
+                } else {
+                    layoutContainer.classList.toggle('sidebar-collapsed');
+                }
+            });
+        }
+        
+        if (menuOverlay) {
+            menuOverlay.addEventListener('click', () => {
+                sidebar?.classList.remove('is-visible');
+                layoutContainer?.classList.remove('mobile-menu-open');
+            });
+        }
+    </script>
 </body>
-
 </html>
