@@ -1,11 +1,12 @@
 /* Arquivo: assets/css/design-system.css
-   Versão: 2.0.0 (Revisão Completa - Organização e Otimização)
-   Data: 04/11/2025
+   Versão: 2.1.0 (Correção: Classes para Dashboard RH)
+   Data: 07/11/2025
 */
 
 /* ============================================
    1. VARIÁVEIS CSS E TOKENS DE DESIGN
    ============================================ */
+
 :root {
   /* Cores Principais */
   --cor-primaria: #04396d;
@@ -28,7 +29,8 @@
   --cor-texto-inverso: #ffffff;
 
   /* Tipografia */
-  --fonte-principal: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fonte-principal: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
   --fonte-mono: "Courier New", monospace;
 
   /* Efeitos Visuais */
@@ -51,6 +53,7 @@
 /* ============================================
    2. RESET E ESTILOS BASE
    ============================================ */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -85,6 +88,7 @@ a:hover {
 /* ============================================
    3. LAYOUT PRINCIPAL (GRID)
    ============================================ */
+
 .layout-container {
   display: grid;
   min-height: 100vh;
@@ -103,6 +107,7 @@ a:hover {
 /* ============================================
    4. HEADER (CABEÇALHO)
    ============================================ */
+
 .header {
   grid-area: header;
   background-color: var(--cor-primaria);
@@ -213,6 +218,7 @@ a:hover {
 /* ============================================
    5. SIDEBAR (MENU LATERAL)
    ============================================ */
+
 .sidebar {
   grid-area: sidebar;
   background-color: var(--cor-surface);
@@ -325,6 +331,7 @@ a:hover {
 /* ============================================
    6. ÁREA DE CONTEÚDO PRINCIPAL
    ============================================ */
+
 .main-content {
   grid-area: main;
   overflow-y: auto;
@@ -343,6 +350,7 @@ a:hover {
 /* ============================================
    7. COMPONENTES - SEÇÕES E CARDS
    ============================================ */
+
 .dashboard-section,
 .table-section {
   background-color: var(--cor-surface);
@@ -430,7 +438,8 @@ a:hover {
   border-radius: var(--borda-radius);
   box-shadow: var(--sombra-padrao);
   border-left: 4px solid var(--cor-primaria);
-  transition: transform var(--transicao-padrao), box-shadow var(--transicao-padrao);
+  transition: transform var(--transicao-padrao),
+    box-shadow var(--transicao-padrao);
 }
 
 .summary-cards .card:hover {
@@ -469,7 +478,8 @@ a:hover {
   color: inherit;
   display: flex;
   flex-direction: column;
-  transition: transform var(--transicao-padrao), box-shadow var(--transicao-padrao);
+  transition: transform var(--transicao-padrao),
+    box-shadow var(--transicao-padrao);
   overflow: hidden;
 }
 
@@ -529,6 +539,7 @@ a:hover {
 /* ============================================
    8. COMPONENTES - TABELAS
    ============================================ */
+
 .table-section h2 {
   font-size: 1.5rem;
   color: var(--cor-primaria);
@@ -569,9 +580,123 @@ table tbody tr:hover {
   transition: background-color var(--transicao-padrao);
 }
 
+.table-responsive {
+  overflow-x: auto;
+}
+
+/* 🆕 CLASSES ADICIONADAS PARA DASHBOARD RH */
+
+/* Página header - título e subtítulo */
+.page-header {
+  margin-bottom: 30px;
+}
+
+.page-header h2 {
+  color: var(--cor-primaria);
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.page-header .subtitle {
+  color: var(--cor-texto-secundario);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Métricas específicas */
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--cor-primaria);
+  margin: 10px 0;
+}
+
+.metric-detail {
+  font-size: 0.85rem;
+  color: var(--cor-texto-secundario);
+  display: block;
+  margin-top: 8px;
+}
+
+/* Grid específico do Dashboard RH */
+.rh-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+/* Containers de filtros e exportação */
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background-color: var(--cor-fundo-box);
+  border-radius: var(--borda-radius);
+}
+
+.filters-container label {
+  font-weight: 500;
+  color: var(--cor-texto-principal);
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.filters-container input,
+.filters-container select {
+  width: 100%;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+  background-color: var(--cor-surface);
+  font-family: var(--fonte-principal);
+  font-size: 0.95rem;
+  color: var(--cor-texto-principal);
+  transition: border-color var(--transicao-padrao),
+    box-shadow var(--transicao-padrao);
+}
+
+.filters-container input:focus,
+.filters-container select:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(4, 57, 109, 0.1);
+}
+
+.export-buttons-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: flex-end;
+}
+
+/* Botão de exportação específico */
+.btn-export {
+  padding: 10px 18px;
+  border-radius: var(--borda-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transicao-padrao);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-export i {
+  font-size: 1rem;
+}
+
 /* ============================================
    9. COMPONENTES - FORMULÁRIOS
    ============================================ */
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -592,7 +717,8 @@ table tbody tr:hover {
 .form-group input[type="tel"],
 .form-group input[type="password"],
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.form-control {
   width: 100%;
   padding: 12px 15px;
   border: 1px solid var(--cor-borda);
@@ -601,12 +727,14 @@ table tbody tr:hover {
   font-family: var(--fonte-principal);
   font-size: 1rem;
   color: var(--cor-texto-principal);
-  transition: border-color var(--transicao-padrao), box-shadow var(--transicao-padrao);
+  transition: border-color var(--transicao-padrao),
+    box-shadow var(--transicao-padrao);
 }
 
 .form-group input:focus,
 .form-group select:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-control:focus {
   outline: none;
   border-color: var(--cor-primaria);
   box-shadow: 0 0 0 3px rgba(4, 57, 109, 0.1);
@@ -692,7 +820,9 @@ legend {
 /* ============================================
    10. COMPONENTES - BOTÕES
    ============================================ */
-.action-button {
+
+.action-button,
+.btn {
   background-color: var(--cor-primaria);
   color: var(--cor-texto-inverso);
   border: none;
@@ -710,7 +840,8 @@ legend {
   white-space: nowrap;
 }
 
-.action-button:hover {
+.action-button:hover,
+.btn:hover {
   background-color: var(--cor-secundaria);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
@@ -718,50 +849,75 @@ legend {
   color: var(--cor-texto-inverso);
 }
 
-.action-button:active {
+.action-button:active,
+.btn:active {
   transform: translateY(0);
 }
 
 /* Variantes de Botões */
 .action-button.secondary,
-.action-button.secondary-button {
+.action-button.secondary-button,
+.btn-secondary {
   background-color: transparent;
   color: var(--cor-texto-principal);
   border: 1px solid var(--cor-borda);
 }
 
 .action-button.secondary:hover,
-.action-button.secondary-button:hover {
+.action-button.secondary-button:hover,
+.btn-secondary:hover {
   background-color: var(--cor-fundo);
   color: var(--cor-primaria);
   border-color: var(--cor-primaria);
   transform: translateY(-1px);
 }
 
-.action-button.success {
+.action-button.success,
+.btn-success {
   background-color: var(--cor-sucesso);
 }
 
-.action-button.success:hover {
+.action-button.success:hover,
+.btn-success:hover {
   background-color: #218838;
   filter: none;
 }
 
-.action-button.error {
+.action-button.error,
+.btn-danger {
   background-color: var(--cor-erro);
 }
 
-.action-button.error:hover {
+.action-button.error:hover,
+.btn-danger:hover {
   background-color: #c82333;
   filter: none;
 }
 
-.action-button.info {
+.action-button.info,
+.btn-info {
   background-color: var(--cor-secundaria);
 }
 
-.action-button.info:hover {
+.action-button.info:hover,
+.btn-info:hover {
   background-color: var(--cor-primaria);
+}
+
+/* 🆕 CLASSES BOOTSTRAP-LIKE ADICIONADAS */
+.btn-primary {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+}
+
+.btn-primary:hover {
+  background-color: var(--cor-secundaria);
+  color: var(--cor-texto-inverso);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.85rem;
 }
 
 .action-button.small {
@@ -769,15 +925,55 @@ legend {
   font-size: 0.85rem;
 }
 
-.action-button:disabled {
+.action-button:disabled,
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
 }
 
+/* 🆕 BADGES (STATUS) */
+.badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--cor-texto-inverso);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.badge.bg-success {
+  background-color: var(--cor-sucesso);
+}
+
+.badge.bg-warning {
+  background-color: var(--cor-alerta);
+  color: #333;
+}
+
+.badge.bg-danger {
+  background-color: var(--cor-erro);
+}
+
+.badge.bg-secondary {
+  background-color: #6c757d;
+}
+
+.badge.bg-info {
+  background-color: var(--cor-secundaria);
+}
+
+.badge.bg-primary {
+  background-color: var(--cor-primaria);
+}
+
 /* ============================================
    11. COMPONENTES - TABS (ABAS)
    ============================================ */
+
 .tabs-container {
   display: flex;
   flex-wrap: wrap;
@@ -833,7 +1029,6 @@ legend {
     opacity: 0;
     transform: translateY(8px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -843,6 +1038,7 @@ legend {
 /* ============================================
    12. COMPONENTES - MODAIS
    ============================================ */
+
 .modal-overlay {
   display: none;
   position: fixed;
@@ -985,6 +1181,7 @@ legend {
 /* ============================================
    13. COMPONENTES - ALERTAS E STATUS
    ============================================ */
+
 .alert {
   padding: 15px 18px;
   margin-bottom: 20px;
@@ -1053,6 +1250,7 @@ legend {
 /* ============================================
    14. COMPONENTES - FILTROS E CONTROLES
    ============================================ */
+
 .controls-section {
   background-color: var(--cor-fundo);
   padding: 20px;
@@ -1065,7 +1263,7 @@ legend {
   gap: 15px;
 }
 
-.controls-section>div {
+.controls-section > div {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1102,7 +1300,8 @@ legend {
   font-family: var(--fonte-principal);
   font-size: 0.95rem;
   color: var(--cor-texto-principal);
-  transition: border-color var(--transicao-padrao), box-shadow var(--transicao-padrao);
+  transition: border-color var(--transicao-padrao),
+    box-shadow var(--transicao-padrao);
   min-width: 150px;
 }
 
@@ -1116,6 +1315,7 @@ legend {
 /* ============================================
    15. COMPONENTES - DIVERSOS
    ============================================ */
+
 /* Loading Spinner */
 .loading-spinner {
   border: 4px solid var(--cor-borda);
@@ -1143,7 +1343,6 @@ legend {
   0% {
     transform: rotate(0deg);
   }
-
   100% {
     transform: rotate(360deg);
   }
@@ -1229,13 +1428,18 @@ legend {
 /* ============================================
    16. PÁGINA DE LOGIN
    ============================================ */
+
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-secundaria) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--cor-primaria) 0%,
+    var(--cor-secundaria) 100%
+  );
 }
 
 .login-card {
@@ -1295,10 +1499,35 @@ legend {
 }
 
 /* ============================================
-   17. RESPONSIVIDADE (MOBILE)
+   17. CARD CUSTOMIZADO (PARA RELATÓRIOS)
    ============================================ */
-@media (max-width: 768px) {
 
+.card {
+  background-color: var(--cor-surface);
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-padrao);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card h3 {
+  color: var(--cor-primaria);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  border-bottom: 2px solid var(--cor-borda);
+  padding-bottom: 10px;
+}
+
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   18. RESPONSIVIDADE (MOBILE)
+   ============================================ */
+
+@media (max-width: 768px) {
   body,
   html {
     overflow-x: hidden;
@@ -1364,7 +1593,8 @@ legend {
     padding: 20px;
   }
 
-  .summary-cards {
+  .summary-cards,
+  .rh-stats-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1406,11 +1636,30 @@ legend {
   table td {
     padding: 10px 8px;
   }
+
+  .filters-container {
+    flex-direction: column;
+  }
+
+  .filters-container input,
+  .filters-container select {
+    min-width: 100%;
+  }
+
+  .export-buttons-container {
+    flex-direction: column;
+  }
+
+  .btn-export {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ============================================
-   18. UTILITÁRIOS
+   19. UTILITÁRIOS
    ============================================ */
+
 .text-center {
   text-align: center;
 }
