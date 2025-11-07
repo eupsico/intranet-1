@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.2 - Corrigido erro de validação de campos ocultos
+// VERSÃO 2.3 - Corrigido caminho do link para /public/
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -318,7 +318,8 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
       data
     );
 
-    const linkAgendamento = `${window.location.origin}/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
+    // ✅ CORRIGIDO: Adiciona /public/ no caminho
+    const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
 
     feedbackEl.innerHTML = `
       <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
