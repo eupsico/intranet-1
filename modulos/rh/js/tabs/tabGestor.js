@@ -30,7 +30,7 @@ export async function renderizarEntrevistaGestor(state) {
       where(
         "status_recrutamento",
         "==",
-        "Teste Aprovado (Entrevista com Gestor Pendente)"
+        "Teste Aprovado (Entrevista Gestor Pendente)"
       )
     );
     const snapshot = await getDocs(q);

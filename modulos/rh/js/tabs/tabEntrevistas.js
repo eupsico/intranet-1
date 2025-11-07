@@ -644,7 +644,7 @@ async function submeterAvaliacaoTeste(e) {
   // ✅ Define próximo status baseado na decisão
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
-    ? "Teste Aprovado (Entrevista com Gestor Pendente)"
+    ? "Teste Aprovado (Entrevista Gestor Pendente)"
     : "Finalizado (Reprovado no Teste)";
 
   const abaRecarregar = statusCandidaturaTabs
