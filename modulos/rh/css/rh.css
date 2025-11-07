@@ -1133,3 +1133,29 @@
     width: 100%;
   }
 }
+/* ===== SELECT COM BOTÃO ===== */
+.select-with-action {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.select-with-action select {
+  flex: 1;
+}
+
+.select-with-action .btn {
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width: 768px) {
+  .select-with-action {
+    flex-direction: column;
+  }
+
+  .select-with-action .btn {
+    width: 100%;
+  }
+}
