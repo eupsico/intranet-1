@@ -1,5 +1,5 @@
 // Arquivo: assets/js/firebase-init.js
-// Versão: 9.4 (Corrigido para sintaxe correta de importação de functions)
+// Versão: 9.5 (Corrigido - Adiciona exports)
 
 // 1. Importa as funções de inicialização e os serviços
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -31,43 +31,60 @@ import {
   FieldValue,
   arrayRemove,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js"; // CORREÇÃO: Removido getFunctionsInstance
-import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 
-// 2. Sua configuração do Firebase (sem alterações)
+// 2. Configuração do Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDJqPJjDDIGo7uRewh3pw1SQZOpMgQJs5M",
-  authDomain: "eupsico-agendamentos-d2048.firebaseapp.com",
-  databaseURL: "https://eupsico-agendamentos-d2048-default-rtdb.firebaseio.com",
-  projectId: "eupsico-agendamentos-d2048",
-  storageBucket: "eupsico-agendamentos-d2048.appspot.com",
-  messagingSenderId: "1041518416343",
-  appId: "1:1041518416343:web:087006662ffcfa12d7bb92",
+  apiKey: "AIzaSyAgKkdUC3yMvmAv5aJcCqIX3sCHscpTVTc",
+  authDomain: "intranet-eupsico.firebaseapp.com",
+  projectId: "intranet-eupsico",
+  storageBucket: "intranet-eupsico.firebasestorage.app",
+  messagingSenderId: "502550515569",
+  appId: "1:502550515569:web:5afd12db3c3aae3eed1f43",
+  measurementId: "G-F7QBQB61MW",
 };
 
-// 3. Inicializa os serviços do Firebase
+// 3. Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
+// 4. Inicializa os serviços
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app); // Instância de Functions
 const storage = getStorage(app);
-const rtdb = getDatabase(app);
+const database = getDatabase(app);
+const functions = getFunctions(app, "southamerica-east1");
 
-// 4. Exporta todos os serviços e funções necessárias para os outros módulos
+// ✅ 5. TORNA DISPONÍVEL GLOBALMENTE (para módulos que não usam import)
+window.db = db;
+window.auth = auth;
+window.storage = storage;
+window.functions = functions;
+
+console.log("✅ Firebase inicializado com sucesso!");
+console.log("✅ window.db definido:", !!window.db);
+console.log("✅ window.auth definido:", !!window.auth);
+
+// ✅ 6. EXPORTA TUDO (para módulos que usam import)
 export {
+  // Instâncias
   app,
   auth,
   db,
-  functions, // Exporta a instância
   storage,
-  rtdb,
+  database,
+  functions,
+
+  // Funções de Auth
+  getAuth,
   onAuthStateChanged,
-  httpsCallable, // Exporta a função callable
+
+  // Funções de Firestore
+  getFirestore,
   collection,
   doc,
   getDoc,
@@ -89,6 +106,14 @@ export {
   writeBatch,
   FieldValue,
   arrayRemove,
-  getAuth,
-  getFirestore,
+
+  // Funções de Storage
+  getStorage,
+
+  // Funções de Database
+  getDatabase,
+
+  // Funções de Functions
+  getFunctions,
+  httpsCallable,
 };
