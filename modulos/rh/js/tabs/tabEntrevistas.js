@@ -473,9 +473,9 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO)
+ * Abre o modal de avaliação do teste (ATUALIZADO COM GESTORES)
  */
-window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
+window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
     `🔹 Entrevistas: Abrindo modal de avaliação de teste para ${candidatoId}`
   );
@@ -507,7 +507,7 @@ window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
-  // ✅ EXIBE TODOS OS TESTES ENVIADOS (não apenas o último)
+  // Exibe todos os testes enviados
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
@@ -570,6 +570,49 @@ window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
     }
   }
 
+  // ✅ CARREGAR GESTORES NO SELECT
+  const selectGestor = document.getElementById("avaliacao-teste-gestor");
+  const btnWhatsAppGestor = document.getElementById(
+    "btn-whatsapp-gestor-avaliacao"
+  );
+
+  if (selectGestor) {
+    selectGestor.innerHTML = '<option value="">Carregando gestores...</option>';
+
+    const gestores = await carregarGestores();
+
+    if (gestores.length === 0) {
+      selectGestor.innerHTML =
+        '<option value="">Nenhum gestor disponível</option>';
+      if (btnWhatsAppGestor) btnWhatsAppGestor.disabled = true;
+    } else {
+      let optionsHtml = '<option value="">Selecione um gestor...</option>';
+      gestores.forEach((gestor) => {
+        optionsHtml += `<option 
+          value="${gestor.id}" 
+          data-nome="${gestor.nome}"
+          data-telefone="${gestor.telefone}"
+          data-email="${gestor.email}">
+          ${gestor.nome}${gestor.email ? ` (${gestor.email})` : ""}
+        </option>`;
+      });
+      selectGestor.innerHTML = optionsHtml;
+      console.log(`✅ ${gestores.length} gestor(es) carregado(s) no select`);
+    }
+  }
+
+  // ✅ HABILITA/DESABILITA BOTÃO WHATSAPP
+  if (selectGestor && btnWhatsAppGestor) {
+    selectGestor.addEventListener("change", (e) => {
+      const option = e.target.selectedOptions[0];
+      const telefone = option?.getAttribute("data-telefone");
+      btnWhatsAppGestor.disabled = !telefone || telefone === "";
+    });
+
+    // Estado inicial
+    btnWhatsAppGestor.disabled = true;
+  }
+
   // Reseta o formulário
   if (form) form.reset();
 
@@ -588,6 +631,45 @@ window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.classList.add("is-visible");
   console.log("✅ Entrevistas: Modal de avaliação de teste aberto");
 };
+// ============================================
+// CARREGAR GESTORES DO FIRESTORE
+// ============================================
+
+/**
+ * Carrega lista de gestores da coleção 'usuarios'
+ */
+async function carregarGestores() {
+  console.log("🔹 Carregando gestores do Firestore...");
+
+  try {
+    const usuariosRef = collection(db, "usuarios");
+    const q = query(usuariosRef, where("funcoes", "array-contains", "gestor"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log("ℹ️ Nenhum gestor encontrado");
+      return [];
+    }
+
+    const gestores = [];
+    snapshot.forEach((docSnap) => {
+      const gestor = docSnap.data();
+      gestores.push({
+        id: docSnap.id,
+        nome: gestor.nome || gestor.email || "Gestor",
+        email: gestor.email || "",
+        telefone: gestor.telefone || gestor.celular || "",
+        ...gestor,
+      });
+    });
+
+    console.log(`✅ ${gestores.length} gestor(es) carregado(s)`);
+    return gestores;
+  } catch (error) {
+    console.error("❌ Erro ao carregar gestores:", error);
+    return [];
+  }
+}
 
 /**
  * Fecha o modal de avaliação de teste
@@ -601,7 +683,7 @@ function fecharModalAvaliacaoTeste() {
 }
 
 /**
- * Submete a avaliação do teste
+ * Submete a avaliação do teste (ATUALIZADO COM GESTOR)
  */
 async function submeterAvaliacaoTeste(e) {
   e.preventDefault();
@@ -632,8 +714,23 @@ async function submeterAvaliacaoTeste(e) {
   )?.value;
   const observacoes = form.querySelector("#avaliacao-teste-observacoes")?.value;
 
+  // ✅ CAPTURA O GESTOR SELECIONADO
+  const selectGestor = document.getElementById("avaliacao-teste-gestor");
+  const gestorSelecionadoId = selectGestor?.value || null;
+  const gestorOption = selectGestor?.selectedOptions[0];
+  const gestorNome = gestorOption?.getAttribute("data-nome") || null;
+
   if (!resultado) {
     window.showToast?.("Por favor, selecione o Resultado do Teste.", "error");
+    return;
+  }
+
+  // ✅ Se aprovado, gestor é obrigatório
+  if (resultado === "Aprovado" && !gestorSelecionadoId) {
+    window.showToast?.(
+      "Por favor, selecione um gestor para aprovar o candidato.",
+      "error"
+    );
     return;
   }
 
@@ -641,10 +738,10 @@ async function submeterAvaliacaoTeste(e) {
   btnRegistrarAvaliacao.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-  // ✅ Define próximo status baseado na decisão
+  // Define próximo status baseado na decisão
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
-    ? "Entrevista Gestor Pendente"
+    ? "Teste Aprovado (Entrevista com Gestor Pendente)"
     : "Finalizado (Reprovado no Teste)";
 
   const abaRecarregar = statusCandidaturaTabs
@@ -656,6 +753,14 @@ async function submeterAvaliacaoTeste(e) {
     data_avaliacao: new Date(),
     avaliador_uid: currentUserData.id || "rh_system_user",
     observacoes: observacoes || "",
+    // ✅ SALVA O GESTOR DESIGNADO
+    gestor_designado: isAprovado
+      ? {
+          id: gestorSelecionadoId,
+          nome: gestorNome,
+          data_designacao: new Date(),
+        }
+      : null,
   };
 
   try {
@@ -666,8 +771,8 @@ async function submeterAvaliacaoTeste(e) {
       avaliacao_teste: dadosAvaliacaoTeste,
       historico: arrayUnion({
         data: new Date(),
-        acao: `Avaliação do Teste: ${
-          isAprovado ? "APROVADO" : "REPROVADO"
+        acao: `Avaliação do Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
+          isAprovado ? `Gestor designado: ${gestorNome}` : "Processo finalizado"
         }. Novo Status: ${novoStatusCandidato}`,
         usuario: currentUserData.id || "rh_system_user",
       }),
@@ -1349,5 +1454,76 @@ async function submeterAvaliacaoRH(e) {
     btnRegistrarAvaliacao.disabled = false;
     btnRegistrarAvaliacao.innerHTML =
       '<i class="fas fa-check-circle me-2"></i> Registrar Avaliação';
+  }
+}
+async function carregarGestores() {
+  console.log("🔹 Carregando gestores do Firestore...");
+
+  try {
+    const usuariosRef = collection(db, "usuarios");
+    const q = query(usuariosRef, where("funcoes", "array-contains", "gestor"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log("ℹ️ Nenhum gestor encontrado");
+      return [];
+    }
+
+    const gestores = [];
+    snapshot.forEach((docSnap) => {
+      const gestor = docSnap.data();
+      gestores.push({
+        id: docSnap.id,
+        nome: gestor.nome || gestor.email || "Gestor",
+        email: gestor.email || "",
+        telefone: gestor.telefone || gestor.celular || "",
+        ...gestor,
+      });
+    });
+
+    console.log(`✅ ${gestores.length} gestor(es) carregado(s)`);
+    return gestores;
+  } catch (error) {
+    console.error("❌ Erro ao carregar gestores:", error);
+    return [];
+  }
+}
+// ============================================
+// CARREGAR GESTORES DO FIRESTORE
+// ============================================
+
+/**
+ * Carrega lista de gestores da coleção 'usuarios'
+ */
+async function carregarGestores() {
+  console.log("🔹 Carregando gestores do Firestore...");
+
+  try {
+    const usuariosRef = collection(db, "usuarios");
+    const q = query(usuariosRef, where("funcoes", "array-contains", "gestor"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log("ℹ️ Nenhum gestor encontrado");
+      return [];
+    }
+
+    const gestores = [];
+    snapshot.forEach((docSnap) => {
+      const gestor = docSnap.data();
+      gestores.push({
+        id: docSnap.id,
+        nome: gestor.nome || gestor.email || "Gestor",
+        email: gestor.email || "",
+        telefone: gestor.telefone || gestor.celular || "",
+        ...gestor,
+      });
+    });
+
+    console.log(`✅ ${gestores.length} gestor(es) carregado(s)`);
+    return gestores;
+  } catch (error) {
+    console.error("❌ Erro ao carregar gestores:", error);
+    return [];
   }
 }
