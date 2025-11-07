@@ -260,7 +260,7 @@ export async function renderizarEntrevistas(state) {
             </button>
       `;
 
-      // ✅ LÓGICA DE EXIBIÇÃO DOS BOTÕES
+      // ✅ NOVA LÓGICA: EXIBIÇÃO DOS BOTÕES
       if (statusAtual.includes("Entrevista Pendente")) {
         // Candidato aguardando agendamento ou realização da entrevista RH
         listaHtml += `
@@ -285,9 +285,11 @@ export async function renderizarEntrevistas(state) {
         `;
       } else if (
         statusAtual === "Entrevista RH Aprovada (Testes Pendente)" ||
-        statusAtual === "Testes Pendente"
+        statusAtual === "Testes Pendente" ||
+        statusAtual === "Testes Pendente (Enviado)"
       ) {
-        // Candidato pronto para receber teste
+        // ✅ MUDANÇA: AMBOS OS BOTÕES APARECEM JUNTOS
+        // Permite enviar múltiplos testes e avaliar quando necessário
         listaHtml += `
             <button 
               class="action-button primary btn-enviar-teste" 
@@ -298,10 +300,6 @@ export async function renderizarEntrevistas(state) {
               )}'>
               <i class="fas fa-vial me-1"></i> Enviar Teste
             </button>
-        `;
-      } else if (statusAtual === "Testes Pendente (Enviado)") {
-        // ✅ NOVO: Candidato já recebeu teste, aguardando avaliação
-        listaHtml += `
             <button 
               class="action-button success btn-avaliar-teste" 
               data-id="${candidatoId}"
@@ -377,7 +375,7 @@ export async function renderizarEntrevistas(state) {
       });
     });
 
-    // ✅ NOVO: Listeners de Avaliar Teste
+    // Listeners de Avaliar Teste
     document.querySelectorAll(".btn-avaliar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -475,7 +473,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste
+ * Abre o modal de avaliação do teste (ATUALIZADO)
  */
 window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
   console.log(
@@ -509,25 +507,67 @@ window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
-  // Exibe informações sobre os testes enviados
+  // ✅ EXIBE TODOS OS TESTES ENVIADOS (não apenas o último)
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
-  if (infoTestesEl && testesEnviados.length > 0) {
-    const ultimoTeste = testesEnviados[testesEnviados.length - 1];
-    const dataEnvio = ultimoTeste.data_envio?.toDate
-      ? ultimoTeste.data_envio.toDate().toLocaleDateString("pt-BR")
-      : "N/A";
+  if (infoTestesEl) {
+    if (testesEnviados.length === 0) {
+      infoTestesEl.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Nenhum teste foi enviado para este candidato ainda.
+        </div>
+      `;
+    } else {
+      let testesHtml = '<div class="testes-enviados-lista">';
 
-    infoTestesEl.innerHTML = `
-      <div class="info-box">
-        <p><strong>📝 Teste Enviado:</strong> ${ultimoTeste.id || "N/A"}</p>
-        <p><strong>📅 Data de Envio:</strong> ${dataEnvio}</p>
-        <p><strong>🔗 Link:</strong> <a href="${
-          ultimoTeste.link || "#"
-        }" target="_blank">Ver Teste</a></p>
-      </div>
-    `;
+      testesEnviados.forEach((teste, index) => {
+        const dataEnvio = teste.data_envio?.toDate
+          ? teste.data_envio.toDate().toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "N/A";
+
+        const statusTeste = teste.status || "enviado";
+        let badgeClass = "bg-warning";
+        let statusTexto = "Pendente";
+
+        if (statusTeste === "respondido") {
+          badgeClass = "bg-success";
+          statusTexto = "Respondido";
+        } else if (statusTeste === "avaliado") {
+          badgeClass = "bg-info";
+          statusTexto = "Avaliado";
+        }
+
+        testesHtml += `
+          <div class="teste-item">
+            <div class="teste-header">
+              <h5>📝 Teste ${index + 1}</h5>
+              <span class="badge ${badgeClass}">${statusTexto}</span>
+            </div>
+            <div class="teste-info">
+              <p><strong>ID:</strong> ${teste.id || "N/A"}</p>
+              <p><strong>Data de Envio:</strong> ${dataEnvio}</p>
+              <p><strong>Enviado por:</strong> ${teste.enviado_por || "N/A"}</p>
+              ${
+                teste.link
+                  ? `<p><strong>Link:</strong> <a href="${teste.link}" target="_blank">Acessar Teste</a></p>`
+                  : ""
+              }
+            </div>
+          </div>
+        `;
+      });
+
+      testesHtml += "</div>";
+      infoTestesEl.innerHTML = testesHtml;
+    }
   }
 
   // Reseta o formulário
