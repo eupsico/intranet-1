@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.4 - Slots automáticos de 30 minutos
+// VERSÃO 3.0 - Com gerenciamento de agendamentos existentes
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -9,14 +9,37 @@ import {
   getDocs,
   query,
   orderBy,
+  doc,
+  getDoc,
+  updateDoc,
 } from "../../../assets/js/firebase-init.js";
 
 let gestores = [];
+let agendamentosExistentes = [];
 
 export async function init() {
   console.log("[AGENDAR] Módulo Agendar Reunião iniciado.");
   await carregarGestores();
   renderizarFormularioAgendamento();
+
+  // Event listeners globais
+  document.addEventListener("click", async (e) => {
+    if (e.target.id === "btn-gerenciar-agendamentos") {
+      await renderizarGerenciarAgendamentos();
+    }
+    if (e.target.id === "btn-voltar-criar") {
+      renderizarFormularioAgendamento();
+    }
+    if (e.target.classList.contains("btn-editar-agendamento")) {
+      const agendamentoId = e.target.dataset.agendamentoId;
+      await renderizarEditarAgendamento(agendamentoId);
+    }
+    if (e.target.classList.contains("btn-copiar-link")) {
+      const link = e.target.dataset.link;
+      navigator.clipboard.writeText(link);
+      alert("Link copiado para a área de transferência!");
+    }
+  });
 }
 
 async function carregarGestores() {
@@ -39,9 +62,36 @@ async function carregarGestores() {
   }
 }
 
+async function carregarAgendamentosExistentes() {
+  try {
+    const q = query(
+      collection(firestoreDb, "agendamentos_voluntarios"),
+      orderBy("criadoEm", "desc")
+    );
+    const snapshot = await getDocs(q);
+
+    agendamentosExistentes = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    console.log("[AGENDAR] Agendamentos carregados:", agendamentosExistentes);
+  } catch (error) {
+    console.error("[AGENDAR] Erro ao carregar agendamentos:", error);
+    agendamentosExistentes = [];
+  }
+}
+
 function renderizarFormularioAgendamento() {
   const container = document.getElementById("agendar-reuniao-container");
   container.innerHTML = `
+        <!-- Botão para gerenciar agendamentos -->
+        <div class="button-bar" style="margin-bottom: 1.5rem;">
+            <button type="button" id="btn-gerenciar-agendamentos" class="action-button" style="background: #6c757d;">
+                📋 Gerenciar Agendamentos Existentes
+            </button>
+        </div>
+
         <form id="form-agendamento">
             <h3>Agendar Nova Reunião</h3>
             <div class="form-group">
@@ -87,12 +137,280 @@ function renderizarFormularioAgendamento() {
     .addEventListener("submit", salvarAgendamento);
 }
 
+async function renderizarGerenciarAgendamentos() {
+  await carregarAgendamentosExistentes();
+
+  const container = document.getElementById("agendar-reuniao-container");
+
+  if (agendamentosExistentes.length === 0) {
+    container.innerHTML = `
+      <div class="button-bar" style="margin-bottom: 1.5rem;">
+        <button type="button" id="btn-voltar-criar" class="action-button" style="background: #6c757d;">
+          ← Voltar para Criar Novo
+        </button>
+      </div>
+      <div class="empty-state">
+        <p>Nenhum agendamento de reunião com voluntário foi criado ainda.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const agendamentosHTML = agendamentosExistentes
+    .map((agendamento) => {
+      // Ordena slots por data e hora
+      const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
+        if (a.data !== b.data) return a.data.localeCompare(b.data);
+        return a.horaInicio.localeCompare(b.horaInicio);
+      });
+
+      const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
+
+      const slotsListaHTML = slotsOrdenados
+        .map((slot) => {
+          const vagasPreenchidas = slot.vagas?.length || 0;
+          const statusVaga =
+            vagasPreenchidas > 0
+              ? `<span style="color: #28a745;">✓ Preenchido</span>`
+              : `<span style="color: #6c757d;">Disponível</span>`;
+
+          return `
+        <tr>
+          <td>${slot.gestorNome || "Não especificado"}</td>
+          <td>${formatarDataCompleta(slot.data)}</td>
+          <td>${slot.horaInicio}</td>
+          <td>${slot.horaFim}</td>
+          <td>${statusVaga}</td>
+        </tr>
+      `;
+        })
+        .join("");
+
+      return `
+      <div class="agendamento-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+          <div>
+            <h4 style="margin: 0 0 0.5rem 0;">Reunião com Voluntário</h4>
+            <small style="color: #666;">Criado em: ${formatarDataCriacao(
+              agendamento.criadoEm
+            )}</small>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;">
+              📋 Copiar Link
+            </button>
+            <button class="btn-editar-agendamento action-button" data-agendamento-id="${
+              agendamento.id
+            }" style="background: #28a745; padding: 0.5rem 1rem;">
+              ✏️ Editar
+            </button>
+          </div>
+        </div>
+        
+        <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr style="background: #f8f9fa; text-align: left;">
+              <th style="padding: 0.75rem; border: 1px solid #ddd;">Gestor</th>
+              <th style="padding: 0.75rem; border: 1px solid #ddd;">Data</th>
+              <th style="padding: 0.75rem; border: 1px solid #ddd;">Início</th>
+              <th style="padding: 0.75rem; border: 1px solid #ddd;">Fim</th>
+              <th style="padding: 0.75rem; border: 1px solid #ddd;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${slotsListaHTML}
+          </tbody>
+        </table>
+        
+        <div style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 4px;">
+          <strong>Link de Agendamento:</strong>
+          <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" />
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="button-bar" style="margin-bottom: 1.5rem;">
+      <button type="button" id="btn-voltar-criar" class="action-button" style="background: #6c757d;">
+        ← Voltar para Criar Novo
+      </button>
+    </div>
+    
+    <h3 style="margin-bottom: 1.5rem;">Agendamentos Existentes</h3>
+    
+    ${agendamentosHTML}
+  `;
+}
+
+async function renderizarEditarAgendamento(agendamentoId) {
+  const agendamento = agendamentosExistentes.find(
+    (a) => a.id === agendamentoId
+  );
+
+  if (!agendamento) {
+    alert("Agendamento não encontrado.");
+    return;
+  }
+
+  const container = document.getElementById("agendar-reuniao-container");
+
+  const gestoresOptions = gestores
+    .map((g) => `<option value="${g.id}">${g.nome}</option>`)
+    .join("");
+
+  // Slots existentes
+  const slotsExistentesHTML = agendamento.slots
+    .map((slot, index) => {
+      const vagasInfo =
+        slot.vagas && slot.vagas.length > 0
+          ? `<small style="color: #28a745;">(${slot.vagas.length} inscrito(s))</small>`
+          : "";
+
+      return `
+      <div class="slot-existente" style="display: grid; grid-template-columns: 1fr 1fr auto 1fr 2fr; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 4px;">
+        <input type="date" value="${slot.data}" readonly class="form-control" style="background: #e9ecef;" />
+        <input type="time" value="${slot.horaInicio}" readonly class="form-control" style="background: #e9ecef;" />
+        <span>até</span>
+        <input type="time" value="${slot.horaFim}" readonly class="form-control" style="background: #e9ecef;" />
+        <div>
+          <strong>${slot.gestorNome}</strong> ${vagasInfo}
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="button-bar" style="margin-bottom: 1.5rem;">
+      <button type="button" id="btn-gerenciar-agendamentos" class="action-button" style="background: #6c757d;">
+        ← Voltar para Lista
+      </button>
+    </div>
+    
+    <h3>Editar Agendamento</h3>
+    
+    <div style="background: #fff3cd; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 4px solid #ffc107;">
+      <strong>📌 Horários existentes:</strong>
+      <div style="margin-top: 1rem;">
+        ${slotsExistentesHTML}
+      </div>
+    </div>
+    
+    <form id="form-editar-agendamento">
+      <h4>Adicionar Novos Horários</h4>
+      
+      <div class="form-group">
+        <label>Datas, Horários e Gestores Disponíveis</label>
+        <small style="display: block; color: #666; margin-bottom: 0.5rem;">
+          O horário será dividido automaticamente em slots de 30 minutos.
+        </small>
+        <div id="novos-slots-container" style="margin-bottom: 1rem;">
+          ${criarSlotHTML()}
+        </div>
+        <button type="button" id="btn-adicionar-slot" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
+      </div>
+      
+      <div class="button-bar" style="margin-top: 1.5rem;">
+        <button type="submit" class="action-button save-btn">Salvar Novos Horários</button>
+      </div>
+      <div id="edit-feedback" class="status-message" style="margin-top: 15px;"></div>
+    </form>
+  `;
+
+  document
+    .getElementById("btn-adicionar-slot")
+    .addEventListener("click", () => {
+      const container = document.getElementById("novos-slots-container");
+      const novoSlot = document.createElement("div");
+      novoSlot.innerHTML = criarSlotHTML();
+      container.appendChild(novoSlot.firstElementChild);
+    });
+
+  document
+    .getElementById("form-editar-agendamento")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await salvarNovosSlots(agendamentoId, agendamento);
+    });
+}
+
+async function salvarNovosSlots(agendamentoId, agendamento) {
+  const feedbackEl = document.getElementById("edit-feedback");
+  const saveButton = document.querySelector('button[type="submit"]');
+  saveButton.disabled = true;
+  saveButton.textContent = "Salvando...";
+  feedbackEl.textContent = "";
+  feedbackEl.className = "status-message";
+
+  let novosSlots = [];
+
+  document
+    .querySelectorAll("#novos-slots-container .slot-item")
+    .forEach((slotItem) => {
+      const dataSlot = slotItem.querySelector(".slot-data").value;
+      const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
+      const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
+      const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
+
+      if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
+        const gestor = gestores.find((g) => g.id === gestorIdSlot);
+
+        const slotsGerados = gerarSlotsAutomaticos(
+          dataSlot,
+          horaInicioSlot,
+          horaFimSlot,
+          gestorIdSlot,
+          gestor?.nome || ""
+        );
+
+        novosSlots = novosSlots.concat(slotsGerados);
+      }
+    });
+
+  if (novosSlots.length === 0) {
+    feedbackEl.textContent = "Adicione pelo menos um novo horário.";
+    feedbackEl.classList.add("alert", "alert-danger");
+    saveButton.disabled = false;
+    saveButton.textContent = "Salvar Novos Horários";
+    return;
+  }
+
+  try {
+    // Combina slots antigos com novos
+    const slotsAtualizados = [...agendamento.slots, ...novosSlots];
+
+    await updateDoc(
+      doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
+      {
+        slots: slotsAtualizados,
+      }
+    );
+
+    feedbackEl.innerHTML = `
+      <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px;">
+        <strong>✓ ${novosSlots.length} novos horários adicionados com sucesso!</strong>
+      </div>
+    `;
+
+    setTimeout(() => {
+      renderizarGerenciarAgendamentos();
+    }, 2000);
+  } catch (error) {
+    console.error("[AGENDAR] Erro ao atualizar agendamento:", error);
+    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
+    feedbackEl.classList.add("alert", "alert-danger");
+    saveButton.disabled = false;
+    saveButton.textContent = "Salvar Novos Horários";
+  }
+}
+
 function renderizarCamposDinamicos() {
   const tipo = document.getElementById("tipo-reuniao").value;
   const container = document.getElementById("campos-dinamicos");
   const dataHoraContainer = document.getElementById("data-hora-container");
 
-  // Campos de data e hora
   const dataInput = document.getElementById("data-reuniao");
   const horaInicioInput = document.getElementById("hora-inicio");
   const horaFimInput = document.getElementById("hora-fim");
@@ -130,7 +448,6 @@ function renderizarCamposDinamicos() {
         `;
   } else if (tipo === "Reunião com Voluntário") {
     dataHoraContainer.style.display = "none";
-    // Remove o required dos campos ocultos
     dataInput.required = false;
     horaInicioInput.required = false;
     horaFimInput.required = false;
@@ -200,7 +517,6 @@ function adicionarSlot() {
   slotsContainer.appendChild(novoSlot.firstElementChild);
 }
 
-// ✅ NOVA FUNÇÃO: Gera slots automáticos de 30 minutos
 function gerarSlotsAutomaticos(
   data,
   horaInicioStr,
@@ -211,7 +527,6 @@ function gerarSlotsAutomaticos(
   const slots = [];
   const INTERVALO_MINUTOS = 30;
 
-  // Converter horários para minutos
   const [horaIni, minIni] = horaInicioStr.split(":").map(Number);
   const [hrFim, minFim] = horaFimStr.split(":").map(Number);
 
@@ -224,7 +539,6 @@ function gerarSlotsAutomaticos(
       minutoFinal
     );
 
-    // Converter minutos de volta para HH:MM
     const horaInicioSlot = `${String(Math.floor(minutoAtual / 60)).padStart(
       2,
       "0"
@@ -326,32 +640,32 @@ async function salvarReuniaoVoluntario(e) {
 
 Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos conhecer suas ideias, ouvir suas sugestões e entender como podemos apoiá-lo(a) ainda mais nessa jornada.
 
-Escolha abaixo o melhor horário para você e clique em <strong>Confirmar Agendamento</strong> no final da página!`;
+Escolha abaixo o melhor horário para você e vamos conversar!`;
 
   let slots = [];
 
-  // ✅ MODIFICADO: Agora gera slots automáticos de 30 minutos
-  document.querySelectorAll(".slot-item").forEach((slotItem) => {
-    const dataSlot = slotItem.querySelector(".slot-data").value;
-    const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
-    const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
-    const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
+  document
+    .querySelectorAll("#slots-container .slot-item")
+    .forEach((slotItem) => {
+      const dataSlot = slotItem.querySelector(".slot-data").value;
+      const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
+      const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
+      const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
 
-    if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
-      const gestor = gestores.find((g) => g.id === gestorIdSlot);
+      if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
+        const gestor = gestores.find((g) => g.id === gestorIdSlot);
 
-      // Gera slots automáticos de 30 minutos
-      const slotsGerados = gerarSlotsAutomaticos(
-        dataSlot,
-        horaInicioSlot,
-        horaFimSlot,
-        gestorIdSlot,
-        gestor?.nome || ""
-      );
+        const slotsGerados = gerarSlotsAutomaticos(
+          dataSlot,
+          horaInicioSlot,
+          horaFimSlot,
+          gestorIdSlot,
+          gestor?.nome || ""
+        );
 
-      slots = slots.concat(slotsGerados);
-    }
-  });
+        slots = slots.concat(slotsGerados);
+      }
+    });
 
   if (slots.length === 0) {
     feedbackEl.textContent = "Adicione pelo menos uma data, horário e gestor.";
@@ -399,4 +713,31 @@ Escolha abaixo o melhor horário para você e clique em <strong>Confirmar Agenda
     saveButton.disabled = false;
     saveButton.textContent = "Agendar Reunião";
   }
+}
+
+// Funções auxiliares de formatação
+
+function formatarDataCompleta(dataISO) {
+  if (!dataISO) return "Data inválida";
+  const [ano, mes, dia] = dataISO.split("-");
+  const data = new Date(ano, mes - 1, dia);
+  const diasSemana = [
+    "Domingo",
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
+  ];
+  return `${diasSemana[data.getDay()]}, ${dia}/${mes}/${ano}`;
+}
+
+function formatarDataCriacao(timestamp) {
+  if (!timestamp) return "Data não informada";
+  if (timestamp.toDate) {
+    const data = timestamp.toDate();
+    return data.toLocaleString("pt-BR");
+  }
+  return "Data não informada";
 }
