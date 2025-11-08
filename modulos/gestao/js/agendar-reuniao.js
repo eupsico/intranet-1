@@ -710,28 +710,20 @@ async function salvarReuniaoVoluntario(e) {
   const descricaoCustom = document.getElementById("descricao-voluntario").value;
 
   const descricaoPadrao = `
-**✨ Conectando Nossas Histórias: Seu Encontro Individual com a Gestão EuPsico**
-
-Em nome de toda a equipe EuPsico, queremos começar agradecendo profundamente pela sua dedicação e pelo impacto inestimável do seu trabalho. Você é a força vital que move a nossa missão!
-Reconhecendo a importância de cada um de vocês, preparamos um momento especial e individual de escuta e diálogo, focado inteiramente em você.
-
-**🤝 O Nosso Propósito: Ouvir e Crescer Juntos**
-
-Esta reunião de alinhamento é mais do que uma conversa sobre o futuro da EuPsico; é sobre o seu futuro conosco. É o nosso espaço para:
-- Ouvir a sua voz: Entender suas experiências, desafios e grandes ideias para construirmos juntos um ambiente de voluntariado ainda mais gratificante e eficiente.
-- Compartilhar perspectivas: Dialogar sobre as próximas etapas e como elas se conectam com o seu crescimento pessoal e profissional.
-- Apoiar a sua jornada: Descobrir como a equipe de gestão pode te apoiar de forma ainda mais eficaz no dia a dia.
-
-Sua perspectiva é única e essencial para a nossa evolução!
-
-**🗓️ Escolha o Melhor Momento para Você**
-
-Para garantir que este encontro seja tranquilo e conveniente, pedimos que escolha abaixo o horário que melhor se encaixa na sua agenda:
-Observação: O link exclusivo para o nosso encontro online será enviado por whatsapp no dia agendado pelo Gestor Responsável pela reunião.
-
-Mal podemos esperar para conversar com você!
-Com carinho,
-A Equipe de Gestão EuPsico
+<p><strong>✨ Gestão EuPsico: Alinhando Processos, Otimizando a Prática Profissional</strong></p>
+<p>Em nome de toda a equipe da <strong>EuPsico</strong>, expressamos nossa sincera gratidão pela sua dedicação e pelo impacto valioso do seu trabalho. Você é parte essencial da nossa missão, e é com profundo respeito que convidamos você para um momento exclusivo de escuta e diálogo, pensado especialmente para você.</p>
+<p><strong>🤝 Nosso Propósito: Ouvir, Valorizar e Evoluir Juntos</strong></p>
+Mais do que uma conversa sobre os próximos passos da EuPsico, este encontro é uma oportunidade para fortalecer nossa parceria, alinhando expectativas, ideias e caminhos de crescimento mútuo. Criamos esse espaço para:
+<ul>
+  <li><strong>Valorizar sua voz</strong>: Conhecer suas vivências, desafios e ideias que podem transformar nosso ambiente de voluntariado.</li>
+  <li><strong>Construir em conjunto</strong>: Compartilhar perspectivas sobre as próximas etapas e como elas se conectam ao seu desenvolvimento pessoal e profissional.</li>
+  <li><strong>Fortalecer seu caminho</strong>: Identificar formas de apoio mais eficazes da gestão para sua jornada conosco.</li>
+</ul>
+<p><strong>🗓️ Agende o Melhor Momento para Você</strong></p>
+<p>Sua visão é única e indispensável para a evolução da nossa comunidade.</p>
+<p>Para que esse encontro seja leve e conveniente, pedimos que selecione abaixo o horário que melhor se encaixa na sua rotina.<p> <strong><em>Observação: O link exclusivo para nossa reunião online será enviado via WhatsApp no dia agendado, pelo Gestor Responsável.</em></strong>
+<p>Será um prazer conduzir esta conversa construtiva com você.</p>
+<p><strong>Com apreço,<br>Gestão EuPsico</strong></p>
 `;
 
   let slots = [];
