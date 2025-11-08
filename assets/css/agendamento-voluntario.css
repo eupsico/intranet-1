@@ -14,32 +14,53 @@ body {
     background: white;
     border-radius: 12px;
     padding: 2rem;
-    max-width: 600px;
+    max-width: 1200px; /* ✅ AUMENTADO para 1200px */
     width: 100%;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
+
 
 /* Header */
 .header {
     text-align: center;
     margin-bottom: 2rem;
+    background: #003d7a; /* ✅ Fundo azul */
+    padding: 1.5rem;
+    border-radius: 12px 12px 0 0;
+    margin: -2rem -2rem 2rem -2rem; /* Expande até as bordas do container */
 }
 
 .header h1 {
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
+    color: white; /* ✅ CORRIGIDO: Texto branco para contraste */
+    margin-bottom: 0;
     font-size: 1.8rem;
+}
+
+
+/* Info do Voluntário Logado */
+.voluntario-info {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #e8f4f8;
+    border-radius: 8px;
+    border: 1px solid #b3d9e8;
+}
+
+.voluntario-info strong {
+    color: #003d7a;
+    font-size: 1.1rem;
 }
 
 /* Descrição */
 .descricao {
-    background: var(--bg-light);
+    background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
     margin-bottom: 2rem;
     line-height: 1.6;
     white-space: pre-line;
-    color: var(--text-primary);
+    color: #333;
 }
 
 /* Info do Gestor */
@@ -52,7 +73,7 @@ body {
 }
 
 .gestor-info strong {
-    color: var(--primary-color);
+    color: #003d7a;
     font-size: 1.1rem;
 }
 
@@ -63,14 +84,25 @@ body {
 
 .slots-section h3 {
     margin-bottom: 1rem;
-    color: var(--text-primary);
+    color: #333;
     font-size: 1.1rem;
+}
+.slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 900px) {
+    .slots-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 /* Opções de Slot */
 .slot-option {
     background: white;
-    border: 2px solid var(--border-light);
+    border: 2px solid #ddd;
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1rem;
@@ -81,16 +113,16 @@ body {
 }
 
 .slot-option:hover {
-    border-color: var(--primary-color);
+    border-color: #003d7a;
     background: #f0f9ff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 61, 122, 0.15);
 }
 
 .slot-option.selected {
-    border-color: var(--primary-color);
+    border-color: #003d7a;
     background: #e0f2fe;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 61, 122, 0.2);
 }
 
 .slot-option input[type="radio"] {
@@ -98,7 +130,7 @@ body {
     width: 20px;
     height: 20px;
     cursor: pointer;
-    accent-color: var(--primary-color);
+    accent-color: #003d7a;
 }
 
 .slot-info {
@@ -109,59 +141,40 @@ body {
 
 .slot-date {
     font-weight: 600;
-    color: var(--text-primary);
+    color: #333;
     font-size: 1rem;
 }
 
 .slot-time {
-    color: var(--text-secondary);
+    color: #666;
     font-size: 0.9rem;
 }
 
-/* Form Group */
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
+.slot-gestor {
+    color: #003d7a;
+    font-size: 0.85rem;
     font-weight: 500;
-    color: var(--text-primary);
-}
-
-.form-group input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--border-light);
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--primary-color);
 }
 
 /* Botão Confirmar */
 .btn-confirmar {
     width: 100%;
     padding: 1rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
+    background: #003d7a !important;
+    color: white !important;
+    border: none !important;
     border-radius: 8px;
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    opacity: 1 !important;
 }
 
 .btn-confirmar:hover {
-    background: var(--primary-dark);
+    background: #002952 !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 61, 122, 0.3);
 }
 
 .btn-confirmar:active {
@@ -169,10 +182,11 @@ body {
 }
 
 .btn-confirmar:disabled {
-    background: var(--border-light);
+    background: #ccc !important;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    opacity: 0.6 !important;
 }
 
 /* Mensagem de Sucesso */
@@ -182,7 +196,7 @@ body {
 }
 
 .success-message h2 {
-    color: var(--success-color);
+    color: #28a745;
     margin-bottom: 1rem;
     font-size: 1.5rem;
 }
@@ -194,7 +208,7 @@ body {
 
 .success-icon {
     font-size: 4rem;
-    color: var(--success-color);
+    color: #28a745;
     margin-bottom: 1rem;
     animation: scaleIn 0.5s ease;
 }
@@ -217,7 +231,7 @@ body {
 .loading {
     text-align: center;
     padding: 3rem;
-    color: var(--text-secondary);
+    color: #666;
 }
 
 .loading p {
