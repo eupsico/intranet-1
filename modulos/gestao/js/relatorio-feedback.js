@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.0 - Adicionada aba de Agendados (Reunião com Voluntário)
+// VERSÃO 2.1 - Corrigido: Gestor por slot individual
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -62,6 +62,11 @@ async function carregarRelatorios() {
       id: doc.id,
       ...doc.data(),
     }));
+
+    console.log("[RELATÓRIO] Dados carregados:");
+    console.log("Atas:", todasAsAtas.length);
+    console.log("Profissionais:", todosOsProfissionais.length);
+    console.log("Agendamentos:", todosOsAgendamentos);
 
     renderizarRelatorios();
   } catch (error) {
@@ -157,7 +162,7 @@ function renderizarFeedbacks() {
       <div class="accordion-item">
         <div class="accordion-header">
           <div class="accordion-title">
-            <strong>${ata.tema || "Sem tema"}</strong>
+            <strong>${ata.pauta || ata.tema || "Sem tema"}</strong>
             <span class="badge">${ata.feedbacks.length} feedback(s)</span>
           </div>
           <div class="accordion-meta">
@@ -240,7 +245,7 @@ function renderizarAgendados() {
             )} inscrito(s)</span>
           </div>
           <div class="accordion-meta">
-            Gestor: ${agendamento.gestorNome || "Não especificado"}
+            ${formatarDataCriacao(agendamento.criadoEm)}
           </div>
           <span class="accordion-icon">▼</span>
         </div>
@@ -258,6 +263,7 @@ function renderizarAgendados() {
 function renderizarTabelaAgendados(agendamento) {
   const inscritos = [];
 
+  // ✅ CORRIGIDO: Pega o gestorNome de cada slot individual
   agendamento.slots?.forEach((slot) => {
     slot.vagas?.forEach((vaga) => {
       if (vaga.profissionalId) {
@@ -268,10 +274,11 @@ function renderizarTabelaAgendados(agendamento) {
           nome: profissional?.nome || vaga.profissionalNome || "Desconhecido",
           data: slot.data,
           horario: `${slot.horaInicio} - ${slot.horaFim}`,
-          gestor: agendamento.gestorNome,
+          gestor: slot.gestorNome || "Não especificado", // ✅ Agora pega do slot
           presente: vaga.presente || false,
           vagaId: vaga.id,
           slotData: slot.data,
+          slotHoraInicio: slot.horaInicio,
           agendamentoId: agendamento.id,
         });
       }
@@ -297,6 +304,7 @@ function renderizarTabelaAgendados(agendamento) {
             ${inscrito.presente ? "checked" : ""}
             data-agendamento-id="${inscrito.agendamentoId}"
             data-slot-data="${inscrito.slotData}"
+            data-slot-hora-inicio="${inscrito.slotHoraInicio}"
             data-vaga-id="${inscrito.vagaId}"
           />
         </td>
@@ -326,12 +334,22 @@ function renderizarTabelaAgendados(agendamento) {
 async function marcarPresenca(checkbox) {
   const agendamentoId = checkbox.dataset.agendamentoId;
   const slotData = checkbox.dataset.slotData;
+  const slotHoraInicio = checkbox.dataset.slotHoraInicio;
   const vagaId = checkbox.dataset.vagaId;
   const presente = checkbox.checked;
 
   try {
     const agendamento = todosOsAgendamentos.find((a) => a.id === agendamentoId);
-    const slot = agendamento.slots.find((s) => s.data === slotData);
+
+    // ✅ Busca slot por data E hora de início para garantir o slot correto
+    const slot = agendamento.slots.find(
+      (s) => s.data === slotData && s.horaInicio === slotHoraInicio
+    );
+
+    if (!slot) {
+      throw new Error("Slot não encontrado");
+    }
+
     const vaga = slot.vagas.find((v) => v.id === vagaId);
 
     if (vaga) {
@@ -376,4 +394,16 @@ function formatarData(dataISO) {
   if (!dataISO) return "Data não informada";
   const [ano, mes, dia] = dataISO.split("-");
   return `${dia}/${mes}/${ano}`;
+}
+
+function formatarDataCriacao(timestamp) {
+  if (!timestamp) return "Data não informada";
+
+  // Se for um timestamp do Firestore
+  if (timestamp && timestamp.toDate) {
+    const data = timestamp.toDate();
+    return `Criado em ${data.toLocaleDateString("pt-BR")}`;
+  }
+
+  return "Data não informada";
 }
