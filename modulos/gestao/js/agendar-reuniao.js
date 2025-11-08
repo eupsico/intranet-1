@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 2.3 - Corrigido caminho do link para /public/
+// VERSÃO 2.4 - Slots automáticos de 30 minutos
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -151,6 +151,9 @@ function renderizarCamposDinamicos() {
 
             <div class="form-group">
                 <label>Datas, Horários e Gestores Disponíveis *</label>
+                <small style="display: block; color: #666; margin-bottom: 0.5rem;">
+                    O horário será dividido automaticamente em slots de 30 minutos.
+                </small>
                 <div id="slots-container" style="margin-bottom: 1rem;">
                     ${criarSlotHTML()}
                 </div>
@@ -195,6 +198,55 @@ function adicionarSlot() {
   const novoSlot = document.createElement("div");
   novoSlot.innerHTML = criarSlotHTML();
   slotsContainer.appendChild(novoSlot.firstElementChild);
+}
+
+// ✅ NOVA FUNÇÃO: Gera slots automáticos de 30 minutos
+function gerarSlotsAutomaticos(
+  data,
+  horaInicioStr,
+  horaFimStr,
+  gestorId,
+  gestorNome
+) {
+  const slots = [];
+  const INTERVALO_MINUTOS = 30;
+
+  // Converter horários para minutos
+  const [horaIni, minIni] = horaInicioStr.split(":").map(Number);
+  const [hrFim, minFim] = horaFimStr.split(":").map(Number);
+
+  let minutoAtual = horaIni * 60 + minIni;
+  const minutoFinal = hrFim * 60 + minFim;
+
+  while (minutoAtual < minutoFinal) {
+    const minutoProximo = Math.min(
+      minutoAtual + INTERVALO_MINUTOS,
+      minutoFinal
+    );
+
+    // Converter minutos de volta para HH:MM
+    const horaInicioSlot = `${String(Math.floor(minutoAtual / 60)).padStart(
+      2,
+      "0"
+    )}:${String(minutoAtual % 60).padStart(2, "0")}`;
+    const horaFimSlot = `${String(Math.floor(minutoProximo / 60)).padStart(
+      2,
+      "0"
+    )}:${String(minutoProximo % 60).padStart(2, "0")}`;
+
+    slots.push({
+      data,
+      horaInicio: horaInicioSlot,
+      horaFim: horaFimSlot,
+      gestorId,
+      gestorNome,
+      vagas: [],
+    });
+
+    minutoAtual = minutoProximo;
+  }
+
+  return slots;
 }
 
 async function salvarAgendamento(e) {
@@ -258,50 +310,7 @@ async function salvarReuniaoTradicional(e) {
     setTimeout(() => (feedbackEl.textContent = ""), 4000);
   }
 }
-function gerarSlotsAutomaticos(
-  data,
-  horaInicio,
-  horaFim,
-  gestorId,
-  gestorNome
-) {
-  const slots = [];
-  const INTERVALO_MINUTOS = 30;
 
-  // Converter horários para minutos
-  const [horaIni, minIni] = horaInicio.split(":").map(Number);
-  const [horaFim, minFim] = horaFim.split(":").map(Number);
-
-  let minutoAtual = horaIni * 60 + minIni;
-  const minutoFinal = horaFim * 60 + minFim;
-
-  while (minutoAtual < minutoFinal) {
-    const minutoProximo = minutoAtual + INTERVALO_MINUTOS;
-
-    // Converter minutos de volta para HH:MM
-    const horaInicioSlot = `${String(Math.floor(minutoAtual / 60)).padStart(
-      2,
-      "0"
-    )}:${String(minutoAtual % 60).padStart(2, "0")}`;
-    const horaFimSlot = `${String(Math.floor(minutoProximo / 60)).padStart(
-      2,
-      "0"
-    )}:${String(minutoProximo % 60).padStart(2, "0")}`;
-
-    slots.push({
-      data,
-      horaInicio: horaInicioSlot,
-      horaFim: horaFimSlot,
-      gestorId,
-      gestorNome,
-      vagas: [],
-    });
-
-    minutoAtual = minutoProximo;
-  }
-
-  return slots;
-}
 async function salvarReuniaoVoluntario(e) {
   const feedbackEl = document.getElementById("agendamento-feedback");
   const saveButton = e.target.querySelector('button[type="submit"]');
@@ -322,21 +331,21 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
   let slots = [];
 
   // ✅ MODIFICADO: Agora gera slots automáticos de 30 minutos
-  document.querySelectorAll(".slot-item").forEach((slot) => {
-    const data = slot.querySelector(".slot-data").value;
-    const horaInicio = slot.querySelector(".slot-hora-inicio").value;
-    const horaFim = slot.querySelector(".slot-hora-fim").value;
-    const gestorId = slot.querySelector(".slot-gestor").value;
+  document.querySelectorAll(".slot-item").forEach((slotItem) => {
+    const dataSlot = slotItem.querySelector(".slot-data").value;
+    const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
+    const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
+    const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
 
-    if (data && horaInicio && horaFim && gestorId) {
-      const gestor = gestores.find((g) => g.id === gestorId);
+    if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
+      const gestor = gestores.find((g) => g.id === gestorIdSlot);
 
       // Gera slots automáticos de 30 minutos
       const slotsGerados = gerarSlotsAutomaticos(
-        data,
-        horaInicio,
-        horaFim,
-        gestorId,
+        dataSlot,
+        horaInicioSlot,
+        horaFimSlot,
+        gestorIdSlot,
         gestor?.nome || ""
       );
 
@@ -352,7 +361,7 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
     return;
   }
 
-  const data = {
+  const dataAgendamento = {
     tipo: "Reunião com Voluntário",
     exibirGestor,
     descricao: descricaoCustom || descricaoPadrao,
@@ -363,7 +372,7 @@ Escolha abaixo o melhor horário para você e vamos conversar!`;
   try {
     const docRef = await addDoc(
       collection(firestoreDb, "agendamentos_voluntarios"),
-      data
+      dataAgendamento
     );
 
     const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
