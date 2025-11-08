@@ -1,4 +1,3 @@
-// --- IMPORTAÇÕES E CONFIGURAÇÃO INICIAL ---
 const {
   onCall,
   HttpsError,
@@ -13,12 +12,15 @@ const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { google } = require("googleapis");
+const nodemailer = require("nodemailer");
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const cors = require("cors")({ origin: true });
 
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
 const adminAuth = getAuth();
-
 // ====================================================================
 // FUNÇÃO AUXILIAR: gerarUsernameUnico
 // ====================================================================
@@ -1401,14 +1403,7 @@ exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
     );
   }
 });
-// functions/index.js
-// Arquivo: Firebase Cloud Functions
-// Versão: 1.0.0
-// Descrição: Valida TOKEN e retorna dados do teste
 
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const cors = require("cors")({ origin: true });
 // ============================================
 // CLOUD FUNCTION: Validar Token e Retornar Teste
 // ============================================
@@ -1812,3 +1807,322 @@ function generateRandomToken() {
     Math.random().toString(36).substring(2, 15)
   ).substring(0, 50);
 }
+// ====================================================================
+// ✅ NOVA CONFIGURAÇÃO: Nodemailer para Gmail
+// ====================================================================
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "info@eupsico.org.br", // ⚠️ SUBSTITUIR pelo seu e-mail
+    pass: "gfts qypt vwsl uvlg", // ⚠️ SUBSTITUIR pela senha de app do Gmail
+  },
+});
+
+// ====================================================================
+// ✅ NOVA FUNÇÃO: enviarEmail (Reutilizável) - V2
+// ====================================================================
+exports.enviarEmail = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Usuário não autenticado.");
+  }
+
+  const { destinatario, assunto, html, remetente } = request.data;
+
+  if (!destinatario || !assunto || !html) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Parâmetros obrigatórios: destinatario, assunto, html"
+    );
+  }
+
+  try {
+    const mailOptions = {
+      from: remetente || "EuPsico <atendimento@eupsico.org.br>",
+      to: destinatario,
+      subject: assunto,
+      html: html,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    logger.log(`✅ E-mail enviado para ${destinatario}`);
+    return { success: true, message: "E-mail enviado com sucesso!" };
+  } catch (error) {
+    logger.error("❌ Erro ao enviar e-mail:", error);
+    throw new HttpsError("internal", "Erro ao enviar e-mail.");
+  }
+});
+
+// ====================================================================
+// ✅ NOVA FUNÇÃO: enviarEmailGestorAgendamento (Automática) - V2
+// ====================================================================
+exports.enviarEmailGestorAgendamento = onDocumentUpdated(
+  "agendamentos_voluntarios/{agendamentoId}",
+  async (event) => {
+    const novosDados = event.data.after.data();
+    const dadosAntigos = event.data.before.data();
+
+    if (!novosDados || !dadosAntigos) {
+      logger.warn("Dados ausentes no evento de atualização");
+      return;
+    }
+
+    const novosInscritos = [];
+
+    novosDados.slots.forEach((slot, index) => {
+      const vagasNovas = slot.vagas || [];
+      const vagasAntigas = dadosAntigos.slots[index]?.vagas || [];
+
+      if (vagasNovas.length > vagasAntigas.length) {
+        const novaVaga = vagasNovas[vagasNovas.length - 1];
+        novosInscritos.push({ slot, vaga: novaVaga });
+      }
+    });
+
+    for (const inscrito of novosInscritos) {
+      try {
+        const gestorDoc = await db
+          .collection("usuarios")
+          .doc(inscrito.slot.gestorId)
+          .get();
+
+        if (!gestorDoc.exists) {
+          logger.warn(`Gestor ${inscrito.slot.gestorId} não encontrado`);
+          continue;
+        }
+
+        const gestorEmail = gestorDoc.data().email;
+        const gestorNome = gestorDoc.data().nome;
+
+        if (!gestorEmail) {
+          logger.warn(`Gestor ${gestorNome} não tem e-mail cadastrado`);
+          continue;
+        }
+
+        const linkCalendar = gerarLinkGoogleCalendar(
+          `Reunião com ${inscrito.vaga.profissionalNome}`,
+          "Reunião individual com voluntário - EuPsico",
+          inscrito.slot.data,
+          inscrito.slot.horaInicio,
+          inscrito.slot.horaFim
+        );
+
+        const mailOptions = {
+          from: "EuPsico Gestão <atendimento@eupsico.org.br>",
+          to: gestorEmail,
+          subject: `📅 Novo Agendamento - ${inscrito.vaga.profissionalNome}`,
+          html: gerarEmailAgendamento(gestorNome, inscrito, linkCalendar),
+        };
+
+        await transporter.sendMail(mailOptions);
+        logger.log(`✅ E-mail enviado para ${gestorEmail}`);
+      } catch (error) {
+        logger.error("❌ Erro ao enviar e-mail:", error);
+      }
+    }
+
+    return null;
+  }
+);
+
+// ====================================================================
+// Funções auxiliares para e-mail
+// ====================================================================
+function gerarEmailAgendamento(gestorNome, inscrito, linkCalendar) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #003d7a; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; }
+        .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #003d7a; border-radius: 4px; }
+        .button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>🎉 Novo Agendamento Confirmado!</h2>
+        </div>
+        <div class="content">
+          <p>Olá, <strong>${gestorNome}</strong>!</p>
+          <p>Um voluntário acaba de agendar uma reunião individual com você.</p>
+          
+          <div class="info-box">
+            <h3 style="margin-top: 0; color: #003d7a;">📋 Detalhes da Reunião</h3>
+            <p><strong>Voluntário:</strong> ${
+              inscrito.vaga.profissionalNome
+            }</p>
+            <p><strong>Data:</strong> ${formatarDataCompleta(
+              inscrito.slot.data
+            )}</p>
+            <p><strong>Horário:</strong> ${inscrito.slot.horaInicio} - ${
+    inscrito.slot.horaFim
+  }</p>
+          </div>
+          
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${linkCalendar}" class="button" target="_blank">
+              📅 Adicionar ao Google Calendar
+            </a>
+          </div>
+          
+          <p style="background: #fff3cd; padding: 12px; border-radius: 4px; border-left: 4px solid #ffc107;">
+            <strong>📝 Lembrete:</strong> O link do encontro online deve ser enviado por WhatsApp para o voluntário no dia agendado.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Este é um e-mail automático da EuPsico.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
+  const [ano, mes, dia] = data.split("-");
+  const [horaIni, minIni] = horaInicio.split(":");
+  const [horaFimStr, minFim] = horaFim.split(":");
+
+  const dataInicio = `${ano}${mes}${dia}T${horaIni}${minIni}00`;
+  const dataFimFormatada = `${ano}${mes}${dia}T${horaFimStr}${minFim}00`;
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: titulo,
+    dates: `${dataInicio}/${dataFimFormatada}`,
+    details: descricao,
+    location: "Online",
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function formatarDataCompleta(dataISO) {
+  if (!dataISO) return "Data inválida";
+  const [ano, mes, dia] = dataISO.split("-");
+  const data = new Date(ano, parseInt(mes) - 1, dia);
+  const diasSemana = [
+    "Domingo",
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
+  ];
+  return `${diasSemana[data.getDay()]}, ${dia}/${mes}/${ano}`;
+}
+// ====================================================================
+// FUNÇÃO: criarEventoGoogleCalendar
+// ====================================================================
+exports.criarEventoGoogleCalendar = onCall({ cors: true }, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
+  }
+
+  const data = request.data;
+  const {
+    profissionalId,
+    pacienteNome,
+    data: dataAtendimento,
+    horario,
+    modalidade,
+  } = data;
+
+  try {
+    const profissionalDoc = await db
+      .collection("usuarios")
+      .doc(profissionalId)
+      .get();
+    if (!profissionalDoc.exists) {
+      throw new HttpsError("not-found", "Profissional não encontrado.");
+    }
+
+    const profissionalData = profissionalDoc.data();
+    const calendarId = profissionalData.calendarId;
+
+    if (!calendarId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "O profissional não possui um Google Calendar configurado."
+      );
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      functions.config().google.client_id,
+      functions.config().google.client_secret,
+      functions.config().google.redirect_uri
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: profissionalData.refreshToken,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const [horaInicio, horaFim] = horario.split(" - ");
+    const startDateTime = `${dataAtendimento}T${horaInicio}:00`;
+    const endDateTime = `${dataAtendimento}T${horaFim}:00`;
+
+    const evento = {
+      summary: `Atendimento - ${pacienteNome}`,
+      description: `Modalidade: ${modalidade}`,
+      start: {
+        dateTime: startDateTime,
+        timeZone: "America/Sao_Paulo",
+      },
+      end: {
+        dateTime: endDateTime,
+        timeZone: "America/Sao_Paulo",
+      },
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: calendarId,
+      resource: evento,
+    });
+
+    return {
+      success: true,
+      message: "Evento criado no Google Calendar com sucesso!",
+      eventoId: response.data.id,
+    };
+  } catch (error) {
+    logger.error("Erro ao criar evento no Google Calendar:", error);
+    throw new HttpsError(
+      "internal",
+      "Erro ao criar evento no Google Calendar."
+    );
+  }
+});
+
+// ====================================================================
+// FUNÇÃO: marcarPresenca (Trigger de atualização)
+// ====================================================================
+exports.marcarPresenca = onDocumentUpdated(
+  "horarios/{horarioId}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    if (before.presente === after.presente) {
+      return null;
+    }
+
+    if (after.presente === true) {
+      logger.log(`Presença marcada para o horário ${event.params.horarioId}`);
+    }
+
+    return null;
+  }
+);
+
+// ====================================================================
+// FIM DO ARQUIVO
+// ====================================================================
