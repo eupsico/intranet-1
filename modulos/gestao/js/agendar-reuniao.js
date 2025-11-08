@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 3.0 - Com gerenciamento de agendamentos existentes
+// VERSÃO 3.1 - Com ordenação por gestor e exportação para Excel
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -38,6 +38,10 @@ export async function init() {
       const link = e.target.dataset.link;
       navigator.clipboard.writeText(link);
       alert("Link copiado para a área de transferência!");
+    }
+    if (e.target.classList.contains("btn-exportar-excel")) {
+      const agendamentoId = e.target.dataset.agendamentoId;
+      exportarParaExcel(agendamentoId);
     }
   });
 }
@@ -158,9 +162,17 @@ async function renderizarGerenciarAgendamentos() {
 
   const agendamentosHTML = agendamentosExistentes
     .map((agendamento) => {
-      // Ordena slots por data e hora
+      // ✅ Ordena slots por nome do gestor, depois por data e hora
       const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
+        // Primeiro ordena por nome do gestor (alfabética)
+        const nomeA = (a.gestorNome || "").toLowerCase();
+        const nomeB = (b.gestorNome || "").toLowerCase();
+        if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
+
+        // Se os gestores forem iguais, ordena por data
         if (a.data !== b.data) return a.data.localeCompare(b.data);
+
+        // Se as datas forem iguais, ordena por horário
         return a.horaInicio.localeCompare(b.horaInicio);
       });
 
@@ -196,12 +208,17 @@ async function renderizarGerenciarAgendamentos() {
             )}</small>
           </div>
           <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-exportar-excel action-button" data-agendamento-id="${
+              agendamento.id
+            }" style="background: #28a745; padding: 0.5rem 1rem;">
+              📊 Exportar Excel
+            </button>
             <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;">
               📋 Copiar Link
             </button>
             <button class="btn-editar-agendamento action-button" data-agendamento-id="${
               agendamento.id
-            }" style="background: #28a745; padding: 0.5rem 1rem;">
+            }" style="background: #ffc107; padding: 0.5rem 1rem;">
               ✏️ Editar
             </button>
           </div>
@@ -260,8 +277,16 @@ async function renderizarEditarAgendamento(agendamentoId) {
     .map((g) => `<option value="${g.id}">${g.nome}</option>`)
     .join("");
 
-  // Slots existentes
-  const slotsExistentesHTML = agendamento.slots
+  // Slots existentes ordenados
+  const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
+    const nomeA = (a.gestorNome || "").toLowerCase();
+    const nomeB = (b.gestorNome || "").toLowerCase();
+    if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
+    if (a.data !== b.data) return a.data.localeCompare(b.data);
+    return a.horaInicio.localeCompare(b.horaInicio);
+  });
+
+  const slotsExistentesHTML = slotsOrdenados
     .map((slot, index) => {
       const vagasInfo =
         slot.vagas && slot.vagas.length > 0
@@ -404,6 +429,54 @@ async function salvarNovosSlots(agendamentoId, agendamento) {
     saveButton.disabled = false;
     saveButton.textContent = "Salvar Novos Horários";
   }
+}
+
+// ✅ NOVA FUNÇÃO: Exportar para Excel
+function exportarParaExcel(agendamentoId) {
+  const agendamento = agendamentosExistentes.find(
+    (a) => a.id === agendamentoId
+  );
+
+  if (!agendamento) {
+    alert("Agendamento não encontrado.");
+    return;
+  }
+
+  // Ordena slots por gestor, data e hora
+  const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
+    const nomeA = (a.gestorNome || "").toLowerCase();
+    const nomeB = (b.gestorNome || "").toLowerCase();
+    if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
+    if (a.data !== b.data) return a.data.localeCompare(b.data);
+    return a.horaInicio.localeCompare(b.horaInicio);
+  });
+
+  // Cria os dados da planilha
+  let csv = "Gestor,Data,Dia da Semana,Hora Início,Hora Fim,Status\n";
+
+  slotsOrdenados.forEach((slot) => {
+    const vagasPreenchidas = slot.vagas?.length || 0;
+    const status = vagasPreenchidas > 0 ? "Preenchido" : "Disponível";
+    const dataFormatada = formatarDataCompleta(slot.data);
+
+    csv += `"${slot.gestorNome || "Não especificado"}","${
+      slot.data
+    }","${dataFormatada}","${slot.horaInicio}","${slot.horaFim}","${status}"\n`;
+  });
+
+  // Cria o arquivo para download
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+
+  const dataAtual = new Date().toISOString().split("T")[0];
+  link.setAttribute("href", url);
+  link.setAttribute("download", `agendamento_voluntarios_${dataAtual}.csv`);
+  link.style.visibility = "hidden";
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function renderizarCamposDinamicos() {
@@ -636,11 +709,30 @@ async function salvarReuniaoVoluntario(e) {
   const exibirGestor = document.getElementById("exibir-gestor").checked;
   const descricaoCustom = document.getElementById("descricao-voluntario").value;
 
-  const descricaoPadrao = `Olá! Esta é uma reunião de alinhamento com nossa equipe, um momento especial para que possamos dialogar sobre mudanças, compartilhar perspectivas de futuro e, principalmente, ouvir você.
+  const descricaoPadrao = `
+**✨ Conectando Nossas Histórias: Seu Encontro Individual com a Gestão EuPsico**
 
-Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos conhecer suas ideias, ouvir suas sugestões e entender como podemos apoiá-lo(a) ainda mais nessa jornada.
+Em nome de toda a equipe EuPsico, queremos começar agradecendo profundamente pela sua dedicação e pelo impacto inestimável do seu trabalho. Você é a força vital que move a nossa missão!
+Reconhecendo a importância de cada um de vocês, preparamos um momento especial e individual de escuta e diálogo, focado inteiramente em você.
 
-Escolha abaixo o melhor horário para você e vamos conversar!`;
+**🤝 O Nosso Propósito: Ouvir e Crescer Juntos**
+
+Esta reunião de alinhamento é mais do que uma conversa sobre o futuro da EuPsico; é sobre o seu futuro conosco. É o nosso espaço para:
+- Ouvir a sua voz: Entender suas experiências, desafios e grandes ideias para construirmos juntos um ambiente de voluntariado ainda mais gratificante e eficiente.
+- Compartilhar perspectivas: Dialogar sobre as próximas etapas e como elas se conectam com o seu crescimento pessoal e profissional.
+- Apoiar a sua jornada: Descobrir como a equipe de gestão pode te apoiar de forma ainda mais eficaz no dia a dia.
+
+Sua perspectiva é única e essencial para a nossa evolução!
+
+**🗓️ Escolha o Melhor Momento para Você**
+
+Para garantir que este encontro seja tranquilo e conveniente, pedimos que escolha abaixo o horário que melhor se encaixa na sua agenda:
+Observação: O link exclusivo para o nosso encontro online será enviado por whatsapp no dia agendado pelo Gestor Responsável pela reunião.
+
+Mal podemos esperar para conversar com você!
+Com carinho,
+A Equipe de Gestão EuPsico
+`;
 
   let slots = [];
 
