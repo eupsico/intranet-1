@@ -326,7 +326,7 @@ async function salvarReuniaoVoluntario(e) {
 
 Sua voz é fundamental para construirmos juntos um ambiente melhor. Queremos conhecer suas ideias, ouvir suas sugestões e entender como podemos apoiá-lo(a) ainda mais nessa jornada.
 
-Escolha abaixo o melhor horário para você e vamos conversar!`;
+Escolha abaixo o melhor horário para você e clique em <strong>Confirmar Agendamento</strong> no final da página!`;
 
   let slots = [];
 
