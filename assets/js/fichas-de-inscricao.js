@@ -1,5 +1,5 @@
 // Arquivo: /assets/js/fichas-de-inscricao.js
-// Versão: 3.4 (Remove formatação do CPF ao salvar no Firebase)
+// Versão: 3.6 (Correção do erro de IDs e limpeza de CPF garantida)
 
 import {
   db,
@@ -160,19 +160,23 @@ function handleParentescoChange(event) {
 }
 
 // ####################################################################
-// ## FUNÇÃO CORRIGIDA ##
+// ## FUNÇÃO CORRIGIDA PARA GARANTIR CPF SEM FORMATAÇÃO ##
 // ####################################################################
 function handleResponsavelCpfBlur(cpfInput, responsavelCpfInput) {
+  const cpfPacienteLimpo = limparCpf(cpfInput.value);
+  const cpfResponsavelLimpo = limparCpf(responsavelCpfInput.value);
+
   // A condição só é válida se ambos os campos estiverem preenchidos e forem iguais
   if (
     responsavelCpfInput.value &&
-    responsavelCpfInput.value === cpfInput.value
+    cpfResponsavelLimpo === cpfPacienteLimpo &&
+    cpfResponsavelLimpo.length === 11 // Garante que é um CPF válido
   ) {
     alert(
       "Atenção: O CPF do responsável é o mesmo do paciente. Será gerado um código temporário para o paciente."
     );
     const tempId = `99${Date.now()}`;
-    cpfInput.value = tempId;
+    cpfInput.value = tempId; // Valor limpo, sem formatação
     cpfInput.readOnly = true;
     alert(
       `O CPF do paciente foi substituído por um código de identificação: ${tempId}. Guarde este código para futuras consultas.`
@@ -267,7 +271,7 @@ async function handleFormSubmit(event) {
   event.preventDefault();
   const form = document.getElementById("inscricao-form");
   const cpfInput = document.getElementById("cpf");
-  const cpf = cpfInput.value.replace(/\D/g, ""); // Manter validação com CPF limpo
+  const cpf = limparCpf(cpfInput.value); // GARANTIR CPF LIMPO
   const cpfError = document.getElementById("cpf-error");
 
   cpfError.style.display = "none";
@@ -307,14 +311,14 @@ async function handleFormSubmit(event) {
 
   try {
     if (pacienteExistenteData) {
-      // Para atualização, pegar CPF do paciente existente (já limpo)
+      // Para atualização - usar CPF já limpo do paciente existente
       const dadosParaAtualizar = {
-        cpf: pacienteExistenteData.cpf, // Usar o CPF já limpo do paciente existente
+        cpf: pacienteExistenteData.cpf, // CPF já limpo do banco
         rua: document.getElementById("update-rua").value,
         numeroCasa: document.getElementById("update-numero").value,
         bairro: document.getElementById("update-bairro").value,
         cidade: document.getElementById("update-cidade").value,
-        cep: document.getElementById("update-cep").replace(/\D/g, ""), // Limpar CEP também
+        cep: limparCpf(document.getElementById("update-cep").value), // CEP limpo
         pessoasMoradia: document.getElementById("update-pessoas-moradia").value,
         casaPropria: document.getElementById("update-casa-propria").value,
         valorAluguel: document.getElementById("update-valor-aluguel").value,
@@ -327,14 +331,38 @@ async function handleFormSubmit(event) {
       const docRef = doc(db, "trilhaPaciente", pacienteExistenteData.id);
       await updateDoc(docRef, dadosParaAtualizar);
     } else {
-      // Para novo cadastro, usar a função coletarDadosFormularioNovo modificada
+      // Para novo cadastro - usar FormData mas FORÇAR limpeza dos CPFs
       const novoCadastro = coletarDadosFormularioNovo();
+
+      // *** FORÇAR LIMPEZA DOS CPFs ANTES DE SALVAR ***
+      novoCadastro.cpf = limparCpf(novoCadastro.cpf);
+
+      // Limpar CPF do responsável
+      if (novoCadastro.responsavel && novoCadastro.responsavel.cpf) {
+        novoCadastro.responsavel.cpf = limparCpf(novoCadastro.responsavel.cpf);
+      }
+
+      // Limpar CEP se existir
+      if (novoCadastro.cep) {
+        novoCadastro.cep = limparCpf(novoCadastro.cep);
+      }
+
       novoCadastro.timestamp = serverTimestamp();
       novoCadastro.status = "inscricao_documentos";
+
+      // DEBUG: Log para verificar se o CPF está limpo antes de salvar
+      console.log("=== DADOS PARA SALVAR ===");
+      console.log("CPF do paciente:", novoCadastro.cpf);
+      if (novoCadastro.responsavel) {
+        console.log("CPF do responsável:", novoCadastro.responsavel.cpf);
+      }
+      console.log("CEP:", novoCadastro.cep);
+      console.log("=== FIM DEBUG ===");
 
       await addDoc(collection(db, "trilhaPaciente"), novoCadastro);
     }
 
+    // Sucesso - limpar form
     form.innerHTML = `<div style="text-align: center; padding: 30px;"><h2>Inscrição Enviada com Sucesso!</h2><p>Recebemos seus dados. Em breve, nossa equipe entrará em contato.</p></div>`;
   } catch (error) {
     console.error("Erro ao salvar inscrição:", error);
@@ -344,50 +372,48 @@ async function handleFormSubmit(event) {
   }
 }
 
-// --- Função MODIFICADA para limpar CPF do responsável ---
+// --- FUNÇÃO ORIGINAL MODIFICADA PARA COLETAR DADOS ---
 function coletarDadosFormularioNovo() {
   const form = document.getElementById("inscricao-form");
   const formData = new FormData(form);
   const dados = {};
 
   for (let [key, value] of formData.entries()) {
-    // Limpar CPF do paciente
-    if (key === "cpf") {
-      dados[key] = limparCpf(value);
-    }
-    // Limpar CPF do responsável
-    else if (key === "responsavelCpf") {
-      dados[key] = limparCpf(value);
-    }
-    // Limpar CEP
-    else if (key === "cep") {
-      dados[key] = limparCpf(value); // Usar a mesma função para remover não-dígitos
-    } else {
-      dados[key] = value;
-    }
+    dados[key] = value;
   }
 
-  dados.responsavel = {
-    nome: dados.responsavelNome,
-    cpf: dados.responsavelCpf, // Já limpo
-    parentesco:
-      dados.responsavelParentesco === "Outro"
-        ? dados.responsavelParentescoOutro
-        : dados.responsavelParentesco,
-    contato: dados.responsavelContato,
-  };
+  // Processar dados do responsável
+  if (dados.responsavelNome || dados.responsavelCpf) {
+    dados.responsavel = {
+      nome: dados.responsavelNome || "",
+      cpf: dados.responsavelCpf || "", // Será limpo depois
+      parentesco:
+        dados.responsavelParentesco === "Outro"
+          ? dados.responsavelParentescoOutro || ""
+          : dados.responsavelParentesco || "",
+      contato: dados.responsavelContato || "",
+    };
+  } else {
+    dados.responsavel = null;
+  }
+
+  // Limpar campos auxiliares do responsável
   delete dados.responsavelNome;
   delete dados.responsavelCpf;
   delete dados.responsavelParentesco;
   delete dados.responsavelParentescoOutro;
   delete dados.responsavelContato;
 
+  // Coletar disponibilidade
   dados.disponibilidadeGeral = Array.from(
     document.querySelectorAll('input[name="horario"]:checked')
   ).map((cb) => cb.parentElement.textContent.trim());
+
   dados.disponibilidadeEspecifica = Array.from(
     document.querySelectorAll('input[name="horario-especifico"]:checked')
   ).map((cb) => cb.value);
+
+  // Remover campo que pode conflitar
   delete dados["horario-especifico"];
 
   return dados;
