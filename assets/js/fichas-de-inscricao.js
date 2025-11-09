@@ -1,5 +1,5 @@
 // Arquivo: /assets/js/fichas-de-inscricao.js
-// Versão: 3.3 (Restaura a lógica de criação de CPF temporário para menores)
+// Versão: 3.4 (Remove formatação do CPF ao salvar no Firebase)
 
 import {
   db,
@@ -192,6 +192,7 @@ function handleHorarioChange(e) {
     container.classList.add("hidden-section");
   }
 }
+
 /**
  * Coleta os nomes dos campos obrigatórios que não foram preenchidos.
  * @param {HTMLFormElement} form O elemento do formulário.
@@ -250,30 +251,40 @@ function getMissingRequiredFields(form) {
   return missingFields;
 }
 
+// --- NOVA FUNÇÃO PARA LIMPAR CPF ---
+/**
+ * Remove todos os caracteres não numéricos de um CPF.
+ * @param {string} cpf - O CPF que pode conter formatação.
+ * @returns {string} - O CPF limpo, apenas com números.
+ */
+function limparCpf(cpf) {
+  return cpf.replace(/\D/g, "");
+}
+
 // --- Funções Handler de Eventos (handleFormSubmit) ---
 
 async function handleFormSubmit(event) {
   event.preventDefault();
   const form = document.getElementById("inscricao-form");
   const cpfInput = document.getElementById("cpf");
-  const cpf = cpfInput.value.replace(/\D/g, "");
-  const cpfError = document.getElementById("cpf-error"); // 1. Garante que a mensagem de erro do CPF seja limpa inicialmente
+  const cpf = cpfInput.value.replace(/\D/g, ""); // Manter validação com CPF limpo
+  const cpfError = document.getElementById("cpf-error");
 
-  cpfError.style.display = "none"; // 2. Verifica a validade do CPF, que é um requisito crítico
+  cpfError.style.display = "none";
 
   if (!validarCPF(cpf)) {
     cpfInput.setCustomValidity("CPF inválido ou incompleto.");
-    cpfError.style.display = "block"; // Mostra a mensagem de erro
-    form.reportValidity(); // Força a exibição da dica de erro do navegador
+    cpfError.style.display = "block";
+    form.reportValidity();
     alert(
       "Atenção: O CPF informado é inválido. Por favor, corrija para prosseguir."
     );
-    cpfInput.setCustomValidity(""); // Limpa a validade para permitir correções futuras
+    cpfInput.setCustomValidity("");
     return;
-  } // 3. Verifica a validade de TODOS os outros campos obrigatórios
+  }
 
   if (!form.checkValidity()) {
-    form.reportValidity(); // Força o navegador a mostrar a dica de erro no primeiro campo faltante // --- ALTERAÇÃO AQUI: Mensagem detalhada para campos faltantes ---
+    form.reportValidity();
 
     const missingFields = getMissingRequiredFields(form);
     let alertMessage =
@@ -282,12 +293,11 @@ async function handleFormSubmit(event) {
     if (missingFields.length > 0) {
       alertMessage += "• " + missingFields.join("\n• ");
     } else {
-      // Fallback caso a validação do navegador pegue algo que a função não listou (ex: validação de email)
       alertMessage =
         "Por favor, preencha todos os campos obrigatórios (*) corretamente.";
     }
 
-    alert(alertMessage); // ------------------------------------------------------------
+    alert(alertMessage);
     return;
   }
 
@@ -297,12 +307,14 @@ async function handleFormSubmit(event) {
 
   try {
     if (pacienteExistenteData) {
+      // Para atualização, pegar CPF do paciente existente (já limpo)
       const dadosParaAtualizar = {
+        cpf: pacienteExistenteData.cpf, // Usar o CPF já limpo do paciente existente
         rua: document.getElementById("update-rua").value,
         numeroCasa: document.getElementById("update-numero").value,
         bairro: document.getElementById("update-bairro").value,
         cidade: document.getElementById("update-cidade").value,
-        cep: document.getElementById("update-cep").value,
+        cep: document.getElementById("update-cep").replace(/\D/g, ""), // Limpar CEP também
         pessoasMoradia: document.getElementById("update-pessoas-moradia").value,
         casaPropria: document.getElementById("update-casa-propria").value,
         valorAluguel: document.getElementById("update-valor-aluguel").value,
@@ -315,6 +327,7 @@ async function handleFormSubmit(event) {
       const docRef = doc(db, "trilhaPaciente", pacienteExistenteData.id);
       await updateDoc(docRef, dadosParaAtualizar);
     } else {
+      // Para novo cadastro, usar a função coletarDadosFormularioNovo modificada
       const novoCadastro = coletarDadosFormularioNovo();
       novoCadastro.timestamp = serverTimestamp();
       novoCadastro.status = "inscricao_documentos";
@@ -331,36 +344,32 @@ async function handleFormSubmit(event) {
   }
 }
 
-// --- Funções Auxiliares (sem alterações) ---
-
-function mostrarSecaoAtualizacao(dados) {
-  document.getElementById("initial-fields").classList.add("hidden-section");
-  document.getElementById("form-body").classList.remove("hidden-section");
-  document.getElementById("update-section").classList.remove("hidden-section");
-  document
-    .getElementById("new-register-section")
-    .classList.add("hidden-section");
-
-  document.getElementById("update-nome-completo").value =
-    dados.nomeCompleto || "";
-  document.getElementById("update-rua").value = dados.rua || "";
-  document.getElementById("update-numero").value = dados.numeroCasa || "";
-  document.getElementById("update-bairro").value = dados.bairro || "";
-  document.getElementById("update-cidade").value = dados.cidade || "";
-  document.getElementById("update-cep").value = dados.cep || "";
-}
-
+// --- Função MODIFICADA para limpar CPF do responsável ---
 function coletarDadosFormularioNovo() {
   const form = document.getElementById("inscricao-form");
   const formData = new FormData(form);
   const dados = {};
+
   for (let [key, value] of formData.entries()) {
-    dados[key] = value;
+    // Limpar CPF do paciente
+    if (key === "cpf") {
+      dados[key] = limparCpf(value);
+    }
+    // Limpar CPF do responsável
+    else if (key === "responsavelCpf") {
+      dados[key] = limparCpf(value);
+    }
+    // Limpar CEP
+    else if (key === "cep") {
+      dados[key] = limparCpf(value); // Usar a mesma função para remover não-dígitos
+    } else {
+      dados[key] = value;
+    }
   }
 
   dados.responsavel = {
     nome: dados.responsavelNome,
-    cpf: dados.responsavelCpf,
+    cpf: dados.responsavelCpf, // Já limpo
     parentesco:
       dados.responsavelParentesco === "Outro"
         ? dados.responsavelParentescoOutro
@@ -382,6 +391,23 @@ function coletarDadosFormularioNovo() {
   delete dados["horario-especifico"];
 
   return dados;
+}
+
+function mostrarSecaoAtualizacao(dados) {
+  document.getElementById("initial-fields").classList.add("hidden-section");
+  document.getElementById("form-body").classList.remove("hidden-section");
+  document.getElementById("update-section").classList.remove("hidden-section");
+  document
+    .getElementById("new-register-section")
+    .classList.add("hidden-section");
+
+  document.getElementById("update-nome-completo").value =
+    dados.nomeCompleto || "";
+  document.getElementById("update-rua").value = dados.rua || "";
+  document.getElementById("update-numero").value = dados.numeroCasa || "";
+  document.getElementById("update-bairro").value = dados.bairro || "";
+  document.getElementById("update-cidade").value = dados.cidade || "";
+  document.getElementById("update-cep").value = dados.cep || "";
 }
 
 function resetFormState() {
