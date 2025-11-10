@@ -1092,90 +1092,110 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
 // ====================================================================
 // FUNÇÃO: importarPacientesBatch
 // ====================================================================
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-const logger = require("firebase-functions/logger");
-const db = getFirestore();
-
-// Mapeamento completo Pipefy → Firebase
 const PIPEFY_TO_FIREBASE_STATUS = {
-  // Mapeamento exato (case-insensitive)
+  "em atendimento pb": "ematendimentopb",
+  "em atendimento plantão": "ematendimentoplantao",
   parcerias: "pacientesparcerias",
   "pacientes parcerias": "pacientesparcerias",
   desistência: "desistencia",
   desistencia: "desistencia",
-  "em atendimento pb": "ematendimentopb",
-  "em atendimento plantão": "ematendimentoplantao",
-  "em atendimento plantao": "ematendimentoplantao",
   "encaminhar para plantão": "encaminharparaplantao",
   "encaminhar para plantao": "encaminharparaplantao",
-  "aguardando info dos horários": "aguardandoinfohorarios",
-  "aguardando info horarios": "aguardandoinfohorarios",
-  "aguardando info dos horarios": "aguardandoinfohorarios",
-  "cadastrar horário psicomanager": "cadastrarhorariopsicomanager",
-  "cadastrar horario psicomanager": "cadastrarhorariopsicomanager",
-  alta: "alta",
-  grupos: "grupos",
-  "aguardando documentos e pagamento contribuição": "inscricaodocumentos",
-  "aguardando documentos": "inscricaodocumentos",
-  "inscrição e documentos": "inscricaodocumentos",
-  "inscricao e documentos": "inscricaodocumentos",
+  "encaminhar para pb": "encaminharparapb",
+  "triagem agendada": "triagemagendada",
   "triagem agendada": "triagemagendada",
   "agendamento confirmado plantão": "agendamentoconfirmadoplantao",
-  "agendamento confirmado plantao": "agendamentoconfirmadoplantao",
-  "encaminhar para pb": "encaminharparapb",
   "aguardando reavaliação": "aguardandoreavaliacao",
   "aguardando reavaliacao": "aguardandoreavaliacao",
-
-  // Chaves diretas do Firebase (case-insensitive)
-  inscricaodocumentos: "inscricaodocumentos",
-  triagemagendada: "triagemagendada",
-  encaminharparaplantao: "encaminharparaplantao",
-  ematendimentoplantao: "ematendimentoplantao",
-  agendamentoconfirmadoplantao: "agendamentoconfirmadoplantao",
-  encaminharparapb: "encaminharparapb",
-  aguardandoinfohorarios: "aguardandoinfohorarios",
-  cadastrarhorariopsicomanager: "cadastrarhorariopsicomanager",
-  ematendimentopb: "ematendimentopb",
-  aguardandoreavaliacao: "aguardandoreavaliacao",
-  pacientesparcerias: "pacientesparcerias",
+  alta: "alta",
+  grupos: "grupos",
+  "inscrição e documentos": "inscricaodocumentos",
 };
 
-// Função para mapear status do Pipefy para Firebase
-function mapearStatusPipefyParaFirebase(statusPipefy, fila) {
-  if (!statusPipefy || statusPipefy.trim() === "") {
-    return fila || "inscricaodocumentos"; // Fallback
+// Função para converter data do Pipefy (22/09/2025 20:30:17) para objetos separados
+function processarDataTriagem(dataTriagemTexto) {
+  try {
+    if (!dataTriagemTexto || typeof dataTriagemTexto !== "string") {
+      return { dataTriagem: null, horaTriagem: null };
+    }
+
+    // Formato: "22/09/2025 20:30:17"
+    const parts = dataTriagemTexto.split(" ");
+    if (parts.length !== 2) return { dataTriagem: null, horaTriagem: null };
+
+    const dataParts = parts[0].split("/");
+    const horaParts = parts[1];
+
+    if (dataParts.length !== 3) return { dataTriagem: null, horaTriagem: null };
+
+    // Converter DD/MM/YYYY para YYYY-MM-DD
+    const [dia, mes, ano] = dataParts;
+    const dataFormatada = `${ano}-${mes.padStart(2, "0")}-${dia.padStart(
+      2,
+      "0"
+    )}`;
+
+    return {
+      dataTriagem: dataFormatada,
+      horaTriagem: horaParts, // Mantém HH:MM:SS
+    };
+  } catch (err) {
+    logger.warn("Erro ao processar data da triagem:", err);
+    return { dataTriagem: null, horaTriagem: null };
   }
+}
+
+// Função para mapear disponibilidade
+function processarDisponibilidade(paciente) {
+  const horarios = {};
+
+  // Processar as colunas booleanas
+  horarios.manha_semana =
+    paciente.horarioManhaSemana === "true" ||
+    paciente.horarioManhaSemana === true;
+  horarios.tarde_semana =
+    paciente.horarioTardeSemana === "true" ||
+    paciente.horarioTardeSemana === true;
+  horarios.noite_semana =
+    paciente.horarioNoiteSemana === "true" ||
+    paciente.horarioNoiteSemana === true;
+  horarios.manha_sabado =
+    paciente.horarioManhaSabado === "true" ||
+    paciente.horarioManhaSabado === true;
+
+  // Texto original do Pipefy (para referência)
+  horarios.opcoes_texto = paciente.opcoesHorarioTexto || "";
+
+  return horarios;
+}
+
+function mapearStatusPipefyParaFirebase(statusPipefy, fila) {
+  if (!statusPipefy) return fila || "inscricaodocumentos";
 
   const statusNormalizado = statusPipefy.toString().toLowerCase().trim();
   const statusMapeado = PIPEFY_TO_FIREBASE_STATUS[statusNormalizado];
 
-  if (statusMapeado) {
-    return statusMapeado;
-  }
+  if (statusMapeado) return statusMapeado;
 
-  // Tentativa de match parcial
+  // Fuzzy match
   for (const [key, value] of Object.entries(PIPEFY_TO_FIREBASE_STATUS)) {
     if (statusNormalizado.includes(key) || key.includes(statusNormalizado)) {
       return value;
     }
   }
 
-  // Fallback final
   return fila || "inscricaodocumentos";
 }
 
-// Função auxiliar para validar CPF
 function validaCPF(cpf) {
   cpf = String(cpf).replace(/\D/g, "");
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
 
   let soma = 0;
-  let resto;
   for (let i = 1; i <= 9; i++) {
     soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
   }
-  resto = (soma * 10) % 11;
+  let resto = (soma * 10) % 11;
   if (resto === 10 || resto === 11) resto = 0;
   if (resto !== parseInt(cpf.substring(9, 10))) return false;
 
@@ -1188,68 +1208,6 @@ function validaCPF(cpf) {
   if (resto !== parseInt(cpf.substring(10, 11))) return false;
 
   return true;
-}
-
-// Função para construir objeto de atendimentos PB a partir de colunas individuais
-function construirAtendimentosPB(paciente) {
-  const atendimentos = [];
-
-  // Se tiver dados de PB, construir array
-  if (paciente.pbSessao1Data || paciente.pbSessao1Notas) {
-    atendimentos.push({
-      sessao: 1,
-      data: paciente.pbSessao1Data || null,
-      notas: paciente.pbSessao1Notas || "",
-      profissional: paciente.profissionalPB || "",
-      timestamp: FieldValue.serverTimestamp(),
-    });
-  }
-
-  if (paciente.pbSessao2Data || paciente.pbSessao2Notas) {
-    atendimentos.push({
-      sessao: 2,
-      data: paciente.pbSessao2Data || null,
-      notas: paciente.pbSessao2Notas || "",
-      profissional: paciente.profissionalPB || "",
-      timestamp: FieldValue.serverTimestamp(),
-    });
-  }
-
-  if (paciente.pbSessao3Data || paciente.pbSessao3Notas) {
-    atendimentos.push({
-      sessao: 3,
-      data: paciente.pbSessao3Data || null,
-      notas: paciente.pbSessao3Notas || "",
-      profissional: paciente.profissionalPB || "",
-      timestamp: FieldValue.serverTimestamp(),
-    });
-  }
-
-  return atendimentos.length > 0 ? atendimentos : null;
-}
-
-// Função para construir objeto de plantão a partir de colunas individuais
-function construirPlantaoInfo(paciente) {
-  const plantaoInfo = {};
-
-  if (paciente.plantaoDataAgendamento) {
-    plantaoInfo.dataAgendamento = paciente.plantaoDataAgendamento;
-  }
-  if (paciente.plantaoProfissional) {
-    plantaoInfo.profissional = paciente.plantaoProfissional;
-  }
-  if (paciente.plantaoQueixa) {
-    plantaoInfo.queixa = paciente.plantaoQueixa;
-  }
-  if (paciente.plantaoObservacoes) {
-    plantaoInfo.observacoes = paciente.plantaoObservacoes;
-  }
-  if (paciente.quantidadeSessoesPlantao) {
-    plantaoInfo.quantidadeSessoes =
-      parseInt(paciente.quantidadeSessoesPlantao) || 0;
-  }
-
-  return Object.keys(plantaoInfo).length > 0 ? plantaoInfo : null;
 }
 
 exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
@@ -1266,24 +1224,16 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
       !adminUserDoc.exists ||
       !adminUserDoc.data().funcoes?.includes("admin")
     ) {
-      throw new HttpsError(
-        "permission-denied",
-        "Você não tem permissão para executar esta importação."
-      );
+      throw new HttpsError("permission-denied", "Você não tem permissão.");
     }
 
     const { pacientes, fila, modoUpdate = false } = request.data;
 
     if (!Array.isArray(pacientes) || pacientes.length === 0) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Lista de pacientes inválida ou vazia."
-      );
+      throw new HttpsError("invalid-argument", "Lista de pacientes inválida.");
     }
 
-    logger.info(
-      `Iniciando importação de ${pacientes.length} pacientes. Modo update: ${modoUpdate}`
-    );
+    logger.info(`Importação iniciada: ${pacientes.length} pacientes`);
 
     const resultados = {
       total: pacientes.length,
@@ -1302,25 +1252,12 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     for (const [index, paciente] of pacientes.entries()) {
       try {
         const cpfLimpo = String(paciente.cpf || "").replace(/\D/g, "");
-        const emailLimpo = String(paciente.email || "")
-          .trim()
-          .toLowerCase();
-        const nomeCompleto = String(
-          paciente.nomeCompleto || paciente.nome || ""
-        ).trim();
+        const nomeCompleto = String(paciente.nomeCompleto || "").trim();
 
         // Validações obrigatórias
-        if (!nomeCompleto || nomeCompleto === "") {
+        if (!nomeCompleto || !validaCPF(cpfLimpo)) {
           resultados.mensagensErro.push(
-            `Linha ${index + 2}: Nome completo ausente.`
-          );
-          resultados.erros++;
-          continue;
-        }
-
-        if (!validaCPF(cpfLimpo)) {
-          resultados.mensagensErro.push(
-            `Linha ${index + 2}: CPF inválido (${cpfLimpo}).`
+            `Linha ${index + 2}: Nome ou CPF inválido.`
           );
           resultados.erros++;
           continue;
@@ -1338,70 +1275,116 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           docExistente = querySnapshot.docs[0];
         }
 
-        // Mapear status do Pipefy para Firebase
+        // Processar data da triagem
+        const { dataTriagem, horaTriagem } = processarDataTriagem(
+          paciente.dataTriagem
+        );
+        const horarios = processarDisponibilidade(paciente);
+
+        // Mapear status
         const statusFirebase = mapearStatusPipefyParaFirebase(
-          paciente.status || paciente.faseAtual || paciente["Fase atual"],
+          paciente.status,
           fila
         );
 
-        // Construir objetos complexos a partir de colunas individuais
-        const atendimentosPB = construirAtendimentosPB(paciente);
-        const plantaoInfo = construirPlantaoInfo(paciente);
-
-        // Preparar dados do card
+        // Preparar dados completos
         const cardData = {
+          // Dados pessoais
           nomeCompleto,
           cpf: cpfLimpo,
-          status: statusFirebase,
-          filaDeOrigem: fila || statusFirebase,
           dataNascimento: paciente.dataNascimento || null,
-          telefoneCelular: String(paciente.telefoneCelular || "").trim(),
-          email: emailLimpo !== "" ? emailLimpo : "não informado",
-          rua: String(paciente.rua || "").trim(),
-          numeroCasa: String(paciente.numeroCasa || "").trim(),
-          bairro: String(paciente.bairro || "").trim(),
-          cidade: String(paciente.cidade || "").trim(),
-          cep: String(paciente.cep || "").trim(),
-          complemento: String(paciente.complemento || "").trim(),
           genero: String(paciente.genero || "").trim(),
           estadoCivil: String(paciente.estadoCivil || "").trim(),
           escolaridade: String(paciente.escolaridade || "").trim(),
-          responsavel: String(paciente.responsavel || "").trim(),
-          parentescoResponsavel: String(
-            paciente.parentescoResponsavel || ""
-          ).trim(),
+          rg: String(paciente.rg || "").trim(),
+
+          // Contato
+          telefoneCelular: String(paciente.telefoneCelular || "").trim(),
+          telefoneFixo: String(paciente.telefoneFixo || "").trim(),
+          email:
+            String(paciente.email || "")
+              .trim()
+              .toLowerCase() || "não informado",
+
+          // Endereço
+          cep: String(paciente.cep || "").trim(),
+          cidade: String(paciente.cidade || "").trim(),
+          rua: String(paciente.rua || "").trim(),
+          numeroCasa: String(paciente.numeroCasa || "").trim(),
+          bairro: String(paciente.bairro || "").trim(),
+          complemento: String(paciente.complemento || "").trim(),
+
+          // Moradia
           tipoMoradia: String(paciente.tipoMoradia || "").trim(),
           pessoasMoradia: parseInt(paciente.pessoasMoradia) || 0,
+          casaPropria: String(paciente.casaPropria || "").trim(),
+          valorAluguel: parseFloat(paciente.valorAluguel) || 0,
           rendaMensal: parseFloat(paciente.rendaMensal) || 0,
           rendaFamiliar: parseFloat(paciente.rendaFamiliar) || 0,
-          valorAluguel: parseFloat(paciente.valorAluguel) || 0,
-          motivoBusca: String(paciente.motivoBusca || "").trim(),
-          queixa: String(paciente.queixa || "").trim(),
-          observacoes: String(paciente.observacoes || "").trim(),
-          historicoTratamentoAnterior: String(
-            paciente.historicoTratamentoAnterior || ""
+
+          // Responsável
+          responsavelNome: String(paciente.responsavelNome || "").trim(),
+          responsavelCpf: String(paciente.responsavelCpf || "").replace(
+            /\D/g,
+            ""
+          ),
+          responsavelParentesco: String(
+            paciente.responsavelParentesco || ""
           ).trim(),
+          responsavelContato: String(paciente.responsavelContato || "").trim(),
+
+          // Equipe
           assistenteSocial:
             paciente.assistenteSocial ||
             adminUserDoc.data().nome ||
             "Não informado",
+
+          // Triagem
+          dataTriagem,
+          horaTriagem,
+          tipoTriagem: String(paciente.tipoTriagem || "").trim(),
+          valorContribuicao: parseFloat(paciente.valorContribuicao) || 0,
+
+          // Disponibilidade
+          disponibilidadeHorarios: horarios,
+          opcoesHorarioTexto: String(paciente.opcoesHorarioTexto || "").trim(),
+
+          // Preferências
+          prefereSemModalidade: String(
+            paciente.prefereSemModalidade || ""
+          ).trim(),
+          prefereSerAtendidoPor: String(
+            paciente.prefereSerAtendidoPor || ""
+          ).trim(),
+
+          // Queixa e histórico
+          queixaPaciente: String(paciente.queixaPaciente || "").trim(),
+          motivoBusca: String(paciente.motivoBusca || "").trim(),
+          tratamentoAnterior: String(paciente.tratamentoAnterior || "").trim(),
+
+          // Plantão
           profissionalPlantao: String(
             paciente.profissionalPlantao || ""
           ).trim(),
-          profissionalPB: String(paciente.profissionalPB || "").trim(),
-          dataEncaminhamentoPlantao: paciente.dataEncaminhamentoPlantao || null,
-          dataEncaminhamentoPB: paciente.dataEncaminhamentoPB || null,
+          dataPrimeiraSessaoPlantao: paciente.dataPrimeiraSessaoPlantao || null,
+          atendimentoSeraPlantao: String(
+            paciente.atendimentoSeraPlantao || ""
+          ).trim(),
+          encaminhamentoPlantao: String(
+            paciente.encaminhamentoPlantao || ""
+          ).trim(),
+          dataEncerramentoPlantao: paciente.dataEncerramentoPlantao || null,
           quantidadeSessoesPlantao:
             parseInt(paciente.quantidadeSessoesPlantao) || 0,
-          quantidadeSessoesPB: parseInt(paciente.quantidadeSessoesPB) || 0,
-          tipoAtendimento: String(paciente.tipoAtendimento || "").trim(),
-          modalidadePreferida: String(
-            paciente.modalidadePreferida || ""
-          ).trim(),
-          timestamp: FieldValue.serverTimestamp(),
-          lastUpdate: FieldValue.serverTimestamp(),
-          lastUpdatedBy: `Importação em Lote por ${adminUid}`,
-          importadoEmLote: true,
+
+          // PB
+          profissionalPB: String(paciente.profissionalPB || "").trim(),
+          dataEncaminhamentoPB: paciente.dataEncaminhamentoPB || null,
+          dataPrimeiraSessaoPB: paciente.dataPrimeiraSessaoPB || null,
+          atendimentoSeraPB: String(paciente.atendimentoSeraPB || "").trim(),
+
+          // Status e tracking
+          status: statusFirebase,
           etapaAtual: statusFirebase,
           historicoEtapas: [
             {
@@ -1411,15 +1394,11 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             },
           ],
           statusAtivo: true,
+          timestamp: FieldValue.serverTimestamp(),
+          lastUpdate: FieldValue.serverTimestamp(),
+          lastUpdatedBy: `Importação em Lote por ${adminUid}`,
+          importadoEmLote: true,
         };
-
-        // Adicionar objetos complexos se existirem
-        if (atendimentosPB) {
-          cardData.atendimentosPB = atendimentosPB;
-        }
-        if (plantaoInfo) {
-          cardData.plantaoInfo = plantaoInfo;
-        }
 
         if (docExistente) {
           if (!modoUpdate) {
@@ -1427,22 +1406,19 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             resultados.mensagensErro.push(
               `Linha ${index + 2}: CPF ${cpfLimpo} já existe (ID: ${
                 docExistente.id
-              }). Use modoUpdate=true para atualizar.`
+              }).`
             );
             continue;
           } else {
-            // Atualizar existente
             await docExistente.ref.update(cardData);
             resultados.atualizados++;
             resultados.pacientesAtualizados.push({
               id: docExistente.id,
               nome: nomeCompleto,
-              statusAnterior: docExistente.data().status,
               statusNovo: statusFirebase,
             });
           }
         } else {
-          // Novo paciente
           pacientesValidos.push({
             cardData,
             cpf: cpfLimpo,
@@ -1450,13 +1426,13 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           });
         }
       } catch (err) {
-        logger.error(`Erro ao processar linha ${index + 2}:`, err);
+        logger.error(`Erro linha ${index + 2}:`, err);
         resultados.mensagensErro.push(`Linha ${index + 2}: ${err.message}`);
         resultados.erros++;
       }
     }
 
-    // Inserir novos pacientes em batches
+    // Inserir novos
     const batchSize = 500;
     for (let i = 0; i < pacientesValidos.length; i += batchSize) {
       const chunk = pacientesValidos.slice(i, i + batchSize);
@@ -1477,25 +1453,16 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
       resultados.sucesso += chunk.length;
     }
 
-    logger.info(
-      `Importação concluída: ${resultados.sucesso} sucessos, ${resultados.atualizados} atualizados, ` +
-        `${resultados.erros} erros, ${resultados.duplicatas} duplicatas.`
-    );
-
     return {
       ...resultados,
       mensagem: modoUpdate
-        ? `Importação concluída. ${resultados.sucesso} novos + ${resultados.atualizados} atualizados.`
-        : `Importação concluída. ${resultados.sucesso} novos, ${resultados.duplicatas} duplicatas puladas.`,
+        ? `${resultados.sucesso} novos + ${resultados.atualizados} atualizados`
+        : `${resultados.sucesso} novos cadastrados`,
     };
   } catch (error) {
-    logger.error("Erro geral na função importarPacientesBatch:", error);
+    logger.error("Erro na importação:", error);
     if (error instanceof HttpsError) throw error;
-    throw new HttpsError(
-      "internal",
-      "Ocorreu um erro inesperado no servidor.",
-      error.message
-    );
+    throw new HttpsError("internal", "Erro no servidor", error.message);
   }
 });
 
