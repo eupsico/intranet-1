@@ -2,85 +2,32 @@ import {
   getFunctions,
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"; // Adicionado para auth
-
-// Configuração das opções da trilha do paciente (extraída de trilha-paciente.js)
-const COLUMNSCONFIG = {
-  inscricaodocumentos: "Inscrição e Documentos",
-  triagemagendada: "Triagem Agendada",
-  encaminharparaplantao: "Encaminhar para Plantão",
-  ematendimentoplantao: "Em Atendimento Plantão",
-  agendamentoconfirmadoplantao: "Agendamento Confirmado Plantão",
-  encaminharparapb: "Encaminhar para PB",
-  aguardandoinfohorarios: "Aguardando Info Horários",
-  cadastrarhorariopsicomanager: "Cadastrar Horário Psicomanager",
-  ematendimentopb: "Em Atendimento PB",
-  aguardandoreavaliacao: "Aguardando Reavaliação",
-  pacientesparcerias: "Pacientes Parcerias",
-  grupos: "Grupos",
-  desistencia: "Desistência",
-  alta: "Alta",
-};
-
-// Campos obrigatórios baseados na trilha do paciente
-const REQUIRED_FIELDS = ["nome", "cpf", "telefone", "status"];
-const OPTIONAL_FIELDS = [
-  "idade",
-  "email",
-  "endereco",
-  "assistenteSocial",
-  "motivoAtendimento",
-  "observacoes",
-];
 
 export function init(user, userData) {
-  console.log(
-    "🚀 Módulo de Importar Pacientes iniciado (versão melhorada com trilha do paciente)."
-  );
+  console.log("🚀 Módulo de Importar Pacientes iniciado (v3.0).");
   const importForm = document.getElementById("import-form");
   const fileInput = document.getElementById("file-input");
-  const filaSelect = document.getElementById("fila-select"); // Para fallback de status
+  const filaSelect = document.getElementById("fila-select");
   const submitButton = document.getElementById("submit-button");
   const resultContainer = document.getElementById("result-container");
   const resultContent = document.getElementById("result-content");
 
-  if (
-    !importForm ||
-    !fileInput ||
-    !filaSelect ||
-    !submitButton ||
-    !resultContainer
-  ) {
-    console.error("Elementos do formulário não encontrados.");
-    return;
-  }
-
-  // Validar autenticação
-  const auth = getAuth();
-  if (!auth.currentUser) {
-    alert("Usuário deve estar autenticado para importar pacientes.");
+  if (!importForm || !fileInput || !filaSelect || !submitButton) {
+    console.error("Elementos do formulário não encontrados no DOM.");
     return;
   }
 
   importForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const file = fileInput.files[0];
-    const fila = filaSelect.value; // Usado como status padrão se não houver no Excel
+    const fila = filaSelect.value;
 
     if (!file) {
       alert("Por favor, selecione um arquivo Excel (.xlsx ou .csv).");
       return;
     }
 
-    // Validar tipo de arquivo
-    const allowedTypes = [".xlsx", ".xls", ".csv"];
-    const fileExt = file.name
-      .slice((Math.max(0, file.name.lastIndexOf(".")) || Infinity) + 1)
-      .toLowerCase();
-    if (!allowedTypes.includes(`.${fileExt}`)) {
-      alert("Apenas arquivos .xlsx, .xls ou .csv são suportados.");
-      return;
-    }
+    console.log(`Iniciando importação com fila padrão: ${fila}`);
 
     // Desabilitar botão e mostrar loading
     submitButton.disabled = true;
@@ -89,7 +36,7 @@ export function init(user, userData) {
     resultContainer.style.display = "block";
     resultContent.innerHTML = `
       <div class="loading-spinner"></div>
-      <p>Aguarde, processando planilha com opções da trilha do paciente. Isso pode levar alguns minutos...</p>
+      <p>Aguarde, processando planilha. Isso pode levar alguns minutos...</p>
     `;
 
     try {
@@ -100,198 +47,73 @@ export function init(user, userData) {
 
       const reader = new FileReader();
       reader.onload = async (event) => {
-        let jsonData = [];
         try {
           const data = new Uint8Array(event.target.result);
-          let workbook, worksheet;
-
-          if (fileExt === "csv") {
-            // Para CSV, ler como texto e converter
-            const csvText = new TextDecoder().decode(data);
-            workbook = XLSX.read(csvText, { type: "string" });
-          } else {
-            workbook = XLSX.read(data, {
-              type: "array",
-              cellDates: true,
-              dateNF: "yyyy-mm-dd",
-            });
-          }
+          const workbook = XLSX.read(data, {
+            type: "array",
+            cellDates: true,
+            dateNF: "yyyy-mm-dd",
+          });
 
           const firstSheetName = workbook.SheetNames[0];
-          worksheet = workbook.Sheets[firstSheetName];
-          jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); // Preenche vazios com ""
+          const worksheet = workbook.Sheets[firstSheetName];
+
+          // Converter para JSON com valores vazios como ""
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+            defval: "",
+          });
+
+          console.log(`Planilha carregada: ${jsonData.length} linhas`);
 
           if (jsonData.length === 0) {
             throw new Error("A planilha está vazia ou em formato inválido.");
           }
+
+          // Log dos primeiros dados para debug
+          console.log("Primeiros dados:", jsonData[0]);
+
+          // Chamar Cloud Function
+          const functions = getFunctions();
+          const importarPacientes = httpsCallable(
+            functions,
+            "importarPacientesBatch"
+          );
+
+          const result = await importarPacientesWithRetry(
+            {
+              pacientes: jsonData,
+              fila: fila,
+            },
+            3
+          );
+
+          displayResults(result.data);
         } catch (parseError) {
           console.error("Erro ao parsear arquivo:", parseError);
           throw new Error(`Erro ao ler arquivo: ${parseError.message}`);
         }
-
-        // Normalizar e validar dados com opções da trilha
-        const normalizedData = await normalizeAndValidateData(
-          jsonData,
-          fila,
-          auth.currentUser.email,
-          userData
-        );
-
-        if (
-          normalizedData.valid.length === 0 &&
-          normalizedData.errors.length > 0
-        ) {
-          throw new Error(
-            "Nenhum dado válido encontrado. Verifique os erros abaixo."
-          );
-        }
-
-        // Chamar Cloud Function com dados normalizados
-        const functions = getFunctions();
-        const importarPacientes = httpsCallable(
-          functions,
-          "importarPacientesBatchTrilha"
-        ); // Nome atualizado para versão com trilha
-        const result = await importarPacientesWithRetry(
-          {
-            pacientes: normalizedData.valid,
-            fila: fila,
-            userEmail: auth.currentUser.email,
-          },
-          3
-        ); // Retry até 3 vezes
-
-        displayResults(result.data);
       };
 
-      if (fileExt === "csv") {
-        reader.readAsArrayBuffer(file); // Para consistência
-      } else {
-        reader.readAsArrayBuffer(file);
-      }
+      reader.onerror = () => {
+        throw new Error("Erro ao ler arquivo");
+      };
+
+      reader.readAsArrayBuffer(file);
     } catch (error) {
       console.error("Erro na importação:", error);
       displayResults({
         total: 0,
         sucesso: 0,
         erros: 1,
-        mensagensErro: [`Erro no cliente: ${error.message}`],
         duplicatas: 0,
+        mensagensErro: [`Erro: ${error.message}`],
       });
     } finally {
       submitButton.disabled = false;
       submitButton.innerHTML = "Importar Pacientes";
-      fileInput.value = ""; // Limpar input
+      fileInput.value = "";
     }
   });
-
-  // Função para normalizar e validar dados
-  async function normalizeAndValidateData(
-    data,
-    defaultStatus,
-    userEmail,
-    userData
-  ) {
-    const valid = [];
-    const errors = [];
-    const duplicatas = new Set(); // Track CPFs duplicados
-
-    data.forEach((row, index) => {
-      const paciente = {
-        nome: (row.nome || row.Nome || "").toString().trim(),
-        cpf: (row.cpf || row.CPF || "").toString().trim().replace(/\D/g, ""), // Limpar CPF
-        telefone: (row.telefone || row.Telefone || "").toString().trim(),
-        email: (row.email || row.Email || "").toString().trim().toLowerCase(),
-        idade: parseInt(row.idade || row.Idade || 0) || undefined,
-        endereco: (row.endereco || row.Endereço || "").toString().trim(),
-        assistenteSocial:
-          row.assistenteSocial ||
-          row["Assistente Social"] ||
-          userData?.nome ||
-          "Não informado",
-        motivoAtendimento: (
-          row.motivoAtendimento ||
-          row["Motivo Atendimento"] ||
-          ""
-        )
-          .toString()
-          .trim(),
-        observacoes: (row.observacoes || row.Observacoes || "")
-          .toString()
-          .trim(),
-        status: getValidStatus(
-          row.status || row.Status || defaultStatus,
-          Object.keys(COLUMNSCONFIG)
-        ),
-        dataInscricao: null, // Será setado no backend com serverTimestamp
-        lastUpdatedAt: null, // Backend
-        lastUpdatedBy: userEmail,
-        // Campos da trilha opcionais (podem ser expandidos)
-        profissionalResponsavel:
-          row.profissional || row["Profissional Responsável"] || "",
-        dataNascimento: row["dataNascimento"]
-          ? new Date(row["dataNascimento"]).toISOString()
-          : null,
-        prioridade: row.prioridade || "normal", // Ex.: "alta", "media", "baixa"
-      };
-
-      // Validações obrigatórias
-      const missingFields = REQUIRED_FIELDS.filter((field) => !paciente[field]);
-      if (missingFields.length > 0) {
-        errors.push(
-          `Linha ${
-            index + 1
-          }: Campos obrigatórios ausentes - ${missingFields.join(", ")}`
-        );
-        return;
-      }
-
-      // Validar CPF (simples, sem algoritmo completo)
-      if (paciente.cpf.length !== 11 || !/^\d{11}$/.test(paciente.cpf)) {
-        errors.push(`Linha ${index + 1}: CPF inválido (${paciente.cpf})`);
-        return;
-      }
-
-      // Verificar duplicatas por CPF
-      if (duplicatas.has(paciente.cpf)) {
-        errors.push(`Linha ${index + 1}: CPF duplicado (${paciente.cpf})`);
-        return;
-      }
-      duplicatas.add(paciente.cpf);
-
-      // Validar status da trilha
-      if (!paciente.status) {
-        errors.push(
-          `Linha ${index + 1}: Status inválido (${
-            row.status || defaultStatus
-          }). Use: ${Object.keys(COLUMNSCONFIG).join(", ")}`
-        );
-        return;
-      }
-
-      // Sanitizar email se presente
-      if (
-        paciente.email &&
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paciente.email)
-      ) {
-        errors.push(`Linha ${index + 1}: Email inválido (${paciente.email})`);
-        return;
-      }
-
-      valid.push(paciente);
-    });
-
-    return { valid, errors, duplicatas: duplicatas.size };
-  }
-
-  // Função auxiliar para validar status da trilha
-  function getValidStatus(statusInput, validStatuses) {
-    const normalized = (statusInput || "").toString().trim().toLowerCase();
-    const match = validStatuses.find(
-      (s) => s.includes(normalized) || normalized.includes(s)
-    );
-    return match || "inscricaodocumentos"; // Padrão inicial da trilha
-  }
 
   // Função para carregar script dinamicamente
   function loadScript(url) {
@@ -308,63 +130,114 @@ export function init(user, userData) {
     });
   }
 
-  // Retry para chamada HTTPS
+  // Retry com backoff exponencial
   async function importarPacientesWithRetry(payload, maxRetries = 3) {
     for (let i = 0; i < maxRetries; i++) {
       try {
         const functions = getFunctions();
         const importarPacientes = httpsCallable(
           functions,
-          "importarPacientesBatchTrilha"
+          "importarPacientesBatch"
         );
+        console.log(`Tentativa ${i + 1} de ${maxRetries}...`);
         return await importarPacientes(payload);
       } catch (error) {
-        console.warn(`Tentativa ${i + 1} falhou:`, error);
+        console.warn(`Tentativa ${i + 1} falhou:`, error.message);
         if (i === maxRetries - 1) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1))); // Backoff exponencial simples
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
       }
     }
   }
 
   // Exibir resultados melhorado
   function displayResults(data) {
-    let html = `
-      <div class="result-summary">
-        <h3>Resultado da Importação</h3>
-        <p><strong>Total de linhas processadas:</strong> ${data.total || 0}</p>
-        <p><strong>Sucesso:</strong> ${
-          data.sucesso || 0
-        } pacientes cadastrados na trilha</p>
-        <p><strong>Erros:</strong> ${data.erros || 0}</p>
-        <p><strong>Duplicatas evitadas:</strong> ${data.duplicatas || 0}</p>
-    `;
+    console.log("Resultado da importação:", data);
+
+    let html = `<div class="result-summary" style="padding: 20px; background-color: #f5f5f5; border-radius: 8px;">`;
+    html += `<h3 style="margin-top: 0;">📊 Resultado da Importação</h3>`;
+
+    html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">`;
+    html += `<div style="background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #27ae60;">`;
+    html += `<strong style="color: #27ae60;">✓ Sucessos</strong><br/>`;
+    html += `<span style="font-size: 24px; font-weight: bold; color: #27ae60;">${
+      data.sucesso || 0
+    }</span>`;
+    html += `</div>`;
+
+    html += `<div style="background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #e74c3c;">`;
+    html += `<strong style="color: #e74c3c;">✗ Erros</strong><br/>`;
+    html += `<span style="font-size: 24px; font-weight: bold; color: #e74c3c;">${
+      data.erros || 0
+    }</span>`;
+    html += `</div>`;
+
+    html += `<div style="background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #f39c12;">`;
+    html += `<strong style="color: #f39c12;">⚠ Duplicatas</strong><br/>`;
+    html += `<span style="font-size: 24px; font-weight: bold; color: #f39c12;">${
+      data.duplicatas || 0
+    }</span>`;
+    html += `</div>`;
+
+    html += `<div style="background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db;">`;
+    html += `<strong style="color: #3498db;">📋 Total</strong><br/>`;
+    html += `<span style="font-size: 24px; font-weight: bold; color: #3498db;">${
+      data.total || 0
+    }</span>`;
+    html += `</div>`;
+    html += `</div>`;
 
     if (
       (data.erros || 0) > 0 &&
       data.mensagensErro &&
       data.mensagensErro.length > 0
     ) {
-      html += '<h4>Erros Detalhados:</h4><ul class="error-list">';
-      data.mensagensErro.forEach((msg) => {
-        html += `<li>${msg}</li>`;
+      html +=
+        '<h4 style="color: #e74c3c; margin-top: 20px;">❌ Erros Detalhados:</h4>';
+      html +=
+        '<ul style="background: white; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto; list-style: none; padding-left: 0;">';
+      data.mensagensErro.slice(0, 20).forEach((msg) => {
+        html += `<li style="padding: 8px; border-bottom: 1px solid #eee; color: #c0392b;">• ${msg}</li>`;
       });
+      if (data.mensagensErro.length > 20) {
+        html += `<li style="padding: 8px; color: #7f8c8d;">... e mais ${
+          data.mensagensErro.length - 20
+        } erro(s)</li>`;
+      }
       html += "</ul>";
     }
 
     if (data.sucesso > 0 && data.pacientesCriados) {
-      html += "<h4>Pacientes Importados:</h4><ul>";
-      data.pacientesCriados.slice(0, 10).forEach((p) => {
-        // Limitar a 10 para performance
-        html += `<li>${p.nome} (Status: ${
-          COLUMNSCONFIG[p.status] || p.status
-        })</li>`;
+      html +=
+        '<h4 style="color: #27ae60; margin-top: 20px;">✓ Pacientes Importados:</h4>';
+      html +=
+        '<ul style="background: white; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto; list-style: none; padding-left: 0;">';
+      data.pacientesCriados.slice(0, 15).forEach((p) => {
+        html += `<li style="padding: 8px; border-bottom: 1px solid #eee;">📌 <strong>${
+          p.nome
+        }</strong> - Status: ${p.status} (ID: ${p.id.substring(0, 8)}...)</li>`;
       });
-      if (data.pacientesCriados.length > 10)
-        html += `<li>... e mais ${data.pacientesCriados.length - 10}</li>`;
+      if (data.pacientesCriados.length > 15) {
+        html += `<li style="padding: 8px; color: #7f8c8d;">... e mais ${
+          data.pacientesCriados.length - 15
+        } paciente(s)</li>`;
+      }
       html += "</ul>";
     }
 
+    if (data.atualizados > 0 && data.pacientesAtualizados) {
+      html +=
+        '<h4 style="color: #3498db; margin-top: 20px;">🔄 Pacientes Atualizados:</h4>';
+      html +=
+        '<ul style="background: white; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto; list-style: none; padding-left: 0;">';
+      data.pacientesAtualizados.slice(0, 10).forEach((p) => {
+        html += `<li style="padding: 8px; border-bottom: 1px solid #eee;">🔄 <strong>${p.nome}</strong> - Status: ${p.statusNovo}</li>`;
+      });
+      html += "</ul>";
+    }
+
+    html += `<p style="margin-top: 20px; font-size: 12px; color: #7f8c8d;">⏱️ Importação concluída em ${new Date().toLocaleTimeString()}</p>`;
     html += "</div>";
+
     resultContent.innerHTML = html;
   }
 }
