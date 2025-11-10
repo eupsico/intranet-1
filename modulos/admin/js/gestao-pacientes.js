@@ -215,64 +215,122 @@ export function init(user, userData) {
       manha_sabado: false,
     };
 
+    // ⭐ SEÇÃO DE DISPONIBILIDADE DINÂMICA - PARA GESTAO-PACIENTES.JS
+
+    // --- SUBSTITUA a seção "EDITAR DISPONIBILIDADE" no htmlDisponibilidade por isto: ---
+
     const htmlDisponibilidade = `
-      <fieldset style="margin: 20px 0; padding: 20px; border: 2px solid #3498db; border-radius: 5px; background-color: #ecf0f1;">
-        <legend style="font-weight: bold; font-size: 15px; color: #2c3e50; padding: 0 10px;">📅 EDITAR DISPONIBILIDADE</legend>
+  <fieldset style="margin: 20px 0; padding: 20px; border: 2px solid #3498db; border-radius: 5px; background-color: #ecf0f1;">
+    <legend style="font-weight: bold; font-size: 15px; color: #2c3e50; padding: 0 10px;">📅 EDITAR DISPONIBILIDADE DE HORÁRIO</legend>
+    
+    <div style="margin-top: 15px;">
+      <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 10px;">Opção de horário(s) para atendimento: *</label>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
-          
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <input 
-              type="checkbox" 
-              id="manha_semana" 
-              ${disponibilidade.manha_semana ? "checked" : ""} 
-              style="width: 18px; height: 18px; cursor: pointer;"
-            />
-            <span style="font-size: 13px;">🌅 Manhã (semana)</span>
-          </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input 
+            type="checkbox" 
+            class="horario-option" 
+            value="manha_semana" 
+            ${disponibilidade.manha_semana ? "checked" : ""} 
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+          <span style="font-size: 13px;">🌅 Manhã (Durante a semana)</span>
+        </label>
 
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <input 
-              type="checkbox" 
-              id="tarde_semana" 
-              ${disponibilidade.tarde_semana ? "checked" : ""} 
-              style="width: 18px; height: 18px; cursor: pointer;"
-            />
-            <span style="font-size: 13px;">🌤️ Tarde (semana)</span>
-          </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input 
+            type="checkbox" 
+            class="horario-option" 
+            value="tarde_semana" 
+            ${disponibilidade.tarde_semana ? "checked" : ""} 
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+          <span style="font-size: 13px;">🌤️ Tarde (Durante a semana)</span>
+        </label>
 
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <input 
-              type="checkbox" 
-              id="noite_semana" 
-              ${disponibilidade.noite_semana ? "checked" : ""} 
-              style="width: 18px; height: 18px; cursor: pointer;"
-            />
-            <span style="font-size: 13px;">🌙 Noite (semana)</span>
-          </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input 
+            type="checkbox" 
+            class="horario-option" 
+            value="noite_semana" 
+            ${disponibilidade.noite_semana ? "checked" : ""} 
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+          <span style="font-size: 13px;">🌙 Noite (Durante a semana)</span>
+        </label>
 
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-            <input 
-              type="checkbox" 
-              id="manha_sabado" 
-              ${disponibilidade.manha_sabado ? "checked" : ""} 
-              style="width: 18px; height: 18px; cursor: pointer;"
-            />
-            <span style="font-size: 13px;">📅 Manhã (sábado)</span>
-          </label>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input 
+            type="checkbox" 
+            class="horario-option" 
+            value="manha_sabado" 
+            ${disponibilidade.manha_sabado ? "checked" : ""} 
+            style="width: 18px; height: 18px; cursor: pointer;"
+          />
+          <span style="font-size: 13px;">📅 Manhã (Sábado)</span>
+        </label>
 
+      </div>
+
+      <!-- CONTAINERS DOS HORÁRIOS ESPECÍFICOS (DINÂMICOS) -->
+      <div id="container-manha_semana" class="horario-container ${
+        disponibilidade.manha_semana ? "" : "hidden-section"
+      }" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
+      disponibilidade.manha_semana ? "block" : "none"
+    };">
+        <h4 style="margin-top: 0; color: #2c3e50;">🌅 Manhã (Seg-Sex):</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          ${gerarHorariosHTML("manha_semana", paciente)}
         </div>
+      </div>
 
-        <div style="margin-top: 15px;">
-          <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">📝 Horários Específicos:</label>
-          <textarea 
-            id="opcoes_horario_texto" 
-            style="width: 100%; height: 70px; padding: 8px; font-size: 12px; border: 1px solid #bdc3c7; border-radius: 4px;"
-            placeholder="Ex: Segunda a sexta 10:00-14:00"
-          >${paciente.opcoesHorarioTexto || ""}</textarea>
+      <div id="container-tarde_semana" class="horario-container ${
+        disponibilidade.tarde_semana ? "" : "hidden-section"
+      }" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
+      disponibilidade.tarde_semana ? "block" : "none"
+    };">
+        <h4 style="margin-top: 0; color: #2c3e50;">🌤️ Tarde (Seg-Sex):</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          ${gerarHorariosHTML("tarde_semana", paciente)}
         </div>
-      </fieldset>
-    `;
+      </div>
+
+      <div id="container-noite_semana" class="horario-container ${
+        disponibilidade.noite_semana ? "" : "hidden-section"
+      }" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
+      disponibilidade.noite_semana ? "block" : "none"
+    };">
+        <h4 style="margin-top: 0; color: #2c3e50;">🌙 Noite (Seg-Sex):</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          ${gerarHorariosHTML("noite_semana", paciente)}
+        </div>
+      </div>
+
+      <div id="container-manha_sabado" class="horario-container ${
+        disponibilidade.manha_sabado ? "" : "hidden-section"
+      }" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
+      disponibilidade.manha_sabado ? "block" : "none"
+    };">
+        <h4 style="margin-top: 0; color: #2c3e50;">📅 Manhã (Sábado):</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          ${gerarHorariosHTML("manha_sabado", paciente)}
+        </div>
+      </div>
+
+      <!-- CAMPO DE OBSERVAÇÃO DE HORÁRIOS -->
+      <div style="margin-top: 20px;">
+        <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">📝 Horários Específicos (observação):</label>
+        <textarea 
+          id="opcoes_horario_texto" 
+          style="width: 100%; height: 70px; padding: 8px; font-size: 12px; border: 1px solid #bdc3c7; border-radius: 4px;"
+          placeholder="Ex: Segunda a sexta 10:00-14:00"
+        >${paciente.opcoesHorarioTexto || ""}</textarea>
+      </div>
+    </div>
+  </fieldset>
+`;
 
     const form = `
       <form id="edit-paciente-form">
@@ -545,6 +603,9 @@ export function init(user, userData) {
     const formulario = gerarFormularioEdicao(paciente);
     modalBody.innerHTML = formulario;
 
+    // ⭐ ADICIONE ISTO PARA ATIVAR OS LISTENERS DE DISPONIBILIDADE
+    setupDisponibilidadeListeners(modalBody);
+
     modal.style.display = "flex";
 
     // Event listener para o botão cancelar dentro do formulário
@@ -570,74 +631,43 @@ export function init(user, userData) {
     try {
       const pacientesRef = doc(db, "trilhaPaciente", currentEditingId);
 
-      // Capturar dados com disponibilidade
-      const dadosAtualizados = {
-        nomeCompleto: document.getElementById("nomeCompleto")?.value || "",
-        cpf: document.getElementById("cpf")?.value || "",
-        dataNascimento: document.getElementById("dataNascimento")?.value || "",
-        genero: document.getElementById("genero")?.value || "",
-        rg: document.getElementById("rg")?.value || "",
-        estadoCivil: document.getElementById("estadoCivil")?.value || "",
-        escolaridade: document.getElementById("escolaridade")?.value || "",
-        telefoneCelular:
-          document.getElementById("telefoneCelular")?.value || "",
-        telefoneFixo: document.getElementById("telefoneFixo")?.value || "",
-        email: document.getElementById("email")?.value || "",
-        cep: document.getElementById("cep")?.value || "",
-        cidade: document.getElementById("cidade")?.value || "",
-        rua: document.getElementById("rua")?.value || "",
-        numeroCasa: document.getElementById("numeroCasa")?.value || "",
-        bairro: document.getElementById("bairro")?.value || "",
-        complemento: document.getElementById("complemento")?.value || "",
-        tipoMoradia: document.getElementById("tipoMoradia")?.value || "",
-        pessoasMoradia: parseInt(
-          document.getElementById("pessoasMoradia")?.value || 0
-        ),
-        casaPropria: document.getElementById("casaPropria")?.checked || false,
-        valorAluguel: parseFloat(
-          document.getElementById("valorAluguel")?.value || 0
-        ),
-        rendaMensal: parseFloat(
-          document.getElementById("rendaMensal")?.value || 0
-        ),
-        rendaFamiliar: parseFloat(
-          document.getElementById("rendaFamiliar")?.value || 0
-        ),
-        responsavelNome:
-          document.getElementById("responsavelNome")?.value || "",
-        responsavelCpf: document.getElementById("responsavelCpf")?.value || "",
-        responsavelParentesco:
-          document.getElementById("responsavelParentesco")?.value || "",
-        responsavelContato:
-          document.getElementById("responsavelContato")?.value || "",
-        dataTriagem: document.getElementById("dataTriagem")?.value || "",
-        horaTriagem: document.getElementById("horaTriagem")?.value || "",
-        tipoTriagem: document.getElementById("tipoTriagem")?.value || "",
-        valorContribuicao: parseFloat(
-          document.getElementById("valorContribuicao")?.value || 0
-        ),
-        queixaPaciente: document.getElementById("queixaPaciente")?.value || "",
-        motivoBusca: document.getElementById("motivoBusca")?.value || "",
-        tratamentoAnterior:
-          document.getElementById("tratamentoAnterior")?.value || "",
+      // ⭐ CAPTURAR HORÁRIOS ESPECÍFICOS SELECIONADOS
+      const horariosDisponiveis = {};
+      const periodos = [
+        "manha_semana",
+        "tarde_semana",
+        "noite_semana",
+        "manha_sabado",
+      ];
 
-        // ⭐ DISPONIBILIDADE ADICIONADA
+      periodos.forEach((periodo) => {
+        const horariosChecked = Array.from(
+          document.querySelectorAll(`.horario-${periodo}:checked`)
+        ).map((cb) => cb.value);
+        horariosDisponiveis[periodo] = horariosChecked;
+      });
+
+      // Dados atualizados com disponibilidade
+      const dadosAtualizados = {
+        // ... seus outros campos ...
         disponibilidadeHorarios: {
           manha_semana:
-            document.getElementById("manha_semana")?.checked || false,
+            document.querySelector('.horario-option[value="manha_semana"]')
+              ?.checked || false,
           tarde_semana:
-            document.getElementById("tarde_semana")?.checked || false,
+            document.querySelector('.horario-option[value="tarde_semana"]')
+              ?.checked || false,
           noite_semana:
-            document.getElementById("noite_semana")?.checked || false,
+            document.querySelector('.horario-option[value="noite_semana"]')
+              ?.checked || false,
           manha_sabado:
-            document.getElementById("manha_sabado")?.checked || false,
+            document.querySelector('.horario-option[value="manha_sabado"]')
+              ?.checked || false,
         },
+        horariosDisponiveis: horariosDisponiveis, // ⭐ HORÁRIOS ESPECÍFICOS
         opcoesHorarioTexto:
           document.getElementById("opcoes_horario_texto")?.value || "",
 
-        assistenteSocial:
-          document.getElementById("assistenteSocial")?.value || "",
-        status: document.getElementById("status")?.value || "",
         lastUpdate: serverTimestamp(),
         lastUpdatedBy: currentUserData.nome,
       };
@@ -689,4 +719,62 @@ export function init(user, userData) {
   statusFilter.addEventListener("change", renderizarLista);
 
   carregarPacientes();
+}
+// --- FUNÇÕES PARA GERAR HORÁRIOS DINAMICAMENTE ---
+
+function gerarHorariosHTML(periodo, paciente) {
+  const horarios = {
+    manha_semana: ["08:00", "09:00", "10:00", "11:00"],
+    tarde_semana: ["13:00", "14:00", "15:00", "16:00", "17:00"],
+    noite_semana: ["18:00", "19:00", "20:00", "21:00"],
+    manha_sabado: ["08:00", "09:00", "10:00", "11:00"],
+  };
+
+  const horariosDisponiveis = paciente.horariosDisponiveis?.[periodo] || [];
+
+  return horarios[periodo]
+    .map(
+      (hora) => `
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: ${
+          horariosDisponiveis.includes(hora) ? "#d4edda" : "#fff"
+        };">
+          <input 
+            type="checkbox" 
+            class="horario-${periodo}" 
+            value="${hora}"
+            ${horariosDisponiveis.includes(hora) ? "checked" : ""}
+            style="width: 16px; height: 16px; cursor: pointer;"
+          />
+          <span style="font-size: 12px;">${hora}</span>
+        </label>
+      `
+    )
+    .join("");
+}
+
+// --- ADICIONE ESTA FUNÇÃO PARA LIDAR COM MUDANÇAS DE CHECKBOXES ---
+
+function setupDisponibilidadeListeners(modalBody) {
+  const horarioCheckboxes = modalBody.querySelectorAll(".horario-option");
+
+  horarioCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", (e) => {
+      const periodo = e.target.value;
+      const container = modalBody.querySelector(`#container-${periodo}`);
+
+      if (e.target.checked) {
+        // Mostrar container
+        container.style.display = "block";
+        container.classList.remove("hidden-section");
+      } else {
+        // Ocultar container e desmarcar todos os horários
+        container.style.display = "none";
+        container.classList.add("hidden-section");
+        const horarioCheckboxes = container.querySelectorAll(
+          `.horario-${periodo}`
+        );
+        horarioCheckboxes.forEach((cb) => (cb.checked = false));
+      }
+    });
+  });
 }
