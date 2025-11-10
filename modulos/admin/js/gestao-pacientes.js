@@ -1,7 +1,3 @@
-// ========================================
-// ARQUIVO: gestao-pacientes.js (COMPLETO)
-// ========================================
-
 import {
   db,
   getDocs,
@@ -15,7 +11,6 @@ import {
   serverTimestamp,
 } from "../../../assets/js/firebase-init.js";
 
-// Lista completa de status para o dropdown de mover paciente
 const ALL_STATUS = {
   inscricao_documentos: "Inscrição e Documentos",
   triagem_agendada: "Triagem Agendada",
@@ -46,7 +41,7 @@ function calcularIdade(dataNascimento) {
 
 export function init(user, userData) {
   console.log(
-    "🚀 Módulo de Gestão de Pacientes v3.0 (Formulário Completo) iniciado."
+    "🚀 Módulo de Gestão de Pacientes v4.0 (Com Modalidade) iniciado."
   );
 
   const searchInput = document.getElementById("search-input");
@@ -593,6 +588,40 @@ export function init(user, userData) {
         ${htmlDisponibilidade}
 
         <fieldset>
+          <legend>Modalidade e Preferências de Atendimento</legend>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Modalidade de Atendimento:</label>
+              <select id="prefereSemModalidade" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                <option value="" ${
+                  !p("prefereSemModalidade") ? "selected" : ""
+                }>-- Selecione --</option>
+                <option value="Presencial" ${
+                  p("prefereSemModalidade") === "Presencial" ? "selected" : ""
+                }>🏢 Presencial</option>
+                <option value="On-line" ${
+                  p("prefereSemModalidade") === "On-line" ? "selected" : ""
+                }>💻 On-line</option>
+                <option value="Qualquer" ${
+                  p("prefereSemModalidade") === "Qualquer" ? "selected" : ""
+                }>🔄 Qualquer um</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Prefere ser atendido por:</label>
+              <input 
+                type="text" 
+                id="prefereSerAtendidoPor" 
+                value="${p("prefereSerAtendidoPor", "")}" 
+                placeholder="Ex: Mulher, especialista em..."
+                style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
           <legend>Assistente Social</legend>
           <input
             type="text"
@@ -732,6 +761,10 @@ export function init(user, userData) {
           document.getElementById("tratamentoAnterior")?.value || "",
         disponibilidadeEspecifica: disponibilidadeEspecifica,
         disponibilidadeGeral: disponibilidadeGeral,
+        prefereSemModalidade:
+          document.getElementById("prefereSemModalidade")?.value || "",
+        prefereSerAtendidoPor:
+          document.getElementById("prefereSerAtendidoPor")?.value || "",
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
         status: document.getElementById("status")?.value || "",
@@ -742,6 +775,10 @@ export function init(user, userData) {
       await updateDoc(pacientesRef, dadosAtualizados);
 
       console.log("✅ Paciente atualizado com sucesso!");
+      console.log(
+        "✅ prefereSemModalidade:",
+        document.getElementById("prefereSemModalidade")?.value
+      );
       console.log("✅ disponibilidadeEspecifica:", disponibilidadeEspecifica);
       console.log("✅ disponibilidadeGeral:", disponibilidadeGeral);
       alert("✅ Dados do paciente atualizados com sucesso!");
