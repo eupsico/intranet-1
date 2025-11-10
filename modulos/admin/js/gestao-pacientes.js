@@ -739,7 +739,7 @@ export function init(user, userData) {
         pessoasMoradia: parseInt(
           document.getElementById("pessoasMoradia")?.value || 0
         ),
-        casaPropria: document.getElementById("casaPropria")?.checked || false,
+        casaPropria: document.getElementById("casaPropria")?.value || "",
         valorAluguel: parseFloat(
           document.getElementById("valorAluguel")?.value || 0
         ),
