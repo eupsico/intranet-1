@@ -1967,15 +1967,20 @@ exports.marcarPresenca = onDocumentUpdated(
 // ====================================================================
 // FUNÇÃO: importarPacientesBatch
 // ====================================================================
+// ============== FUNÇÃO CORRIGIDA: historicoEtapas sem FieldValue ==============
+
 // Mapeamento status
 const PIPEFY_TO_FIREBASE_STATUS = {
   "encaminhar para plantão": "encaminharparaplantao",
   "encaminhar para plantao": "encaminharparaplantao",
   "em atendimento pb": "ematendimentopb",
+  "em atendimento plantão": "ematendimentoplantao",
   parcerias: "pacientesparcerias",
   desistência: "desistencia",
-  "em atendimento plantão": "ematendimentoplantao",
+  desistencia: "desistencia",
   "triagem agendada": "triagemagendada",
+  alta: "alta",
+  grupos: "grupos",
 };
 
 function mapearStatus(statusPipefy, fila) {
@@ -1986,7 +1991,6 @@ function mapearStatus(statusPipefy, fila) {
 
   if (mapped) return mapped;
 
-  // Fuzzy match
   for (const [key, value] of Object.entries(PIPEFY_TO_FIREBASE_STATUS)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return value;
@@ -2019,34 +2023,24 @@ function validaCPF(cpf) {
   return true;
 }
 
-// ⭐ FUNÇÃO PARA CONVERTER DATA DO PIPEFY
 function procesarDataTriagem(dataInput) {
   try {
     if (!dataInput) return { dataTriagem: null, horaTriagem: null };
 
-    // Se for objeto Date
+    // Se for Date object do XLSX
     if (dataInput instanceof Date) {
       const data = dataInput;
-      const dataStr = `${String(data.getDate()).padStart(2, "0")}/${String(
-        data.getMonth() + 1
-      ).padStart(2, "0")}/${data.getFullYear()}`;
-      const horaStr = `${String(data.getHours()).padStart(2, "0")}:${String(
-        data.getMinutes()
-      ).padStart(2, "0")}:${String(data.getSeconds()).padStart(2, "0")}`;
       const dataFormatada = `${data.getFullYear()}-${String(
         data.getMonth() + 1
       ).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
-
-      logger.info(
-        `Data convertida: ${dataStr} ${horaStr} → ${dataFormatada} / ${horaStr}`
-      );
+      const horaStr = `${String(data.getHours()).padStart(2, "0")}:${String(
+        data.getMinutes()
+      ).padStart(2, "0")}:${String(data.getSeconds()).padStart(2, "0")}`;
       return { dataTriagem: dataFormatada, horaTriagem: horaStr };
     }
 
     // Se for string
-    let dataStr = String(dataInput).trim();
-
-    // Tenta parse DD/MM/YYYY HH:MM:SS
+    const dataStr = String(dataInput).trim();
     const match = dataStr.match(
       /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/
     );
@@ -2148,7 +2142,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
         // Mapear status
         const statusFirebase = mapearStatus(paciente.status, fila);
 
-        // Processar horários disponíveis
+        // ⭐ HORÁRIOS disponíveis
         const disponibilidade = {
           manha_semana:
             paciente.horarioManhaSemana === "true" ||
@@ -2164,6 +2158,15 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             paciente.horarioManhaSabado === true,
         };
 
+        // ⭐ CORRIGIDO: historicoEtapas usa new Date() em vez de FieldValue.serverTimestamp()
+        const historicoEtapas = [
+          {
+            etapa: statusFirebase,
+            data: new Date(), // ✅ USO DE new Date() EM VEZ DE FieldValue.serverTimestamp()
+            usuario: adminUid,
+          },
+        ];
+
         // Montar card completo
         const cardData = {
           nomeCompleto,
@@ -2176,6 +2179,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           genero: String(paciente.genero || "").trim(),
           estadoCivil: String(paciente.estadoCivil || "").trim(),
           escolaridade: String(paciente.escolaridade || "").trim(),
+          rg: String(paciente.rg || "").trim(),
 
           // Contato
           telefoneCelular: String(paciente.telefoneCelular || "").trim(),
@@ -2196,9 +2200,21 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           // Moradia
           tipoMoradia: String(paciente.tipoMoradia || "").trim(),
           pessoasMoradia: parseInt(paciente.pessoasMoradia) || 0,
+          casaPropria: String(paciente.casaPropria || "").trim(),
+          valorAluguel: parseFloat(paciente.valorAluguel) || 0,
           rendaMensal: parseFloat(paciente.rendaMensal) || 0,
           rendaFamiliar: parseFloat(paciente.rendaFamiliar) || 0,
-          valorAluguel: parseFloat(paciente.valorAluguel) || 0,
+
+          // Responsável (se menor)
+          responsavelNome: String(paciente.responsavelNome || "").trim(),
+          responsavelCpf: String(paciente.responsavelCpf || "").replace(
+            /\D/g,
+            ""
+          ),
+          responsavelParentesco: String(
+            paciente.responsavelParentesco || ""
+          ).trim(),
+          responsavelContato: String(paciente.responsavelContato || "").trim(),
 
           // Triagem
           dataTriagem,
@@ -2218,9 +2234,31 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             paciente.prefereSerAtendidoPor || ""
           ).trim(),
 
-          // Queixa
+          // Queixa e história
           queixaPaciente: String(paciente.queixaPaciente || "").trim(),
           motivoBusca: String(paciente.motivoBusca || "").trim(),
+          tratamentoAnterior: String(paciente.tratamentoAnterior || "").trim(),
+
+          // Plantão
+          profissionalPlantao: String(
+            paciente.profissionalPlantao || ""
+          ).trim(),
+          dataPrimeiraSessaoPlantao: paciente.dataPrimeiraSessaoPlantao || null,
+          atendimentoSeraPlantao: String(
+            paciente.atendimentoSeraPlantao || ""
+          ).trim(),
+          encaminhamentoPlantao: String(
+            paciente.encaminhamentoPlantao || ""
+          ).trim(),
+          dataEncerramentoPlantao: paciente.dataEncerramentoPlantao || null,
+          quantidadeSessoesPlantao:
+            parseInt(paciente.quantidadeSessoesPlantao) || 0,
+
+          // PB
+          profissionalPB: String(paciente.profissionalPB || "").trim(),
+          dataEncaminhamentoPB: paciente.dataEncaminhamentoPB || null,
+          dataPrimeiraSessaoPB: paciente.dataPrimeiraSessaoPB || null,
+          atendimentoSeraPB: String(paciente.atendimentoSeraPB || "").trim(),
 
           // Equipe
           assistenteSocial:
@@ -2228,21 +2266,17 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             adminUserDoc.data().nome ||
             "Não informado",
 
-          // Timestamps
+          // ⭐ TIMESTAMPS CORRETOS (fora de arrays)
           timestamp: FieldValue.serverTimestamp(),
           lastUpdate: FieldValue.serverTimestamp(),
           lastUpdatedBy: `Importação em Lote por ${adminUid}`,
+
+          // Status
           importadoEmLote: true,
           statusAtivo: true,
 
-          // Histórico
-          historicoEtapas: [
-            {
-              etapa: statusFirebase,
-              data: FieldValue.serverTimestamp(),
-              usuario: adminUid,
-            },
-          ],
+          // ⭐ historicoEtapas com new Date()
+          historicoEtapas: historicoEtapas,
         };
 
         pacientesValidos.push({ cardData, cpf: cpfLimpo, nome: nomeCompleto });
@@ -2274,12 +2308,12 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     }
 
     logger.info(
-      `[IMPORTAÇÃO] Concluída: ${resultados.sucesso} sucessos, ${resultados.erros} erros`
+      `[IMPORTAÇÃO] Concluída: ${resultados.sucesso} sucessos, ${resultados.erros} erros, ${resultados.duplicatas} duplicatas`
     );
 
     return {
       ...resultados,
-      mensagem: `${resultados.sucesso} pacientes importados com sucesso`,
+      mensagem: `✅ ${resultados.sucesso} pacientes importados com sucesso!`,
     };
   } catch (error) {
     logger.error(`[IMPORTAÇÃO] Erro fatal: ${error.message}`, error);
