@@ -91,14 +91,7 @@ async function carregarAgendamento() {
 
 function renderizarFormulario() {
   const container = document.getElementById("main-container");
-
-  const voluntarioInfo = `
-    <div class="voluntario-info">
-      <strong>Olá, ${
-        usuarioLogado.dadosCompletos?.nome || "Voluntário"
-      }!</strong>
-    </div>
-  `;
+  const voluntarioInfo = `<div class="voluntario-info"><strong>Olá, ${usuarioLogado.dadosCompletos?.nome} (Voluntário)!</strong></div>`;
 
   let gestorInfo = "";
   if (
@@ -111,103 +104,108 @@ function renderizarFormulario() {
         agendamentoData.slots.map((s) => s.gestorNome).filter(Boolean)
       ),
     ];
-
     if (gestoresUnicos.length === 1) {
-      gestorInfo = `
-        <div class="gestor-info">
-          <strong>Reunião com: ${gestoresUnicos[0]}</strong>
-        </div>
-      `;
+      gestorInfo = `<div class="gestor-info"><strong>Reunião com ${gestoresUnicos[0]}</strong></div>`;
     }
   }
 
-  // ✅ Ordenar slots por data e hora
+  // Ordenar slots por data e hora
   agendamentoData.slots.sort((a, b) => {
-    if (a.data !== b.data) {
-      return a.data.localeCompare(b.data);
-    }
+    if (a.data !== b.data) return a.data.localeCompare(b.data);
     return a.horaInicio.localeCompare(b.horaInicio);
   });
 
-  const slotsDisponiveis = agendamentoData.slots.filter(
-    (slot) => !slot.vagas || slot.vagas.length === 0
+  // Filtrar slots com vagas disponíveis
+  let slotsDisponiveis = agendamentoData.slots.filter(
+    (slot) => !slot.vagas || slot.vagas.length < 1
   );
+
+  // NOVA FILTRAGEM: Excluir slots com menos de 12 horas restantes
+  const agora = new Date(); // Data/hora atual
+  slotsDisponiveis = slotsDisponiveis.filter((slot) => {
+    const [ano, mes, dia] = slot.data.split("-");
+    const [horaIni, minIni] = slot.horaInicio.split(":");
+    const dataInicioSlot = new Date(
+      ano,
+      mes - 1,
+      parseInt(dia),
+      parseInt(horaIni),
+      parseInt(minIni)
+    );
+
+    const diferencaMs = dataInicioSlot - agora;
+    const diferencaHoras = diferencaMs / (1000 * 60 * 60); // Converte para horas
+
+    return diferencaHoras >= 12;
+  });
 
   if (slotsDisponiveis.length === 0) {
     container.innerHTML = `
-      <div class="header">
-        <h1>Reunião Online com Voluntário</h1>
-      </div>
-      ${voluntarioInfo}
-      <div class="error-message">
-        Desculpe, todos os horários já foram preenchidos.
-      </div>
-    `;
+            <div class="header">
+                <h1>Reunião Online com Voluntários</h1>
+            </div>
+            <div>${voluntarioInfo}</div>
+            <div class="error-message">
+                Desculpe, todos os horários já foram preenchidos ou estão muito próximos (menos de 12 horas).
+            </div>
+        `;
     return;
   }
 
   const slotsHTML = slotsDisponiveis
     .map((slot, index) => {
-      const gestorTexto =
-        agendamentoData.exibirGestor && slot.gestorNome
-          ? `<span class="slot-gestor">com ${slot.gestorNome}</span>`
-          : "";
-
+      let gestorTexto = "";
+      if (agendamentoData.exibirGestor && slot.gestorNome) {
+        gestorTexto = `<span class="slot-gestor">com ${slot.gestorNome}</span>`;
+      }
       return `
-          <label class="slot-option">
-            <input 
-              type="radio" 
-              name="slot" 
-              value="${index}" 
-              data-data="${slot.data}"
-              data-hora-inicio="${slot.horaInicio}"
-              data-hora-fim="${slot.horaFim}"
-              data-gestor-id="${slot.gestorId || ""}"
-              data-gestor-nome="${slot.gestorNome || ""}"
-            />
-            <div class="slot-info">
-              <span class="slot-date">${formatarData(slot.data)}</span>
-              <span class="slot-time">${slot.horaInicio} - ${
+            <label class="slot-option">
+                <input type="radio" name="slot" value="${index}" 
+                       data-data="${slot.data}" 
+                       data-hora-inicio="${slot.horaInicio}" 
+                       data-hora-fim="${slot.horaFim}" 
+                       data-gestor-id="${slot.gestorId}" 
+                       data-gestor-nome="${slot.gestorNome}">
+                <div class="slot-info">
+                    <span class="slot-date">${formatarData(slot.data)}</span>
+                    <span class="slot-time">${slot.horaInicio} - ${
         slot.horaFim
       }</span>
-              ${gestorTexto}
-            </div>
-          </label>
+                    ${gestorTexto}
+                </div>
+            </label>
         `;
     })
     .join("");
 
   container.innerHTML = `
-    <div class="header">
-      <h1>Reunião Online com Voluntário</h1>
-    </div>
+        <div class="header">
+            <h1>Reunião Online com Voluntários</h1>
+        </div>
+        <div>${voluntarioInfo}</div>
+        ${gestorInfo}
+        <div class="descricao">${agendamentoData.descricao}</div>
+        <div class="slots-section">
+            <h3>Escolha o melhor horário para você</h3>
+            <div class="slots-grid">
+                ${slotsHTML}
+            </div>
+        </div>
+        <div>
+            <form id="form-agendamento">
+                <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
+            </form>
+        </div>
+    `;
 
-    ${voluntarioInfo}
-    ${gestorInfo}
-
-    <div class="descricao">
-      ${agendamentoData.descricao}
-    </div>
-
-    <div class="slots-section">
-      <h3>Escolha o melhor horário para você:</h3>
-      <div class="slots-grid">
-        ${slotsHTML}
-      </div>
-    </div>
-
-    <form id="form-agendamento">
-      <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
-    </form>
-  `;
-
+  // Adicionar eventos para seleção de slot
   document
     .querySelectorAll('.slot-option input[type="radio"]')
     .forEach((radio) => {
       radio.addEventListener("change", () => {
-        document.querySelectorAll(".slot-option").forEach((opt) => {
-          opt.classList.remove("selected");
-        });
+        document
+          .querySelectorAll(".slot-option")
+          .forEach((opt) => opt.classList.remove("selected"));
         radio.closest(".slot-option").classList.add("selected");
       });
     });
