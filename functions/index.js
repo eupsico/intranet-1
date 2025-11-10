@@ -1092,12 +1092,69 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
 // ====================================================================
 // FUNÇÃO: importarPacientesBatch
 // ====================================================================
+// Configuração das opções da trilha do paciente (constante para validação)
+const COLUMNSCONFIG = {
+  inscricaodocumentos: "Inscrição e Documentos",
+  triagemagendada: "Triagem Agendada",
+  encaminharparaplantao: "Encaminhar para Plantão",
+  ematendimentoplantao: "Em Atendimento Plantão",
+  agendamentoconfirmadoplantao: "Agendamento Confirmado Plantão",
+  encaminharparapb: "Encaminhar para PB",
+  aguardandoinfohorarios: "Aguardando Info Horários",
+  cadastrarhorariopsicomanager: "Cadastrar Horário Psicomanager",
+  ematendimentopb: "Em Atendimento PB",
+  aguardandoreavaliacao: "Aguardando Reavaliação",
+  pacientesparcerias: "Pacientes Parcerias",
+  grupos: "Grupos",
+  desistencia: "Desistência",
+  alta: "Alta",
+};
+
+// Campos obrigatórios para trilha do paciente
+const REQUIRED_FIELDS = ["nomeCompleto", "cpf"];
+
+// Função auxiliar para validar status da trilha
+function getValidStatus(
+  statusInput,
+  validStatuses = Object.keys(COLUMNSCONFIG)
+) {
+  if (!statusInput) return "inscricaodocumentos"; // Padrão inicial
+  const normalized = String(statusInput).trim().toLowerCase();
+  const match = validStatuses.find(
+    (s) => s.includes(normalized) || normalized.includes(s)
+  );
+  return match || "inscricaodocumentos"; // Fallback seguro
+}
+
+// Função auxiliar para validar CPF (melhorada da original)
+function validaCPF(cpf) {
+  cpf = String(cpf).replace(/\D/g, "");
+  if (cpf.length !== 11 || /^\d{11}$/.test(cpf.replace(/\d/g, "0")))
+    return false;
+  let soma = 0;
+  let resto;
+  for (let i = 1; i <= 9; i++)
+    soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf.substring(9, 10))) return false;
+  soma = 0;
+  for (let i = 1; i <= 10; i++)
+    soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf.substring(10, 11))) return false;
+  return true;
+}
+
 exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Você precisa estar autenticado.");
   }
+
   const adminUid = request.auth.uid;
   try {
+    // Verificar permissões (manter original)
     const adminUserDoc = await db.collection("usuarios").doc(adminUid).get();
     if (
       !adminUserDoc.exists ||
@@ -1113,130 +1170,246 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     if (!Array.isArray(pacientes) || pacientes.length === 0 || !fila) {
       throw new HttpsError(
         "invalid-argument",
-        "Dados inválidos. É necessário uma lista de pacientes e uma fila de destino."
+        "Dados inválidos. Necessário uma lista de pacientes e uma fila de destino."
       );
     }
 
     logger.info(
-      `Iniciando importação de ${pacientes.length} pacientes para a fila ${fila} por ${adminUid}.`
+      `Iniciando importação de ${pacientes.length} pacientes para a fila "${fila}" por ${adminUid}.`
     );
 
+    // Inicializar resultados
     const resultados = {
+      total: pacientes.length,
       sucesso: 0,
       erros: 0,
-      total: pacientes.length,
+      duplicatas: 0,
       mensagensErro: [],
+      pacientesCriados: [], // Novo: lista de IDs e nomes para tracking
     };
 
-    const verificacoesCpf = pacientes.map((paciente, index) => {
-      const cpf = paciente.cpf ? String(paciente.cpf).replace(/\D/g, "") : null;
-      if (!cpf) {
-        resultados.erros++;
-        resultados.mensagensErro.push(
-          `Linha ${index + 2}: CPF ausente ou inválido.`
-        );
-        return Promise.resolve(null);
-      }
-      return db
-        .collection("trilhaPaciente")
-        .where("cpf", "==", cpf)
-        .limit(1)
-        .get()
-        .then((snapshot) => ({ snapshot, paciente, cpf, index }));
-    });
+    // Sanitizar e validar cada paciente com opções da trilha
+    const pacientesValidos = [];
+    const duplicatasCPFs = new Set();
+    const duplicatasEmails = new Set();
 
-    const resultadosVerificacao = await Promise.all(verificacoesCpf);
-
-    const batch = db.batch();
-    const agora = FieldValue.serverTimestamp();
-
-    for (const result of resultadosVerificacao) {
-      if (result === null) continue;
-      const { snapshot, paciente, cpf, index } = result;
-
-      if (!paciente.nomeCompleto) {
-        resultados.erros++;
-        resultados.mensagensErro.push(
-          `Linha ${index + 2}: O campo 'nomeCompleto' é obrigatório.`
-        );
-        continue;
-      }
-      if (!snapshot.empty) {
-        resultados.erros++;
-        resultados.mensagensErro.push(
-          `Linha ${index + 2}: CPF ${cpf} já cadastrado no sistema.`
-        );
-        continue;
-      }
-
-      const novoCardRef = db.collection("trilhaPaciente").doc();
-      const statusInicial = paciente.status || "inscricao_documentos";
-
-      const dadosAdicionais = {};
-
+    for (const [index, paciente] of pacientes.entries()) {
       try {
-        if (paciente.atendimentosPB_JSON) {
-          const atendimentos = JSON.parse(paciente.atendimentosPB_JSON);
-          atendimentos.forEach((at) => {
-            at.atendimentoId = `imp_${novoCardRef.id}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-            at.dataInicio = agora;
-          });
-          dadosAdicionais.atendimentosPB = atendimentos;
-        }
-        if (paciente.plantaoInfo_JSON) {
-          dadosAdicionais.plantaoInfo = JSON.parse(paciente.plantaoInfo_JSON);
-        }
-      } catch (e) {
-        resultados.erros++;
-        resultados.mensagensErro.push(
-          `Linha ${
-            index + 2
-          }: Erro de formatação no JSON. Verifique as aspas e a estrutura. (${
-            e.message
-          })`
+        // Sanitização básica
+        const cpfLimpo = String(paciente.cpf || "").replace(/\D/g, "");
+        const emailLimpo = String(paciente.email || "")
+          .trim()
+          .toLowerCase();
+        const nomeCompleto = String(
+          paciente.nomeCompleto || paciente.nome || ""
+        ).trim();
+
+        // Validações obrigatórias da trilha
+        const missingFields = REQUIRED_FIELDS.filter(
+          (field) => !paciente[field]
         );
-        continue;
+        if (missingFields.length > 0) {
+          resultados.mensagensErro.push(
+            `Linha ${
+              index + 2
+            }: Campos obrigatórios ausentes - ${missingFields.join(", ")}`
+          );
+          resultados.erros++;
+          continue;
+        }
+
+        // Validar CPF
+        if (!validaCPF(cpfLimpo)) {
+          resultados.mensagensErro.push(
+            `Linha ${index + 2}: CPF inválido (${cpfLimpo}).`
+          );
+          resultados.erros++;
+          continue;
+        }
+
+        // Verificar duplicatas (CPF e email)
+        const query = db
+          .collection("trilhaPaciente")
+          .where("cpf", "==", cpfLimpo)
+          .limit(1);
+        const snapshotCPF = await query.get();
+        if (!snapshotCPF.empty) {
+          resultados.mensagensErro.push(
+            `Linha ${
+              index + 2
+            }: CPF ${cpfLimpo} já cadastrado no sistema (ID: ${
+              snapshotCPF.docs[0].id
+            }).`
+          );
+          resultados.duplicatas++;
+          continue;
+        }
+
+        if (emailLimpo && emailLimpo !== "não informado") {
+          const queryEmail = db
+            .collection("trilhaPaciente")
+            .where("email", "==", emailLimpo)
+            .limit(1);
+          const snapshotEmail = await queryEmail.get();
+          if (!snapshotEmail.empty) {
+            resultados.mensagensErro.push(
+              `Linha ${index + 2}: Email ${emailLimpo} já em uso (ID: ${
+                snapshotEmail.docs[0].id
+              }).`
+            );
+            resultados.duplicatas++;
+            continue;
+          }
+        }
+
+        // Validar e mapear status da trilha
+        const status = getValidStatus(
+          paciente.status || fila,
+          Object.keys(COLUMNSCONFIG)
+        );
+        if (!COLUMNSCONFIG[status]) {
+          resultados.mensagensErro.push(
+            `Linha ${index + 2}: Status "${
+              paciente.status || fila
+            }" inválido. Usando padrão: ${
+              COLUMNSCONFIG[status]
+            }. Opções válidas: ${Object.keys(COLUMNSCONFIG).join(", ")}`
+          );
+        }
+
+        // Processar campos JSON opcionais (atendimentosPB, plantaoInfo, etc.)
+        let dadosAdicionais = {};
+        try {
+          if (paciente.atendimentosPBJSON) {
+            dadosAdicionais.atendimentosPB = JSON.parse(
+              paciente.atendimentosPBJSON
+            ).map((at) => ({
+              ...at,
+              atendimentoId: `${cpfLimpo}-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`, // ID único
+              dataInicio: FieldValue.serverTimestamp(),
+            }));
+          }
+          if (paciente.plantaoInfoJSON) {
+            dadosAdicionais.plantaoInfo = JSON.parse(paciente.plantaoInfoJSON);
+          }
+          if (paciente.profissionaisPBids) {
+            dadosAdicionais.profissionaisPBids = paciente.profissionaisPBids
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean);
+          }
+        } catch (e) {
+          resultados.mensagensErro.push(
+            `Linha ${
+              index + 2
+            }: Erro de formatação no JSON (atendimentosPB ou plantaoInfo). Verifique as aspas e estrutura. Erro: ${
+              e.message
+            }`
+          );
+          resultados.erros++;
+          continue;
+        }
+
+        // Preparar card completo da trilha
+        const cardData = {
+          nomeCompleto,
+          cpf: cpfLimpo,
+          status,
+          filaDeOrigem: fila,
+          dataNascimento: paciente.dataNascimento || null,
+          telefoneCelular: String(paciente.telefoneCelular || "").trim(),
+          email: emailLimpo !== "" ? emailLimpo : "não informado",
+          rua: String(paciente.rua || "").trim(),
+          numeroCasa: String(paciente.numeroCasa || "").trim(),
+          bairro: String(paciente.bairro || "").trim(),
+          cidade: String(paciente.cidade || "").trim(),
+          cep: String(paciente.cep || "").trim(),
+          complemento: String(paciente.complemento || "").trim(),
+          responsavel: String(paciente.responsavel || "").trim(),
+          rendaMensal: String(paciente.rendaMensal || "").trim(),
+          rendaFamiliar: String(paciente.rendaFamiliar || "").trim(),
+          casaPropria: String(paciente.casaPropria || "").trim(),
+          pessoasMoradia: parseInt(paciente.pessoasMoradia) || 0,
+          motivoBusca: String(paciente.motivoBusca || "").trim(),
+          disponibilidadeGeral: String(
+            paciente.disponibilidadeGeral || ""
+          ).trim(),
+          disponibilidadeEspecifica: String(
+            paciente.disponibilidadeEspecifica || ""
+          ).trim(),
+          comoConheceu: String(paciente.comoConheceu || "").trim(),
+          timestamp: FieldValue.serverTimestamp(),
+          lastUpdate: FieldValue.serverTimestamp(),
+          lastUpdatedBy: `Importação em Lote por ${adminUid}`,
+          importadoEmLote: true,
+          // Campos específicos da trilha (melhoria)
+          etapaAtual: status,
+          historicoEtapas: [
+            {
+              etapa: status,
+              data: FieldValue.serverTimestamp(),
+              usuario: adminUid,
+            },
+          ],
+          statusAtivo: true,
+          assistenteSocial:
+            paciente.assistenteSocial ||
+            adminUserDoc.data().nome ||
+            "Não informado", // Associa ao importador
+          ...dadosAdicionais,
+        };
+
+        pacientesValidos.push({ cardData, cpf: cpfLimpo, nome: nomeCompleto });
+        duplicatasCPFs.add(cpfLimpo); // Para tracking global
+      } catch (err) {
+        logger.error(`Erro ao processar linha ${index + 2}:`, err);
+        resultados.mensagensErro.push(
+          `Linha ${index + 2}: Erro de processamento - ${err.message}`
+        );
+        resultados.erros++;
       }
-
-      if (paciente.profissionaisPB_ids) {
-        dadosAdicionais.profissionaisPB_ids = (
-          paciente.profissionaisPB_ids || ""
-        )
-          .split(",")
-          .map((id) => id.trim())
-          .filter(Boolean);
-      }
-
-      const cardData = {
-        nomeCompleto: paciente.nomeCompleto,
-        cpf: cpf,
-        status: statusInicial,
-        filaDeOrigem: fila,
-        dataNascimento: paciente.dataNascimento || null,
-        telefoneCelular: paciente.telefoneCelular || "",
-        email: paciente.email || "",
-        motivoBusca: paciente.motivoBusca || "",
-        timestamp: agora,
-        lastUpdate: agora,
-        lastUpdatedBy: `Importação em Lote por ${adminUid}`,
-        importadoEmLote: true,
-        ...dadosAdicionais,
-      };
-
-      batch.set(novoCardRef, cardData);
-      resultados.sucesso++;
     }
 
-    if (resultados.sucesso > 0) {
+    if (pacientesValidos.length === 0) {
+      return {
+        ...resultados,
+        mensagem: "Nenhum paciente válido para importação. Verifique os erros.",
+      };
+    }
+
+    // Executar batch(es) com split para limite de 500 ops
+    const batchSize = 500;
+    for (let i = 0; i < pacientesValidos.length; i += batchSize) {
+      const chunk = pacientesValidos.slice(i, i + batchSize);
+      const batch = db.batch();
+      const agora = FieldValue.serverTimestamp();
+
+      for (const { cardData } of chunk) {
+        cardData.timestamp = agora;
+        cardData.lastUpdate = agora;
+        const novoCardRef = db.collection("trilhaPaciente").doc();
+        batch.set(novoCardRef, cardData);
+        resultados.pacientesCriados.push({
+          id: novoCardRef.id,
+          nome: cardData.nomeCompleto,
+          status: cardData.status,
+          cpf: cardData.cpf,
+        });
+      }
+
       await batch.commit();
+      resultados.sucesso += chunk.length;
     }
 
     logger.info(
-      `Importação concluída: ${resultados.sucesso} sucessos, ${resultados.erros} erros.`
+      `Importação concluída: ${resultados.sucesso} sucessos, ${resultados.erros} erros, ${resultados.duplicatas} duplicatas.`
     );
-    return resultados;
+    return {
+      ...resultados,
+      mensagem: `Importação concluída. ${resultados.sucesso} pacientes adicionados à trilha na fila "${fila}".`,
+    };
   } catch (error) {
     logger.error("Erro geral na função importarPacientesBatch:", error);
     if (error instanceof HttpsError) throw error;
