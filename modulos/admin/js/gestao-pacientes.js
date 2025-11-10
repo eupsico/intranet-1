@@ -40,9 +40,7 @@ function calcularIdade(dataNascimento) {
 }
 
 export function init(user, userData) {
-  console.log(
-    "🚀 Módulo de Gestão de Pacientes v4.0 (Com Modalidade) iniciado."
-  );
+  console.log("🚀 Módulo de Gestão de Pacientes iniciado.");
 
   const searchInput = document.getElementById("search-input");
   const statusFilter = document.getElementById("status-filter");
@@ -145,10 +143,10 @@ export function init(user, userData) {
 
   function gerarHorariosHTML(periodo, paciente) {
     const horarios = {
-      manha_semana: ["08:00", "09:00", "10:00", "11:00"],
-      tarde_semana: ["13:00", "14:00", "15:00", "16:00", "17:00"],
-      noite_semana: ["18:00", "19:00", "20:00", "21:00"],
-      manha_sabado: ["08:00", "09:00", "10:00", "11:00"],
+      "manha-semana": ["08:00", "09:00", "10:00", "11:00"],
+      "tarde-semana": ["13:00", "14:00", "15:00", "16:00", "17:00"],
+      "noite-semana": ["18:00", "19:00", "20:00", "21:00"],
+      "manha-sabado": ["08:00", "09:00", "10:00", "11:00"],
     };
 
     const disponibilidadeEspecifica = paciente.disponibilidadeEspecifica || [];
@@ -254,103 +252,91 @@ export function init(user, userData) {
 
     const disponibilidadeGeral = paciente.disponibilidadeGeral || [];
     const disponibilidade = {
-      manha_semana: disponibilidadeGeral.includes("Manhã (Durante a semana)"),
-      tarde_semana: disponibilidadeGeral.includes("Tarde (Durante a semana)"),
-      noite_semana: disponibilidadeGeral.includes("Noite (Durante a semana)"),
-      manha_sabado: disponibilidadeGeral.includes("Manhã (Sábado)"),
+      "manha-semana": disponibilidadeGeral.includes("Manhã (Durante a semana)"),
+      "tarde-semana": disponibilidadeGeral.includes("Tarde (Durante a semana)"),
+      "noite-semana": disponibilidadeGeral.includes("Noite (Durante a semana)"),
+      "manha-sabado": disponibilidadeGeral.includes("Manhã (Sábado)"),
     };
 
     const htmlDisponibilidade = `
-      <fieldset style="margin: 20px 0; padding: 20px; border: 2px solid #3498db; border-radius: 5px; background-color: #ecf0f1;">
-        <legend style="font-weight: bold; font-size: 15px; color: #2c3e50; padding: 0 10px;">📅 EDITAR DISPONIBILIDADE DE HORÁRIO</legend>
-        
-        <div style="margin-top: 15px;">
-          <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 10px;">Opção de horário(s) para atendimento: *</label>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-            
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-              <input 
-                type="checkbox" 
-                class="horario-option" 
-                value="manha_semana" 
-                ${disponibilidade.manha_semana ? "checked" : ""} 
-                style="width: 18px; height: 18px; cursor: pointer;"
-              />
-              <span style="font-size: 13px;">🌅 Manhã (Durante a semana)</span>
-            </label>
+      <fieldset>
+        <legend>Disponibilidade de Horário</legend>
+        <div>
+          <label>
+            <input 
+              type="checkbox" 
+              class="horario-option" 
+              value="manha-semana" 
+              ${disponibilidade["manha-semana"] ? "checked" : ""} 
+            />
+            🌅 Manhã (Durante a semana)
+          </label>
 
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-              <input 
-                type="checkbox" 
-                class="horario-option" 
-                value="tarde_semana" 
-                ${disponibilidade.tarde_semana ? "checked" : ""} 
-                style="width: 18px; height: 18px; cursor: pointer;"
-              />
-              <span style="font-size: 13px;">🌤️ Tarde (Durante a semana)</span>
-            </label>
+          <label>
+            <input 
+              type="checkbox" 
+              class="horario-option" 
+              value="tarde-semana" 
+              ${disponibilidade["tarde-semana"] ? "checked" : ""} 
+            />
+            🌤️ Tarde (Durante a semana)
+          </label>
 
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-              <input 
-                type="checkbox" 
-                class="horario-option" 
-                value="noite_semana" 
-                ${disponibilidade.noite_semana ? "checked" : ""} 
-                style="width: 18px; height: 18px; cursor: pointer;"
-              />
-              <span style="font-size: 13px;">🌙 Noite (Durante a semana)</span>
-            </label>
+          <label>
+            <input 
+              type="checkbox" 
+              class="horario-option" 
+              value="noite-semana" 
+              ${disponibilidade["noite-semana"] ? "checked" : ""} 
+            />
+            🌙 Noite (Durante a semana)
+          </label>
 
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-              <input 
-                type="checkbox" 
-                class="horario-option" 
-                value="manha_sabado" 
-                ${disponibilidade.manha_sabado ? "checked" : ""} 
-                style="width: 18px; height: 18px; cursor: pointer;"
-              />
-              <span style="font-size: 13px;">📅 Manhã (Sábado)</span>
-            </label>
+          <label>
+            <input 
+              type="checkbox" 
+              class="horario-option" 
+              value="manha-sabado" 
+              ${disponibilidade["manha-sabado"] ? "checked" : ""} 
+            />
+            📅 Manhã (Sábado)
+          </label>
+        </div>
 
+        <div id="container-manha-semana" style="display: ${
+          disponibilidade["manha-semana"] ? "block" : "none"
+        };">
+          <h4>🌅 Manhã (Seg-Sex):</h4>
+          <div>
+            ${gerarHorariosHTML("manha-semana", paciente)}
           </div>
+        </div>
 
-          <div id="container-manha_semana" class="horario-container" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
-            disponibilidade.manha_semana ? "block" : "none"
-          };">
-            <h4 style="margin-top: 0; color: #2c3e50;">🌅 Manhã (Seg-Sex):</h4>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-              ${gerarHorariosHTML("manha_semana", paciente)}
-            </div>
+        <div id="container-tarde-semana" style="display: ${
+          disponibilidade["tarde-semana"] ? "block" : "none"
+        };">
+          <h4>🌤️ Tarde (Seg-Sex):</h4>
+          <div>
+            ${gerarHorariosHTML("tarde-semana", paciente)}
           </div>
+        </div>
 
-          <div id="container-tarde_semana" class="horario-container" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
-            disponibilidade.tarde_semana ? "block" : "none"
-          };">
-            <h4 style="margin-top: 0; color: #2c3e50;">🌤️ Tarde (Seg-Sex):</h4>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-              ${gerarHorariosHTML("tarde_semana", paciente)}
-            </div>
+        <div id="container-noite-semana" style="display: ${
+          disponibilidade["noite-semana"] ? "block" : "none"
+        };">
+          <h4>🌙 Noite (Seg-Sex):</h4>
+          <div>
+            ${gerarHorariosHTML("noite-semana", paciente)}
           </div>
+        </div>
 
-          <div id="container-noite_semana" class="horario-container" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
-            disponibilidade.noite_semana ? "block" : "none"
-          };">
-            <h4 style="margin-top: 0; color: #2c3e50;">🌙 Noite (Seg-Sex):</h4>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-              ${gerarHorariosHTML("noite_semana", paciente)}
-            </div>
+        <div id="container-manha-sabado" style="display: ${
+          disponibilidade["manha-sabado"] ? "block" : "none"
+        };">
+          <h4>📅 Manhã (Sábado):</h4>
+          <div>
+            ${gerarHorariosHTML("manha-sabado", paciente)}
           </div>
-
-          <div id="container-manha_sabado" class="horario-container" style="margin-top: 15px; padding: 15px; background: #fff; border-radius: 4px; display: ${
-            disponibilidade.manha_sabado ? "block" : "none"
-          };">
-            <h4 style="margin-top: 0; color: #2c3e50;">📅 Manhã (Sábado):</h4>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-              ${gerarHorariosHTML("manha_sabado", paciente)}
-            </div>
-          </div>
-
         </div>
       </fieldset>
     `;
@@ -488,42 +474,42 @@ export function init(user, userData) {
           />
         </fieldset>
 
-<fieldset>
-  <legend>Moradia</legend>
-  <select id="tipoMoradia">
-    <option value="">-- Tipo de Moradia --</option>
-    <option value="Casa" ${
-      p("tipoMoradia") === "Casa" ? "selected" : ""
-    }>Casa</option>
-    <option value="Apartamento" ${
-      p("tipoMoradia") === "Apartamento" ? "selected" : ""
-    }>Apartamento</option>
-    <option value="Outra" ${
-      p("tipoMoradia") === "Outra" ? "selected" : ""
-    }>Outra</option>
-  </select>
-  <input
-    type="number"
-    id="pessoasMoradia"
-    value="${p("pessoasMoradia", "")}"
-    placeholder="Quantidade de pessoas"
-  />
-  <select id="casaPropria">
-    <option value="">-- Casa Própria? --</option>
-    <option value="Sim" ${
-      p("casaPropria") === "Sim" ? "selected" : ""
-    }>Sim</option>
-    <option value="Não" ${
-      p("casaPropria") === "Não" ? "selected" : ""
-    }>Não</option>
-  </select>
-  <input
-    type="number"
-    id="valorAluguel"
-    value="${p("valorAluguel", "")}"
-    placeholder="Valor do aluguel"
-  />
-</fieldset>
+        <fieldset>
+          <legend>Moradia</legend>
+          <select id="tipoMoradia">
+            <option value="">-- Tipo de Moradia --</option>
+            <option value="Casa" ${
+              p("tipoMoradia") === "Casa" ? "selected" : ""
+            }>Casa</option>
+            <option value="Apartamento" ${
+              p("tipoMoradia") === "Apartamento" ? "selected" : ""
+            }>Apartamento</option>
+            <option value="Outra" ${
+              p("tipoMoradia") === "Outra" ? "selected" : ""
+            }>Outra</option>
+          </select>
+          <input
+            type="number"
+            id="pessoasMoradia"
+            value="${p("pessoasMoradia", "")}"
+            placeholder="Quantidade de pessoas"
+          />
+          <select id="casaPropria">
+            <option value="">-- Casa Própria? --</option>
+            <option value="Sim" ${
+              p("casaPropria") === "Sim" ? "selected" : ""
+            }>Sim</option>
+            <option value="Não" ${
+              p("casaPropria") === "Não" ? "selected" : ""
+            }>Não</option>
+          </select>
+          <input
+            type="number"
+            id="valorAluguel"
+            value="${p("valorAluguel", "")}"
+            placeholder="Valor do aluguel"
+          />
+        </fieldset>
 
         <fieldset>
           <legend>Renda</legend>
@@ -590,43 +576,40 @@ export function init(user, userData) {
 
         ${htmlDisponibilidade}
 
-<fieldset>
-  <legend>Modalidade e Preferências de Atendimento</legend>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-    <div>
-      <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Modalidade de Atendimento:</label>
-      <select id="modalidadeAtendimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-        <option value="">-- Selecione --</option>
-        <option value="Presencial" ${
-          p("modalidadeAtendimento") === "Presencial" ? "selected" : ""
-        }>🏢 Presencial</option>
-        <option value="On-line" ${
-          p("modalidadeAtendimento") === "On-line" ? "selected" : ""
-        }>💻 On-line</option>
-        <option value="Qualquer" ${
-          p("modalidadeAtendimento") === "Qualquer" ? "selected" : ""
-        }>🔄 Qualquer um</option>
-      </select>
-    </div>
+        <fieldset>
+          <legend>Modalidade e Preferências de Atendimento</legend>
+          <label>
+            <span>Modalidade de Atendimento:</span>
+            <select id="modalidadeAtendimento">
+              <option value="">-- Selecione --</option>
+              <option value="Presencial" ${
+                p("modalidadeAtendimento") === "Presencial" ? "selected" : ""
+              }>🏢 Presencial</option>
+              <option value="On-line" ${
+                p("modalidadeAtendimento") === "On-line" ? "selected" : ""
+              }>💻 On-line</option>
+              <option value="Qualquer" ${
+                p("modalidadeAtendimento") === "Qualquer" ? "selected" : ""
+              }>🔄 Qualquer um</option>
+            </select>
+          </label>
 
-    <div>
-      <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Preferência de Atendimento (Gênero):</label>
-      <select id="preferenciaGenero" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-        <option value="">-- Selecione --</option>
-        <option value="Homem" ${
-          p("preferenciaGenero") === "Homem" ? "selected" : ""
-        }>👨 Homem</option>
-        <option value="Mulher" ${
-          p("preferenciaGenero") === "Mulher" ? "selected" : ""
-        }>👩 Mulher</option>
-        <option value="Qualquer" ${
-          p("preferenciaGenero") === "Qualquer" ? "selected" : ""
-        }>🔄 Qualquer um</option>
-      </select>
-    </div>
-  </div>
-</fieldset>
-
+          <label>
+            <span>Preferência de Atendimento (Gênero):</span>
+            <select id="preferenciaGenero">
+              <option value="">-- Selecione --</option>
+              <option value="Homem" ${
+                p("preferenciaGenero") === "Homem" ? "selected" : ""
+              }>👨 Homem</option>
+              <option value="Mulher" ${
+                p("preferenciaGenero") === "Mulher" ? "selected" : ""
+              }>👩 Mulher</option>
+              <option value="Qualquer" ${
+                p("preferenciaGenero") === "Qualquer" ? "selected" : ""
+              }>🔄 Qualquer um</option>
+            </select>
+          </label>
+        </fieldset>
 
         <fieldset>
           <legend>Assistente Social</legend>
@@ -689,15 +672,17 @@ export function init(user, userData) {
   async function salvarEdicao() {
     try {
       const pacientesRef = doc(db, "trilhaPaciente", currentEditingId);
+      const pacienteAtualSnap = await getDoc(pacientesRef);
+      const pacienteAtual = pacienteAtualSnap.data() || {};
 
-      const disponibilidadeEspecifica = [];
-      const disponibilidadeGeral = [];
+      let disponibilidadeEspecifica = [];
+      let disponibilidadeGeral = [];
 
       const periodos = [
-        { id: "manha_semana", label: "Manhã (Durante a semana)" },
-        { id: "tarde_semana", label: "Tarde (Durante a semana)" },
-        { id: "noite_semana", label: "Noite (Durante a semana)" },
-        { id: "manha_sabado", label: "Manhã (Sábado)" },
+        { id: "manha-semana", label: "Manhã (Durante a semana)" },
+        { id: "tarde-semana", label: "Tarde (Durante a semana)" },
+        { id: "noite-semana", label: "Noite (Durante a semana)" },
+        { id: "manha-sabado", label: "Manhã (Sábado)" },
       ];
 
       periodos.forEach((periodo) => {
@@ -716,6 +701,20 @@ export function init(user, userData) {
           });
         }
       });
+
+      if (
+        disponibilidadeEspecifica.length === 0 &&
+        pacienteAtual.disponibilidadeEspecifica
+      ) {
+        disponibilidadeEspecifica = pacienteAtual.disponibilidadeEspecifica;
+      }
+
+      if (
+        disponibilidadeGeral.length === 0 &&
+        pacienteAtual.disponibilidadeGeral
+      ) {
+        disponibilidadeGeral = pacienteAtual.disponibilidadeGeral;
+      }
 
       const dadosAtualizados = {
         nomeCompleto: document.getElementById("nomeCompleto")?.value || "",
@@ -770,8 +769,8 @@ export function init(user, userData) {
         disponibilidadeGeral: disponibilidadeGeral,
         modalidadeAtendimento:
           document.getElementById("modalidadeAtendimento")?.value || "",
-        prefereSerAtendidoPor:
-          document.getElementById("prefereSerAtendidoPor")?.value || "",
+        preferenciaGenero:
+          document.getElementById("preferenciaGenero")?.value || "",
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
         status: document.getElementById("status")?.value || "",
@@ -782,12 +781,7 @@ export function init(user, userData) {
       await updateDoc(pacientesRef, dadosAtualizados);
 
       console.log("✅ Paciente atualizado com sucesso!");
-      console.log(
-        "✅ modalidadeAtendimento:",
-        document.getElementById("modalidadeAtendimento")?.value
-      );
       console.log("✅ disponibilidadeEspecifica:", disponibilidadeEspecifica);
-      console.log("✅ disponibilidadeGeral:", disponibilidadeGeral);
       alert("✅ Dados do paciente atualizados com sucesso!");
 
       modal.style.display = "none";
