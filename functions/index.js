@@ -1971,13 +1971,14 @@ exports.marcarPresenca = onDocumentUpdated(
 
 // Mapeamento status
 const PIPEFY_TO_FIREBASE_STATUS = {
-  "encaminhar para plantão": "encaminharparaplantao",
-  "encaminhar para plantao": "encaminharparaplantao",
-  "em atendimento pb": "ematendimentopb",
-  "em atendimento plantão": "ematendimentoplantao",
-  parcerias: "pacientesparcerias",
+  "encaminhar para plantão": "encaminhar_para_plantao",
+  "encaminhar para pb": "encaminhar_para_pb",
+  "em atendimento pb": "em_atendimento_pb",
+  "em atendimento plantão": "em_atendimento_plantao",
+  "aguardando info dos horários": "aguardando_info_horarios",
+  "aguardando info dos horários": "cadastrar_horario_psicomanager",
+  parcerias: "pacientes_parcerias",
   desistência: "desistencia",
-  desistencia: "desistencia",
   "triagem agendada": "triagemagendada",
   alta: "alta",
   grupos: "grupos",
