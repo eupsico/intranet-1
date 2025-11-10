@@ -590,39 +590,43 @@ export function init(user, userData) {
 
         ${htmlDisponibilidade}
 
-        <fieldset>
-          <legend>Modalidade e Preferências de Atendimento</legend>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-              <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Modalidade de Atendimento:</label>
-              <select id="modalidadeAtendimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                <option value="" ${
-                  !p("modalidadeAtendimento") ? "selected" : ""
-                }>-- Selecione --</option>
-                <option value="Presencial" ${
-                  p("modalidadeAtendimento") === "Presencial" ? "selected" : ""
-                }>🏢 Presencial</option>
-                <option value="On-line" ${
-                  p("modalidadeAtendimento") === "On-line" ? "selected" : ""
-                }>💻 On-line</option>
-                <option value="Qualquer" ${
-                  p("modalidadeAtendimento") === "Qualquer" ? "selected" : ""
-                }>🔄 Qualquer um</option>
-              </select>
-            </div>
+<fieldset>
+  <legend>Modalidade e Preferências de Atendimento</legend>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+    <div>
+      <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Modalidade de Atendimento:</label>
+      <select id="modalidadeAtendimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+        <option value="">-- Selecione --</option>
+        <option value="Presencial" ${
+          p("modalidadeAtendimento") === "Presencial" ? "selected" : ""
+        }>🏢 Presencial</option>
+        <option value="On-line" ${
+          p("modalidadeAtendimento") === "On-line" ? "selected" : ""
+        }>💻 On-line</option>
+        <option value="Qualquer" ${
+          p("modalidadeAtendimento") === "Qualquer" ? "selected" : ""
+        }>🔄 Qualquer um</option>
+      </select>
+    </div>
 
-            <div>
-              <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Prefere ser atendido por:</label>
-              <input 
-                type="text" 
-                id="prefereSerAtendidoPor" 
-                value="${p("prefereSerAtendidoPor", "")}" 
-                placeholder="Ex: Mulher, especialista em..."
-                style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;"
-              />
-            </div>
-          </div>
-        </fieldset>
+    <div>
+      <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Preferência de Atendimento (Gênero):</label>
+      <select id="preferenciaGenero" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+        <option value="">-- Selecione --</option>
+        <option value="Homem" ${
+          p("preferenciaGenero") === "Homem" ? "selected" : ""
+        }>👨 Homem</option>
+        <option value="Mulher" ${
+          p("preferenciaGenero") === "Mulher" ? "selected" : ""
+        }>👩 Mulher</option>
+        <option value="Qualquer" ${
+          p("preferenciaGenero") === "Qualquer" ? "selected" : ""
+        }>🔄 Qualquer um</option>
+      </select>
+    </div>
+  </div>
+</fieldset>
+
 
         <fieldset>
           <legend>Assistente Social</legend>
