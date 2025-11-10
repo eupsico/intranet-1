@@ -560,7 +560,7 @@ async function handleSalvarTriagem(evento, user, userData, trilhaId) {
       : "";
     valorNumerico =
       parseFloat(valorRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-    if (isNaN(valorNumerico) || valorNumerico <= 0 || !criteriosValue) {
+    if (isNaN(valorNumerico) || valorNumerico < 0 || !criteriosValue) {
       alert("Valor (>0) e Critérios obrigatórios.");
       return;
     }
