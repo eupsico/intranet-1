@@ -488,39 +488,42 @@ export function init(user, userData) {
           />
         </fieldset>
 
-        <fieldset>
-          <legend>Moradia</legend>
-          <select id="tipoMoradia">
-            <option value="">-- Tipo de Moradia --</option>
-            <option value="Casa" ${
-              p("tipoMoradia") === "Casa" ? "selected" : ""
-            }>Casa</option>
-            <option value="Apartamento" ${
-              p("tipoMoradia") === "Apartamento" ? "selected" : ""
-            }>Apartamento</option>
-            <option value="Outra" ${
-              p("tipoMoradia") === "Outra" ? "selected" : ""
-            }>Outra</option>
-          </select>
-          <input
-            type="number"
-            id="pessoasMoradia"
-            value="${p("pessoasMoradia", "")}"
-            placeholder="Quantidade de pessoas"
-          />
-          <input
-            type="checkbox"
-            id="casaPropria"
-            ${p("casaPropria") ? "checked" : ""}
-          />
-          <label for="casaPropria">Casa própria</label>
-          <input
-            type="number"
-            id="valorAluguel"
-            value="${p("valorAluguel", "")}"
-            placeholder="Valor do aluguel"
-          />
-        </fieldset>
+<fieldset>
+  <legend>Moradia</legend>
+  <select id="tipoMoradia">
+    <option value="">-- Tipo de Moradia --</option>
+    <option value="Casa" ${
+      p("tipoMoradia") === "Casa" ? "selected" : ""
+    }>Casa</option>
+    <option value="Apartamento" ${
+      p("tipoMoradia") === "Apartamento" ? "selected" : ""
+    }>Apartamento</option>
+    <option value="Outra" ${
+      p("tipoMoradia") === "Outra" ? "selected" : ""
+    }>Outra</option>
+  </select>
+  <input
+    type="number"
+    id="pessoasMoradia"
+    value="${p("pessoasMoradia", "")}"
+    placeholder="Quantidade de pessoas"
+  />
+  <select id="casaPropria">
+    <option value="">-- Casa Própria? --</option>
+    <option value="Sim" ${
+      p("casaPropria") === "Sim" ? "selected" : ""
+    }>Sim</option>
+    <option value="Não" ${
+      p("casaPropria") === "Não" ? "selected" : ""
+    }>Não</option>
+  </select>
+  <input
+    type="number"
+    id="valorAluguel"
+    value="${p("valorAluguel", "")}"
+    placeholder="Valor do aluguel"
+  />
+</fieldset>
 
         <fieldset>
           <legend>Renda</legend>
