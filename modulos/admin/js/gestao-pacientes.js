@@ -592,18 +592,18 @@ export function init(user, userData) {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
               <label style="font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">Modalidade de Atendimento:</label>
-              <select id="prefereSemModalidade" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+              <select id="modalidadeAtendimento" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
                 <option value="" ${
-                  !p("prefereSemModalidade") ? "selected" : ""
+                  !p("modalidadeAtendimento") ? "selected" : ""
                 }>-- Selecione --</option>
                 <option value="Presencial" ${
-                  p("prefereSemModalidade") === "Presencial" ? "selected" : ""
+                  p("modalidadeAtendimento") === "Presencial" ? "selected" : ""
                 }>🏢 Presencial</option>
                 <option value="On-line" ${
-                  p("prefereSemModalidade") === "On-line" ? "selected" : ""
+                  p("modalidadeAtendimento") === "On-line" ? "selected" : ""
                 }>💻 On-line</option>
                 <option value="Qualquer" ${
-                  p("prefereSemModalidade") === "Qualquer" ? "selected" : ""
+                  p("modalidadeAtendimento") === "Qualquer" ? "selected" : ""
                 }>🔄 Qualquer um</option>
               </select>
             </div>
@@ -761,8 +761,8 @@ export function init(user, userData) {
           document.getElementById("tratamentoAnterior")?.value || "",
         disponibilidadeEspecifica: disponibilidadeEspecifica,
         disponibilidadeGeral: disponibilidadeGeral,
-        prefereSemModalidade:
-          document.getElementById("prefereSemModalidade")?.value || "",
+        modalidadeAtendimento:
+          document.getElementById("modalidadeAtendimento")?.value || "",
         prefereSerAtendidoPor:
           document.getElementById("prefereSerAtendidoPor")?.value || "",
         assistenteSocial:
@@ -776,8 +776,8 @@ export function init(user, userData) {
 
       console.log("✅ Paciente atualizado com sucesso!");
       console.log(
-        "✅ prefereSemModalidade:",
-        document.getElementById("prefereSemModalidade")?.value
+        "✅ modalidadeAtendimento:",
+        document.getElementById("modalidadeAtendimento")?.value
       );
       console.log("✅ disponibilidadeEspecifica:", disponibilidadeEspecifica);
       console.log("✅ disponibilidadeGeral:", disponibilidadeGeral);
