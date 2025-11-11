@@ -18,33 +18,36 @@
         </div>
     </div>
 
-    <!-- Filtros Avançados -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h4><span class="material-symbols-outlined">filter_list</span> Filtros</h4>
-        </div>
-        <div class="card-body">
-            <div class="filtros-container">
-                <select id="tipo-filtro" class="form-select">
-                    <option value="Todos">Todas as Reuniões</option>
-                    <option value="Reunião Técnica">Reunião Técnica</option>
-                    <option value="Reunião de Orientação">Reunião de Orientação</option>
-                    <option value="Outros">Outros Tipos</option>
-                </select>
-                
-                <select id="status-filtro" class="form-select">
-                    <option value="Todos">Todos os Status</option>
-                    <option value="Agendada">Agendadas</option>
-                    <option value="Concluída">Concluídas</option>
-                    <option value="Cancelada">Canceladas</option>
-                </select>
-                
-                <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
-                
-                <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
-            </div>
+<!-- Filtros Avançados (valores originais, sem acentos) -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h4><span class="material-symbols-outlined">filter_list</span> Filtros</h4>
+    </div>
+    <div class="card-body">
+        <div class="filtros-container">
+            <select id="tipo-filtro" class="form-select">
+                <option value="Todos">Todos os Tipos</option>
+                <option value="Reunio Conselho administrativo">Reunio Conselho administrativo</option>
+                <option value="Reunio com Gestor">Reunio com Gestor</option>
+                <option value="Reunio Tcnica">Reunio Tcnica</option>
+                <option value="Outros">Outros</option>
+            </select>
+            
+            <select id="status-filtro" class="form-select">
+                <option value="Todos">Todos os Status</option>
+                <option value="Agendada">Agendadas</option>
+                <option value="Concluída">Concluídas</option>
+                <option value="Cancelada">Canceladas</option>
+            </select>
+            
+            <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
+            
+            <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
         </div>
     </div>
+</div>
+
+
 
     <!-- Próxima Reunião (Card Destacado) -->
     <div id="proxima-reuniao-container" class="card mb-3" style="display: none;">
