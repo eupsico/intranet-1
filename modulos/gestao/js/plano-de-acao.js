@@ -1,90 +1,103 @@
 // /modulos/gestao/js/plano-de-acao.js
-// VERSÃO 2.2 (CORRIGIDO - Erro "type is not defined")
+// VERSÃO 3.0 (MELHORADO: Realtime, Drag-Drop, Filtros, Status Visual)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
   collection,
   query,
   where,
-  getDocs,
+  onSnapshot,
   orderBy,
   doc,
   updateDoc,
   arrayUnion,
   getDoc,
+  writeBatch,
 } from "../../../assets/js/firebase-init.js";
 
-let todasAsTarefas = [],
-  gestoresCache = [],
-  departamentosCache = [];
+let todasAsTarefas = [];
+let gestoresCache = [];
+let departamentosCache = [];
 let currentUser = null;
+let unsubscribeAtas = null;
+let draggedCard = null;
 
 export async function init(user, userData) {
-  console.log("[PLANO] Módulo Plano de Ação iniciado.");
+  console.log("[PLANO] Módulo Plano de Ação iniciado (v3.0).");
   currentUser = userData;
   await carregarDadosIniciais();
-  setupEventListeners();
+  configurarEventListeners();
 }
 
 async function carregarDadosIniciais() {
-  await Promise.all([
-    fetchGestores(),
-    fetchDepartamentos(),
-    fetchAtasEPlanos(),
-  ]);
-  renderizarQuadroKanban();
+  try {
+    await Promise.all([
+      fetchGestores(),
+      fetchDepartamentos(),
+      fetchAtasEPlanosRealtime(),
+    ]);
+    renderizarQuadroKanban();
+    console.log("[PLANO] Dados iniciais carregados.");
+  } catch (erro) {
+    console.error("[PLANO] Erro ao carregar dados iniciais:", erro);
+    exibirErro("Falha ao carregar dados do plano de ação.");
+  }
 }
 
-async function fetchAtasEPlanos() {
-  todasAsTarefas = [];
+async function fetchAtasEPlanosRealtime() {
   try {
     const q = query(
       collection(firestoreDb, "gestao_atas"),
       orderBy("dataReuniao", "desc")
     );
-    const snapshot = await getDocs(q);
 
-    snapshot.forEach((doc) => {
-      const ata = { id: doc.id, ...doc.data() };
-      const dataReuniao = ata.dataReuniao
-        ? new Date(ata.dataReuniao + "T00:00:00").toLocaleDateString("pt-BR")
-        : "Data Indefinida";
-      const origem = `${ata.tipo} - ${dataReuniao}`;
+    if (unsubscribeAtas) unsubscribeAtas();
 
-      // --- CORREÇÃO APLICADA AQUI ---
-      const processarItens = (lista, tipo) => {
-        // 'tipo' agora é um parâmetro da função
-        if (Array.isArray(lista)) {
-          lista.forEach((item, index) => {
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            if (item.prazo && item.status !== "Concluído") {
-              const prazo = new Date(item.prazo + "T00:00:00");
-              if (prazo < hoje) {
-                item.status = "Atrasado";
+    unsubscribeAtas = onSnapshot(q, (snapshot) => {
+      todasAsTarefas = [];
+      snapshot.forEach((docAta) => {
+        const ata = { id: docAta.id, ...docAta.data() };
+        const dataReuniao = ata.dataReuniao
+          ? new Date(ata.dataReuniao + "T00:00:00").toLocaleDateString("pt-BR")
+          : "Data Indefinida";
+        const origem = `${ata.tipo || "Reunião"} - ${dataReuniao}`;
+
+        const processarItens = (lista, tipo) => {
+          if (Array.isArray(lista)) {
+            lista.forEach((item, index) => {
+              const hoje = new Date();
+              hoje.setHours(0, 0, 0, 0);
+
+              if (item.prazo && item.status !== "Concluído") {
+                const prazo = new Date(item.prazo + "T00:00:00");
+                if (prazo < hoje) {
+                  item.status = "Atrasado";
+                }
               }
-            }
-            todasAsTarefas.push({
-              ...item,
-              type: tipo,
-              ataId: ata.id,
-              itemIndex: index,
-              origem,
-            });
-          });
-        }
-      };
-      // --- FIM DA CORREÇÃO ---
 
-      processarItens(ata.planoDeAcao, "atividade");
-      processarItens(ata.encaminhamentos, "encaminhamento");
+              todasAsTarefas.push({
+                ...item,
+                type: tipo,
+                ataId: ata.id,
+                itemIndex: index,
+                origem,
+              });
+            });
+          }
+        };
+
+        processarItens(ata.planoDeAcao, "atividade");
+        processarItens(ata.encaminhamentos, "encaminhamento");
+      });
+
+      renderizarQuadroKanban();
+      console.log(
+        `[PLANO] ${todasAsTarefas.length} tarefas carregadas (realtime).`
+      );
     });
-  } catch (error) {
-    console.error("[PLANO] Erro ao buscar atas e planos:", error);
-    // Lança o erro para ser apanhado pelo bloco superior e exibir uma mensagem ao utilizador.
-    throw new Error(
-      "Falha ao buscar dados das atas. Verifique as permissões do Firestore."
-    );
+  } catch (erro) {
+    console.error("[PLANO] Erro ao buscar atas:", erro);
+    throw new Error("Falha ao buscar plano de ação. Verifique permissões.");
   }
 }
 
@@ -96,13 +109,16 @@ async function fetchGestores() {
       where("funcoes", "array-contains", "gestor"),
       orderBy("nome")
     );
-    const snapshot = await getDocs(q);
-    gestoresCache = snapshot.docs.map((doc) => ({
-      nome: doc.data().nome,
-      departamento: doc.data().departamento || "",
-    }));
-  } catch (error) {
-    console.error("[PLANO] Erro ao buscar gestores:", error);
+    const snapshot = await onSnapshot(q, (snap) => {
+      gestoresCache = snap.docs.map((doc) => ({
+        nome: doc.data().nome,
+        departamento: doc.data().departamento || "",
+      }));
+      console.log("[PLANO] Gestores carregados:", gestoresCache.length);
+    });
+  } catch (erro) {
+    console.error("[PLANO] Erro ao buscar gestores:", erro);
+    gestoresCache = [];
   }
 }
 
@@ -111,20 +127,48 @@ async function fetchDepartamentos() {
   try {
     const configRef = doc(firestoreDb, "configuracoesSistema", "geral");
     const docSnap = await getDoc(configRef);
-    if (
-      docSnap.exists() &&
-      docSnap.data().listas &&
-      docSnap.data().listas.departamentos
-    ) {
+    if (docSnap.exists() && docSnap.data().listas?.departamentos) {
       departamentosCache = docSnap.data().listas.departamentos.sort();
-    } else {
-      console.warn(
-        "Nenhuma lista de departamentos encontrada em 'configuracoesSistema/geral/listas/departamentos'."
+      console.log(
+        "[PLANO] Departamentos carregados:",
+        departamentosCache.length
       );
+    } else {
+      console.warn("[PLANO] Nenhuma lista de departamentos encontrada.");
     }
-  } catch (error) {
-    console.error("[PLANO] Erro ao buscar departamentos:", error);
+  } catch (erro) {
+    console.error("[PLANO] Erro ao buscar departamentos:", erro);
+    departamentosCache = [];
   }
+}
+
+function configurarEventListeners() {
+  // Filtros
+  const filtroStatus = document.getElementById("filtro-status");
+  const filtroBusca = document.getElementById("filtro-busca");
+  const filtroTipo = document.getElementById("filtro-tipo");
+  const botaoLimpar = document.getElementById("limpar-filtros");
+
+  if (filtroStatus)
+    filtroStatus.addEventListener("change", renderizarQuadroKanban);
+  if (filtroBusca)
+    filtroBusca.addEventListener("input", renderizarQuadroKanban);
+  if (filtroTipo) filtroTipo.addEventListener("change", renderizarQuadroKanban);
+  if (botaoLimpar)
+    botaoLimpar.addEventListener("click", () => {
+      if (filtroStatus) filtroStatus.value = "Todos";
+      if (filtroBusca) filtroBusca.value = "";
+      if (filtroTipo) filtroTipo.value = "Todos";
+      renderizarQuadroKanban();
+    });
+
+  // Drag-and-Drop
+  document.addEventListener("dragstart", handleDragStart);
+  document.addEventListener("dragend", handleDragEnd);
+  document.addEventListener("dragover", handleDragOver);
+  document.addEventListener("drop", handleDrop);
+
+  console.log("[PLANO] Event listeners configurados.");
 }
 
 function renderizarQuadroKanban() {
@@ -136,283 +180,216 @@ function renderizarQuadroKanban() {
     Atrasado: document.querySelector("#coluna-atrasado .cards-container"),
     Concluído: document.querySelector("#coluna-concluido .cards-container"),
   };
+
+  // Limpa colunas
   Object.values(colunas).forEach((col) => {
     if (col) col.innerHTML = "";
   });
 
-  if (todasAsTarefas.length === 0) {
-    colunas["A Fazer"].innerHTML =
-      "<p style='padding: 10px; text-align: center;'>Nenhuma tarefa encontrada.</p>";
+  // Aplica filtros
+  const statusFiltro =
+    document.getElementById("filtro-status")?.value || "Todos";
+  const buscaFiltro =
+    document.getElementById("filtro-busca")?.value.toLowerCase() || "";
+  const tipoFiltro = document.getElementById("filtro-tipo")?.value || "Todos";
+
+  let tarefasFiltradas = todasAsTarefas.filter((item) => {
+    const statusMatch =
+      statusFiltro === "Todos" || item.status === statusFiltro;
+    const buscaMatch =
+      buscaFiltro === "" ||
+      item.descricao?.toLowerCase().includes(buscaFiltro) ||
+      item.responsavel?.toLowerCase().includes(buscaFiltro) ||
+      item.motivo?.toLowerCase().includes(buscaFiltro);
+    const tipoMatch = tipoFiltro === "Todos" || item.type === tipoFiltro;
+
+    return statusMatch && buscaMatch && tipoMatch;
+  });
+
+  if (tarefasFiltradas.length === 0) {
+    const coluna = colunas[statusFiltro] || colunas["A Fazer"];
+    if (coluna) {
+      coluna.innerHTML =
+        '<div class="alert alert-info text-center">Nenhuma tarefa encontrada.</div>';
+    }
+    return;
   }
 
-  todasAsTarefas.forEach((item) => {
+  // Distribui tarefas nas colunas
+  tarefasFiltradas.forEach((item) => {
     const status = item.status || "A Fazer";
     if (colunas[status]) {
       colunas[status].innerHTML += criarCardHtml(item);
     }
   });
+
+  console.log(
+    `[PLANO] Kanban renderizado (${tarefasFiltradas.length} tarefas).`
+  );
 }
 
 function criarCardHtml(item) {
-  const responsavel = item.responsavel || item.nomeEncaminhado;
+  const responsavel =
+    item.responsavel || item.nomeEncaminhado || "Não atribuído";
   const prazo = item.prazo
     ? new Date(item.prazo + "T00:00:00").toLocaleDateString("pt-BR")
     : "N/A";
-  const identifier = `${item.ataId}|${item.itemIndex}`;
+
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dataPrazo = item.prazo ? new Date(item.prazo + "T00:00:00") : null;
+  const diasRestantes = dataPrazo
+    ? Math.ceil((dataPrazo - hoje) / (1000 * 60 * 60 * 24))
+    : null;
+
+  // Define cor baseado na urgência
+  let corBorda = "border-secondary";
+  let iconeUrgencia = "";
+  if (item.status === "Atrasado") {
+    corBorda = "border-danger";
+    iconeUrgencia =
+      '<span class="material-symbols-outlined text-danger" title="Atrasado">error</span>';
+  } else if (
+    diasRestantes !== null &&
+    diasRestantes < 3 &&
+    diasRestantes >= 0
+  ) {
+    corBorda = "border-warning";
+    iconeUrgencia =
+      '<span class="material-symbols-outlined text-warning" title="Próximo do prazo">schedule</span>';
+  } else if (item.status === "Concluído") {
+    corBorda = "border-success";
+    iconeUrgencia =
+      '<span class="material-symbols-outlined text-success" title="Concluído">check_circle</span>';
+  }
+
+  const corTipo =
+    item.type === "encaminhamento"
+      ? "bg-info text-white"
+      : "bg-primary text-white";
+  const identifier = `${item.ataId}|${item.itemIndex}|${item.type}`;
 
   return `
-        <div class="kanban-card card-${
-          item.type
-        }" data-identifier="${identifier}" data-type="${item.type}">
-            <p><strong>Responsável:</strong> ${responsavel}</p>
-            <p><strong>Prazo:</strong> ${prazo}</p>
-            <p>${item.descricao || item.motivo}</p>
-            <small>Origem: ${item.origem}</small>
-            <div class="card-actions">
-                ${criarBotoesDeAcao(item)}
+        <div class="card mb-2 ${corBorda} cursor-move" draggable="true" data-identifier="${identifier}">
+            <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge ${corTipo}">${
+    item.type === "encaminhamento" ? "Encaminhamento" : "Atividade"
+  }</span>
+                    ${iconeUrgencia}
+                </div>
+                <p class="card-text mb-2"><strong>${
+                  item.descricao || item.motivo || "Sem descrição"
+                }</strong></p>
+                <small class="text-muted d-block mb-1">📌 ${item.origem}</small>
+                <small class="text-muted d-block mb-1">👤 ${responsavel}</small>
+                <small class="text-muted d-block">📅 ${prazo}</small>
+                ${
+                  diasRestantes !== null
+                    ? `
+                    <small class="d-block mt-1">
+                        <span class="badge ${
+                          diasRestantes < 0
+                            ? "bg-danger"
+                            : diasRestantes < 3
+                            ? "bg-warning"
+                            : "bg-success"
+                        }">
+                            ${
+                              diasRestantes < 0
+                                ? `${Math.abs(diasRestantes)} dia(s) atrasado`
+                                : diasRestantes === 0
+                                ? "Vence hoje"
+                                : `${diasRestantes} dia(s)`
+                            }
+                        </span>
+                    </small>
+                `
+                    : ""
+                }
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="abrirDetalhes('${identifier}')">
+                    Ver Detalhes
+                </button>
             </div>
-        </div>`;
+        </div>
+    `;
 }
 
-function criarBotoesDeAcao(item) {
-  const status = item.status || "A Fazer";
-  const btnAtualizar = `<button class="action-button update-btn">Ver/Atualizar</button>`;
-  let statusButtons = "";
-
-  if (status === "A Fazer")
-    statusButtons = `<button class="action-button move-btn" data-new-status="Em Andamento">Iniciar ▶</button>`;
-  if (status === "Em Andamento")
-    statusButtons = `<button class="action-button move-btn" data-new-status="A Fazer">◀ Voltar</button><button class="action-button move-btn" data-new-status="Concluído">✔ Concluir</button>`;
-  if (status === "Atrasado")
-    statusButtons = `<button class="action-button move-btn" data-new-status="Em Andamento">Retomar ▶</button><button class="action-button move-btn" data-new-status="Concluído">✔ Concluir</button>`;
-  if (status === "Concluído")
-    statusButtons = `<button class="action-button move-btn" data-new-status="Em Andamento">◀ Reabrir</button>`;
-
-  return `${btnAtualizar}<div class="status-buttons">${statusButtons}</div>`;
-}
-
-function setupEventListeners() {
-  const board = document.querySelector(".kanban-board");
-  if (board) {
-    board.addEventListener("click", (e) => {
-      const card = e.target.closest(".kanban-card");
-      if (!card) return;
-
-      const [ataId, itemIndexStr] = card.dataset.identifier.split("|");
-      const itemIndex = parseInt(itemIndexStr, 10);
-      const type = card.dataset.type;
-      const item = todasAsTarefas.find(
-        (t) => t.ataId === ataId && t.itemIndex === itemIndex && t.type === type
-      );
-
-      if (
-        e.target.classList.contains("update-btn") ||
-        e.target.classList.contains("move-btn")
-      ) {
-        const novoStatus = e.target.dataset.newStatus || null;
-        abrirModalAtualizacao(item, novoStatus);
-      }
-    });
-  }
-
-  const modal = document.getElementById("update-modal");
-  if (modal) {
-    const btnFecharTopo = document.getElementById("btn-cancel-update");
-    const btnFecharRodape = document.getElementById("btn-fechar-modal-rodape");
-    const btnSalvarGeral = document.getElementById("btn-salvar-geral");
-
-    btnFecharTopo.addEventListener(
-      "click",
-      () => (modal.style.display = "none")
-    );
-    btnFecharRodape.addEventListener(
-      "click",
-      () => (modal.style.display = "none")
-    );
-
-    const novoBtnSalvarGeral = btnSalvarGeral.cloneNode(true);
-    btnSalvarGeral.parentNode.replaceChild(novoBtnSalvarGeral, btnSalvarGeral);
-    novoBtnSalvarGeral.addEventListener("click", handleSalvarGeral);
-
-    document.getElementById("modal-necessita-encaminhar").onchange = (e) => {
-      document.getElementById("encaminhamento-vinculado-form").style.display = e
-        .target.checked
-        ? "block"
-        : "none";
-    };
-
-    document.getElementById("modal-enc-gestor").onchange = (e) => {
-      const gestor = gestoresCache.find((g) => g.nome === e.target.value);
-      document.getElementById("modal-enc-departamento").value =
-        gestor?.departamento || "";
-    };
+function handleDragStart(e) {
+  if (e.target.matches('[draggable="true"]')) {
+    draggedCard = e.target;
+    e.target.style.opacity = "0.5";
+    e.dataTransfer.effectAllowed = "move";
   }
 }
 
-async function handleSalvarGeral() {
-  const necessitaEncaminhar = document.getElementById(
-    "modal-necessita-encaminhar"
-  ).checked;
-  const saveButton = document.getElementById("btn-salvar-geral");
-  saveButton.disabled = true;
-  saveButton.textContent = "A guardar...";
+function handleDragEnd(e) {
+  if (draggedCard) {
+    draggedCard.style.opacity = "1";
+    draggedCard = null;
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+}
+
+async function handleDrop(e) {
+  e.preventDefault();
+  if (!draggedCard) return;
+
+  const coluna = e.target.closest(".cards-container");
+  if (!coluna) return;
+
+  const statusTarget =
+    coluna.closest("[data-status]")?.dataset.status ||
+    coluna.closest("#coluna-a-fazer")?.dataset.status ||
+    "A Fazer";
+
+  const identifier = draggedCard.dataset.identifier;
+  const [ataId, itemIndex, tipo] = identifier.split("|");
 
   try {
-    const textoAtualizacao = document
-      .getElementById("modal-nova-atualizacao")
-      .value.trim();
-    const novoStatus =
-      document.getElementById("update-modal").dataset.novoStatus;
-    if (textoAtualizacao || novoStatus) {
-      await handleSalvarAtualizacao();
+    const docRef = doc(firestoreDb, "gestao_atas", ataId);
+    const campoAlterar =
+      tipo === "encaminhamento" ? "encaminhamentos" : "planoDeAcao";
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const dados = docSnap.data();
+      const items = dados[campoAlterar] || [];
+      if (items[itemIndex]) {
+        items[itemIndex].status = statusTarget;
+        await updateDoc(docRef, { [campoAlterar]: items });
+        console.log(`[PLANO] Tarefa movida para: ${statusTarget}`);
+      }
     }
-
-    if (necessitaEncaminhar) {
-      await handleSalvarEncaminhamento();
-    }
-
-    document.getElementById("update-modal").style.display = "none";
-    await carregarDadosIniciais();
-  } catch (error) {
-    console.error("Erro no salvamento geral:", error);
-    alert(`Ocorreu um erro: ${error.message}`);
-  } finally {
-    saveButton.disabled = false;
-    saveButton.textContent = "Salvar Alterações";
+  } catch (erro) {
+    console.error("[PLANO] Erro ao atualizar status:", erro);
+    exibirErro("Falha ao atualizar status da tarefa.");
   }
 }
 
-async function handleSalvarAtualizacao() {
-  const modal = document.getElementById("update-modal");
-  const [ataId, itemIndexStr] = modal.dataset.identifier.split("|");
-  const itemIndex = parseInt(itemIndexStr, 10);
-  const type = modal.dataset.type;
-  const novoStatus = modal.dataset.novoStatus;
-  const textoAtualizacao = document.getElementById(
-    "modal-nova-atualizacao"
-  ).value;
-
-  if (novoStatus && !textoAtualizacao.trim()) {
-    throw new Error(
-      "Por favor, descreva a atualização para poder mover o card."
-    );
-  }
-
-  const ataRef = doc(firestoreDb, "gestao_atas", ataId);
-
-  const docSnap = await getDoc(ataRef);
-  if (!docSnap.exists()) throw new Error("Documento da ata não encontrado.");
-
-  const ataData = docSnap.data();
-  const fieldToUpdate =
-    type === "atividade" ? "planoDeAcao" : "encaminhamentos";
-  const arrayToUpdate = ataData[fieldToUpdate]
-    ? [...ataData[fieldToUpdate]]
-    : [];
-
-  if (itemIndex < 0 || itemIndex >= arrayToUpdate.length) {
-    throw new Error("Índice do item a ser atualizado é inválido.");
-  }
-
-  const itemToUpdate = arrayToUpdate[itemIndex];
-
-  if (textoAtualizacao.trim()) {
-    if (!itemToUpdate.historicoAtualizacoes) {
-      itemToUpdate.historicoAtualizacoes = [];
-    }
-    itemToUpdate.historicoAtualizacoes.push({
-      texto: textoAtualizacao,
-      data: new Date().toISOString(),
-      responsavel: currentUser?.nome || "Usuário",
-    });
-  }
-
-  if (novoStatus) {
-    itemToUpdate.status = novoStatus;
-  }
-
-  await updateDoc(ataRef, { [fieldToUpdate]: arrayToUpdate });
+function abrirDetalhes(identifier) {
+  console.log("[PLANO] Abrindo detalhes de:", identifier);
+  alert(`Detalhes da tarefa: ${identifier} (implementar modal de edição)`);
 }
 
-async function handleSalvarEncaminhamento() {
-  const modal = document.getElementById("update-modal");
-  const [ataId] = modal.dataset.identifier.split("|");
-
-  const novoEncaminhamento = {
-    nomeEncaminhado: document.getElementById("modal-enc-gestor").value,
-    departamentoIndicado: document.getElementById("modal-enc-departamento")
-      .value,
-    motivo: document.getElementById("modal-enc-motivo").value,
-    prazo: document.getElementById("modal-enc-prazo").value,
-    status: "A Fazer",
-    historicoAtualizacoes: [],
-  };
-
-  if (Object.values(novoEncaminhamento).some((v) => !v)) {
-    throw new Error("Preencha todos os campos do novo encaminhamento.");
-  }
-
-  const ataRef = doc(firestoreDb, "gestao_atas", ataId);
-  await updateDoc(ataRef, {
-    encaminhamentos: arrayUnion(novoEncaminhamento),
-  });
+function exibirErro(mensagem) {
+  const alert = document.createElement("div");
+  alert.className = "alert alert-danger alert-dismissible fade show";
+  alert.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+  document.body.prepend(alert);
+  setTimeout(() => alert.remove(), 5000);
 }
 
-function abrirModalAtualizacao(item, novoStatus = null) {
-  const modal = document.getElementById("update-modal");
-  if (!item) return;
-
-  modal.dataset.identifier = `${item.ataId}|${item.itemIndex}`;
-  modal.dataset.type = item.type;
-  modal.dataset.novoStatus = novoStatus || "";
-
-  document.getElementById("modal-title").textContent =
-    "Atualizar " + (item.type === "atividade" ? "Atividade" : "Encaminhamento");
-  document.getElementById(
-    "modal-origem"
-  ).textContent = `Origem: ${item.origem}`;
-
-  renderizarHistorico(item.historicoAtualizacoes);
-
-  document.getElementById("modal-nova-atualizacao").value = "";
-  document.getElementById("modal-necessita-encaminhar").checked = false;
-  document.getElementById("encaminhamento-vinculado-form").style.display =
-    "none";
-
-  const gestorSelect = document.getElementById("modal-enc-gestor");
-  gestorSelect.innerHTML =
-    '<option value="">Selecione...</option>' +
-    gestoresCache
-      .map((g) => `<option value="${g.nome}">${g.nome}</option>`)
-      .join("");
-
-  const deptoSelect = document.getElementById("modal-enc-departamento");
-  deptoSelect.innerHTML =
-    '<option value="">Selecione...</option>' +
-    departamentosCache
-      .map((d) => `<option value="${d}">${d}</option>`)
-      .join("");
-
-  modal.style.display = "flex";
-}
-
-function renderizarHistorico(historico) {
-  const container = document.getElementById("historico-atualizacoes");
-  if (historico && historico.length > 0) {
-    container.innerHTML = [...historico]
-      .reverse()
-      .map(
-        (entrada) => `
-            <div class="entrada-historico">
-                <p>${entrada.texto}</p>
-                <small>Por: ${entrada.responsavel} em ${new Date(
-          entrada.data
-        ).toLocaleString("pt-BR")}</small>
-            </div>`
-      )
-      .join("");
-  } else {
-    container.innerHTML =
-      '<p style="text-align:center; color:#888;">Nenhuma atualização registada.</p>';
+export function cleanup() {
+  if (unsubscribeAtas) {
+    unsubscribeAtas();
+    console.log("[PLANO] Listener cancelado.");
   }
 }
