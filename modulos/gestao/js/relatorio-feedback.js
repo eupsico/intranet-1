@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.0 (Com aba de Participação, event delegation e otimizações Firestore)
+// VERSÃO 2.1 (Corrigido handling de datas Firestore e erro de Timestamp)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -19,8 +19,47 @@ const perguntasTexto = {
   sugestaoTema: "Sugestão de tema para próxima reunião:",
 };
 
+// Função utilitária para formatar datas (corrige erro de Timestamp)
+function formatarData(dataReuniao) {
+  if (!dataReuniao) return "Data indisponível";
+
+  try {
+    let data;
+    if (dataReuniao.toDate && typeof dataReuniao.toDate === "function") {
+      // É um Timestamp do Firebase
+      data = dataReuniao.toDate();
+    } else if (typeof dataReuniao === "string") {
+      // É uma string ISO ou timestamp
+      data = new Date(dataReuniao);
+    } else if (dataReuniao instanceof Date) {
+      // Já é um Date
+      data = dataReuniao;
+    } else {
+      // Fallback: assume string ou número
+      data = new Date(dataReuniao);
+    }
+
+    // Valida se a data é válida
+    if (isNaN(data.getTime())) {
+      return "Data inválida";
+    }
+
+    return data.toLocaleDateString("pt-BR");
+  } catch (error) {
+    console.warn(
+      "[RELATÓRIO] Erro ao formatar data:",
+      error,
+      "Valor:",
+      dataReuniao
+    );
+    return "Data indisponível";
+  }
+}
+
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.0).");
+  console.log(
+    "[RELATÓRIO] Módulo de Relatórios iniciado (v2.1 - Corrigido datas)."
+  );
   setupEventListeners();
   await carregarRelatorios();
 }
@@ -45,17 +84,30 @@ async function carregarRelatorios() {
       (doc) => doc.data().nome
     );
 
-    // Renderiza a aba ativa por padrão (resumo geral)
-    renderizarResumo(todasAsAtas, todosOsProfissionais);
-    renderizarParticipacao(todasAsAtas, todosOsProfissionais);
-    renderizarFeedbacks(todasAsAtas, todosOsProfissionais);
-
     console.log(
       `[RELATÓRIO] Carregados ${todasAsAtas.length} atas e ${todosOsProfissionais.length} profissionais.`
     );
+
+    // Renderiza apenas se os containers existirem (evita erros em partial)
+    if (document.getElementById("resumo-container")) {
+      renderizarResumo(todasAsAtas, todosOsProfissionais);
+    }
+    if (document.getElementById("participacao-container")) {
+      renderizarParticipacao(todasAsAtas, todosOsProfissionais);
+    }
+    if (document.getElementById("feedback-container")) {
+      renderizarFeedbacks(todasAsAtas, todosOsProfissionais);
+    }
+
+    // Remove loading spinners após render
+    document
+      .querySelectorAll(".loading-spinner")
+      .forEach((spinner) => (spinner.style.display = "none"));
   } catch (error) {
     console.error("[RELATÓRIO] Erro ao carregar relatórios:", error);
-    mostrarErro("Erro ao carregar dados do Firestore. Verifique a conexão.");
+    mostrarErro(
+      "Erro ao carregar dados do Firestore. Verifique a conexão e tente novamente."
+    );
   }
 }
 
@@ -63,30 +115,40 @@ function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
   if (!viewContainer) return;
 
-  // Event delegation centralizado para tabs (corrige cliques intermitentes)
+  // Event delegation para tabs
   viewContainer.addEventListener("click", (e) => {
     if (e.target.matches(".tab-link")) {
       e.preventDefault();
       const targetTab = e.target.dataset.tab;
       trocarAba(targetTab);
-      console.log(`[RELATÓRIO] Tab trocada para: ${targetTab}`);
     }
   });
 
-  // Fallback para touch events em mobile (melhora responsividade)
+  // Touch fallback para mobile
   viewContainer.addEventListener(
     "touchstart",
     (e) => {
       if (e.target.matches(".tab-link")) {
-        e.preventDefault(); // Evita zoom indesejado
+        e.preventDefault();
       }
     },
     { passive: false }
   );
+
+  // Delegation para accordions (apenas na aba feedbacks)
+  viewContainer.addEventListener("click", (e) => {
+    if (e.target.matches(".accordion-header")) {
+      const content = e.target.nextElementSibling;
+      const icon = e.target.querySelector(".accordion-icon");
+      content.classList.toggle("active");
+      if (icon) {
+        icon.textContent = content.classList.contains("active") ? "−" : "+";
+      }
+    }
+  });
 }
 
 function trocarAba(tabId) {
-  // Remove active de todas as tabs e conteúdos
   document
     .querySelectorAll(".tab-link")
     .forEach((btn) => btn.classList.remove("active"));
@@ -94,237 +156,264 @@ function trocarAba(tabId) {
     .querySelectorAll(".tab-content")
     .forEach((content) => content.classList.remove("active"));
 
-  // Ativa a aba selecionada
   const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
   const activeContent = document.getElementById(tabId);
   if (activeBtn) activeBtn.classList.add("active");
   if (activeContent) activeContent.classList.add("active");
 
-  // Scroll suave para o topo da aba
   activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Renderiza conteúdo específico se necessário (lazy loading)
+  if (
+    tabId === "participacao" &&
+    !activeContent.classList.contains("rendered")
+  ) {
+    renderizarParticipacao(todasAsAtas, todosOsProfissionais);
+    activeContent.classList.add("rendered");
+  }
 }
 
-// Renderização da aba "Resumo Geral" (estatísticas totais)
+// Renderização da aba "Resumo Geral" (com data corrigida)
 function renderizarResumo(atas, profissionais) {
   const container = document.getElementById("resumo-container");
   if (!container) return;
 
-  container.innerHTML = `
-        <div class="card-header">
-            <h3>Resumo Geral das Reuniões</h3>
-        </div>
-        <div class="card-body">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">event</span>
-                    <h4>${atas.length}</h4>
-                    <p>Total de Reuniões</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">group</span>
-                    <h4>${profissionais.length}</h4>
-                    <p>Profissionais Cadastrados</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">thumb_up</span>
-                    <h4>${calcularMediaFeedbacks(atas)}</h4>
-                    <p>Média de Satisfação (%)</p>
-                </div>
+  try {
+    // Ordena atas por data (usando formatarData para evitar erro)
+    const atasOrdenadas = [...atas].sort((a, b) => {
+      const dataA = formatarData(a.dataReuniao);
+      const dataB = formatarData(b.dataReuniao);
+      return new Date(dataB) - new Date(dataA);
+    });
+
+    const totalReunioes = atas.length;
+    const reunioesRecentes = atasOrdenadas.slice(0, 5);
+
+    container.innerHTML = `
+            <div class="card-header">
+                <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral das Reuniões</h3>
             </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Reunião Mais Recente</th>
-                            <th>Data</th>
-                            <th>Participantes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${atas
-                          .slice(0, 5)
-                          .map(
-                            (ata) => `
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">event</span>
+                        <h4>${totalReunioes}</h4>
+                        <p>Total de Reuniões</p>
+                    </div>
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">group</span>
+                        <h4>${profissionais.length}</h4>
+                        <p>Profissionais Cadastrados</p>
+                    </div>
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">thumb_up</span>
+                        <h4>${calcularMediaFeedbacks(atas)}</h4>
+                        <p>Média de Satisfação (%)</p>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td>${ata.titulo || "Reunião Técnica"}</td>
-                                <td>${new Date(
-                                  ata.dataReuniao?.toDate()
-                                ).toLocaleDateString("pt-BR")}</td>
-                                <td>${ata.participantes?.length || 0}</td>
+                                <th>Reunião Mais Recente</th>
+                                <th>Data</th>
+                                <th>Participantes</th>
                             </tr>
-                        `
-                          )
-                          .join("")}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${reunioesRecentes
+                              .map(
+                                (ata) => `
+                                <tr>
+                                    <td>${ata.titulo || "Reunião Técnica"}</td>
+                                    <td>${formatarData(ata.dataReuniao)}</td>
+                                    <td>${ata.participantes?.length || 0}</td>
+                                </tr>
+                            `
+                              )
+                              .join("")}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+  } catch (error) {
+    console.error("[RELATÓRIO] Erro ao renderizar resumo:", error);
+    container.innerHTML =
+      '<div class="alert alert-danger">Erro ao carregar resumo. Dados corrompidos.</div>';
+  }
 }
 
-// Nova função para aba "Resumo de Participação" (estatísticas de presença)
+// Renderização da aba "Resumo de Participação"
 function renderizarParticipacao(atas, profissionais) {
   const container = document.getElementById("participacao-container");
   if (!container) return;
 
-  const participacoes = calcularParticipacoes(atas, profissionais);
-  const taxaMedia = (
-    (participacoes.totalPresencas / (atas.length * profissionais.length)) *
-    100
-  ).toFixed(1);
+  try {
+    const participacoes = calcularParticipacoes(atas, profissionais);
+    const taxaMedia =
+      participacoes.totalReunioes > 0
+        ? (
+            (participacoes.totalPresencas /
+              (participacoes.totalReunioes * profissionais.length)) *
+            100
+          ).toFixed(1)
+        : 0;
 
-  container.innerHTML = `
-        <div class="card-header">
-            <h3>Resumo de Participação</h3>
-            <p>Taxa média de comparecimento: ${taxaMedia}%</p>
-        </div>
-        <div class="card-body">
-            <div class="stats-grid">
-                <div class="stat-card success">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <h4>${participacoes.totalPresencas}</h4>
-                    <p>Total de Presenças</p>
-                </div>
-                <div class="stat-card warning">
-                    <span class="material-symbols-outlined">warning</span>
-                    <h4>${participacoes.totalAusencias}</h4>
-                    <p>Total de Ausências</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">leaderboard</span>
-                    <h4>${participacoes.topParticipantes.length}</h4>
-                    <p>Top Participantes (>80%)</p>
-                </div>
+    container.innerHTML = `
+            <div class="card-header">
+                <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
+                <p>Taxa média de comparecimento: <strong>${taxaMedia}%</strong></p>
             </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Profissional</th>
-                            <th>Presenças</th>
-                            <th>Ausências</th>
-                            <th>Taxa (%)</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${participacoes.topParticipantes
-                          .map(
-                            (prof) => `
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-card success">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <h4>${participacoes.totalPresencas}</h4>
+                        <p>Total de Presenças</p>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="material-symbols-outlined">warning</span>
+                        <h4>${participacoes.totalAusencias}</h4>
+                        <p>Total de Ausências</p>
+                    </div>
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">leaderboard</span>
+                        <h4>${participacoes.topParticipantes.length}</h4>
+                        <p>Top Participantes (>80%)</p>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td>${prof.nome}</td>
-                                <td>${prof.presencas}</td>
-                                <td>${prof.ausencias}</td>
-                                <td>${prof.taxa.toFixed(1)}%</td>
-                                <td>
-                                    <button class="btn btn-sm btn-secondary" onclick="exportarParticipante('${
-                                      prof.nome
-                                    }')">Exportar</button>
-                                </td>
+                                <th>Profissional</th>
+                                <th>Presenças</th>
+                                <th>Ausências</th>
+                                <th>Taxa (%)</th>
+                                <th>Ações</th>
                             </tr>
-                        `
-                          )
-                          .join("")}
-                    </tbody>
-                </table>
-                ${
-                  participacoes.totalPresencas > 0
-                    ? `
-                    <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
-                `
-                    : ""
-                }
+                        </thead>
+                        <tbody>
+                            ${participacoes.topParticipantes
+                              .map(
+                                (prof) => `
+                                <tr>
+                                    <td>${prof.nome}</td>
+                                    <td>${prof.presencas}</td>
+                                    <td>${prof.ausencias}</td>
+                                    <td>${prof.taxa.toFixed(1)}%</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-secondary" onclick="exportarParticipante('${
+                                          prof.nome
+                                        }')">Exportar</button>
+                                    </td>
+                                </tr>
+                            `
+                              )
+                              .join("")}
+                        </tbody>
+                    </table>
+                    ${
+                      participacoes.totalPresencas > 0
+                        ? `
+                        <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
+                    `
+                        : ""
+                    }
+                </div>
             </div>
-        </div>
-    `;
+        `;
+  } catch (error) {
+    console.error("[RELATÓRIO] Erro ao renderizar participação:", error);
+    container.innerHTML =
+      '<div class="alert alert-danger">Erro ao calcular participação.</div>';
+  }
 }
 
-// Renderização da aba "Feedbacks por Reunião" (mantida com otimizações)
+// Renderização da aba "Feedbacks por Reunião"
 function renderizarFeedbacks(atas, profissionais) {
   const container = document.getElementById("feedback-container");
   if (!container) return;
 
-  if (atas.length === 0) {
-    container.innerHTML =
-      '<p class="alert alert-info">Nenhuma ata com feedbacks encontrada.</p>';
-    return;
-  }
+  try {
+    const atasComFeedback = atas
+      .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
+      .sort(
+        (a, b) =>
+          new Date(formatarData(b.dataReuniao)) -
+          new Date(formatarData(a.dataReuniao))
+      );
 
-  container.innerHTML = `
-        <div class="card-header">
-            <h3>Feedbacks por Reunião</h3>
-        </div>
-        <div class="card-body">
-            <div class="accordion">
-                ${atas
-                  .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
-                  .map(
-                    (ata) => `
-                        <div class="accordion-item">
-                            <button class="accordion-header" data-ata-id="${
-                              ata.id
-                            }">
-                                <span class="material-symbols-outlined">event</span>
-                                ${ata.titulo || "Reunião"} - ${new Date(
-                      ata.dataReuniao?.toDate()
-                    ).toLocaleDateString("pt-BR")}
-                                <span class="accordion-icon">+</span>
-                            </button>
-                            <div class="accordion-content">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Profissional</th>
-                                            ${Object.keys(perguntasTexto)
-                                              .map(
-                                                (q) =>
-                                                  `<th>${perguntasTexto[q]}</th>`
-                                              )
-                                              .join("")}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${ata.feedbacks
-                                          .map(
-                                            (fb) => `
-                                            <tr>
-                                                <td>${fb.profissional}</td>
-                                                ${Object.keys(perguntasTexto)
-                                                  .map(
-                                                    (q) =>
-                                                      `<td>${
-                                                        fb[q] || "N/R"
-                                                      }</td>`
-                                                  )
-                                                  .join("")}
-                                            </tr>
-                                        `
-                                          )
-                                          .join("")}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `
-                  )
-                  .join("")}
+    if (atasComFeedback.length === 0) {
+      container.innerHTML =
+        '<div class="card-body"><div class="alert alert-info">Nenhuma ata com feedbacks encontrada.</div></div>';
+      return;
+    }
+
+    container.innerHTML = `
+            <div class="card-header">
+                <h3><span class="material-symbols-outlined">feedback</span> Feedbacks por Reunião</h3>
             </div>
-        </div>
-    `;
+            <div class="card-body">
+                <div class="accordion">
+                    ${atasComFeedback
+                      .map((ata) => {
+                        const feedbacksHtml = (ata.feedbacks || [])
+                          .map((fb) => {
+                            const nomeProfissional =
+                              fb.profissional || "Anônimo";
+                            const respostasHtml = Object.keys(perguntasTexto)
+                              .map(
+                                (key) =>
+                                  `<p><strong>${
+                                    perguntasTexto[key]
+                                  }</strong>: ${fb[key] || "N/R"}</p>`
+                              )
+                              .join("");
+                            return `
+                                <div class="feedback-card">
+                                    <h4>${nomeProfissional}</h4>
+                                    <div class="feedback-respostas">${respostasHtml}</div>
+                                    ${
+                                      fb.sugestaoTema
+                                        ? `<p><strong>${perguntasTexto.sugestaoTema}</strong>: ${fb.sugestaoTema}</p>`
+                                        : ""
+                                    }
+                                </div>
+                            `;
+                          })
+                          .join("");
 
-  // Event listeners para accordions (delegated)
-  const accordionHeaders = container.querySelectorAll(".accordion-header");
-  accordionHeaders.forEach((header) => {
-    header.addEventListener("click", () => {
-      const content = header.nextElementSibling;
-      const icon = header.querySelector(".accordion-icon");
-      content.classList.toggle("active");
-      icon.textContent = content.classList.contains("active") ? "−" : "+";
-    });
-  });
+                        return `
+                            <div class="accordion-item">
+                                <button class="accordion-header" data-ata-id="${
+                                  ata.id
+                                }">
+                                    <span class="material-symbols-outlined">event</span>
+                                    ${
+                                      ata.titulo || "Reunião Técnica"
+                                    } - ${formatarData(ata.dataReuniao)}
+                                    <span class="accordion-icon">+</span>
+                                </button>
+                                <div class="accordion-content">
+                                    ${feedbacksHtml}
+                                </div>
+                            </div>
+                        `;
+                      })
+                      .join("")}
+                </div>
+            </div>
+        `;
+  } catch (error) {
+    console.error("[RELATÓRIO] Erro ao renderizar feedbacks:", error);
+    container.innerHTML =
+      '<div class="alert alert-danger">Erro ao carregar feedbacks.</div>';
+  }
 }
 
-// Funções auxiliares para cálculos
+// Funções auxiliares (mantidas com correções de data)
 function calcularMediaFeedbacks(atas) {
   let totalFeedbacks = 0;
   let totalAvaliacoes = 0;
@@ -364,12 +453,18 @@ function calcularParticipacoes(atas, profissionais) {
   });
 
   const topParticipantes = Object.entries(participacoes)
-    .map(([nome, dados]) => ({
-      nome,
-      presencas: dados.presencas,
-      ausencias: dados.ausencias,
-      taxa: (dados.presencas / dados.totalReunioes) * 100,
-    }))
+    .map(([nome, dados]) => {
+      const taxa =
+        dados.totalReunioes > 0
+          ? (dados.presencas / dados.totalReunioes) * 100
+          : 0;
+      return {
+        nome,
+        presencas: dados.presencas,
+        ausencias: dados.ausencias,
+        taxa,
+      };
+    })
     .filter((p) => p.taxa >= 80)
     .sort((a, b) => b.taxa - a.taxa)
     .slice(0, 10);
@@ -383,20 +478,20 @@ function calcularParticipacoes(atas, profissionais) {
       (sum, p) => sum + p.ausencias,
       0
     ),
+    totalReunioes: atas.length,
     topParticipantes,
   };
 }
 
 function mostrarErro(mensagem) {
-  const containers = document.querySelectorAll(".card");
+  const containers = document.querySelectorAll('[id$="-container"]');
   containers.forEach((container) => {
     container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
   });
 }
 
-// Funções globais para exportações (chamadas via onclick no HTML)
+// Funções de exportação (mantidas)
 window.exportarRelatorioParticipacao = function () {
-  // Implementação CSV básica - pode ser expandida
   const participacoes = calcularParticipacoes(
     todasAsAtas,
     todosOsProfissionais
@@ -409,8 +504,9 @@ window.exportarRelatorioParticipacao = function () {
 };
 
 window.exportarParticipante = function (nome) {
-  // Export individual - placeholder para expansão
-  alert(`Exportando dados de ${nome}... (implementar função específica)`);
+  alert(
+    `Exportando dados de ${nome}... (Implementar export individual completo)`
+  );
 };
 
 function downloadCSV(csvContent, filename) {
