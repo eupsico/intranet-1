@@ -299,7 +299,43 @@ function filtrarEExibirAtas() {
   }
   atualizarStats();
 }
+popularFiltroTipos();
 
+function popularFiltroTipos() {
+  const tipoFiltro = document.getElementById("tipo-filtro");
+  if (!tipoFiltro || tipoFiltro.dataset.populated) return;
+
+  // Extrai tipos únicos reais das atas carregadas
+  const tiposUnicos = [
+    ...new Set(
+      todasAsAtas
+        .map((ata) => ata.tipo)
+        .filter((tipo) => tipo && typeof tipo === "string" && tipo.trim())
+        .map((tipo) => tipo.trim())
+    ),
+  ].sort(); // Ordena alfabeticamente
+
+  // Limpa e reconstrói o select com valores originais
+  tipoFiltro.innerHTML = '<option value="Todos">Todos os Tipos</option>';
+
+  tiposUnicos.forEach((tipo) => {
+    const option = document.createElement("option");
+    option.value = tipo; // Mantém exatamente como no Firestore
+    option.textContent = tipo; // Mostra com acento se existir
+    tipoFiltro.appendChild(option);
+  });
+
+  // Adiciona "Outros" como fallback
+  const outrosOption = document.createElement("option");
+  outrosOption.value = "Outros";
+  outrosOption.textContent = "Outros Tipos";
+  tipoFiltro.appendChild(outrosOption);
+
+  tipoFiltro.dataset.populated = "true";
+  console.log(
+    `[DASH] Filtro dinâmico: ${tiposUnicos.length} tipos únicos encontrados.`
+  );
+}
 // CORRIGIDO: renderSavedAtaAccordion com statusCor definido
 function renderSavedAtaAccordion(ata) {
   try {
