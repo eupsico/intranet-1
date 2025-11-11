@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 4.1 (Corrigido: Tab listeners robustos com debug)
+// VERSÃO 4.0 (Completo: Tabs Atas/Gráficos/Agendamentos, Todas Funções Incluídas)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -7,7 +7,9 @@ import {
   query,
   orderBy,
   onSnapshot,
-  where,
+  doc,
+  updateDoc,
+  getDoc,
 } from "../../../assets/js/firebase-init.js";
 
 let todasAsAtas = [];
@@ -25,148 +27,117 @@ function normalizarParticipantes(participantes) {
       .map((nome) => nome.trim())
       .filter((nome) => nome.length > 0);
   }
+  console.warn(
+    "[DASH] Formato inválido de participantes:",
+    typeof participantes
+  );
   return [];
 }
 
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v4.1 - Tabs corrigidas).");
-
-  // Debug: Verifica se HTML está presente
-  const viewContainer = document.querySelector(".view-container");
-  if (!viewContainer) {
-    console.error("[DASH] .view-container não encontrado! Verifique HTML.");
-    return;
-  }
-  console.log("[DASH] .view-container encontrado:", viewContainer);
-
-  // Verifica se tabs existem
-  const tabLinks = document.querySelectorAll(".tab-link");
-  console.log("[DASH] Encontrados", tabLinks.length, "tab-links no DOM.");
-
-  setupTabListeners(); // Configura tabs
-  carregarDados();
+  console.log("[DASH] Dashboard iniciado (v4.0 - Completo).");
+  configurarEventListenersParaTabs();
+  carregarDadosDasColecoes();
 }
 
-// Listener para tabs (robusto, com debug)
-function setupTabListeners() {
-  // Tenta múltiplos seletores para garantir captura
-  const selectors = [".view-container", "body", document.body];
-  const tabLinks = document.querySelectorAll(".tab-link");
+function configurarEventListenersParaTabs() {
+  const containerPrincipal = document.querySelector(".view-container");
+  if (!containerPrincipal) {
+    console.error("[DASH] .view-container não encontrado.");
+    return;
+  }
 
-  console.log(
-    "[DASH] Configurando tab listeners para",
-    tabLinks.length,
-    "tabs."
-  );
-
-  // Usa document.body como fallback garantido
-  document.body.addEventListener("click", function (e) {
-    // Verifica se clicou em botão de tab
-    if (e.target.matches(".tab-link")) {
-      e.preventDefault();
-      const targetTab = e.target.dataset.tab;
-      console.log("[DASH] Clique detectado na tab:", targetTab);
-
-      // Remove active de todas
-      document.querySelectorAll(".tab-link").forEach((btn) => {
-        btn.classList.remove("active");
-      });
-      document.querySelectorAll(".tab-content").forEach((content) => {
-        content.classList.remove("active");
-      });
-
-      // Adiciona active no clicado
-      e.target.classList.add("active");
-
-      // Mostra conteúdo da aba
-      const activeContent = document.getElementById(targetTab);
-      if (activeContent) {
-        activeContent.classList.add("active");
-        activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
-        console.log("[DASH] Tab ativada:", targetTab);
-      } else {
-        console.error("[DASH] Container", targetTab, "não encontrado!");
-      }
+  containerPrincipal.addEventListener("click", (evento) => {
+    if (evento.target.matches(".tab-link")) {
+      evento.preventDefault();
+      const abaAlvo = evento.target.dataset.tab;
+      alternarAba(abaAlvo);
     }
   });
-
-  // Listener adicional para debug (remove depois)
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log(
-      "[DASH] DOM carregado. Tabs disponíveis:",
-      document.querySelectorAll(".tab-link").length
-    );
-  });
 }
 
-// Carrega dados
-function carregarDados() {
-  const atasContainer = document.getElementById("atas-container");
-  const agendamentosContainer = document.getElementById(
+function alternarAba(idDaAba) {
+  document
+    .querySelectorAll(".tab-link")
+    .forEach((botao) => botao.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((conteudo) => conteudo.classList.remove("active"));
+
+  const botaoAtivo = document.querySelector(`[data-tab="${idDaAba}"]`);
+  const conteudoAtivo = document.getElementById(`${idDaAba}-tab`);
+  if (botaoAtivo) botaoAtivo.classList.add("active");
+  if (conteudoAtivo) conteudoAtivo.classList.add("active");
+
+  conteudoAtivo.scrollIntoView({ behavior: "smooth", block: "start" });
+  console.log(`[DASH] Aba alternada para: ${idDaAba}`);
+}
+
+function carregarDadosDasColecoes() {
+  const conteudoAtas = document.getElementById("atas-container");
+  const conteudoAgendamentos = document.getElementById(
     "agendamentos-container"
   );
-  if (!atasContainer || !agendamentosContainer) {
-    console.error(
-      "[DASH] Containers não encontrados. Atas:",
-      !!atasContainer,
-      "Agendamentos:",
-      !!agendamentosContainer
-    );
+  if (!conteudoAtas || !conteudoAgendamentos) {
+    console.error("[DASH] Containers das abas não encontrados.");
     return;
   }
 
-  // Atas
-  const qAtas = query(
+  if (unsubscribeAtas) unsubscribeAtas();
+  if (unsubscribeAgendamentos) unsubscribeAgendamentos();
+
+  const consultaAtas = query(
     collection(firestoreDb, "gestao_atas"),
     orderBy("dataReuniao", "desc")
   );
-  unsubscribeAtas = onSnapshot(qAtas, (snapshot) => {
-    todasAsAtas = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      participantes: normalizarParticipantes(doc.data().participantes),
+  unsubscribeAtas = onSnapshot(consultaAtas, (resultado) => {
+    todasAsAtas = resultado.docs.map((documento) => ({
+      id: documento.id,
+      ...documento.data(),
+      participantes: normalizarParticipantes(documento.data().participantes),
     }));
-    renderAtasTab();
+    renderizarAbaAtas();
     atualizarGraficos();
-    console.log(`[DASH] Atas: ${todasAsAtas.length}`);
+    console.log(`[DASH] Atas carregadas: ${todasAsAtas.length}`);
   });
 
-  // Agendamentos
-  const qAgendamentos = query(
+  const consultaAgendamentos = query(
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
   );
-  unsubscribeAgendamentos = onSnapshot(qAgendamentos, (snapshot) => {
-    todosOsAgendamentos = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
+  unsubscribeAgendamentos = onSnapshot(consultaAgendamentos, (resultado) => {
+    todosOsAgendamentos = resultado.docs.map((documento) => ({
+      id: documento.id,
+      ...documento.data(),
     }));
-    renderAgendamentosTab();
+    renderizarAbaAgendamentos();
     atualizarGraficos();
-    console.log(`[DASH] Agendamentos: ${todosOsAgendamentos.length}`);
+    console.log(
+      `[DASH] Agendamentos carregados: ${todosOsAgendamentos.length}`
+    );
   });
 }
 
-// Render aba Atas
-function renderAtasTab() {
+function renderizarAbaAtas() {
   const container = document.getElementById("atas-container");
   if (!container) return;
 
-  const tipoFiltro = document.getElementById("tipo-filtro")?.value || "Todos";
-  const buscaTermo =
-    document.getElementById("busca-titulo")?.value.toLowerCase() || "";
+  const filtroTipo =
+    document.getElementById("tipo-filtro-atas")?.value || "Todos";
+  const termoBusca =
+    document.getElementById("busca-titulo-atas")?.value.toLowerCase() || "";
 
   let atasFiltradas = [...todasAsAtas];
 
-  if (tipoFiltro !== "Todos") {
+  if (filtroTipo !== "Todos") {
     atasFiltradas = atasFiltradas.filter((ata) =>
-      ata.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
+      ata.tipo?.toLowerCase().includes(filtroTipo.toLowerCase())
     );
   }
 
-  if (buscaTermo) {
+  if (termoBusca) {
     atasFiltradas = atasFiltradas.filter((ata) =>
-      ata.titulo?.toLowerCase().includes(buscaTermo)
+      ata.titulo?.toLowerCase().includes(termoBusca)
     );
   }
 
@@ -175,61 +146,212 @@ function renderAtasTab() {
   );
 
   if (atasFiltradas.length === 0) {
-    container.innerHTML =
-      '<div class="alert alert-info">Nenhuma ata encontrada.</div>';
+    container.innerHTML = `
+            <div class="alert alert-info">
+                <span class="material-symbols-outlined">search_off</span>
+                Nenhuma ata encontrada para este filtro.
+            </div>
+        `;
     return;
   }
 
   container.innerHTML = `
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Título</th>
-                        <th>Data</th>
-                        <th>Tipo</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${atasFiltradas
-                      .map(
-                        (ata) => `
-                        <tr>
-                            <td>${ata.titulo || "Reunião"}</td>
-                            <td>${new Date(ata.dataReuniao).toLocaleDateString(
+        <div class="accordion">
+            ${atasFiltradas
+              .map((ata) => {
+                const dataAta = new Date(ata.dataReuniao);
+                const agora = new Date();
+                const ehFutura = dataAta > agora;
+                const statusCor = ehFutura ? "text-info" : "text-success";
+                const iconeStatus = ehFutura ? "schedule" : "check_circle";
+                const textoStatus = ehFutura ? "Agendada" : "Registrada";
+
+                const participantes = normalizarParticipantes(
+                  ata.participantes
+                );
+                const previewParticipantes = participantes.slice(0, 5);
+                const maisParticipantes =
+                  participantes.length > 5
+                    ? `+${participantes.length - 5}`
+                    : "";
+
+                const conteudoDetalhes = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Tipo:</strong> ${
+                              ata.tipo || "Não especificado"
+                            }</p>
+                            <p><strong>Data:</strong> ${dataAta.toLocaleDateString(
                               "pt-BR"
-                            )}</td>
-                            <td>${ata.tipo || "Não especificado"}</td>
-                            <td><span class="badge bg-secondary">${
-                              ata.status || "Concluída"
-                            }</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="gerarPDF('${
+                            )}</p>
+                            <p><strong>Local:</strong> ${
+                              ata.local || "Online"
+                            }</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Responsável:</strong> ${
+                              ata.responsavel || "Não especificado"
+                            }</p>
+                            <p><strong>Total Participantes:</strong> ${
+                              participantes.length
+                            }</p>
+                        </div>
+                    </div>
+                    ${
+                      participantes.length > 0
+                        ? `
+                        <div class="mb-3">
+                            <h6>Participantes</h6>
+                            <div class="d-flex flex-wrap gap-1">
+                                ${previewParticipantes
+                                  .map(
+                                    (nome) =>
+                                      `<span class="badge bg-light text-dark">${nome}</span>`
+                                  )
+                                  .join("")}
+                                ${
+                                  maisParticipantes
+                                    ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
+                                    : ""
+                                }
+                            </div>
+                        </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      ata.resumo
+                        ? `
+                        <div class="mb-3">
+                            <h6>Resumo</h6>
+                            <p>${ata.resumo}</p>
+                        </div>
+                    `
+                        : ""
+                    }
+                `;
+
+                return `
+                    <div class="accordion-item">
+                        <button class="accordion-header">
+                            <span class="material-symbols-outlined" style="color: ${statusCor};">${iconeStatus}</span>
+                            ${
+                              ata.titulo || ata.tipo || "Reunião"
+                            } - ${dataAta.toLocaleDateString("pt-BR")}
+                            <span class="badge bg-secondary">${textoStatus}</span>
+                            <span class="accordion-icon">+</span>
+                        </button>
+                        <div class="accordion-content">
+                            ${conteudoDetalhes}
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="gerarPDFAta('${
                                   ata.id
                                 }')">PDF</button>
-                            </td>
-                        </tr>
-                    `
-                      )
-                      .join("")}
-                </tbody>
-            </table>
+                                <button class="btn btn-sm btn-outline-success me-1" onclick="abrirFeedbackAta('${
+                                  ata.id
+                                }')">Feedback</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="editarAta('${
+                                  ata.id
+                                }')">Editar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
         </div>
     `;
 
+  container.querySelectorAll(".accordion-header").forEach((header) => {
+    header.addEventListener("click", () => {
+      const conteudo = header.nextElementSibling;
+      conteudo.classList.toggle("active");
+      const icone = header.querySelector(".accordion-icon");
+      icone.textContent = conteudo.classList.contains("active") ? "−" : "+";
+    });
+  });
   atualizarContadorAtas(atasFiltradas.length);
 }
 
-// Render aba Agendamentos
-function renderAgendamentosTab() {
+function atualizarGraficos() {
+  const totalEventos = todasAsAtas.length + todosOsAgendamentos.length;
+  const totalAtas = todasAsAtas.length;
+  const totalAgendamentos = todosOsAgendamentos.length;
+
+  if (document.getElementById("total-reunioes"))
+    document.getElementById("total-reunioes").textContent = totalEventos;
+  if (document.getElementById("proximas-reunioes")) {
+    document.getElementById("proximas-reunioes").textContent =
+      todosOsAgendamentos.filter((a) => {
+        const dataSlot = new Date(a.slots?.[0]?.data || a.criadoEm);
+        return dataSlot > new Date();
+      }).length;
+  }
+  if (document.getElementById("reunioes-concluidas"))
+    document.getElementById("reunioes-concluidas").textContent = totalAtas;
+
+  const conteudoGraficos = document.getElementById("graficos-tab");
+  if (conteudoGraficos) {
+    const canvasPresenca = document.getElementById("chart-presenca");
+    if (canvasPresenca) {
+      canvasPresenca.parentElement.innerHTML = `
+                <div class="text-center">
+                    <h5>Distribuição de Eventos</h5>
+                    <div class="bg-light p-3 rounded">
+                        <p><strong>Total:</strong> ${totalEventos}</p>
+                        <p><strong>Atas:</strong> ${totalAtas} (${Math.round(
+        (totalAtas / totalEventos) * 100
+      )}%)</p>
+                        <p><strong>Agendamentos:</strong> ${totalAgendamentos} (${Math.round(
+        (totalAgendamentos / totalEventos) * 100
+      )}%)</p>
+                    </div>
+                </div>
+            `;
+    }
+
+    const canvasStatus = document.getElementById("chart-status");
+    if (canvasStatus) {
+      canvasStatus.parentElement.innerHTML = `
+                <div class="text-center">
+                    <h5>Status das Reuniões</h5>
+                    <div class="bg-light p-3 rounded">
+                        <p><strong>Concluídas:</strong> ${
+                          todasAsAtas.filter((a) => a.status === "Concluída")
+                            .length
+                        }</p>
+                        <p><strong>Agendadas:</strong> ${
+                          todosOsAgendamentos.filter(
+                            (a) =>
+                              new Date(a.slots?.[0]?.data || a.criadoEm) >
+                              new Date()
+                          ).length
+                        }</p>
+                        <p><strong>Pendentes:</strong> ${
+                          todosOsAgendamentos.filter(
+                            (a) =>
+                              new Date(a.slots?.[0]?.data || a.criadoEm) <=
+                              new Date()
+                          ).length
+                        }</p>
+                    </div>
+                </div>
+            `;
+    }
+  }
+}
+
+function renderizarAbaAgendamentos() {
   const container = document.getElementById("agendamentos-container");
   if (!container) return;
 
   if (todosOsAgendamentos.length === 0) {
-    container.innerHTML =
-      '<div class="alert alert-info">Nenhum agendamento pendente.</div>';
+    container.innerHTML = `
+            <div class="alert alert-info">
+                <span class="material-symbols-outlined">event_off</span>
+                Nenhum agendamento encontrado.
+            </div>
+        `;
     return;
   }
 
@@ -243,73 +365,91 @@ function renderAgendamentosTab() {
         <div class="accordion">
             ${todosOsAgendamentos
               .map((agendamento) => {
-                const slot = agendamento.slots?.[0] || {};
-                const dataSlot = new Date(slot.data || agendamento.criadoEm);
-                const inscricaoCount = (slot.vagas || []).length;
+                const slots = agendamento.slots || [];
+                let totalInscritos = 0;
+                let totalPresentes = 0;
+
+                slots.forEach((slot) => {
+                  slot.vagas?.forEach((vaga) => {
+                    totalInscritos++;
+                    if (vaga.presente) totalPresentes++;
+                  });
+                });
+
                 return `
                     <div class="accordion-item">
                         <button class="accordion-header">
                             <span class="material-symbols-outlined">event</span>
-                            ${
-                              agendamento.descricao || "Agendamento"
-                            } - ${dataSlot.toLocaleDateString("pt-BR")}
-                            <span class="badge bg-info">${inscricaoCount} inscritos</span>
+                            ${agendamento.descricao || "Agendamento de Reunião"}
+                            <span class="badge bg-info">${totalInscritos} inscritos</span>
+                            <span class="badge bg-success">${totalPresentes} presentes</span>
                             <span class="accordion-icon">+</span>
                         </button>
                         <div class="accordion-content">
-                            <div class="table-container">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Slot</th>
-                                            <th>Data/Hora</th>
-                                            <th>Inscritos</th>
-                                            <th>Presença</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${
-                                          slot.vagas
-                                            ?.map((vaga) => {
-                                              const profissional =
-                                                vaga.profissionalNome ||
-                                                "Pendente";
-                                              const presente =
-                                                vaga.presente || false;
-                                              return `
+                            ${slots
+                              .map((slot) => {
+                                const dataSlot = new Date(
+                                  slot.data || agendamento.criadoEm
+                                );
+                                return `
+                                    <div class="mb-3">
+                                        <h6>${slot.horaInicio} - ${
+                                  slot.horaFim
+                                }</h6>
+                                        <table class="table table-sm">
+                                            <thead>
                                                 <tr>
-                                                    <td>${slot.horaInicio} - ${
-                                                slot.horaFim
-                                              }</td>
-                                                    <td>${profissional}</td>
-                                                    <td>${
-                                                      presente
-                                                        ? "Presente"
-                                                        : "Aguardando"
-                                                    }</td>
-                                                    <td>
-                                                        <input type="checkbox" ${
-                                                          presente
-                                                            ? "checked"
-                                                            : ""
-                                                        } 
-                                                               class="checkbox-presenca" 
-                                                               data-agendamento-id="${
-                                                                 agendamento.id
-                                                               }"
-                                                               data-vaga-id="${
-                                                                 vaga.id
-                                                               }">
-                                                    </td>
+                                                    <th>Profissional</th>
+                                                    <th>Gestor</th>
+                                                    <th>Presença</th>
                                                 </tr>
-                                            `;
-                                            })
-                                            .join("") ||
-                                          '<tr><td colspan="4">Nenhum slot configurado.</td></tr>'
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
+                                            </thead>
+                                            <tbody>
+                                                ${
+                                                  slot.vagas
+                                                    ?.map((vaga) => {
+                                                      const profissional =
+                                                        vaga.profissionalNome ||
+                                                        vaga.profissionalId ||
+                                                        "Pendente";
+                                                      const presente =
+                                                        vaga.presente || false;
+                                                      return `
+                                                        <tr>
+                                                            <td>${profissional}</td>
+                                                            <td>${
+                                                              slot.gestorNome ||
+                                                              "Gestor"
+                                                            }</td>
+                                                            <td>
+                                                                <input type="checkbox" class="checkbox-presenca" 
+                                                                       ${
+                                                                         presente
+                                                                           ? "checked"
+                                                                           : ""
+                                                                       } 
+                                                                       data-agendamento-id="${
+                                                                         agendamento.id
+                                                                       }"
+                                                                       data-slot-index="${slots.indexOf(
+                                                                         slot
+                                                                       )}"
+                                                                       data-vaga-index="${slot.vagas.indexOf(
+                                                                         vaga
+                                                                       )}">
+                                                            </td>
+                                                        </tr>
+                                                    `;
+                                                    })
+                                                    .join("") ||
+                                                  '<tr><td colspan="3">Nenhum inscrito.</td></tr>'
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
+                              })
+                              .join("")}
                         </div>
                     </div>
                 `;
@@ -320,113 +460,74 @@ function renderAgendamentosTab() {
 
   atualizarContadorAgendamentos(todosOsAgendamentos.length);
 
-  // Configura accordions
   container.querySelectorAll(".accordion-header").forEach((header) => {
     header.addEventListener("click", () => {
-      const content = header.nextElementSibling;
-      content.style.maxHeight = content.style.maxHeight
-        ? null
-        : content.scrollHeight + "px";
-      header.querySelector(".accordion-icon").textContent = content.style
-        .maxHeight
-        ? "−"
-        : "+";
+      const conteudo = header.nextElementSibling;
+      conteudo.classList.toggle("active");
+      const icone = header.querySelector(".accordion-icon");
+      icone.textContent = conteudo.classList.contains("active") ? "−" : "+";
     });
   });
 
-  // Configura checkboxes de presença
   container.querySelectorAll(".checkbox-presenca").forEach((checkbox) => {
-    checkbox.addEventListener("change", async (e) => {
-      const agendamentoId = e.target.dataset.agendamentoId;
-      const vagaId = e.target.dataset.vagaId;
-      const presente = e.target.checked;
+    checkbox.addEventListener("change", async (evento) => {
+      const idAgendamento = evento.target.dataset.agendamentoId;
+      const indexSlot = parseInt(evento.target.dataset.slotIndex);
+      const indexVaga = parseInt(evento.target.dataset.vagaIndex);
+      const presente = evento.target.checked;
 
       try {
-        const agendamentoDoc = doc(
+        const documentoAgendamento = doc(
           firestoreDb,
           "agendamentos_voluntarios",
-          agendamentoId
+          idAgendamento
         );
-        const agendamentoSnap = await getDoc(agendamentoDoc);
-        if (agendamentoSnap.exists()) {
-          const agendamento = agendamentoSnap.data();
-          const slot = agendamento.slots.find((s) =>
-            s.vagas?.some((v) => v.id === vagaId)
-          );
-          if (slot) {
-            const vaga = slot.vagas.find((v) => v.id === vagaId);
+        const snapshotAgendamento = await getDoc(documentoAgendamento);
+        if (snapshotAgendamento.exists()) {
+          const agendamento = snapshotAgendamento.data();
+          if (agendamento.slots && agendamento.slots[indexSlot]) {
+            const vaga = agendamento.slots[indexSlot].vagas[indexVaga];
             if (vaga) vaga.presente = presente;
-            await updateDoc(agendamentoDoc, { slots: agendamento.slots });
-            console.log(
-              "[DASH] Presença atualizada:",
-              presente ? "Sim" : "Não"
-            );
+            await updateDoc(documentoAgendamento, { slots: agendamento.slots });
+            console.log("[DASH] Presença atualizada.");
           }
         }
-      } catch (error) {
-        console.error("[DASH] Erro na presença:", error);
-        e.target.checked = !presente;
+      } catch (erro) {
+        console.error("[DASH] Erro ao atualizar presença:", erro);
+        evento.target.checked = !presente;
       }
     });
   });
 }
 
-function atualizarGraficos() {
-  const totalEventos = todasAsAtas.length + todosOsAgendamentos.length;
-  const totalAtas = todasAsAtas.length;
-  const totalAgendamentos = todosOsAgendamentos.length;
-
-  document.getElementById("total-reunioes").textContent = totalEventos;
-  document.getElementById("proximas-reunioes").textContent =
-    todosOsAgendamentos.filter((a) => {
-      const dataSlot = new Date(a.slots?.[0]?.data || a.criadoEm);
-      return dataSlot > new Date();
-    }).length;
-  document.getElementById("reunioes-concluidas").textContent = totalAtas;
-
-  const ctxPresenca = document.getElementById("chart-presenca");
-  if (ctxPresenca) {
-    ctxPresenca.parentElement.innerHTML = `
-            <div class="text-center">
-                <p class="text-muted">Gráfico de Presença</p>
-                <div class="bg-light p-3 rounded">
-                    <p>Atas Registradas: <strong>${totalAtas}</strong></p>
-                    <p>Agendamentos Pendentes: <strong>${totalAgendamentos}</strong></p>
-                </div>
-            </div>
-        `;
-  }
-
-  const ctxStatus = document.getElementById("chart-status");
-  if (ctxStatus) {
-    ctxStatus.parentElement.innerHTML = `
-            <div class="text-center">
-                <p class="text-muted">Status das Reuniões</p>
-                <div class="bg-light p-3 rounded">
-                    <p>Total de Eventos: <strong>${totalEventos}</strong></p>
-                    <p>Próximas: <strong>${todosOsAgendamentos.length}</strong></p>
-                </div>
-            </div>
-        `;
-  }
-}
-
 function atualizarContadorAtas(count) {
-  const contadorEl = document.getElementById("contador-atas");
-  if (contadorEl) contadorEl.textContent = count;
+  const contador = document.getElementById("contador-atas");
+  if (contador) contador.textContent = count;
 }
 
 function atualizarContadorAgendamentos(count) {
-  const contadorEl = document.getElementById("contador-agendamentos");
-  if (contadorEl) contadorEl.textContent = count;
+  const contador = document.getElementById("contador-agendamentos");
+  if (contador) contador.textContent = count;
 }
 
-function gerarPDF(ataId) {
-  alert(`Gerando PDF da ata ID: ${ataId}`);
+function gerarPDFAta(idAta) {
+  const ata = todasAsAtas.find((a) => a.id === idAta);
+  alert(`Gerando PDF da ata: ${ata?.titulo || idAta}`);
+}
+
+function abrirFeedbackAta(idAta) {
+  const ata = todasAsAtas.find((a) => a.id === idAta);
+  alert(`Feedback da ata: ${ata?.titulo || idAta}`);
+}
+
+function editarAta(idAta) {
+  const ata = todasAsAtas.find((a) => a.id === idAta);
+  alert(`Editando ata: ${ata?.titulo || idAta}`);
 }
 
 export function cleanup() {
   if (unsubscribeAtas) unsubscribeAtas();
   if (unsubscribeAgendamentos) unsubscribeAgendamentos();
+  clearTimeout(timeoutBusca);
   console.log("[DASH] Cleanup executado.");
 }
