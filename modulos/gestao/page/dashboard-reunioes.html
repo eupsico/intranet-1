@@ -11,7 +11,7 @@
         </button>
     </div>
 
-    <!-- Aba 1: Atas -->
+    <!-- Aba Atas -->
     <div id="atas-tab" class="tab-content active">
         <div class="card mb-3">
             <div class="card-header">
@@ -21,7 +21,7 @@
             </div>
             <div class="card-body">
                 <div class="filtros-container">
-                    <select id="tipo-filtro-atas" class="form-select">
+                    <select id="tipo-filtro" class="form-select">
                         <option value="Todos">Todos os Tipos</option>
                         <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
                         <option value="Reunião com Gestor">Reunião com Gestor</option>
@@ -29,8 +29,8 @@
                         <option value="Reunião com Voluntário">Reunião com Voluntário</option>
                         <option value="Outros">Outros</option>
                     </select>
-                    <input type="text" id="busca-titulo-atas" class="form-control" placeholder="Buscar por título...">
-                    <button id="limpar-filtros-atas" class="btn btn-secondary">Limpar</button>
+                    <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
+                    <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
                 </div>
                 <div id="atas-container" class="atas-list">
                     <div class="loading-spinner"></div>
@@ -40,7 +40,7 @@
         </div>
     </div>
 
-    <!-- Aba 2: Gráficos -->
+    <!-- Aba Gráficos -->
     <div id="graficos-tab" class="tab-content">
         <div class="card">
             <div class="card-header">
@@ -51,7 +51,7 @@
                     <div class="stat-card">
                         <span class="material-symbols-outlined">event</span>
                         <h4 id="total-reunioes">0</h4>
-                        <p>Total de Eventos</p>
+                        <p>Total de Atas</p>
                     </div>
                     <div class="stat-card">
                         <span class="material-symbols-outlined">schedule</span>
@@ -64,13 +64,31 @@
                         <p>Concluídas</p>
                     </div>
                 </div>
-                <div class="graficos-container">
-                    <div id="grafico-presenca" class="grafico-item">
-                        <h5>Presença por Tipo</h5>
-                        nvas id="chart-presenca" width="400" heightght="200"></canvas>
+
+                <!-- Gráfico: Atas por Tipo -->
+                <div class="grafico-item mb-4">
+                    <h5>Atas por Tipo de Reunião</h5>
+                    <div id="grafico-atas-tipo"></div>
+                </div>
+
+                <!-- Gráfico: Agendamentos com Voluntários por Gestor -->
+                <div class="grafico-item mb-4">
+                    <h5>Agendamentos com Voluntários por Gestor</h5>
+                    <div id="grafico-agendamentos-gestor"></div>
+                </div>
+
+                <!-- Próxima Reunião -->
+                <div id="proxima-reuniao-container" class="card mt-4" style="display: none;">
+                    <div class="card-header">
+                        <h5><span class="material-symbols-outlined">notifications_active</span> Próxima Reunião</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="proxima-reuniao-info"></div>
+                        <button id="ver-detalhes-proxima" class="btn btn-primary me-2">Ver Detalhes</button>
+                        <button id="calendario-proxima" class="btn btn-outline-primary">Adicionar ao Calendário</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+</div>

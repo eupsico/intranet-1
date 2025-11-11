@@ -1,7 +1,6 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 4.3 (2 Abas: Atas + Gráficos, Completo, Sem Agendamentos)
+// VERSÃO 5.0 (2 Abas: Atas + Gráficos com Agendamentos por Gestor)
 
-// Importações do Firebase
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
   collection,
@@ -10,12 +9,12 @@ import {
   onSnapshot,
 } from "../../../assets/js/firebase-init.js";
 
-// Variáveis globais
-let todasAsAtas = []; // Todas as atas carregadas de "gestao_atas"
-let unsubscribeAtas = null; // Listener das atas
-let timeoutBusca = null; // Timeout para busca
+let todasAsAtas = [];
+let todosOsAgendamentos = [];
+let unsubscribeAtas = null;
+let unsubscribeAgendamentos = null;
+let timeoutBusca = null;
 
-// Função para normalizar participantes
 function normalizarParticipantes(participantes) {
   if (!participantes) return [];
   if (Array.isArray(participantes)) return participantes;
@@ -25,30 +24,27 @@ function normalizarParticipantes(participantes) {
       .map((nome) => nome.trim())
       .filter((nome) => nome.length > 0);
   }
-  console.warn(
-    "[DASH] Formato inválido de participantes:",
-    typeof participantes
-  );
   return [];
 }
 
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v4.3 - Atas + Gráficos).");
+  console.log("[DASH] Dashboard iniciado (v5.0 - Gráficos com Agendamentos).");
   configurarEventListeners();
-  carregarDadosDasAtas();
+  carregarDados();
 }
 
 function configurarEventListeners() {
-  // Listener para tabs
   document.body.addEventListener("click", (e) => {
-    if (e.target.matches(".tab-link")) {
+    if (e.target.matches(".tab-link") || e.target.closest(".tab-link")) {
       e.preventDefault();
-      const abaId = e.target.dataset.tab;
+      const btn = e.target.matches(".tab-link")
+        ? e.target
+        : e.target.closest(".tab-link");
+      const abaId = btn.dataset.tab;
       alternarAba(abaId);
     }
   });
 
-  // Filtros
   const tipoFiltro = document.getElementById("tipo-filtro");
   if (tipoFiltro)
     tipoFiltro.addEventListener("change", aplicarFiltrosEExibirAtas);
@@ -68,21 +64,10 @@ function configurarEventListeners() {
       if (buscaInput) buscaInput.value = "";
       aplicarFiltrosEExibirAtas();
     });
-
-  // Accordions
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".ata-header")) {
-      const ataItem = e.target.closest(".ata-item");
-      const conteudo = ataItem.querySelector(".ata-conteudo");
-      if (conteudo) {
-        conteudo.style.display =
-          conteudo.style.display === "none" ? "block" : "none";
-      }
-    }
-  });
 }
 
 function alternarAba(abaId) {
+  console.log("[DASH] Alternando para aba:", abaId);
   document
     .querySelectorAll(".tab-link")
     .forEach((btn) => btn.classList.remove("active"));
@@ -96,10 +81,7 @@ function alternarAba(abaId) {
   if (activeContent) activeContent.classList.add("active");
 }
 
-function carregarDadosDasAtas() {
-  const container = document.getElementById("atas-container");
-  if (!container) return;
-
+function carregarDados() {
   const qAtas = query(
     collection(firestoreDb, "gestao_atas"),
     orderBy("dataReuniao", "desc")
@@ -112,7 +94,20 @@ function carregarDadosDasAtas() {
     }));
     aplicarFiltrosEExibirAtas();
     atualizarGraficos();
-    console.log(`[DASH] Atas carregadas: ${todasAsAtas.length}`);
+    console.log(`[DASH] Atas: ${todasAsAtas.length}`);
+  });
+
+  const qAgendamentos = query(
+    collection(firestoreDb, "agendamentos_voluntarios"),
+    orderBy("criadoEm", "desc")
+  );
+  unsubscribeAgendamentos = onSnapshot(qAgendamentos, (snapshot) => {
+    todosOsAgendamentos = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    atualizarGraficos();
+    console.log(`[DASH] Agendamentos: ${todosOsAgendamentos.length}`);
   });
 }
 
@@ -149,6 +144,7 @@ function aplicarFiltrosEExibirAtas() {
                 Nenhuma ata encontrada.
             </div>
         `;
+    atualizarContadorAtas(0);
     return;
   }
 
@@ -165,62 +161,6 @@ function aplicarFiltrosEExibirAtas() {
       const maisParticipantes =
         participantes.length > 3 ? `+${participantes.length - 3}` : "";
 
-      const conteudoDetalhes = `
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <p><strong>Tipo:</strong> ${
-                      ata.tipo || "Não especificado"
-                    }</p>
-                    <p><strong>Data:</strong> <span class="${statusCor}">${dataAta.toLocaleDateString(
-        "pt-BR"
-      )}</span></p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Local:</strong> ${ata.local || "Online"}</p>
-                    <p><strong>Responsável:</strong> ${
-                      ata.responsavel || "Não especificado"
-                    }</p>
-                </div>
-            </div>
-        `;
-
-      const conteudoParticipantes =
-        participantes.length > 0
-          ? `
-            <div class="mb-3">
-                <h6 class="mb-2"><span class="material-symbols-outlined text-info me-1">group</span> Participantes</h6>
-                <div class="d-flex flex-wrap gap-1">
-                    ${previewParticipantes
-                      .map(
-                        (nome) =>
-                          `<span class="badge bg-light text-dark">${nome}</span>`
-                      )
-                      .join("")}
-                    ${
-                      maisParticipantes
-                        ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
-                        : ""
-                    }
-                </div>
-                <small class="text-muted">Total: ${participantes.length}</small>
-            </div>
-        `
-          : "";
-
-      const resumoTexto = ata.resumo || ata.notas || "Sem resumo disponível.";
-      const conteudoResumo = `
-            <div class="mb-3">
-                <h6 class="mb-2"><span class="material-symbols-outlined text-primary me-1">description</span> Resumo</h6>
-                <p>${resumoTexto}</p>
-            </div>
-        `;
-
-      const conteudoAccordion = `
-            ${conteudoDetalhes}
-            ${conteudoParticipantes}
-            ${conteudoResumo}
-        `;
-
       return `
             <div class="ata-item card mb-4" data-ata-id="${ata.id}">
                 <div class="card-header d-flex justify-content-between align-items-center p-3" onclick="this.parentElement.querySelector('.ata-conteudo').style.display = this.parentElement.querySelector('.ata-conteudo').style.display === 'none' ? 'block' : 'none';">
@@ -230,32 +170,83 @@ function aplicarFiltrosEExibirAtas() {
                             <h5 class="mb-0">${
                               ata.titulo || ata.tipo || "Reunião"
                             }</h5>
-                            <span class="badge ms-2 bg-info text-info">Ata</span>
                         </div>
                         <small class="text-muted">${dataAta.toLocaleDateString(
                           "pt-BR"
                         )}</small>
                     </div>
                     <div class="ata-acoes">
-                        <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" data-ata-id="${
+                        <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" onclick="event.stopPropagation(); alert('PDF: ${
                           ata.id
-                        }">
+                        }');">
                             <span class="material-symbols-outlined">picture_as_pdf</span>
                         </button>
-                        <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Feedback" data-ata-id="${
+                        <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Feedback" onclick="event.stopPropagation(); alert('Feedback: ${
                           ata.id
-                        }">
+                        }');">
                             <span class="material-symbols-outlined">feedback</span>
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" data-ata-id="${
+                        <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" onclick="event.stopPropagation(); alert('Editar: ${
                           ata.id
-                        }">
+                        }');">
                             <span class="material-symbols-outlined">edit</span>
                         </button>
                     </div>
                 </div>
                 <div class="ata-conteudo card-body" style="display: none; border-top: 1px solid #e5e7eb;">
-                    ${conteudoAccordion}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <p><strong>Tipo:</strong> ${
+                              ata.tipo || "Não especificado"
+                            }</p>
+                            <p><strong>Data:</strong> ${dataAta.toLocaleDateString(
+                              "pt-BR"
+                            )}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Local:</strong> ${
+                              ata.local || "Online"
+                            }</p>
+                            <p><strong>Responsável:</strong> ${
+                              ata.responsavel || "Não especificado"
+                            }</p>
+                        </div>
+                    </div>
+                    ${
+                      participantes.length > 0
+                        ? `
+                        <div class="mb-3">
+                            <h6>Participantes</h6>
+                            <div class="d-flex flex-wrap gap-1">
+                                ${previewParticipantes
+                                  .map(
+                                    (nome) =>
+                                      `<span class="badge bg-light text-dark">${nome}</span>`
+                                  )
+                                  .join("")}
+                                ${
+                                  maisParticipantes
+                                    ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
+                                    : ""
+                                }
+                            </div>
+                            <small class="text-muted">Total: ${
+                              participantes.length
+                            }</small>
+                        </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      ata.resumo
+                        ? `
+                        <div class="mb-3">
+                            <h6>Resumo</h6>
+                            <p>${ata.resumo}</p>
+                        </div>
+                    `
+                        : ""
+                    }
                 </div>
             </div>
         `;
@@ -263,7 +254,6 @@ function aplicarFiltrosEExibirAtas() {
     .join("");
 
   atualizarContadorAtas(atasFiltradas.length);
-  atualizarGraficos();
 }
 
 function atualizarGraficos() {
@@ -289,7 +279,106 @@ function atualizarGraficos() {
   if (proximasEl) proximasEl.textContent = atasFuturas;
   if (concluidasEl) concluidasEl.textContent = atasConcluidas;
 
-  const infoEl = document.getElementById("proxima-reuniao-info");
+  renderizarGraficoAtasPorTipo();
+  renderizarGraficoAgendamentosPorGestor();
+  renderizarProximaReuniao();
+}
+
+function renderizarGraficoAtasPorTipo() {
+  const container = document.getElementById("grafico-atas-tipo");
+  if (!container) return;
+
+  const atasPorTipo = {};
+  todasAsAtas.forEach((ata) => {
+    const tipo = ata.tipo || "Outros";
+    atasPorTipo[tipo] = (atasPorTipo[tipo] || 0) + 1;
+  });
+
+  const totalAtas = todasAsAtas.length;
+  const linhas = Object.entries(atasPorTipo)
+    .map(([tipo, qtd]) => {
+      const percentual =
+        totalAtas > 0 ? Math.round((qtd / totalAtas) * 100) : 0;
+      return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span><strong>${tipo}</strong></span>
+                    <span>${qtd} atas (${percentual}%)</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: ${percentual}%"></div>
+                </div>
+            </div>
+        `;
+    })
+    .join("");
+
+  container.innerHTML = `
+        <div class="bg-light p-3 rounded">
+            ${
+              totalAtas > 0
+                ? linhas
+                : '<p class="text-muted text-center">Nenhuma ata registrada.</p>'
+            }
+        </div>
+    `;
+}
+
+function renderizarGraficoAgendamentosPorGestor() {
+  const container = document.getElementById("grafico-agendamentos-gestor");
+  if (!container) return;
+
+  const agendamentosPorGestor = {};
+  let totalAgendamentosComGestor = 0;
+
+  todosOsAgendamentos.forEach((agendamento) => {
+    (agendamento.slots || []).forEach((slot) => {
+      const gestorNome = slot.gestorNome || "Gestor não especificado";
+      const vagas = (slot.vagas || []).length;
+      agendamentosPorGestor[gestorNome] =
+        (agendamentosPorGestor[gestorNome] || 0) + vagas;
+      totalAgendamentosComGestor += vagas;
+    });
+  });
+
+  const linhas = Object.entries(agendamentosPorGestor)
+    .sort((a, b) => b[1] - a[1])
+    .map(([gestor, qtd]) => {
+      const percentual =
+        totalAgendamentosComGestor > 0
+          ? Math.round((qtd / totalAgendamentosComGestor) * 100)
+          : 0;
+      return `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><strong>${gestor}</strong></span>
+                        <span>${qtd} agendamentos (${percentual}%)</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: ${percentual}%"></div>
+                    </div>
+                </div>
+            `;
+    })
+    .join("");
+
+  container.innerHTML = `
+        <div class="bg-light p-3 rounded">
+            <p class="mb-3"><strong>Total de Agendamentos:</strong> ${
+              todosOsAgendamentos.length
+            } reuniões</p>
+            <p class="mb-3"><strong>Total de Vagas Agendadas:</strong> ${totalAgendamentosComGestor} slots</p>
+            ${
+              totalAgendamentosComGestor > 0
+                ? linhas
+                : '<p class="text-muted text-center">Nenhum agendamento encontrado.</p>'
+            }
+        </div>
+    `;
+}
+
+function renderizarProximaReuniao() {
+  const agora = new Date();
   const proximas = todasAsAtas
     .filter((ata) => {
       const dataAta = new Date(ata.dataReuniao);
@@ -297,59 +386,57 @@ function atualizarGraficos() {
     })
     .sort((a, b) => new Date(a.dataReuniao) - new Date(b.dataReuniao));
 
-  if (infoEl && proximas.length > 0) {
-    const proxima = proximas[0];
-    const dataProxima = new Date(proxima.dataReuniao);
-    const diffMs = dataProxima - agora;
-    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const horas = Math.floor(
-      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-    );
-    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const proximaContainer = document.getElementById("proxima-reuniao-container");
+  const infoEl = document.getElementById("proxima-reuniao-info");
 
-    let tempoTexto = "";
-    if (dias > 0) tempoTexto = `Em ${dias} dia${dias > 1 ? "s" : ""}`;
-    else if (horas > 0) tempoTexto = `Em ${horas} hora${horas > 1 ? "s" : ""}`;
-    else if (minutos > 0)
-      tempoTexto = `Em ${minutos} minuto${minutos > 1 ? "s" : ""}`;
-    else tempoTexto = "Em breve!";
+  if (!proximaContainer || !infoEl) return;
 
-    infoEl.innerHTML = `
-            <h5>${proxima.titulo || proxima.tipo || "Reunião"}</h5>
-            <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
-            <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
-              dateStyle: "full",
-              timeStyle: "short",
-            })}</p>
-            <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
-            <p class="fw-bold">${tempoTexto}</p>
-        `;
-
-    const detalhesBtn = document.getElementById("ver-detalhes-proxima");
-    if (detalhesBtn)
-      detalhesBtn.onclick = () =>
-        alert(`Detalhes: ${proxima.titulo || proxima.id}`);
-
-    const calendarioBtn = document.getElementById("calendario-proxima");
-    if (calendarioBtn)
-      calendarioBtn.onclick = () => {
-        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-          proxima.titulo || "Reunião"
-        )}&dates=${dataProxima
-          .toISOString()
-          .slice(
-            0,
-            -1
-          )}Z/${dataProxima.toISOString()}&location=${encodeURIComponent(
-          proxima.local || "Online"
-        )}`;
-        window.open(url, "_blank");
-      };
+  if (proximas.length === 0) {
+    proximaContainer.style.display = "none";
+    return;
   }
 
-  const proximaContainer = document.getElementById("proxima-reuniao-container");
-  if (proximaContainer)
-    proximaContainer.style.display = proximas.length > 0 ? "block" : "none";
+  proximaContainer.style.display = "block";
+  const proxima = proximas[0];
+  const dataProxima = new Date(proxima.dataReuniao);
+  const diffMs = dataProxima - agora;
+  const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  let tempoTexto = "";
+  if (dias > 0) tempoTexto = `Em ${dias} dia${dias > 1 ? "s" : ""}`;
+  else if (horas > 0) tempoTexto = `Em ${horas} hora${horas > 1 ? "s" : ""}`;
+  else if (minutos > 0)
+    tempoTexto = `Em ${minutos} minuto${minutos > 1 ? "s" : ""}`;
+  else tempoTexto = "Em breve!";
+
+  infoEl.innerHTML = `
+        <h5>${proxima.titulo || proxima.tipo || "Reunião"}</h5>
+        <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
+        <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
+          dateStyle: "full",
+          timeStyle: "short",
+        })}</p>
+        <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
+        <p class="fw-bold text-primary">${tempoTexto}</p>
+    `;
+
+  const detalhesBtn = document.getElementById("ver-detalhes-proxima");
+  if (detalhesBtn)
+    detalhesBtn.onclick = () =>
+      alert(`Detalhes: ${proxima.titulo || proxima.id}`);
+
+  const calendarioBtn = document.getElementById("calendario-proxima");
+  if (calendarioBtn)
+    calendarioBtn.onclick = () => {
+      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+        proxima.titulo || "Reunião"
+      )}&dates=${
+        dataProxima.toISOString().replace(/[-:]/g, "").split(".")[0]
+      }Z&location=${encodeURIComponent(proxima.local || "Online")}`;
+      window.open(url, "_blank");
+    };
 }
 
 function atualizarContadorAtas(qtd) {
@@ -362,26 +449,9 @@ function atualizarContadorAtas(qtd) {
   }
 }
 
-function gerarPDF(ataId) {
-  const ata = todasAsAtas.find((a) => a.id === ataId);
-  console.log("[DASH] PDF:", ata?.titulo);
-  alert(`PDF de "${ata?.titulo}" (implementar).`);
-}
-
-function abrirFormularioDeFeedback(ataId) {
-  const ata = todasAsAtas.find((a) => a.id === ataId);
-  console.log("[DASH] Feedback:", ata?.titulo);
-  alert(`Feedback: ${ata?.titulo || ataId}`);
-}
-
-function editarAta(ataId) {
-  const ata = todasAsAtas.find((a) => a.id === ataId);
-  console.log("[DASH] Edit:", ata?.titulo);
-  alert(`Editando: ${ata?.titulo || ataId}`);
-}
-
 export function cleanup() {
   if (unsubscribeAtas) unsubscribeAtas();
-  console.log("[DASH] Cleanup.");
+  if (unsubscribeAgendamentos) unsubscribeAgendamentos();
   clearTimeout(timeoutBusca);
+  console.log("[DASH] Cleanup.");
 }
