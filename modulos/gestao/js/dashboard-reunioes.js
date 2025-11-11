@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.0 (2 Abas: Atas + Gráficos com Agendamentos por Gestor)
+// VERSÃO 5.1 (Tabelas + Gráficos Visuais)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -28,7 +28,7 @@ function normalizarParticipantes(participantes) {
 }
 
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v5.0 - Gráficos com Agendamentos).");
+  console.log("[DASH] Dashboard iniciado (v5.1 - Tabelas + Gráficos).");
   configurarEventListeners();
   carregarDados();
 }
@@ -279,12 +279,12 @@ function atualizarGraficos() {
   if (proximasEl) proximasEl.textContent = atasFuturas;
   if (concluidasEl) concluidasEl.textContent = atasConcluidas;
 
-  renderizarGraficoAtasPorTipo();
-  renderizarGraficoAgendamentosPorGestor();
+  renderizarTabelaAtasPorTipo();
+  renderizarTabelaAgendamentosPorGestor();
   renderizarProximaReuniao();
 }
 
-function renderizarGraficoAtasPorTipo() {
+function renderizarTabelaAtasPorTipo() {
   const container = document.getElementById("grafico-atas-tipo");
   if (!container) return;
 
@@ -295,36 +295,58 @@ function renderizarGraficoAtasPorTipo() {
   });
 
   const totalAtas = todasAsAtas.length;
+
+  if (totalAtas === 0) {
+    container.innerHTML = `
+            <div class="alert alert-info text-center">
+                <p class="mb-0">Nenhuma ata registrada.</p>
+            </div>
+        `;
+    return;
+  }
+
   const linhas = Object.entries(atasPorTipo)
+    .sort((a, b) => b[1] - a[1])
     .map(([tipo, qtd]) => {
       const percentual =
         totalAtas > 0 ? Math.round((qtd / totalAtas) * 100) : 0;
       return `
-            <div class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                    <span><strong>${tipo}</strong></span>
-                    <span>${qtd} atas (${percentual}%)</span>
-                </div>
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: ${percentual}%"></div>
-                </div>
-            </div>
-        `;
+                <tr>
+                    <td><strong>${tipo}</strong></td>
+                    <td class="text-center">${qtd}</td>
+                    <td class="text-center">
+                        <span class="badge bg-primary">${percentual}%</span>
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${percentual}%"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
     })
     .join("");
 
   container.innerHTML = `
-        <div class="bg-light p-3 rounded">
-            ${
-              totalAtas > 0
-                ? linhas
-                : '<p class="text-muted text-center">Nenhuma ata registrada.</p>'
-            }
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tipo de Reunião</th>
+                        <th class="text-center">Quantidade</th>
+                        <th class="text-center">Percentual</th>
+                        <th>Visualização</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhas}
+                </tbody>
+            </table>
         </div>
     `;
 }
 
-function renderizarGraficoAgendamentosPorGestor() {
+function renderizarTabelaAgendamentosPorGestor() {
   const container = document.getElementById("grafico-agendamentos-gestor");
   if (!container) return;
 
@@ -341,6 +363,15 @@ function renderizarGraficoAgendamentosPorGestor() {
     });
   });
 
+  if (totalAgendamentosComGestor === 0) {
+    container.innerHTML = `
+            <div class="alert alert-info text-center">
+                <p class="mb-0">Nenhum agendamento encontrado.</p>
+            </div>
+        `;
+    return;
+  }
+
   const linhas = Object.entries(agendamentosPorGestor)
     .sort((a, b) => b[1] - a[1])
     .map(([gestor, qtd]) => {
@@ -349,30 +380,41 @@ function renderizarGraficoAgendamentosPorGestor() {
           ? Math.round((qtd / totalAgendamentosComGestor) * 100)
           : 0;
       return `
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span><strong>${gestor}</strong></span>
-                        <span>${qtd} agendamentos (${percentual}%)</span>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: ${percentual}%"></div>
-                    </div>
-                </div>
+                <tr>
+                    <td><strong>${gestor}</strong></td>
+                    <td class="text-center">${qtd}</td>
+                    <td class="text-center">
+                        <span class="badge bg-success">${percentual}%</span>
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${percentual}%"></div>
+                        </div>
+                    </td>
+                </tr>
             `;
     })
     .join("");
 
   container.innerHTML = `
-        <div class="bg-light p-3 rounded">
-            <p class="mb-3"><strong>Total de Agendamentos:</strong> ${
-              todosOsAgendamentos.length
-            } reuniões</p>
-            <p class="mb-3"><strong>Total de Vagas Agendadas:</strong> ${totalAgendamentosComGestor} slots</p>
-            ${
-              totalAgendamentosComGestor > 0
-                ? linhas
-                : '<p class="text-muted text-center">Nenhum agendamento encontrado.</p>'
-            }
+        <div class="mb-3 p-3 bg-light rounded">
+            <p class="mb-1"><strong><span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">group</span> Total de Agendamentos:</strong> ${todosOsAgendamentos.length} reuniões</p>
+            <p class="mb-0"><strong><span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">person</span> Total de Vagas Agendadas:</strong> ${totalAgendamentosComGestor} slots</p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Gestor</th>
+                        <th class="text-center">Agendamentos</th>
+                        <th class="text-center">Percentual</th>
+                        <th>Visualização</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhas}
+                </tbody>
+            </table>
         </div>
     `;
 }
