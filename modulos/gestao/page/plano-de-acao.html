@@ -1,74 +1,210 @@
-<link rel="stylesheet" href="../css/plano-de-acao.css">
-
+<!-- /modulos/gestao/plano-de-acao.html -->
 <div class="view-container">
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h4 class="mb-0">
+                <span class="material-symbols-outlined me-2" style="vertical-align: middle;">checklist</span>
+                Plano de Ação - Kanban Board
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="filtro-status" class="form-label">Status</label>
+                    <select id="filtro-status" class="form-select">
+                        <option value="Todos">Todos</option>
+                        <option value="A Fazer">A Fazer</option>
+                        <option value="Em Andamento">Em Andamento</option>
+                        <option value="Atrasado">Atrasado</option>
+                        <option value="Concluído">Concluído</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtro-tipo" class="form-label">Tipo</label>
+                    <select id="filtro-tipo" class="form-select">
+                        <option value="Todos">Todos</option>
+                        <option value="atividade">Atividade</option>
+                        <option value="encaminhamento">Encaminhamento</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="filtro-busca" class="form-label">Buscar</label>
+                    <input type="text" id="filtro-busca" class="form-control" placeholder="Digite descrição ou responsável...">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button id="limpar-filtros" class="btn btn-outline-secondary w-100">
+                        <span class="material-symbols-outlined me-1">refresh</span>
+                        Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
     <div id="plano-de-acao-content">
         <div class="kanban-board">
-            <div class="kanban-column" id="coluna-a-fazer">
-                <h2 class="column-header">A Fazer</h2>
-                <div class="cards-container"><div class="loading-spinner"></div></div>
+            <!-- Coluna: A Fazer -->
+            <div class="kanban-column" id="coluna-a-fazer" data-status="A Fazer">
+                <div class="column-header bg-light p-3" style="border-radius: 6px 6px 0 0;">
+                    <h5 class="mb-0">
+                        <span class="material-symbols-outlined me-2">circle</span>
+                        A Fazer
+                    </h5>
+                </div>
+                <div class="cards-container">
+                    <div class="loading-spinner"></div>
+                </div>
             </div>
-            <div class="kanban-column" id="coluna-em-andamento">
-                <h2 class="column-header">Em Andamento</h2>
+
+            <!-- Coluna: Em Andamento -->
+            <div class="kanban-column" id="coluna-em-andamento" data-status="Em Andamento">
+                <div class="column-header bg-light p-3" style="border-radius: 6px 6px 0 0;">
+                    <h5 class="mb-0">
+                        <span class="material-symbols-outlined me-2" style="color: #0d6efd;">schedule</span>
+                        Em Andamento
+                    </h5>
+                </div>
                 <div class="cards-container"></div>
             </div>
-            <div class="kanban-column" id="coluna-atrasado">
-                <h2 class="column-header">Atrasado</h2>
+
+            <!-- Coluna: Atrasado -->
+            <div class="kanban-column" id="coluna-atrasado" data-status="Atrasado">
+                <div class="column-header bg-light p-3" style="border-radius: 6px 6px 0 0;">
+                    <h5 class="mb-0">
+                        <span class="material-symbols-outlined me-2" style="color: #dc3545;">error</span>
+                        Atrasado
+                    </h5>
+                </div>
                 <div class="cards-container"></div>
             </div>
-            <div class="kanban-column" id="coluna-concluido">
-                <h2 class="column-header">Concluído</h2>
+
+            <!-- Coluna: Concluído -->
+            <div class="kanban-column" id="coluna-concluido" data-status="Concluído">
+                <div class="column-header bg-light p-3" style="border-radius: 6px 6px 0 0;">
+                    <h5 class="mb-0">
+                        <span class="material-symbols-outlined me-2" style="color: #198754;">check_circle</span>
+                        Concluído
+                    </h5>
+                </div>
                 <div class="cards-container"></div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Modal: Atualizar Item -->
 <div id="update-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
+        <!-- Header do Modal -->
         <div class="modal-header">
-            <h3 id="modal-title">Atualizar Item</h3>
-            <button id="btn-cancel-update" class="close-modal-btn">&times;</button>
+            <div>
+                <h3 id="modal-title">Atualizar Item</h3>
+                <small id="modal-origem" class="text-muted d-block">Origem:</small>
+            </div>
+            <button id="btn-cancel-update" class="close-modal-btn" aria-label="Fechar">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
-        
+
+        <!-- Body do Modal -->
         <div class="modal-body">
-            <small id="modal-origem"></small>
-
-            <label>Histórico de Atualizações</label>
-            <div id="historico-atualizacoes"></div>
-
-            <div id="nova-atualizacao-form">
-                <label for="modal-nova-atualizacao">Inserir nova atualização</label>
-                <textarea id="modal-nova-atualizacao" class="form-control" rows="4"></textarea>
+            <!-- Histórico de Atualizações -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">Histórico de Atualizações</label>
+                <div id="historico-atualizacoes" class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                    <small class="text-muted">Nenhuma atualização registrada.</small>
+                </div>
             </div>
 
-            <label class="checkbox-label"><input type="checkbox" id="modal-necessita-encaminhar"> Necessário Encaminhar?</label>
-            
-            <div id="encaminhamento-vinculado-form" style="display:none;">
-                <h4>Novo Encaminhamento Vinculado</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Gestor</label>
-                        <select id="modal-enc-gestor" class="form-control"></select>
+            <!-- Nova Atualização -->
+            <div class="mb-4">
+                <label for="modal-nova-atualizacao" class="form-label fw-bold">Inserir Nova Atualização</label>
+                <textarea 
+                    id="modal-nova-atualizacao" 
+                    class="form-control" 
+                    rows="4"
+                    placeholder="Descreva o progresso ou mudanças...">
+                </textarea>
+                <small class="text-muted">Use este campo para registrar atualizações sobre o andamento da tarefa.</small>
+            </div>
+
+            <!-- Checkbox: Necessário Encaminhar? -->
+            <div class="mb-4">
+                <div class="form-check">
+                    <input 
+                        type="checkbox" 
+                        id="modal-necessita-encaminhar" 
+                        class="form-check-input">
+                    <label for="modal-necessita-encaminhar" class="form-check-label">
+                        <strong>Necessário Encaminhar?</strong>
+                        <small class="text-muted d-block">Marque se precisa encaminhar para outro gestor/departamento.</small>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Formulário de Encaminhamento (Oculto por padrão) -->
+            <div id="encaminhamento-vinculado-form" style="display: none;" class="mb-4 p-3 bg-info bg-opacity-10 rounded">
+                <h5 class="mb-3">
+                    <span class="material-symbols-outlined me-2">send</span>
+                    Novo Encaminhamento Vinculado
+                </h5>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="modal-enc-gestor" class="form-label">Gestor</label>
+                        <select id="modal-enc-gestor" class="form-select">
+                            <option value="">-- Selecione um Gestor --</option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>Departamento</label>
-                        <select id="modal-enc-departamento" class="form-control"></select>
+
+                    <div class="col-md-6">
+                        <label for="modal-enc-departamento" class="form-label">Departamento</label>
+                        <select id="modal-enc-departamento" class="form-select">
+                            <option value="">-- Selecione um Departamento --</option>
+                        </select>
                     </div>
-                    <div class="form-group full-width">
-                        <label>Motivo</label>
-                        <textarea id="modal-enc-motivo" class="form-control" rows="3"></textarea>
+
+                    <div class="col-12">
+                        <label for="modal-enc-motivo" class="form-label">Motivo do Encaminhamento</label>
+                        <textarea 
+                            id="modal-enc-motivo" 
+                            class="form-control" 
+                            rows="3"
+                            placeholder="Explique por que está encaminhando...">
+                        </textarea>
                     </div>
-                     <div class="form-group full-width">
-                        <label>Prazo</label>
+
+                    <div class="col-md-6">
+                        <label for="modal-enc-prazo" class="form-label">Prazo</label>
                         <input type="date" id="modal-enc-prazo" class="form-control">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="modal-enc-prioridade" class="form-label">Prioridade</label>
+                        <select id="modal-enc-prioridade" class="form-select">
+                            <option value="baixa">Baixa</option>
+                            <option value="média" selected>Média</option>
+                            <option value="alta">Alta</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Footer do Modal -->
         <div class="modal-footer">
-            <button type="button" class="action-button secondary-button" id="btn-fechar-modal-rodape">Fechar</button>
-            <button type="button" class="action-button btn-save" id="btn-salvar-geral">Salvar Alterações</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-fechar-modal-rodape">
+                <span class="material-symbols-outlined me-1">close</span>
+                Fechar
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-salvar-geral">
+                <span class="material-symbols-outlined me-1">save</span>
+                Salvar Alterações
+            </button>
         </div>
     </div>
 </div>
+

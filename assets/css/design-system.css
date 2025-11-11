@@ -14,6 +14,9 @@
   --cor-salvar: #9decaf;
   --cor-alerta: #ffc107;
   --cor-erro: #dc3545;
+  --cor-aviso: #ffc107;
+  --cor-perigo: #dc3545;
+  --cor-info: #0dcaf0;
 
   /* Cores de Superfície e Fundos */
   --cor-fundo: #f4f7f9;
@@ -34,6 +37,8 @@
   /* Efeitos Visuais */
   --sombra-padrao: 0 4px 12px rgba(0, 0, 0, 0.08);
   --sombra-suave: 0 2px 6px rgba(0, 0, 0, 0.05);
+  --sombra-media: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --sombra-modal: 0 10px 30px rgba(0, 0, 0, 0.15);
   --borda-radius: 8px;
   --borda-radius-pequeno: 5px;
   --borda-radius-grande: 12px;
@@ -46,6 +51,8 @@
   /* Transições */
   --transicao-padrao: 0.2s ease-in-out;
   --transicao-lenta: 0.3s ease;
+
+
 }
 
 /* ============================================

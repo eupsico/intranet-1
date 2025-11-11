@@ -1,126 +1,757 @@
 /* /modulos/gestao/css/plano-de-acao.css */
+/* VERSÃO 3.1 - Plano de Ação Kanban com Modal */
 
-/* --- Layout do Quadro Kanban --- */
+
+
+/* ============================================================================ */
+/* FILTROS - Estilo Bootstrap */
+/* ============================================================================ */
+.card .card-header {
+    background-color: var(--cor-fundo);
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.card .card-header h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--cor-texto-principal);
+    display: flex;
+    align-items: center;
+}
+
+.card .card-body {
+    padding: 1.5rem;
+}
+
+.row.g-3 {
+    margin-bottom: 0.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--cor-texto-principal);
+}
+
+.form-select,
+.form-control {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    font-size: 0.95rem;
+}
+
+.form-select:focus,
+.form-control:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+.btn-outline-secondary {
+    border-color: var(--cor-borda);
+    color: var(--cor-texto-principal);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--cor-fundo);
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+}
+
+/* ============================================================================ */
+/* KANBAN BOARD - Layout Grid */
+/* ============================================================================ */
+#plano-de-acao-content {
+    padding: 1rem;
+}
+
 .kanban-board {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
+    gap: 1.5rem;
     align-items: flex-start;
 }
+
 .kanban-column {
     background-color: var(--cor-fundo);
     border-radius: var(--borda-radius);
-    padding: 15px;
     border: 1px solid var(--cor-borda);
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+    transition: box-shadow 0.3s ease;
 }
-.column-header {
-    text-align: center;
-    color: var(--cor-texto-principal);
-    margin-top: 0;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--cor-borda);
-    font-size: 1.2em;
-    font-weight: 600;
-}
-#coluna-a-fazer { background-color: #cfe2ff; }
-#coluna-em-andamento { background-color: #fff3cd; }
-#coluna-atrasado { background-color: #f8d7da; }
-#coluna-concluido { background-color: #d4edda; }
 
-/* --- Estilos dos Cards --- */
-.cards-container { min-height: 100px; }
-.kanban-card {
+.kanban-column:hover {
+    box-shadow: var(--sombra-media);
+}
+
+/* ============================================================================ */
+/* COLUNAS - Headers com Cores Específicas */
+/* ============================================================================ */
+#coluna-a-fazer .column-header {
+    background: linear-gradient(135deg, #cfe2ff 0%, #b6d4ff 100%);
+    border-left: 4px solid #0d6efd;
+}
+
+#coluna-em-andamento .column-header {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffecb5 100%);
+    border-left: 4px solid #ffc107;
+}
+
+#coluna-atrasado .column-header {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-left: 4px solid #dc3545;
+}
+
+#coluna-concluido .column-header {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #198754;
+}
+
+.column-header {
+    padding: 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.column-header h5 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--cor-texto-principal);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.column-header .material-symbols-outlined {
+    font-size: 24px;
+}
+
+/* ============================================================================ */
+/* CARDS CONTAINER */
+/* ============================================================================ */
+.cards-container {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cards-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cards-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cards-container::-webkit-scrollbar-thumb {
+    background: var(--cor-borda);
+    border-radius: 3px;
+}
+
+.cards-container::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+}
+
+/* ============================================================================ */
+/* CARDS - Estilo Individual */
+/* ============================================================================ */
+.card {
     background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
     border-radius: var(--borda-radius);
     box-shadow: var(--sombra-suave);
-    padding: 15px;
-    margin-bottom: 15px;
-    cursor: pointer;
+    padding: 12px;
+    cursor: move;
+    transition: all 0.2s ease;
+    user-select: none;
 }
-.kanban-card p { margin: 0 0 8px 0; word-wrap: break-word; }
-.kanban-card small { color: var(--cor-texto-secundario); font-size: 0.9em; }
-.card-atividade { border-left: 5px solid var(--cor-secundaria); }
-.card-encaminhamento { border-left: 5px solid var(--cor-alerta); }
-.card-actions {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid var(--cor-borda);
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-media);
+}
+
+.card:active {
+    opacity: 0.7;
+    cursor: grabbing;
+}
+
+.card.dragging {
+    opacity: 0.5;
+}
+
+.card .card-body {
+    padding: 0;
+}
+
+/* Badge: Tipo de Card (Atividade/Encaminhamento) */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge.bg-primary {
+    background-color: #e7f1ff !important;
+    color: #0d6efd;
+}
+
+.badge.bg-info {
+    background-color: #cff4fc !important;
+    color: #0dcaf0;
+}
+
+/* ============================================================================ */
+/* CARD CONTENT */
+/* ============================================================================ */
+.card p {
+    margin: 0 0 8px 0;
+    word-break: break-word;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--cor-texto-principal);
+}
+
+.card small {
+    color: var(--cor-texto-secundario);
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.card small .material-symbols-outlined {
+    font-size: 16px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+/* Border esquerdo por tipo */
+.card {
+    border-left: 4px solid #d3d3d3;
+}
+
+.card.atividade {
+    border-left-color: var(--cor-primaria);
+}
+
+.card.encaminhamento {
+    border-left-color: var(--cor-info);
+}
+
+/* Indicador de Urgência */
+.card .urgencia-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    padding: 3px 6px;
+    border-radius: 3px;
+    margin-top: 6px;
+}
+
+.card .urgencia-badge.perigo {
+    background-color: #ffe5e5;
+    color: #dc3545;
+}
+
+.card .urgencia-badge.aviso {
+    background-color: #fff8e5;
+    color: #ffc107;
+}
+
+.card .urgencia-badge.sucesso {
+    background-color: #e5f5e5;
+    color: #198754;
+}
+
+/* ============================================================================ */
+/* CARD BUTTONS */
+/* ============================================================================ */
+.card .btn {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    margin-top: 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.card .btn-outline-primary {
+    color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.card .btn-outline-primary:hover {
+    background-color: var(--cor-primaria);
+    color: white;
+}
+
+/* ============================================================================ */
+/* LOADING SPINNER */
+/* ============================================================================ */
+.loading-spinner {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--cor-texto-secundario);
+}
+
+.loading-spinner::after {
+    content: "";
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--cor-borda);
+    border-top-color: var(--cor-primaria);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================================ */
+/* MODAL - Overlay */
+/* ============================================================================ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+/* ============================================================================ */
+/* MODAL - Content */
+/* ============================================================================ */
+.modal-content {
+    background-color: var(--cor-surface);
+    border-radius: var(--borda-radius);
+    width: 100%;
+    max-width: 650px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--sombra-modal);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--cor-borda);
+    border-radius: 4px;
+}
+
+/* ============================================================================ */
+/* MODAL - Header */
+/* ============================================================================ */
+.modal-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+    align-items: flex-start;
+    padding: 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    background: linear-gradient(135deg, var(--cor-fundo) 0%, var(--cor-surface) 100%);
 }
-.card-actions .status-buttons { display: flex; gap: 8px; }
 
-/* --- NOVOS ESTILOS PARA O MODAL DE ATUALIZAÇÃO --- */
-#update-modal .modal-content {
-    max-width: 700px;
+.modal-header > div {
+    flex: 1;
 }
-#update-modal .modal-body {
-    padding: 20px 30px;
+
+.modal-header h3 {
+    margin: 0 0 6px 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--cor-texto-principal);
 }
-#update-modal #modal-origem {
-    font-size: 0.9em;
+
+#modal-origem {
     color: var(--cor-texto-secundario);
-    display: block;
-    margin-bottom: 20px;
+    font-size: 0.9rem;
+    margin: 0;
 }
-#update-modal label {
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--cor-texto-secundario);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+
+.close-modal-btn:hover {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto-principal);
+}
+
+/* ============================================================================ */
+/* MODAL - Body */
+/* ============================================================================ */
+.modal-body {
+    padding: 25px;
+}
+
+.modal-body label {
     font-weight: 600;
     margin-top: 15px;
     margin-bottom: 8px;
     display: block;
+    color: var(--cor-texto-principal);
 }
+
+.modal-body label.form-label {
+    margin-top: 0;
+}
+
+/* --- Histórico de Atualizações --- */
 #historico-atualizacoes {
     background-color: var(--cor-fundo);
     border: 1px solid var(--cor-borda);
     border-radius: var(--borda-radius);
-    padding: 15px;
-    max-height: 150px;
+    padding: 12px;
+    max-height: 200px;
     overflow-y: auto;
     margin-bottom: 20px;
 }
-#historico-atualizacoes .entrada-historico {
+
+#historico-atualizacoes:empty::before {
+    content: "Nenhuma atualização registrada.";
+    color: var(--cor-texto-secundario);
+    font-size: 0.9rem;
+}
+
+.entrada-historico {
     padding-bottom: 10px;
     margin-bottom: 10px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--cor-borda);
 }
-#historico-atualizacoes .entrada-historico:last-child {
+
+.entrada-historico:last-child {
     border-bottom: none;
     margin-bottom: 0;
 }
-#historico-atualizacoes p { margin: 0 0 5px 0; }
-#historico-atualizacoes small { color: #777; }
 
-#nova-atualizacao-form,
-#encaminhamento-vinculado-form {
-    border-top: 1px dashed var(--cor-borda);
-    margin-top: 25px;
-    padding-top: 20px;
+.entrada-historico p {
+    margin: 0 0 4px 0;
+    color: var(--cor-texto-principal);
+    font-size: 0.95rem;
 }
-#nova-atualizacao-form textarea {
+
+.entrada-historico small {
+    color: var(--cor-texto-secundario);
+    font-size: 0.85rem;
+}
+
+/* --- Nova Atualização --- */
+#modal-nova-atualizacao {
     width: 100%;
     box-sizing: border-box;
-}
-#encaminhamento-vinculado-form .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 20px;
-}
-#encaminhamento-vinculado-form .full-width {
-    grid-column: 1 / -1;
-}
-#encaminhamento-vinculado-form .form-group {
-    margin-bottom: 10px;
-}
-#update-modal .modal-actions {
-    margin-top: 15px;
-    display: flex;
-    justify-content: flex-end; /* Alinha o botão à direita */
+    resize: vertical;
+    padding: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
 }
 
-/* Esconde os botões individuais de salvar */
-#btn-salvar-nova-atualizacao,
-#btn-save-encaminhamento {
+#modal-nova-atualizacao:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+/* --- Checkbox: Necessário Encaminhar --- */
+.form-check {
+    padding-left: 0;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+    accent-color: var(--cor-primaria);
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-check-label strong {
+    color: var(--cor-texto-principal);
+}
+
+.form-check-label small {
+    display: block;
+    color: var(--cor-texto-secundario);
+    margin-top: 4px;
+}
+
+/* --- Formulário de Encaminhamento --- */
+#encaminhamento-vinculado-form {
     display: none;
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #cff4fc;
+    border-left: 4px solid var(--cor-info);
+    border-radius: var(--borda-radius);
+}
+
+#encaminhamento-vinculado-form.active {
+    display: block;
+}
+
+#encaminhamento-vinculado-form h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--cor-texto-principal);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#encaminhamento-vinculado-form .row {
+    gap: 1rem;
+}
+
+#encaminhamento-vinculado-form .form-group {
+    margin-bottom: 12px;
+}
+
+#encaminhamento-vinculado-form .col-12 {
+    grid-column: 1 / -1;
+}
+
+/* ============================================================================ */
+/* MODAL - Footer */
+/* ============================================================================ */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid var(--cor-borda);
+    background-color: var(--cor-fundo);
+}
+
+.modal-footer .btn {
+    padding: 8px 16px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.modal-footer .btn-outline-secondary {
+    color: var(--cor-texto-principal);
+    border-color: var(--cor-borda);
+}
+
+.modal-footer .btn-outline-secondary:hover {
+    background-color: transparent;
+    border-color: var(--cor-texto-principal);
+}
+
+.modal-footer .btn-primary {
+    background-color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: white;
+}
+
+.modal-footer .btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0b5ed7;
+}
+
+/* ============================================================================ */
+/* RESPONSIVO - Mobile */
+/* ============================================================================ */
+@media (max-width: 768px) {
+    .kanban-board {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .kanban-column {
+        min-height: 400px;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+
+    .modal-overlay {
+        padding: 0;
+    }
+
+    .column-header h5 {
+        font-size: 1rem;
+    }
+
+    .card p {
+        font-size: 0.9rem;
+    }
+
+    .modal-body {
+        padding: 15px;
+    }
+
+    .modal-header {
+        padding: 15px;
+    }
+
+    .modal-header h3 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .row.g-3 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .col-md-6 {
+        width: 100% !important;
+    }
+
+    .card {
+        padding: 10px;
+    }
+
+    .cards-container {
+        padding: 8px;
+        gap: 8px;
+    }
+}
+
+/* ============================================================================ */
+/* UTILITÁRIOS */
+/* ============================================================================ */
+.text-muted {
+    color: var(--cor-texto-secundario) !important;
+}
+
+.bg-light {
+    background-color: var(--cor-fundo) !important;
+}
+
+.border {
+    border-color: var(--cor-borda) !important;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.gap-1 {
+    gap: 0.5rem;
+}
+
+.gap-2 {
+    gap: 1rem;
+}
+
+.gap-3 {
+    gap: 1.5rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.mt-1 {
+    margin-top: 0.25rem;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.p-3 {
+    padding: 1rem;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.cursor-move {
+    cursor: move;
+}
+
+.cursor-pointer {
+    cursor: pointer;
 }
