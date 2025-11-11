@@ -430,7 +430,7 @@ document.addEventListener("DOMContentLoaded", function () {
         titulo: "Administrativo",
         descricao: "Acesso aos processos, documentos e organização da equipe.",
         url: "./modulos/administrativo/page/administrativo-painel.html",
-        roles: ["admin", "gestor", "assistente"],
+        roles: ["admin", "assistente"],
         icon: icons.administrativo,
       },
       trilha_paciente: {
