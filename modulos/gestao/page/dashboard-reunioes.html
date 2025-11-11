@@ -15,7 +15,7 @@
         </button>
     </div>
 
-    <!-- Aba Atas (Listagem Detalhada) -->
+    <!-- Aba 1: Atas -->
     <div id="atas-tab" class="tab-content active">
         <div class="card mb-3">
             <div class="card-header">
@@ -25,30 +25,16 @@
             </div>
             <div class="card-body">
                 <div class="filtros-container">
-                    <div class="form-group">
-                        <select id="tipo-filtro" class="form-select">
-                            <option value="Todos">Todos os Tipos</option>
-                            <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
-                            <option value="Reunião com Gestor">Reunião com Gestor</option>
-                            <option value="Reunião Técnica">Reunião Técnica</option>
-                            <option value="Reunião com Voluntário">Reunião com Voluntário</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <select id="status-filtro" class="form-select">
-                            <option value="Todos">Todos os Status</option>
-                            <option value="Agendada">Agendadas</option>
-                            <option value="Concluída">Concluídas</option>
-                            <option value="Cancelada">Canceladas</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
-                    </div>
-                    <div class="form-group">
-                        <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
-                    </div>
+                    <select id="tipo-filtro-atas" class="form-select">
+                        <option value="Todos">Todos os Tipos</option>
+                        <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
+                        <option value="Reunião com Gestor">Reunião com Gestor</option>
+                        <option value="Reunião Técnica">Reunião Técnica</option>
+                        <option value="Reunião com Voluntário">Reunião com Voluntário</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                    <input type="text" id="busca-titulo-atas" class="form-control" placeholder="Buscar por título...">
+                    <button id="limpar-filtros-atas" class="btn btn-secondary">Limpar</button>
                 </div>
                 <div id="atas-container" class="atas-list">
                     <div class="loading-spinner"></div>
@@ -58,11 +44,11 @@
         </div>
     </div>
 
-    <!-- Aba Gráficos (Estatísticas Consolidadas) -->
+    <!-- Aba 2: Gráficos -->
     <div id="graficos-tab" class="tab-content">
         <div class="card">
             <div class="card-header">
-                <h4><span class="material-symbols-outlined">analytics</span> Estatísticas de Reuniões</h4>
+                <h4><span class="material-symbols-outlined">analytics</span> Estatísticas</h4>
             </div>
             <div class="card-body">
                 <div class="stats-grid mb-4">
@@ -74,29 +60,25 @@
                     <div class="stat-card">
                         <span class="material-symbols-outlined">schedule</span>
                         <h4 id="proximas-reunioes">0</h4>
-                        <p>Próximas/Agendadas</p>
+                        <p>Próximas</p>
                     </div>
                     <div class="stat-card">
                         <span class="material-symbols-outlined">check_circle</span>
                         <h4 id="reunioes-concluidas">0</h4>
-                        <p>Registradas/Concluída</p>
+                        <p>Concluídas</p>
                     </div>
                 </div>
                 <div class="graficos-container">
                     <div id="grafico-presenca" class="grafico-item">
-                        <h5>Taxa de Presença por Tipo</h5>
+                        <h5>Presença por Tipo</h5>
                         nvas id="chart-presenca" width="400" heightght="200"></canvas>
-                    </div>
-                    <div id="grafico-status" class="grafico-item">
-                        <h5>Status das Reuniões</h5>
-                        nvas id="chart-status" width="400" heightght="200"></canvas>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Aba Agendamentos (Pendentes com Voluntários) -->
+    <!-- Aba 3: Agendamentos -->
     <div id="agendamentos-tab" class="tab-content">
         <div class="card">
             <div class="card-header">
