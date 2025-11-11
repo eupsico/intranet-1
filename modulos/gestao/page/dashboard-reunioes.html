@@ -1,26 +1,84 @@
 <div class="view-container">
-    
-    <div class="next-meeting-info-card" id="proxima-reuniao-info">
-        <h3>Próxima Reunião Agendada</h3>
-        <p>Carregando...</p>
-    </div>
-
-    <div class="section-header with-controls">
-        <h2>Atas Salvas</h2>
-        <div class="filter-group">
-            <label for="tipo-filtro">Filtrar por Tipo</label>
-            <select id="tipo-filtro" class="form-control">
-                <option value="Todos">Todos os Tipos</option>
-                <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
-                <option value="Reunião com Gestor">Reunião com Gestor</option>
-                <option value="Reunião Técnica">Reunião Técnica</option>
-                <option value="Outros">Outros</option>
-            </select>
+    <!-- Stats Rápidas -->
+    <div id="stats-container" class="stats-grid mb-3">
+        <div class="stat-card">
+            <span class="material-symbols-outlined">event</span>
+            <h4 id="total-reunioes">0</h4>
+            <p>Total de Reuniões</p>
+        </div>
+        <div class="stat-card">
+            <span class="material-symbols-outlined">schedule</span>
+            <h4 id="proximas-reunioes">0</h4>
+            <p>Próximas Reuniões</p>
+        </div>
+        <div class="stat-card">
+            <span class="material-symbols-outlined">check_circle</span>
+            <h4 id="reunioes-concluidas">0</h4>
+            <p>Reuniões Concluídas</p>
         </div>
     </div>
-    
-    <div id="atas-container">
-        <div class="loading-spinner"></div>
+
+    <!-- Filtros Avançados -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h4><span class="material-symbols-outlined">filter_list</span> Filtros</h4>
+        </div>
+        <div class="card-body">
+            <div class="filtros-container">
+                <select id="tipo-filtro" class="form-select">
+                    <option value="Todos">Todas as Reuniões</option>
+                    <option value="Reunião Técnica">Reunião Técnica</option>
+                    <option value="Reunião de Orientação">Reunião de Orientação</option>
+                    <option value="Outros">Outros Tipos</option>
+                </select>
+                
+                <select id="status-filtro" class="form-select">
+                    <option value="Todos">Todos os Status</option>
+                    <option value="Agendada">Agendadas</option>
+                    <option value="Concluída">Concluídas</option>
+                    <option value="Cancelada">Canceladas</option>
+                </select>
+                
+                <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
+                
+                <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
+            </div>
+        </div>
     </div>
 
+    <!-- Próxima Reunião (Card Destacado) -->
+    <div id="proxima-reuniao-container" class="card mb-3" style="display: none;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <span class="material-symbols-outlined">schedule</span>
+                Próxima Reunião
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="proxima-reuniao-info" class="proxima-info">
+                <!-- Conteúdo dinâmico via JS -->
+            </div>
+            <div class="proxima-actions mt-3">
+                <button id="ver-detalhes-proxima" class="btn btn-primary">Ver Detalhes</button>
+                <button id="calendario-proxima" class="btn btn-outline-primary">Adicionar ao Calendário</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Atas (Accordions Aprimorados) -->
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <span class="material-symbols-outlined">list_alt</span>
+                Atas de Reuniões
+                <span id="contador-atas" class="badge bg-secondary ms-2">0</span>
+            </h4>
+        </div>
+        <div class="card-body">
+            <div id="atas-container" class="atas-list">
+                <div class="loading-spinner mb-3"></div>
+                <p class="text-muted">Carregando atas...</p>
+            </div>
+        </div>
+    </div>
 </div>
