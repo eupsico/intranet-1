@@ -379,3 +379,84 @@
         -webkit-overflow-scrolling: touch;
     }
 }
+/* Fixes para Accordions e Aba Agendados */
+.accordion-item.active .accordion-header {
+    background: var(--primary-color, #1976d2) !important;
+    color: white !important;
+}
+
+.accordion-item.active .accordion-header .material-symbols-outlined,
+.accordion-item.active .accordion-header .accordion-icon {
+    color: white !important;
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding 0.4s ease;
+    padding: 0 1.25rem 0;
+}
+
+.accordion-item.active .accordion-content {
+    max-height: 2000px; /* Aumentado para tabelas grandes */
+    padding: 1.25rem;
+}
+
+.feedback-card {
+    background: var(--bg-light, #f9f9f9);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color, #1976d2);
+}
+
+.feedback-respostas p {
+    margin: 0.5rem 0;
+    padding: 0.25rem 0;
+}
+
+.checkbox-presenca {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-presenca:checked + label {
+    text-decoration: line-through;
+    color: var(--success-color, #4caf50);
+}
+
+/* Aba Agendados específicos */
+#agendados-container .badge {
+    background: var(--primary-color, #1976d2);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+
+#agendados-container td.text-center {
+    width: 80px;
+    text-align: center;
+}
+
+#agendados-container .accordion-header .badge {
+    margin-left: 0.5rem;
+}
+
+/* Responsividade para Agendados */
+@media (max-width: 768px) {
+    #agendados-container .table {
+        font-size: 0.85rem;
+    }
+    
+    #agendados-container .accordion-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .accordion-content .table-container {
+        margin: -1.25rem;
+    }
+}
