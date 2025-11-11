@@ -36,14 +36,22 @@ export async function renderizarEntrevistaGestor(state) {
     </div>`;
 
   try {
-    // Query para buscar candidatos na etapa "Entrevista com Gestor"
+    // ⚠️ CORRIGIDO: Usando status_recrutamento em vez de status_candidatura
     const q = query(
       candidatosCollection,
       where("vagaId", "==", vagaSelecionadaId),
-      where("status_candidatura", "==", "Entrevista Gestor Pendente")
+      where("status_recrutamento", "==", "Entrevista Gestor Pendente")
     );
 
     const snapshot = await getDocs(q);
+
+    // Atualiza a contagem na aba
+    const tab = statusCandidaturaTabs?.querySelector(
+      '.tab-link[data-status="gestor"]'
+    );
+    if (tab) {
+      tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
+    }
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML = `
@@ -73,7 +81,8 @@ export async function renderizarEntrevistaGestor(state) {
       const candidatoId = docSnap.id;
       const nome = candidato.nome_completo || "Nome não informado";
       const dataCandidatura = formatarTimestamp(candidato.data_candidatura);
-      const statusAtual = candidato.status_candidatura || "Status desconhecido";
+      const statusAtual =
+        candidato.status_recrutamento || "Status desconhecido";
 
       listaHtml += `
         <tr>
@@ -177,7 +186,9 @@ async function abrirModalDetalhesGestor(candidatoId, state) {
       <h4>Informações Básicas</h4>
       <p><strong>Nome:</strong> ${candidato.nome_completo || "N/A"}</p>
       <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-      <p><strong>Telefone:</strong> ${candidato.telefone || "N/A"}</p>
+      <p><strong>Telefone:</strong> ${
+        candidato.telefone || candidato.telefonecontato || "N/A"
+      }</p>
       <p><strong>Data da Candidatura:</strong> ${formatarTimestamp(
         candidato.data_candidatura
       )}</p>
@@ -188,11 +199,13 @@ async function abrirModalDetalhesGestor(candidatoId, state) {
       ${
         candidato.triagem_rh
           ? `
-        <p><strong>Decisão:</strong> ${
-          candidato.triagem_rh.decisao || "N/A"
+        <p><strong>Apto para Entrevista:</strong> ${
+          candidato.triagem_rh.apto_entrevista || "N/A"
         }</p>
         <p><strong>Observações:</strong> ${
-          candidato.triagem_rh.observacoes || "N/A"
+          candidato.triagem_rh.observacoes ||
+          candidato.triagem_rh.info_aprovacao ||
+          "N/A"
         }</p>
       `
           : "<p>Triagem não realizada.</p>"
@@ -204,14 +217,14 @@ async function abrirModalDetalhesGestor(candidatoId, state) {
       ${
         candidato.entrevista_rh
           ? `
-        <p><strong>Data:</strong> ${formatarTimestamp(
-          candidato.entrevista_rh.data_entrevista
-        )}</p>
-        <p><strong>Nota:</strong> ${
-          candidato.entrevista_rh.nota_entrevista || "N/A"
+        <p><strong>Aprovado:</strong> ${
+          candidato.entrevista_rh.aprovado || "N/A"
         }</p>
-        <p><strong>Observações:</strong> ${
-          candidato.entrevista_rh.observacoes_entrevista || "N/A"
+        <p><strong>Pontos Fortes:</strong> ${
+          candidato.entrevista_rh.pontos_fortes || "N/A"
+        }</p>
+        <p><strong>Pontos de Atenção:</strong> ${
+          candidato.entrevista_rh.pontos_atencao || "N/A"
         }</p>
       `
           : "<p>Entrevista RH não realizada.</p>"
@@ -221,12 +234,13 @@ async function abrirModalDetalhesGestor(candidatoId, state) {
     <div class="candidato-info-section">
       <h4>Testes/Estudos de Caso</h4>
       ${
-        candidato.teste_pratico?.status
+        candidato.testes_estudos?.status_resultado
           ? `
-        <p><strong>Status:</strong> ${candidato.teste_pratico.status}</p>
-        <p><strong>Nota:</strong> ${candidato.teste_pratico.nota || "N/A"}</p>
-        <p><strong>Feedback:</strong> ${
-          candidato.teste_pratico.feedback || "N/A"
+        <p><strong>Status:</strong> ${
+          candidato.testes_estudos.status_resultado
+        }</p>
+        <p><strong>Observações:</strong> ${
+          candidato.testes_estudos.observacoes || "N/A"
         }</p>
       `
           : "<p>Testes não realizados.</p>"
@@ -267,7 +281,9 @@ async function abrirModalAvaliacaoGestor(candidatoId, state) {
     <div class="candidato-info-resumo">
       <h4>${candidato.nome_completo || "Candidato"}</h4>
       <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-      <p><strong>Telefone:</strong> ${candidato.telefone || "N/A"}</p>
+      <p><strong>Telefone:</strong> ${
+        candidato.telefone || candidato.telefonecontato || "N/A"
+      }</p>
     </div>
 
     <form id="form-avaliacao-gestor-popup">
@@ -295,7 +311,17 @@ async function abrirModalAvaliacaoGestor(candidatoId, state) {
       </div>
 
       <div class="form-group">
-        <label for="observacoes-gestor">Observações Gerais:</label>
+        <label for="nome-gestor">Nome do Gestor:</label>
+        <input 
+          type="text" 
+          id="nome-gestor" 
+          name="nome_gestor"
+          placeholder="Nome do gestor que avaliou"
+          required>
+      </div>
+
+      <div class="form-group">
+        <label for="observacoes-gestor">Comentários da Entrevista:</label>
         <textarea 
           id="observacoes-gestor" 
           name="observacoes_gestor"
@@ -354,20 +380,25 @@ async function salvarAvaliacaoGestor(candidatoId, state, modal) {
   const aprovado = formData.get("aprovado_gestor");
   const motivoRejeicao = formData.get("motivo_rejeicao");
   const observacoes = formData.get("observacoes_gestor");
+  const nomeGestor = formData.get("nome_gestor");
   const dataEntrevista = formData.get("data_entrevista_gestor");
 
   try {
     const docRef = doc(candidatosCollection, candidatoId);
 
+    // ⚠️ CORRIGIDO: Usando status_recrutamento em vez de status_candidatura
     const updateData = {
       entrevista_gestor: {
         aprovado: aprovado,
-        observacoes: observacoes || "",
-        data_entrevista: Timestamp.fromDate(new Date(dataEntrevista)),
-        avaliado_em: Timestamp.now(),
+        nome_gestor: nomeGestor,
+        comentarios_gestor: observacoes || "",
+        data_entrevista: dataEntrevista,
+        data_registro: Timestamp.now(),
       },
-      status_candidatura:
-        aprovado === "Sim" ? "Aprovado - Aguardando Contratação" : "Reprovado",
+      status_recrutamento:
+        aprovado === "Sim"
+          ? "Entrevista Gestor Aprovada - Comunicação Final (Aprovado - Próximo: Contratar)"
+          : "Rejeitado - Comunicação Pendente (Reprovado - Próximo: enviar mensagem)",
       ultima_atualizacao: Timestamp.now(),
     };
 
@@ -375,6 +406,7 @@ async function salvarAvaliacaoGestor(candidatoId, state, modal) {
       updateData.rejeicao = {
         etapa: "Entrevista com Gestor",
         motivo: motivoRejeicao,
+        justificativa: `Reprovado pelo Gestor. Motivo: ${motivoRejeicao}`,
         data: Timestamp.now(),
       };
     }
@@ -388,7 +420,7 @@ async function salvarAvaliacaoGestor(candidatoId, state, modal) {
     renderizarEntrevistaGestor(state);
   } catch (error) {
     console.error("❌ Erro ao salvar avaliação:", error);
-    window.showToast?.("Erro ao salvar avaliação", "error");
+    window.showToast?.("Erro ao salvar avaliação: " + error.message, "error");
   }
 }
 
