@@ -1,87 +1,99 @@
 <div class="view-container">
-    <!-- Stats Rápidas -->
-    <div id="stats-container" class="stats-grid mb-3">
-        <div class="stat-card">
-            <span class="material-symbols-outlined">event</span>
-            <h4 id="total-reunioes">0</h4>
-            <p>Total de Reuniões</p>
-        </div>
-        <div class="stat-card">
-            <span class="material-symbols-outlined">schedule</span>
-            <h4 id="proximas-reunioes">0</h4>
-            <p>Próximas Reuniões</p>
-        </div>
-        <div class="stat-card">
-            <span class="material-symbols-outlined">check_circle</span>
-            <h4 id="reunioes-concluidas">0</h4>
-            <p>Reuniões Concluídas</p>
-        </div>
+    <!-- Navegação de Abas -->
+    <div class="tab-nav">
+        <button class="tab-link active" data-tab="atas">
+            <span class="material-symbols-outlined">list_alt</span>
+            Atas
+        </button>
+        <button class="tab-link" data-tab="graficos">
+            <span class="material-symbols-outlined">analytics</span>
+            Gráficos
+        </button>
+        <button class="tab-link" data-tab="agendamentos">
+            <span class="material-symbols-outlined">event_available</span>
+            Agendamentos
+        </button>
     </div>
 
-<!-- Filtros Avançados (valores originais, sem acentos) -->
-<div class="card mb-3">
-    <div class="card-header">
-        <h4><span class="material-symbols-outlined">filter_list</span> Filtros</h4>
-    </div>
-    <div class="card-body">
-        <div class="filtros-container">
-            <select id="tipo-filtro" class="form-select">
-                <option value="Todos">Todos os Tipos</option>
-                <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
-                <option value="Reunião com Gestor">Reunião com Gestor</option>
-                <option value="Reunião Técnica">Reunião Técnica</option>
-                <option value="Reunião com Voluntário">Reunião com Voluntário</option>
-                <option value="Outros">Outros</option>
-            </select>
-            
-            <select id="status-filtro" class="form-select">
-                <option value="Todos">Todos os Status</option>
-                <option value="Agendada">Agendadas</option>
-                <option value="Concluída">Concluídas</option>
-                <option value="Cancelada">Canceladas</option>
-            </select>
-            
-            <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
-            
-            <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
-        </div>
-    </div>
-</div>
-
-
-
-    <!-- Próxima Reunião (Card Destacado) -->
-    <div id="proxima-reuniao-container" class="card mb-3" style="display: none;">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <span class="material-symbols-outlined">schedule</span>
-                Próxima Reunião
-            </h5>
-        </div>
-        <div class="card-body">
-            <div id="proxima-reuniao-info" class="proxima-info">
-                <!-- Conteúdo dinâmico via JS -->
+    <!-- Aba Atas (Listagem Detalhada) -->
+    <div id="atas-tab" class="tab-content active">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h4><span class="material-symbols-outlined">list_alt</span> Atas Registradas
+                    <span id="contador-atas" class="badge bg-secondary ms-2">0</span>
+                </h4>
             </div>
-            <div class="proxima-actions mt-3">
-                <button id="ver-detalhes-proxima" class="btn btn-primary">Ver Detalhes</button>
-                <button id="calendario-proxima" class="btn btn-outline-primary">Adicionar ao Calendário</button>
+            <div class="card-body">
+                <div class="filtros-container">
+                    <select id="tipo-filtro" class="form-select">
+                        <option value="Todos">Todos os Tipos</option>
+                        <option value="Reunião Conselho administrativo">Reunião Conselho administrativo</option>
+                        <option value="Reunião com Gestor">Reunião com Gestor</option>
+                        <option value="Reunião Técnica">Reunião Técnica</option>
+                        <option value="Reunião com Voluntário">Reunião com Voluntário</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                    <input type="text" id="busca-titulo" class="form-control" placeholder="Buscar por título...">
+                    <button id="limpar-filtros" class="btn btn-secondary">Limpar</button>
+                </div>
+                <div id="atas-container" class="atas-list">
+                    <div class="loading-spinner"></div>
+                    <p class="text-muted">Carregando atas...</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Lista de Atas (Accordions Aprimorados) -->
-    <div class="card">
-        <div class="card-header">
-            <h4 class="mb-0">
-                <span class="material-symbols-outlined">list_alt</span>
-                Atas de Reuniões
-                <span id="contador-atas" class="badge bg-secondary ms-2">0</span>
-            </h4>
+    <!-- Aba Gráficos (Estatísticas Consolidadas) -->
+    <div id="graficos-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <h4><span class="material-symbols-outlined">analytics</span> Estatísticas de Reuniões</h4>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid mb-4">
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">event</span>
+                        <h4 id="total-reunioes">0</h4>
+                        <p>Total de Eventos</p>
+                    </div>
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">schedule</span>
+                        <h4 id="proximas-reunioes">0</h4>
+                        <p>Próximas/Agendadas</p>
+                    </div>
+                    <div class="stat-card">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <h4 id="reunioes-concluidas">0</h4>
+                        <p>Registradas/Concluídas</p>
+                    </div>
+                </div>
+                <div class="graficos-container">
+                    <div id="grafico-presenca" class="grafico-item">
+                        <h5>Taxa de Presença por Tipo</h5>
+                        nvas id="chart-presenca" width="400" heightght="200"></canvas>
+                    </div>
+                    <div id="grafico-status" class="grafico-item">
+                        <h5>Status das Reuniões</h5>
+                        nvas id="chart-status" width="400" heightght="200"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div id="atas-container" class="atas-list">
-                <div class="loading-spinner mb-3"></div>
-                <p class="text-muted">Carregando atas...</p>
+    </div>
+
+    <!-- Aba Agendamentos (Pendentes com Voluntários) -->
+    <div id="agendamentos-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <h4><span class="material-symbols-outlined">event_available</span> Agendamentos Pendentes
+                    <span id="contador-agendamentos" class="badge bg-warning ms-2">0</span>
+            </div>
+            <div class="card-body">
+                <div id="agendamentos-container" class="agendamentos-list">
+                    <div class="loading-spinner"></div>
+                    <p class="text-muted">Carregando agendamentos...</p>
+                </div>
             </div>
         </div>
     </div>
