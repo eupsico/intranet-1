@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 4.3 (2 Abas: Atas + Gráficos, Sem Agendamentos, Completo)
+// VERSÃO 4.3 (2 Abas: Atas + Gráficos, Completo, Sem Agendamentos)
 
 // Importações do Firebase
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
@@ -11,544 +11,169 @@ import {
 } from "../../../assets/js/firebase-init.js";
 
 // Variáveis globais
-let todasAsAtas = []; // Array com todas as atas carregadas de "gestao_atas"
-let unsubscribeAtas = null; // Função para cancelar listener das atas
-let timeoutBusca = null; // Timeout para delay na busca
+let todasAsAtas = []; // Todas as atas carregadas de "gestao_atas"
+let unsubscribeAtas = null; // Listener das atas
+let timeoutBusca = null; // Timeout para busca
 
-// Função para normalizar participantes (converte string para array se necessário)
+// Função para normalizar participantes
 function normalizarParticipantes(participantes) {
-  if (participantes == null) {
-    return []; // Array vazio se não existir
-  }
-  if (Array.isArray(participantes)) {
-    return participantes; // Já é array, usa diretamente
-  }
+  if (!participantes) return [];
+  if (Array.isArray(participantes)) return participantes;
   if (typeof participantes === "string") {
-    // Divide string por vírgulas ou quebras de linha, remove espaços e filtra vazios
     return participantes
       .split(/[\n,]+/)
-      .map(function (nome) {
-        return nome.trim(); // Remove espaços no início e fim
-      })
-      .filter(function (nome) {
-        return nome.length > 0; // Remove nomes vazios
-      });
+      .map((nome) => nome.trim())
+      .filter((nome) => nome.length > 0);
   }
   console.warn(
     "[DASH] Formato inválido de participantes:",
-    typeof participantes,
-    participantes
+    typeof participantes
   );
-  return []; // Fallback para array vazio
+  return [];
 }
 
-// Função principal de inicialização do módulo
 export function init() {
-  console.log(
-    "[DASH] Inicializando Dashboard de Reuniões (v4.3 - 2 Abas: Atas + Gráficos)."
-  );
+  console.log("[DASH] Dashboard iniciado (v4.3 - Atas + Gráficos).");
   configurarEventListeners();
   carregarDadosDasAtas();
 }
 
-// Função para carregar dados das atas
-function carregarDadosDasAtas() {
-  // Container para as atas
-  const containerDasAtas = document.getElementById("atas-container");
-  if (containerDasAtas == null) {
-    console.error(
-      "[DASH] Elemento com ID 'atas-container' não encontrado no HTML."
-    );
-    return;
-  }
-
-  // Cancela listener anterior se existir
-  if (unsubscribeAtas != null) {
-    unsubscribeAtas();
-    unsubscribeAtas = null;
-  }
-
-  // Configura listener realtime para atas (coleção "gestao_atas")
-  const consultaParaAtas = query(
-    collection(firestoreDb, "gestao_atas"),
-    orderBy("dataReuniao", "desc")
-  );
-  unsubscribeAtas = onSnapshot(
-    consultaParaAtas,
-    function (resultadoDaConsulta) {
-      todasAsAtas = resultadoDaConsulta.docs.map(function (documentoDaAta) {
-        return {
-          id: documentoDaAta.id, // ID único do documento
-          ...documentoDaAta.data(), // Espalha todos os campos do documento
-          participantes: normalizarParticipantes(
-            documentoDaAta.data().participantes
-          ), // Normaliza campo participantes
-        };
-      });
-
-      // Renderiza aba Atas
-      renderizarAbaAtas();
-
-      // Atualiza gráficos (baseado apenas nas atas)
-      atualizarGraficos();
-
-      // Log de debugging
-      console.log("[DASH] Atas carregadas:", todasAsAtas.length, "documentos.");
-    }
-  );
-}
-
-// Função para configurar todos os event listeners
 function configurarEventListeners() {
-  // Event listener para switch de abas (clique em .tab-link)
-  const containerPrincipal = document.querySelector(".view-container");
-  if (containerPrincipal != null) {
-    containerPrincipal.addEventListener("click", function (eventoDeClique) {
-      // Verifica se clicou em um botão de aba
-      if (eventoDeClique.target.matches(".tab-link")) {
-        // Previne comportamento padrão do navegador
-        eventoDeClique.preventDefault();
+  // Listener para tabs
+  document.body.addEventListener("click", (e) => {
+    if (e.target.matches(".tab-link")) {
+      e.preventDefault();
+      const abaId = e.target.dataset.tab;
+      alternarAba(abaId);
+    }
+  });
 
-        // Pega o ID da aba clicada
-        const idDaAba = eventoDeClique.target.dataset.tab;
+  // Filtros
+  const tipoFiltro = document.getElementById("tipo-filtro");
+  if (tipoFiltro)
+    tipoFiltro.addEventListener("change", aplicarFiltrosEExibirAtas);
 
-        // Alterna para a aba clicada
-        alternarParaAba(idDaAba);
-      }
-    });
-  } else {
-    console.error(
-      "[DASH] Container .view-container não encontrado para event listeners."
-    );
-  }
-
-  // Event listener para filtro de tipo na aba Atas
-  const seletorDeTipo = document.getElementById("tipo-filtro-atas");
-  if (seletorDeTipo != null) {
-    seletorDeTipo.addEventListener("change", aplicarFiltrosEExibirAtas);
-  }
-
-  // Event listener para filtro de status na aba Atas
-  const seletorDeStatus = document.getElementById("status-filtro-atas");
-  if (seletorDeStatus != null) {
-    seletorDeStatus.addEventListener("change", aplicarFiltrosEExibirAtas);
-  }
-
-  // Event listener para busca por título (com delay para evitar muitas execuções)
-  const campoDeBusca = document.getElementById("busca-titulo-atas");
-  if (campoDeBusca != null) {
-    campoDeBusca.addEventListener("input", function () {
-      // Cancela timeout anterior se existir
-      if (timeoutBusca != null) {
-        clearTimeout(timeoutBusca);
-      }
-      // Cria novo timeout de 300ms
+  const buscaInput = document.getElementById("busca-titulo");
+  if (buscaInput) {
+    buscaInput.addEventListener("input", () => {
+      clearTimeout(timeoutBusca);
       timeoutBusca = setTimeout(aplicarFiltrosEExibirAtas, 300);
     });
   }
 
-  // Event listener para botão limpar filtros na aba Atas
-  const botaoLimparFiltros = document.getElementById("limpar-filtros-atas");
-  if (botaoLimparFiltros != null) {
-    botaoLimparFiltros.addEventListener("click", function () {
-      // Reset do filtro de tipo para "Todos"
-      if (seletorDeTipo != null) {
-        seletorDeTipo.value = "Todos";
-      }
-      // Reset do filtro de status para "Todos"
-      if (seletorDeStatus != null) {
-        seletorDeStatus.value = "Todos";
-      }
-      // Limpa campo de busca
-      if (campoDeBusca != null) {
-        campoDeBusca.value = "";
-      }
-      // Aplica filtros novamente
+  const limparBtn = document.getElementById("limpar-filtros");
+  if (limparBtn)
+    limparBtn.addEventListener("click", () => {
+      if (tipoFiltro) tipoFiltro.value = "Todos";
+      if (buscaInput) buscaInput.value = "";
       aplicarFiltrosEExibirAtas();
     });
-  }
 
-  // Event listener para cliques nos botões de ação das atas
-  const containerDasAtas = document.getElementById("atas-container");
-  if (containerDasAtas != null) {
-    containerDasAtas.addEventListener("click", function (eventoDeClique) {
-      // Verifica se clicou em botão PDF
-      if (eventoDeClique.target.matches(".btn-pdf")) {
-        // Pega o ID da ata do elemento mais próximo com data-ata-id
-        const idDaAta =
-          eventoDeClique.target.closest(".ata-item").dataset.ataId;
-        gerarPDFDaAta(idDaAta);
+  // Accordions
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".ata-header")) {
+      const ataItem = e.target.closest(".ata-item");
+      const conteudo = ataItem.querySelector(".ata-conteudo");
+      if (conteudo) {
+        conteudo.style.display =
+          conteudo.style.display === "none" ? "block" : "none";
       }
-      // Verifica se clicou em botão de feedback
-      else if (eventoDeClique.target.matches(".btn-feedback")) {
-        const idDaAta =
-          eventoDeClique.target.closest(".ata-item").dataset.ataId;
-        abrirFormularioDeFeedback(idDaAta);
-      }
-      // Verifica se clicou em botão de editar
-      else if (eventoDeClique.target.matches(".btn-editar")) {
-        const idDaAta =
-          eventoDeClique.target.closest(".ata-item").dataset.ataId;
-        editarAta(idDaAta);
-      }
-    });
-  }
-
-  // Event listener para expandir/contrair accordions das atas
-  if (containerDasAtas != null) {
-    containerDasAtas.addEventListener("click", function (eventoDeClique) {
-      if (eventoDeClique.target.closest(".ata-header")) {
-        // Encontra o item da ata mais próximo
-        const itemDaAta = eventoDeClique.target.closest(".ata-item");
-        // Encontra o conteúdo da ata
-        const conteudoDaAta = itemDaAta.querySelector(".ata-conteudo");
-        if (conteudoDaAta != null) {
-          // Alterna visibilidade do conteúdo
-          if (conteudoDaAta.style.display === "none") {
-            conteudoDaAta.style.display = "block";
-          } else {
-            conteudoDaAta.style.display = "none";
-          }
-        }
-      }
-    });
-  }
-
-  // Event listener para suporte a touch em dispositivos móveis
-  if (containerDasAtas != null) {
-    containerDasAtas.addEventListener(
-      "touchstart",
-      function (eventoDeTouch) {
-        if (eventoDeTouch.target.matches(".ata-header, .btn")) {
-          eventoDeTouch.preventDefault();
-        }
-      },
-      { passive: false }
-    );
-  }
-}
-
-// Função para alternar entre abas
-function alternarParaAba(idDaAba) {
-  console.log("[DASH] Alternando para aba:", idDaAba);
-
-  // Remove classe 'active' de todos os botões de aba
-  const todosOsBotoesDeAba = document.querySelectorAll(".tab-link");
-  todosOsBotoesDeAba.forEach(function (botaoDeAba) {
-    botaoDeAba.classList.remove("active");
+    }
   });
+}
 
-  // Remove classe 'active' de todos os conteúdos de aba
-  const todosOsConteudosDeAba = document.querySelectorAll(".tab-content");
-  todosOsConteudosDeAba.forEach(function (conteudoDeAba) {
-    conteudoDeAba.classList.remove("active");
+function alternarAba(abaId) {
+  document
+    .querySelectorAll(".tab-link")
+    .forEach((btn) => btn.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((content) => content.classList.remove("active"));
+
+  const activeBtn = document.querySelector(`[data-tab="${abaId}"]`);
+  const activeContent = document.getElementById(`${abaId}-tab`);
+  if (activeBtn) activeBtn.classList.add("active");
+  if (activeContent) activeContent.classList.add("active");
+}
+
+function carregarDadosDasAtas() {
+  const container = document.getElementById("atas-container");
+  if (!container) return;
+
+  const qAtas = query(
+    collection(firestoreDb, "gestao_atas"),
+    orderBy("dataReuniao", "desc")
+  );
+  unsubscribeAtas = onSnapshot(qAtas, (snapshot) => {
+    todasAsAtas = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      participantes: normalizarParticipantes(doc.data().participantes),
+    }));
+    aplicarFiltrosEExibirAtas();
+    atualizarGraficos();
+    console.log(`[DASH] Atas carregadas: ${todasAsAtas.length}`);
   });
-
-  // Adiciona classe 'active' no botão da aba clicada
-  const botaoClicado = document.querySelector(`[data-tab="${idDaAba}"]`);
-  if (botaoClicado != null) {
-    botaoClicado.classList.add("active");
-  }
-
-  // Adiciona classe 'active' no conteúdo da aba clicada
-  const conteudoClicado = document.getElementById(`${idDaAba}-tab`);
-  if (conteudoClicado != null) {
-    conteudoClicado.classList.add("active");
-    // Faz scroll suave para o conteúdo da aba
-    conteudoClicado.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  } else {
-    console.error("[DASH] Conteúdo da aba não encontrado para:", idDaAba);
-  }
 }
 
-// Função para atualizar estatísticas visuais (baseado apenas nas atas)
-function atualizarEstatisticas() {
-  const dataAtual = new Date();
-
-  // Calcula estatísticas das atas carregadas
-  const totalDeAtas = todasAsAtas.length;
-
-  // Conta atas agendadas/futuras
-  const atasAgendadas = todasAsAtas.filter(function (ata) {
-    const dataDaAta = new Date(ata.dataReuniao || 0);
-    return !isNaN(dataDaAta.getTime()) && dataDaAta > dataAtual;
-  }).length;
-
-  // Conta atas concluídas
-  const atasConcluidas = todasAsAtas.filter(function (ata) {
-    const dataDaAta = new Date(ata.dataReuniao || 0);
-    return (
-      !isNaN(dataDaAta.getTime()) &&
-      dataDaAta < dataAtual &&
-      ata.status === "Concluída"
-    );
-  }).length;
-
-  // Atualiza elementos HTML dos contadores
-  const elementoTotal = document.getElementById("total-reunioes");
-  const elementoProximas = document.getElementById("proximas-reunioes");
-  const elementoConcluidas = document.getElementById("reunioes-concluidas");
-
-  if (elementoTotal != null) {
-    elementoTotal.textContent = totalDeAtas;
-  }
-  if (elementoProximas != null) {
-    elementoProximas.textContent = atasAgendadas;
-  }
-  if (elementoConcluidas != null) {
-    elementoConcluidas.textContent = atasConcluidas;
-  }
-
-  // Renderiza card da próxima reunião
-  renderizarCardProximaReuniao();
-
-  // Atualiza contador de atas na lista
-  atualizarContadorDeAtas(totalDeAtas);
-}
-
-// Função para renderizar card da próxima reunião (baseado apenas nas atas)
-function renderizarCardProximaReuniao() {
-  const dataAtual = new Date();
-
-  // Filtra atas futuras
-  const atasFuturas = todasAsAtas
-    .filter(function (ata) {
-      const dataDaAta = new Date(ata.dataReuniao || 0);
-      return !isNaN(dataDaAta.getTime()) && dataDaAta > dataAtual;
-    })
-    .sort(function (ataA, ataB) {
-      return new Date(ataA.dataReuniao) - new Date(ataB.dataReuniao);
-    });
-
-  const elementoInformacao = document.getElementById("proxima-reuniao-info");
-  if (elementoInformacao == null || atasFuturas.length === 0) {
-    return;
-  }
-
-  const ataProxima = atasFuturas[0];
-  const dataProximaAta = new Date(ataProxima.dataReuniao || 0);
-
-  if (isNaN(dataProximaAta.getTime())) {
-    return;
-  }
-
-  const diferencaEmMilissegundos = dataProximaAta - dataAtual;
-  const diasRestantes = Math.floor(
-    diferencaEmMilissegundos / (1000 * 60 * 60 * 24)
-  );
-  const horasRestantes = Math.floor(
-    (diferencaEmMilissegundos % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-  );
-  const minutosRestantes = Math.floor(
-    (diferencaEmMilissegundos % (1000 * 60 * 60)) / (1000 * 60)
-  );
-
-  let textoTempo = "";
-  if (diasRestantes > 0) {
-    textoTempo = `Em ${diasRestantes} dia${diasRestantes > 1 ? "s" : ""}`;
-  } else if (horasRestantes > 0) {
-    textoTempo = `Em ${horasRestantes} hora${horasRestantes > 1 ? "s" : ""}`;
-  } else if (minutosRestantes > 0) {
-    textoTempo = `Em ${minutosRestantes} minuto${
-      minutosRestantes > 1 ? "s" : ""
-    }`;
-  } else {
-    textoTempo = "Em breve!";
-  }
-
-  elementoInformacao.innerHTML = `
-        <h5>${ataProxima.titulo || ataProxima.tipo || "Reunião Agendada"}</h5>
-        <p><strong>Tipo:</strong> ${ataProxima.tipo || "Não especificado"}</p>
-        <p><strong>Data:</strong> ${dataProximaAta.toLocaleString("pt-BR", {
-          dateStyle: "full",
-          timeStyle: "short",
-        })}</p>
-        <p><strong>Local:</strong> ${ataProxima.local || "Online"}</p>
-        <p class="fw-bold">${textoTempo}</p>
-    `;
-
-  const botaoVerDetalhes = document.getElementById("ver-detalhes-proxima");
-  if (botaoVerDetalhes != null) {
-    botaoVerDetalhes.onclick = function () {
-      alert(`Navegando para detalhes da ata: ${ataProxima.id}`);
-    };
-  }
-
-  const botaoCalendario = document.getElementById("calendario-proxima");
-  if (botaoCalendario != null) {
-    botaoCalendario.onclick = function () {
-      const urlCalendario = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-        ataProxima.titulo || "Reunião"
-      )}&dates=${dataProximaAta
-        .toISOString()
-        .slice(
-          0,
-          -1
-        )}Z/${dataProximaAta.toISOString()}&details=Reunião no EuPsico&location=${encodeURIComponent(
-        ataProxima.local || "Online"
-      )}`;
-      window.open(urlCalendario, "_blank");
-    };
-  }
-}
-
-// Função para aplicar filtros e exibir atas
 function aplicarFiltrosEExibirAtas() {
-  // Pega valores atuais dos filtros
-  const valorFiltroTipo =
-    document.getElementById("tipo-filtro-atas")?.value || "Todos";
-  const valorFiltroStatus =
-    document.getElementById("status-filtro-atas")?.value || "Todos";
-  const termoDeBusca =
-    document.getElementById("busca-titulo-atas")?.value.toLowerCase() || "";
+  const tipoFiltro = document.getElementById("tipo-filtro")?.value || "Todos";
+  const buscaTermo =
+    document.getElementById("busca-titulo")?.value.toLowerCase() || "";
 
-  // Cria cópia de todas as atas
   let atasFiltradas = [...todasAsAtas];
 
-  // Aplica filtro por tipo se não for "Todos"
-  if (valorFiltroTipo !== "Todos") {
-    atasFiltradas = atasFiltradas.filter(function (ata) {
-      return ata.tipo?.toLowerCase().includes(valorFiltroTipo.toLowerCase());
-    });
+  if (tipoFiltro !== "Todos") {
+    atasFiltradas = atasFiltradas.filter((ata) =>
+      ata.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
+    );
   }
 
-  // Aplica filtro por status se não for "Todos"
-  if (valorFiltroStatus !== "Todos") {
-    const dataAtualAgora = new Date();
-    atasFiltradas = atasFiltradas.filter(function (ata) {
-      const dataDaAta = new Date(ata.dataReuniao || 0);
-      if (valorFiltroStatus === "Agendada") {
-        return dataDaAta > dataAtualAgora;
-      } else if (valorFiltroStatus === "Concluída") {
-        return dataDaAta < dataAtualAgora && ata.status === "Concluída";
-      } else if (valorFiltroStatus === "Cancelada") {
-        return ata.status === "Cancelada";
-      }
-      return true;
-    });
+  if (buscaTermo) {
+    atasFiltradas = atasFiltradas.filter((ata) =>
+      ata.titulo?.toLowerCase().includes(buscaTermo)
+    );
   }
 
-  // Aplica filtro de busca se houver termo
-  if (termoDeBusca) {
-    atasFiltradas = atasFiltradas.filter(function (ata) {
-      return (
-        ata.titulo?.toLowerCase().includes(termoDeBusca) ||
-        ata.tipo?.toLowerCase().includes(termoDeBusca)
-      );
-    });
+  atasFiltradas.sort(
+    (a, b) => new Date(b.dataReuniao) - new Date(a.dataReuniao)
+  );
+
+  const container = document.getElementById("atas-container");
+  if (!container) return;
+
+  if (atasFiltradas.length === 0) {
+    container.innerHTML = `
+            <div class="alert alert-info text-center">
+                <span class="material-symbols-outlined">search_off</span>
+                Nenhuma ata encontrada.
+            </div>
+        `;
+    return;
   }
 
-  // Ordena as atas filtradas por dataReuniao (mais recente primeiro)
-  atasFiltradas.sort(function (ataA, ataB) {
-    const dataAtaA = new Date(ataA.dataReuniao || 0);
-    const dataAtaB = new Date(ataB.dataReuniao || 0);
-    return dataAtaB - dataAtaA;
-  });
+  container.innerHTML = atasFiltradas
+    .map((ata) => {
+      const dataAta = new Date(ata.dataReuniao);
+      const agora = new Date();
+      const ehFutura = dataAta > agora;
+      const statusCor = ehFutura ? "text-info" : "text-success";
+      const iconeStatus = ehFutura ? "schedule" : "check_circle";
 
-  // Container onde serão inseridas as atas filtradas
-  const containerDasAtas = document.getElementById("atas-container");
-  if (containerDasAtas != null) {
-    // Se não há atas filtradas
-    if (atasFiltradas.length === 0) {
-      containerDasAtas.innerHTML = `
-                <div class="alert alert-info text-center">
-                    <span class="material-symbols-outlined">search_off</span>
-                    Nenhuma ata encontrada para este filtro.
-                </div>
-            `;
-    } else {
-      try {
-        // Gera HTML para cada ata filtrada
-        const htmlDasAtas = atasFiltradas
-          .map(function (ata) {
-            return gerarAccordionIndividualDaAta(ata);
-          })
-          .join("");
+      const participantes = normalizarParticipantes(ata.participantes);
+      const previewParticipantes = participantes.slice(0, 3);
+      const maisParticipantes =
+        participantes.length > 3 ? `+${participantes.length - 3}` : "";
 
-        // Insere HTML no container
-        containerDasAtas.innerHTML = `
-                    <div class="accordion">
-                        ${htmlDasAtas}
-                    </div>
-                `;
-
-        // Configura event listeners para os accordions
-        configurarEventListenersDosAccordions();
-
-        // Atualiza contador de atas
-        atualizarContadorDeAtas(atasFiltradas.length);
-      } catch (erro) {
-        console.error("[DASH] Erro ao gerar HTML das atas:", erro);
-        containerDasAtas.innerHTML = `
-                    <div class="alert alert-danger">
-                        <span class="material-symbols-outlined">error</span>
-                        Erro ao exibir atas: ${erro.message}
-                    </div>
-                `;
-      }
-    }
-  }
-
-  // Atualiza estatísticas (mesmo com filtros aplicados)
-  atualizarEstatisticas();
-}
-
-// Função para gerar HTML de um accordion individual de ata
-function gerarAccordionIndividualDaAta(ata) {
-  try {
-    // Converte dataReuniao para objeto Date
-    const dataDaAta = new Date(ata.dataReuniao || 0);
-    const dataAtualAgora = new Date();
-
-    // Determina se a ata é futura, concluída ou cancelada
-    const ataEhFutura =
-      !isNaN(dataDaAta.getTime()) && dataDaAta > dataAtualAgora;
-    const ataEhConcluida =
-      !isNaN(dataDaAta.getTime()) &&
-      dataDaAta < dataAtualAgora &&
-      ata.status === "Concluída";
-    const ataEhCancelada = ata.status === "Cancelada";
-
-    // Define cor, ícone e texto do status
-    let classeCorDoStatus = "text-muted";
-    let iconeDoStatus = "help_outline";
-    let textoDoStatus = "Registrada";
-    if (ataEhFutura) {
-      classeCorDoStatus = "text-info";
-      iconeDoStatus = "schedule";
-      textoDoStatus = "Agendada";
-    } else if (ataEhConcluida) {
-      classeCorDoStatus = "text-success";
-      iconeDoStatus = "check_circle";
-      textoDoStatus = "Concluída";
-    } else if (ataEhCancelada) {
-      classeCorDoStatus = "text-danger";
-      iconeDoStatus = "cancel";
-      textoDoStatus = "Cancelada";
-    }
-
-    // Formata data para exibição
-    const dataFormatada = !isNaN(dataDaAta.getTime())
-      ? dataDaAta.toLocaleDateString("pt-BR")
-      : "Data inválida";
-
-    // Normaliza participantes para badges
-    const participantes = normalizarParticipantes(ata.participantes);
-    const previewDosParticipantes = participantes.slice(0, 3);
-    const maisParticipantesRestantes =
-      participantes.length > 3 ? `+${participantes.length - 3}` : "";
-
-    // Conteúdo dos detalhes básicos
-    const conteudoDosDetalhesBasicos = `
-            <div class="row g-3 mb-3">
+      const conteudoDetalhes = `
+            <div class="row g-3">
                 <div class="col-md-6">
                     <p><strong>Tipo:</strong> ${
                       ata.tipo || "Não especificado"
                     }</p>
-                    <p><strong>Data:</strong> <span class="${classeCorDoStatus}">${dataFormatada}</span></p>
+                    <p><strong>Data:</strong> <span class="${statusCor}">${dataAta.toLocaleDateString(
+        "pt-BR"
+      )}</span></p>
                 </div>
                 <div class="col-md-6">
                     <p><strong>Local:</strong> ${ata.local || "Online"}</p>
@@ -559,70 +184,57 @@ function gerarAccordionIndividualDaAta(ata) {
             </div>
         `;
 
-    // Conteúdo dos participantes
-    const conteudoDosParticipantes =
-      participantes.length > 0
-        ? `
+      const conteudoParticipantes =
+        participantes.length > 0
+          ? `
             <div class="mb-3">
                 <h6 class="mb-2"><span class="material-symbols-outlined text-info me-1">group</span> Participantes</h6>
-                <div class="d-flex flex-wrap gap-1 mb-1">
-                    ${previewDosParticipantes
-                      .map(function (nome) {
-                        return `<span class="badge bg-light text-dark">${nome}</span>`;
-                      })
+                <div class="d-flex flex-wrap gap-1">
+                    ${previewParticipantes
+                      .map(
+                        (nome) =>
+                          `<span class="badge bg-light text-dark">${nome}</span>`
+                      )
                       .join("")}
                     ${
-                      maisParticipantesRestantes
-                        ? `<span class="badge bg-secondary">${maisParticipantesRestantes}</span>`
+                      maisParticipantes
+                        ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
                         : ""
                     }
                 </div>
                 <small class="text-muted">Total: ${participantes.length}</small>
             </div>
         `
-        : "";
+          : "";
 
-    // Conteúdo do resumo
-    const textoDoResumo =
-      ata.resumo ||
-      ata.notas ||
-      ata.pontosDiscutidos ||
-      "Sem resumo disponível.";
-    const conteudoDoResumo = `
+      const resumoTexto = ata.resumo || ata.notas || "Sem resumo disponível.";
+      const conteudoResumo = `
             <div class="mb-3">
                 <h6 class="mb-2"><span class="material-symbols-outlined text-primary me-1">description</span> Resumo</h6>
-                <p class="mb-0">${textoDoResumo}</p>
+                <p>${resumoTexto}</p>
             </div>
         `;
 
-    // Botões de ação
-    const botoesDeAcao = `
-            <div class="ata-acoes mt-3">
-                <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="Gerar PDF" data-ata-id="${ata.id}">
-                    <span class="material-symbols-outlined">picture_as_pdf</span>
-                </button>
-                <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Abrir Feedback" data-ata-id="${ata.id}">
-                    <span class="material-symbols-outlined">feedback</span>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar Ata" data-ata-id="${ata.id}">
-                    <span class="material-symbols-outlined">edit</span>
-                </button>
-            </div>
+      const conteudoAccordion = `
+            ${conteudoDetalhes}
+            ${conteudoParticipantes}
+            ${conteudoResumo}
         `;
 
-    // HTML completo do accordion da ata
-    return `
+      return `
             <div class="ata-item card mb-4" data-ata-id="${ata.id}">
                 <div class="card-header d-flex justify-content-between align-items-center p-3" onclick="this.parentElement.querySelector('.ata-conteudo').style.display = this.parentElement.querySelector('.ata-conteudo').style.display === 'none' ? 'block' : 'none';">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center mb-1">
-                            <span class="material-symbols-outlined me-2" style="color: ${classeCorDoStatus};">${iconeDoStatus}</span>
+                            <span class="material-symbols-outlined me-2" style="color: ${statusCor};">${iconeStatus}</span>
                             <h5 class="mb-0">${
                               ata.titulo || ata.tipo || "Reunião"
                             }</h5>
                             <span class="badge ms-2 bg-info text-info">Ata</span>
                         </div>
-                        <small class="text-muted">${dataFormatada}</small>
+                        <small class="text-muted">${dataAta.toLocaleDateString(
+                          "pt-BR"
+                        )}</small>
                     </div>
                     <div class="ata-acoes">
                         <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" data-ata-id="${
@@ -643,148 +255,133 @@ function gerarAccordionIndividualDaAta(ata) {
                     </div>
                 </div>
                 <div class="ata-conteudo card-body" style="display: none; border-top: 1px solid #e5e7eb;">
-                    ${conteudoDosDetalhesBasicos}
-                    ${conteudoDosParticipantes}
-                    ${conteudoDoResumo}
+                    ${conteudoAccordion}
                 </div>
             </div>
         `;
-  } catch (erro) {
-    console.error(
-      "[DASH] Erro ao gerar accordion da ata:",
-      erro,
-      "ID da ata:",
-      ata.id
+    })
+    .join("");
+
+  atualizarContadorAtas(atasFiltradas.length);
+  atualizarGraficos();
+}
+
+function atualizarGraficos() {
+  const agora = new Date();
+
+  const totalAtas = todasAsAtas.length;
+  const atasFuturas = todasAsAtas.filter((ata) => {
+    const dataAta = new Date(ata.dataReuniao);
+    return !isNaN(dataAta.getTime()) && dataAta > agora;
+  }).length;
+  const atasConcluidas = todasAsAtas.filter((ata) => {
+    const dataAta = new Date(ata.dataReuniao);
+    return (
+      !isNaN(dataAta.getTime()) && dataAta < agora && ata.status === "Concluída"
     );
-    return `
-            <div class="ata-item card mb-4 border-danger">
-                <div class="card-body">
-                    <p class="text-danger">Erro ao carregar ata ${ata.id}</p>
-                </div>
-            </div>
+  }).length;
+
+  const totalEl = document.getElementById("total-reunioes");
+  const proximasEl = document.getElementById("proximas-reunioes");
+  const concluidasEl = document.getElementById("reunioes-concluidas");
+
+  if (totalEl) totalEl.textContent = totalAtas;
+  if (proximasEl) proximasEl.textContent = atasFuturas;
+  if (concluidasEl) concluidasEl.textContent = atasConcluidas;
+
+  const infoEl = document.getElementById("proxima-reuniao-info");
+  const proximas = todasAsAtas
+    .filter((ata) => {
+      const dataAta = new Date(ata.dataReuniao);
+      return !isNaN(dataAta.getTime()) && dataAta > agora;
+    })
+    .sort((a, b) => new Date(a.dataReuniao) - new Date(b.dataReuniao));
+
+  if (infoEl && proximas.length > 0) {
+    const proxima = proximas[0];
+    const dataProxima = new Date(proxima.dataReuniao);
+    const diffMs = dataProxima - agora;
+    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const horas = Math.floor(
+      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    let tempoTexto = "";
+    if (dias > 0) tempoTexto = `Em ${dias} dia${dias > 1 ? "s" : ""}`;
+    else if (horas > 0) tempoTexto = `Em ${horas} hora${horas > 1 ? "s" : ""}`;
+    else if (minutos > 0)
+      tempoTexto = `Em ${minutos} minuto${minutos > 1 ? "s" : ""}`;
+    else tempoTexto = "Em breve!";
+
+    infoEl.innerHTML = `
+            <h5>${proxima.titulo || proxima.tipo || "Reunião"}</h5>
+            <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
+            <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
+              dateStyle: "full",
+              timeStyle: "short",
+            })}</p>
+            <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
+            <p class="fw-bold">${tempoTexto}</p>
         `;
+
+    const detalhesBtn = document.getElementById("ver-detalhes-proxima");
+    if (detalhesBtn)
+      detalhesBtn.onclick = () =>
+        alert(`Detalhes: ${proxima.titulo || proxima.id}`);
+
+    const calendarioBtn = document.getElementById("calendario-proxima");
+    if (calendarioBtn)
+      calendarioBtn.onclick = () => {
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+          proxima.titulo || "Reunião"
+        )}&dates=${dataProxima
+          .toISOString()
+          .slice(
+            0,
+            -1
+          )}Z/${dataProxima.toISOString()}&location=${encodeURIComponent(
+          proxima.local || "Online"
+        )}`;
+        window.open(url, "_blank");
+      };
+  }
+
+  const proximaContainer = document.getElementById("proxima-reuniao-container");
+  if (proximaContainer)
+    proximaContainer.style.display = proximas.length > 0 ? "block" : "none";
+}
+
+function atualizarContadorAtas(qtd) {
+  const contadorEl = document.getElementById("contador-atas");
+  if (contadorEl) {
+    contadorEl.textContent = qtd;
+    contadorEl.className = `badge ${
+      qtd > 0 ? "bg-primary" : "bg-secondary"
+    } ms-2`;
   }
 }
 
-// Função para configurar event listeners dos accordions (expandir/contrair)
-function configurarEventListenersDosAccordions() {
-  const containerDasAtas = document.getElementById("atas-container");
-  if (containerDasAtas == null) {
-    return;
-  }
-
-  // Encontra todos os headers de accordion
-  const todosOsHeaders = containerDasAtas.querySelectorAll(".ata-header");
-  todosOsHeaders.forEach(function (header) {
-    // Adiciona event listener para expandir/contrair
-    header.addEventListener("click", function () {
-      // Encontra o conteúdo correspondente
-      const conteudoCorrespondente =
-        header.parentElement.querySelector(".ata-conteudo");
-
-      if (conteudoCorrespondente != null) {
-        // Alterna visibilidade do conteúdo
-        if (conteudoCorrespondente.style.display === "none") {
-          conteudoCorrespondente.style.display = "block";
-        } else {
-          conteudoCorrespondente.style.display = "none";
-        }
-      }
-    });
-  });
+function gerarPDF(ataId) {
+  const ata = todasAsAtas.find((a) => a.id === ataId);
+  console.log("[DASH] PDF:", ata?.titulo);
+  alert(`PDF de "${ata?.titulo}" (implementar).`);
 }
 
-// Função para atualizar contador de atas
-function atualizarContadorDeAtas(quantidade) {
-  const elementoContador = document.getElementById("contador-atas");
-  if (elementoContador != null) {
-    elementoContador.textContent = quantidade;
-    // Altera cor do badge se tem itens ou não
-    if (quantidade > 0) {
-      elementoContador.className = "badge bg-primary ms-2";
-    } else {
-      elementoContador.className = "badge bg-secondary ms-2";
-    }
-  }
+function abrirFormularioDeFeedback(ataId) {
+  const ata = todasAsAtas.find((a) => a.id === ataId);
+  console.log("[DASH] Feedback:", ata?.titulo);
+  alert(`Feedback: ${ata?.titulo || ataId}`);
 }
 
-// Função para gerar PDF de uma ata
-function gerarPDFDaAta(idDaAta) {
-  // Encontra a ata pelo ID
-  const ata = todasAsAtas.find(function (ataEncontrada) {
-    return ataEncontrada.id === idDaAta;
-  });
-
-  if (ata == null) {
-    console.error("[DASH] Ata não encontrada para gerar PDF:", idDaAta);
-    return;
-  }
-
-  console.log("[DASH] Gerando PDF da ata:", ata.titulo);
-  // Aqui seria implementada a geração real de PDF com jsPDF ou outra biblioteca
-  alert(
-    `Gerando PDF da ata "${
-      ata.titulo || "ID: " + idDaAta
-    }" (implementar com jsPDF ou window.print()).`
-  );
+function editarAta(ataId) {
+  const ata = todasAsAtas.find((a) => a.id === ataId);
+  console.log("[DASH] Edit:", ata?.titulo);
+  alert(`Editando: ${ata?.titulo || ataId}`);
 }
 
-// Função para abrir formulário de feedback de uma ata
-function abrirFormularioDeFeedback(idDaAta) {
-  // Encontra a ata pelo ID
-  const ata = todasAsAtas.find(function (ataEncontrada) {
-    return ataEncontrada.id === idDaAta;
-  });
-
-  if (ata == null) {
-    console.error("[DASH] Ata não encontrada para feedback:", idDaAta);
-    return;
-  }
-
-  console.log("[DASH] Abrindo feedback da ata:", ata.titulo);
-  // Aqui seria implementada navegação para página de feedback ou modal
-  alert(
-    `Abrindo formulário de feedback da ata "${
-      ata.titulo || idDaAta
-    }". Implementar navegação para feedback.html?ataId=${idDaAta}.`
-  );
-}
-
-// Função para editar uma ata
-function editarAta(idDaAta) {
-  // Encontra a ata pelo ID
-  const ata = todasAsAtas.find(function (ataEncontrada) {
-    return ataEncontrada.id === idDaAta;
-  });
-
-  if (ata == null) {
-    console.error("[DASH] Ata não encontrada para edição:", idDaAta);
-    return;
-  }
-
-  console.log("[DASH] Editando ata:", ata.titulo);
-  // Aqui seria implementada navegação para editor
-  alert(
-    `Editando ata "${
-      ata.titulo || idDaAta
-    }". Implementar navegação para editor de atas.`
-  );
-}
-
-// Função para limpar recursos (cancelar listeners) quando sair da view
 export function cleanup() {
-  // Cancela listener das atas se existir
-  if (unsubscribeAtas != null) {
-    unsubscribeAtas();
-    unsubscribeAtas = null;
-    console.log("[DASH] Listener das atas cancelado.");
-  }
-
-  // Limpa timeout de busca se existir
-  if (timeoutBusca != null) {
-    clearTimeout(timeoutBusca);
-    timeoutBusca = null;
-  }
-
-  console.log("[DASH] Limpeza de recursos concluída.");
+  if (unsubscribeAtas) unsubscribeAtas();
+  console.log("[DASH] Cleanup.");
+  clearTimeout(timeoutBusca);
 }
