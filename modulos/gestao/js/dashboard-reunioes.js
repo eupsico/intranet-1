@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 3.1 (Corrigido: validação de participantes como array/string)
+// VERSÃO 3.2 (Corrigido: statusCor definido, validações completas, accordions nativos)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -14,32 +14,24 @@ let todasAsAtas = [];
 let unsubscribeAtas = null;
 let timeoutBusca = null;
 
-// Função helper para normalizar participantes
 function normalizarParticipantes(participantes) {
   if (!participantes) return [];
-
-  if (Array.isArray(participantes)) {
-    return participantes;
-  } else if (typeof participantes === "string") {
-    // Converte string para array (vírgula ou quebra de linha)
+  if (Array.isArray(participantes)) return participantes;
+  if (typeof participantes === "string") {
     return participantes
       .split(/[\n,]+/)
       .map((nome) => nome.trim())
       .filter((nome) => nome.length > 0);
-  } else {
-    console.warn(
-      "[DASH] Formato de participantes inválido:",
-      typeof participantes,
-      participantes
-    );
-    return [];
   }
+  console.warn(
+    "[DASH] Formato inválido de participantes:",
+    typeof participantes
+  );
+  return [];
 }
 
 export function init() {
-  console.log(
-    "[DASH] Módulo Dashboard de Reuniões iniciado (v3.1 - Corrigido participantes)."
-  );
+  console.log("[DASH] Dashboard iniciado (v3.2 - Corrigido statusCor).");
   setupEventListeners();
   loadAtasFromFirestore();
 }
@@ -49,7 +41,7 @@ function loadAtasFromFirestore() {
 
   const atasContainer = document.getElementById("atas-container");
   if (!atasContainer) {
-    console.error("[DASH] Container #atas-container não encontrado.");
+    console.error("[DASH] Container não encontrado.");
     return;
   }
 
@@ -57,32 +49,26 @@ function loadAtasFromFirestore() {
     collection(firestoreDb, "gestao_atas"),
     orderBy("dataReuniao", "desc")
   );
-
   unsubscribeAtas = onSnapshot(
     q,
     (snapshot) => {
       todasAsAtas = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        participantes: normalizarParticipantes(doc.data().participantes), // Normaliza aqui
+        participantes: normalizarParticipantes(doc.data().participantes),
       }));
 
       atualizarStats();
       filtrarEExibirAtas();
 
       const loadingEl = atasContainer.querySelector(".loading-spinner");
-      if (loadingEl) loadingEl.style.display = "none";
+      if (loadingEl) loadingEl.remove();
 
-      console.log(`[DASH] Dados atualizados: ${todasAsAtas.length} atas.`);
+      console.log(`[DASH] Atualizado: ${todasAsAtas.length} atas.`);
     },
     (error) => {
-      console.error("[DASH] Erro ao carregar:", error);
-      atasContainer.innerHTML = `
-            <div class="alert alert-danger">
-                <span class="material-symbols-outlined">error</span>
-                Erro ao carregar atas: ${error.message}
-            </div>
-        `;
+      console.error("[DASH] Erro:", error);
+      atasContainer.innerHTML = `<div class="alert alert-danger">Erro ao carregar: ${error.message}</div>`;
     }
   );
 }
@@ -92,28 +78,33 @@ function atualizarStats() {
 
   const totalReunioes = todasAsAtas.length;
   const proximasReunioes = todasAsAtas.filter((ata) => {
-    const dataAta = new Date(ata.dataReuniao);
-    return dataAta > agora && (ata.status === "Agendada" || !ata.status);
+    const dataAta = new Date(ata.dataReuniao || 0);
+    return (
+      !isNaN(dataAta.getTime()) &&
+      dataAta > agora &&
+      (ata.status === "Agendada" || !ata.status)
+    );
   }).length;
 
   const reunioesConcluidas = todasAsAtas.filter((ata) => {
-    const dataAta = new Date(ata.dataReuniao);
-    return dataAta < agora && ata.status === "Concluída";
+    const dataAta = new Date(ata.dataReuniao || 0);
+    return (
+      !isNaN(dataAta.getTime()) && dataAta < agora && ata.status === "Concluída"
+    );
   }).length;
 
-  const totalEl = document.getElementById("total-reunioes");
-  const proximasEl = document.getElementById("proximas-reunioes");
-  const concluidasEl = document.getElementById("reunioes-concluidas");
-
-  if (totalEl) totalEl.textContent = totalReunioes;
-  if (proximasEl) proximasEl.textContent = proximasReunioes;
-  if (concluidasEl) concluidasEl.textContent = reunioesConcluidas;
+  if (document.getElementById("total-reunioes"))
+    document.getElementById("total-reunioes").textContent = totalReunioes;
+  if (document.getElementById("proximas-reunioes"))
+    document.getElementById("proximas-reunioes").textContent = proximasReunioes;
+  if (document.getElementById("reunioes-concluidas"))
+    document.getElementById("reunioes-concluidas").textContent =
+      reunioesConcluidas;
 
   renderizarProximaReuniao();
   const proximaContainer = document.getElementById("proxima-reuniao-container");
-  if (proximaContainer) {
+  if (proximaContainer)
     proximaContainer.style.display = proximasReunioes > 0 ? "block" : "none";
-  }
 
   atualizarContadorAtas(totalReunioes);
 }
@@ -122,8 +113,8 @@ function renderizarProximaReuniao() {
   const agora = new Date();
   const proximas = todasAsAtas
     .filter((ata) => {
-      const dataAta = new Date(ata.dataReuniao);
-      return dataAta > agora;
+      const dataAta = new Date(ata.dataReuniao || 0);
+      return !isNaN(dataAta.getTime()) && dataAta > agora;
     })
     .sort((a, b) => new Date(a.dataReuniao) - new Date(b.dataReuniao));
 
@@ -131,52 +122,41 @@ function renderizarProximaReuniao() {
   if (!infoEl || proximas.length === 0) return;
 
   const proxima = proximas[0];
-  const dataProxima = new Date(proxima.dataReuniao);
-  const diffEmMs = dataProxima - agora;
+  const dataProxima = new Date(proxima.dataReuniao || 0);
+  if (isNaN(dataProxima.getTime())) return;
 
-  const diasRestantes = Math.floor(diffEmMs / (1000 * 60 * 60 * 24));
-  const horasRestantes = Math.floor(
+  const diffEmMs = dataProxima - agora;
+  const dias = Math.floor(diffEmMs / (1000 * 60 * 60 * 24));
+  const horas = Math.floor(
     (diffEmMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
   );
-  const minutosRestantes = Math.floor(
-    (diffEmMs % (1000 * 60 * 60)) / (1000 * 60)
-  );
+  const minutos = Math.floor((diffEmMs % (1000 * 60 * 60)) / (1000 * 60));
 
   let tempoTexto = "";
-  if (diasRestantes > 0) {
-    tempoTexto = `Em ${diasRestantes} dia${diasRestantes > 1 ? "s" : ""}`;
-  } else if (horasRestantes > 0) {
-    tempoTexto = `Em ${horasRestantes} hora${horasRestantes > 1 ? "s" : ""}`;
-  } else if (minutosRestantes > 0) {
-    tempoTexto = `Em ${minutosRestantes} minuto${
-      minutosRestantes > 1 ? "s" : ""
-    }`;
-  } else {
-    tempoTexto = "Em breve!";
-  }
+  if (dias > 0) tempoTexto = `Em ${dias} dia${dias > 1 ? "s" : ""}`;
+  else if (horas > 0) tempoTexto = `Em ${horas} hora${horas > 1 ? "s" : ""}`;
+  else if (minutos > 0)
+    tempoTexto = `Em ${minutos} minuto${minutos > 1 ? "s" : ""}`;
+  else tempoTexto = "Em breve!";
 
   infoEl.innerHTML = `
-        <div class="proxima-detalhes">
-            <h5>${proxima.titulo || proxima.tipo || "Reunião Agendada"}</h5>
-            <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
-            <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
-              dateStyle: "full",
-              timeStyle: "short",
-            })}</p>
-            <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
-            <p class="text-primary fw-bold">${tempoTexto}</p>
-        </div>
+        <h5>${proxima.titulo || proxima.tipo || "Reunião"}</h5>
+        <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
+        <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
+          dateStyle: "full",
+          timeStyle: "short",
+        })}</p>
+        <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
+        <p class="fw-bold">${tempoTexto}</p>
     `;
 
   const detalhesBtn = document.getElementById("ver-detalhes-proxima");
+  if (detalhesBtn)
+    detalhesBtn.onclick = () =>
+      alert(`Detalhes: ${proxima.titulo || proxima.id}`);
+
   const calendarioBtn = document.getElementById("calendario-proxima");
-  if (detalhesBtn) {
-    detalhesBtn.onclick = () => {
-      console.log("[DASH] Detalhes:", proxima.id);
-      alert(`Navegando para: ${proxima.titulo || "ID: " + proxima.id}`);
-    };
-  }
-  if (calendarioBtn) {
+  if (calendarioBtn)
     calendarioBtn.onclick = () => {
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
         proxima.titulo || "Reunião"
@@ -185,12 +165,11 @@ function renderizarProximaReuniao() {
         .slice(
           0,
           -1
-        )}Z/${dataProxima.toISOString()}&details=Reunião no EuPsico&location=${encodeURIComponent(
+        )}Z/${dataProxima.toISOString()}&location=${encodeURIComponent(
         proxima.local || "Online"
       )}`;
       window.open(url, "_blank");
     };
-  }
 }
 
 function setupEventListeners() {
@@ -221,36 +200,27 @@ function setupEventListeners() {
 
   if (atasContainer) {
     atasContainer.addEventListener("click", (e) => {
-      if (e.target.matches(".btn-pdf")) {
-        e.preventDefault();
-        const ataId = e.target.closest(".ata-item").dataset.ataId;
-        gerarPDF(ataId);
-      } else if (e.target.matches(".btn-feedback")) {
-        e.preventDefault();
-        const ataId = e.target.closest(".ata-item").dataset.ataId;
-        abrirFeedback(ataId);
-      } else if (e.target.matches(".btn-editar")) {
-        e.preventDefault();
-        const ataId = e.target.closest(".ata-item").dataset.ataId;
-        editarAta(ataId);
+      const ataItem = e.target.closest(".ata-item");
+      if (!ataItem) return;
+
+      const ataId = ataItem.dataset.ataId;
+      if (!ataId) return;
+
+      if (e.target.matches(".btn-pdf")) gerarPDF(ataId);
+      else if (e.target.matches(".btn-feedback")) abrirFeedback(ataId);
+      else if (e.target.matches(".btn-editar")) editarAta(ataId);
+
+      // Toggle accordion principal
+      if (e.target.closest(".ata-header")) {
+        const conteudo = ataItem.querySelector(".ata-conteudo");
+        if (conteudo) {
+          conteudo.style.display =
+            conteudo.style.display === "none" ? "block" : "none";
+        }
       }
     });
   }
 
-  // Accordions nativos (não Bootstrap para evitar dependências)
-  atasContainer.addEventListener("click", (e) => {
-    if (e.target.matches('[data-bs-toggle="collapse"]')) {
-      e.preventDefault();
-      const targetId = e.target.getAttribute("data-bs-target");
-      const targetEl = document.querySelector(targetId);
-      if (targetEl) {
-        targetEl.classList.toggle("show");
-        e.target.classList.toggle("collapsed");
-      }
-    }
-  });
-
-  // Countdown update
   setInterval(() => {
     if (
       document.getElementById("proxima-reuniao-container")?.style.display !==
@@ -279,7 +249,8 @@ function filtrarEExibirAtas() {
   if (statusFiltro !== "Todos") {
     const agora = new Date();
     atasFiltradas = atasFiltradas.filter((ata) => {
-      const dataAta = new Date(ata.dataReuniao);
+      const dataAta = new Date(ata.dataReuniao || 0);
+      if (isNaN(dataAta.getTime())) return false;
       if (statusFiltro === "Agendada") return dataAta > agora;
       if (statusFiltro === "Concluída")
         return dataAta < agora && ata.status === "Concluída";
@@ -297,7 +268,7 @@ function filtrarEExibirAtas() {
   }
 
   atasFiltradas.sort(
-    (a, b) => new Date(b.dataReuniao) - new Date(a.dataReuniao)
+    (a, b) => new Date(b.dataReuniao || 0) - new Date(a.dataReuniao || 0)
   );
 
   const atasContainer = document.getElementById("atas-container");
@@ -306,7 +277,7 @@ function filtrarEExibirAtas() {
       atasContainer.innerHTML = `
                 <div class="alert alert-info text-center">
                     <span class="material-symbols-outlined">search_off</span>
-                    Nenhuma ata encontrada.
+                    Nenhuma ata encontrada para este filtro.
                 </div>
             `;
     } else {
@@ -325,14 +296,14 @@ function filtrarEExibirAtas() {
                 `;
       }
     }
-    atualizarStats();
   }
+  atualizarStats();
 }
 
-// CORRIGIDO: renderSavedAtaAccordion com validação
+// CORRIGIDO: renderSavedAtaAccordion com statusCor definido
 function renderSavedAtaAccordion(ata) {
   try {
-    const dataAta = new Date(ata.dataReuniao || "Invalid Date");
+    const dataAta = new Date(ata.dataReuniao || 0);
     const agora = new Date();
     const isFuturo = !isNaN(dataAta.getTime()) && dataAta > agora;
     const isConcluida =
@@ -340,11 +311,28 @@ function renderSavedAtaAccordion(ata) {
       dataAta < agora &&
       ata.status === "Concluída";
     const isCancelada = ata.status === "Cancelada";
+    const hasStatus = ata.status || "Em Andamento";
+
+    // CORREÇÃO: Define statusCor explicitamente baseado em condições
+    let statusCor = "text-muted";
+    let statusIcon = "help_outline";
+    if (isFuturo) {
+      statusCor = "text-info";
+      statusIcon = "schedule";
+    } else if (isConcluida) {
+      statusCor = "text-success";
+      statusIcon = "check_circle";
+    } else if (isCancelada) {
+      statusCor = "text-danger";
+      statusIcon = "cancel";
+    } else if (hasStatus === "Em Andamento") {
+      statusCor = "text-warning";
+      statusIcon = "hourglass_empty";
+    }
 
     const formattedDate = !isNaN(dataAta.getTime())
       ? dataAta.toLocaleDateString("pt-BR")
       : "Data inválida";
-
     const statusBadge = isFuturo
       ? "bg-info"
       : isConcluida
@@ -358,194 +346,129 @@ function renderSavedAtaAccordion(ata) {
       ? "Concluída"
       : isCancelada
       ? "Cancelada"
-      : "Em Andamento";
-    const statusIcon = isFuturo
-      ? "schedule"
-      : isConcluida
-      ? "check_circle"
-      : isCancelada
-      ? "cancel"
-      : "hourglass_empty";
+      : hasStatus;
 
-    const participantes = normalizarParticipantes(ata.participantes); // CORREÇÃO: Usa helper
+    const participantes = normalizarParticipantes(ata.participantes);
     const participantesPreview = participantes.slice(0, 3);
     const maisParticipantes =
       participantes.length > 3 ? `+${participantes.length - 3}` : "";
 
-    const conteudoItems = [];
-
-    // Detalhes básicos
-    conteudoItems.push({
-      titulo: "Detalhes",
-      conteudo: `
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <p><strong>Tipo:</strong> ${
-                          ata.tipo || "Não especificado"
-                        }</p>
-                        <p><strong>Data:</strong> ${formattedDate}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Local:</strong> ${ata.local || "Online"}</p>
-                        <p><strong>Responsável:</strong> ${
-                          ata.responsavel || "Não especificado"
-                        }</p>
-                    </div>
+    // Conteúdo básico
+    const conteudoDetalhes = `
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <p><strong>Tipo:</strong> ${
+                      ata.tipo || "Não especificado"
+                    }</p>
+                    <p><strong>Data:</strong> <span class="${statusCor}">${formattedDate}</span></p>
                 </div>
-            `,
-    });
+                <div class="col-md-6">
+                    <p><strong>Local:</strong> ${ata.local || "Online"}</p>
+                    <p><strong>Responsável:</strong> ${
+                      ata.responsavel || "Não especificado"
+                    }</p>
+                </div>
+            </div>
+        `;
 
-    // Participantes (CORRIGIDO)
-    if (participantes.length > 0) {
-      conteudoItems.push({
-        titulo: "Participantes",
-        conteudo: `
-                    <div class="participants-container">
-                        ${participantesPreview
-                          .map(
-                            (nome) => `
-                            <span class="badge bg-light text-dark me-1 mb-1">${nome}</span>
-                        `
-                          )
-                          .join("")}
-                        ${
-                          maisParticipantes
-                            ? `<span class="badge bg-secondary me-1 mb-1">${maisParticipantes}</span>`
-                            : ""
-                        }
-                        <small class="text-muted">Total: ${
-                          participantes.length
-                        }</small>
-                    </div>
-                `,
-      });
-    }
-
-    // Resumo/Notas
-    if (ata.notas || ata.resumo || ata.pontos || ata.decisoes) {
-      const resumoTexto = [ata.resumo, ata.notas, ata.pontos, ata.decisoes]
-        .filter(Boolean)
-        .join(" | ");
-
-      conteudoItems.push({
-        titulo: "Resumo",
-        conteudo: `
-                    <div class="ata-resumo">
-                        <p class="mb-0">${
-                          resumoTexto || "Sem resumo disponível."
-                        }</p>
-                    </div>
-                `,
-      });
-    }
-
-    // Plano de ação (se existir)
-    if (ata.planoDeAcao && ata.planoDeAcao.length > 0) {
-      conteudoItems.push({
-        titulo: "Plano de Ação",
-        conteudo: `
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Tarefa</th>
-                                    <th>Responsável</th>
-                                    <th>Prazo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${ata.planoDeAcao
-                                  .map(
-                                    (item) => `
-                                    <tr>
-                                        <td>${
-                                          item.descricao || "Não especificado"
-                                        }</td>
-                                        <td>${
-                                          item.responsavel || "Não atribuído"
-                                        }</td>
-                                        <td>${
-                                          item.prazo
-                                            ? new Date(
-                                                item.prazo
-                                              ).toLocaleDateString("pt-BR")
-                                            : "Sem prazo"
-                                        }</td>
-                                    </tr>
-                                `
-                                  )
-                                  .join("")}
-                            </tbody>
-                        </table>
-                    </div>
-                `,
-      });
-    }
-
-    const conteudoAccordion = conteudoItems
-      .map(
-        (item, index) => `
-            <div class="detail-section mb-3">
-                <h6 class="detail-title">${item.titulo}</h6>
-                <div class="detail-content">${item.conteudo}</div>
+    // Participantes
+    const conteudoParticipantes =
+      participantes.length > 0
+        ? `
+            <div class="mb-3">
+                <h6 class="mb-2"><span class="material-symbols-outlined text-info me-1">group</span> Participantes</h6>
+                <div class="d-flex flex-wrap gap-1 mb-1">
+                    ${participantesPreview
+                      .map(
+                        (nome) =>
+                          `<span class="badge bg-light text-dark">${nome}</span>`
+                      )
+                      .join("")}
+                    ${
+                      maisParticipantes
+                        ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
+                        : ""
+                    }
+                </div>
+                <small class="text-muted">Total: ${participantes.length}</small>
             </div>
         `
-      )
-      .join("");
+        : "";
+
+    // Resumo
+    const resumoTexto =
+      ata.resumo ||
+      ata.notas ||
+      ata.pontosDiscutidos ||
+      "Sem resumo disponível.";
+    const conteudoResumo = `
+            <div class="mb-3">
+                <h6 class="mb-2"><span class="material-symbols-outlined text-primary me-1">description</span> Resumo</h6>
+                <p class="ata-resumo-text">${resumoTexto}</p>
+            </div>
+        `;
+
+    const conteudoAccordion = `
+            ${conteudoDetalhes}
+            ${conteudoParticipantes}
+            ${conteudoResumo}
+        `;
 
     return `
             <div class="ata-item card mb-4" data-ata-id="${ata.id}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="ata-header-left">
-                        <span class="material-symbols-outlined ata-status-icon ${statusCor} me-2">${statusIcon}</span>
-                        <h5 class="card-title mb-0">${
-                          ata.titulo || ata.tipo || "Reunião"
-                        }</h5>
-                        <span class="badge ${statusBadge}">${statusTexto}</span>
-                    </div>
-                    <div class="ata-header-right">
-                        <small class="text-muted me-3">${formattedDate}</small>
-                        <div class="ata-actions">
-                            <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" data-ata-id="${
-                              ata.id
-                            }">
-                                <span class="material-symbols-outlined">picture_as_pdf</span>
-                            </button>
-                            <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Feedback" data-ata-id="${
-                              ata.id
-                            }">
-                                <span class="material-symbols-outlined">feedback</span>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" data-ata-id="${
-                              ata.id
-                            }">
-                                <span class="material-symbols-outlined">edit</span>
-                            </button>
+                <div class="card-header d-flex justify-content-between align-items-start p-3" style="cursor: pointer;" onclick="this.parentElement.querySelector('.ata-conteudo').style.display = this.parentElement.querySelector('.ata-conteudo').style.display === 'none' ? 'block' : 'none';">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="material-symbols-outlined me-2" style="color: ${statusCor}; font-size: 1.5rem;">${statusIcon}</span>
+                            <h5 class="mb-0 flex-grow-1">${
+                              ata.titulo || ata.tipo || "Reunião"
+                            }</h5>
+                            <span class="badge ${statusBadge} ms-2">${statusTexto}</span>
+                        </div>
+                        <div class="d-flex align-items-center mt-1">
+                            <small class="text-muted me-3">${formattedDate}</small>
                         </div>
                     </div>
+                    <div class="ata-actions ms-3 flex-shrink-0">
+                        <button class="btn btn-sm btn-outline-primary me-1 btn-pdf" title="PDF" data-ata-id="${
+                          ata.id
+                        }">
+                            <span class="material-symbols-outlined">picture_as_pdf</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success me-1 btn-feedback" title="Feedback" data-ata-id="${
+                          ata.id
+                        }">
+                            <span class="material-symbols-outlined">feedback</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" data-ata-id="${
+                          ata.id
+                        }">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="ata-conteudo">${conteudoAccordion}</div>
+                <div class="ata-conteudo card-body" style="display: none; border-top: 1px solid #e5e7eb;">
+                    ${conteudoAccordion}
                 </div>
             </div>
         `;
   } catch (error) {
     console.error(
-      "[DASH] Erro ao renderizar accordion:",
+      "[DASH] Erro no accordion:",
       error,
       "Ata:",
-      ata.id
+      ata?.id || "unknown"
     );
     return `
             <div class="ata-item card mb-4 border-danger">
                 <div class="card-header bg-light">
-                    <h5 class="card-title mb-0 text-danger">
+                    <h5 class="mb-0 text-danger">
                         <span class="material-symbols-outlined">error</span>
-                        Erro ao carregar ata ${ata.id}
+                        Erro na Ata
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-danger">Dados corrompidos. Contate o administrador.</p>
+                    <p>Dados corrompidos. ID: ${ata?.id || "unknown"}</p>
                 </div>
             </div>
         `;
@@ -556,40 +479,35 @@ function atualizarContadorAtas(qtd) {
   const contadorEl = document.getElementById("contador-atas");
   if (contadorEl) {
     contadorEl.textContent = qtd;
-    contadorEl.className =
-      qtd > 0 ? "badge bg-primary ms-2" : "badge bg-secondary ms-2";
+    contadorEl.className = `badge ${
+      qtd > 0 ? "bg-primary" : "bg-secondary"
+    } ms-2`;
   }
 }
 
-// Ações (placeholders)
 function gerarPDF(ataId) {
   const ata = todasAsAtas.find((a) => a.id === ataId);
-  if (!ata) return console.error("[DASH] Ata não encontrada:", ataId);
+  if (!ata) return console.error("[DASH] PDF: Ata não encontrada");
   console.log("[DASH] PDF:", ata.titulo);
-  alert(`PDF de "${ata.titulo}" (implementar jsPDF ou print).`);
+  alert(`PDF de "${ata.titulo}" (implementar).`);
 }
 
 function abrirFeedback(ataId) {
   const ata = todasAsAtas.find((a) => a.id === ataId);
   console.log("[DASH] Feedback:", ata?.titulo);
-  alert(
-    `Feedback de "${ata?.titulo}" (navegar para feedback.html?ataId=${ataId}).`
-  );
+  alert(`Feedback: ${ata?.titulo || ataId}`);
 }
 
 function editarAta(ataId) {
   const ata = todasAsAtas.find((a) => a.id === ataId);
   console.log("[DASH] Edit:", ata?.titulo);
-  alert(
-    `Editando "${ata?.titulo}" (navegar para ata-de-reuniao.html?id=${ataId}&edit=true).`
-  );
+  alert(`Editando: ${ata?.titulo || ataId}`);
 }
 
 export function cleanup() {
   if (unsubscribeAtas) {
     unsubscribeAtas();
-    unsubscribeAtas = null;
-    console.log("[DASH] Cleanup executado.");
+    console.log("[DASH] Cleanup.");
   }
   clearTimeout(timeoutBusca);
 }
