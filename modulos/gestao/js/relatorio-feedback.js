@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.1 - Corrigido: Gestor por slot individual
+// VERSÃO 2.0 (Com aba de Participação, event delegation e otimizações Firestore)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -8,14 +8,10 @@ import {
   where,
   getDocs,
   orderBy,
-  doc,
-  updateDoc,
 } from "../../../assets/js/firebase-init.js";
 
 let todasAsAtas = [];
 let todosOsProfissionais = [];
-let todosOsAgendamentos = [];
-
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
   objetivos: "Os objetivos da reunião foram alcançados?",
@@ -24,386 +20,405 @@ const perguntasTexto = {
 };
 
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado.");
+  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.0).");
   setupEventListeners();
   await carregarRelatorios();
 }
 
 async function carregarRelatorios() {
   try {
-    const [atasSnapshot, profissionaisSnapshot, agendamentosSnapshot] =
-      await Promise.all([
-        getDocs(
-          query(
-            collection(firestoreDb, "gestao_atas"),
-            where("tipo", "==", "Reunião Técnica")
-          )
-        ),
-        getDocs(query(collection(firestoreDb, "usuarios"), orderBy("nome"))),
-        getDocs(
-          query(
-            collection(firestoreDb, "agendamentos_voluntarios"),
-            orderBy("criadoEm", "desc")
-          )
-        ),
-      ]);
+    const [atasSnapshot, profissionaisSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          collection(firestoreDb, "gestao_atas"),
+          where("tipo", "==", "Reunião Técnica")
+        )
+      ),
+      getDocs(query(collection(firestoreDb, "usuarios"), orderBy("nome"))),
+    ]);
 
     todasAsAtas = atasSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
+    todosOsProfissionais = profissionaisSnapshot.docs.map(
+      (doc) => doc.data().nome
+    );
 
-    todosOsProfissionais = profissionaisSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    // Renderiza a aba ativa por padrão (resumo geral)
+    renderizarResumo(todasAsAtas, todosOsProfissionais);
+    renderizarParticipacao(todasAsAtas, todosOsProfissionais);
+    renderizarFeedbacks(todasAsAtas, todosOsProfissionais);
 
-    todosOsAgendamentos = agendamentosSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    console.log("[RELATÓRIO] Dados carregados:");
-    console.log("Atas:", todasAsAtas.length);
-    console.log("Profissionais:", todosOsProfissionais.length);
-    console.log("Agendamentos:", todosOsAgendamentos);
-
-    renderizarRelatorios();
+    console.log(
+      `[RELATÓRIO] Carregados ${todasAsAtas.length} atas e ${todosOsProfissionais.length} profissionais.`
+    );
   } catch (error) {
-    console.error("[RELATÓRIO] Erro ao carregar dados:", error);
+    console.error("[RELATÓRIO] Erro ao carregar relatórios:", error);
+    mostrarErro("Erro ao carregar dados do Firestore. Verifique a conexão.");
   }
 }
 
 function setupEventListeners() {
-  document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("tab-button")) {
-      const tabName = e.target.dataset.tab;
-      trocarAba(tabName);
-    }
+  const viewContainer = document.querySelector(".view-container");
+  if (!viewContainer) return;
 
-    if (e.target.classList.contains("accordion-header")) {
-      e.target.parentElement.classList.toggle("active");
-    }
-
-    if (e.target.classList.contains("checkbox-presenca")) {
-      marcarPresenca(e.target);
+  // Event delegation centralizado para tabs (corrige cliques intermitentes)
+  viewContainer.addEventListener("click", (e) => {
+    if (e.target.matches(".tab-link")) {
+      e.preventDefault();
+      const targetTab = e.target.dataset.tab;
+      trocarAba(targetTab);
+      console.log(`[RELATÓRIO] Tab trocada para: ${targetTab}`);
     }
   });
+
+  // Fallback para touch events em mobile (melhora responsividade)
+  viewContainer.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.target.matches(".tab-link")) {
+        e.preventDefault(); // Evita zoom indesejado
+      }
+    },
+    { passive: false }
+  );
 }
 
-function trocarAba(tabName) {
-  document.querySelectorAll(".tab-button").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === tabName);
-  });
+function trocarAba(tabId) {
+  // Remove active de todas as tabs e conteúdos
+  document
+    .querySelectorAll(".tab-link")
+    .forEach((btn) => btn.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((content) => content.classList.remove("active"));
 
-  document.querySelectorAll(".tab-content").forEach((content) => {
-    content.classList.toggle("active", content.id === `tab-${tabName}`);
-  });
+  // Ativa a aba selecionada
+  const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+  const activeContent = document.getElementById(tabId);
+  if (activeBtn) activeBtn.classList.add("active");
+  if (activeContent) activeContent.classList.add("active");
 
-  if (tabName === "feedbacks") {
-    renderizarFeedbacks();
-  } else if (tabName === "agendados") {
-    renderizarAgendados();
-  }
+  // Scroll suave para o topo da aba
+  activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function renderizarRelatorios() {
-  const container = document.getElementById("relatorio-feedback-container");
+// Renderização da aba "Resumo Geral" (estatísticas totais)
+function renderizarResumo(atas, profissionais) {
+  const container = document.getElementById("resumo-container");
+  if (!container) return;
 
   container.innerHTML = `
-    <div class="relatorios-header">
-      <h2>Relatórios</h2>
-      <div class="tabs">
-        <button class="tab-button active" data-tab="feedbacks">Feedbacks de Reuniões</button>
-        <button class="tab-button" data-tab="agendados">Agendados</button>
-      </div>
-    </div>
-
-    <div id="tab-feedbacks" class="tab-content active">
-      <div id="feedbacks-list"></div>
-    </div>
-
-    <div id="tab-agendados" class="tab-content">
-      <div id="agendados-list"></div>
-    </div>
-  `;
-
-  renderizarFeedbacks();
+        <div class="card-header">
+            <h3>Resumo Geral das Reuniões</h3>
+        </div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">event</span>
+                    <h4>${atas.length}</h4>
+                    <p>Total de Reuniões</p>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">group</span>
+                    <h4>${profissionais.length}</h4>
+                    <p>Profissionais Cadastrados</p>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">thumb_up</span>
+                    <h4>${calcularMediaFeedbacks(atas)}</h4>
+                    <p>Média de Satisfação (%)</p>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Reunião Mais Recente</th>
+                            <th>Data</th>
+                            <th>Participantes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${atas
+                          .slice(0, 5)
+                          .map(
+                            (ata) => `
+                            <tr>
+                                <td>${ata.titulo || "Reunião Técnica"}</td>
+                                <td>${new Date(
+                                  ata.dataReuniao?.toDate()
+                                ).toLocaleDateString("pt-BR")}</td>
+                                <td>${ata.participantes?.length || 0}</td>
+                            </tr>
+                        `
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
 }
 
-function renderizarFeedbacks() {
-  const feedbacksList = document.getElementById("feedbacks-list");
+// Nova função para aba "Resumo de Participação" (estatísticas de presença)
+function renderizarParticipacao(atas, profissionais) {
+  const container = document.getElementById("participacao-container");
+  if (!container) return;
 
-  if (todasAsAtas.length === 0) {
-    feedbacksList.innerHTML = `
-      <div class="empty-state">
-        <p>Nenhuma reunião técnica com feedback encontrada.</p>
-      </div>
+  const participacoes = calcularParticipacoes(atas, profissionais);
+  const taxaMedia = (
+    (participacoes.totalPresencas / (atas.length * profissionais.length)) *
+    100
+  ).toFixed(1);
+
+  container.innerHTML = `
+        <div class="card-header">
+            <h3>Resumo de Participação</h3>
+            <p>Taxa média de comparecimento: ${taxaMedia}%</p>
+        </div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card success">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <h4>${participacoes.totalPresencas}</h4>
+                    <p>Total de Presenças</p>
+                </div>
+                <div class="stat-card warning">
+                    <span class="material-symbols-outlined">warning</span>
+                    <h4>${participacoes.totalAusencias}</h4>
+                    <p>Total de Ausências</p>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">leaderboard</span>
+                    <h4>${participacoes.topParticipantes.length}</h4>
+                    <p>Top Participantes (>80%)</p>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Profissional</th>
+                            <th>Presenças</th>
+                            <th>Ausências</th>
+                            <th>Taxa (%)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${participacoes.topParticipantes
+                          .map(
+                            (prof) => `
+                            <tr>
+                                <td>${prof.nome}</td>
+                                <td>${prof.presencas}</td>
+                                <td>${prof.ausencias}</td>
+                                <td>${prof.taxa.toFixed(1)}%</td>
+                                <td>
+                                    <button class="btn btn-sm btn-secondary" onclick="exportarParticipante('${
+                                      prof.nome
+                                    }')">Exportar</button>
+                                </td>
+                            </tr>
+                        `
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+                ${
+                  participacoes.totalPresencas > 0
+                    ? `
+                    <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
+                `
+                    : ""
+                }
+            </div>
+        </div>
     `;
+}
+
+// Renderização da aba "Feedbacks por Reunião" (mantida com otimizações)
+function renderizarFeedbacks(atas, profissionais) {
+  const container = document.getElementById("feedback-container");
+  if (!container) return;
+
+  if (atas.length === 0) {
+    container.innerHTML =
+      '<p class="alert alert-info">Nenhuma ata com feedbacks encontrada.</p>';
     return;
   }
 
-  const atasComFeedback = todasAsAtas.filter(
-    (ata) => ata.feedbacks && ata.feedbacks.length > 0
-  );
-
-  if (atasComFeedback.length === 0) {
-    feedbacksList.innerHTML = `
-      <div class="empty-state">
-        <p>Nenhum feedback recebido ainda.</p>
-      </div>
+  container.innerHTML = `
+        <div class="card-header">
+            <h3>Feedbacks por Reunião</h3>
+        </div>
+        <div class="card-body">
+            <div class="accordion">
+                ${atas
+                  .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
+                  .map(
+                    (ata) => `
+                        <div class="accordion-item">
+                            <button class="accordion-header" data-ata-id="${
+                              ata.id
+                            }">
+                                <span class="material-symbols-outlined">event</span>
+                                ${ata.titulo || "Reunião"} - ${new Date(
+                      ata.dataReuniao?.toDate()
+                    ).toLocaleDateString("pt-BR")}
+                                <span class="accordion-icon">+</span>
+                            </button>
+                            <div class="accordion-content">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Profissional</th>
+                                            ${Object.keys(perguntasTexto)
+                                              .map(
+                                                (q) =>
+                                                  `<th>${perguntasTexto[q]}</th>`
+                                              )
+                                              .join("")}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${ata.feedbacks
+                                          .map(
+                                            (fb) => `
+                                            <tr>
+                                                <td>${fb.profissional}</td>
+                                                ${Object.keys(perguntasTexto)
+                                                  .map(
+                                                    (q) =>
+                                                      `<td>${
+                                                        fb[q] || "N/R"
+                                                      }</td>`
+                                                  )
+                                                  .join("")}
+                                            </tr>
+                                        `
+                                          )
+                                          .join("")}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `
+                  )
+                  .join("")}
+            </div>
+        </div>
     `;
-    return;
-  }
 
-  const accordionHTML = atasComFeedback
-    .map(
-      (ata) => `
-      <div class="accordion-item">
-        <div class="accordion-header">
-          <div class="accordion-title">
-            <strong>${ata.pauta || ata.tema || "Sem tema"}</strong>
-            <span class="badge">${ata.feedbacks.length} feedback(s)</span>
-          </div>
-          <div class="accordion-meta">
-            ${formatarData(ata.dataReuniao)} às ${ata.horaInicio || ""}
-          </div>
-          <span class="accordion-icon">▼</span>
-        </div>
-        <div class="accordion-content">
-          ${renderizarFeedbacksAta(ata)}
-        </div>
-      </div>
-    `
-    )
-    .join("");
-
-  feedbacksList.innerHTML = accordionHTML;
+  // Event listeners para accordions (delegated)
+  const accordionHeaders = container.querySelectorAll(".accordion-header");
+  accordionHeaders.forEach((header) => {
+    header.addEventListener("click", () => {
+      const content = header.nextElementSibling;
+      const icon = header.querySelector(".accordion-icon");
+      content.classList.toggle("active");
+      icon.textContent = content.classList.contains("active") ? "−" : "+";
+    });
+  });
 }
 
-function renderizarFeedbacksAta(ata) {
-  if (!ata.feedbacks || ata.feedbacks.length === 0) {
-    return "<p>Nenhum feedback registrado.</p>";
-  }
-
-  return ata.feedbacks
-    .map((feedback) => {
-      const profissional = todosOsProfissionais.find(
-        (p) => p.id === feedback.profissionalId
-      );
-      const nomeProfissional = profissional
-        ? profissional.nome
-        : "Profissional desconhecido";
-
-      return `
-        <div class="feedback-card">
-          <h4>${nomeProfissional}</h4>
-          <div class="feedback-respostas">
-            <p><strong>${perguntasTexto.clareza}</strong><br/>
-            ${formatarResposta(feedback.clareza)}</p>
-
-            <p><strong>${perguntasTexto.objetivos}</strong><br/>
-            ${formatarResposta(feedback.objetivos)}</p>
-
-            <p><strong>${perguntasTexto.duracao}</strong><br/>
-            ${formatarResposta(feedback.duracao)}</p>
-
-            ${
-              feedback.sugestaoTema
-                ? `<p><strong>${perguntasTexto.sugestaoTema}</strong><br/>
-              ${feedback.sugestaoTema}</p>`
-                : ""
-            }
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+// Funções auxiliares para cálculos
+function calcularMediaFeedbacks(atas) {
+  let totalFeedbacks = 0;
+  let totalAvaliacoes = 0;
+  atas.forEach((ata) => {
+    if (ata.feedbacks) {
+      ata.feedbacks.forEach((fb) => {
+        const nota =
+          (fb.clareza === "Sim" ? 1 : 0) +
+          (fb.objetivos === "Sim" ? 1 : 0) +
+          (fb.duracao === "Sim" ? 1 : 0);
+        totalAvaliacoes += 3;
+        totalFeedbacks += nota;
+      });
+    }
+  });
+  return totalAvaliacoes > 0
+    ? Math.round((totalFeedbacks / totalAvaliacoes) * 100)
+    : 0;
 }
 
-function renderizarAgendados() {
-  const agendadosList = document.getElementById("agendados-list");
+function calcularParticipacoes(atas, profissionais) {
+  const participacoes = {};
+  profissionais.forEach((prof) => {
+    participacoes[prof] = { presencas: 0, ausencias: 0, totalReunioes: 0 };
+  });
 
-  if (todosOsAgendamentos.length === 0) {
-    agendadosList.innerHTML = `
-      <div class="empty-state">
-        <p>Nenhuma reunião com voluntário agendada.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const accordionHTML = todosOsAgendamentos
-    .map(
-      (agendamento) => `
-      <div class="accordion-item">
-        <div class="accordion-header">
-          <div class="accordion-title">
-            <strong>Reunião com Voluntário</strong>
-            <span class="badge">${contarInscritos(
-              agendamento
-            )} inscrito(s)</span>
-          </div>
-          <div class="accordion-meta">
-            ${formatarDataCriacao(agendamento.criadoEm)}
-          </div>
-          <span class="accordion-icon">▼</span>
-        </div>
-        <div class="accordion-content">
-          ${renderizarTabelaAgendados(agendamento)}
-        </div>
-      </div>
-    `
-    )
-    .join("");
-
-  agendadosList.innerHTML = accordionHTML;
-}
-
-function renderizarTabelaAgendados(agendamento) {
-  const inscritos = [];
-
-  // ✅ CORRIGIDO: Pega o gestorNome de cada slot individual
-  agendamento.slots?.forEach((slot) => {
-    slot.vagas?.forEach((vaga) => {
-      if (vaga.profissionalId) {
-        const profissional = todosOsProfissionais.find(
-          (p) => p.id === vaga.profissionalId
-        );
-        inscritos.push({
-          nome: profissional?.nome || vaga.profissionalNome || "Desconhecido",
-          data: slot.data,
-          horario: `${slot.horaInicio} - ${slot.horaFim}`,
-          gestor: slot.gestorNome || "Não especificado", // ✅ Agora pega do slot
-          presente: vaga.presente || false,
-          vagaId: vaga.id,
-          slotData: slot.data,
-          slotHoraInicio: slot.horaInicio,
-          agendamentoId: agendamento.id,
-        });
+  atas.forEach((ata) => {
+    const presentes = ata.participantes || [];
+    profissionais.forEach((prof) => {
+      participacoes[prof].totalReunioes++;
+      if (presentes.includes(prof)) {
+        participacoes[prof].presencas++;
+      } else {
+        participacoes[prof].ausencias++;
       }
     });
   });
 
-  if (inscritos.length === 0) {
-    return "<p>Nenhum profissional inscrito ainda.</p>";
-  }
+  const topParticipantes = Object.entries(participacoes)
+    .map(([nome, dados]) => ({
+      nome,
+      presencas: dados.presencas,
+      ausencias: dados.ausencias,
+      taxa: (dados.presencas / dados.totalReunioes) * 100,
+    }))
+    .filter((p) => p.taxa >= 80)
+    .sort((a, b) => b.taxa - a.taxa)
+    .slice(0, 10);
 
-  const linhasTabela = inscritos
-    .map(
-      (inscrito) => `
-      <tr>
-        <td>${inscrito.nome}</td>
-        <td>${formatarData(inscrito.data)}</td>
-        <td>${inscrito.horario}</td>
-        <td>${inscrito.gestor}</td>
-        <td class="text-center">
-          <input 
-            type="checkbox" 
-            class="checkbox-presenca" 
-            ${inscrito.presente ? "checked" : ""}
-            data-agendamento-id="${inscrito.agendamentoId}"
-            data-slot-data="${inscrito.slotData}"
-            data-slot-hora-inicio="${inscrito.slotHoraInicio}"
-            data-vaga-id="${inscrito.vagaId}"
-          />
-        </td>
-      </tr>
-    `
-    )
-    .join("");
-
-  return `
-    <table class="tabela-agendados">
-      <thead>
-        <tr>
-          <th>Nome do Profissional</th>
-          <th>Data da Reunião</th>
-          <th>Horário</th>
-          <th>Gestor Responsável</th>
-          <th class="text-center">Presença</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${linhasTabela}
-      </tbody>
-    </table>
-  `;
-}
-
-async function marcarPresenca(checkbox) {
-  const agendamentoId = checkbox.dataset.agendamentoId;
-  const slotData = checkbox.dataset.slotData;
-  const slotHoraInicio = checkbox.dataset.slotHoraInicio;
-  const vagaId = checkbox.dataset.vagaId;
-  const presente = checkbox.checked;
-
-  try {
-    const agendamento = todosOsAgendamentos.find((a) => a.id === agendamentoId);
-
-    // ✅ Busca slot por data E hora de início para garantir o slot correto
-    const slot = agendamento.slots.find(
-      (s) => s.data === slotData && s.horaInicio === slotHoraInicio
-    );
-
-    if (!slot) {
-      throw new Error("Slot não encontrado");
-    }
-
-    const vaga = slot.vagas.find((v) => v.id === vagaId);
-
-    if (vaga) {
-      vaga.presente = presente;
-
-      await updateDoc(
-        doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
-        {
-          slots: agendamento.slots,
-        }
-      );
-
-      console.log("[RELATÓRIO] Presença atualizada com sucesso!");
-    }
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro ao marcar presença:", error);
-    checkbox.checked = !presente;
-    alert("Erro ao atualizar presença. Tente novamente.");
-  }
-}
-
-function contarInscritos(agendamento) {
-  let total = 0;
-  agendamento.slots?.forEach((slot) => {
-    total += slot.vagas?.filter((v) => v.profissionalId).length || 0;
-  });
-  return total;
-}
-
-function formatarResposta(valor) {
-  const respostas = {
-    5: "⭐⭐⭐⭐⭐ Excelente",
-    4: "⭐⭐⭐⭐ Bom",
-    3: "⭐⭐⭐ Regular",
-    2: "⭐⭐ Insuficiente",
-    1: "⭐ Inadequado",
+  return {
+    totalPresencas: Object.values(participacoes).reduce(
+      (sum, p) => sum + p.presencas,
+      0
+    ),
+    totalAusencias: Object.values(participacoes).reduce(
+      (sum, p) => sum + p.ausencias,
+      0
+    ),
+    topParticipantes,
   };
-  return respostas[valor] || valor;
 }
 
-function formatarData(dataISO) {
-  if (!dataISO) return "Data não informada";
-  const [ano, mes, dia] = dataISO.split("-");
-  return `${dia}/${mes}/${ano}`;
+function mostrarErro(mensagem) {
+  const containers = document.querySelectorAll(".card");
+  containers.forEach((container) => {
+    container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
+  });
 }
 
-function formatarDataCriacao(timestamp) {
-  if (!timestamp) return "Data não informada";
+// Funções globais para exportações (chamadas via onclick no HTML)
+window.exportarRelatorioParticipacao = function () {
+  // Implementação CSV básica - pode ser expandida
+  const participacoes = calcularParticipacoes(
+    todasAsAtas,
+    todosOsProfissionais
+  );
+  let csv = "Profissional,Presenças,Ausências,Taxa(%)\n";
+  participacoes.topParticipantes.forEach((p) => {
+    csv += `${p.nome},${p.presencas},${p.ausencias},${p.taxa.toFixed(1)}\n`;
+  });
+  downloadCSV(csv, "relatorio-participacao.csv");
+};
 
-  // Se for um timestamp do Firestore
-  if (timestamp && timestamp.toDate) {
-    const data = timestamp.toDate();
-    return `Criado em ${data.toLocaleDateString("pt-BR")}`;
-  }
+window.exportarParticipante = function (nome) {
+  // Export individual - placeholder para expansão
+  alert(`Exportando dados de ${nome}... (implementar função específica)`);
+};
 
-  return "Data não informada";
+function downloadCSV(csvContent, filename) {
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
