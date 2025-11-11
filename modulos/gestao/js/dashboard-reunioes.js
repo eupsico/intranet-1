@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.1 (Tabelas + Gráficos Visuais)
+// VERSÃO 5.3 (Coluna "Presença" com Taxa de Comparecer)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -28,7 +28,7 @@ function normalizarParticipantes(participantes) {
 }
 
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v5.1 - Tabelas + Gráficos).");
+  console.log("[DASH] Dashboard iniciado (v5.3 - Presença de Voluntários).");
   configurarEventListeners();
   carregarDados();
 }
@@ -298,6 +298,12 @@ function renderizarTabelaAtasPorTipo() {
 
   if (totalAtas === 0) {
     container.innerHTML = `
+            <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
+                <h5 class="mb-0">
+                    <span class="material-symbols-outlined me-2" style="vertical-align: middle;">bar_chart</span>
+                    Atas por Tipo de Reunião
+                </h5>
+            </div>
             <div class="alert alert-info text-center">
                 <p class="mb-0">Nenhuma ata registrada.</p>
             </div>
@@ -328,6 +334,12 @@ function renderizarTabelaAtasPorTipo() {
     .join("");
 
   container.innerHTML = `
+        <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
+            <h5 class="mb-0">
+                <span class="material-symbols-outlined me-2" style="vertical-align: middle;">bar_chart</span>
+                Atas por Tipo de Reunião
+            </h5>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover table-bordered">
                 <thead class="table-light">
@@ -335,7 +347,7 @@ function renderizarTabelaAtasPorTipo() {
                         <th>Tipo de Reunião</th>
                         <th class="text-center">Quantidade</th>
                         <th class="text-center">Percentual</th>
-                        <th>Visualização</th>
+                        <th>Gráfico</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -365,12 +377,33 @@ function renderizarTabelaAgendamentosPorGestor() {
 
   if (totalAgendamentosComGestor === 0) {
     container.innerHTML = `
+            <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
+                <h5 class="mb-0">
+                    <span class="material-symbols-outlined me-2" style="vertical-align: middle;">group</span>
+                    Agendamentos com Voluntários por Gestor
+                </h5>
+            </div>
             <div class="alert alert-info text-center">
                 <p class="mb-0">Nenhum agendamento encontrado.</p>
             </div>
         `;
     return;
   }
+
+  // Calcula presença por gestor
+  const presencaPorGestor = {};
+  todosOsAgendamentos.forEach((agendamento) => {
+    (agendamento.slots || []).forEach((slot) => {
+      const gestorNome = slot.gestorNome || "Gestor não especificado";
+      if (!presencaPorGestor[gestorNome]) {
+        presencaPorGestor[gestorNome] = { total: 0, presente: 0 };
+      }
+      (slot.vagas || []).forEach((vaga) => {
+        presencaPorGestor[gestorNome].total++;
+        if (vaga.presente) presencaPorGestor[gestorNome].presente++;
+      });
+    });
+  });
 
   const linhas = Object.entries(agendamentosPorGestor)
     .sort((a, b) => b[1] - a[1])
@@ -379,6 +412,30 @@ function renderizarTabelaAgendamentosPorGestor() {
         totalAgendamentosComGestor > 0
           ? Math.round((qtd / totalAgendamentosComGestor) * 100)
           : 0;
+
+      // Calcula presença deste gestor
+      const dadosPresenca = presencaPorGestor[gestor] || {
+        total: 0,
+        presente: 0,
+      };
+      const percentualPresenca =
+        dadosPresenca.total > 0
+          ? Math.round((dadosPresenca.presente / dadosPresenca.total) * 100)
+          : 0;
+
+      // Define cor baseado na presença
+      let corPresenca = "bg-danger"; // Vermelho: baixa presença
+      if (percentualPresenca >= 75)
+        corPresenca = "bg-success"; // Verde: alta presença
+      else if (percentualPresenca >= 50) corPresenca = "bg-warning"; // Amarelo: média presença
+
+      const iconePresenca =
+        percentualPresenca >= 75
+          ? "check_circle"
+          : percentualPresenca >= 50
+          ? "schedule"
+          : "close";
+
       return `
                 <tr>
                     <td><strong>${gestor}</strong></td>
@@ -386,9 +443,18 @@ function renderizarTabelaAgendamentosPorGestor() {
                     <td class="text-center">
                         <span class="badge bg-success">${percentual}%</span>
                     </td>
-                    <td>
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: ${percentual}%"></div>
+                    <td class="text-center">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <span class="material-symbols-outlined ${
+                              corPresenca === "bg-success"
+                                ? "text-success"
+                                : corPresenca === "bg-warning"
+                                ? "text-warning"
+                                : "text-danger"
+                            }" style="font-size: 20px;">${iconePresenca}</span>
+                            <span class="badge ${corPresenca}">${
+        dadosPresenca.presente
+      }/${dadosPresenca.total} (${percentualPresenca}%)</span>
                         </div>
                     </td>
                 </tr>
@@ -396,11 +462,38 @@ function renderizarTabelaAgendamentosPorGestor() {
     })
     .join("");
 
-  container.innerHTML = `
-        <div class="mb-3 p-3 bg-light rounded">
-            <p class="mb-1"><strong><span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">group</span> Total de Agendamentos:</strong> ${todosOsAgendamentos.length} reuniões</p>
-            <p class="mb-0"><strong><span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">person</span> Total de Vagas Agendadas:</strong> ${totalAgendamentosComGestor} slots</p>
+  // Cards de resumo
+  const cardsResumo = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card bg-light border-0" style="border-radius: 8px;">
+                    <div class="card-body text-center">
+                        <span class="material-symbols-outlined" style="font-size: 32px; color: #0d6efd;">event</span>
+                        <h3 class="mt-2">${todosOsAgendamentos.length}</h3>
+                        <p class="text-muted mb-0">Total de Agendamentos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-light border-0" style="border-radius: 8px;">
+                    <div class="card-body text-center">
+                        <span class="material-symbols-outlined" style="font-size: 32px; color: #198754;">person</span>
+                        <h3 class="mt-2">${totalAgendamentosComGestor}</h3>
+                        <p class="text-muted mb-0">Total de Vagas Agendadas</p>
+                    </div>
+                </div>
+            </div>
         </div>
+    `;
+
+  container.innerHTML = `
+        <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
+            <h5 class="mb-0">
+                <span class="material-symbols-outlined me-2" style="vertical-align: middle;">group</span>
+                Agendamentos com Voluntários por Gestor
+            </h5>
+        </div>
+        ${cardsResumo}
         <div class="table-responsive">
             <table class="table table-hover table-bordered">
                 <thead class="table-light">
@@ -408,7 +501,7 @@ function renderizarTabelaAgendamentosPorGestor() {
                         <th>Gestor</th>
                         <th class="text-center">Agendamentos</th>
                         <th class="text-center">Percentual</th>
-                        <th>Visualização</th>
+                        <th class="text-center">Presença</th>
                     </tr>
                 </thead>
                 <tbody>
