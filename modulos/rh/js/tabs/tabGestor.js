@@ -65,12 +65,6 @@ export async function renderizarEntrevistaGestor(state) {
     // Container com grid do rh.css (igual tabEntrevistas)
     let listaHtml = `
       <div class="candidatos-container candidatos-grid">
-        <div class="section-header">
-          <h3 class="section-title">
-            <i class="fas fa-users"></i> Candidaturas na Fase Entrevista com Gestor (${snapshot.size})
-          </h3>
-          <p class="section-description">Avaliação final antes da comunicação e contratação.</p>
-        </div>
     `;
 
     // Loop forEach EXATO do original com estrutura de cards do tabEntrevistas
