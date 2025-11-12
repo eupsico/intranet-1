@@ -51,7 +51,7 @@ export async function renderizarEntrevistaGestor(state) {
       return;
     }
 
-    // ✅ HTML COPIADO EXATAMENTE DO tabEntrevistas.js
+    // ✅ COPIADO EXATAMENTE DO tabEntrevistas.js
     let listaHtml = `
       <h3>Candidatos - Entrevista com Gestor</h3>
       <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
@@ -64,26 +64,14 @@ export async function renderizarEntrevistaGestor(state) {
       const statusAtual = cand.status_recrutamento || "N/A";
       const telefone = cand.telefone_contato || cand.telefone || "N/A";
 
-      // ✅ CÓDIGO EXATO DO tabEntrevistas.js
       listaHtml += `
         <div class="candidato-card">
           <h4>${nome}</h4>
           <p><strong>Status:</strong> ${statusAtual.replace(/_/g, " ")}</p>
-          <p>
-            <a href="https://wa.me/55${telefone.replace(/\D/g, "")}" 
-               target="_blank" 
-               class="telefone-badge"
-               ${
-                 !telefone || telefone === "N/A"
-                   ? 'style="pointer-events:none;opacity:0.5;"'
-                   : ""
-               }>
-              ${telefone}
-            </a>
-          </p>
+          <p>${telefone}</p>
           <button 
             class="btn btn-info" 
-            onclick='abrirDetalhesGestor("${candidatoId}", ${JSON.stringify(
+            onclick='window.abrirDetalhesGestor("${candidatoId}", ${JSON.stringify(
         cand
       ).replace(/'/g, "\\'")})'
             title="Ver detalhes do candidato">
@@ -91,7 +79,7 @@ export async function renderizarEntrevistaGestor(state) {
           </button>
           <button 
             class="btn btn-primary" 
-            onclick='abrirModalAvaliacaoGestor("${candidatoId}", ${JSON.stringify(
+            onclick='window.abrirModalAvaliacaoGestor("${candidatoId}", ${JSON.stringify(
         cand
       ).replace(/'/g, "\\'")})'
             title="Avaliar candidato">
@@ -110,92 +98,140 @@ export async function renderizarEntrevistaGestor(state) {
 }
 
 // ============================================
-// MODAL - DETALHES
+// MODAL - DETALHES (USA FUNÇÃO DO recrutamento.js)
 // ============================================
 
-window.abrirDetalhesGestor = function (candidatoId, dadosCandidato) {
-  const modal = document.getElementById("modal-candidato");
-  const modalBody = document.getElementById("candidato-modal-body");
-  const modalFooter = document.getElementById("candidato-modal-footer");
-  const modalTitulo = document.getElementById("candidato-nome-titulo");
+window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
+  console.log("Abrindo detalhes do candidato");
 
-  if (!modal || !modalBody) {
-    alert("Modal não disponível");
-    return;
+  // Usa a função global do recrutamento.js
+  if (window.abrirModalDetalhes) {
+    await window.abrirModalDetalhes(candidatoId, dadosCandidato);
+  } else {
+    // Fallback caso a função não esteja disponível
+    const modal = document.getElementById("modal-candidato");
+    const modalBody = document.getElementById("candidato-modal-body");
+    const modalFooter = document.getElementById("candidato-modal-footer");
+    const modalTitulo = document.getElementById("candidato-nome-titulo");
+
+    if (!modal || !modalBody) {
+      alert("Modal não disponível");
+      return;
+    }
+
+    modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
+
+    modalBody.innerHTML = `
+      <div class="info-section">
+        <h5>📋 Informações Pessoais</h5>
+        <p><strong>Nome Completo:</strong> ${
+          dadosCandidato.nome_completo || "N/A"
+        }</p>
+        <p><strong>Email:</strong> ${
+          dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
+        }</p>
+        <p><strong>Telefone (WhatsApp):</strong> ${
+          dadosCandidato.telefone_contato || "N/A"
+        }</p>
+        <p><strong>Localidade:</strong> ${dadosCandidato.cidade || "N/A"} / ${
+      dadosCandidato.estado || "N/A"
+    }</p>
+        <p><strong>Como Conheceu a EuPsico:</strong> ${
+          dadosCandidato.como_conheceu || "N/A"
+        }</p>
+      </div>
+
+      <div class="info-section">
+        <h5>💼 Experiência Profissional</h5>
+        <p><strong>Resumo da Experiência:</strong> ${
+          dadosCandidato.resumo_experiencia || "N/A"
+        }</p>
+        <p><strong>Habilidades/Competências:</strong> ${
+          dadosCandidato.habilidades || "N/A"
+        }</p>
+      </div>
+
+      <div class="info-section">
+        <h5>📊 Status Atual</h5>
+        <p><strong>Vaga Aplicada:</strong> ${
+          dadosCandidato.vaga_titulo || "N/A"
+        }</p>
+        <p><strong>Status do Recrutamento:</strong> <span class="status-badge badge-success">${statusAtual}</span></p>
+        <p><strong>Data da Candidatura:</strong> ${
+          dadosCandidato.data_candidatura
+            ? new Date(
+                dadosCandidato.data_candidatura.seconds * 1000
+              ).toLocaleDateString("pt-BR")
+            : "N/A"
+        }</p>
+      </div>
+
+      <div class="info-section">
+        <h5>✅ Triagem de Currículo</h5>
+        ${
+          dadosCandidato.triagem_rh
+            ? `
+          <p><strong>Resultado:</strong> <span class="status-badge badge-success">${
+            dadosCandidato.triagem_rh.resultado || "N/A"
+          }</span></p>
+          <p><strong>Data da Avaliação:</strong> ${
+            dadosCandidato.triagem_rh.data_avaliacao
+              ? new Date(
+                  dadosCandidato.triagem_rh.data_avaliacao.seconds * 1000
+                ).toLocaleDateString("pt-BR")
+              : "N/A"
+          }</p>
+          <p><strong>Pré-requisitos Atendidos:</strong> ${
+            dadosCandidato.triagem_rh.prerequisitos_atendidos || "N/A"
+          }</p>
+        `
+            : "<p>Triagem não realizada</p>"
+        }
+      </div>
+
+      <div class="info-section">
+        <h5>💬 Entrevista RH</h5>
+        ${
+          dadosCandidato.entrevista_rh
+            ? `
+          <p><strong>Resultado:</strong> ${
+            dadosCandidato.entrevista_rh.resultado || "N/A"
+          }</p>
+          <p><strong>Pontos Fortes:</strong> ${
+            dadosCandidato.entrevista_rh.pontos_fortes || "N/A"
+          }</p>
+          <p><strong>Pontos de Atenção:</strong> ${
+            dadosCandidato.entrevista_rh.pontos_atencao || "N/A"
+          }</p>
+        `
+            : "<p>Entrevista não realizada</p>"
+        }
+      </div>
+
+      <div class="info-section">
+        <h5>📝 Testes/Estudos</h5>
+        ${
+          dadosCandidato.testes_estudos
+            ? `
+          <p><strong>Status:</strong> ${
+            dadosCandidato.testes_estudos.status_resultado || "N/A"
+          }</p>
+        `
+            : "<p>Testes não realizados</p>"
+        }
+      </div>
+    `;
+
+    modalFooter.innerHTML = `
+      <button class="btn btn-secondary fechar-modal-candidato">Fechar</button>
+    `;
+
+    modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
+      modal.classList.remove("is-visible");
+    };
+
+    modal.classList.add("is-visible");
   }
-
-  modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
-
-  modalBody.innerHTML = `
-    <div class="info-box">
-      <h5>📋 Informações Básicas</h5>
-      <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
-      <p><strong>Email:</strong> ${
-        dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
-      }</p>
-      <p><strong>Telefone:</strong> ${
-        dadosCandidato.telefone_contato || dadosCandidato.telefone || "N/A"
-      }</p>
-    </div>
-
-    <div class="info-box">
-      <h5>✅ Triagem RH</h5>
-      ${
-        dadosCandidato.triagem_rh
-          ? `
-        <p><strong>Apto:</strong> ${
-          dadosCandidato.triagem_rh.apto_entrevista || "N/A"
-        }</p>
-        <p><strong>Observações:</strong> ${
-          dadosCandidato.triagem_rh.observacoes || "N/A"
-        }</p>
-      `
-          : "<p>Triagem não realizada</p>"
-      }
-    </div>
-
-    <div class="info-box">
-      <h5>💬 Entrevista RH</h5>
-      ${
-        dadosCandidato.entrevista_rh
-          ? `
-        <p><strong>Resultado:</strong> ${
-          dadosCandidato.entrevista_rh.resultado || "N/A"
-        }</p>
-        <p><strong>Pontos Fortes:</strong> ${
-          dadosCandidato.entrevista_rh.pontos_fortes || "N/A"
-        }</p>
-        <p><strong>Pontos de Atenção:</strong> ${
-          dadosCandidato.entrevista_rh.pontos_atencao || "N/A"
-        }</p>
-      `
-          : "<p>Entrevista não realizada</p>"
-      }
-    </div>
-
-    <div class="info-box">
-      <h5>📝 Testes/Estudos</h5>
-      ${
-        dadosCandidato.testes_estudos
-          ? `
-        <p><strong>Status:</strong> ${
-          dadosCandidato.testes_estudos.status_resultado || "N/A"
-        }</p>
-      `
-          : "<p>Testes não realizados</p>"
-      }
-    </div>
-  `;
-
-  modalFooter.innerHTML = `
-    <button class="btn btn-secondary fechar-modal-candidato">Fechar</button>
-  `;
-
-  modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
-    modal.classList.remove("is-visible");
-  };
-
-  modal.classList.add("is-visible");
 };
 
 // ============================================
@@ -203,6 +239,8 @@ window.abrirDetalhesGestor = function (candidatoId, dadosCandidato) {
 // ============================================
 
 window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
+  console.log("Abrindo modal de avaliação do gestor");
+
   const modal = document.getElementById("modal-candidato");
   const modalBody = document.getElementById("candidato-modal-body");
   const modalFooter = document.getElementById("candidato-modal-footer");
@@ -216,7 +254,7 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
   modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
 
   modalBody.innerHTML = `
-    <div class="info-box" style="background: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 20px;">
+    <div class="candidato-info-ficha" style="background: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
       <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
       <p><strong>Email:</strong> ${
         dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
@@ -230,12 +268,12 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
       <div class="form-group">
         <label><strong>O gestor aprovou o candidato?</strong></label>
         <div style="margin-top: 10px;">
-          <label style="display: block; margin: 10px 0;">
-            <input type="radio" name="aprovado_gestor" value="Sim" required>
+          <label style="display: block; margin: 10px 0; cursor: pointer;">
+            <input type="radio" name="aprovado_gestor" value="Sim" required style="margin-right: 8px;">
             <span>Sim - Aprovar para contratação</span>
           </label>
-          <label style="display: block; margin: 10px 0;">
-            <input type="radio" name="aprovado_gestor" value="Não" required>
+          <label style="display: block; margin: 10px 0; cursor: pointer;">
+            <input type="radio" name="aprovado_gestor" value="Não" required style="margin-right: 8px;">
             <span>Não - Reprovar candidato</span>
           </label>
         </div>
@@ -400,7 +438,7 @@ async function salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal) {
       handleTabClick({ currentTarget: activeTab });
     }
   } catch (error) {
-    console.error("❌ Erro ao salvar:", error);
+    console.error("Erro ao salvar:", error);
     window.showToast?.(
       `Erro ao registrar avaliação: ${error.message}`,
       "error"
