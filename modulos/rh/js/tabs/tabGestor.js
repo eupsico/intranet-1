@@ -31,7 +31,6 @@ export async function renderizarEntrevistaGestor(state) {
     <div class="loading-spinner">Carregando candidatos para Entrevista com Gestor...</div>`;
 
   try {
-    // ⚠️ QUERY ORIGINAL - NÃO MODIFICADA
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
@@ -39,7 +38,6 @@ export async function renderizarEntrevistaGestor(state) {
     );
     const snapshot = await getDocs(q);
 
-    // Atualiza contagem na aba
     const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="gestor"]'
     );
@@ -53,54 +51,47 @@ export async function renderizarEntrevistaGestor(state) {
       return;
     }
 
-    // ⚠️ HTML ORIGINAL - NÃO MODIFICADO
+    // ✅ HTML IDÊNTICO às outras abas - estrutura de CARDS
     let listaHtml = `
       <h3>Candidatos - Entrevista com Gestor</h3>
       <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Status</th>
-            <th>Etapa</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>`;
+      <div class="candidatos-grid">`;
 
-    snapshot.docs.forEach((doc) => {
-      const cand = doc.data();
-      const candidatoId = doc.id;
+    snapshot.docs.forEach((docSnap) => {
+      const cand = docSnap.data();
+      const candidatoId = docSnap.id;
       const nome = cand.nome_completo || "N/A";
       const statusAtual = cand.status_recrutamento || "N/A";
+      const telefone = cand.telefone || cand.telefonecontato || "N/A";
+
+      // Badge colorido baseado no status
+      let badgeClass = "badge-warning";
+      if (statusAtual.includes("Aprovado")) badgeClass = "badge-success";
+      else if (statusAtual.includes("Reprovado")) badgeClass = "badge-danger";
 
       listaHtml += `
-        <tr>
-          <td>${nome}</td>
-          <td><span class="badge badge-warning">${statusAtual}</span></td>
-          <td>Entrevista com Gestor</td>
-          <td>
-            <button 
-              class="btn btn-info btn-sm btn-detalhes-gestor" 
-              data-candidato-id="${candidatoId}">
+        <div class="card-candidato">
+          <div class="card-header">
+            <h4>${nome}</h4>
+          </div>
+          <div class="card-body">
+            <p><strong>Status:</strong> <span class="badge ${badgeClass}">${statusAtual}</span></p>
+            <p><strong>Telefone:</strong> ${telefone}</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-info btn-detalhes-gestor" data-candidato-id="${candidatoId}">
               <i class="fas fa-eye"></i> Detalhes
             </button>
-            <button 
-              class="btn btn-primary btn-sm btn-avaliar-gestor" 
-              data-candidato-id="${candidatoId}">
-              <i class="fas fa-edit"></i> Avaliar Gestor
+            <button class="btn btn-primary btn-avaliar-gestor" data-candidato-id="${candidatoId}">
+              <i class="fas fa-clipboard-check"></i> Avaliar Gestor
             </button>
-          </td>
-        </tr>`;
+          </div>
+        </div>`;
     });
 
-    listaHtml += `
-        </tbody>
-      </table>`;
+    listaHtml += `</div>`;
 
     conteudoRecrutamento.innerHTML = listaHtml;
-
-    // ✅ ÚNICA ADIÇÃO: Event listeners para os modals
     adicionarEventListeners(state);
   } catch (error) {
     console.error("Erro ao carregar candidatos (Gestor):", error);
@@ -110,7 +101,7 @@ export async function renderizarEntrevistaGestor(state) {
 }
 
 /**
- * ✅ NOVA FUNÇÃO: Adiciona event listeners
+ * Adiciona event listeners aos botões
  */
 function adicionarEventListeners(state) {
   document.querySelectorAll(".btn-detalhes-gestor").forEach((btn) => {
@@ -129,91 +120,16 @@ function adicionarEventListeners(state) {
 }
 
 /**
- * ✅ NOVA FUNÇÃO: Modal de Detalhes
+ * Modal de Detalhes - USANDO O MODAL EXISTENTE DO SISTEMA
  */
 async function abrirModalDetalhes(candidatoId, state) {
-  const { candidatosCollection } = state;
-
-  try {
-    const docRef = doc(candidatosCollection, candidatoId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      alert("Candidato não encontrado");
-      return;
-    }
-
-    const candidato = docSnap.data();
-
-    let modal = document.getElementById("modal-gestor-detalhes");
-    if (!modal) {
-      modal = criarModalDetalhes();
-    }
-
-    const modalBody = modal.querySelector(".modal-body");
-    modalBody.innerHTML = `
-      <h5>Informações do Candidato</h5>
-      <p><strong>Nome:</strong> ${candidato.nome_completo || "N/A"}</p>
-      <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-      <p><strong>Telefone:</strong> ${
-        candidato.telefone || candidato.telefonecontato || "N/A"
-      }</p>
-      
-      <hr>
-      
-      <h5>Triagem RH</h5>
-      ${
-        candidato.triagem_rh
-          ? `
-        <p><strong>Apto:</strong> ${
-          candidato.triagem_rh.apto_entrevista || "N/A"
-        }</p>
-        <p><strong>Obs:</strong> ${
-          candidato.triagem_rh.observacoes || "N/A"
-        }</p>
-      `
-          : "<p>Não realizada</p>"
-      }
-      
-      <hr>
-      
-      <h5>Entrevista RH</h5>
-      ${
-        candidato.entrevista_rh
-          ? `
-        <p><strong>Aprovado:</strong> ${
-          candidato.entrevista_rh.aprovado || "N/A"
-        }</p>
-        <p><strong>Pontos Fortes:</strong> ${
-          candidato.entrevista_rh.pontos_fortes || "N/A"
-        }</p>
-      `
-          : "<p>Não realizada</p>"
-      }
-      
-      <hr>
-      
-      <h5>Testes/Estudos</h5>
-      ${
-        candidato.testes_estudos
-          ? `
-        <p><strong>Status:</strong> ${
-          candidato.testes_estudos.status_resultado || "N/A"
-        }</p>
-      `
-          : "<p>Não realizados</p>"
-      }
-    `;
-
-    modal.style.display = "block";
-  } catch (error) {
-    console.error("Erro ao abrir detalhes:", error);
-    alert("Erro ao carregar detalhes");
-  }
+  // Usa a função global que já existe no recrutamento.js
+  const { abrirModalCandidato } = await import("../recrutamento.js");
+  await abrirModalCandidato(candidatoId, "detalhes");
 }
 
 /**
- * ✅ NOVA FUNÇÃO: Modal de Avaliação
+ * Modal de Avaliação - USANDO ESTRUTURA PADRÃO
  */
 async function abrirModalAvaliacao(candidatoId, state) {
   const { candidatosCollection } = state;
@@ -229,22 +145,34 @@ async function abrirModalAvaliacao(candidatoId, state) {
 
     const candidato = docSnap.data();
 
-    let modal = document.getElementById("modal-gestor-avaliacao");
-    if (!modal) {
-      modal = criarModalAvaliacao();
+    // Usa o modal global que já existe (modal-candidato)
+    const modal = document.getElementById("modal-candidato");
+    const modalBody = document.getElementById("candidato-modal-body");
+    const modalFooter = document.getElementById("candidato-modal-footer");
+    const modalTitulo = document.getElementById("candidato-nome-titulo");
+
+    if (!modal || !modalBody) {
+      alert("Modal não disponível");
+      return;
     }
 
-    const modalBody = modal.querySelector(".modal-body");
+    modalTitulo.textContent = `Avaliar Candidato - ${
+      candidato.nome_completo || "Candidato"
+    }`;
+
     modalBody.innerHTML = `
-      <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+      <div class="candidato-info-resumo" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
         <h5>${candidato.nome_completo || "Candidato"}</h5>
         <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
+        <p><strong>Telefone:</strong> ${
+          candidato.telefone || candidato.telefonecontato || "N/A"
+        }</p>
       </div>
 
       <form id="form-avaliacao-gestor">
         <div class="form-group">
           <label><strong>O gestor aprovou o candidato?</strong></label>
-          <div>
+          <div style="margin-top: 10px;">
             <label style="display: block; margin: 10px 0;">
               <input type="radio" name="aprovado" value="Sim" required> 
               Sim - Aprovar para contratação
@@ -278,6 +206,7 @@ async function abrirModalAvaliacao(candidatoId, state) {
       </form>
     `;
 
+    // Toggle motivo reprovação
     const radios = modalBody.querySelectorAll('input[name="aprovado"]');
     const motivoDiv = modalBody.querySelector("#motivo-reprovacao");
     radios.forEach((radio) => {
@@ -286,10 +215,23 @@ async function abrirModalAvaliacao(candidatoId, state) {
       });
     });
 
-    const btnSalvar = modal.querySelector(".btn-salvar");
-    btnSalvar.onclick = () => salvarAvaliacao(candidatoId, state, modal);
+    // Botões do footer
+    modalFooter.innerHTML = `
+      <button class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
+      <button class="btn btn-success btn-salvar-avaliacao-gestor">Salvar Avaliação</button>
+    `;
 
-    modal.style.display = "block";
+    // Event listener para salvar
+    modalFooter.querySelector(".btn-salvar-avaliacao-gestor").onclick = () => {
+      salvarAvaliacao(candidatoId, state, modal);
+    };
+
+    // Event listener para cancelar
+    modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
+      modal.classList.remove("is-visible");
+    };
+
+    modal.classList.add("is-visible");
   } catch (error) {
     console.error("Erro ao abrir modal:", error);
     alert("Erro ao abrir avaliação");
@@ -297,11 +239,11 @@ async function abrirModalAvaliacao(candidatoId, state) {
 }
 
 /**
- * ✅ NOVA FUNÇÃO: Salvar Avaliação
+ * Salvar Avaliação
  */
 async function salvarAvaliacao(candidatoId, state, modal) {
   const { candidatosCollection } = state;
-  const form = modal.querySelector("#form-avaliacao-gestor");
+  const form = document.getElementById("form-avaliacao-gestor");
 
   if (!form.checkValidity()) {
     form.reportValidity();
@@ -343,78 +285,11 @@ async function salvarAvaliacao(candidatoId, state, modal) {
 
     await updateDoc(docRef, updateData);
 
-    alert("Avaliação salva com sucesso!");
-    modal.style.display = "none";
+    window.showToast?.("Avaliação salva com sucesso!", "success");
+    modal.classList.remove("is-visible");
     renderizarEntrevistaGestor(state);
   } catch (error) {
     console.error("Erro ao salvar:", error);
-    alert("Erro ao salvar avaliação: " + error.message);
+    window.showToast?.("Erro ao salvar avaliação: " + error.message, "error");
   }
-}
-
-/**
- * ✅ NOVA FUNÇÃO: Criar Modal Detalhes
- */
-function criarModalDetalhes() {
-  const modal = document.createElement("div");
-  modal.id = "modal-gestor-detalhes";
-  modal.style.cssText =
-    "display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);";
-  modal.innerHTML = `
-    <div style="background:white;margin:5% auto;padding:20px;width:80%;max-width:600px;border-radius:8px;max-height:80vh;overflow-y:auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h4>Detalhes do Candidato</h4>
-        <button class="btn-fechar" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
-      </div>
-      <div class="modal-body"></div>
-      <div style="margin-top:20px;text-align:right;">
-        <button class="btn btn-secondary btn-fechar">Fechar</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  modal.querySelectorAll(".btn-fechar").forEach((btn) => {
-    btn.onclick = () => (modal.style.display = "none");
-  });
-
-  modal.onclick = (e) => {
-    if (e.target === modal) modal.style.display = "none";
-  };
-
-  return modal;
-}
-
-/**
- * ✅ NOVA FUNÇÃO: Criar Modal Avaliação
- */
-function criarModalAvaliacao() {
-  const modal = document.createElement("div");
-  modal.id = "modal-gestor-avaliacao";
-  modal.style.cssText =
-    "display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);";
-  modal.innerHTML = `
-    <div style="background:white;margin:5% auto;padding:20px;width:80%;max-width:600px;border-radius:8px;max-height:80vh;overflow-y:auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <h4>Avaliar Candidato - Entrevista com Gestor</h4>
-        <button class="btn-fechar" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
-      </div>
-      <div class="modal-body"></div>
-      <div style="margin-top:20px;text-align:right;">
-        <button class="btn btn-secondary btn-fechar" style="margin-right:10px;">Cancelar</button>
-        <button class="btn btn-success btn-salvar">Salvar Avaliação</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  modal.querySelectorAll(".btn-fechar").forEach((btn) => {
-    btn.onclick = () => (modal.style.display = "none");
-  });
-
-  modal.onclick = (e) => {
-    if (e.target === modal) modal.style.display = "none";
-  };
-
-  return modal;
 }
