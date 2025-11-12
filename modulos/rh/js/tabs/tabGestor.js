@@ -4,16 +4,20 @@ import {
   getDocs,
   query,
   where,
-  getDoc,
   doc,
   updateDoc,
   arrayUnion,
+  db,
+  addDoc,
+  getDoc,
 } from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
+ * Versão atualizada com layout consistente ao tabEntrevistas.js (grids, cards, badges e ações padronizadas).
  */
 export async function renderizarEntrevistaGestor(state) {
+  console.log("🔹 Gestor: Iniciando renderização");
   const {
     vagaSelecionadaId,
     conteudoRecrutamento,
@@ -23,428 +27,230 @@ export async function renderizarEntrevistaGestor(state) {
 
   if (!vagaSelecionadaId) {
     conteudoRecrutamento.innerHTML = `
-      <p class="alert alert-info">Nenhuma vaga selecionada.</p>`;
+      <div class="alert alert-info" style="border-left: 4px solid var(--cor-info);">
+        <i class="fas fa-info-circle"></i> Nenhuma vaga selecionada.
+      </div>
+    `;
+    console.log("ℹ️ Gestor: Vaga não selecionada");
     return;
   }
 
   conteudoRecrutamento.innerHTML = `
-    <div class="loading-spinner">Carregando candidatos para Entrevista com Gestor...</div>`;
+    <div class="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Entrevista com Gestor...
+    </div>
+  `;
 
   try {
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where("status_recrutamento", "==", "Entrevista Gestor Pendente")
+      where(
+        "status_recrutamento",
+        "==",
+        "Testes Aprovado (Entrevista Gestor Pendente)"
+      )
     );
+
     const snapshot = await getDocs(q);
 
+    // Atualiza contagem na aba
     const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="gestor"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-user-tie"></i> 4. Entrevista com Gestor (${snapshot.size})`;
+      tab.innerHTML = ` 4. Entrevista com Gestor (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML = `
-        <p class="alert alert-warning">Nenhum candidato na fase de Entrevista com Gestor.</p>`;
+        <div class="alert alert-warning" style="border-left: 4px solid var(--cor-warning);">
+          <i class="fas fa-exclamation-triangle"></i> Nenhum candidato na fase de Entrevista com Gestor.
+        </div>
+      `;
+      console.log("ℹ️ Gestor: Nenhum candidato encontrado");
       return;
     }
 
-    // ✅ COPIADO EXATAMENTE DO tabEntrevistas.js
     let listaHtml = `
-      <h3>Candidatos - Entrevista com Gestor</h3>
-      <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
-      <div class="candidatos-grid">`;
+      <div class="candidatos-container candidatos-grid">
+        <h3 class="section-title">
+          <i class="fas fa-users"></i> Candidatos para Entrevista com Gestor (${snapshot.size})
+        </h3>
+    `;
 
-    snapshot.docs.forEach((docSnap) => {
-      const cand = docSnap.data();
-      const candidatoId = docSnap.id;
-      const nome = cand.nome_completo || "N/A";
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const id = doc.id;
       const statusAtual = cand.status_recrutamento || "N/A";
-      const telefone = cand.telefone_contato || cand.telefone || "N/A";
+      const statusClass = statusAtual.includes("Pendente")
+        ? "status-warning"
+        : "status-info";
+
+      // Determina cor do status (similar ao tabEntrevistas)
+      let statusCor = "status-info";
+      if (statusAtual.includes("Aprovado")) statusCor = "status-success";
+      else if (statusAtual.includes("Pendente")) statusCor = "status-warning";
+      else if (statusAtual.includes("Rejeitado")) statusCor = "status-danger";
 
       listaHtml += `
-        <div class="candidato-card">
-          <h4>${nome}</h4>
-          <p><strong>Status:</strong> ${statusAtual.replace(/_/g, " ")}</p>
-          <p>${telefone}</p>
-          <button 
-            class="btn btn-info" 
-            onclick='window.abrirDetalhesGestor("${candidatoId}", ${JSON.stringify(
-        cand
-      ).replace(/'/g, "\\'")})'
-            title="Ver detalhes do candidato">
-            <i class="fas fa-eye"></i> Detalhes
-          </button>
-          <button 
-            class="btn btn-primary" 
-            onclick='window.abrirModalAvaliacaoGestor("${candidatoId}", ${JSON.stringify(
-        cand
-      ).replace(/'/g, "\\'")})'
-            title="Avaliar candidato">
-            <i class="fas fa-clipboard-check"></i> Avaliar Gestor
-          </button>
-        </div>`;
+        <div class="card card-candidato-gestor">
+          <div class="info-primaria">
+            <h4 class="nome-candidato">
+              ${cand.nome_completo || "Nome não informado"}
+              <span class="status-badge ${statusCor}">
+                <i class="fas fa-clock${
+                  statusAtual.includes("Pendente") ? "" : "-check"
+                }"></i>
+                ${statusAtual.replace(/_/g, " ")}
+              </span>
+            </h4>
+            <p class="small-info">
+              <i class="fas fa-briefcase"></i> Etapa: Entrevista com Gestor
+            </p>
+          </div>
+
+          ${
+            cand.email_candidato
+              ? `
+            <div class="info-contato">
+              <p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>
+              ${
+                cand.telefone_contato
+                  ? `
+                <p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>
+                <a href="#" class="link-contato whatsapp-link" onclick="enviarMensagemWhatsAppGestor('${id}', '${encodeURIComponent(
+                      JSON.stringify(cand)
+                    )}'); return false;">
+                  <i class="fab fa-whatsapp"></i> Enviar WhatsApp
+                </a>
+              `
+                  : ""
+              }
+            </div>
+          `
+              : ""
+          }
+
+          <div class="acoes-candidato">
+            <a href="#" class="action-button secondary" onclick="abrirModalAvaliacaoGestor('${id}', '${encodeURIComponent(
+        JSON.stringify(cand)
+      )}'); return false;">
+              <i class="fas fa-user-tie"></i> Avaliar Gestor
+            </a>
+            <button class="action-button info" onclick="abrirDetalhesCandidato('${id}');">
+              <i class="fas fa-eye"></i> Detalhes
+            </button>
+            ${
+              cand.link_curriculo_drive
+                ? `
+              <a href="${cand.link_curriculo_drive}" target="_blank" class="action-button primary">
+                <i class="fas fa-file-pdf"></i> Ver Currículo
+              </a>
+            `
+                : ""
+            }
+          </div>
+        </div>
+      `;
     });
 
-    listaHtml += `</div>`;
+    listaHtml += `
+      </div>
+    `;
+
     conteudoRecrutamento.innerHTML = listaHtml;
+    console.log(`✅ Gestor: ${snapshot.size} candidatos renderizados`);
   } catch (error) {
-    console.error("Erro ao carregar candidatos (Gestor):", error);
+    console.error("❌ Gestor: Erro ao carregar candidatos:", error);
     conteudoRecrutamento.innerHTML = `
-      <p class="alert alert-danger">Erro ao carregar a lista de candidatos: ${error.message}</p>`;
+      <div class="alert alert-danger" style="border-left: 4px solid var(--cor-danger);">
+        <i class="fas fa-exclamation-circle"></i> Erro ao carregar a lista de candidatos: ${error.message}
+      </div>
+    `;
   }
 }
 
 // ============================================
-// MODAL - DETALHES (USA FUNÇÃO DO recrutamento.js)
+// FUNÇÕES DE UTILIDADE (reaproveitadas do tabEntrevistas)
 // ============================================
 
-window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
-  console.log("Abrindo detalhes do candidato");
-
-  // Usa a função global do recrutamento.js
-  if (window.abrirModalDetalhes) {
-    await window.abrirModalDetalhes(candidatoId, dadosCandidato);
-  } else {
-    // Fallback caso a função não esteja disponível
-    const modal = document.getElementById("modal-candidato");
-    const modalBody = document.getElementById("candidato-modal-body");
-    const modalFooter = document.getElementById("candidato-modal-footer");
-    const modalTitulo = document.getElementById("candidato-nome-titulo");
-
-    if (!modal || !modalBody) {
-      alert("Modal não disponível");
+/**
+ * Envia mensagem de WhatsApp para agendamento com Gestor (adaptada para esta fase).
+ */
+window.enviarMensagemWhatsAppGestor = function (
+  candidatoId,
+  dadosCandidatoCodificados
+) {
+  try {
+    const candidato = JSON.parse(decodeURIComponent(dadosCandidatoCodificados));
+    if (!candidato.telefone_contato) {
+      console.warn("⚠️ Gestor: Telefone não disponível para envio de WhatsApp");
       return;
     }
 
-    modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
+    const mensagem = `🎉 *Olá ${candidato.nome_completo || "Candidato"}!* 🎉 
 
-    modalBody.innerHTML = `
-      <div class="info-section">
-        <h5>📋 Informações Pessoais</h5>
-        <p><strong>Nome Completo:</strong> ${
-          dadosCandidato.nome_completo || "N/A"
-        }</p>
-        <p><strong>Email:</strong> ${
-          dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
-        }</p>
-        <p><strong>Telefone (WhatsApp):</strong> ${
-          dadosCandidato.telefone_contato || "N/A"
-        }</p>
-        <p><strong>Localidade:</strong> ${dadosCandidato.cidade || "N/A"} / ${
-      dadosCandidato.estado || "N/A"
-    }</p>
-        <p><strong>Como Conheceu a EuPsico:</strong> ${
-          dadosCandidato.como_conheceu || "N/A"
-        }</p>
-      </div>
+Você foi aprovado(a) nos testes e está na fase final! 
 
-      <div class="info-section">
-        <h5>💼 Experiência Profissional</h5>
-        <p><strong>Resumo da Experiência:</strong> ${
-          dadosCandidato.resumo_experiencia || "N/A"
-        }</p>
-        <p><strong>Habilidades/Competências:</strong> ${
-          dadosCandidato.habilidades || "N/A"
-        }</p>
-      </div>
+📅 *Próximo Passo:* Entrevista com Gestor
+⏰ *O que esperar:* Conversa sobre fit cultural e expectativas
+📌 *Prepare-se:* Reflita sobre como você pode contribuir para nossa equipe
 
-      <div class="info-section">
-        <h5>📊 Status Atual</h5>
-        <p><strong>Vaga Aplicada:</strong> ${
-          dadosCandidato.vaga_titulo || "N/A"
-        }</p>
-        <p><strong>Status do Recrutamento:</strong> <span class="status-badge badge-success">${statusAtual}</span></p>
-        <p><strong>Data da Candidatura:</strong> ${
-          dadosCandidato.data_candidatura
-            ? new Date(
-                dadosCandidato.data_candidatura.seconds * 1000
-              ).toLocaleDateString("pt-BR")
-            : "N/A"
-        }</p>
-      </div>
+Estamos empolgados com seu potencial! 💙
 
-      <div class="info-section">
-        <h5>✅ Triagem de Currículo</h5>
-        ${
-          dadosCandidato.triagem_rh
-            ? `
-          <p><strong>Resultado:</strong> <span class="status-badge badge-success">${
-            dadosCandidato.triagem_rh.resultado || "N/A"
-          }</span></p>
-          <p><strong>Data da Avaliação:</strong> ${
-            dadosCandidato.triagem_rh.data_avaliacao
-              ? new Date(
-                  dadosCandidato.triagem_rh.data_avaliacao.seconds * 1000
-                ).toLocaleDateString("pt-BR")
-              : "N/A"
-          }</p>
-          <p><strong>Pré-requisitos Atendidos:</strong> ${
-            dadosCandidato.triagem_rh.prerequisitos_atendidos || "N/A"
-          }</p>
-        `
-            : "<p>Triagem não realizada</p>"
-        }
-      </div>
+*Equipe de Recrutamento - EuPsico*`;
 
-      <div class="info-section">
-        <h5>💬 Entrevista RH</h5>
-        ${
-          dadosCandidato.entrevista_rh
-            ? `
-          <p><strong>Resultado:</strong> ${
-            dadosCandidato.entrevista_rh.resultado || "N/A"
-          }</p>
-          <p><strong>Pontos Fortes:</strong> ${
-            dadosCandidato.entrevista_rh.pontos_fortes || "N/A"
-          }</p>
-          <p><strong>Pontos de Atenção:</strong> ${
-            dadosCandidato.entrevista_rh.pontos_atencao || "N/A"
-          }</p>
-        `
-            : "<p>Entrevista não realizada</p>"
-        }
-      </div>
-
-      <div class="info-section">
-        <h5>📝 Testes/Estudos</h5>
-        ${
-          dadosCandidato.testes_estudos
-            ? `
-          <p><strong>Status:</strong> ${
-            dadosCandidato.testes_estudos.status_resultado || "N/A"
-          }</p>
-        `
-            : "<p>Testes não realizados</p>"
-        }
-      </div>
-    `;
-
-    modalFooter.innerHTML = `
-      <button class="btn btn-secondary fechar-modal-candidato">Fechar</button>
-    `;
-
-    modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
-      modal.classList.remove("is-visible");
-    };
-
-    modal.classList.add("is-visible");
-  }
-};
-
-// ============================================
-// MODAL - AVALIAÇÃO GESTOR
-// ============================================
-
-window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
-  console.log("Abrindo modal de avaliação do gestor");
-
-  const modal = document.getElementById("modal-candidato");
-  const modalBody = document.getElementById("candidato-modal-body");
-  const modalFooter = document.getElementById("candidato-modal-footer");
-  const modalTitulo = document.getElementById("candidato-nome-titulo");
-
-  if (!modal || !modalBody) {
-    alert("Modal não disponível");
-    return;
-  }
-
-  modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
-
-  modalBody.innerHTML = `
-    <div class="candidato-info-ficha" style="background: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-      <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
-      <p><strong>Email:</strong> ${
-        dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
-      }</p>
-      <p><strong>Telefone:</strong> ${
-        dadosCandidato.telefone_contato || dadosCandidato.telefone || "N/A"
-      }</p>
-    </div>
-
-    <form id="form-avaliacao-gestor">
-      <div class="form-group">
-        <label><strong>O gestor aprovou o candidato?</strong></label>
-        <div style="margin-top: 10px;">
-          <label style="display: block; margin: 10px 0; cursor: pointer;">
-            <input type="radio" name="aprovado_gestor" value="Sim" required style="margin-right: 8px;">
-            <span>Sim - Aprovar para contratação</span>
-          </label>
-          <label style="display: block; margin: 10px 0; cursor: pointer;">
-            <input type="radio" name="aprovado_gestor" value="Não" required style="margin-right: 8px;">
-            <span>Não - Reprovar candidato</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-group" id="motivo-rejeicao-container" style="display: none;">
-        <label for="motivo-rejeicao">Motivo da Reprovação: <span style="color: red;">*</span></label>
-        <textarea 
-          id="motivo-rejeicao" 
-          name="motivo_rejeicao" 
-          class="form-control" 
-          rows="3"
-          placeholder="Descreva o motivo da reprovação..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="nome-gestor">Nome do Gestor: <span style="color: red;">*</span></label>
-        <input 
-          type="text" 
-          id="nome-gestor" 
-          name="nome_gestor" 
-          class="form-control" 
-          placeholder="Nome completo do gestor"
-          required>
-      </div>
-
-      <div class="form-group">
-        <label for="comentarios-gestor">Comentários da Entrevista:</label>
-        <textarea 
-          id="comentarios-gestor" 
-          name="comentarios_gestor" 
-          class="form-control" 
-          rows="4"
-          placeholder="Feedback geral sobre o candidato..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="data-entrevista-gestor">Data da Entrevista: <span style="color: red;">*</span></label>
-        <input 
-          type="date" 
-          id="data-entrevista-gestor" 
-          name="data_entrevista" 
-          class="form-control" 
-          required>
-      </div>
-    </form>
-  `;
-
-  const radios = modalBody.querySelectorAll('input[name="aprovado_gestor"]');
-  const motivoContainer = modalBody.querySelector("#motivo-rejeicao-container");
-  const motivoTextarea = modalBody.querySelector("#motivo-rejeicao");
-
-  radios.forEach((radio) => {
-    radio.addEventListener("change", (e) => {
-      if (e.target.value === "Não") {
-        motivoContainer.style.display = "block";
-        motivoTextarea.setAttribute("required", "required");
-      } else {
-        motivoContainer.style.display = "none";
-        motivoTextarea.removeAttribute("required");
-      }
-    });
-  });
-
-  modalFooter.innerHTML = `
-    <button class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
-    <button class="btn btn-success btn-salvar-avaliacao-gestor">
-      <i class="fas fa-check"></i> Salvar Avaliação
-    </button>
-  `;
-
-  modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
-    modal.classList.remove("is-visible");
-  };
-
-  modalFooter.querySelector(".btn-salvar-avaliacao-gestor").onclick =
-    async () => {
-      await salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal);
-    };
-
-  modal.classList.add("is-visible");
-};
-
-// ============================================
-// SALVAR AVALIAÇÃO
-// ============================================
-
-async function salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal) {
-  const form = document.getElementById("form-avaliacao-gestor");
-  const btnSalvar = document.querySelector(".btn-salvar-avaliacao-gestor");
-
-  if (!form.checkValidity()) {
-    form.reportValidity();
-    return;
-  }
-
-  const state = getGlobalState();
-  const {
-    candidatosCollection,
-    currentUserData,
-    handleTabClick,
-    statusCandidaturaTabs,
-  } = state;
-
-  const formData = new FormData(form);
-  const aprovado = formData.get("aprovado_gestor");
-  const nomeGestor = formData.get("nome_gestor");
-  const comentarios = formData.get("comentarios_gestor");
-  const dataEntrevista = formData.get("data_entrevista");
-  const motivo = formData.get("motivo_rejeicao");
-
-  btnSalvar.disabled = true;
-  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
-
-  const isAprovado = aprovado === "Sim";
-  const novoStatus = isAprovado
-    ? "Entrevista Gestor Aprovada - Comunicação Final (Aprovado - Próximo: Contratar)"
-    : "Rejeitado - Comunicação Pendente (Reprovado - Próximo: enviar mensagem)";
-
-  try {
-    const docRef = doc(candidatosCollection, candidatoId);
-
-    const updateData = {
-      entrevista_gestor: {
-        aprovado: aprovado,
-        nome_gestor: nomeGestor,
-        comentarios_gestor: comentarios || "",
-        data_entrevista: dataEntrevista,
-        data_avaliacao: new Date(),
-        avaliador_uid: currentUserData.id || "rh_system_user",
-      },
-      status_recrutamento: novoStatus,
-      ultima_atualizacao: new Date(),
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Avaliação Entrevista Gestor: ${
-          isAprovado ? "APROVADO" : "REPROVADO"
-        }. Status: ${novoStatus}`,
-        usuario: currentUserData.id || "rh_system_user",
-      }),
-    };
-
-    if (!isAprovado && motivo) {
-      updateData.rejeicao = {
-        etapa: "Entrevista com Gestor",
-        motivo: motivo,
-        data: new Date(),
-      };
-    }
-
-    await updateDoc(docRef, updateData);
-
-    window.showToast?.(
-      `Avaliação registrada. Status: ${novoStatus}`,
-      "success"
-    );
-
-    modal.classList.remove("is-visible");
-
-    const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
-    if (activeTab) {
-      handleTabClick({ currentTarget: activeTab });
-    }
+    const mensagemCodificada = encodeURIComponent(mensagem);
+    const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
+    const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
+    window.open(linkWhatsApp, "_blank");
+    console.log("✅ Gestor: Link WhatsApp gerado com sucesso");
   } catch (error) {
-    console.error("Erro ao salvar:", error);
+    console.error("❌ Gestor: Erro ao gerar mensagem WhatsApp:", error);
     window.showToast?.(
-      `Erro ao registrar avaliação: ${error.message}`,
+      "Erro ao gerar link de WhatsApp. Tente novamente.",
       "error"
     );
-  } finally {
-    btnSalvar.disabled = false;
-    btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvar Avaliação';
   }
-}
+};
+
+/**
+ * Abre modal de avaliação para Gestor (placeholder para consistência; implemente conforme necessário).
+ */
+window.abrirModalAvaliacaoGestor = function (
+  candidatoId,
+  dadosCandidatoCodificados
+) {
+  console.log(`🔹 Gestor: Abrindo modal de avaliação para ${candidatoId}`);
+  // Aqui você pode integrar com o modal existente ou criar novo, similar ao tabEntrevistas
+  const dadosCandidato = JSON.parse(
+    decodeURIComponent(dadosCandidatoCodificados)
+  );
+  // Exemplo: Preenche e abre modal (adapte IDs conforme seu HTML)
+  const modal = document.getElementById("modal-avaliacao-gestor"); // Assumindo que existe
+  if (modal) {
+    // Preenche campos como no tabEntrevistas
+    document
+      .getElementById("gestor-nome-candidato")
+      ?.setAttribute("textContent", dadosCandidato.nome_completo || "N/A");
+    modal.classList.add("is-visible");
+  } else {
+    window.showToast?.("Modal de avaliação não configurado.", "warning");
+  }
+};
+
+/**
+ * Abre detalhes do candidato (placeholder para consistência).
+ */
+window.abrirDetalhesCandidato = function (candidatoId) {
+  console.log(`🔹 Gestor: Abrindo detalhes do candidato ${candidatoId}`);
+  // Implemente navegação ou modal de detalhes, similar ao tabEntrevistas
+  window.showToast?.(`Detalhes do candidato ${candidatoId} abertos.`, "info");
+};
+
+// Funções de fechamento de modais (reaproveitadas)
+window.fecharModalAvaliacaoGestor = function () {
+  const modal = document.getElementById("modal-avaliacao-gestor");
+  if (modal) modal.classList.remove("is-visible");
+};
