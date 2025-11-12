@@ -123,11 +123,11 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "Aprovado"
           : "Reprovado/N/A";
       document.getElementById("resumo-entrevista-rh-gestor").textContent =
-        dadosCandidatura.entrevista_rh?.resultado === "Aprovado" // Corrigido para 'resultado'
+        dadosCandidatura.entrevista_rh?.resultado === "Aprovado"
           ? "Aprovado"
           : "Reprovado/N/A";
       document.getElementById("resumo-testes-gestor").textContent =
-        dadosCandidatura.avaliacao_teste?.resultado === "Aprovado" // Corrigido para 'avaliacao_teste.resultado'
+        dadosCandidatura.avaliacao_teste?.resultado === "Aprovado"
           ? "Aprovado"
           : "Reprovado/N/A";
 
@@ -143,12 +143,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // === FIM CORREÇÃO 2 ===
 
       // 4.2. Preencher avaliação do gestor se já existir
-      if (dadosCandidatura.entrevista_gestor) {
+      if (dadosCandidatura.entrevista_gestor?.aprovado) {
+        // Verifica se APROVADO existe
         const avaliacao = dadosCandidatura.entrevista_gestor;
         document.getElementById("nome-gestor").value =
           avaliacao.nome_gestor || "";
 
-        // Usa a data do agendamento se existir, senão a data_entrevista antiga
         document.getElementById("data-entrevista-gestor").value =
           avaliacao.agendamento?.data || avaliacao.data_entrevista || "";
 
@@ -178,10 +178,10 @@ document.addEventListener("DOMContentLoaded", () => {
           );
         }
 
-        // Se a avaliação já foi registrada, exibe a seção de comunicação
+        // Se a avaliação já foi registrada, esconde o formulário e exibe a comunicação
         ultimaDecisaoGestor = avaliacao.aprovado;
         formAvaliacaoGestor.style.display = "none";
-        exibirSecaoComunicacao(ultimaDecisaoGestor);
+        secaoComunicacao.style.display = "block"; // Garante que a comunicação apareça
       } else {
         // === INÍCIO CORREÇÃO 1: Garantir visibilidade do formulário ===
         mostrarAlerta(
@@ -192,6 +192,16 @@ document.addEventListener("DOMContentLoaded", () => {
         formAvaliacaoGestor.style.display = "block";
         secaoComunicacao.style.display = "none";
         // === FIM CORREÇÃO 1 ===
+
+        // Preenche dados já existentes mesmo sem avaliação (Ex: agendamento)
+        if (dadosCandidatura.entrevista_gestor) {
+          document.getElementById("data-entrevista-gestor").value =
+            dadosCandidatura.entrevista_gestor.agendamento?.data ||
+            dadosCandidatura.entrevista_gestor.data_entrevista ||
+            "";
+          document.getElementById("nome-gestor").value =
+            dadosCandidatura.entrevista_gestor.nome_gestor || "";
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar dados da candidatura:", error);
@@ -292,23 +302,18 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const candidaturaRef = db.collection("candidaturas").doc(candidaturaId);
 
-      const updateData = {
-        status_recrutamento: novoStatusCandidato,
-        // Mescla a nova avaliação com dados existentes (como o agendamento)
-        entrevista_gestor: firebase.firestore.FieldValue.delete(), // Limpa o campo antigo
-      };
-      await candidaturaRef.update(updateData); // Limpa primeiro
-
+      // Mescla a nova avaliação com dados existentes (como o agendamento)
+      // Usando set com merge: true para garantir que o 'agendamento' não seja perdido
       await candidaturaRef.set(
         {
+          status_recrutamento: novoStatusCandidato,
           entrevista_gestor: {
             ...(dadosCandidatura.entrevista_gestor || {}), // Mantém agendamento
             ...dadosAvaliacao, // Sobrescreve com novos dados
           },
-          status_recrutamento: novoStatusCandidato,
         },
-        { merge: true }
-      ); // Adiciona os dados
+        { merge: true } // Mescla com o documento existente
+      );
 
       // Se reprovado, adiciona a rejeição
       if (!decisao) {
@@ -444,7 +449,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(
         "ERRO: Elementos do modal de agendamento do RH não encontrados."
       );
-      alert("Erro ao abrir o modal de agendamento.");
+      alert(
+        "Erro ao abrir o modal de agendamento. Verifique se o 'recrutamento.html' está carregado."
+      );
       return;
     }
 
@@ -527,8 +534,8 @@ document.addEventListener("DOMContentLoaded", () => {
               : "rh_system_user",
           }),
         },
-        { merge: true }
-      ); // Usamos merge:true para não apagar outros dados
+        { merge: true } // Usamos merge:true para não apagar outros dados
+      );
 
       // Atualizar o campo no formulário principal da página
       document.getElementById("data-entrevista-gestor").value = dataEntrevista;
