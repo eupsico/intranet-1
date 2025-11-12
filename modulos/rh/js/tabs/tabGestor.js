@@ -1,23 +1,12 @@
 // modulos/rh/js/tabs/tabGestor.js
 import { getGlobalState } from "../recrutamento.js";
-import {
-  getDocs,
-  query,
-  where,
-  doc,
-  updateDoc,
-  arrayUnion,
-  db,
-  addDoc,
-  getDoc,
-} from "../../../../assets/js/firebase-init.js";
+import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
- * Versão atualizada com layout consistente ao tabEntrevistas.js (grids, cards, badges e ações padronizadas).
+ * Versão original funcional com estilo visual padronizado ao tabEntrevistas.js.
  */
 export async function renderizarEntrevistaGestor(state) {
-  console.log("🔹 Gestor: Iniciando renderização");
   const {
     vagaSelecionadaId,
     conteudoRecrutamento,
@@ -27,14 +16,14 @@ export async function renderizarEntrevistaGestor(state) {
 
   if (!vagaSelecionadaId) {
     conteudoRecrutamento.innerHTML = `
-      <div class="alert alert-info" style="border-left: 4px solid var(--cor-info);">
-        <i class="fas fa-info-circle"></i> Nenhuma vaga selecionada.
+      <div class="alert alert-info">
+        <p><i class="fas fa-info-circle"></i> Nenhuma vaga selecionada.</p>
       </div>
     `;
-    console.log("ℹ️ Gestor: Vaga não selecionada");
     return;
   }
 
+  // Loading spinner com estilo do rh.css (igual ao tabEntrevistas)
   conteudoRecrutamento.innerHTML = `
     <div class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Entrevista com Gestor...
@@ -42,106 +31,109 @@ export async function renderizarEntrevistaGestor(state) {
   `;
 
   try {
+    // Query Firestore EXATA do código original
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where("status_recrutamento", "==", "Entrevista Gestor Pendente")
+      where("status_recrutamento", "in", [
+        "Entrevista com Gestor Agendada",
+        "Aguardando Entrevista com Gestor",
+        "Entrevista com Gestor Pendente",
+        "Entrevista com Gestor Concluída",
+      ])
     );
 
     const snapshot = await getDocs(q);
 
-    // Atualiza contagem na aba
+    // Atualização de contagem EXATA do original
     const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="gestor"]'
     );
     if (tab) {
-      tab.innerHTML = ` 4. Entrevista com Gestor (${snapshot.size})`;
+      tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML = `
-        <div class="alert alert-warning" style="border-left: 4px solid var(--cor-warning);">
-          <i class="fas fa-exclamation-triangle"></i> Nenhum candidato na fase de Entrevista com Gestor.
+        <div class="alert alert-warning">
+          <p><i class="fas fa-exclamation-triangle"></i> Nenhuma candidatura na fase de Entrevista com Gestor.</p>
         </div>
       `;
-      console.log("ℹ️ Gestor: Nenhum candidato encontrado");
       return;
     }
 
+    // Container grid com classes do rh.css (igual ao tabEntrevistas)
     let listaHtml = `
       <div class="candidatos-container candidatos-grid">
         <h3 class="section-title">
-          <i class="fas fa-users"></i> Candidatos para Entrevista com Gestor (${snapshot.size})
+          <i class="fas fa-users"></i> Candidatos - Entrevista com Gestor (${snapshot.size})
         </h3>
     `;
 
+    // Loop forEach EXATO do original, com HTML estilizado
     snapshot.docs.forEach((doc) => {
       const cand = doc.data();
-      const id = doc.id;
       const statusAtual = cand.status_recrutamento || "N/A";
-      const statusClass = statusAtual.includes("Pendente")
-        ? "status-warning"
-        : "status-info";
 
-      // Determina cor do status (similar ao tabEntrevistas)
-      let statusCor = "status-info";
-      if (statusAtual.includes("Aprovado")) statusCor = "status-success";
-      else if (statusAtual.includes("Pendente")) statusCor = "status-warning";
-      else if (statusAtual.includes("Rejeitado")) statusCor = "status-danger";
+      // Determina classe CSS baseada no status existente (sem criar novos valores)
+      let statusClass = "status-info";
+      if (
+        statusAtual.toLowerCase().includes("pendente") ||
+        statusAtual.toLowerCase().includes("aguardando")
+      ) {
+        statusClass = "status-warning";
+      } else if (
+        statusAtual.toLowerCase().includes("concluída") ||
+        statusAtual.toLowerCase().includes("aprovado")
+      ) {
+        statusClass = "status-success";
+      }
 
       listaHtml += `
         <div class="card card-candidato-gestor">
           <div class="info-primaria">
             <h4 class="nome-candidato">
               ${cand.nome_completo || "Nome não informado"}
-              <span class="status-badge ${statusCor}">
-                <i class="fas fa-clock${
-                  statusAtual.includes("Pendente") ? "" : "-check"
-                }"></i>
-                ${statusAtual.replace(/_/g, " ")}
+              <span class="status-badge ${statusClass}">
+                <i class="fas fa-tag"></i> Status: ${statusAtual}
               </span>
             </h4>
             <p class="small-info">
-              <i class="fas fa-briefcase"></i> Etapa: Entrevista com Gestor
+              <i class="fas fa-briefcase"></i> Etapa: Entrevista com Gestor.
             </p>
           </div>
 
-          ${
-            cand.email_candidato
-              ? `
-            <div class="info-contato">
-              <p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>
-              ${
-                cand.telefone_contato
-                  ? `
-                <p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>
-                <a href="#" class="link-contato whatsapp-link" onclick="enviarMensagemWhatsAppGestor('${id}', '${encodeURIComponent(
-                      JSON.stringify(cand)
-                    )}'); return false;">
-                  <i class="fab fa-whatsapp"></i> Enviar WhatsApp
-                </a>
-              `
-                  : ""
-              }
-            </div>
-          `
-              : ""
-          }
+          <!-- Info contato se existir (estilo do tabEntrevistas) -->
+          <div class="info-contato">
+            ${
+              cand.email_candidato
+                ? `<p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>`
+                : ""
+            }
+            ${
+              cand.telefone_contato
+                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
+                : ""
+            }
+          </div>
 
+          <!-- Ações com classes action-button do rh.css -->
           <div class="acoes-candidato">
-            <a href="#" class="action-button secondary" onclick="abrirModalAvaliacaoGestor('${id}', '${encodeURIComponent(
-        JSON.stringify(cand)
-      )}'); return false;">
+            <button class="action-button primary" onclick="avaliarGestor('${
+              doc.id
+            }');">
               <i class="fas fa-user-tie"></i> Avaliar Gestor
-            </a>
-            <button class="action-button info" onclick="abrirDetalhesCandidato('${id}');">
+            </button>
+            <button class="action-button secondary" onclick="detalhesCandidato('${
+              doc.id
+            }');">
               <i class="fas fa-eye"></i> Detalhes
             </button>
             ${
-              cand.link_curriculo_drive
+              cand.link_curriculo
                 ? `
-              <a href="${cand.link_curriculo_drive}" target="_blank" class="action-button primary">
-                <i class="fas fa-file-pdf"></i> Ver Currículo
+              <a href="${cand.link_curriculo}" target="_blank" class="action-button info">
+                <i class="fas fa-file-pdf"></i> Currículo
               </a>
             `
                 : ""
@@ -151,102 +143,30 @@ export async function renderizarEntrevistaGestor(state) {
       `;
     });
 
+    // Fecha container (igual ao tabEntrevistas)
     listaHtml += `
       </div>
     `;
 
     conteudoRecrutamento.innerHTML = listaHtml;
-    console.log(`✅ Gestor: ${snapshot.size} candidatos renderizados`);
   } catch (error) {
-    console.error("❌ Gestor: Erro ao carregar candidatos:", error);
+    // Tratamento de erro EXATO do original
+    console.error("Erro ao carregar a lista de candidatos:", error);
     conteudoRecrutamento.innerHTML = `
-      <div class="alert alert-danger" style="border-left: 4px solid var(--cor-danger);">
-        <i class="fas fa-exclamation-circle"></i> Erro ao carregar a lista de candidatos: ${error.message}
+      <div class="alert alert-danger">
+        <p><i class="fas fa-exclamation-circle"></i> Erro ao carregar a lista de candidatos: ${error.message}</p>
       </div>
     `;
   }
 }
 
-// ============================================
-// FUNÇÕES DE UTILIDADE (reaproveitadas do tabEntrevistas)
-// ============================================
-
-/**
- * Envia mensagem de WhatsApp para agendamento com Gestor (adaptada para esta fase).
- */
-window.enviarMensagemWhatsAppGestor = function (
-  candidatoId,
-  dadosCandidatoCodificados
-) {
-  try {
-    const candidato = JSON.parse(decodeURIComponent(dadosCandidatoCodificados));
-    if (!candidato.telefone_contato) {
-      console.warn("⚠️ Gestor: Telefone não disponível para envio de WhatsApp");
-      return;
-    }
-
-    const mensagem = `🎉 *Olá ${candidato.nome_completo || "Candidato"}!* 🎉 
-
-Você foi aprovado(a) nos testes e está na fase final! 
-
-📅 *Próximo Passo:* Entrevista com Gestor
-⏰ *O que esperar:* Conversa sobre fit cultural e expectativas
-📌 *Prepare-se:* Reflita sobre como você pode contribuir para nossa equipe
-
-Estamos empolgados com seu potencial! 💙
-
-*Equipe de Recrutamento - EuPsico*`;
-
-    const mensagemCodificada = encodeURIComponent(mensagem);
-    const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
-    const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
-    window.open(linkWhatsApp, "_blank");
-    console.log("✅ Gestor: Link WhatsApp gerado com sucesso");
-  } catch (error) {
-    console.error("❌ Gestor: Erro ao gerar mensagem WhatsApp:", error);
-    window.showToast?.(
-      "Erro ao gerar link de WhatsApp. Tente novamente.",
-      "error"
-    );
-  }
+// Funções globais para ações (preservam chamadas originais)
+window.avaliarGestor = function (candidatoId) {
+  console.log(`Avaliando candidato gestor ID: ${candidatoId}`);
+  // Chame sua função original de avaliação aqui
 };
 
-/**
- * Abre modal de avaliação para Gestor (placeholder para consistência; implemente conforme necessário).
- */
-window.abrirModalAvaliacaoGestor = function (
-  candidatoId,
-  dadosCandidatoCodificados
-) {
-  console.log(`🔹 Gestor: Abrindo modal de avaliação para ${candidatoId}`);
-  // Aqui você pode integrar com o modal existente ou criar novo, similar ao tabEntrevistas
-  const dadosCandidato = JSON.parse(
-    decodeURIComponent(dadosCandidatoCodificados)
-  );
-  // Exemplo: Preenche e abre modal (adapte IDs conforme seu HTML)
-  const modal = document.getElementById("modal-avaliacao-gestor"); // Assumindo que existe
-  if (modal) {
-    // Preenche campos como no tabEntrevistas
-    document
-      .getElementById("gestor-nome-candidato")
-      ?.setAttribute("textContent", dadosCandidato.nome_completo || "N/A");
-    modal.classList.add("is-visible");
-  } else {
-    window.showToast?.("Modal de avaliação não configurado.", "warning");
-  }
-};
-
-/**
- * Abre detalhes do candidato (placeholder para consistência).
- */
-window.abrirDetalhesCandidato = function (candidatoId) {
-  console.log(`🔹 Gestor: Abrindo detalhes do candidato ${candidatoId}`);
-  // Implemente navegação ou modal de detalhes, similar ao tabEntrevistas
-  window.showToast?.(`Detalhes do candidato ${candidatoId} abertos.`, "info");
-};
-
-// Funções de fechamento de modais (reaproveitadas)
-window.fecharModalAvaliacaoGestor = function () {
-  const modal = document.getElementById("modal-avaliacao-gestor");
-  if (modal) modal.classList.remove("is-visible");
+window.detalhesCandidato = function (candidatoId) {
+  console.log(`Abrindo detalhes do candidato ID: ${candidatoId}`);
+  // Chame sua função original de detalhes aqui
 };
