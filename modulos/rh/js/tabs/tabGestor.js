@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   Timestamp,
+  collection,
 } from "../../../../assets/js/firebase-init.js";
 
 /**
@@ -36,24 +37,34 @@ export async function renderizarEntrevistaGestor(state) {
     </div>`;
 
   try {
-    // ⚠️ CORRIGIDO: Usando status_recrutamento em vez de status_candidatura
+    // Busca TODOS os candidatos da vaga e filtra depois
     const q = query(
       candidatosCollection,
-      where("vagaId", "==", vagaSelecionadaId),
-      where("status_recrutamento", "==", "Entrevista Gestor Pendente")
+      where("vagaId", "==", vagaSelecionadaId)
     );
 
     const snapshot = await getDocs(q);
+
+    // Filtra localmente os que contêm "Entrevista Gestor Pendente" no status
+    const candidatosGestor = snapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const status = data.status_recrutamento || "";
+      return status.includes("Entrevista Gestor Pendente");
+    });
+
+    console.log(
+      `🔍 Encontrados ${candidatosGestor.length} candidatos para Entrevista com Gestor`
+    );
 
     // Atualiza a contagem na aba
     const tab = statusCandidaturaTabs?.querySelector(
       '.tab-link[data-status="gestor"]'
     );
     if (tab) {
-      tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
+      tab.textContent = `4. Entrevista com Gestor (${candidatosGestor.length})`;
     }
 
-    if (snapshot.empty) {
+    if (candidatosGestor.length === 0) {
       conteudoRecrutamento.innerHTML = `
         <div class="alerta alerta-aviso">
           <p>Nenhum candidato na fase de Entrevista com Gestor.</p>
@@ -64,7 +75,9 @@ export async function renderizarEntrevistaGestor(state) {
     let listaHtml = `
       <div class="lista-candidatos-container">
         <h3>Candidatos - Entrevista com Gestor</h3>
-        <p class="subtitulo">Etapa: Entrevista com Gestor</p>
+        <p class="subtitulo">Etapa: Entrevista com Gestor (${
+          candidatosGestor.length
+        } candidato${candidatosGestor.length > 1 ? "s" : ""})</p>
         <table class="tabela-candidatos">
           <thead>
             <tr>
@@ -76,7 +89,7 @@ export async function renderizarEntrevistaGestor(state) {
           </thead>
           <tbody>`;
 
-    snapshot.docs.forEach((docSnap) => {
+    candidatosGestor.forEach((docSnap) => {
       const candidato = docSnap.data();
       const candidatoId = docSnap.id;
       const nome = candidato.nome_completo || "Nome não informado";
@@ -162,94 +175,99 @@ function adicionarEventListenersGestor(state) {
 async function abrirModalDetalhesGestor(candidatoId, state) {
   const { candidatosCollection, formatarTimestamp } = state;
 
-  // Busca dados do candidato
-  const docRef = doc(candidatosCollection, candidatoId);
-  const docSnap = await getDoc(docRef);
+  try {
+    // Busca dados do candidato
+    const docRef = doc(candidatosCollection, candidatoId);
+    const docSnap = await getDoc(docRef);
 
-  if (!docSnap.exists()) {
-    window.showToast?.("Candidato não encontrado", "error");
-    return;
+    if (!docSnap.exists()) {
+      window.showToast?.("Candidato não encontrado", "error");
+      return;
+    }
+
+    const candidato = docSnap.data();
+
+    // Cria/atualiza modal
+    let modal = document.getElementById("modal-gestor-detalhes");
+    if (!modal) {
+      modal = criarModalDetalhesGestor();
+    }
+
+    // Preenche conteúdo
+    const modalBody = modal.querySelector(".modal-body");
+    modalBody.innerHTML = `
+      <div class="candidato-info-section">
+        <h4>Informações Básicas</h4>
+        <p><strong>Nome:</strong> ${candidato.nome_completo || "N/A"}</p>
+        <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
+        <p><strong>Telefone:</strong> ${
+          candidato.telefone || candidato.telefonecontato || "N/A"
+        }</p>
+        <p><strong>Data da Candidatura:</strong> ${formatarTimestamp(
+          candidato.data_candidatura
+        )}</p>
+      </div>
+
+      <div class="candidato-info-section">
+        <h4>Triagem RH</h4>
+        ${
+          candidato.triagem_rh
+            ? `
+          <p><strong>Apto para Entrevista:</strong> ${
+            candidato.triagem_rh.apto_entrevista || "N/A"
+          }</p>
+          <p><strong>Observações:</strong> ${
+            candidato.triagem_rh.observacoes ||
+            candidato.triagem_rh.info_aprovacao ||
+            "N/A"
+          }</p>
+        `
+            : "<p>Triagem não realizada.</p>"
+        }
+      </div>
+
+      <div class="candidato-info-section">
+        <h4>Entrevista RH</h4>
+        ${
+          candidato.entrevista_rh
+            ? `
+          <p><strong>Aprovado:</strong> ${
+            candidato.entrevista_rh.aprovado || "N/A"
+          }</p>
+          <p><strong>Pontos Fortes:</strong> ${
+            candidato.entrevista_rh.pontos_fortes || "N/A"
+          }</p>
+          <p><strong>Pontos de Atenção:</strong> ${
+            candidato.entrevista_rh.pontos_atencao || "N/A"
+          }</p>
+        `
+            : "<p>Entrevista RH não realizada.</p>"
+        }
+      </div>
+
+      <div class="candidato-info-section">
+        <h4>Testes/Estudos de Caso</h4>
+        ${
+          candidato.testes_estudos?.status_resultado
+            ? `
+          <p><strong>Status:</strong> ${
+            candidato.testes_estudos.status_resultado
+          }</p>
+          <p><strong>Observações:</strong> ${
+            candidato.testes_estudos.observacoes || "N/A"
+          }</p>
+        `
+            : "<p>Testes não realizados.</p>"
+        }
+      </div>
+    `;
+
+    // Exibe modal
+    modal.classList.add("is-visible");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de detalhes:", error);
+    window.showToast?.("Erro ao carregar detalhes do candidato", "error");
   }
-
-  const candidato = docSnap.data();
-
-  // Cria/atualiza modal
-  let modal = document.getElementById("modal-gestor-detalhes");
-  if (!modal) {
-    modal = criarModalDetalhesGestor();
-  }
-
-  // Preenche conteúdo
-  const modalBody = modal.querySelector(".modal-body");
-  modalBody.innerHTML = `
-    <div class="candidato-info-section">
-      <h4>Informações Básicas</h4>
-      <p><strong>Nome:</strong> ${candidato.nome_completo || "N/A"}</p>
-      <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-      <p><strong>Telefone:</strong> ${
-        candidato.telefone || candidato.telefonecontato || "N/A"
-      }</p>
-      <p><strong>Data da Candidatura:</strong> ${formatarTimestamp(
-        candidato.data_candidatura
-      )}</p>
-    </div>
-
-    <div class="candidato-info-section">
-      <h4>Triagem RH</h4>
-      ${
-        candidato.triagem_rh
-          ? `
-        <p><strong>Apto para Entrevista:</strong> ${
-          candidato.triagem_rh.apto_entrevista || "N/A"
-        }</p>
-        <p><strong>Observações:</strong> ${
-          candidato.triagem_rh.observacoes ||
-          candidato.triagem_rh.info_aprovacao ||
-          "N/A"
-        }</p>
-      `
-          : "<p>Triagem não realizada.</p>"
-      }
-    </div>
-
-    <div class="candidato-info-section">
-      <h4>Entrevista RH</h4>
-      ${
-        candidato.entrevista_rh
-          ? `
-        <p><strong>Aprovado:</strong> ${
-          candidato.entrevista_rh.aprovado || "N/A"
-        }</p>
-        <p><strong>Pontos Fortes:</strong> ${
-          candidato.entrevista_rh.pontos_fortes || "N/A"
-        }</p>
-        <p><strong>Pontos de Atenção:</strong> ${
-          candidato.entrevista_rh.pontos_atencao || "N/A"
-        }</p>
-      `
-          : "<p>Entrevista RH não realizada.</p>"
-      }
-    </div>
-
-    <div class="candidato-info-section">
-      <h4>Testes/Estudos de Caso</h4>
-      ${
-        candidato.testes_estudos?.status_resultado
-          ? `
-        <p><strong>Status:</strong> ${
-          candidato.testes_estudos.status_resultado
-        }</p>
-        <p><strong>Observações:</strong> ${
-          candidato.testes_estudos.observacoes || "N/A"
-        }</p>
-      `
-          : "<p>Testes não realizados.</p>"
-      }
-    </div>
-  `;
-
-  // Exibe modal
-  modal.classList.add("is-visible");
 }
 
 /**
@@ -258,110 +276,115 @@ async function abrirModalDetalhesGestor(candidatoId, state) {
 async function abrirModalAvaliacaoGestor(candidatoId, state) {
   const { candidatosCollection, formatarTimestamp, vagaSelecionadaId } = state;
 
-  // Busca dados do candidato
-  const docRef = doc(candidatosCollection, candidatoId);
-  const docSnap = await getDoc(docRef);
+  try {
+    // Busca dados do candidato
+    const docRef = doc(candidatosCollection, candidatoId);
+    const docSnap = await getDoc(docRef);
 
-  if (!docSnap.exists()) {
-    window.showToast?.("Candidato não encontrado", "error");
-    return;
-  }
+    if (!docSnap.exists()) {
+      window.showToast?.("Candidato não encontrado", "error");
+      return;
+    }
 
-  const candidato = docSnap.data();
+    const candidato = docSnap.data();
 
-  // Cria/atualiza modal
-  let modal = document.getElementById("modal-gestor-avaliacao");
-  if (!modal) {
-    modal = criarModalAvaliacaoGestor();
-  }
+    // Cria/atualiza modal
+    let modal = document.getElementById("modal-gestor-avaliacao");
+    if (!modal) {
+      modal = criarModalAvaliacaoGestor();
+    }
 
-  // Preenche conteúdo
-  const modalBody = modal.querySelector(".modal-body");
-  modalBody.innerHTML = `
-    <div class="candidato-info-resumo">
-      <h4>${candidato.nome_completo || "Candidato"}</h4>
-      <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-      <p><strong>Telefone:</strong> ${
-        candidato.telefone || candidato.telefonecontato || "N/A"
-      }</p>
-    </div>
+    // Preenche conteúdo
+    const modalBody = modal.querySelector(".modal-body");
+    modalBody.innerHTML = `
+      <div class="candidato-info-resumo">
+        <h4>${candidato.nome_completo || "Candidato"}</h4>
+        <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
+        <p><strong>Telefone:</strong> ${
+          candidato.telefone || candidato.telefonecontato || "N/A"
+        }</p>
+      </div>
 
-    <form id="form-avaliacao-gestor-popup">
-      <div class="form-group">
-        <label>O gestor aprovou o candidato?</label>
-        <div class="radio-group">
-          <label>
-            <input type="radio" name="aprovado_gestor" value="Sim" required>
-            Sim - Aprovar para contratação
-          </label>
-          <label>
-            <input type="radio" name="aprovado_gestor" value="Não" required>
-            Não - Reprovar candidato
-          </label>
+      <form id="form-avaliacao-gestor-popup">
+        <div class="form-group">
+          <label>O gestor aprovou o candidato?</label>
+          <div class="radio-group">
+            <label>
+              <input type="radio" name="aprovado_gestor" value="Sim" required>
+              Sim - Aprovar para contratação
+            </label>
+            <label>
+              <input type="radio" name="aprovado_gestor" value="Não" required>
+              Não - Reprovar candidato
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div class="form-group" id="motivo-rejeicao-gestor" style="display: none;">
-        <label for="motivo-rejeicao-text">Motivo da Reprovação:</label>
-        <textarea 
-          id="motivo-rejeicao-text" 
-          name="motivo_rejeicao"
-          rows="3"
-          placeholder="Descreva o motivo da reprovação..."></textarea>
-      </div>
+        <div class="form-group" id="motivo-rejeicao-gestor" style="display: none;">
+          <label for="motivo-rejeicao-text">Motivo da Reprovação:</label>
+          <textarea 
+            id="motivo-rejeicao-text" 
+            name="motivo_rejeicao"
+            rows="3"
+            placeholder="Descreva o motivo da reprovação..."></textarea>
+        </div>
 
-      <div class="form-group">
-        <label for="nome-gestor">Nome do Gestor:</label>
-        <input 
-          type="text" 
-          id="nome-gestor" 
-          name="nome_gestor"
-          placeholder="Nome do gestor que avaliou"
-          required>
-      </div>
+        <div class="form-group">
+          <label for="nome-gestor">Nome do Gestor:</label>
+          <input 
+            type="text" 
+            id="nome-gestor" 
+            name="nome_gestor"
+            placeholder="Nome do gestor que avaliou"
+            required>
+        </div>
 
-      <div class="form-group">
-        <label for="observacoes-gestor">Comentários da Entrevista:</label>
-        <textarea 
-          id="observacoes-gestor" 
-          name="observacoes_gestor"
-          rows="4"
-          placeholder="Comentários sobre o candidato..."></textarea>
-      </div>
+        <div class="form-group">
+          <label for="observacoes-gestor">Comentários da Entrevista:</label>
+          <textarea 
+            id="observacoes-gestor" 
+            name="observacoes_gestor"
+            rows="4"
+            placeholder="Comentários sobre o candidato..."></textarea>
+        </div>
 
-      <div class="form-group">
-        <label for="data-entrevista-gestor">Data da Entrevista:</label>
-        <input 
-          type="date" 
-          id="data-entrevista-gestor" 
-          name="data_entrevista_gestor"
-          required>
-      </div>
-    </form>
-  `;
+        <div class="form-group">
+          <label for="data-entrevista-gestor">Data da Entrevista:</label>
+          <input 
+            type="date" 
+            id="data-entrevista-gestor" 
+            name="data_entrevista_gestor"
+            required>
+        </div>
+      </form>
+    `;
 
-  // Event listener para mostrar/ocultar campo de motivo
-  const radios = modalBody.querySelectorAll('input[name="aprovado_gestor"]');
-  const motivoContainer = modalBody.querySelector("#motivo-rejeicao-gestor");
+    // Event listener para mostrar/ocultar campo de motivo
+    const radios = modalBody.querySelectorAll('input[name="aprovado_gestor"]');
+    const motivoContainer = modalBody.querySelector("#motivo-rejeicao-gestor");
 
-  radios.forEach((radio) => {
-    radio.addEventListener("change", (e) => {
-      if (e.target.value === "Não") {
-        motivoContainer.style.display = "block";
-      } else {
-        motivoContainer.style.display = "none";
-      }
+    radios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        if (e.target.value === "Não") {
+          motivoContainer.style.display = "block";
+        } else {
+          motivoContainer.style.display = "none";
+        }
+      });
     });
-  });
 
-  // Configura botão de salvar
-  const btnSalvar = modal.querySelector(".btn-salvar-avaliacao");
-  btnSalvar.onclick = async () => {
-    await salvarAvaliacaoGestor(candidatoId, state, modal);
-  };
+    // Configura botão de salvar
+    const btnSalvar = modal.querySelector(".btn-salvar-avaliacao");
+    btnSalvar.onclick = async () => {
+      await salvarAvaliacaoGestor(candidatoId, state, modal);
+    };
 
-  // Exibe modal
-  modal.classList.add("is-visible");
+    // Exibe modal
+    modal.classList.add("is-visible");
+  } catch (error) {
+    console.error("❌ Erro ao abrir modal de avaliação:", error);
+    window.showToast?.("Erro ao abrir modal de avaliação", "error");
+  }
 }
 
 /**
@@ -386,7 +409,6 @@ async function salvarAvaliacaoGestor(candidatoId, state, modal) {
   try {
     const docRef = doc(candidatosCollection, candidatoId);
 
-    // ⚠️ CORRIGIDO: Usando status_recrutamento em vez de status_candidatura
     const updateData = {
       entrevista_gestor: {
         aprovado: aprovado,
