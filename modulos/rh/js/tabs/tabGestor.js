@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   Timestamp,
+  arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
 
 /**
@@ -42,16 +43,16 @@ export async function renderizarEntrevistaGestor(state) {
       '.tab-link[data-status="gestor"]'
     );
     if (tab) {
-      tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-user-tie"></i> 4. Entrevista com Gestor (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML = `
-        <p class="alert alert-warning">Nenhuma candidato na fase de Entrevista com Gestor.</p>`;
+        <p class="alert alert-warning">Nenhum candidato na fase de Entrevista com Gestor.</p>`;
       return;
     }
 
-    // ✅ HTML IDÊNTICO às outras abas - estrutura de CARDS
+    // ✅ HTML IDÊNTICO à aba de Entrevistas
     let listaHtml = `
       <h3>Candidatos - Entrevista com Gestor</h3>
       <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
@@ -62,27 +63,34 @@ export async function renderizarEntrevistaGestor(state) {
       const candidatoId = docSnap.id;
       const nome = cand.nome_completo || "N/A";
       const statusAtual = cand.status_recrutamento || "N/A";
-      const telefone = cand.telefone || cand.telefonecontato || "N/A";
+      const telefone = cand.telefone_contato || cand.telefone || "N/A";
 
-      // Badge colorido baseado no status
+      // Badge baseado no status (mesma lógica da aba Entrevistas)
       let badgeClass = "badge-warning";
-      if (statusAtual.includes("Aprovado")) badgeClass = "badge-success";
-      else if (statusAtual.includes("Reprovado")) badgeClass = "badge-danger";
+      let badgeText = statusAtual.replace(/_/g, " ");
 
       listaHtml += `
-        <div class="card-candidato">
-          <div class="card-header">
-            <h4>${nome}</h4>
+        <div class="candidato-card">
+          <div class="candidato-nome">${nome}</div>
+          <div class="candidato-info">
+            <p><strong>Status:</strong> <span class="badge ${badgeClass}">${badgeText}</span></p>
+            <p><strong>Telefone:</strong> <span class="telefone-badge">${telefone}</span></p>
           </div>
-          <div class="card-body">
-            <p><strong>Status:</strong> <span class="badge ${badgeClass}">${statusAtual}</span></p>
-            <p><strong>Telefone:</strong> ${telefone}</p>
-          </div>
-          <div class="card-actions">
-            <button class="btn btn-info btn-detalhes-gestor" data-candidato-id="${candidatoId}">
+          <div class="candidato-acoes">
+            <button 
+              class="btn btn-info btn-detalhes-gestor" 
+              data-candidato-id="${candidatoId}"
+              onclick="abrirDetalhesGestor('${candidatoId}', ${JSON.stringify(
+        cand
+      ).replace(/"/g, "&quot;")})">
               <i class="fas fa-eye"></i> Detalhes
             </button>
-            <button class="btn btn-primary btn-avaliar-gestor" data-candidato-id="${candidatoId}">
+            <button 
+              class="btn btn-primary btn-avaliar-gestor" 
+              data-candidato-id="${candidatoId}"
+              onclick="abrirModalAvaliacaoGestor('${candidatoId}', ${JSON.stringify(
+        cand
+      ).replace(/"/g, "&quot;")})">
               <i class="fas fa-clipboard-check"></i> Avaliar Gestor
             </button>
           </div>
@@ -92,7 +100,6 @@ export async function renderizarEntrevistaGestor(state) {
     listaHtml += `</div>`;
 
     conteudoRecrutamento.innerHTML = listaHtml;
-    adicionarEventListeners(state);
   } catch (error) {
     console.error("Erro ao carregar candidatos (Gestor):", error);
     conteudoRecrutamento.innerHTML = `
@@ -100,162 +107,264 @@ export async function renderizarEntrevistaGestor(state) {
   }
 }
 
-/**
- * Adiciona event listeners aos botões
- */
-function adicionarEventListeners(state) {
-  document.querySelectorAll(".btn-detalhes-gestor").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const candidatoId = e.currentTarget.getAttribute("data-candidato-id");
-      await abrirModalDetalhes(candidatoId, state);
-    });
-  });
+// ============================================
+// MODAL - DETALHES
+// ============================================
 
-  document.querySelectorAll(".btn-avaliar-gestor").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const candidatoId = e.currentTarget.getAttribute("data-candidato-id");
-      await abrirModalAvaliacao(candidatoId, state);
-    });
-  });
-}
+window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
+  console.log("🔹 Gestor: Abrindo detalhes do candidato");
 
-/**
- * Modal de Detalhes - USANDO O MODAL EXISTENTE DO SISTEMA
- */
-async function abrirModalDetalhes(candidatoId, state) {
-  // Usa a função global que já existe no recrutamento.js
-  const { abrirModalCandidato } = await import("../recrutamento.js");
-  await abrirModalCandidato(candidatoId, "detalhes");
-}
+  const modal = document.getElementById("modal-candidato");
+  const modalBody = document.getElementById("candidato-modal-body");
+  const modalFooter = document.getElementById("candidato-modal-footer");
+  const modalTitulo = document.getElementById("candidato-nome-titulo");
 
-/**
- * Modal de Avaliação - USANDO ESTRUTURA PADRÃO
- */
-async function abrirModalAvaliacao(candidatoId, state) {
-  const { candidatosCollection } = state;
+  if (!modal || !modalBody) {
+    alert("Modal não disponível");
+    return;
+  }
 
-  try {
-    const docRef = doc(candidatosCollection, candidatoId);
-    const docSnap = await getDoc(docRef);
+  modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
 
-    if (!docSnap.exists()) {
-      alert("Candidato não encontrado");
-      return;
-    }
+  modalBody.innerHTML = `
+    <div class="info-box">
+      <h5>📋 Informações Básicas</h5>
+      <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
+      <p><strong>Email:</strong> ${
+        dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
+      }</p>
+      <p><strong>Telefone:</strong> ${
+        dadosCandidato.telefone_contato || dadosCandidato.telefone || "N/A"
+      }</p>
+    </div>
 
-    const candidato = docSnap.data();
-
-    // Usa o modal global que já existe (modal-candidato)
-    const modal = document.getElementById("modal-candidato");
-    const modalBody = document.getElementById("candidato-modal-body");
-    const modalFooter = document.getElementById("candidato-modal-footer");
-    const modalTitulo = document.getElementById("candidato-nome-titulo");
-
-    if (!modal || !modalBody) {
-      alert("Modal não disponível");
-      return;
-    }
-
-    modalTitulo.textContent = `Avaliar Candidato - ${
-      candidato.nome_completo || "Candidato"
-    }`;
-
-    modalBody.innerHTML = `
-      <div class="candidato-info-resumo" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-        <h5>${candidato.nome_completo || "Candidato"}</h5>
-        <p><strong>Email:</strong> ${candidato.email || "N/A"}</p>
-        <p><strong>Telefone:</strong> ${
-          candidato.telefone || candidato.telefonecontato || "N/A"
+    <div class="info-box">
+      <h5>✅ Triagem RH</h5>
+      ${
+        dadosCandidato.triagem_rh
+          ? `
+        <p><strong>Apto para Entrevista:</strong> ${
+          dadosCandidato.triagem_rh.apto_entrevista || "N/A"
         }</p>
+        <p><strong>Observações:</strong> ${
+          dadosCandidato.triagem_rh.observacoes || "N/A"
+        }</p>
+      `
+          : "<p>Triagem não realizada</p>"
+      }
+    </div>
+
+    <div class="info-box">
+      <h5>💬 Entrevista RH</h5>
+      ${
+        dadosCandidato.entrevista_rh
+          ? `
+        <p><strong>Resultado:</strong> ${
+          dadosCandidato.entrevista_rh.resultado || "N/A"
+        }</p>
+        <p><strong>Pontos Fortes:</strong> ${
+          dadosCandidato.entrevista_rh.pontos_fortes || "N/A"
+        }</p>
+        <p><strong>Pontos de Atenção:</strong> ${
+          dadosCandidato.entrevista_rh.pontos_atencao || "N/A"
+        }</p>
+      `
+          : "<p>Entrevista não realizada</p>"
+      }
+    </div>
+
+    <div class="info-box">
+      <h5>📝 Testes/Estudos</h5>
+      ${
+        dadosCandidato.testes_estudos
+          ? `
+        <p><strong>Status:</strong> ${
+          dadosCandidato.testes_estudos.status_resultado || "N/A"
+        }</p>
+        <p><strong>Observações:</strong> ${
+          dadosCandidato.testes_estudos.observacoes || "N/A"
+        }</p>
+      `
+          : "<p>Testes não realizados</p>"
+      }
+    </div>
+  `;
+
+  modalFooter.innerHTML = `
+    <button class="btn btn-secondary fechar-modal-candidato">Fechar</button>
+  `;
+
+  modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
+    modal.classList.remove("is-visible");
+  };
+
+  modal.classList.add("is-visible");
+};
+
+// ============================================
+// MODAL - AVALIAÇÃO GESTOR
+// ============================================
+
+window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
+  console.log("🔹 Gestor: Abrindo modal de avaliação");
+
+  const modal = document.getElementById("modal-candidato");
+  const modalBody = document.getElementById("candidato-modal-body");
+  const modalFooter = document.getElementById("candidato-modal-footer");
+  const modalTitulo = document.getElementById("candidato-nome-titulo");
+
+  if (!modal || !modalBody) {
+    alert("Modal não disponível");
+    return;
+  }
+
+  modalTitulo.textContent = `Avaliar Candidato - ${
+    dadosCandidato.nome_completo || "Candidato"
+  }`;
+
+  modalBody.innerHTML = `
+    <div class="info-box" style="background: #e7f3ff; border-left: 4px solid #007bff;">
+      <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
+      <p><strong>Email:</strong> ${
+        dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
+      }</p>
+      <p><strong>Telefone:</strong> ${
+        dadosCandidato.telefone_contato || dadosCandidato.telefone || "N/A"
+      }</p>
+    </div>
+
+    <form id="form-avaliacao-gestor">
+      <div class="form-group">
+        <label><strong>O gestor aprovou o candidato?</strong></label>
+        <div class="radio-options">
+          <label class="radio-label">
+            <input type="radio" name="aprovado_gestor" value="Sim" required>
+            <span>Sim - Aprovar para contratação</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="aprovado_gestor" value="Não" required>
+            <span>Não - Reprovar candidato</span>
+          </label>
+        </div>
       </div>
 
-      <form id="form-avaliacao-gestor">
-        <div class="form-group">
-          <label><strong>O gestor aprovou o candidato?</strong></label>
-          <div style="margin-top: 10px;">
-            <label style="display: block; margin: 10px 0;">
-              <input type="radio" name="aprovado" value="Sim" required> 
-              Sim - Aprovar para contratação
-            </label>
-            <label style="display: block; margin: 10px 0;">
-              <input type="radio" name="aprovado" value="Não" required> 
-              Não - Reprovar candidato
-            </label>
-          </div>
-        </div>
+      <div class="form-group" id="motivo-rejeicao-container" style="display: none;">
+        <label for="motivo-rejeicao">Motivo da Reprovação: <span class="obrigatorio">*</span></label>
+        <textarea 
+          id="motivo-rejeicao" 
+          name="motivo_rejeicao" 
+          class="form-control" 
+          rows="3"
+          placeholder="Descreva o motivo da reprovação..."></textarea>
+      </div>
 
-        <div class="form-group" id="motivo-reprovacao" style="display: none;">
-          <label>Motivo da Reprovação:</label>
-          <textarea name="motivo" class="form-control" rows="3"></textarea>
-        </div>
+      <div class="form-group">
+        <label for="nome-gestor">Nome do Gestor: <span class="obrigatorio">*</span></label>
+        <input 
+          type="text" 
+          id="nome-gestor" 
+          name="nome_gestor" 
+          class="form-control" 
+          placeholder="Nome completo do gestor"
+          required>
+      </div>
 
-        <div class="form-group">
-          <label>Nome do Gestor:</label>
-          <input type="text" name="nome_gestor" class="form-control" required>
-        </div>
+      <div class="form-group">
+        <label for="comentarios-gestor">Comentários da Entrevista:</label>
+        <textarea 
+          id="comentarios-gestor" 
+          name="comentarios_gestor" 
+          class="form-control" 
+          rows="4"
+          placeholder="Feedback geral sobre o candidato..."></textarea>
+      </div>
 
-        <div class="form-group">
-          <label>Comentários:</label>
-          <textarea name="comentarios" class="form-control" rows="4"></textarea>
-        </div>
+      <div class="form-group">
+        <label for="data-entrevista-gestor">Data da Entrevista: <span class="obrigatorio">*</span></label>
+        <input 
+          type="date" 
+          id="data-entrevista-gestor" 
+          name="data_entrevista" 
+          class="form-control" 
+          required>
+      </div>
+    </form>
+  `;
 
-        <div class="form-group">
-          <label>Data da Entrevista:</label>
-          <input type="date" name="data_entrevista" class="form-control" required>
-        </div>
-      </form>
-    `;
+  // Toggle campo de motivo
+  const radios = modalBody.querySelectorAll('input[name="aprovado_gestor"]');
+  const motivoContainer = modalBody.querySelector("#motivo-rejeicao-container");
 
-    // Toggle motivo reprovação
-    const radios = modalBody.querySelectorAll('input[name="aprovado"]');
-    const motivoDiv = modalBody.querySelector("#motivo-reprovacao");
-    radios.forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        motivoDiv.style.display = e.target.value === "Não" ? "block" : "none";
-      });
+  radios.forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      motivoContainer.style.display =
+        e.target.value === "Não" ? "block" : "none";
+      const motivoTextarea = motivoContainer.querySelector("#motivo-rejeicao");
+      if (e.target.value === "Não") {
+        motivoTextarea.setAttribute("required", "required");
+      } else {
+        motivoTextarea.removeAttribute("required");
+      }
     });
+  });
 
-    // Botões do footer
-    modalFooter.innerHTML = `
-      <button class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
-      <button class="btn btn-success btn-salvar-avaliacao-gestor">Salvar Avaliação</button>
-    `;
+  // Botões do footer
+  modalFooter.innerHTML = `
+    <button type="button" class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
+    <button type="button" class="btn btn-success btn-salvar-avaliacao-gestor">
+      <i class="fas fa-check"></i> Salvar Avaliação
+    </button>
+  `;
 
-    // Event listener para salvar
-    modalFooter.querySelector(".btn-salvar-avaliacao-gestor").onclick = () => {
-      salvarAvaliacao(candidatoId, state, modal);
+  modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
+    modal.classList.remove("is-visible");
+  };
+
+  modalFooter.querySelector(".btn-salvar-avaliacao-gestor").onclick =
+    async () => {
+      await salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal);
     };
 
-    // Event listener para cancelar
-    modalFooter.querySelector(".fechar-modal-candidato").onclick = () => {
-      modal.classList.remove("is-visible");
-    };
+  modal.classList.add("is-visible");
+};
 
-    modal.classList.add("is-visible");
-  } catch (error) {
-    console.error("Erro ao abrir modal:", error);
-    alert("Erro ao abrir avaliação");
-  }
-}
+// ============================================
+// SALVAR AVALIAÇÃO
+// ============================================
 
-/**
- * Salvar Avaliação
- */
-async function salvarAvaliacao(candidatoId, state, modal) {
-  const { candidatosCollection } = state;
+async function salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal) {
+  console.log("🔹 Gestor: Salvando avaliação");
+
   const form = document.getElementById("form-avaliacao-gestor");
+  const btnSalvar = document.querySelector(".btn-salvar-avaliacao-gestor");
 
   if (!form.checkValidity()) {
     form.reportValidity();
     return;
   }
 
+  const state = getGlobalState();
+  const {
+    candidatosCollection,
+    currentUserData,
+    handleTabClick,
+    statusCandidaturaTabs,
+  } = state;
+
   const formData = new FormData(form);
-  const aprovado = formData.get("aprovado");
+  const aprovado = formData.get("aprovado_gestor");
   const nomeGestor = formData.get("nome_gestor");
-  const comentarios = formData.get("comentarios");
+  const comentarios = formData.get("comentarios_gestor");
   const dataEntrevista = formData.get("data_entrevista");
-  const motivo = formData.get("motivo");
+  const motivo = formData.get("motivo_rejeicao");
+
+  btnSalvar.disabled = true;
+  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+
+  const isAprovado = aprovado === "Sim";
+  const novoStatus = isAprovado
+    ? "Entrevista Gestor Aprovada - Comunicação Final (Aprovado - Próximo: Contratar)"
+    : "Rejeitado - Comunicação Pendente (Reprovado - Próximo: enviar mensagem)";
 
   try {
     const docRef = doc(candidatosCollection, candidatoId);
@@ -266,30 +375,50 @@ async function salvarAvaliacao(candidatoId, state, modal) {
         nome_gestor: nomeGestor,
         comentarios_gestor: comentarios || "",
         data_entrevista: dataEntrevista,
-        data_registro: Timestamp.now(),
+        data_avaliacao: new Date(),
+        avaliador_uid: currentUserData.id || "rh_system_user",
       },
-      status_recrutamento:
-        aprovado === "Sim"
-          ? "Entrevista Gestor Aprovada - Comunicação Final (Aprovado - Próximo: Contratar)"
-          : "Rejeitado - Comunicação Pendente (Reprovado - Próximo: enviar mensagem)",
-      ultima_atualizacao: Timestamp.now(),
+      status_recrutamento: novoStatus,
+      ultima_atualizacao: new Date(),
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Avaliação Entrevista Gestor: ${
+          isAprovado ? "APROVADO" : "REPROVADO"
+        }. Status: ${novoStatus}`,
+        usuario: currentUserData.id || "rh_system_user",
+      }),
     };
 
-    if (aprovado === "Não" && motivo) {
+    if (!isAprovado && motivo) {
       updateData.rejeicao = {
         etapa: "Entrevista com Gestor",
         motivo: motivo,
-        data: Timestamp.now(),
+        data: new Date(),
       };
     }
 
     await updateDoc(docRef, updateData);
 
-    window.showToast?.("Avaliação salva com sucesso!", "success");
+    window.showToast?.(
+      `Avaliação registrada. Status: ${novoStatus}`,
+      "success"
+    );
+
     modal.classList.remove("is-visible");
-    renderizarEntrevistaGestor(state);
+
+    // Recarrega a aba ativa
+    const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
+    if (activeTab) {
+      handleTabClick({ currentTarget: activeTab });
+    }
   } catch (error) {
-    console.error("Erro ao salvar:", error);
-    window.showToast?.("Erro ao salvar avaliação: " + error.message, "error");
+    console.error("❌ Erro ao salvar:", error);
+    window.showToast?.(
+      `Erro ao registrar avaliação: ${error.message}`,
+      "error"
+    );
+  } finally {
+    btnSalvar.disabled = false;
+    btnSalvar.innerHTML = '<i class="fas fa-check"></i> Salvar Avaliação';
   }
 }
