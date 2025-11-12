@@ -14,9 +14,6 @@ import {
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
  */
 export async function renderizarEntrevistaGestor(state) {
-  console.log("🔵 [GESTOR] === INÍCIO renderizarEntrevistaGestor ===");
-  console.log("🔵 [GESTOR] State recebido:", state);
-
   const {
     vagaSelecionadaId,
     conteudoRecrutamento,
@@ -24,12 +21,7 @@ export async function renderizarEntrevistaGestor(state) {
     statusCandidaturaTabs,
   } = state;
 
-  console.log("🔵 [GESTOR] vagaSelecionadaId:", vagaSelecionadaId);
-  console.log("🔵 [GESTOR] conteudoRecrutamento:", conteudoRecrutamento);
-  console.log("🔵 [GESTOR] candidatosCollection:", candidatosCollection);
-
   if (!vagaSelecionadaId) {
-    console.log("❌ [GESTOR] Nenhuma vaga selecionada");
     conteudoRecrutamento.innerHTML = `
       <p class="alert alert-info">Nenhuma vaga selecionada.</p>`;
     return;
@@ -39,131 +31,29 @@ export async function renderizarEntrevistaGestor(state) {
     <div class="loading-spinner">Carregando candidatos para Entrevista com Gestor...</div>`;
 
   try {
-    console.log("🔵 [GESTOR] Iniciando query no Firestore...");
-    console.log("🔵 [GESTOR] Parâmetros da query:");
-    console.log("  - vagaid:", vagaSelecionadaId);
-    console.log('  - status_recrutamento: "Entrevista Gestor Pendente"');
-
-    // TENTATIVA 1: Com vagaid (minúsculo)
-    let q = query(
+    // ⚠️ QUERY ORIGINAL - NÃO MODIFICADA
+    const q = query(
       candidatosCollection,
       where("vagaid", "==", vagaSelecionadaId),
       where("status_recrutamento", "==", "Entrevista Gestor Pendente")
     );
-
-    console.log("🔵 [GESTOR] Query criada (tentativa 1 - vagaid)");
-    let snapshot = await getDocs(q);
-    console.log(
-      "🔵 [GESTOR] Resultado query 1 - Total de documentos:",
-      snapshot.size
-    );
-
-    // Se não encontrou nada, tenta com vagaId (camelCase)
-    if (snapshot.empty) {
-      console.log(
-        '⚠️ [GESTOR] Query 1 vazia. Tentando com "vagaId" (camelCase)...'
-      );
-      q = query(
-        candidatosCollection,
-        where("vagaId", "==", vagaSelecionadaId),
-        where("status_recrutamento", "==", "Entrevista Gestor Pendente")
-      );
-      snapshot = await getDocs(q);
-      console.log(
-        "🔵 [GESTOR] Resultado query 2 - Total de documentos:",
-        snapshot.size
-      );
-    }
-
-    // Se ainda está vazio, busca TODOS da vaga para debug
-    if (snapshot.empty) {
-      console.log(
-        "⚠️ [GESTOR] Query 2 vazia. Buscando TODOS os candidatos da vaga para debug..."
-      );
-
-      // Tenta com vagaid
-      let qDebug = query(
-        candidatosCollection,
-        where("vagaid", "==", vagaSelecionadaId)
-      );
-      let snapshotDebug = await getDocs(qDebug);
-
-      if (snapshotDebug.empty) {
-        console.log(
-          "⚠️ [GESTOR] Nenhum candidato com vagaid. Tentando vagaId..."
-        );
-        qDebug = query(
-          candidatosCollection,
-          where("vagaId", "==", vagaSelecionadaId)
-        );
-        snapshotDebug = await getDocs(qDebug);
-      }
-
-      console.log(
-        "🔍 [GESTOR DEBUG] Total de candidatos encontrados na vaga:",
-        snapshotDebug.size
-      );
-
-      snapshotDebug.docs.forEach((doc, index) => {
-        const data = doc.data();
-        console.log(`🔍 [GESTOR DEBUG] Candidato ${index + 1}:`, {
-          id: doc.id,
-          nome: data.nome_completo,
-          status_recrutamento: data.status_recrutamento,
-          vagaId: data.vagaId,
-          vagaid: data.vagaid,
-        });
-      });
-
-      // Filtra localmente
-      const candidatosFiltrados = snapshotDebug.docs.filter((doc) => {
-        const status = doc.data().status_recrutamento || "";
-        const contemPendente = status.includes("Entrevista Gestor Pendente");
-        console.log(
-          `🔍 [GESTOR FILTRO] ${doc.data().nome_completo}: "${status}" -> ${
-            contemPendente ? "✅ MATCH" : "❌ NÃO"
-          }`
-        );
-        return contemPendente;
-      });
-
-      console.log(
-        "🔍 [GESTOR DEBUG] Candidatos filtrados localmente:",
-        candidatosFiltrados.length
-      );
-
-      if (candidatosFiltrados.length > 0) {
-        // Usa os candidatos filtrados
-        snapshot = {
-          docs: candidatosFiltrados,
-          size: candidatosFiltrados.length,
-          empty: false,
-        };
-        console.log("✅ [GESTOR] Usando candidatos filtrados localmente");
-      }
-    }
+    const snapshot = await getDocs(q);
 
     // Atualiza contagem na aba
-    const tab = statusCandidaturaTabs?.querySelector(
+    const tab = statusCandidaturaTabs.querySelector(
       '.tab-link[data-status="gestor"]'
     );
-    console.log("🔵 [GESTOR] Tab encontrada:", tab);
     if (tab) {
       tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
-      console.log("✅ [GESTOR] Contagem da aba atualizada:", snapshot.size);
     }
 
     if (snapshot.empty) {
-      console.log(
-        "❌ [GESTOR] Nenhum candidato encontrado (após todas as tentativas)"
-      );
       conteudoRecrutamento.innerHTML = `
         <p class="alert alert-warning">Nenhuma candidato na fase de Entrevista com Gestor.</p>`;
       return;
     }
 
-    console.log("✅ [GESTOR] Montando HTML com", snapshot.size, "candidatos");
-
+    // ⚠️ HTML ORIGINAL - NÃO MODIFICADO
     let listaHtml = `
       <h3>Candidatos - Entrevista com Gestor</h3>
       <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
@@ -178,17 +68,11 @@ export async function renderizarEntrevistaGestor(state) {
         </thead>
         <tbody>`;
 
-    snapshot.docs.forEach((docSnap, index) => {
-      const cand = docSnap.data();
-      const candidatoId = docSnap.id;
+    snapshot.docs.forEach((doc) => {
+      const cand = doc.data();
+      const candidatoId = doc.id;
       const nome = cand.nome_completo || "N/A";
       const statusAtual = cand.status_recrutamento || "N/A";
-
-      console.log(`🔵 [GESTOR] Processando candidato ${index + 1}:`, {
-        id: candidatoId,
-        nome,
-        status: statusAtual,
-      });
 
       listaHtml += `
         <tr>
@@ -215,57 +99,39 @@ export async function renderizarEntrevistaGestor(state) {
       </table>`;
 
     conteudoRecrutamento.innerHTML = listaHtml;
-    console.log("✅ [GESTOR] HTML inserido no DOM");
 
-    // Adiciona event listeners
+    // ✅ ÚNICA ADIÇÃO: Event listeners para os modals
     adicionarEventListeners(state);
-    console.log("✅ [GESTOR] Event listeners adicionados");
-    console.log("🔵 [GESTOR] === FIM renderizarEntrevistaGestor ===");
   } catch (error) {
-    console.error("❌ [GESTOR] ERRO:", error);
-    console.error("❌ [GESTOR] Stack trace:", error.stack);
+    console.error("Erro ao carregar candidatos (Gestor):", error);
     conteudoRecrutamento.innerHTML = `
       <p class="alert alert-danger">Erro ao carregar a lista de candidatos: ${error.message}</p>`;
   }
 }
 
 /**
- * Adiciona event listeners aos botões
+ * ✅ NOVA FUNÇÃO: Adiciona event listeners
  */
 function adicionarEventListeners(state) {
-  console.log("🔵 [GESTOR] Adicionando event listeners...");
-
-  // Botões Detalhes
-  const btnsDetalhes = document.querySelectorAll(".btn-detalhes-gestor");
-  console.log(
-    '🔵 [GESTOR] Botões "Detalhes" encontrados:',
-    btnsDetalhes.length
-  );
-  btnsDetalhes.forEach((btn) => {
+  document.querySelectorAll(".btn-detalhes-gestor").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const candidatoId = e.currentTarget.getAttribute("data-candidato-id");
-      console.log("🔵 [GESTOR] Clique em Detalhes - candidatoId:", candidatoId);
       await abrirModalDetalhes(candidatoId, state);
     });
   });
 
-  // Botões Avaliar
-  const btnsAvaliar = document.querySelectorAll(".btn-avaliar-gestor");
-  console.log('🔵 [GESTOR] Botões "Avaliar" encontrados:', btnsAvaliar.length);
-  btnsAvaliar.forEach((btn) => {
+  document.querySelectorAll(".btn-avaliar-gestor").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       const candidatoId = e.currentTarget.getAttribute("data-candidato-id");
-      console.log("🔵 [GESTOR] Clique em Avaliar - candidatoId:", candidatoId);
       await abrirModalAvaliacao(candidatoId, state);
     });
   });
 }
 
 /**
- * Modal de Detalhes
+ * ✅ NOVA FUNÇÃO: Modal de Detalhes
  */
 async function abrirModalDetalhes(candidatoId, state) {
-  console.log("🔵 [GESTOR] Abrindo modal de detalhes para:", candidatoId);
   const { candidatosCollection } = state;
 
   try {
@@ -273,17 +139,14 @@ async function abrirModalDetalhes(candidatoId, state) {
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.log("❌ [GESTOR] Candidato não encontrado");
       alert("Candidato não encontrado");
       return;
     }
 
     const candidato = docSnap.data();
-    console.log("✅ [GESTOR] Dados do candidato carregados:", candidato);
 
     let modal = document.getElementById("modal-gestor-detalhes");
     if (!modal) {
-      console.log("🔵 [GESTOR] Criando modal de detalhes...");
       modal = criarModalDetalhes();
     }
 
@@ -343,18 +206,16 @@ async function abrirModalDetalhes(candidatoId, state) {
     `;
 
     modal.style.display = "block";
-    console.log("✅ [GESTOR] Modal de detalhes exibido");
   } catch (error) {
-    console.error("❌ [GESTOR] Erro ao abrir detalhes:", error);
+    console.error("Erro ao abrir detalhes:", error);
     alert("Erro ao carregar detalhes");
   }
 }
 
 /**
- * Modal de Avaliação
+ * ✅ NOVA FUNÇÃO: Modal de Avaliação
  */
 async function abrirModalAvaliacao(candidatoId, state) {
-  console.log("🔵 [GESTOR] Abrindo modal de avaliação para:", candidatoId);
   const { candidatosCollection } = state;
 
   try {
@@ -362,17 +223,14 @@ async function abrirModalAvaliacao(candidatoId, state) {
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.log("❌ [GESTOR] Candidato não encontrado");
       alert("Candidato não encontrado");
       return;
     }
 
     const candidato = docSnap.data();
-    console.log("✅ [GESTOR] Dados do candidato carregados:", candidato);
 
     let modal = document.getElementById("modal-gestor-avaliacao");
     if (!modal) {
-      console.log("🔵 [GESTOR] Criando modal de avaliação...");
       modal = criarModalAvaliacao();
     }
 
@@ -420,7 +278,6 @@ async function abrirModalAvaliacao(candidatoId, state) {
       </form>
     `;
 
-    // Toggle motivo reprovação
     const radios = modalBody.querySelectorAll('input[name="aprovado"]');
     const motivoDiv = modalBody.querySelector("#motivo-reprovacao");
     radios.forEach((radio) => {
@@ -429,23 +286,20 @@ async function abrirModalAvaliacao(candidatoId, state) {
       });
     });
 
-    // Botão salvar
     const btnSalvar = modal.querySelector(".btn-salvar");
     btnSalvar.onclick = () => salvarAvaliacao(candidatoId, state, modal);
 
     modal.style.display = "block";
-    console.log("✅ [GESTOR] Modal de avaliação exibido");
   } catch (error) {
-    console.error("❌ [GESTOR] Erro ao abrir modal:", error);
+    console.error("Erro ao abrir modal:", error);
     alert("Erro ao abrir avaliação");
   }
 }
 
 /**
- * Salvar Avaliação
+ * ✅ NOVA FUNÇÃO: Salvar Avaliação
  */
 async function salvarAvaliacao(candidatoId, state, modal) {
-  console.log("🔵 [GESTOR] Salvando avaliação para:", candidatoId);
   const { candidatosCollection } = state;
   const form = modal.querySelector("#form-avaliacao-gestor");
 
@@ -460,14 +314,6 @@ async function salvarAvaliacao(candidatoId, state, modal) {
   const comentarios = formData.get("comentarios");
   const dataEntrevista = formData.get("data_entrevista");
   const motivo = formData.get("motivo");
-
-  console.log("🔵 [GESTOR] Dados do formulário:", {
-    aprovado,
-    nomeGestor,
-    comentarios,
-    dataEntrevista,
-    motivo,
-  });
 
   try {
     const docRef = doc(candidatosCollection, candidatoId);
@@ -495,21 +341,19 @@ async function salvarAvaliacao(candidatoId, state, modal) {
       };
     }
 
-    console.log("🔵 [GESTOR] Dados para atualizar no Firestore:", updateData);
     await updateDoc(docRef, updateData);
 
-    console.log("✅ [GESTOR] Avaliação salva com sucesso!");
     alert("Avaliação salva com sucesso!");
     modal.style.display = "none";
     renderizarEntrevistaGestor(state);
   } catch (error) {
-    console.error("❌ [GESTOR] Erro ao salvar:", error);
+    console.error("Erro ao salvar:", error);
     alert("Erro ao salvar avaliação: " + error.message);
   }
 }
 
 /**
- * Criar Modal Detalhes
+ * ✅ NOVA FUNÇÃO: Criar Modal Detalhes
  */
 function criarModalDetalhes() {
   const modal = document.createElement("div");
@@ -542,7 +386,7 @@ function criarModalDetalhes() {
 }
 
 /**
- * Criar Modal Avaliação
+ * ✅ NOVA FUNÇÃO: Criar Modal Avaliação
  */
 function criarModalAvaliacao() {
   const modal = document.createElement("div");
