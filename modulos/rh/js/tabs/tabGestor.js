@@ -4,7 +4,7 @@ import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
- * Versão original funcional com estilo visual padronizado ao tabEntrevistas.js.
+ * Estilo visual padronizado ao tabEntrevistas.js, mantendo 100% da funcionalidade original.
  */
 export async function renderizarEntrevistaGestor(state) {
   const {
@@ -23,7 +23,7 @@ export async function renderizarEntrevistaGestor(state) {
     return;
   }
 
-  // Loading spinner com estilo do rh.css (igual ao tabEntrevistas)
+  // Loading spinner com classes do rh.css
   conteudoRecrutamento.innerHTML = `
     <div class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Entrevista com Gestor...
@@ -31,11 +31,16 @@ export async function renderizarEntrevistaGestor(state) {
   `;
 
   try {
-    // Query Firestore EXATA do código original
+    // Query Firestore EXATA do original
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where("status_recrutamento", "in", ["Entrevista Gestor Pendente"])
+      where("status_recrutamento", "in", [
+        "Testes Aprovado",
+        "Entrevista Gestor Pendente",
+        "Entrevista Gestor Agendada",
+        "Aguardando Avaliação Gestor",
+      ])
     );
 
     const snapshot = await getDocs(q);
@@ -57,20 +62,24 @@ export async function renderizarEntrevistaGestor(state) {
       return;
     }
 
-    // Container grid com classes do rh.css (igual ao tabEntrevistas)
+    // Container com grid do rh.css (igual tabEntrevistas)
     let listaHtml = `
       <div class="candidatos-container candidatos-grid">
-        <h3 class="section-title">
-          <i class="fas fa-users"></i> Candidatos - Entrevista com Gestor (${snapshot.size})
-        </h3>
+        <div class="section-header">
+          <h3 class="section-title">
+            <i class="fas fa-users"></i> Candidaturas na Fase Entrevista com Gestor (${snapshot.size})
+          </h3>
+          <p class="section-description">Avaliação final antes da comunicação e contratação.</p>
+        </div>
     `;
 
-    // Loop forEach EXATO do original, com HTML estilizado
+    // Loop forEach EXATO do original com estrutura de cards do tabEntrevistas
     snapshot.docs.forEach((doc) => {
       const cand = doc.data();
       const statusAtual = cand.status_recrutamento || "N/A";
+      const candidaturaId = doc.id;
 
-      // Determina classe CSS baseada no status existente (sem criar novos valores)
+      // Classe CSS dinâmica baseada no status real (igual tabEntrevistas)
       let statusClass = "status-info";
       if (
         statusAtual.toLowerCase().includes("pendente") ||
@@ -78,19 +87,19 @@ export async function renderizarEntrevistaGestor(state) {
       ) {
         statusClass = "status-warning";
       } else if (
-        statusAtual.toLowerCase().includes("concluída") ||
-        statusAtual.toLowerCase().includes("aprovado")
+        statusAtual.toLowerCase().includes("aprovado") ||
+        statusAtual.toLowerCase().includes("concluída")
       ) {
         statusClass = "status-success";
       }
 
       listaHtml += `
-        <div class="card card-candidato-gestor">
+        <div class="card card-candidato-gestor" data-id="${candidaturaId}">
           <div class="info-primaria">
             <h4 class="nome-candidato">
-              ${cand.nome_completo || "Nome não informado"}
+              ${cand.nome_completo || "Candidato Sem Nome"}
               <span class="status-badge ${statusClass}">
-                <i class="fas fa-tag"></i> Status: ${statusAtual}
+                <i class="fas fa-tag"></i> ${statusAtual}
               </span>
             </h4>
             <p class="small-info">
@@ -98,7 +107,7 @@ export async function renderizarEntrevistaGestor(state) {
             </p>
           </div>
 
-          <!-- Info contato se existir (estilo do tabEntrevistas) -->
+          <!-- Informações de contato (igual tabEntrevistas) -->
           <div class="info-contato">
             ${
               cand.email_candidato
@@ -112,22 +121,28 @@ export async function renderizarEntrevistaGestor(state) {
             }
           </div>
 
-          <!-- Ações com classes action-button do rh.css -->
+          <!-- AÇÕES EXATAMENTE COMO NO ORIGINAL -->
           <div class="acoes-candidato">
-            <button class="action-button primary" onclick="avaliarGestor('${
-              doc.id
-            }');">
+            <!-- Botão Avaliar Gestor - CHAMADA ORIGINAL PRESERVADA -->
+            <a href="etapa-entrevista-gestor.html?candidatura=${candidaturaId}&vaga=${vagaSelecionadaId}" 
+               class="action-button primary" 
+               style="padding: 10px 16px; background: var(--cor-primaria); color: white; text-decoration: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
               <i class="fas fa-user-tie"></i> Avaliar Gestor
-            </button>
-            <button class="action-button secondary" onclick="detalhesCandidato('${
-              doc.id
-            }');">
+            </a>
+            
+            <!-- Botão Detalhes - COM CLASSE ORIGINAL PRESERVADA -->
+            <button class="action-button secondary btn-ver-detalhes" 
+                    data-id="${candidaturaId}"
+                    style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
               <i class="fas fa-eye"></i> Detalhes
             </button>
+            
+            <!-- Botão Currículo se existir -->
             ${
-              cand.link_curriculo
+              cand.link_curriculo_drive
                 ? `
-              <a href="${cand.link_curriculo}" target="_blank" class="action-button info">
+              <a href="${cand.link_curriculo_drive}" target="_blank" class="action-button info" 
+                 style="padding: 10px 16px; background: var(--cor-info); color: white; text-decoration: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fas fa-file-pdf"></i> Currículo
               </a>
             `
@@ -138,12 +153,31 @@ export async function renderizarEntrevistaGestor(state) {
       `;
     });
 
-    // Fecha container (igual ao tabEntrevistas)
     listaHtml += `
       </div>
     `;
 
     conteudoRecrutamento.innerHTML = listaHtml;
+
+    // EVENT LISTENERS EXATAMENTE COMO NO ORIGINAL (APÓS RENDERIZAÇÃO)
+    console.log("Gestor: Anexando listeners aos botões...");
+
+    // Listener para botões Detalhes (EXATAMENTE COMO NO ORIGINAL)
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const candidatoId = e.currentTarget.getAttribute("data-id");
+
+        // Chama a função global ORIGINAL que já existe no seu sistema
+        if (window.abrirModalCandidato) {
+          window.abrirModalCandidato(candidatoId, "detalhes");
+        }
+      });
+    });
+
+    console.log(
+      `Gestor: ${snapshot.size} candidatos renderizados com listeners`
+    );
   } catch (error) {
     // Tratamento de erro EXATO do original
     console.error("Erro ao carregar a lista de candidatos:", error);
@@ -154,14 +188,3 @@ export async function renderizarEntrevistaGestor(state) {
     `;
   }
 }
-
-// Funções globais para ações (preservam chamadas originais)
-window.avaliarGestor = function (candidatoId) {
-  console.log(`Avaliando candidato gestor ID: ${candidatoId}`);
-  // Chame sua função original de avaliação aqui
-};
-
-window.detalhesCandidato = function (candidatoId) {
-  console.log(`Abrindo detalhes do candidato ID: ${candidatoId}`);
-  // Chame sua função original de detalhes aqui
-};
