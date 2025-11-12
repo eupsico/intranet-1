@@ -38,6 +38,22 @@ document.addEventListener("DOMContentLoaded", () => {
     "btn-enviar-whatsapp-final"
   );
 
+  // === INÍCIO CORREÇÃO 2: Referências do Modal de Agendamento (Reutilizado) ===
+  // Estas referências apontam para elementos em 'recrutamento.html'
+  const modalAgendamento = document.getElementById("modal-agendamento-rh");
+  const formAgendamento = document.getElementById(
+    "form-agendamento-entrevista-rh"
+  );
+  const btnRegistrarAgendamentoRH = document.getElementById(
+    "btn-registrar-agendamento-rh"
+  );
+  const modalAgendamentoTitulo = modalAgendamento
+    ? modalAgendamento.querySelector(".modal-title-text")
+    : null;
+  const dataAgendadaInput = document.getElementById("data-entrevista-agendada");
+  const horaAgendadaInput = document.getElementById("hora-entrevista-agendada");
+  // === FIM CORREÇÃO 2 ===
+
   let dadosCandidatura = null;
   let ultimaDecisaoGestor = null; // 'Sim' ou 'Não'
   let modelosMensagem = {}; // Armazena modelos do Firebase
@@ -107,27 +123,35 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "Aprovado"
           : "Reprovado/N/A";
       document.getElementById("resumo-entrevista-rh-gestor").textContent =
-        dadosCandidatura.entrevista_rh?.aprovado === "Sim"
+        dadosCandidatura.entrevista_rh?.resultado === "Aprovado" // Corrigido para 'resultado'
           ? "Aprovado"
           : "Reprovado/N/A";
       document.getElementById("resumo-testes-gestor").textContent =
-        dadosCandidatura.testes_estudos?.status_resultado === "aprovado"
+        dadosCandidatura.avaliacao_teste?.resultado === "Aprovado" // Corrigido para 'avaliacao_teste.resultado'
           ? "Aprovado"
           : "Reprovado/N/A";
 
-      const linkCurriculo = document.getElementById("link-curriculo-gestor");
-      if (dadosCandidatura.link_curriculo_drive) {
-        linkCurriculo.href = dadosCandidatura.link_curriculo_drive;
-        linkCurriculo.disabled = false;
+      // === INÍCIO CORREÇÃO 2: Listener do novo botão "Agendar Reunião Gestor" ===
+      const btnAgendarGestor = document.getElementById(
+        "btn-agendar-reuniao-gestor"
+      );
+      if (btnAgendarGestor) {
+        btnAgendarGestor.addEventListener("click", () => {
+          abrirModalAgendamentoGestor(dadosCandidatura);
+        });
       }
+      // === FIM CORREÇÃO 2 ===
 
       // 4.2. Preencher avaliação do gestor se já existir
       if (dadosCandidatura.entrevista_gestor) {
         const avaliacao = dadosCandidatura.entrevista_gestor;
         document.getElementById("nome-gestor").value =
           avaliacao.nome_gestor || "";
+
+        // Usa a data do agendamento se existir, senão a data_entrevista antiga
         document.getElementById("data-entrevista-gestor").value =
-          avaliacao.data_entrevista || "";
+          avaliacao.agendamento?.data || avaliacao.data_entrevista || "";
+
         document.getElementById("perguntas-gestor").value =
           avaliacao.perguntas_foco || "";
         document.getElementById("comentarios-gestor").value =
@@ -159,10 +183,15 @@ document.addEventListener("DOMContentLoaded", () => {
         formAvaliacaoGestor.style.display = "none";
         exibirSecaoComunicacao(ultimaDecisaoGestor);
       } else {
+        // === INÍCIO CORREÇÃO 1: Garantir visibilidade do formulário ===
         mostrarAlerta(
           "Candidatura aguardando a Entrevista e Avaliação Final do Gestor.",
           "warning"
         );
+        // Garante que o formulário de avaliação esteja visível se nenhuma avaliação foi feita
+        formAvaliacaoGestor.style.display = "block";
+        secaoComunicacao.style.display = "none";
+        // === FIM CORREÇÃO 1 ===
       }
     } catch (error) {
       console.error("Erro ao carregar dados da candidatura:", error);
@@ -244,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 6.1. Construção dos dados
     const dadosAvaliacao = {
       nome_gestor: document.getElementById("nome-gestor").value.trim(),
-      data_entrevista: document.getElementById("data-entrevista-gestor").value,
+      data_entrevista: document.getElementById("data-entrevista-gestor").value, // Mantém a data principal
       perguntas_foco: document.getElementById("perguntas-gestor").value,
       comentarios_gestor: document.getElementById("comentarios-gestor").value,
       aprovado: aprovado,
@@ -255,29 +284,48 @@ document.addEventListener("DOMContentLoaded", () => {
         : "rh_system_user",
     };
 
-    // 6.2. Atualização no Firebase (Mantém o status como 'Entrevista Gestor Aprovada' ou 'Rejeitado (Comunicação Pendente)' para indicar que a próxima ação é a comunicação)
+    // 6.2. Atualização no Firebase
     const novoStatusCandidato = decisao
-      ? "Entrevista Gestor Aprovada (Comunicação Final)" // Aprovado: Próximo é Contratar
-      : "Rejeitado (Comunicação Pendente)"; // Reprovado: Próximo é enviar mensagem
+      ? "Entrevista Gestor Aprovada (Comunicação Final)"
+      : "Rejeitado (Comunicação Pendente)";
 
     try {
       const candidaturaRef = db.collection("candidaturas").doc(candidaturaId);
 
       const updateData = {
         status_recrutamento: novoStatusCandidato,
-        entrevista_gestor: dadosAvaliacao,
+        // Mescla a nova avaliação com dados existentes (como o agendamento)
+        entrevista_gestor: firebase.firestore.FieldValue.delete(), // Limpa o campo antigo
       };
+      await candidaturaRef.update(updateData); // Limpa primeiro
+
+      await candidaturaRef.set(
+        {
+          entrevista_gestor: {
+            ...(dadosCandidatura.entrevista_gestor || {}), // Mantém agendamento
+            ...dadosAvaliacao, // Sobrescreve com novos dados
+          },
+          status_recrutamento: novoStatusCandidato,
+        },
+        { merge: true }
+      ); // Adiciona os dados
 
       // Se reprovado, adiciona a rejeição
       if (!decisao) {
-        updateData.rejeicao = {
-          etapa: "Entrevista com Gestor",
-          justificativa: `Reprovado pelo Gestor. Motivo: ${motivoRejeicao}`,
-          data: dadosAvaliacao.data_registro,
-        };
+        await candidaturaRef.update({
+          rejeicao: {
+            etapa: "Entrevista com Gestor",
+            justificativa: `Reprovado pelo Gestor. Motivo: ${motivoRejeicao}`,
+            data: dadosAvaliacao.data_registro,
+          },
+        });
       }
 
-      await candidaturaRef.update(updateData);
+      // Atualiza dados locais para a transição
+      dadosCandidatura.entrevista_gestor = {
+        ...(dadosCandidatura.entrevista_gestor || {}),
+        ...dadosAvaliacao,
+      };
 
       // Transição para a fase de comunicação
       ultimaDecisaoGestor = aprovado;
@@ -300,6 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 7. Lógica de Comunicação Final (WhatsApp)
+  // ... (Nenhuma mudança nesta seção) ...
 
   // Atualiza o textarea com o modelo selecionado
   selectModeloMensagem.addEventListener("change", () => {
@@ -378,6 +427,135 @@ document.addEventListener("DOMContentLoaded", () => {
         '<i class="fab fa-whatsapp me-2"></i> Gerar Link WhatsApp e Finalizar';
     }
   });
+
+  // === INÍCIO CORREÇÃO 2: Funções de Agendamento (Reutilizando o modal do RH) ===
+
+  /**
+   * Abre o modal de agendamento (reutilizado do RH) para a entrevista com GESTOR
+   */
+  function abrirModalAgendamentoGestor(dados) {
+    if (
+      !modalAgendamento ||
+      !formAgendamento ||
+      !modalAgendamentoTitulo ||
+      !dataAgendadaInput ||
+      !horaAgendadaInput
+    ) {
+      console.error(
+        "ERRO: Elementos do modal de agendamento do RH não encontrados."
+      );
+      alert("Erro ao abrir o modal de agendamento.");
+      return;
+    }
+
+    // Mudar o título para "Gestor"
+    modalAgendamentoTitulo.textContent = "Agendamento da Entrevista com Gestor";
+    btnRegistrarAgendamentoRH.textContent = "Agendar Entrevista com Gestor";
+
+    // Preencher com dados existentes da *entrevista gestor*
+    const agendamentoGestor = dados.entrevista_gestor?.agendamento;
+    dataAgendadaInput.value = agendamentoGestor?.data || "";
+    horaAgendadaInput.value = agendamentoGestor?.hora || "";
+
+    // Preencher infos do candidato no modal (os IDs são do modal RH)
+    const nomeEl = document.getElementById("agendamento-rh-nome-candidato");
+    const statusEl = document.getElementById("agendamento-rh-status-atual");
+    const resumoEl = document.getElementById("agendamento-rh-resumo-triagem");
+
+    if (nomeEl) nomeEl.textContent = dados.nome_completo || "Candidato(a)";
+    if (statusEl) statusEl.textContent = dados.status_recrutamento || "N/A";
+    if (resumoEl)
+      resumoEl.textContent = dados.triagem_rh?.prerequisitos_atendidos || "N/A";
+
+    // Trocar o listener do form
+    // Usamos .onclick para garantir que apenas um handler esteja ativo e
+    // evitamos que o listener do 'tabEntrevistas.js' seja disparado.
+    formAgendamento.onsubmit = submeterAgendamentoGestor;
+
+    // Configurar botões de fechar (eles podem ter listeners de outros scripts)
+    modalAgendamento
+      .querySelectorAll(
+        ".close-modal-btn, [data-modal-id='modal-agendamento-rh']"
+      )
+      .forEach((btn) => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          modalAgendamento.classList.remove("is-visible");
+          formAgendamento.onsubmit = null; // Limpa o handler ao fechar
+        };
+      });
+
+    modalAgendamento.classList.add("is-visible");
+  }
+
+  /**
+   * Submete o agendamento da entrevista com GESTOR
+   */
+  async function submeterAgendamentoGestor(e) {
+    e.preventDefault();
+    console.log("Submetendo agendamento do GESTOR");
+
+    const dataEntrevista = dataAgendadaInput.value;
+    const horaEntrevista = horaAgendadaInput.value;
+
+    if (!dataEntrevista || !horaEntrevista) {
+      alert("Preencha data e hora.");
+      return;
+    }
+
+    btnRegistrarAgendamentoRH.disabled = true;
+    btnRegistrarAgendamentoRH.textContent = "Salvando...";
+
+    try {
+      const candidaturaRef = db.collection("candidaturas").doc(candidaturaId);
+
+      // Salva no campo correto: 'entrevista_gestor.agendamento'
+      await candidaturaRef.set(
+        {
+          entrevista_gestor: {
+            agendamento: {
+              data: dataEntrevista,
+              hora: horaEntrevista,
+            },
+            data_entrevista: dataEntrevista, // Atualiza o campo principal também
+          },
+          historico: firebase.firestore.FieldValue.arrayUnion({
+            data: firebase.firestore.FieldValue.serverTimestamp(),
+            acao: `Agendamento Entrevista GESTOR: ${dataEntrevista} às ${horaEntrevista}.`,
+            usuario: firebase.auth().currentUser
+              ? firebase.auth().currentUser.uid
+              : "rh_system_user",
+          }),
+        },
+        { merge: true }
+      ); // Usamos merge:true para não apagar outros dados
+
+      // Atualizar o campo no formulário principal da página
+      document.getElementById("data-entrevista-gestor").value = dataEntrevista;
+
+      // Atualizar dados locais
+      if (!dadosCandidatura.entrevista_gestor) {
+        dadosCandidatura.entrevista_gestor = {};
+      }
+      dadosCandidatura.entrevista_gestor.agendamento = {
+        data: dataEntrevista,
+        hora: horaEntrevista,
+      };
+      dadosCandidatura.entrevista_gestor.data_entrevista = dataEntrevista;
+
+      mostrarAlerta("Agendamento com gestor salvo com sucesso!", "success");
+      modalAgendamento.classList.remove("is-visible");
+    } catch (error) {
+      console.error("Erro ao salvar agendamento do gestor:", error);
+      mostrarAlerta(`Erro ao salvar: ${error.message}`, "danger");
+    } finally {
+      btnRegistrarAgendamentoRH.disabled = false;
+      btnRegistrarAgendamentoRH.textContent = "Agendar Entrevista"; // Reseta o texto padrão
+      formAgendamento.onsubmit = null; // Limpa o handler
+    }
+  }
+
+  // === FIM CORREÇÃO 2 ===
 
   // 8. Inicialização
   carregarDados();
