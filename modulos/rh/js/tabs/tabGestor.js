@@ -7,7 +7,6 @@ import {
   getDoc,
   doc,
   updateDoc,
-  Timestamp,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
 
@@ -52,7 +51,7 @@ export async function renderizarEntrevistaGestor(state) {
       return;
     }
 
-    // ✅ HTML IDÊNTICO à aba de Entrevistas
+    // ✅ HTML COPIADO EXATAMENTE DO tabEntrevistas.js
     let listaHtml = `
       <h3>Candidatos - Entrevista com Gestor</h3>
       <p><strong>Descrição:</strong> Avaliação final antes da comunicação e contratação.</p>
@@ -65,40 +64,43 @@ export async function renderizarEntrevistaGestor(state) {
       const statusAtual = cand.status_recrutamento || "N/A";
       const telefone = cand.telefone_contato || cand.telefone || "N/A";
 
-      // Badge baseado no status (mesma lógica da aba Entrevistas)
-      let badgeClass = "badge-warning";
-      let badgeText = statusAtual.replace(/_/g, " ");
-
+      // ✅ CÓDIGO EXATO DO tabEntrevistas.js
       listaHtml += `
         <div class="candidato-card">
-          <div class="candidato-nome">${nome}</div>
-          <div class="candidato-info">
-            <p><strong>Status:</strong> <span class="badge ${badgeClass}">${badgeText}</span></p>
-            <p><strong>Telefone:</strong> <span class="telefone-badge">${telefone}</span></p>
-          </div>
-          <div class="candidato-acoes">
-            <button 
-              class="btn btn-info btn-detalhes-gestor" 
-              data-candidato-id="${candidatoId}"
-              onclick="abrirDetalhesGestor('${candidatoId}', ${JSON.stringify(
+          <h4>${nome}</h4>
+          <p><strong>Status:</strong> ${statusAtual.replace(/_/g, " ")}</p>
+          <p>
+            <a href="https://wa.me/55${telefone.replace(/\D/g, "")}" 
+               target="_blank" 
+               class="telefone-badge"
+               ${
+                 !telefone || telefone === "N/A"
+                   ? 'style="pointer-events:none;opacity:0.5;"'
+                   : ""
+               }>
+              ${telefone}
+            </a>
+          </p>
+          <button 
+            class="btn btn-info" 
+            onclick='abrirDetalhesGestor("${candidatoId}", ${JSON.stringify(
         cand
-      ).replace(/"/g, "&quot;")})">
-              <i class="fas fa-eye"></i> Detalhes
-            </button>
-            <button 
-              class="btn btn-primary btn-avaliar-gestor" 
-              data-candidato-id="${candidatoId}"
-              onclick="abrirModalAvaliacaoGestor('${candidatoId}', ${JSON.stringify(
+      ).replace(/'/g, "\\'")})'
+            title="Ver detalhes do candidato">
+            <i class="fas fa-eye"></i> Detalhes
+          </button>
+          <button 
+            class="btn btn-primary" 
+            onclick='abrirModalAvaliacaoGestor("${candidatoId}", ${JSON.stringify(
         cand
-      ).replace(/"/g, "&quot;")})">
-              <i class="fas fa-clipboard-check"></i> Avaliar Gestor
-            </button>
-          </div>
+      ).replace(/'/g, "\\'")})'
+            title="Avaliar candidato">
+            <i class="fas fa-clipboard-check"></i> Avaliar Gestor
+          </button>
         </div>`;
     });
 
     listaHtml += `</div>`;
-
     conteudoRecrutamento.innerHTML = listaHtml;
   } catch (error) {
     console.error("Erro ao carregar candidatos (Gestor):", error);
@@ -111,9 +113,7 @@ export async function renderizarEntrevistaGestor(state) {
 // MODAL - DETALHES
 // ============================================
 
-window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
-  console.log("🔹 Gestor: Abrindo detalhes do candidato");
-
+window.abrirDetalhesGestor = function (candidatoId, dadosCandidato) {
   const modal = document.getElementById("modal-candidato");
   const modalBody = document.getElementById("candidato-modal-body");
   const modalFooter = document.getElementById("candidato-modal-footer");
@@ -143,7 +143,7 @@ window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
       ${
         dadosCandidato.triagem_rh
           ? `
-        <p><strong>Apto para Entrevista:</strong> ${
+        <p><strong>Apto:</strong> ${
           dadosCandidato.triagem_rh.apto_entrevista || "N/A"
         }</p>
         <p><strong>Observações:</strong> ${
@@ -181,9 +181,6 @@ window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
         <p><strong>Status:</strong> ${
           dadosCandidato.testes_estudos.status_resultado || "N/A"
         }</p>
-        <p><strong>Observações:</strong> ${
-          dadosCandidato.testes_estudos.observacoes || "N/A"
-        }</p>
       `
           : "<p>Testes não realizados</p>"
       }
@@ -206,8 +203,6 @@ window.abrirDetalhesGestor = async function (candidatoId, dadosCandidato) {
 // ============================================
 
 window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
-  console.log("🔹 Gestor: Abrindo modal de avaliação");
-
   const modal = document.getElementById("modal-candidato");
   const modalBody = document.getElementById("candidato-modal-body");
   const modalFooter = document.getElementById("candidato-modal-footer");
@@ -218,12 +213,10 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
     return;
   }
 
-  modalTitulo.textContent = `Avaliar Candidato - ${
-    dadosCandidato.nome_completo || "Candidato"
-  }`;
+  modalTitulo.textContent = dadosCandidato.nome_completo || "Candidato";
 
   modalBody.innerHTML = `
-    <div class="info-box" style="background: #e7f3ff; border-left: 4px solid #007bff;">
+    <div class="info-box" style="background: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 20px;">
       <p><strong>Nome:</strong> ${dadosCandidato.nome_completo || "N/A"}</p>
       <p><strong>Email:</strong> ${
         dadosCandidato.email_candidato || dadosCandidato.email || "N/A"
@@ -236,12 +229,12 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
     <form id="form-avaliacao-gestor">
       <div class="form-group">
         <label><strong>O gestor aprovou o candidato?</strong></label>
-        <div class="radio-options">
-          <label class="radio-label">
+        <div style="margin-top: 10px;">
+          <label style="display: block; margin: 10px 0;">
             <input type="radio" name="aprovado_gestor" value="Sim" required>
             <span>Sim - Aprovar para contratação</span>
           </label>
-          <label class="radio-label">
+          <label style="display: block; margin: 10px 0;">
             <input type="radio" name="aprovado_gestor" value="Não" required>
             <span>Não - Reprovar candidato</span>
           </label>
@@ -249,7 +242,7 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
       </div>
 
       <div class="form-group" id="motivo-rejeicao-container" style="display: none;">
-        <label for="motivo-rejeicao">Motivo da Reprovação: <span class="obrigatorio">*</span></label>
+        <label for="motivo-rejeicao">Motivo da Reprovação: <span style="color: red;">*</span></label>
         <textarea 
           id="motivo-rejeicao" 
           name="motivo_rejeicao" 
@@ -259,7 +252,7 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
       </div>
 
       <div class="form-group">
-        <label for="nome-gestor">Nome do Gestor: <span class="obrigatorio">*</span></label>
+        <label for="nome-gestor">Nome do Gestor: <span style="color: red;">*</span></label>
         <input 
           type="text" 
           id="nome-gestor" 
@@ -280,7 +273,7 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
       </div>
 
       <div class="form-group">
-        <label for="data-entrevista-gestor">Data da Entrevista: <span class="obrigatorio">*</span></label>
+        <label for="data-entrevista-gestor">Data da Entrevista: <span style="color: red;">*</span></label>
         <input 
           type="date" 
           id="data-entrevista-gestor" 
@@ -291,27 +284,25 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
     </form>
   `;
 
-  // Toggle campo de motivo
   const radios = modalBody.querySelectorAll('input[name="aprovado_gestor"]');
   const motivoContainer = modalBody.querySelector("#motivo-rejeicao-container");
+  const motivoTextarea = modalBody.querySelector("#motivo-rejeicao");
 
   radios.forEach((radio) => {
     radio.addEventListener("change", (e) => {
-      motivoContainer.style.display =
-        e.target.value === "Não" ? "block" : "none";
-      const motivoTextarea = motivoContainer.querySelector("#motivo-rejeicao");
       if (e.target.value === "Não") {
+        motivoContainer.style.display = "block";
         motivoTextarea.setAttribute("required", "required");
       } else {
+        motivoContainer.style.display = "none";
         motivoTextarea.removeAttribute("required");
       }
     });
   });
 
-  // Botões do footer
   modalFooter.innerHTML = `
-    <button type="button" class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
-    <button type="button" class="btn btn-success btn-salvar-avaliacao-gestor">
+    <button class="btn btn-secondary fechar-modal-candidato">Cancelar</button>
+    <button class="btn btn-success btn-salvar-avaliacao-gestor">
       <i class="fas fa-check"></i> Salvar Avaliação
     </button>
   `;
@@ -333,8 +324,6 @@ window.abrirModalAvaliacaoGestor = function (candidatoId, dadosCandidato) {
 // ============================================
 
 async function salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal) {
-  console.log("🔹 Gestor: Salvando avaliação");
-
   const form = document.getElementById("form-avaliacao-gestor");
   const btnSalvar = document.querySelector(".btn-salvar-avaliacao-gestor");
 
@@ -406,7 +395,6 @@ async function salvarAvaliacaoGestor(candidatoId, dadosCandidato, modal) {
 
     modal.classList.remove("is-visible");
 
-    // Recarrega a aba ativa
     const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
     if (activeTab) {
       handleTabClick({ currentTarget: activeTab });
