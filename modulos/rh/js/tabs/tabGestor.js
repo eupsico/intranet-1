@@ -35,12 +35,7 @@ export async function renderizarEntrevistaGestor(state) {
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where("status_recrutamento", "in", [
-        "Entrevista com Gestor Agendada",
-        "Aguardando Entrevista com Gestor",
-        "Entrevista com Gestor Pendente",
-        "Entrevista com Gestor Concluída",
-      ])
+      where("status_recrutamento", "in", ["Entrevista Gestor Pendente"])
     );
 
     const snapshot = await getDocs(q);
