@@ -51,7 +51,33 @@
   </div>
  </div>
 
-  
+  <div id="modal-candidato" class="modal-overlay">
+ <div class="modal-content" style="max-width: 900px">
+  <div class="modal-header">
+   <h3 id="candidato-nome-titulo">Detalhes da Candidatura</h3>
+   <button
+    type="button"
+    class="close-modal-btn fechar-modal-candidato"
+    aria-label="Fechar modal"
+   >
+    &times;
+   </button>
+  </div>
+
+  <div class="modal-body modal-body-scroll" id="candidato-modal-body">
+      <div class="loading-spinner"></div>
+  </div>
+
+  <div class="modal-footer" id="candidato-modal-footer">
+   <button
+    type="button"
+    class="action-button secondary fechar-modal-candidato"
+   >
+    <i class="fas fa-times me-2"></i> Fechar
+   </button>
+  </div>
+ </div>
+</div>
    <script type="module" src="../js/admissao.js"></script>
 </body>
 </html>
