@@ -802,7 +802,7 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
     // --- FIM DA CORREÇÃO ---
 
     // Certifique-se de que 'db' foi importado no topo do arquivo!
-    const candidatoRef = doc(db, "candidatos", candidatoId); // Tenta atualizar primeiro
+    const candidatoRef = doc(db, "candidaturas", candidatoId); // Tenta atualizar primeiro
 
     try {
       await updateDoc(candidatoRef, {
