@@ -195,9 +195,8 @@ export async function renderizarSolicitacaoEmail(state) {
 
     conteudoAdmissao.innerHTML = listaHtml;
 
-    console.log("🔗 Admissão(Email): Anexando event listeners...");
+    console.log("🔗 Admissão(Email): Anexando event listeners..."); // Botão Solicitar E-mail
 
-    // Botão Solicitar E-mail
     document.querySelectorAll(".btn-solicitar-email").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -206,16 +205,14 @@ export async function renderizarSolicitacaoEmail(state) {
         const dadosCodificados = btn.getAttribute("data-dados");
         abrirModalSolicitarEmail(candidatoId, dadosCodificados, state);
       });
-    });
+    }); // Botão Detalhes
 
-    // Botão Detalhes
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
-
         if (typeof window.abrirModalCandidato === "function") {
           try {
             const dadosCandidato = JSON.parse(
@@ -229,9 +226,8 @@ export async function renderizarSolicitacaoEmail(state) {
           console.warn("⚠️ Função window.abrirModalCandidato não encontrada.");
         }
       });
-    });
+    }); // Botão Reprovar Admissão
 
-    // Botão Reprovar Admissão
     document.querySelectorAll(".btn-reprovar-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -257,15 +253,13 @@ export async function renderizarSolicitacaoEmail(state) {
  */
 async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   console.log("🎯 Abrindo modal de solicitação de e-mail");
-  const { currentUserData } = state;
+  const { currentUserData } = state; // Mostra um spinner simples enquanto carrega as listas
 
-  // Mostra um spinner simples enquanto carrega as listas
   document.body.insertAdjacentHTML(
     "beforeend",
     '<div id="modal-temp-loader" class="modal-overlay is-visible"><div class="loading-spinner"></div></div>'
   );
   const { profissoes, departamentos } = await carregarListasConfig();
-
   const tempLoader = document.getElementById("modal-temp-loader");
   if (tempLoader) tempLoader.remove();
 
@@ -297,7 +291,6 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const modal = document.createElement("div");
     modal.id = "modal-solicitar-email";
     modal.className = "modal-overlay is-visible";
-
     modal.innerHTML = `
   	<div class="modal-content" style="max-width: 600px;">
   		<div class="modal-header">
@@ -351,7 +344,6 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
-
     const btnSalvar = document.getElementById("btn-salvar-solicitacao");
     btnSalvar.addEventListener("click", () => {
       salvarSolicitacaoEmail(
@@ -408,9 +400,8 @@ async function salvarSolicitacaoEmail(
 
   const cargo = form.querySelector("#solicitar-cargo").value;
   const departamento = form.querySelector("#solicitar-departamento").value;
-  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value;
+  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value; // Validações
 
-  // Validações
   if (!cargo || !departamento || !emailSugerido) {
     window.showToast?.("Por favor, preencha todos os campos.", "warning");
     return;
@@ -431,7 +422,7 @@ async function salvarSolicitacaoEmail(
     let logAcao = "";
 
     // --- ⚠️ CORREÇÃO: Define o usuário logado corretamente ---
-    const solicitanteId = currentUserData.uid || "rh_admin_fallback";
+    const solicitanteId = currentUserData.uid || "rh_admin_fallback_uid";
     const solicitanteNome =
       currentUserData.nome || currentUserData.email || "Usuário RH";
 
@@ -446,7 +437,6 @@ async function salvarSolicitacaoEmail(
         cargo: cargo,
         departamento: departamento,
       });
-
       if (resultado.data.sucesso) {
         emailCriadoComSucesso = true;
         logAcao = `E-mail ${emailSugerido} criado com sucesso via API.`;
@@ -463,7 +453,6 @@ async function salvarSolicitacaoEmail(
         "Falha na API. Criando solicitação interna para o TI.",
         "warning"
       );
-
       const solicitacoesTiRef = collection(db, "solicitacoes_ti");
       await addDoc(solicitacoesTiRef, {
         tipo: "criacao_email_novo_colaborador",
@@ -483,7 +472,6 @@ async function salvarSolicitacaoEmail(
 
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     const novoStatus = "AGUARDANDO_CADASTRO";
-
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
       historico: arrayUnion({
@@ -565,7 +553,6 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-
   const btnSalvar = document.getElementById("btn-salvar-reprovacao");
   btnSalvar.addEventListener("click", () => {
     submeterReprovacaoAdmissao(candidatoId, state);
@@ -626,7 +613,7 @@ async function submeterReprovacaoAdmissao(candidatoId, state) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Candidatura REJEITADA na ADMISSÃO. Motivo: ${justificativa}`,
-        usuario: currentUserData.uid || "rh_admin_fallback", // <-- CORRIGIDO
+        usuario: currentUserData.uid || "rh_admin_fallback_uid", // <-- CORRIGIDO
       }),
     });
 
