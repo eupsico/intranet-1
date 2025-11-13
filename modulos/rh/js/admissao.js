@@ -134,6 +134,115 @@ export function getStatusBadgeClass(status) {
   }
 }
 
+/**
+ * Abre modal com detalhes completos do candidato (Re-adicionado para o módulo de Admissão)
+ * @param {string} candidatoId - ID do documento do candidato
+ * @param {string} modo - Modo de visualização (detalhes, etc.)
+ * @param {Object} candidato - Dados do candidato (opcional)
+ */
+async function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
+  const modalCandidato = document.getElementById("modal-candidato"); // Assegure-se que este modal existe no admissao.html
+  const modalCandidatoBody = document.getElementById("candidato-modal-body");
+  const modalCandidatoFooter = document.getElementById(
+    "candidato-modal-footer"
+  );
+  const { formatarTimestamp, getStatusBadgeClass } = getGlobalState(); // Pega as funções do estado global
+
+  if (!modalCandidato || !modalCandidatoBody) {
+    console.error(
+      "❌ Admissão: Modal de detalhes 'modal-candidato' não encontrado no admissao.html"
+    );
+    window.showToast?.("Erro: Modal de detalhes não encontrado.", "error");
+    return;
+  }
+
+  console.log(`🔹 Admissão: Abrindo modal para candidato ${candidatoId}`);
+  dadosCandidatoAtual = candidato; // Salva no estado global do módulo // Atualiza título do modal
+
+  const tituloModalEl = document.getElementById("candidato-nome-titulo");
+  if (tituloModalEl) {
+    tituloModalEl.textContent = `Detalhes: ${
+      candidato.nome_completo || "Candidato(a)"
+    }`;
+  } // Monta o conteúdo com fieldsets
+
+  const contentHtml = `
+  <div class="row">
+   <div class="col-lg-6">
+    <fieldset>
+     <legend><i class="fas fa-user me-2"></i>Informações Pessoais</legend>
+     <div class="details-grid">
+      <p class="card-text">
+       <strong>Nome Completo:</strong><br>
+       <span style="color: var(--cor-primaria); font-weight: 600;">${
+         candidato.nome_completo || "N/A"
+       }</span>
+      </p>
+      <p class="card-text">
+       <strong>Email Pessoal:</strong><br>
+       <span>${
+         candidato.email_pessoal || candidato.email_candidato || "N/A"
+       }</span>
+      </p>
+      <p class="card-text">
+       <strong>Telefone (WhatsApp):</strong><br>
+       <span>${candidato.telefone_contato || "N/A"}</span>
+      </p>
+     </div>
+    </fieldset>
+   </div>
+   <div class="col-lg-6">
+    <fieldset>
+     <legend><i class="fas fa-briefcase me-2"></i>Informações da Vaga</legend>
+     <div class="details-grid">
+     	<p class="card-text">
+      	<strong>Vaga Aprovada:</strong><br>
+      	<span>${candidato.vaga_titulo || "N/A"}</span>
+     	</p>
+     	<p class="card-text">
+      	<strong>Status Admissão:</strong><br>
+      	<span class="status-badge ${getStatusBadgeClass(
+          candidato.status_recrutamento
+        )}">
+      		${candidato.status_recrutamento || "N/A"}
+      	</span>
+     	</p>
+     	<p class="card-text">
+      	<strong>Novo E-mail (Solicitado):</strong><br>
+      	<span>${candidato.email_novo || "Aguardando"}</span>
+     	</p>
+     </div>
+    </fieldset>
+   </div>
+  </div>
+ `;
+  modalCandidatoBody.innerHTML = contentHtml; // Atualiza o footer
+
+  modalCandidatoFooter.innerHTML = `
+  <button type="button" class="action-button secondary fechar-modal-candidato">
+   <i class="fas fa-times me-2"></i> Fechar
+  </button>
+ `; // Anexa listener ao botão de fechar
+
+  modalCandidatoFooter
+    .querySelector(".fechar-modal-candidato")
+    .addEventListener("click", () => {
+      modalCandidato.classList.remove("is-visible");
+    }); // Listener de fechar no X (header)
+  const closeBtnHeader = modalCandidato.querySelector(
+    ".close-modal-btn.fechar-modal-candidato"
+  );
+  if (closeBtnHeader) {
+    closeBtnHeader.onclick = () =>
+      modalCandidato.classList.remove("is-visible");
+  }
+
+  modalCandidato.classList.add("is-visible");
+  console.log("✅ Admissão: Modal de detalhes aberto");
+}
+
+// Exporta a função para a window, para que as abas possam chamá-la
+window.abrirModalCandidato = abrirModalAdmissaoCandidato;
 // ============================================
 // REPROVAÇÃO DE CANDIDATOS (ADAPTADA)
 // ============================================
