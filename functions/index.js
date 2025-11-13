@@ -16,7 +16,8 @@ const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
-
+const { defineSecret } = require("firebase-functions/params");
+const googleAdminEmail = defineSecret("GOOGLE_ADMIN_EMAIL");
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
@@ -2321,3 +2322,87 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     throw new HttpsError("internal", `Erro: ${error.message}`);
   }
 });
+/**
+ * [NOVA FUNÇÃO - CRIA E-MAIL NO GOOGLE WORKSPACE]
+ * Tenta criar um novo usuário no G-Workspace.
+ * Requer configuração de Domain-Wide Delegation.
+ */
+exports.criarEmailGoogleWorkspace = onCall(
+  { secrets: [googleAdminEmail] },
+  async (request) => {
+    // 1. Validação de Dados
+    const { nome, email, cargo, departamento } = request.data;
+    if (!nome || !email || !cargo || !departamento) {
+      throw new HttpsError("invalid-argument", "Dados incompletos.");
+    }
+    if (!email.includes("@eupsico.com.br")) {
+      throw new HttpsError(
+        "invalid-argument",
+        "O e-mail deve ser @eupsico.com.br."
+      );
+    }
+
+    console.log(`Tentando criar e-mail: ${email} para ${nome}`); // 2. Autenticação com Google API
+    const adminEmail = googleAdminEmail.value();
+    if (!adminEmail) {
+      console.error("Secret 'GOOGLE_ADMIN_EMAIL' não está configurado.");
+      return {
+        sucesso: false,
+        erro: "Configuração do servidor incompleta (Secret).",
+      };
+    }
+    const auth = new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/admin.directory.user"], // Impersona o admin do Workspace
+      subject: adminEmail,
+    });
+    const authClient = await auth.getClient();
+    const adminService = google.admin({
+      version: "directory_v1",
+      auth: authClient,
+    }); // 3. Preparar Objeto do Usuário
+
+    const [primeiroNome, ...partesSobrenome] = nome.split(" ");
+    const sobrenome = partesSobrenome.join(" ") || primeiroNome; // Gera uma senha temporária forte
+    const tempPassword = Math.random().toString(36).slice(-8) + "Epsi@2025";
+
+    const newUser = {
+      primaryEmail: email,
+      password: tempPassword,
+      name: {
+        givenName: primeiroNome,
+        familyName: sobrenome,
+      },
+      orgUnitPath: "/", // Caminho organizacional (raiz)
+      changePasswordAtNextLogin: true,
+      organizations: [
+        {
+          title: cargo,
+          department: departamento,
+          primary: true,
+        },
+      ],
+    }; // 4. Tentar Inserir o Usuário
+
+    try {
+      const res = await adminService.users.insert({
+        requestBody: newUser,
+      });
+      console.log("Sucesso! E-mail criado:", res.data.primaryEmail);
+      return {
+        sucesso: true,
+        email: res.data.primaryEmail,
+        tempPassword: tempPassword, // Opcional: logar a senha temp em algum lugar seguro
+      };
+    } catch (error) {
+      console.error("Erro da API do Google:", error.message);
+      if (error.code === 409) {
+        // Erro 409 = Conflito (Usuário já existe)
+        return {
+          sucesso: false,
+          erro: "Este e-mail já existe no Google Workspace.",
+        };
+      } // Outros erros
+      return { sucesso: false, erro: `Erro da API: ${error.message}` };
+    }
+  }
+);
