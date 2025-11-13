@@ -7,13 +7,12 @@ import {
   doc,
   updateDoc,
   arrayUnion,
-  getDoc,
+  db,
 } from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
- * Modal corrigido para abrir como POPUP centralizado na tela.
- * Salvamento no Firebase implementado corretamente.
+ * Funções locais para evitar conflitos de namespace.
  */
 export async function renderizarEntrevistaGestor(state) {
   const {
@@ -32,6 +31,7 @@ export async function renderizarEntrevistaGestor(state) {
     return;
   }
 
+  // Loading spinner
   conteudoRecrutamento.innerHTML = `
     <div class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Entrevista com Gestor...
@@ -72,6 +72,9 @@ export async function renderizarEntrevistaGestor(state) {
 
     let listaHtml = `
       <div class="candidatos-container candidatos-grid">
+        <h3 class="section-title">
+          <i class="fas fa-users"></i> Candidatos para Entrevista com Gestor (${snapshot.size})
+        </h3>
     `;
 
     snapshot.docs.forEach((doc) => {
@@ -106,7 +109,7 @@ export async function renderizarEntrevistaGestor(state) {
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
       listaHtml += `
-        <div class="card card-candidato-gestor" data-id="${candidaturaId}">
+        <div class="card card-candidato-gestor">
           <div class="info-primaria">
             <h4 class="nome-candidato">
               ${cand.nome_completo || "Candidato Sem Nome"}
@@ -115,7 +118,7 @@ export async function renderizarEntrevistaGestor(state) {
               </span>
             </h4>
             <p class="small-info">
-              <i class="fas fa-briefcase"></i> Etapa: Entrevista com Gestor.
+              <i class="fas fa-briefcase"></i> Etapa: Entrevista com Gestor
             </p>
           </div>
 
@@ -133,25 +136,22 @@ export async function renderizarEntrevistaGestor(state) {
           </div>
 
           <div class="acoes-candidato">
-            <!-- BOTÃO AVALIAR GESTOR -->
-            <button class="action-button primary btn-avaliar-gestor" 
+            <button class="action-button primary btn-avaliar-gestor"
                     data-id="${candidaturaId}"
                     data-vaga="${vagaId}"
                     data-dados="${dadosCodificados}"
                     style="min-width: 140px;">
               <i class="fas fa-user-tie"></i> Avaliar Gestor
             </button>
-            
-            <!-- BOTÃO DETALHES -->
-            <button class="action-button secondary btn-ver-detalhes" 
+
+            <button class="action-button secondary btn-ver-detalhes"
                     data-id="${candidaturaId}"
                     data-dados="${dadosCodificados}"
                     style="min-width: 100px;">
               <i class="fas fa-eye"></i> Detalhes
             </button>
-            
-            <!-- BOTÃO AGENDAR REUNIÃO - PADRÃO DO tabEntrevistas -->
-            <button class="action-button info btn-agendar-rh" 
+
+            <button class="action-button info btn-agendar-rh"
                     data-id="${candidaturaId}"
                     data-dados="${dadosCodificados}"
                     style="min-width: 140px;">
@@ -168,89 +168,8 @@ export async function renderizarEntrevistaGestor(state) {
 
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // EVENT LISTENERS
-    console.log("🔗 Gestor: Anexando event listeners...");
-
-    // Botão Avaliar Gestor
-    document.querySelectorAll(".btn-avaliar-gestor").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const candidatoId = btn.getAttribute("data-id");
-        const vagaId = btn.getAttribute("data-vaga");
-        const dadosCodificados = btn.getAttribute("data-dados");
-
-        console.log(`🔹 Gestor: Abrindo modal Avaliar - ID: ${candidatoId}`);
-
-        // Tenta funções globais existentes primeiro
-        if (window.abrirModalAvaliacaoGestor) {
-          window.abrirModalAvaliacaoGestor(
-            candidatoId,
-            vagaId,
-            dadosCodificados
-          );
-        } else if (window.abrirModalAvaliacao) {
-          window.abrirModalAvaliacao(candidatoId, dadosCodificados, "gestor");
-        } else {
-          // CRIA MODAL POPUP CENTRALIZADO
-          abrirModalAvaliacaoGestorPopup(candidatoId, vagaId, dadosCodificados);
-        }
-      });
-    });
-
-    // Botão Detalhes
-    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const candidatoId = btn.getAttribute("data-id");
-        const dadosCodificados = btn.getAttribute("data-dados");
-
-        console.log(`🔹 Gestor: Abrindo modal Detalhes - ID: ${candidatoId}`);
-
-        if (window.abrirModalDetalhesCandidato) {
-          window.abrirModalDetalhesCandidato(candidatoId, dadosCodificados);
-        } else if (window.abrirModalCandidato) {
-          window.abrirModalCandidato(candidatoId, dadosCodificados, "detalhes");
-        } else {
-          abrirModalDetalhesPopup(candidatoId, dadosCodificados);
-        }
-      });
-    });
-
-    // Botão Agendar Reunião - PADRÃO DO tabEntrevistas
-    document.querySelectorAll(".btn-agendar-rh").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const candidatoId = btn.getAttribute("data-id");
-        const dadosCodificados = btn.getAttribute("data-dados");
-
-        console.log(
-          `📅 Gestor: Abrindo modal Agendar Reunião - ID: ${candidatoId}`
-        );
-
-        if (window.abrirModalAgendamentoRH) {
-          const dadosCandidato = JSON.parse(
-            decodeURIComponent(dadosCodificados)
-          );
-          window.abrirModalAgendamentoRH(candidatoId, dadosCandidato);
-        } else {
-          console.warn(
-            "⚠️ Função window.abrirModalAgendamentoRH não encontrada"
-          );
-          // Fallback: modal simples de agendamento
-          abrirModalAgendamentoFallback(candidatoId, dadosCodificados);
-        }
-      });
-    });
-
-    console.log(
-      `✅ Gestor: ${snapshot.size} candidatos renderizados com listeners`
-    );
+    // Event listeners para todos os botões
+    anexarEventListenersGestor();
   } catch (error) {
     console.error("❌ Gestor: Erro ao carregar:", error);
     conteudoRecrutamento.innerHTML = `
@@ -261,1055 +180,588 @@ export async function renderizarEntrevistaGestor(state) {
   }
 }
 
-// === MODAL POPUP CENTRALIZADO PARA AVALIAÇÃO GESTOR ===
-function abrirModalAvaliacaoGestorPopup(candidatoId, vagaId, dadosCodificados) {
-  console.log("🎯 Gestor: Criando POPUP centralizado para avaliação");
+// Função local para anexar event listeners
+function anexarEventListenersGestor() {
+  console.log("🔗 Gestor: Anexando event listeners...");
 
+  // Botão Avaliar Gestor
+  document.querySelectorAll(".btn-avaliar-gestor").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const candidatoId = btn.getAttribute("data-id");
+      const vagaId = btn.getAttribute("data-vaga");
+      const dadosCodificados = btn.getAttribute("data-dados");
+
+      console.log(`🔹 Avaliar Gestor clicado - ID: ${candidatoId}`);
+
+      // Chama função local
+      abrirModalAvaliacaoGestorLocal(candidatoId, vagaId, dadosCodificados);
+    });
+  });
+
+  // Botão Detalhes
+  document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const candidatoId = btn.getAttribute("data-id");
+      const dadosCodificados = btn.getAttribute("data-dados");
+
+      console.log(`🔹 Detalhes clicado - ID: ${candidatoId}`);
+
+      // Chama função local
+      abrirModalDetalhesGestorLocal(candidatoId, dadosCodificados);
+    });
+  });
+
+  // Botão Agendar Reunião
+  document.querySelectorAll(".btn-agendar-rh").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const candidatoId = btn.getAttribute("data-id");
+      const dadosCodificados = btn.getAttribute("data-dados");
+
+      console.log(`📅 Agendar Reunião clicado - ID: ${candidatoId}`);
+
+      // Chama função global se existir, senão local
+      if (window.abrirModalAgendamentoRH) {
+        const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
+        window.abrirModalAgendamentoRH(candidatoId, dadosCandidato);
+      } else {
+        abrirModalAgendamentoGestorLocal(candidatoId, dadosCodificados);
+      }
+    });
+  });
+}
+
+// Modal Avaliação Gestor Local
+function abrirModalAvaliacaoGestorLocal(candidatoId, vagaId, dadosCodificados) {
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
+    const agora = new Date();
+    const user = getGlobalState()?.usuarioAtual;
 
     // Remove modal anterior se existir
-    const modalExistente = document.getElementById("modal-gestor-avaliacao");
+    const modalExistente = document.getElementById("modal-gestor-local");
     if (modalExistente) {
       modalExistente.remove();
     }
 
-    // CRIA O POPUP CENTRALIZADO
+    // Cria modal com estilos inline garantidos
     const modal = document.createElement("div");
-    modal.id = "modal-gestor-avaliacao";
-    modal.className = "modal-overlay";
-
+    modal.id = "modal-gestor-local";
     modal.innerHTML = `
-      <div class="modal-overlay">
-        <!-- OVERLAY ESCURO -->
-        <div class="modal-background" onclick="fecharModalGestorPopup()"></div>
-        
-        <!-- CONTEÚDO CENTRALIZADO -->
-        <div class="modal-content" style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 90%;
-          max-width: 600px;
-          max-height: 90vh;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-          z-index: 10000;
-          overflow: hidden;
-          animation: modalSlideIn 0.3s ease-out;
-        ">
-          <!-- HEADER -->
-          <div class="modal-header" style="
-            background: var(--cor-primaria, #667eea);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <i class="fas fa-user-tie" style="font-size: 20px;"></i>
-              <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
-                Avaliação - Entrevista com Gestor
-              </h3>
-            </div>
-            <button onclick="fecharModalGestorPopup()" style="
-              background: rgba(255,255,255,0.2);
-              border: none;
-              color: white;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 16px;
-            ">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <!-- BODY - ROLÁVEL -->
-          <div class="modal-body" style="
-            padding: 25px;
-            max-height: 60vh;
-            overflow-y: auto;
-            background: #f8f9fa;
-          ">
-            <!-- INFORMAÇÕES DO CANDIDATO -->
-            <div class="candidato-info" style="
-              background: white;
-              padding: 20px;
-              border-radius: 6px;
-              margin-bottom: 20px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            ">
-              <h4 style="margin: 0 0 15px 0; color: var(--cor-primaria, #667eea);">
-                <i class="fas fa-user"></i> ${
-                  dadosCandidato.nome_completo || "N/A"
-                }
-              </h4>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
-                <div>
-                  <strong>Email:</strong><br>
-                  ${dadosCandidato.email_candidato || "N/A"}
-                </div>
-                <div>
-                  <strong>Telefone:</strong><br>
-                  ${dadosCandidato.telefone_contato || "N/A"}
-                </div>
-                <div>
-                  <strong>Status:</strong><br>
-                  <span style="padding: 4px 8px; background: #e3f2fd; color: #1976d2; border-radius: 12px; font-size: 12px;">
-                    ${dadosCandidato.status_recrutamento || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <strong>Vaga ID:</strong><br>
-                  ${vagaId}
-                </div>
-              </div>
-            </div>
-            
-            <!-- FORMULÁRIO DE AVALIAÇÃO -->
-            <form id="form-avaliacao-gestor">
-              <div class="field" style="margin-bottom: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #333;">
-                  Observações da Entrevista
-                </label>
-                <textarea name="observacoes" class="textarea" 
-                          style="width: 100%; min-height: 120px; border: 1px solid #ddd; border-radius: 6px; padding: 12px; font-family: inherit; resize: vertical;"
-                          placeholder="Descreva suas observações sobre a entrevista com o gestor..."></textarea>
-              </div>
-              
-              <div class="field" style="margin-bottom: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #333;">
-                  Resultado da Avaliação
-                </label>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="radio" name="resultado" value="aprovado" style="margin: 0;">
-                    <span style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #d4edda; color: #155724; border-radius: 20px;">
-                      <i class="fas fa-check-circle" style="color: #28a745;"></i>
-                      Aprovado para Contratação
-                    </span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="radio" name="resultado" value="rejeitado" style="margin: 0;">
-                    <span style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f8d7da; color: #721c24; border-radius: 20px;">
-                      <i class="fas fa-times-circle" style="color: #dc3545;"></i>
-                      Não Selecionado
-                    </span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="radio" name="resultado" value="pendente" style="margin: 0;">
-                    <span style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #fff3cd; color: #856404; border-radius: 20px;">
-                      <i class="fas fa-clock" style="color: #ffc107;"></i>
-                      Avaliação Pendente
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </form>
-          </div>
-          
-          <!-- FOOTER FIXO -->
-          <div class="modal-footer" style="
-            padding: 15px 25px;
-            background: white;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-          ">
-            <button onclick="fecharModalGestorPopup()" 
-                    style="
-                      padding: 10px 20px;
-                      background: #f8f9fa;
-                      color: #6c757d;
-                      border: 1px solid #dee2e6;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-weight: 500;
-                    ">
-              <i class="fas fa-times"></i> Cancelar
-            </button>
-            <button onclick="salvarAvaliacaoGestor('${candidatoId}')" 
-                    style="
-                      padding: 10px 20px;
-                      background: var(--cor-primaria, #667eea);
-                      color: white;
-                      border: none;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-weight: 500;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                    ">
-              <i class="fas fa-save"></i> Salvar Avaliação
-            </button>
-          </div>
-        </div>
-      </div>
-      
       <style>
-        @keyframes modalSlideIn {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -60%) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-          }
-        }
-        
-        /* SOBRESCREVE QUALQUER CSS EXISTENTE */
-        #modal-gestor-avaliacao {
+        #modal-gestor-local {
           position: fixed !important;
           top: 0 !important;
           left: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          z-index: 10000 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          z-index: 999999 !important;
+          background: rgba(0, 0, 0, 0.7) !important;
           display: flex !important;
           justify-content: center !important;
           align-items: center !important;
-          background: rgba(0, 0, 0, 0.6) !important;
+          padding: 20px !important;
+          box-sizing: border-box !important;
         }
         
-        #modal-gestor-avaliacao .modal-background {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
+        #modal-gestor-local .modal-container {
+          position: relative !important;
+          z-index: 1000000 !important;
           width: 100% !important;
-          height: 100% !important;
-          background: rgba(0, 0, 0, 0.5) !important;
-          z-index: 9999 !important;
-        }
-        
-        #modal-gestor-avaliacao .modal-content {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          z-index: 10001 !important;
+          max-width: 600px !important;
           max-height: 90vh !important;
+          background: #ffffff !important;
+          border-radius: 12px !important;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25) !important;
           overflow: hidden !important;
+          animation: modalSlideIn 0.3s ease-out !important;
         }
         
-        /* RESPONSIVO */
-        @media (max-width: 768px) {
-          #modal-gestor-avaliacao .modal-content {
-            width: 95% !important;
-            max-height: 95vh !important;
-            top: 5% !important;
-            left: 2.5% !important;
-            transform: none !important;
-          }
-          
-          #modal-gestor-avaliacao .modal-body {
-            max-height: 60vh !important;
-            padding: 15px !important;
-          }
-        }
-      </style>
-    `;
-
-    // Adiciona o modal ao body
-    document.body.appendChild(modal);
-
-    // Scroll para o topo da página
-    window.scrollTo(0, 0);
-
-    // Impede scroll do body
-    document.body.style.overflow = "hidden";
-
-    console.log("✅ Gestor: Modal popup centralizado criado e exibido");
-  } catch (error) {
-    console.error("❌ Erro ao criar modal popup:", error);
-    // Fallback para a página original
-    window.open(
-      `etapa-entrevista-gestor.html?candidato=${candidatoId}&vaga=${vagaId}`,
-      "_blank"
-    );
-  }
-}
-
-// === MODAL POPUP PARA DETALHES ===
-function abrirModalDetalhesPopup(candidatoId, dadosCodificados) {
-  console.log("👁️ Gestor: Criando popup de detalhes");
-
-  try {
-    const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
-
-    // Remove modal anterior
-    const modalExistente = document.getElementById("modal-gestor-detalhes");
-    if (modalExistente) {
-      modalExistente.remove();
-    }
-
-    const modal = document.createElement("div");
-    modal.id = "modal-gestor-detalhes";
-    modal.className = "modal-overlay";
-
-    modal.innerHTML = `
-      <div class="modal-overlay">
-        <div class="modal-background" onclick="fecharModalGestorPopup()"></div>
-        
-        <div class="modal-content" style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 90%;
-          max-width: 700px;
-          max-height: 85vh;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-          z-index: 10000;
-          overflow: hidden;
-          animation: modalSlideIn 0.3s ease-out;
-        ">
-          <div class="modal-header" style="
-            background: #f8f9fa;
-            color: #333;
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <i class="fas fa-eye" style="font-size: 20px; color: var(--cor-primaria, #667eea);"></i>
-              <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
-                Detalhes - ${dadosCandidato.nome_completo || "N/A"}
-              </h3>
-            </div>
-            <button onclick="fecharModalGestorPopup()" style="
-              background: none;
-              border: none;
-              color: #6c757d;
-              font-size: 20px;
-              cursor: pointer;
-              padding: 5px;
-              border-radius: 4px;
-              transition: background 0.2s;
-            " onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <div class="modal-body" style="
-            padding: 25px;
-            max-height: 60vh;
-            overflow-y: auto;
-            background: white;
-          ">
-            <div class="detalhes-grid" style="
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              font-size: 14px;
-            ">
-              <div>
-                <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px;">
-                  Informações Pessoais
-                </h4>
-                <div style="line-height: 1.8;">
-                  <p><strong>Nome Completo:</strong> ${
-                    dadosCandidato.nome_completo || "N/A"
-                  }</p>
-                  <p><strong>Email:</strong> ${
-                    dadosCandidato.email_candidato || "N/A"
-                  }</p>
-                  <p><strong>Telefone:</strong> ${
-                    dadosCandidato.telefone_contato || "N/A"
-                  }</p>
-                  <p><strong>ID do Candidato:</strong> <code>${candidatoId}</code></p>
-                </div>
-              </div>
-              
-              <div>
-                <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px;">
-                  Status do Processo
-                </h4>
-                <div style="line-height: 1.8;">
-                  <p><strong>Status Atual:</strong>
-                    <span style="
-                      display: inline-block;
-                      padding: 6px 12px;
-                      margin-left: 8px;
-                      background: #e3f2fd;
-                      color: #1976d2;
-                      border-radius: 20px;
-                      font-size: 13px;
-                      font-weight: 500;
-                    ">
-                      ${dadosCandidato.status_recrutamento || "N/A"}
-                    </span>
-                  </p>
-                  <p><strong>Vaga ID:</strong> <code>${vagaId}</code></p>
-                  <p><strong>Data de Cadastro:</strong> ${
-                    dadosCandidato.data_cadastro || "N/A"
-                  }</p>
-                </div>
-              </div>
-            </div>
-            
-            ${
-              dadosCandidato.observacoes || dadosCandidato.curriculo_observacoes
-                ? `
-              <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
-                <h4 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
-                  Observações
-                </h4>
-                <div class="box" style="
-                  background: #f8f9fa;
-                  padding: 15px;
-                  border-radius: 6px;
-                  border-left: 3px solid var(--cor-primaria, #667eea);
-                ">
-                  <p style="margin: 0; white-space: pre-wrap; line-height: 1.6; color: #555;">
-                    ${
-                      dadosCandidato.observacoes ||
-                      dadosCandidato.curriculo_observacoes ||
-                      "Nenhuma observação registrada."
-                    }
-                  </p>
-                </div>
-              </div>
-            `
-                : ""
-            }
-          </div>
-          
-          <div class="modal-footer" style="
-            padding: 15px 25px;
-            background: #f8f9fa;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-          ">
-            <button onclick="imprimirDetalhes('${candidatoId}')" 
-                    style="
-                      padding: 8px 16px;
-                      background: #17a2b8;
-                      color: white;
-                      border: none;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-size: 14px;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                    ">
-              <i class="fas fa-print"></i> Imprimir
-            </button>
-            <button onclick="fecharModalGestorPopup()" 
-                    style="
-                      padding: 8px 16px;
-                      background: #6c757d;
-                      color: white;
-                      border: none;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-size: 14px;
-                    ">
-              Fechar
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <style>
         @keyframes modalSlideIn {
           from {
             opacity: 0;
-            transform: translate(-50%, -60%) scale(0.95);
+            transform: scale(0.95) translateY(30px);
           }
           to {
             opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+            transform: scale(1) translateY(0);
           }
         }
         
-        #modal-gestor-detalhes {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          z-index: 10000 !important;
+        #modal-gestor-local .modal-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          color: white !important;
+          padding: 20px !important;
           display: flex !important;
-          justify-content: center !important;
+          justify-content: space-between !important;
           align-items: center !important;
-          background: rgba(0, 0, 0, 0.6) !important;
         }
         
-        #modal-gestor-detalhes .modal-background {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
+        #modal-gestor-local .modal-title {
+          display: flex !important;
+          align-items: center !important;
+          gap: 12px !important;
+          margin: 0 !important;
+        }
+        
+        #modal-gestor-local .modal-close {
+          background: rgba(255,255,255,0.2) !important;
+          border: none !important;
+          color: white !important;
+          width: 32px !important;
+          height: 32px !important;
+          border-radius: 50% !important;
+          cursor: pointer !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 16px !important;
+        }
+        
+        #modal-gestor-local .modal-body {
+          padding: 25px !important;
+          max-height: 500px !important;
+          overflow-y: auto !important;
+          background: #f8f9fa !important;
+        }
+        
+        #modal-gestor-local .info-section {
+          background: white !important;
+          padding: 20px !important;
+          border-radius: 8px !important;
+          margin-bottom: 25px !important;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+          border-left: 4px solid #667eea !important;
+        }
+        
+        #modal-gestor-local .form-group {
+          margin-bottom: 20px !important;
+        }
+        
+        #modal-gestor-local .form-label {
+          font-weight: 600 !important;
+          margin-bottom: 8px !important;
+          display: block !important;
+          color: #333 !important;
+        }
+        
+        #modal-gestor-local .form-textarea {
           width: 100% !important;
-          height: 100% !important;
-          z-index: 9999 !important;
+          min-height: 120px !important;
+          padding: 12px !important;
+          border: 1px solid #ddd !important;
+          border-radius: 6px !important;
+          font-family: inherit !important;
+          resize: vertical !important;
+          box-sizing: border-box !important;
         }
         
-        #modal-gestor-detalhes .modal-content {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          z-index: 10001 !important;
-          max-height: 90vh !important;
+        #modal-gestor-local .resultado-options {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 12px !important;
+        }
+        
+        #modal-gestor-local .resultado-option {
+          display: flex !important;
+          align-items: center !important;
+          gap: 12px !important;
+          cursor: pointer !important;
+          padding: 12px !important;
+          border: 1px solid #e9ecef !important;
+          border-radius: 8px !important;
+          transition: all 0.2s !important;
+        }
+        
+        #modal-gestor-local .resultado-option:hover {
+          border-color: #667eea !important;
+          background: #f8f9ff !important;
+        }
+        
+        #modal-gestor-local .modal-footer {
+          padding: 20px !important;
+          background: white !important;
+          border-top: 1px solid #eee !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          gap: 12px !important;
+        }
+        
+        #modal-gestor-local .btn-local {
+          padding: 12px 24px !important;
+          border: none !important;
+          border-radius: 6px !important;
+          cursor: pointer !important;
+          font-weight: 500 !important;
+          transition: all 0.2s !important;
+        }
+        
+        #modal-gestor-local .btn-primary-local {
+          background: #667eea !important;
+          color: white !important;
+        }
+        
+        #modal-gestor-local .btn-secondary-local {
+          background: #6c757d !important;
+          color: white !important;
         }
         
         @media (max-width: 768px) {
-          #modal-gestor-detalhes .modal-content {
+          #modal-gestor-local .modal-container {
             width: 95% !important;
             max-height: 95vh !important;
-            top: 5% !important;
-            left: 2.5% !important;
-            transform: none !important;
+            margin: 0 !important;
           }
           
-          #modal-gestor-detalhes .detalhes-grid {
-            grid-template-columns: 1fr !important;
-            gap: 15px !important;
+          #modal-gestor-local .modal-body {
+            padding: 15px !important;
+            max-height: 400px !important;
+          }
+          
+          #modal-gestor-local .modal-footer {
+            padding: 15px !important;
+            flex-direction: column-reverse !important;
+          }
+          
+          #modal-gestor-local .btn-local {
+            width: 100% !important;
           }
         }
       </style>
+
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="fas fa-user-tie"></i>
+            <h3>Avaliação Final - Gestor</h3>
+          </div>
+          <button class="modal-close" onclick="GestorModals.fecharModalLocal('avaliacao')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="info-section">
+            <h4><i class="fas fa-user-circle"></i> ${
+              dadosCandidato.nome_completo || "N/A"
+            }</h4>
+            <p><i class="fas fa-envelope"></i> ${
+              dadosCandidato.email_candidato || "N/A"
+            }</p>
+            <p><i class="fas fa-phone"></i> ${
+              dadosCandidato.telefone_contato || "N/A"
+            }</p>
+            <p><i class="fas fa-briefcase"></i> Vaga ID: ${vagaId}</p>
+          </div>
+
+          <form id="form-avaliacao-gestor-local">
+            <div class="form-group">
+              <label class="form-label">Observações da Avaliação</label>
+              <textarea class="form-textarea" name="observacoes" 
+                        placeholder="Avalie o candidato com detalhes. Inclua pontos fortes, áreas de melhoria, fit cultural..." 
+                        required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Resultado</label>
+              <div class="resultado-options">
+                <label class="resultado-option" onclick="GestorModals.selecionarResultado('aprovado')">
+                  <input type="radio" name="resultado-local" value="aprovado">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Aprovado para Contratação</span>
+                </label>
+                <label class="resultado-option" onclick="GestorModals.selecionarResultado('rejeitado')">
+                  <input type="radio" name="resultado-local" value="rejeitado">
+                  <i class="fas fa-times-circle"></i>
+                  <span>Não Selecionado</span>
+                </label>
+                <label class="resultado-option" onclick="GestorModals.selecionarResultado('pendente')">
+                  <input type="radio" name="resultado-local" value="pendente">
+                  <i class="fas fa-clock"></i>
+                  <span>Avaliação Pendente</span>
+                </label>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary-local btn-local" onclick="GestorModals.fecharModalLocal('avaliacao')">
+            Cancelar
+          </button>
+          <button class="btn-primary-local btn-local" onclick="GestorModals.salvarAvaliacaoLocal('${candidaturaId}', '${vagaId}')" 
+                  id="btn-salvar-local">
+            Salvar Avaliação
+          </button>
+        </div>
+      </div>
     `;
 
     document.body.appendChild(modal);
-    window.scrollTo(0, 0);
     document.body.style.overflow = "hidden";
 
-    console.log("✅ Gestor: Modal detalhes popup centralizado criado");
+    // Foco no textarea
+    const textarea = modal.querySelector("textarea");
+    if (textarea) {
+      textarea.focus();
+    }
   } catch (error) {
-    console.error("❌ Erro ao criar modal detalhes:", error);
-    alert("Erro ao abrir detalhes");
+    console.error("❌ Erro ao abrir modal de avaliação:", error);
+    alert("Erro ao abrir modal de avaliação");
   }
 }
 
-// === FALLBACK PARA AGENDAMENTO ===
-function abrirModalAgendamentoFallback(candidatoId, dadosCodificados) {
-  console.log("📅 Gestor: Modal agendamento fallback");
-
+// Modal Detalhes Local
+function abrirModalDetalhesGestorLocal(candidatoId, dadosCodificados) {
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
 
     // Remove modal anterior
     const modalExistente = document.getElementById(
-      "modal-agendamento-fallback"
+      "modal-detalhes-gestor-local"
     );
     if (modalExistente) {
       modalExistente.remove();
     }
 
     const modal = document.createElement("div");
-    modal.id = "modal-agendamento-fallback";
-    modal.className = "modal-overlay";
+    modal.id = "modal-detalhes-gestor-local";
 
+    // HTML simplificado para detalhes
     modal.innerHTML = `
-      <div class="modal-overlay">
-        <div class="modal-background" onclick="fecharModalGestorPopup()"></div>
-        
-        <div class="modal-content" style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 90%;
-          max-width: 500px;
-          max-height: 85vh;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-          z-index: 10000;
-          overflow: hidden;
-          animation: modalSlideIn 0.3s ease-out;
-        ">
-          <div class="modal-header" style="
-            background: var(--cor-info, #17a2b8);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <i class="fas fa-calendar-alt" style="font-size: 20px;"></i>
-              <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
-                Agendar Reunião
-              </h3>
-            </div>
-            <button onclick="fecharModalGestorPopup()" style="
-              background: rgba(255,255,255,0.2);
-              border: none;
-              color: white;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 16px;
-            ">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <div class="modal-body" style="
-            padding: 25px;
-            max-height: 60vh;
-            overflow-y: auto;
-            background: #f8f9fa;
-          ">
-            <div style="background: white; padding: 20px; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <h4 style="margin: 0 0 15px 0; color: var(--cor-info, #17a2b8);">
-                <i class="fas fa-user"></i> ${
-                  dadosCandidato.nome_completo || "N/A"
-                }
-              </h4>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
-                <div>
-                  <strong>Email:</strong><br>
-                  ${dadosCandidato.email_candidato || "N/A"}
-                </div>
-                <div>
-                  <strong>Telefone:</strong><br>
-                  ${dadosCandidato.telefone_contato || "N/A"}
-                </div>
-                <div>
-                  <strong>Status:</strong><br>
-                  <span style="padding: 4px 8px; background: #e3f2fd; color: #17a2b8; border-radius: 12px; font-size: 12px;">
-                    ${dadosCandidato.status_recrutamento || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <strong>Vaga ID:</strong><br>
-                  ${vagaId}
-                </div>
-              </div>
-            </div>
-            
-            <form id="form-agendamento-gestor">
-              <div class="field" style="margin-bottom: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #333;">
-                  Data da Reunião
-                </label>
-                <input type="date" name="data" class="input" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;" required>
-              </div>
-              
-              <div class="field" style="margin-bottom: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #333;">
-                  Horário
-                </label>
-                <select name="horario" class="select" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;" required>
-                  <option value="">Selecione um horário</option>
-                  <option value="09:00">09:00</option>
-                  <option value="10:00">10:00</option>
-                  <option value="14:00">14:00</option>
-                  <option value="15:00">15:00</option>
-                  <option value="16:00">16:00</option>
-                </select>
-              </div>
-              
-              <div class="field" style="margin-bottom: 20px;">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: #333;">
-                  Duração
-                </label>
-                <select name="duracao" class="select" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
-                  <option value="30">30 minutos</option>
-                  <option value="60" selected>1 hora</option>
-                  <option value="90">1h30 minutos</option>
-                </select>
-              </div>
-            </form>
-          </div>
-          
-          <div class="modal-footer" style="
-            padding: 15px 25px;
-            background: white;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-          ">
-            <button onclick="fecharModalGestorPopup()" 
-                    style="
-                      padding: 10px 20px;
-                      background: #f8f9fa;
-                      color: #6c757d;
-                      border: 1px solid #dee2e6;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-weight: 500;
-                    ">
-              <i class="fas fa-times"></i> Cancelar
-            </button>
-            <button onclick="confirmarAgendamentoGestor('${candidatoId}')" 
-                    style="
-                      padding: 10px 20px;
-                      background: var(--cor-info, #17a2b8);
-                      color: white;
-                      border: none;
-                      border-radius: 6px;
-                      cursor: pointer;
-                      font-weight: 500;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                    ">
-              <i class="fas fa-check"></i> Confirmar Agendamento
-            </button>
-          </div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>Detalhes do Candidato</h3>
+          <button onclick="GestorModals.fecharModalLocal('detalhes')">×</button>
+        </div>
+
+        <div class="modal-body">
+          <p><strong>Nome:</strong> ${dadosCandidato.nome_completo}</p>
+          <p><strong>Email:</strong> ${dadosCandidato.email_candidato}</p>
+          <p><strong>Telefone:</strong> ${dadosCandidato.telefone_contato}</p>
+          <p><strong>Status:</strong> ${dadosCandidato.status_recrutamento}</p>
+          <p><strong>ID:</strong> ${candidatoId}</p>
+          <p><strong>Vaga ID:</strong> ${dadosCandidato.vaga_id}</p>
+        </div>
+
+        <div class="modal-footer">
+          <button onclick="GestorModals.fecharModalLocal('detalhes')">Fechar</button>
         </div>
       </div>
-      
-      <style>
-        @keyframes modalSlideIn {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -60%) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-          }
-        }
-        
-        #modal-agendamento-fallback {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          z-index: 10000 !important;
-          display: flex !important;
-          justify-content: center !important;
-          align-items: center !important;
-          background: rgba(0, 0, 0, 0.6) !important;
-        }
-        
-        #modal-agendamento-fallback .modal-background {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          background: rgba(0, 0, 0, 0.5) !important;
-          z-index: 9999 !important;
-        }
-        
-        #modal-agendamento-fallback .modal-content {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          z-index: 10001 !important;
-          max-height: 90vh !important;
-        }
-        
-        @media (max-width: 768px) {
-          #modal-agendamento-fallback .modal-content {
-            width: 95% !important;
-            max-height: 95vh !important;
-            top: 5% !important;
-            left: 2.5% !important;
-            transform: none !important;
-          }
-          
-          #modal-agendamento-fallback .modal-body {
-            max-height: 60vh !important;
-            padding: 15px !important;
-          }
-        }
-      </style>
     `;
 
     document.body.appendChild(modal);
-    window.scrollTo(0, 0);
     document.body.style.overflow = "hidden";
-
-    // Configura data padrão (amanhã)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dataInput = modal.querySelector('input[name="data"]');
-    if (dataInput) {
-      dataInput.value = tomorrow.toISOString().split("T")[0];
-    }
-
-    console.log("✅ Gestor: Modal agendamento popup centralizado criado");
   } catch (error) {
-    console.error("❌ Erro ao criar modal agendamento:", error);
-    alert("Erro ao abrir agendamento");
+    console.error("❌ Erro ao abrir modal de detalhes:", error);
+    alert("Erro ao abrir modal de detalhes");
   }
 }
 
-// === FUNÇÃO PARA CONFIRMAR AGENDAMENTO ===
-function confirmarAgendamentoGestor(candidatoId) {
-  const form = document.getElementById("form-agendamento-gestor");
-  if (!form) {
-    alert("Erro: Formulário de agendamento não encontrado");
-    return;
-  }
-
-  const formData = new FormData(form);
-  const data = formData.get("data");
-  const horario = formData.get("horario");
-  const duracao = formData.get("duracao");
-
-  if (!data || !horario) {
-    alert("Por favor, selecione data e horário da reunião");
-    return;
-  }
-
-  console.log(`📅 Gestor: Confirmando agendamento - ID: ${candidatoId}`);
-  console.log(`Data: ${data}, Horário: ${horario}, Duração: ${duracao}`);
-
-  // TODO: Implementar salvamento no Firestore
-  // await updateDoc(doc(db, 'candidatos', candidatoId), {
-  //   agendamento_gestor: {
-  //     data: data,
-  //     horario: horario,
-  //     duracao: parseInt(duracao),
-  //     status: 'Agendado',
-  //     data_cadastro: new Date()
-  //   }
-  // });
-
-  alert("✅ Reunião agendada com sucesso!");
-  fecharModalGestorPopup();
-}
-
-// === FUNÇÃO PARA FECHAR MODAL ===
-function fecharModalGestorPopup() {
-  const modals = [
-    document.getElementById("modal-gestor-avaliacao"),
-    document.getElementById("modal-gestor-detalhes"),
-    document.getElementById("modal-agendamento-fallback"),
-  ];
-
-  modals.forEach((modal) => {
-    if (modal) {
-      modal.style.opacity = "0";
-      setTimeout(() => {
-        if (modal && modal.parentNode) {
-          modal.parentNode.removeChild(modal);
-        }
-      }, 300);
-    }
-  });
-
-  document.body.style.overflow = "";
-  window.scrollTo(0, 0);
-}
-
-// === FUNÇÃO PARA SALVAR AVALIAÇÃO (CORRIGIDA - IMPLEMENTAÇÃO REAL) ===
-async function salvarAvaliacaoGestor(candidatoId) {
-  console.log("💾 Gestor: Salvando avaliação no Firebase");
-
-  const form = document.getElementById("form-avaliacao-gestor");
-  if (!form) {
-    alert("Erro: Formulário de avaliação não encontrado");
-    return;
-  }
-
-  const formData = new FormData(form);
-  const observacoes = formData.get("observacoes");
-  const resultado = formData.get("resultado");
-
-  if (!resultado) {
-    alert("Por favor, selecione um resultado da avaliação");
-    return;
-  }
-
-  if (!observacoes || observacoes.trim().length < 10) {
-    alert(
-      "Por favor, adicione observações detalhadas da entrevista (mínimo 10 caracteres)"
-    );
-    return;
-  }
-
+// Modal Agendamento Local (Fallback)
+function abrirModalAgendamentoGestorLocal(candidatoId, dadosCodificados) {
   try {
-    // BLOQUEIA BOTÃO DURANTE SALVAMENTO
-    const btnSalvar = form.querySelector(
-      'button[onclick="salvarAvaliacaoGestor()"]'
+    const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
+
+    // Remove modal anterior
+    const modalExistente = document.getElementById(
+      "modal-agendamento-gestor-local"
     );
-    if (btnSalvar) {
-      btnSalvar.disabled = true;
-      btnSalvar.innerHTML =
-        '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    if (modalExistente) {
+      modalExistente.remove();
     }
 
-    // CONSTRÓI O OBJETO DE ATUALIZAÇÃO
-    const agora = new Date();
-    const updateData = {
-      status_recrutamento:
-        resultado === "aprovado"
-          ? "Processo Concluído - Contratado"
-          : "Processo Concluído - Rejeitado",
-      avaliacao_gestor: {
-        aprovado: resultado === "aprovado",
-        data_avaliacao: agora,
-        observacoes: observacoes.trim(),
-        avaliador:
-          getGlobalState()?.usuarioAtual?.email || "usuario@eupsico.com",
-        etapa: "Entrevista com Gestor",
-      },
-      historico: arrayUnion({
-        data: agora,
-        acao: `Avaliação ${
-          resultado === "aprovado" ? "Aprovada" : "Rejeitada"
-        } pelo Gestor`,
-        usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
-        anterior: "Entrevista com Gestor Pendente",
-        detalhes: observacoes.trim(),
-      }),
-      data_ultima_atualizacao: agora,
-    };
+    const modal = document.createElement("div");
+    modal.id = "modal-agendamento-gestor-local";
 
-    if (resultado === "rejeitado") {
-      updateData.rejeicao = {
-        etapa: "Entrevista com Gestor",
-        data: agora,
-        motivo: "Avaliação final pelo gestor",
-        observacoes: observacoes.trim(),
-      };
-    }
+    // HTML para agendamento
+    modal.innerHTML = `
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>Agendar Reunião - ${dadosCandidato.nome_completo}</h3>
+          <button onclick="GestorModals.fecharModalLocal('agendamento')">×</button>
+        </div>
 
-    // SALVAMENTO REAL NO FIRESTORE
-    console.log("📝 Atualizando documento do candidato:", candidatoId);
-    console.log("📋 Dados de atualização:", updateData);
+        <div class="modal-body">
+          <p><strong>Email:</strong> ${dadosCandidato.email_candidato}</p>
+          <p><strong>Telefone:</strong> ${dadosCandidato.telefone_contato}</p>
+          <p><strong>Data:</strong> <input type="date" id="data-agendamento-local"></p>
+          <p><strong>Horário:</strong> <input type="time" id="hora-agendamento-local"></p>
+        </div>
 
-    const candidatoRef = doc(db, "candidatos", candidatoId);
-    await updateDoc(candidatoRef, updateData);
+        <div class="modal-footer">
+          <button onclick="GestorModals.salvarAgendamentoLocal('${candidatoId}')">Agendar</button>
+          <button onclick="GestorModals.fecharModalLocal('agendamento')">Cancelar</button>
+        </div>
+      </div>
+    `;
 
-    console.log("✅ Avaliação salva com sucesso no Firebase");
-    alert(
-      "✅ Avaliação salva com sucesso! O candidato foi movido para a aba Finalizados."
-    );
-
-    // FECHA MODAL E RECARREGA A LISTA
-    fecharModalGestorPopup();
-
-    // RECARREGA A LISTA DE CANDIDATOS (remove da aba atual)
-    const stateAtual = getGlobalState();
-    renderizarEntrevistaGestor(stateAtual);
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
   } catch (error) {
-    console.error("❌ Erro ao salvar avaliação:", error);
-    alert(`Erro ao salvar avaliação: ${error.message}`);
-  } finally {
-    // REATIVA BOTÃO
-    const btnSalvar = form.querySelector(
-      'button[onclick="salvarAvaliacaoGestor()"]'
-    );
-    if (btnSalvar) {
-      btnSalvar.disabled = false;
-      btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
-    }
+    console.error("❌ Erro ao abrir modal de agendamento:", error);
+    alert("Erro ao abrir modal de agendamento");
   }
 }
 
-// === FUNÇÃO PARA IMPRIMIR DETALHES ===
-function imprimirDetalhes(candidatoId) {
-  console.log("🖨️ Gestor: Imprimindo detalhes do candidato:", candidatoId);
+// Namespace para funções locais
+const GestorModals = {
+  // Salvar Avaliação com Firebase
+  salvarAvaliacaoLocal: async function (candidatoId, vagaId) {
+    try {
+      const form = document.querySelector("#form-avaliacao-gestor-local");
+      const observacoes = form.querySelector('[name="observacoes"]').value;
+      const resultado = form.querySelector(
+        '[name="resultado-local"]:checked'
+      ).value;
 
-  // Cria janela de impressão com dados do candidato
-  const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
-  const printWindow = window.open("", "_blank");
-  printWindow.document.write(`
-    <html>
-      <head><title>Detalhes - ${dadosCandidato.nome_completo}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-          .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
-          .info div { background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 3px solid #667eea; }
-          h1 { color: #333; margin: 0 0 10px 0; }
-          h2 { color: #666; margin: 30px 0 15px 0; }
-          .status { padding: 6px 12px; border-radius: 20px; font-weight: bold; }
-          .aprovado { background: #d4edda; color: #155724; }
-          .rejeitado { background: #f8d7da; color: #721c24; }
-          .pendente { background: #fff3cd; color: #856404; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>EuPsico - Detalhes do Candidato</h1>
-          <p style="color: #666; font-size: 14px;">${new Date().toLocaleDateString(
-            "pt-BR"
-          )}</p>
-        </div>
-        
-        <div class="info">
-          <div>
-            <h2>Informações Pessoais</h2>
-            <p><strong>Nome:</strong> ${
-              dadosCandidato.nome_completo || "N/A"
-            }</p>
-            <p><strong>Email:</strong> ${
-              dadosCandidato.email_candidato || "N/A"
-            }</p>
-            <p><strong>Telefone:</strong> ${
-              dadosCandidato.telefone_contato || "N/A"
-            }</p>
-            <p><strong>ID:</strong> ${candidatoId}</p>
-          </div>
-          <div>
-            <h2>Status do Processo</h2>
-            <p><strong>Status Atual:</strong> <span class="status">${
-              dadosCandidato.status_recrutamento || "N/A"
-            }</span></p>
-            <p><strong>Vaga ID:</strong> ${vagaId}</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-}
+      if (!observacoes || observacoes.trim().length < 10) {
+        alert("Observações devem ter pelo menos 10 caracteres");
+        return;
+      }
 
-// === FUNÇÕES AUXILIARES ===
-function fecharModalGestorPopup() {
-  const modals = [
-    document.getElementById("modal-gestor-avaliacao"),
-    document.getElementById("modal-gestor-detalhes"),
-    document.getElementById("modal-agendamento-fallback"),
-  ];
+      if (!resultado) {
+        alert("Selecione um resultado da avaliação");
+        return;
+      }
 
-  modals.forEach((modal) => {
-    if (modal) {
-      modal.style.opacity = "0";
-      modal.style.transform = "translate(-50%, -60%) scale(0.95)";
-      setTimeout(() => {
-        if (modal && modal.parentNode) {
-          modal.parentNode.removeChild(modal);
-        }
-      }, 300);
+      // Determina novo status baseado na decisão
+      let novoStatus = "Processo Concluído - Rejeitado";
+      if (resultado === "aprovado") {
+        novoStatus = "Processo Concluído - Contratado";
+      }
+
+      // Atualiza no Firebase
+      const candidatoRef = doc(db, "candidatos", candidatoId);
+      await updateDoc(candidatoRef, {
+        status_recrutamento: novoStatus,
+        avaliacao_gestor: {
+          aprovado: resultado === "aprovado",
+          resultado: resultado,
+          observacoes: observacoes.trim(),
+          data_avaliacao: new Date(),
+          avaliador:
+            getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
+        },
+        historico: arrayUnion({
+          acao: `Avaliação ${
+            resultado === "aprovado" ? "Aprovada" : "Rejeitada"
+          }`,
+          data: new Date(),
+          usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
+          anterior: "Entrevista com Gestor Pendente",
+        }),
+      });
+
+      alert(
+        `${
+          resultado === "aprovado" ? "✅ Aprovado" : "❌ Rejeitado"
+        }! Status atualizado com sucesso.`
+      );
+
+      // Fecha modal
+      const modal = document.getElementById("modal-gestor-local");
+      if (modal) {
+        modal.remove();
+        document.body.style.overflow = "";
+      }
+
+      // Recarrega lista
+      const stateAtual = getGlobalState();
+      renderizarEntrevistaGestor(stateAtual);
+    } catch (error) {
+      console.error("❌ Erro ao salvar avaliação:", error);
+      alert(`Erro ao salvar: ${error.message}`);
     }
-  });
+  },
 
-  document.body.style.overflow = "";
-  window.scrollTo(0, 0);
-}
+  // Fechar modal local
+  fecharModalLocal: function (tipo) {
+    try {
+      const modalId =
+        tipo === "avaliacao"
+          ? "modal-gestor-local"
+          : tipo === "detalhes"
+          ? "modal-detalhes-gestor-local"
+          : tipo === "agendamento"
+          ? "modal-agendamento-gestor-local"
+          : null;
 
-// Torna funções globalmente acessíveis
-window.abrirModalAvaliacaoGestorPopup = abrirModalAvaliacaoGestorPopup;
-window.abrirModalDetalhesPopup = abrirModalDetalhesPopup;
-window.confirmarAgendamentoGestor = confirmarAgendamentoGestor;
-window.salvarAvaliacaoGestor = salvarAvaliacaoGestor;
-window.fecharModalGestorPopup = fecharModalGestorPopup;
-window.imprimirDetalhes = imprimirDetalhes;
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.remove();
+        document.body.style.overflow = "";
+      }
+    } catch (error) {
+      console.error("❌ Erro ao fechar modal:", error);
+    }
+  },
+
+  // Salvar Agendamento Local
+  salvarAgendamentoLocal: async function (candidatoId) {
+    try {
+      const data = document.getElementById("data-agendamento-local").value;
+      const hora = document.getElementById("hora-agendamento-local").value;
+
+      if (!data || !hora) {
+        alert("Selecione data e hora para o agendamento");
+        return;
+      }
+
+      // Atualiza no Firebase
+      const candidatoRef = doc(db, "candidatos", candidatoId);
+      await updateDoc(candidatoRef, {
+        agendamento_solicitado: {
+          data: data,
+          hora: hora,
+          status: "Pendente",
+          data_solicitacao: new Date(),
+          solicitante:
+            getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
+        },
+        historico: arrayUnion({
+          acao: "Agendamento solicitado pelo Gestor",
+          data: new Date(),
+          usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
+        }),
+      });
+
+      alert(`✅ Agendamento solicitado para ${data} às ${hora}`);
+
+      // Fecha modal
+      const modal = document.getElementById("modal-agendamento-gestor-local");
+      if (modal) {
+        modal.remove();
+        document.body.style.overflow = "";
+      }
+    } catch (error) {
+      console.error("❌ Erro ao salvar agendamento:", error);
+      alert(`Erro ao salvar agendamento: ${error.message}`);
+    }
+  },
+
+  // Selecionar resultado no modal
+  selecionarResultado: function (resultado) {
+    const radios = document.querySelectorAll(
+      '#form-avaliacao-gestor-local [name="resultado-local"]'
+    );
+    radios.forEach((radio) => (radio.checked = false));
+    const radioSelecionado = document.querySelector(
+      `#form-avaliacao-gestor-local [name="resultado-local"][value="${resultado}"]`
+    );
+    if (radioSelecionado) {
+      radioSelecionado.checked = true;
+    }
+  },
+};
+
+// Expor namespace globalmente para onclick handlers
+window.GestorModals = GestorModals;
