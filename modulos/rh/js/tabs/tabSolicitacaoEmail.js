@@ -383,8 +383,9 @@ function fecharModalSolicitarEmail() {
 }
 
 /**
- * Salva a solicitação (TENTA API, depois fallback)
- * CORRIGIDO: Usa .uid
+ * Salva a solicitação de e-mail (VERSÃO 2.4 - SEM FETCH, APENAS httpsCallable)
+ * CORRIGIDO: Verifica SDK e usa .uid
+ * ERRO se functions não estiver disponível
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -392,11 +393,20 @@ async function salvarSolicitacaoEmail(
   currentUserData,
   state
 ) {
-  console.log("💾 Salvando solicitação de e-mail");
+  console.log("💾 Salvando solicitação de e-mail (v2.4)");
 
   const formId = `form-solicitar-email-${candidatoId}`;
   const form = document.getElementById(formId);
   const btnSalvar = document.getElementById("btn-salvar-solicitacao");
+
+  if (!form || !btnSalvar) {
+    console.error("❌ Formulário ou botão não encontrado");
+    window.showToast?.(
+      "Erro: Elementos do formulário não encontrados.",
+      "error"
+    );
+    return;
+  }
 
   const cargo = form.querySelector("#solicitar-cargo").value;
   const departamento = form.querySelector("#solicitar-departamento").value;
@@ -417,24 +427,38 @@ async function salvarSolicitacaoEmail(
   }
 
   btnSalvar.disabled = true;
-  btnSalvar.innerHTML = "Solicitando...";
+  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
 
   try {
     let emailCriadoComSucesso = false;
     let logAcao = "";
     const novoStatus = "AGUARDANDO_CADASTRO";
 
-    // --- ✅ CORREÇÃO: Define o usuário logado corretamente ---
-    const solicitanteId = currentUserData.uid || "rh_admin_fallback_uid";
-    const solicitanteNome =
-      currentUserData.nome || currentUserData.email || "Usuário RH";
+    // --- VERIFICAÇÃO CRÍTICA: SDK Firebase ---
+    if (typeof functions === "undefined") {
+      throw new Error(
+        "SDK Firebase Functions não inicializado. Verifique firebase-init.js."
+      );
+    }
+    if (typeof httpsCallable === "undefined") {
+      throw new Error(
+        "httpsCallable não disponível. Importe de 'firebase/functions'."
+      );
+    }
 
-    // Tenta criar e-mail via API do Google Workspace usando httpsCallable
+    // Define o usuário logado corretamente
+    const solicitanteId = currentUserData?.uid || "rh_admin_fallback_uid";
+    const solicitanteNome =
+      currentUserData?.nome || currentUserData?.email || "Usuário RH";
+
+    // Tenta criar e-mail via API do Google Workspace (APENAS httpsCallable)
     try {
+      console.log("🔄 Tentando criar e-mail via httpsCallable...");
       const criarEmailGoogleWorkspace = httpsCallable(
         functions,
         "criarEmailGoogleWorkspace"
       );
+
       const resultado = await criarEmailGoogleWorkspace({
         nome: nomeCandidato,
         email: emailSugerido,
@@ -442,7 +466,9 @@ async function salvarSolicitacaoEmail(
         departamento: departamento,
       });
 
-      if (resultado.data && resultado.data.sucesso) {
+      console.log("📨 Resposta da API:", resultado.data);
+
+      if (resultado.data && resultado.data.sucesso === true) {
         emailCriadoComSucesso = true;
         logAcao = `E-mail ${emailSugerido} criado com sucesso via API.`;
         window.showToast?.(
@@ -450,11 +476,31 @@ async function salvarSolicitacaoEmail(
           "success"
         );
       } else {
-        // API retornou erro específico
-        throw new Error(resultado.data?.erro || "API do Google falhou.");
+        // API retornou erro específico (ex.: secret ausente ou falha no Google)
+        throw new Error(
+          resultado.data?.erro ||
+            resultado.data?.message ||
+            "API do Google falhou sem detalhes."
+        );
       }
     } catch (apiError) {
-      console.warn(`⚠️ Falha ao criar e-mail via API: ${apiError.message}`);
+      console.warn(
+        `⚠️ Falha ao criar e-mail via httpsCallable: ${
+          apiError.message || apiError.code || "Erro desconhecido"
+        }`
+      );
+      console.error("Detalhes do erro API:", apiError);
+
+      // Verificação: Se for erro de rede/CORS, avise explicitamente (mas não deve ocorrer com httpsCallable)
+      if (
+        apiError.message.includes("CORS") ||
+        apiError.message.includes("fetch")
+      ) {
+        throw new Error(
+          "ERRO CRÍTICO: Tentativa de fetch detectada. Use apenas httpsCallable. Verifique o código para remoção de fetch."
+        );
+      }
+
       window.showToast?.(
         "Falha na API. Criando solicitação interna para o TI.",
         "warning"
@@ -470,13 +516,17 @@ async function salvarSolicitacaoEmail(
         email_sugerido: emailSugerido,
         status: "pendente",
         data_solicitacao: new Date(),
-        solicitante_id: solicitanteId, // <-- CORRIGIDO
-        solicitante_nome: solicitanteNome, // <-- CORRIGIDO
+        solicitante_id: solicitanteId, // CORRIGIDO: Usa .uid
+        solicitante_nome: solicitanteNome,
         candidatura_id: candidatoId,
-        erro_api: apiError.message,
+        erro_api: apiError.message || "Erro sem detalhes",
+        timestamp: serverTimestamp(), // Use serverTimestamp se importado
       });
 
-      logAcao = `Falha na API. Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
+      logAcao = `Falha na API (${apiError.message?.substring(
+        0,
+        50
+      )}...). Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
     }
 
     // Atualiza o candidato no Firestore (comum para ambos os cenários)
@@ -486,30 +536,45 @@ async function salvarSolicitacaoEmail(
       historico: arrayUnion({
         data: new Date(),
         acao: logAcao,
-        usuario: solicitanteId, // <-- CORRIGIDO
+        usuario: solicitanteId, // CORRIGIDO: Usa .uid
       }),
       admissao_info: {
         cargo_final: cargo,
         departamento: departamento,
         email_solicitado: emailSugerido,
         email_criado_via_api: emailCriadoComSucesso,
+        data_solicitacao_email: new Date(),
       },
     });
 
     console.log(
       `✅ Solicitação salva e status do candidato atualizado para ${novoStatus}`
     );
+    window.showToast?.("Processo de e-mail iniciado com sucesso!", "success");
   } catch (error) {
-    console.error("❌ Erro ao salvar solicitação de e-mail:", error);
+    console.error("❌ Erro ao salvar solicitação de e-mail (v2.4):", error);
     window.showToast?.(`Erro ao salvar: ${error.message}`, "error");
-  } finally {
-    // Restaura o botão em caso de erro
-    btnSalvar.disabled = false;
-    btnSalvar.innerHTML = "Salvar e Solicitar";
 
-    // Fecha o modal e recarrega a aba
+    // Log detalhado para debug
+    if (
+      error.message.includes("functions") ||
+      error.message.includes("httpsCallable")
+    ) {
+      console.error(
+        "🔧 SOLUÇÃO: Verifique a inicialização do Firebase Functions em firebase-init.js e autenticação do usuário."
+      );
+    }
+  } finally {
+    // Restaura o botão
+    btnSalvar.disabled = false;
+    btnSalvar.innerHTML =
+      '<i class="fas fa-paper-plane"></i> Salvar e Solicitar';
+
+    // Fecha modal e recarrega aba
     fecharModalSolicitarEmail();
-    renderizarSolicitacaoEmail(state);
+    if (typeof renderizarSolicitacaoEmail === "function") {
+      renderizarSolicitacaoEmail(state);
+    }
   }
 }
 
