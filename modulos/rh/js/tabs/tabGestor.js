@@ -734,7 +734,7 @@ window.fecharModalAvaliacaoGestor = function () {
   }
 };
 
-// === FUNÇÃO PARA SALVAR AVALIAÇÃO - CORREÇÃO APLICADA ===
+// === FUNÇÃO PARA SALVAR AVALIAÇÃO - LÓGICA DE STATUS ATUALIZADA ===
 window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
   console.log("💾 Salvando avaliação do gestor");
 
@@ -761,14 +761,12 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
       "Por favor, adicione observações detalhadas da entrevista (mínimo 10 caracteres)"
     );
     return;
-  } // Encontra o container do modal, que é "pai" do form
+  }
 
-  // --- INÍCIO DA CORREÇÃO (SELETOR DO BOTÃO) ---
   const modalContainer = form.closest(".modal-container");
   const btnSalvar = modalContainer
     ? modalContainer.querySelector(".btn-salvar")
-    : null; // BLOQUEIA BOTÃO ENQUANTO SALVA
-  // --- FIM DA CORREÇÃO ---
+    : null;
 
   if (btnSalvar) {
     btnSalvar.disabled = true;
@@ -777,95 +775,55 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
 
   console.log(`📝 Salvando para candidato ${candidatoId}:`);
   console.log(`- Resultado: ${resultado}`);
-  console.log(`- Observações: ${observacoes.substring(0, 100)}...`); // SALVAMENTO NO FIREBASE
 
   try {
-    // --- INÍCIO DA CORREÇÃO (LÓGICA DE STATUS) ---
+    // --- ⚠️ INÍCIO DA ATUALIZAÇÃO ---
     let novoStatus;
     let acaoHistorico;
-    let aprovadoBool = false; // Valor padrão
+    let aprovadoBool = false;
 
     if (resultado === "aprovado") {
-      novoStatus = "Processo Concluído - Contratado";
-      acaoHistorico = "Avaliação Aprovada pelo Gestor";
+      // NOVO STATUS: Encaminha para o módulo de Admissão
+      novoStatus = "AGUARDANDO_ADMISSAO";
+      acaoHistorico =
+        "Avaliação Aprovada pelo Gestor. Encaminhado para Admissão.";
       aprovadoBool = true;
     } else if (resultado === "rejeitado") {
       novoStatus = "Processo Concluído - Rejeitado";
       acaoHistorico = "Avaliação Rejeitada pelo Gestor";
       aprovadoBool = false;
     } else {
-      // Caso 'pendente'
-      novoStatus = "Aguardando Avaliação Gestor"; // Status de pendência
+      novoStatus = "Aguardando Avaliação Gestor";
       acaoHistorico = "Avaliação Marcada como Pendente pelo Gestor";
-      // aprovadoBool já é false, mas pode ser indefinido se preferir
-    }
-    // --- FIM DA CORREÇÃO ---
+    } // --- ⚠️ FIM DA ATUALIZAÇÃO ---
+    const candidatoRef = doc(db, "candidaturas", candidatoId);
 
-    // Certifique-se de que 'db' foi importado no topo do arquivo!
-    const candidatoRef = doc(db, "candidaturas", candidatoId); // Tenta atualizar primeiro
-
-    try {
-      await updateDoc(candidatoRef, {
-        status_recrutamento: novoStatus,
-        avaliacao_gestor: {
-          aprovado: aprovadoBool, // <--- CORRIGIDO
-          resultado: resultado, // <--- NOVO (bom para rastrear 'pendente')
-          data_avaliacao: new Date(),
-          observacoes: observacoes.trim(),
-          avaliador:
-            getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
-        },
-        historico: arrayUnion({
-          data: new Date(),
-          acao: acaoHistorico, // <--- CORRIGIDO
-          usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
-          anterior: "Entrevista com Gestor Pendente", // Você pode querer buscar o status anterior dinamicamente
-        }),
-      });
-    } catch (updateError) {
-      // Se não existir, cria o documento
-      if (updateError.code === "not-found") {
-        console.warn(
-          `Documento ${candidatoId} não encontrado. Criando novo...`
-        );
-        await setDoc(candidatoRef, {
-          status_recrutamento: novoStatus,
-          avaliacao_gestor: {
-            aprovado: aprovadoBool, // <--- CORRIGIDO
-            resultado: resultado, // <--- NOVO
-            data_avaliacao: new Date(),
-            observacoes: observacoes.trim(),
-            avaliador:
-              getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
-          },
-          historico: [
-            {
-              data: new Date(),
-              acao: acaoHistorico, // <--- CORRIGIDO
-              usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
-              anterior: "Entrevista com Gestor Pendente",
-            },
-          ],
-          // Adicione outros campos essenciais se estiver criando
-          vaga_id: vagaId,
-        });
-      } else {
-        throw updateError;
-      }
-    }
+    await updateDoc(candidatoRef, {
+      status_recrutamento: novoStatus,
+      avaliacao_gestor: {
+        aprovado: aprovadoBool,
+        resultado: resultado,
+        data_avaliacao: new Date(),
+        observacoes: observacoes.trim(),
+        avaliador:
+          getGlobalState()?.currentUserData?.email || "gestor@eupsico.com", // Corrigido para usar currentUserData
+      },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: acaoHistorico, // <--- ATUALIZADO
+        usuario: getGlobalState()?.currentUserData?.id || "gestor", // Corrigido para usar currentUserData
+      }),
+    });
 
     console.log(`✅ Status atualizado para: ${novoStatus}`);
     alert(`✅ Avaliação salva com sucesso como: ${resultado}!`);
     fecharModalAvaliacaoGestor();
 
-    // Atualiza a visualização da tab
     const stateNovo = getGlobalState();
     renderizarEntrevistaGestor(stateNovo);
   } catch (error) {
     console.error("❌ Erro ao salvar avaliação:", error);
-    alert(`Erro ao salvar: ${error.message}`); // Reativa botão em caso de erro
-
-    // (Usa o 'btnSalvar' que buscamos no início)
+    alert(`Erro ao salvar: ${error.message}`);
     if (btnSalvar) {
       btnSalvar.disabled = false;
       btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
