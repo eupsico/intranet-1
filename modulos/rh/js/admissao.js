@@ -21,7 +21,7 @@ import {
 // (Estes arquivos .js serão criados na Parte 4)
 import { renderizarSolicitacaoEmail } from "./tabs/tabSolicitacaoEmail.js";
 import { renderizarCadastroDocumentos } from "./tabs/tabCadastroDocumentos.js";
-//import { renderizarAssinaturaDocs } from "./tabs/tabAssinaturaDocs.js";
+import { renderizarAssinaturaDocs } from "./tabs/tabAssinaturaDocs.js";
 //import { renderizarIntegracao } from "./tabs/tabIntegracao.js";
 //import { renderizarAvaliacao3Meses } from "./tabs/tabAvaliacao3Meses.js";
 //import { renderizarDocsPos3Meses } from "./tabs/tabDocsPos3Meses.js";
