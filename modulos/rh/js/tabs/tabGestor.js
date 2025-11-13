@@ -782,10 +782,9 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
 
     const candidatoRef = doc(db, "candidatos", candidatoId);
 
-    // Usa setDoc com merge para criar se não existir, ou atualizar se existir
-    await setDoc(
-      candidatoRef,
-      {
+    // Tenta atualizar primeiro
+    try {
+      await updateDoc(candidatoRef, {
         status_recrutamento: novoStatus,
         avaliacao_gestor: {
           aprovado: resultado === "aprovado",
@@ -802,10 +801,36 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
           usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
           anterior: "Entrevista com Gestor Pendente",
         }),
-      },
-      { merge: true }
-    );
+      });
+    } catch (updateError) {
+      // Se não existir, cria o documento
+      if (updateError.code === "not-found") {
+        await setDoc(candidatoRef, {
+          status_recrutamento: novoStatus,
+          avaliacao_gestor: {
+            aprovado: resultado === "aprovado",
+            data_avaliacao: new Date(),
+            observacoes: observacoes.trim(),
+            avaliador:
+              getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
+          },
+          historico: [
+            {
+              data: new Date(),
+              acao: `Avaliação ${
+                resultado === "aprovado" ? "Aprovada" : "Rejeitada"
+              } pelo Gestor`,
+              usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
+              anterior: "Entrevista com Gestor Pendente",
+            },
+          ],
+        });
+      } else {
+        throw updateError;
+      }
+    }
 
+    console.log(`✅ Status atualizado para: ${novoStatus}`);
     alert(
       `✅ ${resultado === "aprovado" ? "Aprovado" : "Rejeitado"} com sucesso!`
     );
@@ -818,7 +843,6 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
     alert(`Erro ao salvar: ${error.message}`);
 
     // Reativa botão em caso de erro
-    const btnSalvar = form.querySelector(".btn-salvar");
     if (btnSalvar) {
       btnSalvar.disabled = false;
       btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
