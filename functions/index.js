@@ -2328,7 +2328,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
  * Requer configuração de Domain-Wide Delegation.
  */
 exports.criarEmailGoogleWorkspace = onCall(
-  { secrets: [googleAdminEmail] },
+  { secrets: [googleAdminEmail], cors: true },
   async (request) => {
     // 1. Validação de Dados
     const { nome, email, cargo, departamento } = request.data;
