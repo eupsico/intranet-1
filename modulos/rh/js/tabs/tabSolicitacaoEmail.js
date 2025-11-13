@@ -400,12 +400,14 @@ async function salvarSolicitacaoEmail(
 
   const cargo = form.querySelector("#solicitar-cargo").value;
   const departamento = form.querySelector("#solicitar-departamento").value;
-  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value; // Validações
+  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value;
 
+  // Validações
   if (!cargo || !departamento || !emailSugerido) {
     window.showToast?.("Por favor, preencha todos os campos.", "warning");
     return;
   }
+
   if (!emailSugerido.includes("@eupsico.com.br")) {
     window.showToast?.(
       "O e-mail sugerido deve ser um domínio @eupsico.com.br",
@@ -415,17 +417,19 @@ async function salvarSolicitacaoEmail(
   }
 
   btnSalvar.disabled = true;
-  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
+  btnSalvar.innerHTML = "Solicitando...";
 
   try {
     let emailCriadoComSucesso = false;
     let logAcao = "";
+    const novoStatus = "AGUARDANDO_CADASTRO";
 
-    // --- ⚠️ CORREÇÃO: Define o usuário logado corretamente ---
+    // --- ✅ CORREÇÃO: Define o usuário logado corretamente ---
     const solicitanteId = currentUserData.uid || "rh_admin_fallback_uid";
     const solicitanteNome =
       currentUserData.nome || currentUserData.email || "Usuário RH";
 
+    // Tenta criar e-mail via API do Google Workspace usando httpsCallable
     try {
       const criarEmailGoogleWorkspace = httpsCallable(
         functions,
@@ -437,7 +441,8 @@ async function salvarSolicitacaoEmail(
         cargo: cargo,
         departamento: departamento,
       });
-      if (resultado.data.sucesso) {
+
+      if (resultado.data && resultado.data.sucesso) {
         emailCriadoComSucesso = true;
         logAcao = `E-mail ${emailSugerido} criado com sucesso via API.`;
         window.showToast?.(
@@ -445,7 +450,8 @@ async function salvarSolicitacaoEmail(
           "success"
         );
       } else {
-        throw new Error(resultado.data.erro || "API do Google falhou.");
+        // API retornou erro específico
+        throw new Error(resultado.data?.erro || "API do Google falhou.");
       }
     } catch (apiError) {
       console.warn(`⚠️ Falha ao criar e-mail via API: ${apiError.message}`);
@@ -453,6 +459,8 @@ async function salvarSolicitacaoEmail(
         "Falha na API. Criando solicitação interna para o TI.",
         "warning"
       );
+
+      // Fallback: Salva solicitação para o TI no Firestore
       const solicitacoesTiRef = collection(db, "solicitacoes_ti");
       await addDoc(solicitacoesTiRef, {
         tipo: "criacao_email_novo_colaborador",
@@ -467,11 +475,12 @@ async function salvarSolicitacaoEmail(
         candidatura_id: candidatoId,
         erro_api: apiError.message,
       });
+
       logAcao = `Falha na API. Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
     }
 
+    // Atualiza o candidato no Firestore (comum para ambos os cenários)
     const candidatoRef = doc(db, "candidaturas", candidatoId);
-    const novoStatus = "AGUARDANDO_CADASTRO";
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
       historico: arrayUnion({
@@ -490,14 +499,17 @@ async function salvarSolicitacaoEmail(
     console.log(
       `✅ Solicitação salva e status do candidato atualizado para ${novoStatus}`
     );
-    fecharModalSolicitarEmail();
-    renderizarSolicitacaoEmail(state); // Recarrega a aba
   } catch (error) {
     console.error("❌ Erro ao salvar solicitação de e-mail:", error);
-    alert(`Erro ao salvar: ${error.message}`);
+    window.showToast?.(`Erro ao salvar: ${error.message}`, "error");
+  } finally {
+    // Restaura o botão em caso de erro
     btnSalvar.disabled = false;
-    btnSalvar.innerHTML =
-      '<i class="fas fa-paper-plane"></i> Salvar e Solicitar';
+    btnSalvar.innerHTML = "Salvar e Solicitar";
+
+    // Fecha o modal e recarrega a aba
+    fecharModalSolicitarEmail();
+    renderizarSolicitacaoEmail(state);
   }
 }
 
