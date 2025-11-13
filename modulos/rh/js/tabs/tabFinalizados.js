@@ -44,6 +44,7 @@ export async function renderizarFinalizados(state) {
         "Não Selecionado",
         "Reprovado Final",
         "Processo Concluído - Rejeitado",
+        "Processo Concluído - Contratado",
       ])
     );
 
