@@ -1,7 +1,13 @@
 // modulos/rh/js/tabs/tabGestor.js
 import { getGlobalState } from "../recrutamento.js";
 import {
-getDocs, query, where, doc, updateDoc, setDoc, arrayUnion,
+  getDocs,
+  query,
+  where,
+  doc,
+  updateDoc,
+  setDoc,
+  arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
 
 /**
@@ -767,48 +773,58 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
   console.log(`- Resultado: ${resultado}`);
   console.log(`- Observações: ${observacoes.substring(0, 100)}...`);
 
-// SALVAMENTO NO FIREBASE - IMPLEMENTADO
-try {
-  const novoStatus = resultado === "aprovado" ? 
-    "Processo Concluído - Contratado" : 
-    "Processo Concluído - Rejeitado";
+  // SALVAMENTO NO FIREBASE - IMPLEMENTADO
+  try {
+    const novoStatus =
+      resultado === "aprovado"
+        ? "Processo Concluído - Contratado"
+        : "Processo Concluído - Rejeitado";
 
-  const candidatoRef = doc(db, "candidatos", candidatoId);
-  
-  // Usa setDoc com merge para criar se não existir, ou atualizar se existir
-  await setDoc(candidatoRef, {
-    status_recrutamento: novoStatus,
-    avaliacao_gestor: {
-      aprovado: resultado === "aprovado",
-      data_avaliacao: new Date(),
-      observacoes: observacoes.trim(),
-      avaliador: getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com"
-    },
-    historico: arrayUnion({
-      data: new Date(),
-      acao: `Avaliação ${resultado === "aprovado" ? "Aprovada" : "Rejeitada"} pelo Gestor`,
-      usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
-      anterior: "Entrevista com Gestor Pendente"
-    })
-  }, { merge: true });
+    const candidatoRef = doc(db, "candidatos", candidatoId);
 
-  alert(`✅ ${resultado === "aprovado" ? "Aprovado" : "Rejeitado"} com sucesso!`);
-  fecharModalAvaliacaoGestor();
+    // Usa setDoc com merge para criar se não existir, ou atualizar se existir
+    await setDoc(
+      candidatoRef,
+      {
+        status_recrutamento: novoStatus,
+        avaliacao_gestor: {
+          aprovado: resultado === "aprovado",
+          data_avaliacao: new Date(),
+          observacoes: observacoes.trim(),
+          avaliador:
+            getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
+        },
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Avaliação ${
+            resultado === "aprovado" ? "Aprovada" : "Rejeitada"
+          } pelo Gestor`,
+          usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
+          anterior: "Entrevista com Gestor Pendente",
+        }),
+      },
+      { merge: true }
+    );
 
-  const stateNovo = getGlobalState();
-  renderizarEntrevistaGestor(stateNovo);
-} catch (error) {
-  console.error("❌ Erro ao salvar avaliação:", error);
-  alert(`Erro ao salvar: ${error.message}`);
-  
-  // Reativa botão em caso de erro
-  const btnSalvar = form.querySelector(".btn-salvar");
-  if (btnSalvar) {
-    btnSalvar.disabled = false;
-    btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
+    alert(
+      `✅ ${resultado === "aprovado" ? "Aprovado" : "Rejeitado"} com sucesso!`
+    );
+    fecharModalAvaliacaoGestor();
+
+    const stateNovo = getGlobalState();
+    renderizarEntrevistaGestor(stateNovo);
+  } catch (error) {
+    console.error("❌ Erro ao salvar avaliação:", error);
+    alert(`Erro ao salvar: ${error.message}`);
+
+    // Reativa botão em caso de erro
+    const btnSalvar = form.querySelector(".btn-salvar");
+    if (btnSalvar) {
+      btnSalvar.disabled = false;
+      btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
+    }
   }
-}
-
+};
 
 // === MODAL DE DETALHES - SIMPLIFICADO ===
 function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
