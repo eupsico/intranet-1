@@ -36,7 +36,7 @@ export async function renderizarFinalizados(state) {
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
       where("status_recrutamento", "in", [
-        "Processo Concluído - Contratado",
+        "Triagem Reprovada (Encerrada)",
         "Contratado",
         "Finalizado - Contratado",
         "Processo Finalizado",
