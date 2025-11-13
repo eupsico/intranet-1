@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <title>Ficha de Inscrição - EuPsico</title>
+  <link rel="stylesheet" href="../assets/css/design-system.css" />
+ <link rel="stylesheet" href="../modulos/rh/css/rh.css" />
+ <style>
+  body {
+   background-color: #f4f7f6;
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   min-height: 100vh;
+   padding: 20px;
+   font-family: "Poppins", sans-serif;
+  }
+  .form-container {
+   max-width: 800px;
+   width: 100%;
+   background: #fff;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+   overflow: hidden;
+  }
+  .form-header {
+   background: var(--cor-primaria);
+   color: white;
+   padding: 20px 30px;
+  }
+  .form-header img {
+   height: 40px;
+   margin-bottom: 10px;
+  }
+  .form-body {
+   padding: 30px;
+  }
+  .form-footer {
+  	padding: 20px 30px;
+  	background: #f9f9f9;
+  	text-align: right;
+  }
+  .loading-overlay {
+  	position: absolute;
+  	top: 0; left: 0; right: 0; bottom: 0;
+  	background: rgba(255,255,255,0.9);
+  	display: none;
+  	justify-content: center;
+  	align-items: center;
+  	z-index: 10;
+  }
+ 	.loading-overlay.is-visible { display: flex; }
+ </style>
+ <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+ <div class="form-container">
+ 	<div id="loading-overlay" class="loading-overlay is-visible">
+ 		<div class="loading-spinner"></div>
+ 	</div>
+
+  <div class="form-header">
+   <img src="../assets/img/logo-branca.png" alt="Logo EuPsico" />
+   <h2 id="form-title">Ficha de Admissão</h2>
+   <p id="form-subtitle">Preencha seus dados para finalizarmos sua contratação.</p>
+  </div>
+
+ 	<form id="ficha-inscricao-form" class="form-body" style="display: none;">
+ 		 		<input type="hidden" id="token" name="token" />
+
+ 		<fieldset>
+ 			<legend>Dados de Acesso</legend>
+ 			<div class="row">
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-nome">Nome Completo</label>
+ 					<input type="text" id="prof-nome" class="form-control" readonly />
+ 				</div>
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-email">E-mail Corporativo (Seu login)</label>
+ 					<input type="email" id="prof-email" class="form-control" readonly />
+ 				</div>
+ 			</div>
+ 			<div class="row">
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-password">Crie uma Senha</label>
+ 					<input type="password" id="prof-password" class="form-control" required />
+ 				</div>
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-password-confirm">Confirme a Senha</label>
+ 					<input type="password" id="prof-password-confirm" class="form-control" required />
+ 				</div>
+ 			</div>
+ 		</fieldset>
+
+ 		<fieldset>
+ 			<legend>Informações Pessoais</legend>
+ 			<div class="row">
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-contato">Telefone (WhatsApp)</label>
+ 					<input type="tel" id="prof-contato" class="form-control" required />
+ 				</div>
+ 				<div class="col-md-6 form-group">
+ 					<label for="prof-profissao">Profissão Principal</label>
+ 					<select id="prof-profissao" class="form-control" required>
+ 						<option value="">Carregando...</option>
+ 						 					</select>
+ 				</div>
+ 			</div>
+ 			 		</fieldset>
+		
+ 		<fieldset>
+ 			<legend>Documentos (Anexar)</legend>
+ 			<div class="form-group">
+ 				<label for="doc-identidade">Documento de Identidade (RG/CNH)</label>
+ 				<input type="file" id="doc-identidade" class="form-control" required />
+ 			</div>
+ 			<div class="form-group">
+ 				<label for="doc-diploma">Diploma/Certificado de Formação</label>
+ 				<input type="file" id="doc-diploma" class="form-control" required />
+ 			</div>
+ 			 		</fieldset>
+
+ 		<div class="form-footer">
+ 			<button type="submit" id="btn-submit-ficha" class="btn btn-success">
+ 				<i class="fas fa-check-circle me-2"></i> Finalizar e Enviar Cadastro
+ 			</button>
+ 		</div>
+ 	</form>
+
+ 	<div id="message-container" class="form-body" style="display: none;">
+ 		 	</div>
+ </div>
+
+  <script type="module" src="../assets/js/firebase-init.js"></script>
+ <script type="module" src="../assets/js/fichas-de-cadastro.js"></script>
+</body>
+</html>
