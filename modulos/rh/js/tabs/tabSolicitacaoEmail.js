@@ -1,7 +1,7 @@
 // modulos/rh/js/tabs/tabSolicitacaoEmail.js
-// VERSÃO 2.1 - Corrigido CSS dos Modais e Erro de Escopo
+// VERSÃO 2.2 - Carrega Cargos e Departamentos dinamicamente do Firestore
 
-import { getGlobalState } from "../admissao.js"; // Importa do novo módulo
+import { getGlobalState } from "../admissao.js";
 import {
   db,
   getDocs,
@@ -13,15 +13,16 @@ import {
   addDoc,
   collection,
   arrayUnion,
-  httpsCallable, // Importa HttpsCallable
-  functions, // Importa a instância das Functions
+  httpsCallable,
+  functions,
+  getDoc, // <-- IMPORT ADICIONADO
 } from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Solicitação de E-mail.
  */
 export async function renderizarSolicitacaoEmail(state) {
-  const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state; // O 'state' completo é passado aqui
+  const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
 
   conteudoAdmissao.innerHTML = `
   <div class="loading-spinner">
@@ -75,7 +76,7 @@ export async function renderizarSolicitacaoEmail(state) {
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
         vaga_titulo: vagaTitulo,
-        gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A",
+        gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A", // Usa o cargo_final salvo se existir, senão usa o título da vaga como sugestão
         cargo_final: cand.admissao_info?.cargo_final || vagaTitulo,
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
@@ -123,7 +124,7 @@ export async function renderizarSolicitacaoEmail(state) {
        <i class="fas fa-eye"></i> Detalhes
       </button>
       
-            <button class="action-button danger btn-reprovar-admissao" 
+      <button class="action-button danger btn-reprovar-admissao" 
           data-id="${candidaturaId}"
        		data-dados="${dadosCodificados}"
           style="padding: 10px 16px; background: var(--cor-erro); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
@@ -138,7 +139,7 @@ export async function renderizarSolicitacaoEmail(state) {
    </div>
   `;
 
-    conteudoAdmissao.innerHTML = listaHtml; // === EVENT LISTENERS (CORRIGIDOS) ===
+    conteudoAdmissao.innerHTML = listaHtml;
 
     console.log("🔗 Admissão(Email): Anexando event listeners..."); // Botão Solicitar E-mail
 
@@ -146,25 +147,23 @@ export async function renderizarSolicitacaoEmail(state) {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("🎯 Clique no botão Solicitar E-mail");
         const candidatoId = btn.getAttribute("data-id");
-        const dadosCodificados = btn.getAttribute("data-dados"); // CORREÇÃO: Passa o 'state' inteiro para ter acesso ao currentUserData
+        const dadosCodificados = btn.getAttribute("data-dados");
         abrirModalSolicitarEmail(candidatoId, dadosCodificados, state);
       });
-    }); // Botão Detalhes (agora funciona)
+    }); // Botão Detalhes
 
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("👁️ Clique no botão Detalhes");
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
         if (typeof window.abrirModalCandidato === "function") {
           try {
             const dadosCandidato = JSON.parse(
               decodeURIComponent(dadosCodificados)
-            ); // Usa a função global adicionada ao admissao.js
+            );
             window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
           } catch (error) {
             console.error("❌ Erro ao abrir modal de detalhes:", error);
@@ -176,7 +175,7 @@ export async function renderizarSolicitacaoEmail(state) {
           alert("Erro ao carregar detalhes. Função não encontrada.");
         }
       });
-    }); // Botão Reprovar Admissão (chama o novo modal)
+    }); // Botão Reprovar Admissão
 
     document.querySelectorAll(".btn-reprovar-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -185,7 +184,7 @@ export async function renderizarSolicitacaoEmail(state) {
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
         const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
-        abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state); // Passa o state
+        abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state);
       });
     });
   } catch (error) {
@@ -198,13 +197,80 @@ export async function renderizarSolicitacaoEmail(state) {
   }
 }
 
+// ============================================
+// NOVAS FUNÇÕES AUXILIARES (CARREGAR LISTAS)
+// ============================================
+
+/**
+ * Busca as listas de profissões e departamentos no Firestore
+ */
+async function carregarListasConfig() {
+  console.log("🔹 Admissão: Carregando listas de configurações...");
+  try {
+    const configRef = doc(db, "configuracoesSistema", "geral");
+    const docSnap = await getDoc(configRef);
+
+    if (docSnap.exists() && docSnap.data().listas) {
+      const listas = docSnap.data().listas;
+      console.log("✅ Listas carregadas:", listas);
+      return {
+        profissoes: listas.profissoes || [],
+        departamentos: listas.departamentos || [],
+      };
+    } else {
+      console.warn("⚠️ Documento de configurações ou listas não encontrado.");
+      return { profissoes: [], departamentos: [] };
+    }
+  } catch (error) {
+    console.error("❌ Erro ao carregar listas de configurações:", error);
+    window.showToast?.(
+      "Erro ao carregar listas de cargos/departamentos.",
+      "error"
+    );
+    return { profissoes: [], departamentos: [] };
+  }
+}
+
+/**
+ * Gera o HTML de <option> para um <select>
+ * @param {string[]} lista - Array de strings (ex: ["Psicólogo", "Admin"])
+ * @param {string} valorPadrao - O valor que deve vir pré-selecionado
+ * @returns {string} HTML com as opções
+ */
+function gerarOptionsHTML(lista, valorPadrao = null) {
+  let html = '<option value="">Selecione...</option>';
+  let padraoEncontrado = false;
+
+  if (lista && lista.length > 0) {
+    lista.forEach((item) => {
+      const isSelected = item === valorPadrao;
+      if (isSelected) padraoEncontrado = true;
+      html += `<option value="${item}" ${
+        isSelected ? "selected" : ""
+      }>${item}</option>`;
+    });
+  } // Se o valor padrão (ex: da vaga) não estava na lista, adiciona mesmo assim
+
+  if (valorPadrao && !padraoEncontrado) {
+    html += `<option value="${valorPadrao}" selected>${valorPadrao} (da Vaga)</option>`;
+  }
+
+  return html;
+}
+
+// ============================================
+// MODAL - SOLICITAR E-MAIL (MODIFICADO)
+// ============================================
+
 /**
  * Abre o modal para solicitar a criação de e-mail
- * CORREÇÃO: Usa classes CSS 'modal-overlay' e 'modal-content'
+ * MODIFICADO: Agora é 'async' e busca listas
  */
-function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
+async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   console.log("🎯 Abrindo modal de solicitação de e-mail");
-  const { currentUserData } = state; // Pega o usuário do state
+  const { currentUserData } = state; // --- 1. BUSCA AS LISTAS PRIMEIRO ---
+
+  const { profissoes, departamentos } = await carregarListasConfig();
 
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
@@ -212,7 +278,7 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const modalExistente = document.getElementById("modal-solicitar-email");
     if (modalExistente) {
       modalExistente.remove();
-    }
+    } // --- 2. GERAR SUGESTÃO DE E-MAIL ---
 
     const nomeLimpo = dadosCandidato.nome_completo
       .toLowerCase()
@@ -223,11 +289,17 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const primeiroNome = nomeLimpo[0] || "nome";
     const ultimoNome =
       nomeLimpo.length > 1 ? nomeLimpo[nomeLimpo.length - 1] : "sobrenome";
-    const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.com.br`;
+    const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.com.br`; // --- 3. GERAR OPÇÕES DOS SELECTS ---
+
+    const profissoesOptions = gerarOptionsHTML(
+      profissoes,
+      dadosCandidato.cargo_final
+    );
+    const departamentosOptions = gerarOptionsHTML(departamentos, null); // Nenhum depto. padrão por enquanto
 
     const modal = document.createElement("div");
-    modal.id = "modal-solicitar-email"; // --- CORREÇÃO DE CSS ---
-    modal.className = "modal-overlay is-visible"; // Usa a classe existente e a torna visível // Não injeta mais <style>, usa a estrutura de modal padrão
+    modal.id = "modal-solicitar-email";
+    modal.className = "modal-overlay is-visible"; // Usa a classe existente
     modal.innerHTML = `
   	<div class="modal-content" style="max-width: 600px;">
   		<div class="modal-header">
@@ -241,27 +313,22 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   				<div class="form-group">
   					<label class="form-label" for="solicitar-nome">Nome Completo</label>
   					<input type="text" id="solicitar-nome" class="form-control" 
-  						value="${dadosCandidato.nome_completo}" readonly>
-  				</div>
-  				<div class="form-group">
+  						value="${dadosCandidato.nome_completo}" readonly>   				</div>
+  				
+  				  				<div class="form-group">
   					<label class="form-label" for="solicitar-cargo">Cargo / Função</label>
-  					<input type="text" id="solicitar-cargo" class="form-control" 
-  						value="${dadosCandidato.cargo_final}" required>
-  				</div>
-  				<div class="form-group">
-  					<label class="form-label" for="solicitar-departamento">Departamento</label>
-  					<select id="solicitar-departamento" class="form-control" required>
-  						<option value="">Selecione...</option>
-  						<option value="administrativo">Administrativo</option>
-  						<option value="financeiro">Financeiro</option>
-  						<option value="rh">Recursos Humanos</option>
-  						<option value="servico-social">Serviço Social</option>
-  						<option value="psicologo">Psicólogo(a)</option>
-  						<option value="gestao">Gestão</option>
-  						<option value="ti">TI</option>
-  						<option value="outro">Outro</option>
+  					<select id="solicitar-cargo" class="form-control" required>
+  						${profissoesOptions}
   					</select>
   				</div>
+  				
+  				  				<div class="form-group">
+  					<label class="form-label" for="solicitar-departamento">Departamento</label>
+  					<select id="solicitar-departamento" class="form-control" required>
+  						${departamentosOptions}
+  					</select>
+  				</div>
+  				
   				<div class="form-group">
   					<label class="form-label" for="solicitar-email-sugerido">E-mail Sugerido</label>
   					<input type="email" id="solicitar-email-sugerido" class="form-control" 
@@ -284,7 +351,7 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   `;
 
     document.body.appendChild(modal);
-    document.body.style.overflow = "hidden"; // Adiciona listener programaticamente
+    document.body.style.overflow = "hidden";
     const btnSalvar = document.getElementById("btn-salvar-solicitacao");
     btnSalvar.addEventListener("click", () => {
       salvarSolicitacaoEmail(
@@ -293,7 +360,7 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
         currentUserData,
         state
       );
-    }); // Adiciona listeners de fechamento
+    });
 
     modal
       .querySelectorAll("[data-modal-id='modal-solicitar-email']")
@@ -313,14 +380,14 @@ function fecharModalSolicitarEmail() {
   console.log("❌ Fechando modal de solicitação de e-mail");
   const modal = document.getElementById("modal-solicitar-email");
   if (modal) {
-    modal.classList.remove("is-visible"); // Remove a visibilidade // Adiciona um pequeno delay para a animação de fade-out antes de remover
+    modal.classList.remove("is-visible");
     setTimeout(() => {
       if (modal.parentNode) {
         modal.remove();
       }
-    }, 300); // 300ms (ajuste conforme seu CSS)
+    }, 300);
   }
-  document.body.style.overflow = ""; // Restaura o scroll
+  document.body.style.overflow = "";
 }
 
 /**
@@ -362,7 +429,6 @@ async function salvarSolicitacaoEmail(
     let logAcao = "";
 
     try {
-      // Tenta chamar a Cloud Function (que você precisará criar)
       const criarEmailGoogleWorkspace = httpsCallable(
         functions,
         "criarEmailGoogleWorkspace"
@@ -388,7 +454,7 @@ async function salvarSolicitacaoEmail(
       window.showToast?.(
         "Falha na API. Criando solicitação interna para o TI.",
         "warning"
-      ); // LÓGICA DE FALLBACK (Solicitação para Admin)
+      );
       const solicitacoesTiRef = collection(db, "solicitacoes_ti");
       await addDoc(solicitacoesTiRef, {
         tipo: "criacao_email_novo_colaborador",
@@ -404,7 +470,7 @@ async function salvarSolicitacaoEmail(
         erro_api: apiError.message,
       });
       logAcao = `Falha na API. Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
-    } // Atualiza o status do candidato para a próxima etapa
+    }
 
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     const novoStatus = "AGUARDANDO_CADASTRO";
@@ -416,8 +482,8 @@ async function salvarSolicitacaoEmail(
         usuario: currentUserData.id || "rh_admin",
       }),
       admissao_info: {
-        cargo_final: cargo,
-        departamento: departamento,
+        cargo_final: cargo, // Salva o cargo selecionado
+        departamento: departamento, // Salva o depto selecionado
         email_solicitado: emailSugerido,
         email_criado_via_api: emailCriadoComSucesso,
       },
@@ -438,7 +504,7 @@ async function salvarSolicitacaoEmail(
 }
 
 // ============================================
-// MODAL DE REPROVAÇÃO (NOVO)
+// MODAL DE REPROVAÇÃO (MODIFICADO)
 // ============================================
 
 /**
@@ -454,12 +520,12 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
 
   const modal = document.createElement("div");
   modal.id = "modal-reprovar-admissao";
-  modal.dataset.candidaturaId = candidatoId; // --- CORREÇÃO DE CSS ---
-  modal.className = "modal-overlay is-visible";
+  modal.dataset.candidaturaId = candidatoId;
+  modal.className = "modal-overlay is-visible"; // Usa classe CSS existente
 
   modal.innerHTML = `
  	<div class="modal-content" style="max-width: 600px;">
- 		<div class="modal-header" style="background-color: var(--cor-erro-dark); color: white;">
+ 		<div class="modal-header" style="background-color: var(--cor-erro-dark, #dc3545); color: white;">
  			<h3 class="modal-title-text"><i class="fas fa-times-circle me-2"></i> Reprovar Candidato na Admissão</h3>
  			<button type="button" class="close-modal-btn" data-modal-id="modal-reprovar-admissao" aria-label="Fechar modal">
  				&times;
@@ -488,11 +554,11 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
  `;
 
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden"; // Adiciona listener ao botão de salvar
+  document.body.style.overflow = "hidden";
   const btnSalvar = document.getElementById("btn-salvar-reprovacao");
   btnSalvar.addEventListener("click", () => {
     submeterReprovacaoAdmissao(candidatoId, state);
-  }); // Adiciona listeners de fechamento
+  });
 
   modal
     .querySelectorAll("[data-modal-id='modal-reprovar-admissao']")
@@ -520,7 +586,6 @@ function fecharModalReprovarAdmissao() {
 
 /**
  * Submete a reprovação (chamada pelo modal)
- * CORRIGIDO: Agora usa o state para recarregar a aba
  */
 async function submeterReprovacaoAdmissao(candidatoId, state) {
   const { candidatosCollection, currentUserData } = state;
