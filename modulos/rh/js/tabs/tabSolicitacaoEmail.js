@@ -1,5 +1,5 @@
 // modulos/rh/js/tabs/tabSolicitacaoEmail.js
-// VERSÃO 2.2 - Carrega Cargos e Departamentos dinamicamente do Firestore
+// VERSÃO 2.3 - Corrigido o rastreamento do usuário (uid vs id)
 
 import { getGlobalState } from "../admissao.js";
 import {
@@ -15,8 +15,62 @@ import {
   arrayUnion,
   httpsCallable,
   functions,
-  getDoc, // <-- IMPORT ADICIONADO
+  getDoc,
 } from "../../../../assets/js/firebase-init.js";
+
+/**
+ * Busca as listas de profissões e departamentos no Firestore
+ */
+async function carregarListasConfig() {
+  console.log("🔹 Admissão: Carregando listas de configurações...");
+  try {
+    const configRef = doc(db, "configuracoesSistema", "geral");
+    const docSnap = await getDoc(configRef);
+
+    if (docSnap.exists() && docSnap.data().listas) {
+      const listas = docSnap.data().listas;
+      console.log("✅ Listas carregadas:", listas);
+      return {
+        profissoes: listas.profissoes || [],
+        departamentos: listas.departamentos || [],
+      };
+    } else {
+      console.warn("⚠️ Documento de configurações ou listas não encontrado.");
+      return { profissoes: [], departamentos: [] };
+    }
+  } catch (error) {
+    console.error("❌ Erro ao carregar listas de configurações:", error);
+    window.showToast?.(
+      "Erro ao carregar listas de cargos/departamentos.",
+      "error"
+    );
+    return { profissoes: [], departamentos: [] };
+  }
+}
+
+/**
+ * Gera o HTML de <option> para um <select>
+ */
+function gerarOptionsHTML(lista, valorPadrao = null) {
+  let html = '<option value="">Selecione...</option>';
+  let padraoEncontrado = false;
+
+  if (lista && lista.length > 0) {
+    lista.forEach((item) => {
+      const isSelected = item === valorPadrao;
+      if (isSelected) padraoEncontrado = true;
+      html += `<option value="${item}" ${
+        isSelected ? "selected" : ""
+      }>${item}</option>`;
+    });
+  }
+
+  if (valorPadrao && !padraoEncontrado) {
+    html += `<option value="${valorPadrao}" selected>${valorPadrao} (da Vaga)</option>`;
+  }
+
+  return html;
+}
 
 /**
  * Renderiza a listagem de candidatos para Solicitação de E-mail.
@@ -76,7 +130,7 @@ export async function renderizarSolicitacaoEmail(state) {
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
         vaga_titulo: vagaTitulo,
-        gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A", // Usa o cargo_final salvo se existir, senão usa o título da vaga como sugestão
+        gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A",
         cargo_final: cand.admissao_info?.cargo_final || vagaTitulo,
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
@@ -169,10 +223,7 @@ export async function renderizarSolicitacaoEmail(state) {
             console.error("❌ Erro ao abrir modal de detalhes:", error);
           }
         } else {
-          console.warn(
-            "⚠️ Função window.abrirModalCandidato não encontrada. Adicione-a ao admissao.js"
-          );
-          alert("Erro ao carregar detalhes. Função não encontrada.");
+          console.warn("⚠️ Função window.abrirModalCandidato não encontrada.");
         }
       });
     }); // Botão Reprovar Admissão
@@ -197,80 +248,21 @@ export async function renderizarSolicitacaoEmail(state) {
   }
 }
 
-// ============================================
-// NOVAS FUNÇÕES AUXILIARES (CARREGAR LISTAS)
-// ============================================
-
-/**
- * Busca as listas de profissões e departamentos no Firestore
- */
-async function carregarListasConfig() {
-  console.log("🔹 Admissão: Carregando listas de configurações...");
-  try {
-    const configRef = doc(db, "configuracoesSistema", "geral");
-    const docSnap = await getDoc(configRef);
-
-    if (docSnap.exists() && docSnap.data().listas) {
-      const listas = docSnap.data().listas;
-      console.log("✅ Listas carregadas:", listas);
-      return {
-        profissoes: listas.profissoes || [],
-        departamentos: listas.departamentos || [],
-      };
-    } else {
-      console.warn("⚠️ Documento de configurações ou listas não encontrado.");
-      return { profissoes: [], departamentos: [] };
-    }
-  } catch (error) {
-    console.error("❌ Erro ao carregar listas de configurações:", error);
-    window.showToast?.(
-      "Erro ao carregar listas de cargos/departamentos.",
-      "error"
-    );
-    return { profissoes: [], departamentos: [] };
-  }
-}
-
-/**
- * Gera o HTML de <option> para um <select>
- * @param {string[]} lista - Array de strings (ex: ["Psicólogo", "Admin"])
- * @param {string} valorPadrao - O valor que deve vir pré-selecionado
- * @returns {string} HTML com as opções
- */
-function gerarOptionsHTML(lista, valorPadrao = null) {
-  let html = '<option value="">Selecione...</option>';
-  let padraoEncontrado = false;
-
-  if (lista && lista.length > 0) {
-    lista.forEach((item) => {
-      const isSelected = item === valorPadrao;
-      if (isSelected) padraoEncontrado = true;
-      html += `<option value="${item}" ${
-        isSelected ? "selected" : ""
-      }>${item}</option>`;
-    });
-  } // Se o valor padrão (ex: da vaga) não estava na lista, adiciona mesmo assim
-
-  if (valorPadrao && !padraoEncontrado) {
-    html += `<option value="${valorPadrao}" selected>${valorPadrao} (da Vaga)</option>`;
-  }
-
-  return html;
-}
-
-// ============================================
-// MODAL - SOLICITAR E-MAIL (MODIFICADO)
-// ============================================
-
 /**
  * Abre o modal para solicitar a criação de e-mail
  * MODIFICADO: Agora é 'async' e busca listas
  */
 async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   console.log("🎯 Abrindo modal de solicitação de e-mail");
-  const { currentUserData } = state; // --- 1. BUSCA AS LISTAS PRIMEIRO ---
+  const { currentUserData } = state; // --- 1. BUSCA AS LISTAS PRIMEIRO --- // Mostra um spinner simples enquanto carrega as listas
 
-  const { profissoes, departamentos } = await carregarListasConfig();
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div id="modal-temp-loader" class="modal-overlay is-visible"><div class="loading-spinner"></div></div>'
+  );
+  const { profissoes, departamentos } = await carregarListasConfig(); // Remove o loader
+  const tempLoader = document.getElementById("modal-temp-loader");
+  if (tempLoader) tempLoader.remove();
 
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
@@ -295,7 +287,7 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
       profissoes,
       dadosCandidato.cargo_final
     );
-    const departamentosOptions = gerarOptionsHTML(departamentos, null); // Nenhum depto. padrão por enquanto
+    const departamentosOptions = gerarOptionsHTML(departamentos, null);
 
     const modal = document.createElement("div");
     modal.id = "modal-solicitar-email";
@@ -313,16 +305,17 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   				<div class="form-group">
   					<label class="form-label" for="solicitar-nome">Nome Completo</label>
   					<input type="text" id="solicitar-nome" class="form-control" 
-  						value="${dadosCandidato.nome_completo}" readonly>   				</div>
+  						value="${dadosCandidato.nome_completo}" readonly>
+  				</div>
   				
-  				  				<div class="form-group">
+  				<div class="form-group">
   					<label class="form-label" for="solicitar-cargo">Cargo / Função</label>
   					<select id="solicitar-cargo" class="form-control" required>
   						${profissoesOptions}
   					</select>
   				</div>
   				
-  				  				<div class="form-group">
+  				<div class="form-group">
   					<label class="form-label" for="solicitar-departamento">Departamento</label>
   					<select id="solicitar-departamento" class="form-control" required>
   						${departamentosOptions}
@@ -392,6 +385,7 @@ function fecharModalSolicitarEmail() {
 
 /**
  * Salva a solicitação (TENTA API, depois fallback)
+ * CORRIGIDO: Usa .uid
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -427,6 +421,11 @@ async function salvarSolicitacaoEmail(
   try {
     let emailCriadoComSucesso = false;
     let logAcao = "";
+
+    // --- ⚠️ CORREÇÃO: Define o usuário logado corretamente ---
+    const solicitanteId = currentUserData.uid || "rh_admin";
+    const solicitanteNome =
+      currentUserData.nome || currentUserData.email || "Usuário RH";
 
     try {
       const criarEmailGoogleWorkspace = httpsCallable(
@@ -464,8 +463,8 @@ async function salvarSolicitacaoEmail(
         email_sugerido: emailSugerido,
         status: "pendente",
         data_solicitacao: new Date(),
-        solicitante_id: currentUserData.id || "rh_admin",
-        solicitante_nome: currentUserData.nome || "Usuário RH",
+        solicitante_id: solicitanteId, // <-- CORRIGIDO
+        solicitante_nome: solicitanteNome, // <-- CORRIGIDO
         candidatura_id: candidatoId,
         erro_api: apiError.message,
       });
@@ -479,11 +478,11 @@ async function salvarSolicitacaoEmail(
       historico: arrayUnion({
         data: new Date(),
         acao: logAcao,
-        usuario: currentUserData.id || "rh_admin",
+        usuario: solicitanteId, // <-- CORRIGIDO
       }),
       admissao_info: {
-        cargo_final: cargo, // Salva o cargo selecionado
-        departamento: departamento, // Salva o depto selecionado
+        cargo_final: cargo,
+        departamento: departamento,
         email_solicitado: emailSugerido,
         email_criado_via_api: emailCriadoComSucesso,
       },
@@ -504,7 +503,7 @@ async function salvarSolicitacaoEmail(
 }
 
 // ============================================
-// MODAL DE REPROVAÇÃO (MODIFICADO)
+// MODAL DE REPROVAÇÃO (CORRIGIDO)
 // ============================================
 
 /**
@@ -586,6 +585,7 @@ function fecharModalReprovarAdmissao() {
 
 /**
  * Submete a reprovação (chamada pelo modal)
+ * CORRIGIDO: Usa .uid
  */
 async function submeterReprovacaoAdmissao(candidatoId, state) {
   const { candidatosCollection, currentUserData } = state;
@@ -614,7 +614,7 @@ async function submeterReprovacaoAdmissao(candidatoId, state) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Candidatura REJEITADA na ADMISSÃO. Motivo: ${justificativa}`,
-        usuario: currentUserData.id || "rh_admin",
+        usuario: currentUserData.uid || "rh_admin", // <-- CORRIGIDO
       }),
     });
 
