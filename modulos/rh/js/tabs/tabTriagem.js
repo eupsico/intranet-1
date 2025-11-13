@@ -272,7 +272,7 @@ async function submeterAvaliacaoTriagem(e) {
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao ? infoAprovacaoEl?.value.trim() || "" : "",
     data_avaliacao: new Date().toISOString(), // ✅ CORRIGIDO: Use string ISO em vez de serverTimestamp()
-    avaliador_uid: currentUserData.id || "rh_system_user",
+    avaliador_uid: currentUserData.uid || "rh_system_user",
     checklist: dadosCandidatoAtual?.triagem_rh?.checklist || {},
   };
 
@@ -287,7 +287,7 @@ async function submeterAvaliacaoTriagem(e) {
         acao: `Triagem ${
           decisao ? "APROVADA" : "REPROVADA"
         }. Status: ${novoStatusCandidato}`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     });
 

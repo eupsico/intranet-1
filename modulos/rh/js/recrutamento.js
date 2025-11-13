@@ -570,7 +570,7 @@ window.reprovarCandidatura = async function (
       historico: arrayUnion({
         data: new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
         acao: `Candidatura REJEITADA na etapa de ${etapa}. Motivo: ${justificativa}`,
-        usuario: currentUserData.id || "sistema",
+        usuario: currentUserData.uid || "sistema",
       }),
     });
 

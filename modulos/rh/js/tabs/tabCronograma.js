@@ -203,7 +203,7 @@ async function submeterCronograma(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Cronograma e Orçamento atualizado. Início: ${dadosAtualizados.data_inicio_recrutamento}, Término: ${dadosAtualizados.data_fechamento_recrutamento}`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     });
 

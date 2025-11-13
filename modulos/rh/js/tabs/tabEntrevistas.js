@@ -818,7 +818,7 @@ async function submeterAvaliacaoTeste(e) {
   const dadosAvaliacaoTeste = {
     resultado: resultado,
     data_avaliacao: new Date(),
-    avaliador_uid: currentUserData.id || "rh_system_user",
+    avaliador_uid: currentUserData.uid || "rh_system_user",
     observacoes: observacoes || "",
     // ✅ SALVA O GESTOR DESIGNADO
     gestor_designado: isAprovado
@@ -841,7 +841,7 @@ async function submeterAvaliacaoTeste(e) {
         acao: `Avaliação do Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
           isAprovado ? `Gestor designado: ${gestorNome}` : "Processo finalizado"
         }. Novo Status: ${novoStatusCandidato}`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     });
 
@@ -933,7 +933,7 @@ async function submeterAgendamentoRH(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}. Status: ${statusAtual}`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     };
 
@@ -1243,7 +1243,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
         tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
-        enviado_por: currentUserData.id || "rh_system_user",
+        enviado_por: currentUserData.uid || "rh_system_user",
         status: "enviado",
       }),
       historico: arrayUnion({
@@ -1252,7 +1252,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
           0,
           8
         )}...`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     });
 
@@ -1472,7 +1472,7 @@ async function submeterAvaliacaoRH(e) {
   const dadosAvaliacao = {
     resultado: resultado,
     data_avaliacao: new Date(),
-    avaliador_uid: currentUserData.id || "rh_system_user",
+    avaliador_uid: currentUserData.uid || "rh_system_user",
     notas: {
       motivacao: notaMotivacao,
       aderencia: notaAderencia,
@@ -1496,7 +1496,7 @@ async function submeterAvaliacaoRH(e) {
         acao: `Avaliação Entrevista RH: ${
           isAprovado ? "APROVADO" : "REPROVADO"
         }. Status: ${novoStatusCandidato}`,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: currentUserData.uid || "rh_system_user",
       }),
     });
 
