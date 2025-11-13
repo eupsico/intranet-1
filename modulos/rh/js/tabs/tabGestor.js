@@ -46,7 +46,7 @@ export async function renderizarEntrevistaGestor(state) {
       where("status_recrutamento", "in", [
         // SUBSTITUA POR STATUS REAIS DO SEU FIRESTORE
         "Testes Aprovado",
-        "Entrevista Gestor Pendente",
+        "Entrevista com Gestor",
         "Entrevista Gestor Agendada",
         "Aguardando Avaliação Gestor",
       ])
