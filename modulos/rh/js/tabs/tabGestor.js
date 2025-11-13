@@ -1,6 +1,13 @@
 // modulos/rh/js/tabs/tabGestor.js
 import { getGlobalState } from "../recrutamento.js";
-import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
+import {
+  getDocs,
+  query,
+  where,
+  doc,
+  updateDoc,
+  arrayUnion,
+} from "../../../../assets/js/firebase-init.js";
 
 /**
  * Renderiza a listagem de candidatos para Entrevista com Gestor.
@@ -41,6 +48,7 @@ export async function renderizarEntrevistaGestor(state) {
         "Entrevista Gestor Pendente",
         "Entrevista Gestor Agendada",
         "Aguardando Avaliação Gestor",
+        "Teste Aprovado (Entrevista com Gestor Pendente)",
       ])
     );
 
@@ -724,8 +732,8 @@ window.fecharModalAvaliacaoGestor = function () {
   }
 };
 
-// === FUNÇÃO PARA SALVAR AVALIAÇÃO ===
-window.salvarAvaliacaoGestorModal = function (candidatoId, vagaId) {
+// === FUNÇÃO PARA SALVAR AVALIAÇÃO - CORREÇÃO APLICADA ===
+window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
   console.log("💾 Salvando avaliação do gestor");
 
   const formId = `form-avaliacao-gestor-${candidatoId}`;
@@ -764,39 +772,38 @@ window.salvarAvaliacaoGestorModal = function (candidatoId, vagaId) {
   console.log(`- Resultado: ${resultado}`);
   console.log(`- Observações: ${observacoes.substring(0, 100)}...`);
 
-  // TODO: IMPLEMENTAR SALVAMENTO NO FIRESTORE
-  // Exemplo de como seria:
-  /*
-  try {
-    const candidatoRef = doc(db, 'candidatos', candidatoId);
-    await updateDoc(candidatoRef, {
-      status_avaliacao_gestor: resultado,
-      observacoes_gestor: observacoes,
-      avaliador_gestor: getGlobalState().usuarioAtual.email,
-      data_avaliacao_gestor: new Date().toISOString(),
-      etapa_recrutamento: resultado === 'aprovado' ? 'Aprovado Final' : resultado
-    });
-    
-    console.log("✅ Avaliação salva no Firestore");
-    alert("✅ Avaliação salva com sucesso!");
-    fecharModalAvaliacaoGestor();
-    
-    // Recarrega a lista
-    const state = getGlobalState();
-    renderizarEntrevistaGestor(state);
-    
-  } catch (error) {
-    console.error("❌ Erro ao salvar:", error);
-    alert("Erro ao salvar avaliação. Tente novamente.");
-  }
-  */
+  // SALVAMENTO NO FIREBASE - IMPLEMENTADO
+  const novoStatus =
+    resultado === "aprovado"
+      ? "Processo Concluído - Contratado"
+      : "Processo Concluído - Rejeitado";
 
-  // SIMULAÇÃO TEMPORÁRIA - REMOVE QUANDO IMPLEMENTAR FIRESTORE
-  setTimeout(() => {
-    console.log("✅ Simulação: Avaliação salva com sucesso");
-    alert("✅ Avaliação salva com sucesso! (Simulação)");
-    fecharModalAvaliacaoGestor();
-  }, 1500);
+  const candidatoRef = doc(db, "candidatos", candidatoId);
+  await updateDoc(candidatoRef, {
+    status_recrutamento: novoStatus,
+    avaliacao_gestor: {
+      aprovado: resultado === "aprovado",
+      data_avaliacao: new Date(),
+      observacoes: observacoes.trim(),
+      avaliador: getGlobalState()?.usuarioAtual?.email || "gestor@eupsico.com",
+    },
+    historico: arrayUnion({
+      data: new Date(),
+      acao: `Avaliação ${
+        resultado === "aprovado" ? "Aprovada" : "Rejeitada"
+      } pelo Gestor`,
+      usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
+      anterior: "Entrevista com Gestor Pendente",
+    }),
+  });
+
+  alert(
+    `✅ ${resultado === "aprovado" ? "Aprovado" : "Rejeitado"} com sucesso!`
+  );
+  fecharModalAvaliacaoGestor();
+
+  const stateNovo = getGlobalState();
+  renderizarEntrevistaGestor(stateNovo);
 
   // REATIVA BOTÃO
   if (btnSalvar) {
@@ -1061,14 +1068,16 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
                 <div class="info-value">
                   <span class="status-badge status-${dadosCandidato.status_recrutamento
                     .toLowerCase()
-                    .replace(" ", "-")}">
+                    .replace(/ /g, "-")}">
                     ${dadosCandidato.status_recrutamento || "N/A"}
                   </span>
                 </div>
               </div>
               <div class="info-item">
                 <div class="info-label">ID da Vaga</div>
-                <div class="info-value"><code>${vagaId}</code></div>
+                <div class="info-value"><code>${
+                  dadosCandidato.vaga_id
+                }</code></div>
               </div>
               <div class="info-item">
                 <div class="info-label">Data de Cadastro</div>
