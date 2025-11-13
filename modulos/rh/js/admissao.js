@@ -119,7 +119,11 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   const modalCandidatoBody = document.getElementById("candidato-modal-body");
   const modalCandidatoFooter = document.getElementById(
     "candidato-modal-footer"
-  ); // Não precisamos do 'getGlobalState' aqui, podemos chamar as funções direto // pois estão no mesmo arquivo.
+  );
+
+  // Não precisamos do 'getGlobalState' aqui, podemos chamar as funções direto
+  // pois estão no mesmo arquivo.
+
   if (!modalCandidato || !modalCandidatoBody || !modalCandidatoFooter) {
     console.error(
       "❌ Admissão: Modal de detalhes 'modal-candidato' (e seus filhos body/footer) não encontrado no admissao.html"
@@ -129,15 +133,17 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   }
 
   console.log(`🔹 Admissão: Abrindo modal para candidato ${candidatoId}`);
-  dadosCandidatoAtual = candidato; // Salva no estado global do módulo // Atualiza título do modal
+  dadosCandidatoAtual = candidato; // Salva no estado global do módulo
 
+  // Atualiza título do modal
   const tituloModalEl = document.getElementById("candidato-nome-titulo");
   if (tituloModalEl) {
     tituloModalEl.textContent = `Detalhes: ${
       candidato.nome_completo || "Candidato(a)"
     }`;
-  } // Monta o conteúdo com fieldsets
+  }
 
+  // Monta o conteúdo com fieldsets
   const contentHtml = `
   <div class="row">
    <div class="col-lg-6">
@@ -188,19 +194,23 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
    </div>
   </div>
  `;
-  modalCandidatoBody.innerHTML = contentHtml; // Atualiza o footer
+  modalCandidatoBody.innerHTML = contentHtml;
 
+  // Atualiza o footer
   modalCandidatoFooter.innerHTML = `
   <button type="button" class="action-button secondary fechar-modal-candidato">
    <i class="fas fa-times me-2"></i> Fechar
   </button>
- `; // Anexa listener ao botão de fechar no footer
+ `;
 
+  // Anexa listener ao botão de fechar no footer
   modalCandidatoFooter
     .querySelector(".fechar-modal-candidato")
     .addEventListener("click", () => {
       modalCandidato.classList.remove("is-visible");
-    }); // Anexa listener ao botão de fechar no header
+    });
+
+  // Anexa listener ao botão de fechar no header
   const closeBtnHeader = modalCandidato.querySelector(
     ".close-modal-btn.fechar-modal-candidato"
   );
@@ -228,12 +238,14 @@ window.reprovarCandidatoAdmissao = async function (
   justificativa
 ) {
   console.log(`🔹 Admissão: Submetendo reprovação do candidato ${candidatoId}`);
+
   const {
     candidatosCollection,
     currentUserData,
     handleTabClick,
     statusAdmissaoTabs,
   } = getGlobalState();
+
   try {
     const candidatoRef = doc(candidatosCollection, candidatoId);
     await updateDoc(candidatoRef, {
@@ -244,11 +256,13 @@ window.reprovarCandidatoAdmissao = async function (
       historico: arrayUnion({
         data: new Date(),
         acao: `Candidatura REJEITADA na ADMISSÃO (Etapa: ${etapa}). Motivo: ${justificativa}`,
-        usuario: currentUserData.id || "sistema",
+        usuario: currentUserData.uid || "sistema", // <-- USA .UID
       }),
     });
     window.showToast?.(`Candidatura rejeitada na etapa ${etapa}.`, "success");
-    console.log("✅ Admissão: Candidato reprovado com sucesso"); // Recarrega a aba ativa
+    console.log("✅ Admissão: Candidato reprovado com sucesso");
+
+    // Recarrega a aba ativa
     const activeStatus = statusAdmissaoTabs
       .querySelector(".tab-link.active")
       ?.getAttribute("data-status");
@@ -278,8 +292,9 @@ function handleTabClick(e) {
     .forEach((btn) => btn.classList.remove("active"));
   e.currentTarget.classList.add("active");
 
-  const globalState = getGlobalState(); // Roteamento
+  const globalState = getGlobalState();
 
+  // Roteamento
   switch (status) {
     case "solicitacao-email":
       renderizarSolicitacaoEmail(globalState);
