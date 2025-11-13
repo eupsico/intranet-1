@@ -1,5 +1,5 @@
 // modulos/rh/js/tabs/tabSolicitacaoEmail.js
-// VERSÃO 2.0 - Corrigido Erros e Adicionado Modal de Reprovação + Tentativa de API
+// VERSÃO 2.1 - Corrigido CSS dos Modais e Erro de Escopo
 
 import { getGlobalState } from "../admissao.js"; // Importa do novo módulo
 import {
@@ -75,9 +75,8 @@ export async function renderizarSolicitacaoEmail(state) {
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
         vaga_titulo: vagaTitulo,
-        // Passando os dados do gestor que aprovou, se houver
         gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A",
-        cargo_final: cand.admissao_info?.cargo_final || vagaTitulo, // Pega o cargo salvo ou o título da vaga
+        cargo_final: cand.admissao_info?.cargo_final || vagaTitulo,
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
@@ -139,25 +138,21 @@ export async function renderizarSolicitacaoEmail(state) {
    </div>
   `;
 
-    conteudoAdmissao.innerHTML = listaHtml;
+    conteudoAdmissao.innerHTML = listaHtml; // === EVENT LISTENERS (CORRIGIDOS) ===
 
-    // === EVENT LISTENERS (CORRIGIDOS) ===
-    console.log("🔗 Admissão(Email): Anexando event listeners...");
+    console.log("🔗 Admissão(Email): Anexando event listeners..."); // Botão Solicitar E-mail
 
-    // Botão Solicitar E-mail
     document.querySelectorAll(".btn-solicitar-email").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         console.log("🎯 Clique no botão Solicitar E-mail");
         const candidatoId = btn.getAttribute("data-id");
-        const dadosCodificados = btn.getAttribute("data-dados");
-        // CORREÇÃO: Passa o 'state' inteiro para ter acesso ao currentUserData
+        const dadosCodificados = btn.getAttribute("data-dados"); // CORREÇÃO: Passa o 'state' inteiro para ter acesso ao currentUserData
         abrirModalSolicitarEmail(candidatoId, dadosCodificados, state);
       });
-    });
+    }); // Botão Detalhes (agora funciona)
 
-    // Botão Detalhes (agora funciona)
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -165,13 +160,11 @@ export async function renderizarSolicitacaoEmail(state) {
         console.log("👁️ Clique no botão Detalhes");
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
-
         if (typeof window.abrirModalCandidato === "function") {
           try {
             const dadosCandidato = JSON.parse(
               decodeURIComponent(dadosCodificados)
-            );
-            // Usa a função global adicionada ao admissao.js
+            ); // Usa a função global adicionada ao admissao.js
             window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
           } catch (error) {
             console.error("❌ Erro ao abrir modal de detalhes:", error);
@@ -183,9 +176,8 @@ export async function renderizarSolicitacaoEmail(state) {
           alert("Erro ao carregar detalhes. Função não encontrada.");
         }
       });
-    });
+    }); // Botão Reprovar Admissão (chama o novo modal)
 
-    // Botão Reprovar Admissão (chama o novo modal)
     document.querySelectorAll(".btn-reprovar-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -193,7 +185,7 @@ export async function renderizarSolicitacaoEmail(state) {
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
         const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
-        abrirModalReprovarAdmissao(candidatoId, dadosCandidato);
+        abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state); // Passa o state
       });
     });
   } catch (error) {
@@ -208,11 +200,11 @@ export async function renderizarSolicitacaoEmail(state) {
 
 /**
  * Abre o modal para solicitar a criação de e-mail
- * CORRIGIDO: Pega currentUserData do 'state' e adiciona listener programaticamente
+ * CORREÇÃO: Usa classes CSS 'modal-overlay' e 'modal-content'
  */
 function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   console.log("🎯 Abrindo modal de solicitação de e-mail");
-  const { currentUserData } = state; // <-- CORREÇÃO: Pega o usuário do state
+  const { currentUserData } = state; // Pega o usuário do state
 
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
@@ -234,46 +226,31 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.com.br`;
 
     const modal = document.createElement("div");
-    modal.id = "modal-solicitar-email";
-
-    // (O HTML e CSS do modal são idênticos ao da resposta anterior, omitidos para brevidade)
+    modal.id = "modal-solicitar-email"; // --- CORREÇÃO DE CSS ---
+    modal.className = "modal-overlay is-visible"; // Usa a classe existente e a torna visível // Não injeta mais <style>, usa a estrutura de modal padrão
     modal.innerHTML = `
-  	<style>
-  		/* (Estilos CSS idênticos aos da resposta anterior) */
-  		#modal-solicitar-email { all: initial !important; /* ... */ }
-  		#modal-solicitar-email .modal-container { /* ... */ }
-  		#modal-solicitar-email .modal-header { /* ... */ }
-  		#modal-solicitar-email .modal-body { /* ... */ }
-  		#modal-solicitar-email .modal-footer { /* ... */ }
-  		#modal-solicitar-email .form-input, #modal-solicitar-email .form-select { width: 100% !important; /* ... */ }
-  		#modal-solicitar-email .btn-salvar { background: #007bff !important; }
-  		#modal-solicitar-email .btn-salvar:disabled { background: #ccc !important; }
-  	</style>
-  	<div class="modal-container">
+  	<div class="modal-content" style="max-width: 600px;">
   		<div class="modal-header">
-  			<div class="modal-title">
-  				<i class="fas fa-envelope-open-text"></i>
-  				<h3>Solicitar E-mail Corporativo</h3>
-  			</div>
-  			<button type="button" class="modal-close" data-modal-id="modal-solicitar-email">
-  				<i class="fas fa-times"></i>
+  			<h3 class="modal-title-text"><i class="fas fa-envelope-open-text me-2"></i> Solicitar E-mail Corporativo</h3>
+  			<button type="button" class="close-modal-btn" data-modal-id="modal-solicitar-email" aria-label="Fechar modal">
+  				&times;
   			</button>
   		</div>
   		<div class="modal-body">
   			<form id="form-solicitar-email-${candidatoId}">
   				<div class="form-group">
   					<label class="form-label" for="solicitar-nome">Nome Completo</label>
-  					<input type="text" id="solicitar-nome" class="form-input" 
-  						value="${dadosCandidato.nome_completo}" readonly style="background: #e9ecef;">
+  					<input type="text" id="solicitar-nome" class="form-control" 
+  						value="${dadosCandidato.nome_completo}" readonly>
   				</div>
   				<div class="form-group">
   					<label class="form-label" for="solicitar-cargo">Cargo / Função</label>
-  					<input type="text" id="solicitar-cargo" class="form-input" 
+  					<input type="text" id="solicitar-cargo" class="form-control" 
   						value="${dadosCandidato.cargo_final}" required>
   				</div>
   				<div class="form-group">
   					<label class="form-label" for="solicitar-departamento">Departamento</label>
-  					<select id="solicitar-departamento" class="form-select" required>
+  					<select id="solicitar-departamento" class="form-control" required>
   						<option value="">Selecione...</option>
   						<option value="administrativo">Administrativo</option>
   						<option value="financeiro">Financeiro</option>
@@ -287,29 +264,27 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   				</div>
   				<div class="form-group">
   					<label class="form-label" for="solicitar-email-sugerido">E-mail Sugerido</label>
-  					<input type="email" id="solicitar-email-sugerido" class="form-input" 
+  					<input type="email" id="solicitar-email-sugerido" class="form-control" 
   						value="${sugestaoEmail}" required>
   				</div>
-  				<p style="font-size: 12px; color: #6c757d;">
+  				<small class="form-text text-muted">
   					Ao salvar, o sistema tentará criar o e-mail via API. Se falhar, uma solicitação será aberta para o TI.
-  				</p>
+  				</small>
   			</form>
   		</div>
   		<div class="modal-footer">
-  			<button type="button" class="btn btn-cancelar" data-modal-id="modal-solicitar-email">
-  				<i class="fas fa-times"></i> Cancelar
+  			<button type="button" class="action-button secondary" data-modal-id="modal-solicitar-email">
+  				<i class="fas fa-times me-2"></i> Cancelar
   			</button>
-  			<button type="button" class="btn btn-salvar" id="btn-salvar-solicitacao">
-  				<i class="fas fa-paper-plane"></i> Salvar e Solicitar
+  			<button type="button" class="action-button primary" id="btn-salvar-solicitacao">
+  				<i class="fas fa-paper-plane me-2"></i> Salvar e Solicitar
   			</button>
   		</div>
   	</div>
   `;
 
     document.body.appendChild(modal);
-    document.body.style.overflow = "hidden";
-
-    // CORREÇÃO: Adiciona listener programaticamente
+    document.body.style.overflow = "hidden"; // Adiciona listener programaticamente
     const btnSalvar = document.getElementById("btn-salvar-solicitacao");
     btnSalvar.addEventListener("click", () => {
       salvarSolicitacaoEmail(
@@ -318,9 +293,8 @@ function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
         currentUserData,
         state
       );
-    });
+    }); // Adiciona listeners de fechamento
 
-    // Adiciona listeners de fechamento
     modal
       .querySelectorAll("[data-modal-id='modal-solicitar-email']")
       .forEach((btn) => {
@@ -339,14 +313,18 @@ function fecharModalSolicitarEmail() {
   console.log("❌ Fechando modal de solicitação de e-mail");
   const modal = document.getElementById("modal-solicitar-email");
   if (modal) {
-    modal.remove();
+    modal.classList.remove("is-visible"); // Remove a visibilidade // Adiciona um pequeno delay para a animação de fade-out antes de remover
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.remove();
+      }
+    }, 300); // 300ms (ajuste conforme seu CSS)
   }
-  document.body.style.overflow = "";
+  document.body.style.overflow = ""; // Restaura o scroll
 }
 
 /**
  * Salva a solicitação (TENTA API, depois fallback)
- * CORRIGIDO: Recebe currentUserData como parâmetro
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -362,9 +340,8 @@ async function salvarSolicitacaoEmail(
 
   const cargo = form.querySelector("#solicitar-cargo").value;
   const departamento = form.querySelector("#solicitar-departamento").value;
-  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value;
+  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value; // Validações
 
-  // Validações
   if (!cargo || !departamento || !emailSugerido) {
     window.showToast?.("Por favor, preencha todos os campos.", "warning");
     return;
@@ -381,7 +358,6 @@ async function salvarSolicitacaoEmail(
   btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
 
   try {
-    // --- NOVA LÓGICA DE API ---
     let emailCriadoComSucesso = false;
     let logAcao = "";
 
@@ -397,7 +373,6 @@ async function salvarSolicitacaoEmail(
         cargo: cargo,
         departamento: departamento,
       });
-
       if (resultado.data.sucesso) {
         emailCriadoComSucesso = true;
         logAcao = `E-mail ${emailSugerido} criado com sucesso via API.`;
@@ -413,9 +388,7 @@ async function salvarSolicitacaoEmail(
       window.showToast?.(
         "Falha na API. Criando solicitação interna para o TI.",
         "warning"
-      );
-
-      // --- LÓGICA DE FALLBACK (Solicitação para Admin) ---
+      ); // LÓGICA DE FALLBACK (Solicitação para Admin)
       const solicitacoesTiRef = collection(db, "solicitacoes_ti");
       await addDoc(solicitacoesTiRef, {
         tipo: "criacao_email_novo_colaborador",
@@ -428,21 +401,18 @@ async function salvarSolicitacaoEmail(
         solicitante_id: currentUserData.id || "rh_admin",
         solicitante_nome: currentUserData.nome || "Usuário RH",
         candidatura_id: candidatoId,
-        erro_api: apiError.message, // Loga o erro da API
+        erro_api: apiError.message,
       });
       logAcao = `Falha na API. Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
-    }
-    // --- FIM DA LÓGICA DE API ---
+    } // Atualiza o status do candidato para a próxima etapa
 
-    // 2. Atualiza o status do candidato para a próxima etapa
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     const novoStatus = "AGUARDANDO_CADASTRO";
-
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
       historico: arrayUnion({
         data: new Date(),
-        acao: logAcao, // Salva o log (sucesso ou fallback)
+        acao: logAcao,
         usuario: currentUserData.id || "rh_admin",
       }),
       admissao_info: {
@@ -474,7 +444,7 @@ async function salvarSolicitacaoEmail(
 /**
  * Abre o modal para Reprovar a Admissão
  */
-function abrirModalReprovarAdmissao(candidatoId, dadosCandidato) {
+function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
   console.log(`🎯 Abrindo modal de REPROVAÇÃO para ${candidatoId}`);
 
   const modalExistente = document.getElementById("modal-reprovar-admissao");
@@ -484,35 +454,15 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato) {
 
   const modal = document.createElement("div");
   modal.id = "modal-reprovar-admissao";
-  modal.dataset.candidaturaId = candidatoId;
+  modal.dataset.candidaturaId = candidatoId; // --- CORREÇÃO DE CSS ---
+  modal.className = "modal-overlay is-visible";
 
   modal.innerHTML = `
- 	<style>
- 		/* (Estilos CSS similares aos outros modais, com tema 'danger') */
- 		#modal-reprovar-admissao { all: initial !important; /* ... */ display: block !important; position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; background: rgba(0,0,0,0.7); font-family: inherit; }
- 		#modal-reprovar-admissao .modal-container { position: fixed !important; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 600px; background: #fff; border-radius: 12px; box-shadow: 0 25px 50px -15px rgba(0,0,0,0.3); overflow: hidden; animation: modalPopupOpen 0.3s ease-out; }
- 		#modal-reprovar-admissao .modal-header { background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%) !important; color: white !important; padding: 20px !important; display: flex; justify-content: space-between; align-items: center; }
- 		#modal-reprovar-admissao .modal-title { display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important; }
- 		#modal-reprovar-admissao .modal-title i { font-size: 24px !important; }
- 		#modal-reprovar-admissao .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
- 		#modal-reprovar-admissao .modal-close { background: rgba(255,255,255,0.2) !important; border: none !important; color: white !important; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
- 		#modal-reprovar-admissao .modal-body { padding: 25px !important; max-height: 500px !important; overflow-y: auto !important; background: #f8f9fa !important; }
- 		#modal-reprovar-admissao .form-group { margin-bottom: 20px !important; }
- 		#modal-reprovar-admissao .form-label { font-weight: 600 !important; margin-bottom: 8px !important; display: block !important; color: #333 !important; font-size: 14px !important; }
- 		#modal-reprovar-admissao .form-textarea { width: 100% !important; min-height: 120px !important; padding: 12px !important; border: 1px solid #ddd !important; border-radius: 6px !important; resize: vertical !important; box-sizing: border-box !important; font-size: 14px !important; }
- 		#modal-reprovar-admissao .modal-footer { padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important; display: flex !important; justify-content: flex-end !important; gap: 12px !important; }
- 		#modal-reprovar-admissao .btn-cancelar { padding: 12px 24px; background: #6c757d !important; color: white !important; border-radius: 6px; cursor: pointer; font-weight: 500 !important; border: none; }
- 		#modal-reprovar-admissao .btn-salvar-reprovacao { padding: 12px 24px; background: #dc3545 !important; color: white !important; border-radius: 6px; cursor: pointer; font-weight: 500 !important; border: none; }
- 		#modal-reprovar-admissao .btn-salvar-reprovacao:disabled { background: #ccc !important; }
- 	</style>
- 	<div class="modal-container">
- 		<div class="modal-header">
- 			<div class="modal-title">
- 				<i class="fas fa-times-circle"></i>
- 				<h3>Reprovar Candidato na Admissão</h3>
- 			</div>
- 			<button type="button" class="modal-close" data-modal-id="modal-reprovar-admissao">
- 				<i class="fas fa-times"></i>
+ 	<div class="modal-content" style="max-width: 600px;">
+ 		<div class="modal-header" style="background-color: var(--cor-erro-dark); color: white;">
+ 			<h3 class="modal-title-text"><i class="fas fa-times-circle me-2"></i> Reprovar Candidato na Admissão</h3>
+ 			<button type="button" class="close-modal-btn" data-modal-id="modal-reprovar-admissao" aria-label="Fechar modal">
+ 				&times;
  			</button>
  		</div>
  		<div class="modal-body">
@@ -520,33 +470,30 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato) {
  			<form id="form-reprovar-admissao-${candidatoId}">
  				<div class="form-group">
  					<label class="form-label" for="reprovar-justificativa">Justificativa (Obrigatório)</label>
- 					<textarea id="reprovar-justificativa" class="form-textarea" rows="4"
+ 					<textarea id="reprovar-justificativa" class="form-control" rows="4"
  						placeholder="Descreva o motivo da reprovação (Ex: Desistência do candidato, falha na entrega de documentos, etc.)"
  						required></textarea>
  				</div>
  			</form>
  		</div>
  		<div class="modal-footer">
- 			<button type="button" class="btn-cancelar" data-modal-id="modal-reprovar-admissao">
- 				<i class="fas fa-times"></i> Cancelar
+ 			<button type="button" class="action-button secondary" data-modal-id="modal-reprovar-admissao">
+ 				<i class="fas fa-times me-2"></i> Cancelar
  			</button>
- 			<button type="button" class="btn-salvar-reprovacao" id="btn-salvar-reprovacao">
- 				<i class="fas fa-check-circle"></i> Confirmar Reprovação
+ 			<button type="button" class="action-button danger" id="btn-salvar-reprovacao">
+ 				<i class="fas fa-check-circle me-2"></i> Confirmar Reprovação
  			</button>
  		</div>
  	</div>
  `;
 
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-
-  // Adiciona listener ao botão de salvar
+  document.body.style.overflow = "hidden"; // Adiciona listener ao botão de salvar
   const btnSalvar = document.getElementById("btn-salvar-reprovacao");
   btnSalvar.addEventListener("click", () => {
-    submeterReprovacaoAdmissao(candidatoId);
-  });
+    submeterReprovacaoAdmissao(candidatoId, state);
+  }); // Adiciona listeners de fechamento
 
-  // Adiciona listeners de fechamento
   modal
     .querySelectorAll("[data-modal-id='modal-reprovar-admissao']")
     .forEach((btn) => {
@@ -561,15 +508,22 @@ function fecharModalReprovarAdmissao() {
   console.log("❌ Fechando modal de reprovação");
   const modal = document.getElementById("modal-reprovar-admissao");
   if (modal) {
-    modal.remove();
+    modal.classList.remove("is-visible");
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.remove();
+      }
+    }, 300);
   }
   document.body.style.overflow = "";
 }
 
 /**
  * Submete a reprovação (chamada pelo modal)
+ * CORRIGIDO: Agora usa o state para recarregar a aba
  */
-function submeterReprovacaoAdmissao(candidatoId) {
+async function submeterReprovacaoAdmissao(candidatoId, state) {
+  const { candidatosCollection, currentUserData } = state;
   const justificativaEl = document.getElementById("reprovar-justificativa");
   const justificativa = justificativaEl ? justificativaEl.value : null;
 
@@ -581,15 +535,32 @@ function submeterReprovacaoAdmissao(candidatoId) {
     return;
   }
 
-  // Chama a função global que está em admissao.js
-  if (typeof window.reprovarCandidatoAdmissao === "function") {
-    window.reprovarCandidatoAdmissao(
-      candidatoId,
-      "Etapa 1: Solicitação de E-mail",
-      justificativa
-    );
+  const btnSalvar = document.getElementById("btn-salvar-reprovacao");
+  btnSalvar.disabled = true;
+  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reprovando...';
+
+  try {
+    const candidatoRef = doc(candidatosCollection, candidatoId);
+    await updateDoc(candidatoRef, {
+      status_recrutamento: "Reprovado (Admissão)",
+      "rejeicao.etapa": `Admissão - Solicitação de E-mail`,
+      "rejeicao.data": new Date(),
+      "rejeicao.justificativa": justificativa,
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Candidatura REJEITADA na ADMISSÃO. Motivo: ${justificativa}`,
+        usuario: currentUserData.id || "rh_admin",
+      }),
+    });
+
+    window.showToast?.("Candidato reprovado com sucesso.", "success");
     fecharModalReprovarAdmissao();
-  } else {
-    alert("Erro: Função 'reprovarCandidatoAdmissao' não encontrada.");
+    renderizarSolicitacaoEmail(state); // Recarrega a aba
+  } catch (error) {
+    console.error("❌ Erro ao reprovar candidato:", error);
+    window.showToast?.(`Erro ao reprovar: ${error.message}`, "error");
+    btnSalvar.disabled = false;
+    btnSalvar.innerHTML =
+      '<i class="fas fa-check-circle"></i> Confirmar Reprovação';
   }
 }
