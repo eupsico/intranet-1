@@ -1,6 +1,7 @@
 // modulos/rh/js/tabs/tabGestor.js
 import { getGlobalState } from "../recrutamento.js";
 import {
+  db,
   getDocs,
   query,
   where,
@@ -760,10 +761,15 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
       "Por favor, adicione observações detalhadas da entrevista (mínimo 10 caracteres)"
     );
     return;
-  }
+  } // Encontra o container do modal, que é "pai" do form
 
-  // BLOQUEIA BOTÃO ENQUANTO SALVA
-  const btnSalvar = form.querySelector(".btn-salvar");
+  // --- INÍCIO DA CORREÇÃO (SELETOR DO BOTÃO) ---
+  const modalContainer = form.closest(".modal-container");
+  const btnSalvar = modalContainer
+    ? modalContainer.querySelector(".btn-salvar")
+    : null; // BLOQUEIA BOTÃO ENQUANTO SALVA
+  // --- FIM DA CORREÇÃO ---
+
   if (btnSalvar) {
     btnSalvar.disabled = true;
     btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
@@ -771,23 +777,39 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
 
   console.log(`📝 Salvando para candidato ${candidatoId}:`);
   console.log(`- Resultado: ${resultado}`);
-  console.log(`- Observações: ${observacoes.substring(0, 100)}...`);
+  console.log(`- Observações: ${observacoes.substring(0, 100)}...`); // SALVAMENTO NO FIREBASE
 
-  // SALVAMENTO NO FIREBASE - IMPLEMENTADO
   try {
-    const novoStatus =
-      resultado === "aprovado"
-        ? "Processo Concluído - Contratado"
-        : "Processo Concluído - Rejeitado";
+    // --- INÍCIO DA CORREÇÃO (LÓGICA DE STATUS) ---
+    let novoStatus;
+    let acaoHistorico;
+    let aprovadoBool = false; // Valor padrão
 
-    const candidatoRef = doc(db, "candidatos", candidatoId);
+    if (resultado === "aprovado") {
+      novoStatus = "Processo Concluído - Contratado";
+      acaoHistorico = "Avaliação Aprovada pelo Gestor";
+      aprovadoBool = true;
+    } else if (resultado === "rejeitado") {
+      novoStatus = "Processo Concluído - Rejeitado";
+      acaoHistorico = "Avaliação Rejeitada pelo Gestor";
+      aprovadoBool = false;
+    } else {
+      // Caso 'pendente'
+      novoStatus = "Aguardando Avaliação Gestor"; // Status de pendência
+      acaoHistorico = "Avaliação Marcada como Pendente pelo Gestor";
+      // aprovadoBool já é false, mas pode ser indefinido se preferir
+    }
+    // --- FIM DA CORREÇÃO ---
 
-    // Tenta atualizar primeiro
+    // Certifique-se de que 'db' foi importado no topo do arquivo!
+    const candidatoRef = doc(db, "candidatos", candidatoId); // Tenta atualizar primeiro
+
     try {
       await updateDoc(candidatoRef, {
         status_recrutamento: novoStatus,
         avaliacao_gestor: {
-          aprovado: resultado === "aprovado",
+          aprovado: aprovadoBool, // <--- CORRIGIDO
+          resultado: resultado, // <--- NOVO (bom para rastrear 'pendente')
           data_avaliacao: new Date(),
           observacoes: observacoes.trim(),
           avaliador:
@@ -795,20 +817,22 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
         },
         historico: arrayUnion({
           data: new Date(),
-          acao: `Avaliação ${
-            resultado === "aprovado" ? "Aprovada" : "Rejeitada"
-          } pelo Gestor`,
+          acao: acaoHistorico, // <--- CORRIGIDO
           usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
-          anterior: "Entrevista com Gestor Pendente",
+          anterior: "Entrevista com Gestor Pendente", // Você pode querer buscar o status anterior dinamicamente
         }),
       });
     } catch (updateError) {
       // Se não existir, cria o documento
       if (updateError.code === "not-found") {
+        console.warn(
+          `Documento ${candidatoId} não encontrado. Criando novo...`
+        );
         await setDoc(candidatoRef, {
           status_recrutamento: novoStatus,
           avaliacao_gestor: {
-            aprovado: resultado === "aprovado",
+            aprovado: aprovadoBool, // <--- CORRIGIDO
+            resultado: resultado, // <--- NOVO
             data_avaliacao: new Date(),
             observacoes: observacoes.trim(),
             avaliador:
@@ -817,13 +841,13 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
           historico: [
             {
               data: new Date(),
-              acao: `Avaliação ${
-                resultado === "aprovado" ? "Aprovada" : "Rejeitada"
-              } pelo Gestor`,
+              acao: acaoHistorico, // <--- CORRIGIDO
               usuario: getGlobalState()?.usuarioAtual?.id || "gestor",
               anterior: "Entrevista com Gestor Pendente",
             },
           ],
+          // Adicione outros campos essenciais se estiver criando
+          vaga_id: vagaId,
         });
       } else {
         throw updateError;
@@ -831,18 +855,17 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
     }
 
     console.log(`✅ Status atualizado para: ${novoStatus}`);
-    alert(
-      `✅ ${resultado === "aprovado" ? "Aprovado" : "Rejeitado"} com sucesso!`
-    );
+    alert(`✅ Avaliação salva com sucesso como: ${resultado}!`);
     fecharModalAvaliacaoGestor();
 
+    // Atualiza a visualização da tab
     const stateNovo = getGlobalState();
     renderizarEntrevistaGestor(stateNovo);
   } catch (error) {
     console.error("❌ Erro ao salvar avaliação:", error);
-    alert(`Erro ao salvar: ${error.message}`);
+    alert(`Erro ao salvar: ${error.message}`); // Reativa botão em caso de erro
 
-    // Reativa botão em caso de erro
+    // (Usa o 'btnSalvar' que buscamos no início)
     if (btnSalvar) {
       btnSalvar.disabled = false;
       btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Avaliação';
