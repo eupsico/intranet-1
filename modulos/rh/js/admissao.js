@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/admissao.js
- * Versão: 1.0.0 (Baseado em recrutamento.js)
+ * Versão: 1.0.3 (Corrigindo erro getStatusBadgeClass e modal de Detalhes)
  * Data: 05/11/2025
  * Descrição: Controlador principal do módulo de Admissão (Onboarding)
  */
@@ -17,8 +17,7 @@ import {
   arrayUnion,
 } from "../../../assets/js/firebase-init.js";
 
-// Importação dos módulos de abas (tabs) - NOVAS FUNÇÕES
-// (Estes arquivos .js serão criados na Parte 4)
+// --- Imports das Abas ---
 import { renderizarSolicitacaoEmail } from "./tabs/tabSolicitacaoEmail.js";
 import { renderizarCadastroDocumentos } from "./tabs/tabCadastroDocumentos.js";
 import { renderizarAssinaturaDocs } from "./tabs/tabAssinaturaDocs.js";
@@ -26,12 +25,13 @@ import { renderizarIntegracao } from "./tabs/tabIntegracao.js";
 import { renderizarAvaliacao3Meses } from "./tabs/tabAvaliacao3Meses.js";
 import { renderizarDocsPos3Meses } from "./tabs/tabDocsPos3Meses.js";
 import { renderizarReprovadosAdmissao } from "./tabs/tabReprovadosAdmissao.js";
+// --- FIM DOS IMPORTS ---
 
 // ============================================
 // CONSTANTES E COLEÇÕES DO FIRESTORE
 // ============================================
 const CANDIDATOS_COLLECTION_NAME = "candidaturas";
-const USUARIOS_COLLECTION_NAME = "usuarios"; // Coleção de destino
+const USUARIOS_COLLECTION_NAME = "usuarios";
 
 const candidatosCollection = collection(db, CANDIDATOS_COLLECTION_NAME);
 const usuariosCollection = collection(db, USUARIOS_COLLECTION_NAME);
@@ -39,31 +39,21 @@ const usuariosCollection = collection(db, USUARIOS_COLLECTION_NAME);
 // ============================================
 // ELEMENTOS DO DOM (CACHE)
 // ============================================
-// Elementos ATUALIZADOS
 const statusAdmissaoTabs = document.getElementById("status-admissao-tabs");
 const conteudoAdmissao = document.getElementById("conteudo-admissao");
-
-// Modais de Recrutamento removidos. Serão adicionados modais de admissão.
 
 // ============================================
 // VARIÁVEIS DE ESTADO GLOBAL
 // ============================================
-// vagaSelecionadaId REMOVIDO
 let currentUserData = {};
-let dadosCandidatoAtual = null; // Mantido, será útil
+let dadosCandidatoAtual = null;
 
 // ============================================
 // FUNÇÕES DE UTILIDADE
 // ============================================
 
-/**
- * Formata um Timestamp do Firestore para data legível
- * @param {Object|Date} timestamp - Timestamp do Firestore ou objeto Date
- * @returns {string} Data formatada em pt-BR
- */
 function formatarTimestamp(timestamp) {
   if (!timestamp) return "N/A";
-
   try {
     const date = timestamp.toDate
       ? timestamp.toDate()
@@ -82,44 +72,9 @@ function formatarTimestamp(timestamp) {
   }
 }
 
-/**
- * Retorna o estado global para uso em módulos filhos
- * @returns {Object} Estado global compartilhado
- */
-// Estado ATUALIZADO (sem vagaId)
-export const getGlobalState = () => ({
-  currentUserData,
-  candidatosCollection,
-  usuariosCollection, // Adicionada coleção de usuários
-  formatarTimestamp,
-  conteudoAdmissao,
-  statusAdmissaoTabs,
-  handleTabClick,
-});
-
-// ============================================
-// CARREGAMENTO DE VAGAS (REMOVIDO)
-// ============================================
-// Função 'carregarVagasAtivas' removida. A lógica de carregamento
-// será feita por cada aba, buscando candidatos com status de admissão.
-
-// ============================================
-// MODAL DE DETALHES DO CANDIDATO (REMOVIDO)
-// ============================================
-// Funções 'abrirModalCandidato' e 'getStatusBadgeClass' removidas.
-// Cada aba de admissão terá seus próprios modais e helpers.
-
-/**
- * Retorna a classe CSS apropriada para o badge de status
- * (Mantida por ser útil)
- * @param {string} status - Status do candidato
- * @returns {string} Classe CSS
- */
 export function getStatusBadgeClass(status) {
   if (!status) return "status-pendente";
-
   const statusLower = status.toLowerCase();
-
   if (
     statusLower.includes("aprovad") ||
     statusLower.includes("contratad") ||
@@ -134,23 +89,40 @@ export function getStatusBadgeClass(status) {
   }
 }
 
+// --- ⚠️ CORREÇÃO APLICADA AQUI ---
+// A função 'getStatusBadgeClass' foi adicionada ao objeto retornado.
+export const getGlobalState = () => ({
+  currentUserData,
+  candidatosCollection,
+  usuariosCollection,
+  formatarTimestamp,
+  conteudoAdmissao,
+  statusAdmissaoTabs,
+  handleTabClick,
+  getStatusBadgeClass, // <-- FUNÇÃO ADICIONADA
+});
+// --- FIM DA CORREÇÃO ---
+
+// ============================================
+// MODAL DE DETALHES (CORRIGIDO)
+// ============================================
+
 /**
- * Abre modal com detalhes completos do candidato (Re-adicionado para o módulo de Admissão)
+ * Abre modal com detalhes completos do candidato
  * @param {string} candidatoId - ID do documento do candidato
  * @param {string} modo - Modo de visualização (detalhes, etc.)
- * @param {Object} candidato - Dados do candidato (opcional)
+ * @param {Object} candidato - Dados do candidato (passados pelo botão)
  */
-async function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
-  const modalCandidato = document.getElementById("modal-candidato"); // Assegure-se que este modal existe no admissao.html
+function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
+  // Certifique-se que seu 'admissao.html' TEM um modal com id="modal-candidato"
+  const modalCandidato = document.getElementById("modal-candidato");
   const modalCandidatoBody = document.getElementById("candidato-modal-body");
   const modalCandidatoFooter = document.getElementById(
     "candidato-modal-footer"
-  );
-  const { formatarTimestamp, getStatusBadgeClass } = getGlobalState(); // Pega as funções do estado global
-
-  if (!modalCandidato || !modalCandidatoBody) {
+  ); // Não precisamos do 'getGlobalState' aqui, podemos chamar as funções direto // pois estão no mesmo arquivo.
+  if (!modalCandidato || !modalCandidatoBody || !modalCandidatoFooter) {
     console.error(
-      "❌ Admissão: Modal de detalhes 'modal-candidato' não encontrado no admissao.html"
+      "❌ Admissão: Modal de detalhes 'modal-candidato' (e seus filhos body/footer) não encontrado no admissao.html"
     );
     window.showToast?.("Erro: Modal de detalhes não encontrado.", "error");
     return;
@@ -222,17 +194,18 @@ async function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   <button type="button" class="action-button secondary fechar-modal-candidato">
    <i class="fas fa-times me-2"></i> Fechar
   </button>
- `; // Anexa listener ao botão de fechar
+ `; // Anexa listener ao botão de fechar no footer
 
   modalCandidatoFooter
     .querySelector(".fechar-modal-candidato")
     .addEventListener("click", () => {
       modalCandidato.classList.remove("is-visible");
-    }); // Listener de fechar no X (header)
+    }); // Anexa listener ao botão de fechar no header
   const closeBtnHeader = modalCandidato.querySelector(
     ".close-modal-btn.fechar-modal-candidato"
   );
   if (closeBtnHeader) {
+    // Remove listener antigo se houver e adiciona o novo
     closeBtnHeader.onclick = () =>
       modalCandidato.classList.remove("is-visible");
   }
@@ -243,46 +216,27 @@ async function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
 
 // Exporta a função para a window, para que as abas possam chamá-la
 window.abrirModalCandidato = abrirModalAdmissaoCandidato;
+
 // ============================================
-// REPROVAÇÃO DE CANDIDATOS (ADAPTADA)
+// REPROVAÇÃO DE CANDIDATOS (MODAL)
 // ============================================
 
-/**
- * Reprova uma candidatura durante o processo de ADMISSÃO
- * @param {string} candidatoId - ID do candidato
- * @param {string} etapa - Etapa em que foi reprovado
- * @param {string} justificativaFicha - Justificativa (opcional)
- */
+// Esta função é chamada pelo 'tabSolicitacaoEmail.js' (e outras abas)
 window.reprovarCandidatoAdmissao = async function (
   candidatoId,
   etapa,
-  justificativaFicha = null
+  justificativa
 ) {
-  console.log(`🔹 Admissão: Iniciando reprovação do candidato ${candidatoId}`);
-
-  let justificativa =
-    justificativaFicha ||
-    prompt(
-      `Confirme a reprovação do candidato nesta etapa de ADMISSÃO (${etapa}). Informe a justificativa:`
-    );
-
-  if (!justificativa || justificativa.trim() === "") {
-    window.showToast?.(
-      "A justificativa de reprovação é obrigatória.",
-      "warning"
-    );
-    return;
-  }
-
-  if (!confirm(`Confirmar reprovação na etapa ${etapa}?`)) {
-    return;
-  }
-
+  console.log(`🔹 Admissão: Submetendo reprovação do candidato ${candidatoId}`);
+  const {
+    candidatosCollection,
+    currentUserData,
+    handleTabClick,
+    statusAdmissaoTabs,
+  } = getGlobalState();
   try {
-    const candidatoRef = doc(candidatosCollection, candidatoId); // Atualiza o status para um status de reprovação de admissão
-
+    const candidatoRef = doc(candidatosCollection, candidatoId);
     await updateDoc(candidatoRef, {
-      // ATENÇÃO: Verificar se 'status_recrutamento' ou 'status_admissao' é o campo correto
       status_recrutamento: "Reprovado (Admissão)",
       "rejeicao.etapa": `Admissão - ${etapa}`,
       "rejeicao.data": new Date(),
@@ -290,18 +244,14 @@ window.reprovarCandidatoAdmissao = async function (
       historico: arrayUnion({
         data: new Date(),
         acao: `Candidatura REJEITADA na ADMISSÃO (Etapa: ${etapa}). Motivo: ${justificativa}`,
-        usuario: currentUserData.uid || "sistema",
+        usuario: currentUserData.id || "sistema",
       }),
     });
-
     window.showToast?.(`Candidatura rejeitada na etapa ${etapa}.`, "success");
-    console.log("✅ Admissão: Candidato reprovado com sucesso"); // Recarrega a listagem atual
-
+    console.log("✅ Admissão: Candidato reprovado com sucesso"); // Recarrega a aba ativa
     const activeStatus = statusAdmissaoTabs
       .querySelector(".tab-link.active")
       ?.getAttribute("data-status");
-
-    // Recarrega a aba ativa para refletir a mudança
     if (activeStatus) {
       handleTabClick({
         currentTarget: document.querySelector(
@@ -319,23 +269,16 @@ window.reprovarCandidatoAdmissao = async function (
 // HANDLERS DE UI E NAVEGAÇÃO
 // ============================================
 
-// 'handleFiltroVagaChange' REMOVIDO
-
-/**
- * Handler para clique nas abas de status
- * @param {Event} e - Evento de clique
- */
 function handleTabClick(e) {
   const status = e.currentTarget.getAttribute("data-status");
-  console.log(`🔹 Admissão: Mudando para aba: ${status}`); // Remove classe ativa de todas as abas
+  console.log(`🔹 Admissão: Mudando para aba: ${status}`);
 
   document
     .querySelectorAll("#status-admissao-tabs .tab-link")
-    .forEach((btn) => btn.classList.remove("active")); // Adiciona classe ativa na aba clicada
+    .forEach((btn) => btn.classList.remove("active"));
+  e.currentTarget.classList.add("active");
 
-  e.currentTarget.classList.add("active"); // Validação de vaga REMOVIDA
-
-  const globalState = getGlobalState(); // Roteamento ATUALIZADO para as novas abas
+  const globalState = getGlobalState(); // Roteamento
 
   switch (status) {
     case "solicitacao-email":
@@ -360,8 +303,7 @@ function handleTabClick(e) {
       renderizarReprovadosAdmissao(globalState);
       break;
     default:
-      conteudoAdmissao.innerHTML =
-        '<p class="alert alert-warning">Selecione uma etapa do processo de admissão.</p>';
+      conteudoAdmissao.innerHTML = `<p class="alert alert-warning">Etapa (${status}) não implementada.</p>`;
   }
 }
 
@@ -369,15 +311,9 @@ function handleTabClick(e) {
 // INICIALIZAÇÃO DO MÓDULO
 // ============================================
 
-/**
- * Função principal de inicialização do módulo
- * @param {Object} user - Usuário autenticado
- * @param {Object} userData - Dados do usuário
- */
 export async function initAdmissao(user, userData) {
-  console.log("🔹 Admissão: Iniciando módulo...");
-
-  currentUserData = userData || {}; // 1. Carregamento de Vagas REMOVIDO // 2. Evento de filtro de vaga REMOVIDO // 3. Configura eventos das abas de status
+  console.log("🔹 Admissão: Iniciando módulo (v1.0.3)...");
+  currentUserData = userData || {};
 
   if (statusAdmissaoTabs) {
     statusAdmissaoTabs.querySelectorAll(".tab-link").forEach((btn) => {
@@ -385,9 +321,8 @@ export async function initAdmissao(user, userData) {
     });
   } else {
     console.warn("⚠️ Admissão: Container de abas não encontrado");
-  } // 4. Listeners de modais REMOVIDOS (serão tratados em cada aba)
+  }
 
-  // 5. Carrega a primeira aba por padrão
   const firstTab = statusAdmissaoTabs?.querySelector(
     '.tab-link[data-status="solicitacao-email"]'
   );
@@ -402,8 +337,7 @@ export async function initAdmissao(user, userData) {
       '<p class="alert alert-danger">Erro ao inicializar abas.</p>';
   }
 
-  console.log("✅ Admissão: Módulo inicializado com sucesso");
+  console.log("✅ Admissão: Módulo inicializado com sucesso (v1.0.3)");
 }
 
-// Compatibilidade com o roteador (permite usar tanto initAdmissao quanto init)
 export { initAdmissao as init };
