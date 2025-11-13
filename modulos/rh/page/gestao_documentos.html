@@ -1,0 +1,101 @@
+<div class="painel-gestao-conteudo">
+ <h2 class="painel-titulo">
+  Gerenciar Modelos de Documentos (Admissão)
+ </h2>
+
+ <div class="description-box">
+  <p>
+   Crie, edite e gerencie os modelos de documentos que serão enviados para
+   assinatura. Cole o texto completo do Contrato, Código de Conduta ou
+   Regimento Interno.
+  </p>
+ </div>
+
+ <div class="tabs-container content-tabs">
+  <button class="tab-link active" data-tab="criar-novo">
+   <i class="fas fa-plus"></i> Criar Novo Documento
+  </button>
+  <button class="tab-link" data-tab="modelos-salvos">
+   <i class="fas fa-list"></i> Documentos Salvos
+  </button>
+ </div>
+
+ <div id="tab-criar-novo" class="tab-content active">
+    <form id="form-novo-documento">
+   <fieldset>
+    <legend>Detalhes do Modelo de Documento</legend>
+
+    <div class="form-group">
+     <label for="documento-tipo">Tipo de Documento:</label>
+          <select id="documento-tipo" required>
+      <option value="">Selecione o Tipo</option>
+      <option value="contrato">Contrato de Trabalho</option>
+      <option value="codigo-conduta">Código de Conduta</option>
+      <option value="termo-compromisso">Termo de Compromisso</option>
+      <option value="regimento-interno">Regimento Interno</option>
+      <option value="formulario-interno">Formulário Interno</option>
+      <option value="outro">Outro</option>
+     </select>
+    </div>
+
+    <div class="form-group">
+     <label for="documento-titulo">Título/Nome do Modelo:</label>
+     <input
+      type="text"
+      id="documento-titulo"
+      required
+      placeholder="Ex: Contrato de Trabalho PJ (Psicólogo), Código de Conduta v3"
+     />
+    </div>
+
+        <div class="form-group">
+     <label for="documento-texto"
+      >Conteúdo/Texto do Documento:</label
+     >
+     <textarea
+      id="documento-texto"
+      rows="15"
+      required
+      placeholder="Cole aqui o texto completo do documento. Você pode usar variáveis como {{NOME_COLABORADOR}} ou {{CPF_COLABORADOR}} que serão substituídas no futuro."
+     ></textarea>
+    </div>
+
+       </fieldset>
+
+   <div class="acoes-rodape">
+    <button type="submit" class="btn btn-success">
+     <i class="fas fa-save"></i> Salvar Modelo de Documento
+    </button>
+   </div>
+  </form>
+ </div>
+
+ <div id="tab-modelos-salvos" class="tab-content" style="display: none">
+  <h3>Modelos de Documentos Disponíveis</h3>
+
+    <div id="lista-documentos-salvos" class="tabela-dados">
+   <p>Carregando modelos...</p>
+  </div>
+
+   </div>
+</div>
+
+<script type="module">
+ // Importa a função correta do novo arquivo JS
+ import { initGestaoDocumentos } from "../js/gestao_documentos.js";
+ 
+ // Simular dados do usuário (em produção, viriam do sistema de autenticação)
+ const currentUser = {
+  id: "user_123",
+  nome: "Usuário Atual"
+ };
+ 
+ const userData = {
+  id: "user_123",
+  nome: "Usuário Atual",
+  role: "rh"
+ };
+ 
+ // Inicializar o novo módulo
+ initGestaoDocumentos(currentUser, userData);
+</script>
