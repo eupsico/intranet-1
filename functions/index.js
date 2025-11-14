@@ -7,7 +7,8 @@ const {
   onDocumentCreated,
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
-const { logger } = require("firebase-functions");
+const { defineSecret } = require("firebase-functions/params");
+const logger = require("firebase-functions");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -16,16 +17,21 @@ const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({
-  origin: true, // ⭐ ACEITA QUALQUER ORIGEM - Deixa SDK/Auth lidar com segurança
+  origin: true,
   credentials: true,
 });
-const googleAdminEmail = process.env.GOOGLE_ADMIN_EMAIL;
-const googleWorkspaceServiceAccount =
-  process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT;
+
+// 🔐 DECLARAÇÃO DOS SECRETS
+const googleAdminEmail = defineSecret("GOOGLE_ADMIN_EMAIL");
+const googleWorkspaceServiceAccount = defineSecret(
+  "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"
+);
+
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
 const adminAuth = getAuth();
+
 // ====================================================================
 // FUNÇÃO AUXILIAR: gerarUsernameUnico
 // ====================================================================
@@ -2327,16 +2333,25 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   }
 });
 
-// Cloud Function para criar e-mail no Google Workspace
+// Função auxiliar para gerar senha temporária
+function gerarSenhaTemporaria() {
+  const anoAtual = new Date().getFullYear();
+  const numeroAleatorio = Math.floor(Math.random() * 1000);
+  return `Eupsico${anoAtual}${numeroAleatorio}`;
+}
+
+// 📧 CLOUD FUNCTION PARA CRIAR E-MAIL NO GOOGLE WORKSPACE
 exports.criarEmailGoogleWorkspace = onCall(
   {
     cors: true,
-    secrets: [googleWorkspaceServiceAccount, googleAdminEmail], // ⭐ IMPORTANTE: Declarar secrets aqui
+    secrets: [googleWorkspaceServiceAccount, googleAdminEmail], // ⭐ Declarar os secrets aqui
   },
   async (request) => {
     const { primeiroNome, sobrenome, email } = request.data;
 
-    // Validações
+    console.log("🔹 Recebendo requisição para criar e-mail:", email);
+
+    // Validações básicas
     if (!primeiroNome || !sobrenome || !email) {
       throw new HttpsError(
         "invalid-argument",
@@ -2344,7 +2359,6 @@ exports.criarEmailGoogleWorkspace = onCall(
       );
     }
 
-    // Validar formato de e-mail
     if (!email.match(/[a-z0-9.-]+@eupsico.org.br/i)) {
       throw new HttpsError(
         "invalid-argument",
@@ -2359,7 +2373,7 @@ exports.criarEmailGoogleWorkspace = onCall(
 
       console.log("✅ Secrets carregados com sucesso");
 
-      // Parse do JSON
+      // Parse do JSON das credenciais
       let serviceAccountKey;
       try {
         serviceAccountKey = JSON.parse(serviceAccountJson);
@@ -2367,46 +2381,51 @@ exports.criarEmailGoogleWorkspace = onCall(
         console.error("❌ Erro ao fazer parse das credenciais:", parseError);
         throw new HttpsError(
           "internal",
-          "Credenciais malformadas no Secret Manager"
+          "Credenciais do Google Workspace estão malformadas"
         );
       }
 
-      // Validar credenciais
-      if (!serviceAccountKey.private_key || !adminEmail) {
+      // Validar se as credenciais têm os campos necessários
+      if (!serviceAccountKey.private_key || !serviceAccountKey.client_email) {
+        console.error("❌ Credenciais incompletas");
         throw new HttpsError(
           "internal",
-          "Credenciais incompletas (falta private_key ou admin_email)"
+          "Credenciais incompletas (falta private_key ou client_email)"
         );
       }
 
       console.log("✅ Credenciais validadas");
 
-      // Criar cliente OAuth
-      const auth = new google.auth.GoogleAuth({
-        credentials: serviceAccountKey,
-        scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
-      });
+      // Criar o cliente OAuth2 com delegação de domínio
+      const auth = new google.auth.JWT(
+        serviceAccountKey.client_email,
+        null,
+        serviceAccountKey.private_key,
+        ["https://www.googleapis.com/auth/admin.directory.user"],
+        adminEmail // Email do administrador com permissões do Google Workspace
+      );
 
-      const admin = google.admin({ version: "directory_v1", auth });
+      const adminAPI = google.admin({ version: "directory_v1", auth });
 
       const dominio = email.split("@")[1];
       const senhaTemporaria = gerarSenhaTemporaria();
 
-      console.log("🔄 Criando usuário:", email);
+      console.log("🔄 Criando usuário no Google Workspace...");
 
-      const novoUsuario = await admin.users.insert({
-        domain: dominio,
+      const novoUsuario = await adminAPI.users.insert({
         requestBody: {
           primaryEmail: email,
-          givenName: primeiroNome,
-          familyName: sobrenome,
+          name: {
+            givenName: primeiroNome,
+            familyName: sobrenome,
+          },
           password: senhaTemporaria,
           changePasswordAtNextLogin: true,
           orgUnitPath: "/",
         },
       });
 
-      console.log("✅ Usuário criado:", novoUsuario.data.id);
+      console.log("✅ Usuário criado com sucesso:", novoUsuario.data.id);
 
       return {
         sucesso: true,
@@ -2424,14 +2443,14 @@ exports.criarEmailGoogleWorkspace = onCall(
         throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
       }
 
+      if (error.message && error.message.includes("domain")) {
+        throw new HttpsError(
+          "permission-denied",
+          "Permissões insuficientes no Google Workspace. Verifique a delegação de domínio."
+        );
+      }
+
       throw new HttpsError("internal", `Erro: ${error.message}`);
     }
   }
 );
-
-// Função auxiliar para gerar senha temporária
-function gerarSenhaTemporaria() {
-  const anoAtual = new Date().getFullYear();
-  const numeroAleatorio = Math.floor(Math.random() * 1000);
-  return `Eupsico${anoAtual}${numeroAleatorio}`; // Retorna: Eupsico2025847
-}
