@@ -2,121 +2,201 @@
 <html lang="pt-BR">
 
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Painel de Recursos Humanos - EuPsico</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Recursos Humanos - EuPsico</title>
 
- <link rel="stylesheet" href="../../../assets/css/design-system.css" />
-<link rel="stylesheet" href="../css/rh.css" />
+  <link rel="stylesheet" href="../../../assets/css/design-system.css" />
+  <link rel="stylesheet" href="../css/rh.css" />
 
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
-<div id="app">
-  <div id="login-view"></div>
+  <div id="app">
+    <div id="login-view"></div>
 
-  <div id="dashboard-view">
- <div class="layout-container">
+    <div id="dashboard-view">
+      <div class="layout-container">
 
-    <nav class="sidebar">
-  <div class="sidebar-content-wrapper">
-   <ul id="sidebar-menu" class="sidebar-menu"></ul>
+        <nav class="sidebar">
+          <div class="sidebar-content-wrapper">
+            <ul id="sidebar-menu" class="sidebar-menu"></ul>
+          </div>
+        </nav>
+
+        <div id="menu-overlay" class="menu-overlay"></div>
+
+        <header class="header">
+          <div class="header-start">
+            <button id="sidebar-toggle" type="button" title="Alternar menu" aria-label="Alternar menu lateral">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div id="page-title-container"></div>
+          </div>
+
+          <div class="user-profile-header">
+            <img id="user-photo-header" src="" alt="Foto do usuário" />
+            <span id="user-greeting"></span>
+            <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
+          </div>
+        </header>
+
+        <main class="main-content">
+          <div id="content-area" class="tab-content-area">
+            <div class="loading-spinner"></div>
+          </div>
+        </main>
+
+      </div>
+    </div>
   </div>
-  </nav>
 
-    <div id="menu-overlay" class="menu-overlay"></div>
-
-    <header class="header">
-  <div class="header-start">
-   <button id="sidebar-toggle" type="button" title="Alternar menu" aria-label="Alternar menu lateral">
-   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="3" y1="12" x2="21" y2="12"></line>
-    <line x1="3" y1="6" x2="21" y2="6"></line>
-    <line x1="3" y1="18" x2="21" y2="18"></line>
-   </svg>
-   </button>
-   <div id="page-title-container"></div>
+  <div id="rh-views" style="display: none">
+    <div data-view-id="gestao_profissionais"></div>
+    <div data-view-id="gestao_vagas"></div>
+    <div data-view-id="gestao_documentos"></div>
+    <div data-view-id="admissao"></div>
+    <div data-view-id="onboarding_colaboradores"></div>
+    <div data-view-id="desligamento"></div>
+    <!-- ... outras views ... -->
+    <div data-view-id="comunicados"></div>
   </div>
 
-  <div class="user-profile-header">
-   <img id="user-photo-header" src="" alt="Foto do usuário" />
-   <span id="user-greeting"></span>
-   <a href="#" id="logout-button-dashboard" class="logout-button-dashboard">Sair</a>
-  </div>
-  </header>
+  <!-- ✅ SCRIPT DE INICIALIZAÇÃO DO FIREBASE (NOVO - CRÍTICO) -->
+  <script>
+    /**
+     * Inicialização SÍNCRONA do Firebase SDK com suporte modular
+     * Expõe globalmente em window.firebaseServices
+     * DEVE executar ANTES de admissao.js e app.js
+     */
+    (async function initFirebaseSDK() {
+      try {
+        // Importa módulos Firebase do CDN
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js');
+        const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js');
+        const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js');
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js');
+        const firebaseFirestore = await import('https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js');
 
-    <main class="main-content">
-   <div id="content-area" class="tab-content-area">
-   <div class="loading-spinner"></div>
-   </div>
-  </main>
+        // ✅ Configuração Firebase (SUBSTITUA pelos valores reais do seu projeto)
+        const firebaseConfig = {
+          apiKey: "AIzaSyB...", // Cole sua apiKey aqui
+          authDomain: "eupsico-agendamentos-d2048.firebaseapp.com",
+          projectId: "eupsico-agendamentos-d2048",
+          storageBucket: "eupsico-agendamentos-d2048.appspot.com",
+          messagingSenderId: "123456789", // Seu sender ID
+          appId: "1:123456789:web:abcdef123456" // Seu app ID
+        };
 
- </div>
- </div>
-</div>
+        // Inicializa Firebase App
+        const app = initializeApp(firebaseConfig);
 
- <div id="rh-views" style="display: none">
- <div data-view-id="gestao_profissionais"></div>
- <div data-view-id="gestao_vagas"></div>
- <div data-view-id="gestao_documentos"></div>
-  <div data-view-id="admissao"></div>
- <div data-view-id="onboarding_colaboradores"></div>
- <div data-view-id="desligamento"></div>
-... (Truncated)
- <div data-view-id="comunicados"></div>
-</div>
+        // ✅ CRÍTICO: Inicializa Functions com a região southamerica-east1
+        const functions = getFunctions(app, 'southamerica-east1');
 
- <script>
- /**
- * Controla a visibilidade dos campos de Aprovação/Reprovação na Triagem.
- * Esta função é chamada quando o usuário seleciona Sim/Não no radio button.
- */
- window.toggleMotivoAprovacaoRejeicao = function () {
-  const radioSim = document.getElementById("modal-apto-sim");
-  const radioNao = document.getElementById("modal-apto-nao");
+        // Inicializa outros serviços
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-  const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
-  const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
+        // ✅ EXPÕE GLOBALMENTE - Isso torna os serviços acessíveis para seus módulos
+        window.firebaseServices = {
+          app,
+          db,
+          functions,
+          auth,
+          httpsCallable,
+          // Firestore Functions
+          serverTimestamp: firebaseFirestore.serverTimestamp,
+          getDoc: firebaseFirestore.getDoc,
+          setDoc: firebaseFirestore.setDoc,
+          addDoc: firebaseFirestore.addDoc,
+          updateDoc: firebaseFirestore.updateDoc,
+          deleteDoc: firebaseFirestore.deleteDoc,
+          collection: firebaseFirestore.collection,
+          doc: firebaseFirestore.doc,
+          arrayUnion: firebaseFirestore.arrayUnion,
+          arrayRemove: firebaseFirestore.arrayRemove,
+          query: firebaseFirestore.query,
+          where: firebaseFirestore.where,
+          getDocs: firebaseFirestore.getDocs,
+          onSnapshot: firebaseFirestore.onSnapshot,
+          FieldValue: firebaseFirestore.FieldValue,
+        };
 
-  const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
-  const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
+        console.log("✅ Firebase SDK inicializado com sucesso!");
+        console.log("📍 Região Functions: southamerica-east1");
+        console.log("🔗 Serviços disponíveis em window.firebaseServices");
 
-  // Verificação de segurança
-  if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) {
-   console.warn("toggleMotivoAprovacaoRejeicao: Elementos não encontrados.");
-   return;
-  }
+      } catch (error) {
+        console.error("❌ ERRO ao inicializar Firebase SDK:", error);
+        console.error("Verifique:");
+        console.error("  1. Sua conexão com a internet");
+        console.error("  2. Sua configuração Firebase (apiKey, projectId, etc)");
+        console.error("  3. Se está usando a versão 10.13.1 do Firebase SDK");
+        throw error;
+      }
+    })();
+  </script>
 
-  // Remove obrigatoriedade por padrão
-  if (reprovacaoTextarea) reprovacaoTextarea.required = false;
-  if (aprovacaoTextarea) aprovacaoTextarea.required = false;
+  <!-- ✅ Script inline para toggle (mantido como estava) -->
+  <script>
+    /**
+     * Controla a visibilidade dos campos de Aprovação/Reprovação na Triagem.
+     * Esta função é chamada quando o usuário seleciona Sim/Não no radio button.
+     */
+    window.toggleMotivoAprovacaoRejeicao = function () {
+      const radioSim = document.getElementById("modal-apto-sim");
+      const radioNao = document.getElementById("modal-apto-nao");
 
-  if (radioNao.checked) {
-   // Reprovação: Mostra motivo detalhado (OBRIGATÓRIO)
-  reprovacaoContainer.style.display = "block";
-  if (reprovacaoTextarea) reprovacaoTextarea.required = true;
-  aprovacaoContainer.style.display = "none";
+      const reprovacaoContainer = document.getElementById("modal-motivo-rejeicao-container");
+      const reprovacaoTextarea = document.getElementById("modal-motivo-rejeicao");
 
-  } else if (radioSim.checked) {
-   // Aprovação: Mostra próximos passos (OPCIONAL)
-  aprovacaoContainer.style.display = "block";
-  reprovacaoContainer.style.display = "none";
+      const aprovacaoContainer = document.getElementById("modal-info-aprovacao-container");
+      const aprovacaoTextarea = document.getElementById("modal-info-aprovacao");
 
-  } else {
-  // Nenhum selecionado: Oculta ambos
-  reprovacaoContainer.style.display = "none";
-  aprovacaoContainer.style.display = "none";
-  }
- };
-</script>
+      // Verificação de segurança
+      if (!reprovacaoContainer || !aprovacaoContainer || !radioSim || !radioNao) {
+        console.warn("toggleMotivoAprovacaoRejeicao: Elementos não encontrados.");
+        return;
+      }
 
- <script type="module" src="../../../assets/js/firebase-init.js"></script>
-<script type="module" src="../../../assets/js/app.js"></script>
+      // Remove obrigatoriedade por padrão
+      if (reprovacaoTextarea) reprovacaoTextarea.required = false;
+      if (aprovacaoTextarea) aprovacaoTextarea.required = false;
+
+      if (radioNao.checked) {
+        // Reprovação: Mostra motivo detalhado (OBRIGATÓRIO)
+        reprovacaoContainer.style.display = "block";
+        if (reprovacaoTextarea) reprovacaoTextarea.required = true;
+        aprovacaoContainer.style.display = "none";
+
+      } else if (radioSim.checked) {
+        // Aprovação: Mostra próximos passos (OPCIONAL)
+        aprovacaoContainer.style.display = "block";
+        reprovacaoContainer.style.display = "none";
+
+      } else {
+        // Nenhum selecionado: Oculta ambos
+        reprovacaoContainer.style.display = "none";
+        aprovacaoContainer.style.display = "none";
+      }
+    };
+  </script>
+
+  <!-- ✅ Seus scripts modulares (APÓS a inicialização do Firebase) -->
+  <script type="module" src="../../../assets/js/firebase-init.js"></script>
+  <script type="module" src="../../../assets/js/app.js"></script>
+  <!-- ✅ Se usar admissao.js diretamente, adicione aqui (opcional se já está em app.js) -->
+  <!-- <script type="module" src="modulos/rh/js/admissao.js"></script> -->
 </body>
 
 </html>
