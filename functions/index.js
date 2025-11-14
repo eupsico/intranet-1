@@ -20,10 +20,9 @@ const cors = require("cors")({
   credentials: true,
 });
 const { defineSecret } = require("firebase-functions/params");
-const googleAdminEmail = defineSecret("GOOGLE_ADMIN_EMAIL");
-const googleWorkspaceServiceAccount = defineSecret(
-  "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"
-);
+const googleAdminEmail = process.env.GOOGLE_ADMIN_EMAIL;
+const googleWorkspaceServiceAccount =
+  process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT;
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
