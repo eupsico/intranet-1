@@ -2349,9 +2349,27 @@ exports.criarEmailGoogleWorkspace = onCall({ cors: true }, async (request) => {
   }
 
   try {
-    // ⭐ ACESSAR SECRETS CORRETAMENTE
-    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount); // ✅ Sem .value()
-    const adminEmail = googleAdminEmail; // ✅ Sem .value()
+    // ⭐ DEBUG - Verificar se as credenciais foram carregadas
+    console.log(
+      "🔍 DEBUG - googleWorkspaceServiceAccount existe?",
+      !!googleWorkspaceServiceAccount
+    );
+    console.log("🔍 DEBUG - tamanho:", googleWorkspaceServiceAccount?.length);
+
+    // ⭐ VERIFICAÇÃO - Se estiver vazio, lançar erro claro
+    if (
+      !googleWorkspaceServiceAccount ||
+      googleWorkspaceServiceAccount.trim() === ""
+    ) {
+      throw new HttpsError(
+        "internal",
+        "❌ Credencial GOOGLE_WORKSPACE_SERVICE_ACCOUNT não foi carregada. Verifique o arquivo .env.local"
+      );
+    }
+
+    // ⭐ PARSE DO JSON
+    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount);
+    const adminEmail = googleAdminEmail;
 
     if (!serviceAccountKey.private_key || !adminEmail) {
       throw new HttpsError(
@@ -2408,6 +2426,7 @@ exports.criarEmailGoogleWorkspace = onCall({ cors: true }, async (request) => {
     throw new HttpsError("internal", `Erro: ${error.message}`);
   }
 });
+
 /**
  * Função auxiliar para gerar password temporária
  */
