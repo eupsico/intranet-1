@@ -404,11 +404,12 @@ async function salvarSolicitacaoEmail(
 
     // Fechar modal e recarregar
     fecharModalSolicitarEmail();
-    if (typeof renderizarSolicitacaoEmail === "function") {
-      // Recarregar a lista após salvar
-      const { state } = state; // Pegar state do escopo
-      // Se precisar passar state, ajuste aqui
-    }
+    // Opcionalmente, recarregar a lista depois
+    setTimeout(() => {
+      if (typeof renderizarSolicitacaoEmail === "function") {
+        renderizarSolicitacaoEmail(state); // ✅ Passa state corretamente
+      }
+    }, 500);
   }
 }
 
@@ -444,7 +445,7 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const primeiroNome = nomeLimpo[0] || "nome";
     const ultimoNome =
       nomeLimpo.length > 1 ? nomeLimpo[nomeLimpo.length - 1] : "sobrenome";
-    const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.com.br`;
+    const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.org.br`;
 
     const profissoesOptions = gerarOptionsHTML(
       profissoes,
