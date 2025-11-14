@@ -57,7 +57,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const database = getDatabase(app);
-const functions = getFunctions(app, "southamerica-east1");
+const functions = getFunctions(app, "us-central1");
 
 // ✅ 5. TORNA DISPONÍVEL GLOBALMENTE (para módulos que não usam import)
 window.db = db;
