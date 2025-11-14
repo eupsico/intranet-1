@@ -19,7 +19,6 @@ const cors = require("cors")({
   origin: true, // ⭐ ACEITA QUALQUER ORIGEM - Deixa SDK/Auth lidar com segurança
   credentials: true,
 });
-const { defineSecret } = require("firebase-functions/params");
 const googleAdminEmail = process.env.GOOGLE_ADMIN_EMAIL;
 const googleWorkspaceServiceAccount =
   process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT;
@@ -2330,93 +2329,85 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 
 // Cloud Function para criar e-mail no Google Workspace
 
-exports.criarEmailGoogleWorkspace = onCall(
-  {
-    secrets: [googleAdminEmail, googleWorkspaceServiceAccount],
-    cors: true,
-  },
-  async (request) => {
-    const { primeiroNome, sobrenome, email } = request.data;
+exports.criarEmailGoogleWorkspace = onCall({ cors: true }, async (request) => {
+  const { primeiroNome, sobrenome, email } = request.data;
 
-    // Validações
-    if (!primeiroNome || !sobrenome || !email) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Campos obrigatórios: primeiroNome, sobrenome, email"
-      );
-    }
-
-    // Validar formato de e-mail
-    if (!email.match(/^[a-z0-9._%+-]+@eupsico\.org\.br$/i)) {
-      throw new HttpsError(
-        "invalid-argument",
-        "E-mail deve estar no domínio @eupsico.org.br"
-      );
-    }
-
-    try {
-      // ⭐ ACESSAR SECRETS CORRETAMENTE
-      const serviceAccountKey = JSON.parse(
-        googleWorkspaceServiceAccount.value()
-      );
-      const adminEmail = googleAdminEmail.value();
-
-      if (!serviceAccountKey.private_key || !adminEmail) {
-        throw new HttpsError(
-          "internal",
-          "Credenciais Google Workspace não configuradas"
-        );
-      }
-
-      const auth = new google.auth.GoogleAuth({
-        credentials: serviceAccountKey,
-        scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
-      });
-
-      const admin = google.admin({
-        version: "directory_v1",
-        auth,
-      });
-
-      const dominio = email.split("@")[1];
-      const senhaTemporaria = gerarSenhaTemporaria();
-
-      console.log(`✅ Criando usuário: ${email}`);
-
-      const novoUsuario = await admin.users.insert({
-        domain: dominio,
-        requestBody: {
-          primaryEmail: email,
-          givenName: primeiroNome,
-          familyName: sobrenome,
-          password: senhaTemporaria,
-          changePasswordAtNextLogin: true,
-          orgUnitPath: "/",
-        },
-      });
-
-      console.log(`✅ Usuário criado: ${novoUsuario.data.id}`);
-
-      return {
-        sucesso: true,
-        mensagem: `E-mail ${email} criado com sucesso`,
-        usuarioId: novoUsuario.data.id,
-        email: novoUsuario.data.primaryEmail,
-        primeiroNome: primeiroNome,
-        sobrenome: sobrenome,
-        senhaTemporaria: senhaTemporaria,
-      };
-    } catch (error) {
-      console.error("❌ Erro:", error);
-
-      if (error.message.includes("already exists")) {
-        throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
-      }
-
-      throw new HttpsError("internal", `Erro: ${error.message}`);
-    }
+  // Validações
+  if (!primeiroNome || !sobrenome || !email) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Campos obrigatórios: primeiroNome, sobrenome, email"
+    );
   }
-);
+
+  // Validar formato de e-mail
+  if (!email.match(/^[a-z0-9._%+-]+@eupsico\.org\.br$/i)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "E-mail deve estar no domínio @eupsico.org.br"
+    );
+  }
+
+  try {
+    // ⭐ ACESSAR SECRETS CORRETAMENTE
+    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount.value());
+    const adminEmail = googleAdminEmail.value();
+
+    if (!serviceAccountKey.private_key || !adminEmail) {
+      throw new HttpsError(
+        "internal",
+        "Credenciais Google Workspace não configuradas"
+      );
+    }
+
+    const auth = new google.auth.GoogleAuth({
+      credentials: serviceAccountKey,
+      scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
+    });
+
+    const admin = google.admin({
+      version: "directory_v1",
+      auth,
+    });
+
+    const dominio = email.split("@")[1];
+    const senhaTemporaria = gerarSenhaTemporaria();
+
+    console.log(`✅ Criando usuário: ${email}`);
+
+    const novoUsuario = await admin.users.insert({
+      domain: dominio,
+      requestBody: {
+        primaryEmail: email,
+        givenName: primeiroNome,
+        familyName: sobrenome,
+        password: senhaTemporaria,
+        changePasswordAtNextLogin: true,
+        orgUnitPath: "/",
+      },
+    });
+
+    console.log(`✅ Usuário criado: ${novoUsuario.data.id}`);
+
+    return {
+      sucesso: true,
+      mensagem: `E-mail ${email} criado com sucesso`,
+      usuarioId: novoUsuario.data.id,
+      email: novoUsuario.data.primaryEmail,
+      primeiroNome: primeiroNome,
+      sobrenome: sobrenome,
+      senhaTemporaria: senhaTemporaria,
+    };
+  } catch (error) {
+    console.error("❌ Erro:", error);
+
+    if (error.message.includes("already exists")) {
+      throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
+    }
+
+    throw new HttpsError("internal", `Erro: ${error.message}`);
+  }
+});
 /**
  * Função auxiliar para gerar password temporária
  */
