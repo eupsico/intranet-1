@@ -386,177 +386,91 @@ function fecharModalSolicitarEmail() {
  * Salva a solicitação de e-mail
  * VERSÃO 3.2 - CORRIGIDA PARA us-central1 COM CORS
  */
-async function salvarSolicitacaoEmail(
-  candidatoId,
-  nomeCandidato,
-  currentUserData,
-  state
-) {
-  console.log("📧 ===== INICIANDO SALVAMENTO DE SOLICITAÇÃO DE E-MAIL =====");
+exports.criarEmailGoogleWorkspace = functions.onCall(
+  {
+    secrets: [googleAdminEmail, googleWorkspaceServiceAccount],
+    cors: true,
+  },
+  async (request) => {
+    const { primeiroNome, sobrenome, email } = request.data;
 
-  const formId = `form-solicitar-email-${candidatoId}`;
-  const form = document.getElementById(formId);
-  const btnSalvar = document.getElementById("btn-salvar-solicitacao");
-
-  if (!form || !btnSalvar) {
-    console.error("❌ Formulário ou botão não encontrado");
-    window.showToast?.(
-      "❌ Erro: Elementos do formulário não encontrados.",
-      "error"
-    );
-    return;
-  }
-
-  // Extrair valores do formulário
-  const cargo = form.querySelector("#solicitar-cargo").value;
-  const departamento = form.querySelector("#solicitar-departamento").value;
-  const emailSugerido = form.querySelector("#solicitar-email-sugerido").value;
-
-  // Validações
-  if (!cargo || !departamento || !emailSugerido) {
-    window.showToast?.("⚠️ Por favor, preencha todos os campos.", "warning");
-    return;
-  }
-
-  if (!emailSugerido.includes("eupsico.com.br")) {
-    window.showToast?.(
-      "❌ O e-mail sugerido deve ser um domínio eupsico.com.br",
-      "error"
-    );
-    return;
-  }
-
-  // Desabilitar botão
-  btnSalvar.disabled = true;
-  btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
-
-  try {
-    let emailCriadoComSucesso = false;
-    let logAcao = "";
-    const novoStatus = "AGUARDANDO_CADASTRO";
-    const solicitanteId = currentUserData?.uid || "rhadmin-fallback-uid";
-    const solicitanteNome =
-      currentUserData?.nome || currentUserData?.email || "Usuário RH";
-
-    // ⭐ TENTAR CRIAR E-MAIL VIA CLOUD FUNCTION
-    try {
-      console.log("🔄 Iniciando chamada para Cloud Function...");
-      console.log("📍 Region: us-central1");
-      console.log("📨 E-mail:", emailSugerido);
-      console.log("👤 Nome:", nomeCandidato);
-      console.log("🎯 Cargo:", cargo);
-      console.log("🏢 Departamento:", departamento);
-
-      // Criar callable para a função (agora em us-central1)
-      const criarEmailGoogleWorkspace = httpsCallable(
-        functions,
-        "criarEmailGoogleWorkspace"
+    // Validações
+    if (!primeiroNome || !sobrenome || !email) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Campos obrigatórios: primeiroNome, sobrenome, email"
       );
+    }
 
-      console.log("✅ httpsCallable criado, enviando requisição...");
+    // Validar formato de e-mail
+    if (!email.match(/^[a-z0-9._%+-]+@eupsico\.org\.br$/i)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "E-mail deve estar no domínio @eupsico.org.br"
+      );
+    }
 
-      // Chamar a Cloud Function
-      const resultado = await criarEmailGoogleWorkspace({
-        primeiroNome: nomeCandidato.split(" ")[0],
-        sobrenome: nomeCandidato.split(" ").slice(1).join(" "),
-        email: emailSugerido,
-      });
+    try {
+      // ⭐ USAR process.env (Firebase Functions v2)
+      const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount.value);
+      const adminEmail = googleAdminEmail.value;
 
-      console.log("✅ Resposta recebida da API:", resultado);
-      console.log("📦 Dados da resposta:", resultado.data);
-
-      // Verificar sucesso
-      if (resultado.data && resultado.data.sucesso === true) {
-        emailCriadoComSucesso = true;
-        logAcao = `✅ E-mail ${emailSugerido} criado com sucesso via API.`;
-        window.showToast?.(
-          "✅ E-mail criado com sucesso no Google Workspace!",
-          "success"
-        );
-        console.log("🎉 E-MAIL CRIADO COM SUCESSO!");
-      } else {
-        throw new Error(
-          resultado.data?.erro ||
-            resultado.data?.message ||
-            "API do Google falhou sem detalhes."
+      if (!serviceAccountKey.private_key || !adminEmail) {
+        throw new HttpsError(
+          "internal",
+          "Credenciais Google Workspace não configuradas"
         );
       }
-    } catch (apiError) {
-      console.error("❌ ===== ERRO AO CRIAR E-MAIL VIA API =====");
-      console.error("📝 Mensagem:", apiError.message);
-      console.error("🔢 Código:", apiError.code);
-      console.error("⚙️ Status:", apiError.status || "N/A");
-      console.error("📋 Stack:", apiError.stack);
-      console.error("🔗 Objeto completo:", apiError);
 
-      window.showToast?.(
-        "⚠️ Falha na API. Criando solicitação interna para o TI.",
-        "warning"
-      );
-
-      // FALLBACK: Criar solicitação para TI
-      const solicitacoesTiRef = collection(db, "solicitacoes_ti");
-      await addDoc(solicitacoesTiRef, {
-        tipo: "criacao_email_novo_colaborador",
-        nome_colaborador: nomeCandidato,
-        cargo: cargo,
-        departamento: departamento,
-        email_sugerido: emailSugerido,
-        status: "pendente",
-        data_solicitacao: new Date(),
-        solicitante_id: solicitanteId,
-        solicitante_nome: solicitanteNome,
-        candidatura_id: candidatoId,
-        erro_api: apiError.message || "Erro sem detalhes",
+      const auth = new google.auth.GoogleAuth({
+        credentials: serviceAccountKey,
+        scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
       });
 
-      logAcao = `⚠️ Falha na API (${(apiError.message || "").substring(
-        0,
-        50
-      )}...). Solicitação de e-mail ${emailSugerido} enviada ao TI.`;
-      emailCriadoComSucesso = false;
-    }
+      const admin = google.admin({
+        version: "directory_v1",
+        auth,
+      });
 
-    // ✅ ATUALIZAR CANDIDATURA NO FIRESTORE
-    const candidatoRef = doc(db, "candidaturas", candidatoId);
-    await updateDoc(candidatoRef, {
-      status_recrutamento: novoStatus,
-      historico: arrayUnion({
-        data: new Date(),
-        acao: logAcao,
-        usuario: solicitanteId,
-      }),
-      admissao_info: {
-        cargo_final: cargo,
-        departamento: departamento,
-        email_solicitado: emailSugerido,
-        email_criado_via_api: emailCriadoComSucesso,
-        data_solicitacao_email: new Date(),
-      },
-    });
+      const dominio = email.split("@")[1];
+      const senhaTemporaria = gerarSenhaTemporaria();
 
-    console.log(`✅ Candidatura atualizada para: ${novoStatus}`);
+      console.log(`✅ Criando usuário: ${email}`);
 
-    window.showToast?.(
-      "✅ Processo de e-mail iniciado com sucesso!",
-      "success"
-    );
-  } catch (error) {
-    console.error("❌ Erro geral ao salvar solicitação:", error);
-    window.showToast?.(`❌ Erro ao salvar: ${error.message}`, "error");
-  } finally {
-    // Reabilitar botão
-    btnSalvar.disabled = false;
-    btnSalvar.innerHTML =
-      '<i class="fas fa-paper-plane"></i> Salvar e Solicitar';
+      const novoUsuario = await admin.users.insert({
+        domain: dominio,
+        requestBody: {
+          primaryEmail: email,
+          givenName: primeiroNome,
+          familyName: sobrenome,
+          password: senhaTemporaria,
+          changePasswordAtNextLogin: true,
+          orgUnitPath: "/",
+        },
+      });
 
-    // Fechar modal e recarregar
-    fecharModalSolicitarEmail();
-    if (typeof renderizarSolicitacaoEmail === "function") {
-      renderizarSolicitacaoEmail(state);
+      console.log(`✅ Usuário criado: ${novoUsuario.data.id}`);
+
+      return {
+        sucesso: true,
+        mensagem: `E-mail ${email} criado com sucesso`,
+        usuarioId: novoUsuario.data.id,
+        email: novoUsuario.data.primaryEmail,
+        primeiroNome: primeiroNome,
+        sobrenome: sobrenome,
+        senhaTemporaria: senhaTemporaria,
+      };
+    } catch (error) {
+      console.error("❌ Erro:", error);
+
+      if (error.message.includes("already exists")) {
+        throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
+      }
+
+      throw new HttpsError("internal", `Erro: ${error.message}`);
     }
   }
-}
+);
 
 // ============================================
 // MODAL DE REPROVAÇÃO (CORRIGIDO)
