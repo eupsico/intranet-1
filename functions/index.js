@@ -17,7 +17,10 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
 const { defineSecret } = require("firebase-functions/params");
-const googleAdminEmail = defineSecret("GOOGLE_ADMIN_EMAIL");
+const googleAdminEmail = defineSecret("GOOGLEADMINEMAIL");
+const googleWorkspaceServiceAccount = defineSecret(
+  "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"
+);
 // Inicialização dos serviços do Firebase Admin
 initializeApp();
 const db = getFirestore();
@@ -2322,16 +2325,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     throw new HttpsError("internal", `Erro: ${error.message}`);
   }
 });
-
-// No topo do arquivo, adicione estes imports (se não estiverem)
-const { google } = require("googleapis");
-const { defineSecret } = require("firebase-functions/params");
-
-// Define os secrets
-const googleAdminEmail = defineSecret("GOOGLEADMINEMAIL");
-const googleWorkspaceServiceAccount = defineSecret(
-  "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"
-);
 
 // Cloud Function para criar e-mail no Google Workspace
 exports.criarEmailGoogleWorkspace = onCall(
