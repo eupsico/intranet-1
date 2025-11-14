@@ -15,7 +15,10 @@ const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors")({ origin: true });
+const cors = require("cors")({
+  origin: true, // ⭐ ACEITA QUALQUER ORIGEM - Deixa SDK/Auth lidar com segurança
+  credentials: true,
+});
 const { defineSecret } = require("firebase-functions/params");
 const googleAdminEmail = defineSecret("GOOGLEADMINEMAIL");
 const googleWorkspaceServiceAccount = defineSecret(
@@ -2327,120 +2330,119 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 });
 
 // Cloud Function para criar e-mail no Google Workspace
-exports.criarEmailGoogleWorkspace = onCall(
-  {
-    secrets: ["GOOGLEADMINEMAIL", "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"],
-    cors: true,
-  },
-  async (request) => {
-    const { nome, email, cargo, departamento } = request.data;
 
-    // Validações
-    if (!nome || !email || !cargo || !departamento) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Campos obrigatórios: nome, email, cargo, departamento"
-      );
-    }
+// Cloud Function - functions/index.js
+// SOMENTE A FUNÇÃO criarEmailGoogleWorkspace (SUBSTITUIR A EXISTENTE)
 
-    try {
-      // Parse do JSON da service account
-      const serviceAccountKey = JSON.parse(
-        googleWorkspaceServiceAccount.value()
-      );
-      const adminEmail = googleAdminEmail.value();
+exports.criarEmailGoogleWorkspace = functions.https.onCall(async (request) => {
+  const { nome, email, cargo, departamento } = request.data;
 
-      console.log(`📨 Criando usuário: ${email} no domínio Workspace`);
+  // Validações
+  if (!nome || !email || !cargo || !departamento) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Campos obrigatórios: nome, email, cargo, departamento"
+    );
+  }
 
-      // Configura a autenticação via JWT (Domain-Wide Delegation)
-      const auth = new google.auth.GoogleAuth({
-        credentials: serviceAccountKey,
-        scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
-      });
+  try {
+    // Parse do JSON da service account
+    const serviceAccountKey = JSON.parse(
+      functions.config().googleWorkspace?.serviceAccount || "{}"
+    );
+    const adminEmail = functions.config().googleWorkspace?.adminEmail;
 
-      // Cria cliente Admin Directory
-      const admin = google.admin({ version: "directory_v1", auth });
-
-      // Extrai domínio do e-mail (ex: eupsico.com.br de usuario@eupsico.com.br)
-      const dominio = email.split("@")[1];
-
-      // Prepara dados do novo usuário
-      const nomePartes = nome.trim().split(" ");
-      const primeiroNome = nomePartes[0];
-      const ultimoNome =
-        nomePartes.length > 1 ? nomePartes[nomePartes.length - 1] : "";
-
-      // Cria password temporária (deve ser alterada no primeiro login)
-      const senhaTemporaria = gerarSenhaTemporaria();
-
-      // Chama API Google Admin para criar usuário
-      const novoUsuario = await admin.users.insert({
-        domain: dominio,
-        requestBody: {
-          primaryEmail: email,
-          givenName: primeiroNome,
-          familyName: ultimoNome,
-          password: senhaTemporaria,
-          changePasswordAtNextLogin: true, // Força troca de senha
-          orgUnitPath: "/", // Unidade organizacional raiz
-          customSchemas: {
-            EuPsicoInfo: {
-              cargo: [{ value: cargo }],
-              departamento: [{ value: departamento }],
-              dataAdmissao: [{ value: new Date().toISOString() }],
-            },
-          },
-        },
-      });
-
-      console.log(`✅ Usuário criado com sucesso:`, novoUsuario.data.id);
-
-      return {
-        sucesso: true,
-        mensagem: `E-mail ${email} criado com sucesso no Google Workspace`,
-        usuarioId: novoUsuario.data.id,
-        email: novoUsuario.data.primaryEmail,
-        senha: senhaTemporaria, // ⚠️ Em produção, envie por email seguro, nunca retorne assim
-      };
-    } catch (error) {
-      console.error("❌ Erro ao criar usuário:", error);
-
-      // Trata erros específicos
-      if (error.message.includes("already exists")) {
-        throw new HttpsError(
-          "already-exists",
-          `O e-mail ${email} já existe no Google Workspace`
-        );
-      } else if (error.message.includes("invalid")) {
-        throw new HttpsError(
-          "invalid-argument",
-          `E-mail ou dados inválidos: ${error.message}`
-        );
-      } else if (error.message.includes("Permission denied")) {
-        throw new HttpsError(
-          "permission-denied",
-          "Permissão negada. Verifique Domain-Wide Delegation e escopos OAuth."
-        );
-      }
-
+    if (!serviceAccountKey.private_key || !adminEmail) {
       throw new HttpsError(
         "internal",
-        `Erro ao criar e-mail: ${error.message}`
+        "Credenciais Google Workspace não configuradas"
       );
     }
+
+    // Configura autenticação via JWT Domain-Wide Delegation
+    const auth = new google.auth.GoogleAuth({
+      credentials: serviceAccountKey,
+      scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
+    });
+
+    const admin = google.admin({
+      version: "directory_v1",
+      auth,
+    });
+
+    // Extrai domínio do e-mail
+    const dominio = email.split("@")[1];
+
+    // Prepara dados do novo usuário
+    const nomePartes = nome.trim().split(" ");
+    const primeiroNome = nomePartes[0];
+    const ultimoNome =
+      nomePartes.length > 1 ? nomePartes[nomePartes.length - 1] : "";
+
+    // ⭐ GERA SENHA TEMPORÁRIA (função auxiliar já existe)
+    const senhaTemporaria = gerarSenhaTemporaria();
+
+    console.log(`✅ Criando usuário: ${email}`);
+
+    // Chama API Google Admin para criar usuário
+    const novoUsuario = await admin.users.insert({
+      domain: dominio,
+      requestBody: {
+        primaryEmail: email,
+        givenName: primeiroNome,
+        familyName: ultimoNome,
+        password: senhaTemporaria,
+        changePasswordAtNextLogin: true,
+        orgUnitPath: "/",
+        customSchemas: {
+          EuPsicoInfo: {
+            cargo: [{ value: cargo }],
+            departamento: [{ value: departamento }],
+            dataAdmissao: [{ value: new Date().toISOString() }],
+          },
+        },
+      },
+    });
+
+    console.log(`✅ Usuário criado com sucesso: ${novoUsuario.data.id}`);
+
+    return {
+      sucesso: true,
+      mensagem: `E-mail ${email} criado com sucesso no Google Workspace`,
+      usuarioId: novoUsuario.data.id,
+      email: novoUsuario.data.primaryEmail,
+      senhaTemporaria: senhaTemporaria, // ⭐ Retorna a senha gerada
+    };
+  } catch (error) {
+    console.error("❌ Erro ao criar usuário:", error);
+
+    if (error.message.includes("already exists")) {
+      throw new HttpsError(
+        "already-exists",
+        `O e-mail ${email} já existe no Google Workspace`
+      );
+    } else if (error.message.includes("invalid")) {
+      throw new HttpsError(
+        "invalid-argument",
+        `E-mail ou dados inválidos: ${error.message}`
+      );
+    } else if (error.message.includes("Permission denied")) {
+      throw new HttpsError(
+        "permission-denied",
+        "Permissão negada. Verifique Domain-Wide Delegation"
+      );
+    }
+
+    throw new HttpsError("internal", `Erro ao criar e-mail: ${error.message}`);
   }
-);
+});
 
 /**
  * Função auxiliar para gerar password temporária
  */
 function gerarSenhaTemporaria() {
-  const tamanho = 12;
-  const charset =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-  let password = "";
-  for (let i = 0; i < tamanho; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return password;
+  const anoAtual = new Date().getFullYear();
+  const numeroAleatorio = Math.floor(Math.random() * 1000);
+  return `Eupsico@${anoAtual}${numeroAleatorio}`;
+  // Retorna: Eupsico@2025847
 }
