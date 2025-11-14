@@ -2328,111 +2328,110 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 });
 
 // Cloud Function para criar e-mail no Google Workspace
+exports.criarEmailGoogleWorkspace = onCall(
+  {
+    cors: true,
+    secrets: [googleWorkspaceServiceAccount, googleAdminEmail], // ⭐ IMPORTANTE: Declarar secrets aqui
+  },
+  async (request) => {
+    const { primeiroNome, sobrenome, email } = request.data;
 
-exports.criarEmailGoogleWorkspace = onCall({ cors: true }, async (request) => {
-  const { primeiroNome, sobrenome, email } = request.data;
-
-  // Validações
-  if (!primeiroNome || !sobrenome || !email) {
-    throw new HttpsError(
-      "invalid-argument",
-      "Campos obrigatórios: primeiroNome, sobrenome, email"
-    );
-  }
-
-  // Validar formato de e-mail
-  if (!email.match(/^[a-z0-9._%+-]+@eupsico\.org\.br$/i)) {
-    throw new HttpsError(
-      "invalid-argument",
-      "E-mail deve estar no domínio @eupsico.org.br"
-    );
-  }
-
-  try {
-    // ⭐ DEBUG - Verificar se as credenciais foram carregadas
-    console.log(
-      "🔍 DEBUG - googleWorkspaceServiceAccount existe?",
-      !!googleWorkspaceServiceAccount
-    );
-    console.log("🔍 DEBUG - tamanho:", googleWorkspaceServiceAccount?.length);
-
-    // ⭐ VERIFICAÇÃO - Se estiver vazio, lançar erro claro
-    if (
-      !googleWorkspaceServiceAccount ||
-      googleWorkspaceServiceAccount.trim() === ""
-    ) {
+    // Validações
+    if (!primeiroNome || !sobrenome || !email) {
       throw new HttpsError(
-        "internal",
-        "❌ Credencial GOOGLE_WORKSPACE_SERVICE_ACCOUNT não foi carregada. Verifique o arquivo .env.local"
+        "invalid-argument",
+        "Campos obrigatórios: primeiroNome, sobrenome, email"
       );
     }
 
-    // ⭐ PARSE DO JSON
-    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount);
-    const adminEmail = googleAdminEmail;
-
-    if (!serviceAccountKey.private_key || !adminEmail) {
+    // Validar formato de e-mail
+    if (!email.match(/[a-z0-9.-]+@eupsico.org.br/i)) {
       throw new HttpsError(
-        "internal",
-        "Credenciais Google Workspace não configuradas"
+        "invalid-argument",
+        "E-mail deve estar no domínio @eupsico.org.br"
       );
     }
 
-    const auth = new google.auth.GoogleAuth({
-      credentials: serviceAccountKey,
-      scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
-    });
+    try {
+      // 🔐 Acessar os valores dos secrets
+      const adminEmail = googleAdminEmail.value();
+      const serviceAccountJson = googleWorkspaceServiceAccount.value();
 
-    const admin = google.admin({
-      version: "directory_v1",
-      auth,
-    });
+      console.log("✅ Secrets carregados com sucesso");
 
-    const dominio = email.split("@")[1];
-    const senhaTemporaria = gerarSenhaTemporaria();
+      // Parse do JSON
+      let serviceAccountKey;
+      try {
+        serviceAccountKey = JSON.parse(serviceAccountJson);
+      } catch (parseError) {
+        console.error("❌ Erro ao fazer parse das credenciais:", parseError);
+        throw new HttpsError(
+          "internal",
+          "Credenciais malformadas no Secret Manager"
+        );
+      }
 
-    console.log(`✅ Criando usuário: ${email}`);
+      // Validar credenciais
+      if (!serviceAccountKey.private_key || !adminEmail) {
+        throw new HttpsError(
+          "internal",
+          "Credenciais incompletas (falta private_key ou admin_email)"
+        );
+      }
 
-    const novoUsuario = await admin.users.insert({
-      domain: dominio,
-      requestBody: {
-        primaryEmail: email,
-        givenName: primeiroNome,
-        familyName: sobrenome,
-        password: senhaTemporaria,
-        changePasswordAtNextLogin: true,
-        orgUnitPath: "/",
-      },
-    });
+      console.log("✅ Credenciais validadas");
 
-    console.log(`✅ Usuário criado: ${novoUsuario.data.id}`);
+      // Criar cliente OAuth
+      const auth = new google.auth.GoogleAuth({
+        credentials: serviceAccountKey,
+        scopes: ["https://www.googleapis.com/auth/admin.directory.user"],
+      });
 
-    return {
-      sucesso: true,
-      mensagem: `E-mail ${email} criado com sucesso`,
-      usuarioId: novoUsuario.data.id,
-      email: novoUsuario.data.primaryEmail,
-      primeiroNome: primeiroNome,
-      sobrenome: sobrenome,
-      senhaTemporaria: senhaTemporaria,
-    };
-  } catch (error) {
-    console.error("❌ Erro:", error);
+      const admin = google.admin({ version: "directory_v1", auth });
 
-    if (error.message.includes("already exists")) {
-      throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
+      const dominio = email.split("@")[1];
+      const senhaTemporaria = gerarSenhaTemporaria();
+
+      console.log("🔄 Criando usuário:", email);
+
+      const novoUsuario = await admin.users.insert({
+        domain: dominio,
+        requestBody: {
+          primaryEmail: email,
+          givenName: primeiroNome,
+          familyName: sobrenome,
+          password: senhaTemporaria,
+          changePasswordAtNextLogin: true,
+          orgUnitPath: "/",
+        },
+      });
+
+      console.log("✅ Usuário criado:", novoUsuario.data.id);
+
+      return {
+        sucesso: true,
+        mensagem: `E-mail ${email} criado com sucesso`,
+        usuarioId: novoUsuario.data.id,
+        email: novoUsuario.data.primaryEmail,
+        primeiroNome: primeiroNome,
+        sobrenome: sobrenome,
+        senhaTemporaria: senhaTemporaria,
+      };
+    } catch (error) {
+      console.error("❌ Erro ao criar e-mail:", error);
+
+      if (error.message && error.message.includes("already exists")) {
+        throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
+      }
+
+      throw new HttpsError("internal", `Erro: ${error.message}`);
     }
-
-    throw new HttpsError("internal", `Erro: ${error.message}`);
   }
-});
+);
 
-/**
- * Função auxiliar para gerar password temporária
- */
+// Função auxiliar para gerar senha temporária
 function gerarSenhaTemporaria() {
   const anoAtual = new Date().getFullYear();
   const numeroAleatorio = Math.floor(Math.random() * 1000);
-  return `Eupsico@${anoAtual}${numeroAleatorio}`;
-  // Retorna: Eupsico@2025847
+  return `Eupsico${anoAtual}${numeroAleatorio}`; // Retorna: Eupsico2025847
 }
