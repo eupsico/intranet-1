@@ -2344,7 +2344,7 @@ function gerarSenhaTemporaria() {
 exports.criarEmailGoogleWorkspace = onCall(
   {
     cors: true,
-    secrets: [googleWorkspaceServiceAccount, googleAdminEmail], // ⭐ Declarar os secrets aqui
+    secrets: [googleWorkspaceServiceAccount, googleAdminEmail],
   },
   async (request) => {
     const { primeiroNome, sobrenome, email } = request.data;
@@ -2367,11 +2367,13 @@ exports.criarEmailGoogleWorkspace = onCall(
     }
 
     try {
-      // 🔐 Acessar os valores dos secrets
-      const adminEmail = googleAdminEmail.value();
-      const serviceAccountJson = googleWorkspaceServiceAccount.value();
+      // 🔐 Acessar os valores dos secrets E FAZER TRIM
+      const adminEmail = googleAdminEmail.value().trim(); // ⭐ ADICIONAR .trim()
+      const serviceAccountJson = googleWorkspaceServiceAccount.value().trim(); // ⭐ ADICIONAR .trim()
 
       console.log("✅ Secrets carregados com sucesso");
+      console.log("📧 Admin email (length):", adminEmail.length, "chars");
+      console.log("📧 Admin email:", JSON.stringify(adminEmail)); // Debug
 
       // Parse do JSON das credenciais
       let serviceAccountKey;
@@ -2402,7 +2404,7 @@ exports.criarEmailGoogleWorkspace = onCall(
         null,
         serviceAccountKey.private_key,
         ["https://www.googleapis.com/auth/admin.directory.user"],
-        adminEmail // Email do administrador com permissões do Google Workspace
+        adminEmail // Usando o email já com trim()
       );
 
       const adminAPI = google.admin({ version: "directory_v1", auth });
