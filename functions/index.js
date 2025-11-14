@@ -471,7 +471,7 @@ exports.definirTipoAgenda = onCall({ cors: true }, async (request) => {
 // ====================================================================
 // FUNÇÃO: getHorariosPublicos
 // ====================================================================
-exports.getHorariosPublicos = onCall({ cors: true }, async (request) => {
+exports.getHorariosPublicos = onCall({ cors: true }, async () => {
   try {
     logger.info("Iniciando getHorariosPublicos...");
     const agora = new Date();
@@ -2091,7 +2091,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
       throw new HttpsError("permission-denied", "Sem permissão de admin");
     }
 
-    const { pacientes, fila, modoUpdate = false } = request.data;
+    const { pacientes, fila } = request.data;
 
     if (!Array.isArray(pacientes) || pacientes.length === 0) {
       throw new HttpsError("invalid-argument", "Lista de pacientes vazia");
@@ -2341,10 +2341,10 @@ function gerarSenhaTemporaria() {
 }
 
 // 📧 CLOUD FUNCTION PARA CRIAR E-MAIL NO GOOGLE WORKSPACE
+// VERSÃO 2.0 - Usando Google Apps Script como proxy
 exports.criarEmailGoogleWorkspace = onCall(
   {
     cors: true,
-    secrets: [googleWorkspaceServiceAccount, googleAdminEmail],
   },
   async (request) => {
     const { primeiroNome, sobrenome, email } = request.data;
@@ -2367,92 +2367,76 @@ exports.criarEmailGoogleWorkspace = onCall(
     }
 
     try {
-      // 🔐 Acessar os valores dos secrets E FAZER TRIM
-      const adminEmail = googleAdminEmail.value().trim(); // ⭐ ADICIONAR .trim()
-      const serviceAccountJson = googleWorkspaceServiceAccount.value().trim(); // ⭐ ADICIONAR .trim()
+      // 🔗 URL do Google Apps Script (SUBSTITUA PELA SUA URL)
+      const APPS_SCRIPT_URL =
+        "https://script.google.com/macros/s/AKfycbz8DGNVG6P0x-Gv5VOEvP5kiyO6Rr2qqWQeA8Xvc6o0Fk9JiuzG6psxb42pSpgrF3d9DA/exec";
 
-      console.log("✅ Secrets carregados com sucesso");
-      console.log("📧 Admin email (length):", adminEmail.length, "chars");
-      console.log("📧 Admin email:", JSON.stringify(adminEmail)); // Debug
-
-      // Parse do JSON das credenciais
-      let serviceAccountKey;
-      try {
-        serviceAccountKey = JSON.parse(serviceAccountJson);
-      } catch (parseError) {
-        console.error("❌ Erro ao fazer parse das credenciais:", parseError);
-        throw new HttpsError(
-          "internal",
-          "Credenciais do Google Workspace estão malformadas"
-        );
-      }
-
-      // Validar se as credenciais têm os campos necessários
-      if (!serviceAccountKey.private_key || !serviceAccountKey.client_email) {
-        console.error("❌ Credenciais incompletas");
-        throw new HttpsError(
-          "internal",
-          "Credenciais incompletas (falta private_key ou client_email)"
-        );
-      }
-
-      console.log("✅ Credenciais validadas");
-
-      // Criar o cliente OAuth2 com delegação de domínio
-      const auth = new google.auth.JWT(
-        serviceAccountKey.client_email,
-        null,
-        serviceAccountKey.private_key,
-        ["https://www.googleapis.com/auth/admin.directory.user"],
-        adminEmail // Usando o email já com trim()
-      );
-
-      const adminAPI = google.admin({ version: "directory_v1", auth });
-
-      const dominio = email.split("@")[1];
       const senhaTemporaria = gerarSenhaTemporaria();
 
-      console.log("🔄 Criando usuário no Google Workspace...");
+      console.log("🔄 Chamando Google Apps Script para criar usuário...");
 
-      const novoUsuario = await adminAPI.users.insert({
-        requestBody: {
-          primaryEmail: email,
-          name: {
-            givenName: primeiroNome,
-            familyName: sobrenome,
-          },
-          password: senhaTemporaria,
-          changePasswordAtNextLogin: true,
-          orgUnitPath: "/",
+      // Fazer requisição para o Apps Script
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          primeiroNome: primeiroNome,
+          sobrenome: sobrenome,
+          email: email,
+          senha: senhaTemporaria,
+        }),
       });
 
-      console.log("✅ Usuário criado com sucesso:", novoUsuario.data.id);
+      const resultado = await response.json();
 
-      return {
-        sucesso: true,
-        mensagem: `E-mail ${email} criado com sucesso`,
-        usuarioId: novoUsuario.data.id,
-        email: novoUsuario.data.primaryEmail,
-        primeiroNome: primeiroNome,
-        sobrenome: sobrenome,
-        senhaTemporaria: senhaTemporaria,
-      };
+      console.log("✅ Resposta do Apps Script:", resultado);
+
+      // Verificar se foi bem-sucedido
+      if (resultado && resultado.sucesso === true) {
+        console.log("✅ Usuário criado com sucesso:", resultado.usuarioId);
+
+        return {
+          sucesso: true,
+          mensagem: `E-mail ${email} criado com sucesso`,
+          usuarioId: resultado.usuarioId,
+          email: resultado.email,
+          primeiroNome: primeiroNome,
+          sobrenome: sobrenome,
+          senhaTemporaria: resultado.senhaTemporaria || senhaTemporaria,
+        };
+      } else {
+        // Tratar erros específicos
+        if (resultado.erro === "already_exists") {
+          throw new HttpsError(
+            "already-exists",
+            `O e-mail ${email} já existe no Google Workspace`
+          );
+        }
+
+        throw new HttpsError(
+          "internal",
+          resultado.mensagem || "Erro desconhecido ao criar usuário"
+        );
+      }
     } catch (error) {
       console.error("❌ Erro ao criar e-mail:", error);
 
+      // Se for um HttpsError que já lançamos, repassa
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      // Tratamento de erros de rede ou outros
       if (error.message && error.message.includes("already exists")) {
         throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
       }
 
-      if (error.message && error.message.includes("domain")) {
-        throw new HttpsError(
-          "permission-denied",
-          "Permissões insuficientes no Google Workspace. Verifique a delegação de domínio."
-        );
-      }
-
-      throw new HttpsError("internal", `Erro: ${error.message}`);
+      throw new HttpsError(
+        "internal",
+        `Erro ao comunicar com Google Apps Script: ${error.message}`
+      );
     }
   }
 );
