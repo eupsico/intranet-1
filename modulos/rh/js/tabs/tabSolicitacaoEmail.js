@@ -258,7 +258,6 @@ async function salvarSolicitacaoEmail(
   state
 ) {
   console.log("📧 ===== INICIANDO SALVAMENTO DE SOLICITAÇÃO DE E-MAIL =====");
-
   const { candidatosCollection } = state;
   const formId = `form-solicitar-email-${candidatoId}`;
   const form = document.getElementById(formId);
@@ -319,10 +318,23 @@ async function salvarSolicitacaoEmail(
 
       console.log("✅ httpsCallable criado, enviando requisição...");
 
+      // 🔧 CORREÇÃO: Tratamento adequado do nome
+      const partesNome = nomeCandidato.trim().split(" ");
+      const primeiroNome = partesNome[0] || "";
+      const sobrenome =
+        partesNome.length > 1 ? partesNome.slice(1).join(" ") : partesNome[0]; // Se não houver sobrenome, repete o primeiro nome
+
+      // Validação adicional
+      if (!primeiroNome || !sobrenome) {
+        throw new Error(
+          "Nome inválido: é necessário fornecer nome e sobrenome."
+        );
+      }
+
       // Chamar a Cloud Function
       const resultado = await criarEmailGoogleWorkspace({
-        primeiroNome: nomeCandidato.split(" ")[0],
-        sobrenome: nomeCandidato.split(" ").slice(1).join(" "),
+        primeiroNome: primeiroNome,
+        sobrenome: sobrenome,
         email: emailSugerido,
       });
 
@@ -340,7 +352,6 @@ async function salvarSolicitacaoEmail(
       }
     } catch (apiError) {
       console.error("❌ Erro ao criar e-mail:", apiError);
-
       window.showToast?.(
         "⚠️ Falha na API. Criando solicitação interna para o TI.",
         "warning"
@@ -388,7 +399,6 @@ async function salvarSolicitacaoEmail(
     });
 
     console.log(`✅ Candidatura atualizada para: ${novoStatus}`);
-
     window.showToast?.(
       "✅ Processo de e-mail iniciado com sucesso!",
       "success"
@@ -404,6 +414,7 @@ async function salvarSolicitacaoEmail(
 
     // Fechar modal e recarregar
     fecharModalSolicitarEmail();
+
     // Opcionalmente, recarregar a lista depois
     setTimeout(() => {
       if (typeof renderizarSolicitacaoEmail === "function") {
