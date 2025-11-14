@@ -457,10 +457,9 @@ async function salvarSolicitacaoEmail(
 
       // Chamar a Cloud Function
       const resultado = await criarEmailGoogleWorkspace({
-        nome: nomeCandidato,
+        primeiroNome: nomeCandidato.split(" ")[0],
+        sobrenome: nomeCandidato.split(" ").slice(1).join(" "),
         email: emailSugerido,
-        cargo: cargo,
-        departamento: departamento,
       });
 
       console.log("✅ Resposta recebida da API:", resultado);
