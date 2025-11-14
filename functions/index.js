@@ -2331,7 +2331,6 @@ exports.criarEmailGoogleWorkspace = onCall(
   {
     secrets: ["GOOGLEADMINEMAIL", "GOOGLE_WORKSPACE_SERVICE_ACCOUNT"],
     cors: true,
-    region: "southamerica-east1", // ← Sua região
   },
   async (request) => {
     const { nome, email, cargo, departamento } = request.data;
