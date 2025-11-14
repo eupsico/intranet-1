@@ -2350,8 +2350,8 @@ exports.criarEmailGoogleWorkspace = onCall({ cors: true }, async (request) => {
 
   try {
     // ⭐ ACESSAR SECRETS CORRETAMENTE
-    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount.value());
-    const adminEmail = googleAdminEmail.value();
+    const serviceAccountKey = JSON.parse(googleWorkspaceServiceAccount); // ✅ Sem .value()
+    const adminEmail = googleAdminEmail; // ✅ Sem .value()
 
     if (!serviceAccountKey.private_key || !adminEmail) {
       throw new HttpsError(
