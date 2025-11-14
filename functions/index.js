@@ -2331,7 +2331,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
 
 // Cloud Function para criar e-mail no Google Workspace
 
-exports.criarEmailGoogleWorkspace = functions.onCall(
+exports.criarEmailGoogleWorkspace = onCall(
   {
     secrets: [googleAdminEmail, googleWorkspaceServiceAccount],
     cors: true,
