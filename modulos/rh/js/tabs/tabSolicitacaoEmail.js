@@ -383,10 +383,8 @@ function fecharModalSolicitarEmail() {
 }
 
 /**
- * Salva a solicitação de e-mail (VERSÃO 3.1 - CORRIGIDA PARA USAR window.firebaseServices)
- * ✅ Usa window.firebaseServices em vez de imports
- * ✅ Inclui serverTimestamp corrigido
- * ✅ Sem CORS error
+ * Salva a solicitação de e-mail
+ * VERSÃO 3.2 - CORRIGIDA PARA us-central1 COM CORS
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -394,7 +392,7 @@ async function salvarSolicitacaoEmail(
   currentUserData,
   state
 ) {
-  console.log("💾 Salvando solicitação de e-mail");
+  console.log("📧 ===== INICIANDO SALVAMENTO DE SOLICITAÇÃO DE E-MAIL =====");
 
   const formId = `form-solicitar-email-${candidatoId}`;
   const form = document.getElementById(formId);
@@ -403,29 +401,32 @@ async function salvarSolicitacaoEmail(
   if (!form || !btnSalvar) {
     console.error("❌ Formulário ou botão não encontrado");
     window.showToast?.(
-      "Erro: Elementos do formulário não encontrados.",
+      "❌ Erro: Elementos do formulário não encontrados.",
       "error"
     );
     return;
   }
 
+  // Extrair valores do formulário
   const cargo = form.querySelector("#solicitar-cargo").value;
   const departamento = form.querySelector("#solicitar-departamento").value;
   const emailSugerido = form.querySelector("#solicitar-email-sugerido").value;
 
+  // Validações
   if (!cargo || !departamento || !emailSugerido) {
-    window.showToast?.("Por favor, preencha todos os campos.", "warning");
+    window.showToast?.("⚠️ Por favor, preencha todos os campos.", "warning");
     return;
   }
 
-  if (!emailSugerido.includes("@eupsico.com.br")) {
+  if (!emailSugerido.includes("eupsico.com.br")) {
     window.showToast?.(
-      "O e-mail sugerido deve ser um domínio @eupsico.com.br",
+      "❌ O e-mail sugerido deve ser um domínio eupsico.com.br",
       "error"
     );
     return;
   }
 
+  // Desabilitar botão
   btnSalvar.disabled = true;
   btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...';
 
@@ -433,18 +434,28 @@ async function salvarSolicitacaoEmail(
     let emailCriadoComSucesso = false;
     let logAcao = "";
     const novoStatus = "AGUARDANDO_CADASTRO";
-
-    const solicitanteId = currentUserData?.uid || "rh_admin_fallback_uid";
+    const solicitanteId = currentUserData?.uid || "rhadmin-fallback-uid";
     const solicitanteNome =
       currentUserData?.nome || currentUserData?.email || "Usuário RH";
 
+    // ⭐ TENTAR CRIAR E-MAIL VIA CLOUD FUNCTION
     try {
-      console.log("🔄 Tentando criar e-mail via httpsCallable...");
+      console.log("🔄 Iniciando chamada para Cloud Function...");
+      console.log("📍 Region: us-central1");
+      console.log("📨 E-mail:", emailSugerido);
+      console.log("👤 Nome:", nomeCandidato);
+      console.log("🎯 Cargo:", cargo);
+      console.log("🏢 Departamento:", departamento);
+
+      // Criar callable para a função (agora em us-central1)
       const criarEmailGoogleWorkspace = httpsCallable(
         functions,
         "criarEmailGoogleWorkspace"
       );
 
+      console.log("✅ httpsCallable criado, enviando requisição...");
+
+      // Chamar a Cloud Function
       const resultado = await criarEmailGoogleWorkspace({
         nome: nomeCandidato,
         email: emailSugerido,
@@ -452,15 +463,18 @@ async function salvarSolicitacaoEmail(
         departamento: departamento,
       });
 
-      console.log("📨 Resposta da API:", resultado.data);
+      console.log("✅ Resposta recebida da API:", resultado);
+      console.log("📦 Dados da resposta:", resultado.data);
 
+      // Verificar sucesso
       if (resultado.data && resultado.data.sucesso === true) {
         emailCriadoComSucesso = true;
-        logAcao = `E-mail ${emailSugerido} criado com sucesso via API.`;
+        logAcao = `✅ E-mail ${emailSugerido} criado com sucesso via API.`;
         window.showToast?.(
-          "E-mail criado com sucesso no Google Workspace!",
+          "✅ E-mail criado com sucesso no Google Workspace!",
           "success"
         );
+        console.log("🎉 E-MAIL CRIADO COM SUCESSO!");
       } else {
         throw new Error(
           resultado.data?.erro ||
@@ -469,18 +483,19 @@ async function salvarSolicitacaoEmail(
         );
       }
     } catch (apiError) {
-      console.warn(
-        `⚠️ Falha ao criar e-mail via API: ${
-          apiError.message || apiError.code || "Erro desconhecido"
-        }`
-      );
-      console.error("Detalhes do erro API:", apiError);
+      console.error("❌ ===== ERRO AO CRIAR E-MAIL VIA API =====");
+      console.error("📝 Mensagem:", apiError.message);
+      console.error("🔢 Código:", apiError.code);
+      console.error("⚙️ Status:", apiError.status || "N/A");
+      console.error("📋 Stack:", apiError.stack);
+      console.error("🔗 Objeto completo:", apiError);
 
       window.showToast?.(
-        "Falha na API. Criando solicitação interna para o TI.",
+        "⚠️ Falha na API. Criando solicitação interna para o TI.",
         "warning"
       );
 
+      // FALLBACK: Criar solicitação para TI
       const solicitacoesTiRef = collection(db, "solicitacoes_ti");
       await addDoc(solicitacoesTiRef, {
         tipo: "criacao_email_novo_colaborador",
@@ -496,12 +511,14 @@ async function salvarSolicitacaoEmail(
         erro_api: apiError.message || "Erro sem detalhes",
       });
 
-      logAcao = `Falha na API (${apiError.message?.substring(
+      logAcao = `⚠️ Falha na API (${(apiError.message || "").substring(
         0,
         50
-      )}...). Solicitação de e-mail (${emailSugerido}) enviada ao TI.`;
+      )}...). Solicitação de e-mail ${emailSugerido} enviada ao TI.`;
+      emailCriadoComSucesso = false;
     }
 
+    // ✅ ATUALIZAR CANDIDATURA NO FIRESTORE
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
@@ -519,18 +536,22 @@ async function salvarSolicitacaoEmail(
       },
     });
 
-    console.log(
-      `✅ Solicitação salva e status do candidato atualizado para ${novoStatus}`
+    console.log(`✅ Candidatura atualizada para: ${novoStatus}`);
+
+    window.showToast?.(
+      "✅ Processo de e-mail iniciado com sucesso!",
+      "success"
     );
-    window.showToast?.("Processo de e-mail iniciado com sucesso!", "success");
   } catch (error) {
-    console.error("❌ Erro ao salvar solicitação de e-mail:", error);
-    window.showToast?.(`Erro ao salvar: ${error.message}`, "error");
+    console.error("❌ Erro geral ao salvar solicitação:", error);
+    window.showToast?.(`❌ Erro ao salvar: ${error.message}`, "error");
   } finally {
+    // Reabilitar botão
     btnSalvar.disabled = false;
     btnSalvar.innerHTML =
       '<i class="fas fa-paper-plane"></i> Salvar e Solicitar';
 
+    // Fechar modal e recarregar
     fecharModalSolicitarEmail();
     if (typeof renderizarSolicitacaoEmail === "function") {
       renderizarSolicitacaoEmail(state);
