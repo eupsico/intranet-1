@@ -393,8 +393,8 @@ window.copiarLinkFormulario = function () {
 };
 
 /**
- * ⚠️ NOVA FUNÇÃO ( SUBSTITUI salvarEnvioFormulario )
- * Salva, abre WhatsApp e dispara Cloud Function de E-mail
+ * ⚠️ FUNÇÃO ATUALIZADA (v1.3.2)
+ * Salva, abre WhatsApp (com instruções) e dispara E-mail (com novo CSS e link do formulário)
  */
 window.salvarEEnviarMensagens = async function (candidatoId) {
   console.log("💾 Iniciando envio de boas-vindas (WhatsApp e E-mail)...");
@@ -456,13 +456,23 @@ window.salvarEEnviarMensagens = async function (candidatoId) {
     // === 3. AÇÃO 1: Abrir WhatsApp ===
     console.log("📱 Abrindo WhatsApp...");
     const telefoneLimpo = telefone_contato.replace(/\D/g, "");
-    const mensagemWhatsApp = `Olá ${nome_completo}, bem-vindo(a)! 
+
+    // --- ⚠️ MENSAGEM WHATSAPP ATUALIZADA ---
+    const mensagemWhatsApp = `🎉 Olá, ${nome_completo}! Seja bem-vindo(a) à EuPsico!
     
-Para darmos sequência, por favor, acesse o formulário de cadastro de documentos no link abaixo. 
+Sua conta de e-mail corporativa foi criada.
+        
+*Estes são seus dados de acesso:*
+*E-mail:* ${email_novo}
+*Senha Temporária:* ${senha_temporaria}
     
-${linkFormulario}
+*Próximos Passos OBRIGATÓRIOS:*
+1. Acesse: https://mail.google.com/
+2. Faça login com seu novo e-mail e senha temporária.
+3. *Você será solicitado(a) a trocar sua senha.* É muito importante que faça isso.
+4. Após trocar a senha, *verifique a caixa de entrada do seu NOVO e-mail*. Lá você encontrará um e-mail de boas-vindas com o link para o formulário de cadastro.
     
-Você também receberá um e-mail com seus dados de acesso ao e-mail corporativo.`;
+Qualquer dúvida, fale com o RH.`;
 
     const mensagemCodificada = encodeURIComponent(mensagemWhatsApp);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
@@ -470,24 +480,75 @@ Você também receberá um e-mail com seus dados de acesso ao e-mail corporativo
 
     // === 4. AÇÃO 2: Enviar E-mail (Cloud Function) ===
 
-    // --- ⚠️ MUDANÇA AQUI ---
-    // Usamos a função 'enviarEmail' que você forneceu
     console.log("📨 Chamando Cloud Function 'enviarEmail' (duas vezes)...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
 
-    // Gerar o HTML do e-mail
-    const emailHtml = `
-        <p>Olá, ${nome_completo},</p>
-        <p>Seja bem-vindo(a) à equipe EuPsico!</p>
-        <p>Seu novo e-mail de acesso é: <strong>${email_novo}</strong></p>
-        <p>Sua senha temporária é: <strong>${senha_temporaria}</strong></p>
-        <br>
-        <p>Acesse sua conta em: <a href="https://mail.google.com/">https://mail.google.com/</a></p>
-        <br>
-        <p><strong>IMPORTANTE:</strong> Por favor, troque sua senha no primeiro acesso. Esta senha temporária expirará em 24 horas.</p>
-    `;
+    // --- ⚠️ E-MAIL HTML ATUALIZADO (COM CSS) ---
+    const assuntoEmail = `🎉 Bem-vindo(a) à EuPsico! Seus próximos passos estão aqui.`;
 
-    const assuntoEmail = "Seus dados de acesso EuPsico - Boas-vindas!";
+    const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        /* Estilo do Header (Verde do Onboarding) */
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h2 { margin: 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+        /* Estilo da Info-Box (Azul para Acesso) */
+        .info-box { background: #ffffff; padding: 20px; margin: 20px 0; border-left: 5px solid #007bff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .info-box p { margin: 10px 0; }
+        .info-box strong { color: #003d7a; }
+        /* Botão de Ação (Primário - Azul) */
+        .button { display: inline-block; background: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; margin: 15px 0; font-weight: bold; text-align: center; }
+        /* Info-Box de Próximo Passo (Amarelo) */
+        .next-step-box { background: #fff3cd; padding: 20px; margin: 25px 0; border-left: 5px solid #ffc107; border-radius: 5px; }
+        .next-step-box h3 { margin-top: 0; color: #856404; }
+        .footer { text-align: center; padding: 20px; color: #777; font-size: 0.9em; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>🎉 Bem-vindo(a), ${nome_completo}!</h2>
+        </div>
+        <div class="content">
+          <p>Estamos muito felizes em ter você na equipe EuPsico!</p>
+          <p>Criamos seu e-mail corporativo. Abaixo estão seus dados de acesso:</p>
+          
+          <div class="info-box">
+            <h3 style="margin-top: 0; color: #007bff;">Seus Dados de Acesso</h3>
+            <p><strong>E-mail:</strong> ${email_novo}</p>
+            <p><strong>Senha Temporária:</strong> ${senha_temporaria}</p>
+            <p style="font-size: 0.9em; color: #dc3545;"><strong>IMPORTANTE:</strong> Você deve alterar esta senha no seu primeiro login.</p>
+            <div style="text-align: center;">
+              <a href="https://mail.google.com/" class="button" target="_blank">
+                Acessar o E-mail (Gmail)
+              </a>
+            </div>
+          </div>
+          
+          <div class="next-step-box">
+            <h3>➡️ Seu Próximo Passo: O Formulário</h3>
+            <p>Após fazer login e trocar sua senha, o próximo passo é preencher nosso formulário de cadastro e documentos.</p>
+            <p><strong>Atenção:</strong> Você *só* conseguirá acessar o link abaixo se estiver logado(a) com a sua nova conta <strong>@eupsico.org.br</strong>.</p>
+            <div style="text-align: center;">
+              <a href="${linkFormulario}" class="button" style="background: #28a745;" target="_blank">
+                Acessar Formulário de Cadastro
+              </a>
+            </div>
+          </div>
+          
+        </div>
+        <div class="footer">
+          <p>Este é um e-mail automático. Por favor, não responda.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
 
     try {
       // 1. Envia para o E-MAIL PESSOAL
