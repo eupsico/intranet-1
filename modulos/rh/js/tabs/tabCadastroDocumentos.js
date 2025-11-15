@@ -456,7 +456,6 @@ window.salvarEEnviarMensagens = async function (candidatoId) {
     // === 3. AÇÃO 1: Abrir WhatsApp ===
     console.log("📱 Abrindo WhatsApp...");
     const telefoneLimpo = telefone_contato.replace(/\D/g, "");
-    // Mensagem simples para o WhatsApp (focada na ação)
     const mensagemWhatsApp = `Olá ${nome_completo}, bem-vindo(a)! 
     
 Para darmos sequência, por favor, acesse o formulário de cadastro de documentos no link abaixo. 
@@ -470,7 +469,11 @@ Você também receberá um e-mail com seus dados de acesso ao e-mail corporativo
     window.open(linkWhatsApp, "_blank");
 
     // === 4. AÇÃO 2: Enviar E-mail (Cloud Function) ===
-    console.log("📨 Chamando Cloud Function 'enviarEmailBoasVindas'...");
+
+    // --- ⚠️ MUDANÇA AQUI ---
+    // Usamos a função 'enviarEmail' que você forneceu
+    console.log("📨 Chamando Cloud Function 'enviarEmail' (duas vezes)...");
+    const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
 
     // Gerar o HTML do e-mail
     const emailHtml = `
@@ -484,23 +487,35 @@ Você também receberá um e-mail com seus dados de acesso ao e-mail corporativo
         <p><strong>IMPORTANTE:</strong> Por favor, troque sua senha no primeiro acesso. Esta senha temporária expirará em 24 horas.</p>
     `;
 
-    // ❗️ ATENÇÃO: Você deve criar esta Cloud Function no seu index.js
-    const enviarEmailFunc = httpsCallable(functions, "enviarEmailBoasVindas");
+    const assuntoEmail = "Seus dados de acesso EuPsico - Boas-vindas!";
 
-    const emailResponse = await enviarEmailFunc({
-      to_personal: email_pessoal,
-      to_corporate: email_novo,
-      subject: "Seus dados de acesso EuPsico - Boas-vindas!",
-      html: emailHtml,
-    });
+    try {
+      // 1. Envia para o E-MAIL PESSOAL
+      console.log(`Enviando e-mail para ${email_pessoal}...`);
+      await enviarEmailFunc({
+        destinatario: email_pessoal,
+        assunto: assuntoEmail,
+        html: emailHtml,
+        // 'remetente' é opcional na CF, usará o padrão "EuPsico <atendimento@eupsico.org.br>"
+      });
 
-    if (!emailResponse.data || !emailResponse.data.sucesso) {
+      // 2. Envia para o E-MAIL CORPORATIVO
+      console.log(`Enviando e-mail para ${email_novo}...`);
+      await enviarEmailFunc({
+        destinatario: email_novo,
+        assunto: assuntoEmail,
+        html: emailHtml,
+      });
+
+      console.log("✅ E-mails de boas-vindas enviados com sucesso.");
+    } catch (emailError) {
+      // Se um dos e-mails falhar, o processo para e avisa o usuário.
+      console.error("❌ Falha ao enviar um dos e-mails:", emailError);
       throw new Error(
-        emailResponse.data.erro || "Falha ao enviar e-mail pela Cloud Function."
+        `Falha ao enviar e-mail: ${emailError.message}. O WhatsApp pode ter sido aberto, mas o e-mail falhou.`
       );
     }
-
-    console.log("✅ E-mail de boas-vindas enviado com sucesso.");
+    // --- ⚠️ FIM DA MUDANÇA ---
 
     // === 5. AÇÃO 3: Atualizar Firestore ===
     console.log("💾 Atualizando Firestore...");
