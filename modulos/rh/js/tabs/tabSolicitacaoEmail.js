@@ -247,9 +247,10 @@ export async function renderizarSolicitacaoEmail(state) {
   `;
   }
 }
+
 /**
  * Salva a solicitação de e-mail
- * VERSÃO 3.2 - CORRIGIDA PARA us-central1 COM CORS
+ * VERSÃO 3.3 - Adicionado salvamento da senha temporária
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -303,6 +304,11 @@ async function salvarSolicitacaoEmail(
     const solicitanteNome =
       currentUserData?.nome || currentUserData?.email || "Usuário RH";
 
+    // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
+    // 1. Variável para guardar a senha (ou nulo)
+    let senhaTemporaria = null;
+    // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
+
     // ⭐ TENTAR CRIAR E-MAIL VIA CLOUD FUNCTION
     try {
       console.log("🔄 Iniciando chamada para Cloud Function...");
@@ -343,10 +349,16 @@ async function salvarSolicitacaoEmail(
       // Verificar sucesso
       if (resultado.data && resultado.data.sucesso === true) {
         emailCriadoComSucesso = true;
-        logAcao = `✅ E-mail ${emailSugerido} criado com sucesso no Google Workspace. Senha: ${resultado.data.senhaTemporaria}`;
+
+        // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
+        // 2. Captura a senha da resposta
+        senhaTemporaria = resultado.data.senhaTemporaria;
+        // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
+
+        logAcao = `✅ E-mail ${emailSugerido} criado com sucesso no Google Workspace. Senha: ${senhaTemporaria}`;
         window.showToast?.("✅ E-mail criado com sucesso!", "success");
         console.log("🎉 E-MAIL CRIADO COM SUCESSO!");
-        console.log("Senha:", resultado.data.senhaTemporaria);
+        console.log("Senha:", senhaTemporaria);
       } else {
         throw new Error(resultado.data?.mensagem || "API falhou");
       }
@@ -395,9 +407,12 @@ async function salvarSolicitacaoEmail(
         email_solicitado: emailSugerido,
         email_criado_via_api: emailCriadoComSucesso,
         data_solicitacao_email: new Date(),
+        // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
+        // 3. Salva a senha (ou nulo, se falhou) no Firestore
+        senha_temporaria: senhaTemporaria,
+        // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
       },
     });
-
     console.log(`✅ Candidatura atualizada para: ${novoStatus}`);
     window.showToast?.(
       "✅ Processo de e-mail iniciado com sucesso!",
