@@ -1,11 +1,12 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabCadastroDocumentos.js
- * Versão: 1.1.0 (Corrigido nome do link para fichas-de-cadastro.html)
+ * Versão: 2.0 - Incluindo credenciais na mensagem do WhatsApp
  * Descrição: Gerencia a etapa de envio do formulário de cadastro/documentos ao candidato.
  */
 
 // Importa do módulo de ADMISSÃO
 import { getGlobalState } from "../admissao.js";
+
 import {
   updateDoc,
   doc,
@@ -13,7 +14,9 @@ import {
   query,
   where,
   arrayUnion,
+  getDoc,
 } from "../../../../assets/js/firebase-init.js";
+
 // Importa a referência à Cloud Function
 import {
   httpsCallable,
@@ -23,6 +26,7 @@ import {
 // ============================================
 // CONSTANTES
 // ============================================
+
 let dadosCandidatoAtual = null;
 
 // Reutiliza a mesma Cloud Function de "gerarTokenTeste"
@@ -40,128 +44,93 @@ export async function renderizarCadastroDocumentos(state) {
   const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
 
   conteudoAdmissao.innerHTML =
-    '<div class="loading-spinner">Carregando candidatos aguardando cadastro...</div>';
+    '<div class="loading">Carregando candidatos...</div>';
 
   try {
     const q = query(
       candidatosCollection,
       where("status_recrutamento", "==", "AGUARDANDO_CADASTRO")
     );
-    const snapshot = await getDocs(q); // Atualiza contagem na aba
 
-    const tab = statusAdmissaoTabs.querySelector(
-      '.tab-link[data-status="cadastro-documentos"]'
-    );
-    if (tab) {
-      tab.innerHTML = `<i class="fas fa-id-card me-2"></i> 2. Cadastro e Documentos (${snapshot.size})`;
-    }
+    const querySnapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      conteudoAdmissao.innerHTML =
-        '<p class="alert alert-info">Nenhum candidato aguardando o envio do formulário de cadastro.</p>';
+    if (querySnapshot.empty) {
+      conteudoAdmissao.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-inbox"></i>
+          <p>Nenhum candidato aguardando o envio do formulário de cadastro.</p>
+        </div>
+      `;
       return;
     }
 
     let listaHtml = `
-  	<div class="description-box" style="margin-top: 15px;">
-   	<p>Envie o link do formulário de cadastro para os candidatos abaixo.</p>
-  	</div>
-   <div class="candidatos-container candidatos-grid">
-  `;
+      <div class="info-box">
+        <i class="fas fa-file-alt"></i>
+        Envie o link do formulário de cadastro para os candidatos abaixo.
+      </div>
+      <div class="candidatos-list">
+    `;
 
-    snapshot.docs.forEach((docSnap) => {
+    querySnapshot.forEach((docSnap) => {
       const cand = docSnap.data();
-      const candidatoId = docSnap.id;
-      const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
-      const statusAtual = cand.status_recrutamento || "N/A";
-
-      const statusClass = "status-warning";
-
-      const dadosCandidato = {
-        id: candidatoId,
-        nome_completo: cand.nome_completo,
-        email_pessoal: cand.email_candidato, // E-mail pessoal
-        email_novo: cand.admissao_info?.email_solicitado || "Não solicitado", // E-mail novo
-        telefone_contato: cand.telefone_contato,
-        vaga_titulo: vagaTitulo,
-      };
-      const dadosJSON = JSON.stringify(dadosCandidato);
-      const dadosCodificados = encodeURIComponent(dadosJSON);
+      const vagaTitulo =
+        typeof cand.vaga === "string" ? cand.vaga : cand.vaga?.titulo || "N/A";
 
       listaHtml += `
-    <div class="card card-candidato-gestor" data-id="${candidatoId}">
-     <div class="info-primaria">
-      <h4 class="nome-candidato">
-       ${cand.nome_completo || "Candidato Sem Nome"}
-      	<span class="status-badge ${statusClass}">
-       	<i class="fas fa-tag"></i> ${statusAtual}
-      	</span>
-      </h4>
-      <p class="small-info">
-       <i class="fas fa-briefcase"></i> Vaga: ${vagaTitulo}
-      </p>
-     	<p class="small-info" style="color: var(--cor-primaria);">
-       <i class="fas fa-envelope"></i> Novo E-mail: ${
-         cand.admissao_info?.email_solicitado || "Aguardando..."
-       }
-      </p>
-     </div>
-     
-     <div class="acoes-candidato">
-      <button 
-       class="btn btn-sm btn-primary btn-enviar-formulario" 
-       data-id="${candidatoId}"
-       data-dados="${dadosCodificados}"
-     	  style="padding: 10px 16px; background: var(--cor-primaria); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
-       <i class="fas fa-paper-plane me-1"></i> Enviar Formulário
-      </button>
-     	<button 
-       class="btn btn-sm btn-secondary btn-ver-detalhes-admissao" 
-      	data-id="${candidatoId}"
-      	data-dados="${dadosCodificados}"
-     		style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
-      	<i class="fas fa-eye me-1"></i> Detalhes
-     	</button>
-     </div>
-    </div>
-   `;
+        <div class="candidato-card">
+          <div class="candidato-info">
+            <h4>${cand.nome_completo}</h4>
+            <p><strong>Vaga:</strong> ${vagaTitulo}</p>
+            <p><strong>Novo E-mail:</strong> ${
+              cand.admissao_info?.email_solicitado || "Aguardando..."
+            }</p>
+          </div>
+          <div class="candidato-actions">
+            <button 
+              class="btn btn-primary btn-enviar-formulario"
+              data-candidato-id="${docSnap.id}"
+              data-candidato-dados='${encodeURIComponent(
+                JSON.stringify({
+                  nome_completo: cand.nome_completo,
+                  email_pessoal: cand.email_pessoal || "",
+                  telefone: cand.telefone || "",
+                  email_novo: cand.admissao_info?.email_solicitado || "",
+                })
+              )}'
+            >
+              <i class="fas fa-paper-plane"></i> Enviar Formulário
+            </button>
+          </div>
+        </div>
+      `;
     });
 
-    listaHtml += "</div>";
-    conteudoAdmissao.innerHTML = listaHtml; // Listeners dinâmicos para "Enviar Formulário"
+    listaHtml += `</div>`;
+    conteudoAdmissao.innerHTML = listaHtml;
 
+    // Event listeners
     document.querySelectorAll(".btn-enviar-formulario").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const candidatoId = e.currentTarget.getAttribute("data-id");
-        const dados = e.currentTarget.getAttribute("data-dados");
-        abrirModalEnviarFormulario(candidatoId, dados);
-      });
-    }); // Listeners dinâmicos para "Detalhes"
-
-    document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const candidatoId = e.currentTarget.getAttribute("data-id");
-        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
-        if (typeof window.abrirModalCandidato === "function") {
-          try {
-            const dadosCandidato = JSON.parse(
-              decodeURIComponent(dadosCodificados)
-            );
-            window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
-          } catch (error) {
-            console.error("❌ Erro ao abrir modal de detalhes:", error);
-          }
-        } else {
-          console.warn("⚠️ Função window.abrirModalCandidato não encontrada");
-          alert("Erro ao carregar detalhes. Função não encontrada.");
-        }
+      btn.addEventListener("click", () => {
+        const candidatoId = btn.dataset.candidatoId;
+        const dadosCodificados = btn.dataset.candidatoDados;
+        abrirModalEnviarFormulario(candidatoId, dadosCodificados);
       });
     });
   } catch (error) {
-    console.error("Erro ao renderizar aba de Cadastro:", error);
-    conteudoAdmissao.innerHTML = `<p class="alert alert-danger">Erro ao carregar: ${error.message}</p>`;
+    console.error("❌ Erro ao carregar candidatos:", error);
+    conteudoAdmissao.innerHTML = `
+      <div class="error-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        Erro ao carregar: ${error.message}
+      </div>
+    `;
   }
 }
+
+// ============================================
+// MODAL: ENVIAR FORMULÁRIO
+// ============================================
 
 /**
  * Abre o modal para Enviar o Link do Formulário de Cadastro
@@ -172,251 +141,263 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
 
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
-    dadosCandidatoAtual = dadosCandidato; // Salva no estado local
+    dadosCandidatoAtual = dadosCandidato;
 
     const modalExistente = document.getElementById("modal-enviar-formulario");
     if (modalExistente) {
       modalExistente.remove();
-    } // --- ⚠️ ALTERAÇÃO AQUI ---
+    }
 
-    const urlBase = window.location.origin; // Aponta para o novo nome do arquivo
-    const linkFormularioBase = `${urlBase}/public/fichas-de-cadastro.html`; // --- ⚠️ FIM DA ALTERAÇÃO ---
+    const urlBase = window.location.origin;
+    const linkFormularioBase = `${urlBase}/public/fichas-de-cadastro.html`;
+
     const modal = document.createElement("div");
     modal.id = "modal-enviar-formulario";
     modal.dataset.candidaturaId = candidatoId;
+
     modal.innerHTML = `
-   <style>
-    #modal-enviar-formulario {
-     all: initial !important; display: block !important; position: fixed !important;
-     top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
-     z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important;
-    	font-family: inherit !important;
-    }
-    #modal-enviar-formulario .modal-container {
-     position: fixed !important; top: 50% !important; left: 50% !important;
-     transform: translate(-50%, -50%) !important; max-width: 700px !important;
-     background: #ffffff !important; border-radius: 12px !important;
-     box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important;
-     overflow: hidden !important; animation: modalPopupOpen 0.3s ease-out !important;
-    }
-    @keyframes modalPopupOpen {
-     from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
-     to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    }
-  	#modal-enviar-formulario .modal-header {
-     background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-    	color: white !important; padding: 20px !important; display: flex !important;
-    	justify-content: space-between !important; align-items: center !important;
-   	}
-  	#modal-enviar-formulario .modal-title {
-   		display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important;
-  	}
-  	#modal-enviar-formulario .modal-title i { font-size: 24px !important; }
-  	#modal-enviar-formulario .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
-   	#modal-enviar-formulario .modal-close {
-    	background: rgba(255,255,255,0.2) !important; border: none !important; color: white !important;
-    	width: 36px !important; height: 36px !important; border-radius: 50% !important; cursor: pointer !important;
-    	display: flex !important; align-items: center !important; justify-content: center !important;
-    	font-size: 18px !important; transition: all 0.2s !important;
-   	}
-   	#modal-enviar-formulario .modal-body {
-    	padding: 25px !important; max-height: 500px !important; overflow-y: auto !important;
-    	background: #f8f9fa !important; font-family: inherit !important;
-   	}
-  	#modal-enviar-formulario .info-card {
-   		background: white !important; padding: 15px !important; border-radius: 8px !important;
-   		margin-bottom: 20px !important; border-left: 4px solid #17a2b8 !important;
-  	}
-  	#modal-enviar-formulario .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
-  	#modal-enviar-formulario .info-card strong { color: #333; }
-   	#modal-enviar-formulario .form-group { margin-bottom: 20px !important; }
-   	#modal-enviar-formulario .form-label {
-   		font-weight: 600 !important; margin-bottom: 8px !important; display: block !important;
-   		color: #333 !important; font-size: 14px !important;
-   	}
-   	#modal-enviar-formulario .form-input {
-   		width: 100% !important; padding: 12px !important; border: 1px solid #ddd !important;
-   		border-radius: 6px !important; box-sizing: border-box !important; font-size: 14px !important;
-   		background: #e9ecef !important;
-   	}
-   	#modal-enviar-formulario .modal-footer {
-   		padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important;
-   		display: flex !important; justify-content: space-between !important; gap: 12px !important;
-   	}
-  	#modal-enviar-formulario .btn {
-  		padding: 12px 24px !important; border-radius: 6px !important; cursor: pointer !important;
-  		font-weight: 500 !important; border: none !important; display: inline-flex; gap: 8px; align-items: center;
-  	}
-  	#modal-enviar-formulario .btn-cancelar { background: #6c757d !important; color: white !important; }
-  	#modal-enviar-formulario .btn-copiar { background: #007bff !important; color: white !important; }
-  	#modal-enviar-formulario .btn-salvar { background: #28a745 !important; color: white !important; }
-  	#modal-enviar-formulario .btn-salvar:disabled { background: #ccc !important; }
-   </style>
-   
-   <div class="modal-container">
-    <div class="modal-header">
-     <div class="modal-title">
-      <i class="fas fa-paper-plane"></i>
-      <h3>Enviar Formulário de Cadastro</h3>
-     </div>
-     <button class="modal-close" onclick="fecharModalEnviarFormulario()">
-      <i class="fas fa-times"></i>
-     </button>
-    </div>
-    
-    <div class="modal-body">
-     <div class="info-card">
-     	<p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
-     	<p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
-     	<p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
-     </div>
-    
-     <form id="form-enviar-link-${candidatoId}">
-      <div class="form-group">
-       <label class="form-label" for="link-formulario-cadastro">
-       	Link Seguro (Pronto para enviar):
-      	</label>
-       <input type="text" id="link-formulario-cadastro" class="form-input" 
-       	value="Gerando link seguro..." readonly>
+      <div class="modal-overlay is-visible">
+        <div class="modal-content modal-wide">
+          <button class="btn-fechar-modal" onclick="fecharModalEnviarFormulario()">×</button>
+          <h3>📧 Enviar Formulário de Cadastro</h3>
+
+          <div class="info-candidato">
+            <p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+            <p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
+            <p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
+          </div>
+
+          <div class="form-group">
+            <label>🔗 Link do Formulário (será gerado automaticamente):</label>
+            <input 
+              type="text" 
+              id="linkFormularioGerado" 
+              readonly 
+              placeholder="Gerando link..." 
+              style="background:#f0f0f0;"
+            />
+            <button class="btn btn-secondary btn-copiar-link" style="margin-top:10px;" disabled>
+              <i class="fas fa-copy"></i> Copiar Link
+            </button>
+          </div>
+
+          <div class="alert info">
+            <strong>ℹ️ Como funciona:</strong>
+            <ul style="margin:10px 0 0 20px;">
+              <li>Um token único e seguro será gerado para este candidato</li>
+              <li>O link será enviado pelo WhatsApp com as credenciais de acesso</li>
+              <li>O formulário só poderá ser acessado com este link</li>
+            </ul>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="fecharModalEnviarFormulario()">Cancelar</button>
+            <button class="btn btn-primary btn-confirmar-envio" disabled>
+              <i class="fas fa-paper-plane"></i> Confirmar Envio
+            </button>
+          </div>
+        </div>
       </div>
-     	<p style="font-size: 12px; color: #6c757d;">
-     		Envie este link ao candidato. O link é de uso único.
-     		Após o envio, clique em "Marcar como Enviado".
-     	</p>
-     </form>
-    </div>
-    
-    <div class="modal-footer">
-    	<div>
-    		<button type="button" class="btn btn-copiar" id="btn-copiar-link-form" onclick="copiarLinkFormulario()" disabled>
-     		<i class="fas fa-copy"></i> Copiar Link
-    		</button>
-    	</div>
-    	<div>
-     	<button type="button" class="btn btn-cancelar" onclick="fecharModalEnviarFormulario()">
-     	 <i class="fas fa-times"></i> Cancelar
-     	</button>
-     	<button type="button" class="btn btn-salvar" id="btn-marcar-enviado-form" 
-     		onclick="salvarEnvioFormulario('${candidatoId}')" disabled>
-     	 <i class="fas fa-check-circle"></i> Marcar como Enviado
-D    	</button>
-    	</div>
-    </div>
-   </div>
-  `;
+    `;
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
 
-    // --- LÓGICA DE GERAR TOKEN ---
-    const linkInput = document.getElementById("link-formulario-cadastro");
-    const btnCopiar = document.getElementById("btn-copiar-link-form");
-    const btnMarcar = document.getElementById("btn-marcar-enviado-form");
+    // Gerar o token
+    await gerarTokenFormulario(candidatoId, linkFormularioBase);
 
-    try {
-      // Reutiliza a Cloud Function 'gerarTokenTeste' (definida no rh-painel.js ou firebase-init.js)
-      const gerarTokenFunc = httpsCallable(functions, "gerarTokenTeste");
-      const response = await gerarTokenFunc({
-        candidatoId: candidatoId,
-        testeId: "ficha_cadastro", // Identificador
-        tipo: "cadastro", // TIPO NOVO
-        prazoDias: 3,
-      });
-
-      if (!response.data.sucesso) {
-        throw new Error(response.data.erro || "Erro ao gerar token");
-      }
-
-      const linkComToken = `${linkFormularioBase}?token=${response.data.token}`;
-      linkInput.value = linkComToken;
-      btnCopiar.disabled = false;
-      btnMarcar.disabled = false; // Salva o token no dataset do botão para usar no 'salvarEnvioFormulario'
-      btnMarcar.dataset.token = response.data.token;
-    } catch (error) {
-      console.error("Erro ao gerar token seguro:", error);
-      linkInput.value = "Erro ao gerar link. Tente novamente.";
-      window.showToast?.("Erro ao gerar link seguro.", "error");
-    } // --- FIM DA LÓGICA DO TOKEN ---
+    // Event listeners
+    document
+      .querySelector(".btn-copiar-link")
+      .addEventListener("click", copiarLinkFormulario);
+    document
+      .querySelector(".btn-confirmar-envio")
+      .addEventListener("click", confirmarEnvioFormulario);
   } catch (error) {
-    console.error("❌ Erro ao criar modal de envio de formulário:", error);
-    alert("Erro ao abrir modal.");
+    console.error("❌ Erro ao abrir modal:", error);
+    alert("Erro ao preparar o envio. Tente novamente.");
   }
 }
 
 /**
- * Fecha o modal de envio de formulário
+ * Gera o token via Cloud Function
  */
-window.fecharModalEnviarFormulario = function () {
-  console.log("❌ Fechando modal de envio de formulário");
-  const modal = document.getElementById("modal-enviar-formulario");
-  if (modal) {
-    modal.remove();
+async function gerarTokenFormulario(candidatoId, linkBase) {
+  try {
+    console.log("🔑 Gerando token para candidato:", candidatoId);
+
+    const response = await fetch(CF_GERAR_TOKEN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidaturaId: candidatoId }),
+    });
+
+    const resultado = await response.json();
+
+    if (!resultado.token) {
+      throw new Error("Token não retornado pela Cloud Function");
+    }
+
+    const linkCompleto = `${linkBase}?token=${resultado.token}`;
+    console.log("✅ Link gerado:", linkCompleto);
+
+    const inputLink = document.getElementById("linkFormularioGerado");
+    if (inputLink) {
+      inputLink.value = linkCompleto;
+      document.querySelector(".btn-copiar-link").disabled = false;
+      document.querySelector(".btn-confirmar-envio").disabled = false;
+    }
+  } catch (error) {
+    console.error("❌ Erro ao gerar token:", error);
+    alert("Erro ao gerar o link. Tente novamente.");
   }
-  document.body.style.overflow = "";
-};
+}
 
 /**
  * Copia o link do formulário
  */
-window.copiarLinkFormulario = function () {
-  const input = document.getElementById("link-formulario-cadastro");
-  if (input) {
-    input.select();
+function copiarLinkFormulario() {
+  const inputLink = document.getElementById("linkFormularioGerado");
+  if (inputLink) {
+    inputLink.select();
     document.execCommand("copy");
-    window.showToast?.("Link copiado!", "success");
+    alert("✅ Link copiado para a área de transferência!");
   }
-};
+}
 
 /**
- * Salva o envio do formulário (versão atualizada com token)
+ * Confirma o envio do formulário de cadastro
+ * VERSÃO 2.0 - Envia pelo WhatsApp com credenciais e instruções completas
  */
-window.salvarEnvioFormulario = async function (candidatoId) {
-  console.log("💾 Marcando formulário como enviado...");
-
+async function confirmarEnvioFormulario() {
   const modal = document.getElementById("modal-enviar-formulario");
-  const btnSalvar = modal?.querySelector("#btn-marcar-enviado-form");
-  const token = btnSalvar?.dataset.token; // Pega o token gerado
+  if (!modal) return;
 
-  if (!token) {
-    window.showToast?.("Erro: Token de validação não encontrado.", "error");
+  const candidaturaId = modal.dataset.candidaturaId;
+  const linkGerado = document.getElementById("linkFormularioGerado")?.value;
+
+  if (!candidaturaId || !linkGerado) {
+    alert("❌ Dados incompletos. Recarregue a página e tente novamente.");
     return;
   }
 
-  if (btnSalvar) {
-    btnSalvar.disabled = true;
-    btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+  const btnConfirmar = modal.querySelector(".btn-confirmar-envio");
+  if (btnConfirmar) {
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Enviando...';
   }
 
   try {
-    const { candidatosCollection, currentUserData } = getGlobalState();
-    const candidatoRef = doc(candidatosCollection, candidatoId);
-    const novoStatus = "AGUARDANDO_PREENCHIMENTO_FORM";
+    const state = getGlobalState();
+    const { candidatosCollection, currentUserData } = state;
+
+    // Buscar dados completos do candidato
+    const candidatoRef = doc(candidatosCollection, candidaturaId);
+    const candidatoSnap = await getDoc(candidatoRef);
+
+    if (!candidatoSnap.exists()) {
+      throw new Error("Candidato não encontrado");
+    }
+
+    const candidatoDados = candidatoSnap.data();
+    const nomeCompleto = candidatoDados.nome_completo || "Colaborador";
+    const telefone = candidatoDados.telefone || "";
+    const emailCorporativo =
+      candidatoDados.admissao_info?.email_solicitado || "";
+    const senhaTemporaria =
+      candidatoDados.admissao_info?.senha_temporaria || "";
+
+    if (!telefone) {
+      throw new Error("Telefone do candidato não encontrado");
+    }
+
+    if (!emailCorporativo || !senhaTemporaria) {
+      throw new Error(
+        "Credenciais de acesso não encontradas. Crie o e-mail corporativo primeiro."
+      );
+    }
+
+    // Preparar mensagem do WhatsApp com credenciais
+    const primeiroNome = nomeCompleto.split(" ")[0];
+
+    const mensagemWhatsApp = `🎉 *Olá, ${primeiroNome}!*
+
+Bem-vindo(a) à equipe EuPsico! 
+
+📧 *Suas Credenciais de Acesso:*
+• *E-mail:* ${emailCorporativo}
+• *Senha temporária:* ${senhaTemporaria}
+
+⚠️ *IMPORTANTE:* Você tem *24 horas* para alterar sua senha após o primeiro acesso! Após esse prazo, a senha expirará.
+
+📋 *Próximos Passos:*
+
+1️⃣ *Acesse seu e-mail corporativo:*
+🔗 https://mail.google.com
+
+2️⃣ *Altere sua senha* no primeiro acesso (o sistema solicitará automaticamente)
+
+3️⃣ *Preencha o formulário de cadastro:*
+🔗 ${linkGerado}
+
+Se tiver dúvidas, entre em contato com o RH: rh@eupsico.org.br
+
+Estamos felizes em tê-lo(a) conosco! 🚀
+
+_EuPsico - Equipe de RH_`;
+
+    // Abrir WhatsApp com a mensagem
+    const telefoneFormatado = telefone.replace(/\D/g, "");
+    const linkWhatsApp = `https://wa.me/55${telefoneFormatado}?text=${encodeURIComponent(
+      mensagemWhatsApp
+    )}`;
+
+    window.open(linkWhatsApp, "_blank");
+    console.log("✅ WhatsApp aberto com a mensagem de boas-vindas");
+
+    // Atualizar status no Firestore
     await updateDoc(candidatoRef, {
-      status_recrutamento: novoStatus,
+      status_recrutamento: "FORM_ENVIADO",
+      "admissao_info.link_formulario": linkGerado,
+      "admissao_info.data_envio_formulario": new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Link do formulário de cadastro (token: ${token.substring(
-          0,
-          8
-        )}...) enviado ao candidato.`,
-        usuario: currentUserData.id || "rh_admin",
+        acao: `✅ Formulário e credenciais enviados via WhatsApp. E-mail: ${emailCorporativo}`,
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
-    console.log(`✅ Status do candidato atualizado para ${novoStatus}`);
-    window.showToast?.(
-      "Candidato movido para 'Aguardando Preenchimento'!",
-      "success"
-    );
-    window.fecharModalEnviarFormulario();
-    renderizarCadastroDocumentos(getGlobalState()); // Recarrega a aba
+    console.log("✅ Status atualizado para FORM_ENVIADO");
+    alert("✅ Mensagem enviada pelo WhatsApp com sucesso!");
+
+    // Fechar modal e recarregar
+    fecharModalEnviarFormulario();
+    setTimeout(() => {
+      renderizarCadastroDocumentos(state);
+    }, 500);
   } catch (error) {
-    console.error("❌ Erro ao marcar como enviado:", error);
-    alert(`Erro ao salvar: ${error.message}`);
-    if (btnSalvar) {
-      btnSalvar.disabled = false;
-      btnSalvar.innerHTML =
-        '<i class="fas fa-check-circle"></i> Marcar como Enviado';
+    console.error("❌ Erro ao enviar formulário:", error);
+    alert(`❌ Erro ao enviar: ${error.message}`);
+
+    if (btnConfirmar) {
+      btnConfirmar.disabled = false;
+      btnConfirmar.innerHTML =
+        '<i class="fas fa-paper-plane"></i> Confirmar Envio';
     }
   }
-};
+}
+
+/**
+ * Fecha o modal de envio
+ */
+function fecharModalEnviarFormulario() {
+  const modal = document.getElementById("modal-enviar-formulario");
+  if (modal) {
+    modal.remove();
+    document.body.style.overflow = "auto";
+  }
+}
+
+// Expor função globalmente
+window.fecharModalEnviarFormulario = fecharModalEnviarFormulario;
