@@ -162,7 +162,231 @@ export async function renderizarCadastroDocumentos(state) {
 
 /**
  * Abre o modal para Enviar o Link do Formulário de Cadastro
- * VERSÃO ATUALIZADA (1.3.0)
+ * VERSÃO ATUALIZADA (1.3.1 - Corrigido listener de clique)
+ */
+function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
+  console.log("🎯 Abrindo modal de envio de formulário (WhatsApp + E-mail)");
+
+  try {
+    const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
+    dadosCandidatoAtual = dadosCandidato; // Salva no estado local
+
+    const modalExistente = document.getElementById("modal-enviar-formulario");
+    if (modalExistente) {
+      modalExistente.remove();
+    }
+
+    const urlBase = window.location.origin;
+    const linkFormularioBase = `${urlBase}/public/fichas-de-cadastro.html`;
+    const modal = document.createElement("div");
+    modal.id = "modal-enviar-formulario";
+    modal.dataset.candidaturaId = candidatoId;
+    modal.innerHTML = `
+   <style>
+    /* ... (Todos os seus estilos CSS permanecem os mesmos) ... */
+    #modal-enviar-formulario {
+     all: initial !important; display: block !important; position: fixed !important;
+     top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
+     z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important;
+      font-family: inherit !important;
+    }
+    #modal-enviar-formulario .modal-container {
+     position: fixed !important; top: 50% !important; left: 50% !important;
+     transform: translate(-50%, -50%) !important; max-width: 700px !important;
+     background: #ffffff !important; border-radius: 12px !important;
+     box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important;
+     overflow: hidden !important; animation: modalPopupOpen 0.3s ease-out !important;
+    }
+    @keyframes modalPopupOpen {
+     from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
+     to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    #modal-enviar-formulario .modal-header {
+     background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+      color: white !important; padding: 20px !important; display: flex !important;
+      justify-content: space-between !important; align-items: center !important;
+    }
+    #modal-enviar-formulario .modal-title {
+      display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important;
+    }
+    #modal-enviar-formulario .modal-title i { font-size: 24px !important; }
+    #modal-enviar-formulario .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
+    #modal-enviar-formulario .modal-close {
+      background: rgba(255,255,255,0.2) !important; border: none !important; color: white !important;
+      width: 36px !important; height: 36px !important; border-radius: 50% !important; cursor: pointer !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+      font-size: 18px !important; transition: all 0.2s !important;
+    }
+    #modal-enviar-formulario .modal-body {
+      padding: 25px !important; max-height: 500px !important; overflow-y: auto !important;
+      background: #f8f9fa !important; font-family: inherit !important;
+    }
+    #modal-enviar-formulario .info-card {
+      background: white !important; padding: 15px !important; border-radius: 8px !important;
+      margin-bottom: 20px !important; border-left: 4px solid #17a2b8 !important;
+    }
+    #modal-enviar-formulario .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
+    #modal-enviar-formulario .info-card strong { color: #333; }
+    #modal-enviar-formulario .form-group { margin-bottom: 20px !important; }
+    #modal-enviar-formulario .form-label {
+      font-weight: 600 !important; margin-bottom: 8px !important; display: block !important;
+      color: #333 !important; font-size: 14px !important;
+    }
+    #modal-enviar-formulario .form-input {
+      width: 100% !important; padding: 12px !important; border: 1px solid #ddd !important;
+      border-radius: 6px !important; box-sizing: border-box !important; font-size: 14px !important;
+      background: #e9ecef !important;
+    }
+    #modal-enviar-formulario .modal-footer {
+      padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important;
+      display: flex !important; justify-content: space-between !important; gap: 12px !important;
+    }
+    #modal-enviar-formulario .btn {
+      padding: 12px 24px !important; border-radius: 6px !important; cursor: pointer !important;
+      font-weight: 500 !important; border: none !important; display: inline-flex; gap: 8px; align-items: center;
+    }
+    #modal-enviar-formulario .btn-cancelar { background: #6c757d !important; color: white !important; }
+    #modal-enviar-formulario .btn-copiar { background: #007bff !important; color: white !important; }
+    #modal-enviar-formulario .btn-salvar { background: #28a745 !important; color: white !important; }
+    #modal-enviar-formulario .btn-salvar:disabled { background: #ccc !important; }
+    #modal-enviar-formulario .welcome-message-box {
+        background: #fdfdfd !important; 
+        border: 1px solid #ddd !important; 
+        padding: 15px !important; 
+        border-radius: 6px !important; 
+        font-size: 14px !important; 
+        line-height: 1.7 !important; 
+        color: #333 !important;
+    }
+    #modal-enviar-formulario .welcome-message-box strong { color: #000 !important; }
+    #modal-enviar-formulario .welcome-message-box a { color: #007bff !important; text-decoration: underline !important; }
+   </style>
+   
+   <div class="modal-container">
+    <div class="modal-header">
+     <div class="modal-title">
+      <i class="fas fa-paper-plane"></i>
+      <h3>Enviar Formulário de Cadastro</h3>
+     </div>
+     <button class="modal-close" onclick="fecharModalEnviarFormulario()">
+      <i class="fas fa-times"></i>
+     </button>
+    </div>
+    
+    <div class="modal-body">
+     <div class="info-card">
+       <p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+       <p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
+       <p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
+       <p><strong>Senha:</strong> ${dadosCandidato.senha_temporaria} (Necessária para E-mail)</p>
+     </div>
+     
+       <div class="form-group">
+           <label class="form-label" style="font-size: 16px; color: #28a745; display:flex; align-items: center; gap: 8px;">
+               <i class="fas fa-envelope"></i> Conteúdo (Será enviado por E-mail)
+           </label>
+           <div class="welcome-message-box">
+               Olá, ${dadosCandidato.nome_completo},<br><br>
+               Seja bem-vindo(a) à equipe!<br><br>
+               Seu novo e-mail de acesso é: <strong>${dadosCandidato.email_novo}</strong><br>
+               Sua senha temporária é: <strong>${dadosCandidato.senha_temporaria}</strong><br><br>
+               Acesse sua conta em: <a href="https://mail.google.com/" target="_blank">https://mail.google.com/</a><br><br>
+               <strong>IMPORTANTE:</strong> Por favor, troque sua senha no primeiro acesso. Esta senha temporária expirará em 24 horas.
+           </div>
+       </div>
+
+     <div class="form-group">
+      <label class="form-label" for="link-formulario-cadastro" style="display:flex; align-items: center; gap: 8px;">
+       <i class="fab fa-whatsapp" style="color: #25D366;"></i> Link do Formulário (Será enviado por WhatsApp):
+      </label>
+      <input type="text" id="link-formulario-cadastro" class="form-input" 
+       value="Carregando link..." readonly>
+     </div>
+     <p style="font-size: 12px; color: #6c757d;">
+       Ao clicar em "Enviar", o WhatsApp será aberto com o link do formulário
+       e um e-mail de boas-vindas será disparado automaticamente.
+     </p>
+    </div>
+    
+    <div class="modal-footer">
+     <div>
+      <button type="button" class="btn btn-copiar" id="btn-copiar-link-form" onclick="copiarLinkFormulario()" disabled>
+       <i class="fas fa-copy"></i> Copiar Link Formulário
+      </button>
+     </div>
+     <div>
+      <button type="button" class="btn btn-cancelar" onclick="fecharModalEnviarFormulario()">
+       <i class="fas fa-times"></i> Cancelar
+      </button>
+      
+      <button type="button" class="btn btn-salvar" id="btn-enviar-mensagem-boas-vindas" disabled>
+       <i class="fas fa-paper-plane"></i> Enviar WhatsApp e E-mail
+      </button>
+      </div>
+    </div>
+   </div>
+  `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+
+    // --- LÓGICA DE LINK E EVENT LISTENER ---
+    const linkInput = document.getElementById("link-formulario-cadastro");
+    const btnCopiar = document.getElementById("btn-copiar-link-form");
+    const btnEnviar = document.getElementById(
+      "btn-enviar-mensagem-boas-vindas"
+    );
+
+    // --- ⚠️ ALTERAÇÃO AQUI: ADICIONANDO O LISTENER ---
+    // Adicionamos o listener de clique aqui, usando o 'candidatoId'
+    // que está no escopo desta função.
+    btnEnviar.addEventListener("click", () => {
+      salvarEEnviarMensagens(candidatoId);
+    });
+    // --- ⚠️ FIM DA ALTERAÇÃO ---
+
+    try {
+      linkInput.value = linkFormularioBase;
+      btnCopiar.disabled = false;
+      btnEnviar.disabled = false; // Habilita o botão
+    } catch (error) {
+      console.error("Erro ao definir link:", error);
+      linkInput.value = "Erro ao gerar link. Tente novamente.";
+      window.showToast?.("Erro ao gerar link.", "error");
+    }
+  } catch (error) {
+    console.error("❌ Erro ao criar modal de envio de formulário:", error);
+    alert("Erro ao abrir modal.");
+  }
+}
+
+/**
+ * Fecha o modal de envio de formulário
+ */
+window.fecharModalEnviarFormulario = function () {
+  console.log("❌ Fechando modal de envio de formulário");
+  const modal = document.getElementById("modal-enviar-formulario");
+  if (modal) {
+    modal.remove();
+  }
+  document.body.style.overflow = "";
+};
+
+/**
+ * Copia o link do formulário
+ */
+window.copiarLinkFormulario = function () {
+  const input = document.getElementById("link-formulario-cadastro");
+  if (input) {
+    input.select();
+    document.execCommand("copy");
+    window.showToast?.("Link copiado!", "success");
+  }
+};
+
+/**
+ * Abre o modal para Enviar o Link do Formulário de Cadastro
+ * VERSÃO ATUALIZADA (1.3.1 - Corrigido listener de clique)
  */
 function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
   console.log("🎯 Abrindo modal de envio de formulário (WhatsApp + E-mail)");
@@ -248,8 +472,6 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     #modal-enviar-formulario .btn-copiar { background: #007bff !important; color: white !important; }
     #modal-enviar-formulario .btn-salvar { background: #28a745 !important; color: white !important; }
     #modal-enviar-formulario .btn-salvar:disabled { background: #ccc !important; }
-
-    /* Estilos para a mensagem de boas-vindas */
     #modal-enviar-formulario .welcome-message-box {
         background: #fdfdfd !important; 
         border: 1px solid #ddd !important; 
@@ -259,13 +481,8 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
         line-height: 1.7 !important; 
         color: #333 !important;
     }
-    #modal-enviar-formulario .welcome-message-box strong {
-        color: #000 !important;
-    }
-    #modal-enviar-formulario .welcome-message-box a {
-        color: #007bff !important;
-        text-decoration: underline !important;
-    }
+    #modal-enviar-formulario .welcome-message-box strong { color: #000 !important; }
+    #modal-enviar-formulario .welcome-message-box a { color: #007bff !important; text-decoration: underline !important; }
    </style>
    
    <div class="modal-container">
@@ -281,13 +498,13 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     
     <div class="modal-body">
      <div class="info-card">
-      <p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
-      <p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
-      <p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
-      <p><strong>Senha:</strong> ${dadosCandidato.senha_temporaria} (Necessária para E-mail)</p>
+       <p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+       <p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
+       <p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
+       <p><strong>Senha:</strong> ${dadosCandidato.senha_temporaria} (Necessária para E-mail)</p>
      </div>
      
-      <div class="form-group">
+       <div class="form-group">
            <label class="form-label" style="font-size: 16px; color: #28a745; display:flex; align-items: center; gap: 8px;">
                <i class="fas fa-envelope"></i> Conteúdo (Será enviado por E-mail)
            </label>
@@ -301,7 +518,7 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
            </div>
        </div>
 
-      <div class="form-group">
+     <div class="form-group">
       <label class="form-label" for="link-formulario-cadastro" style="display:flex; align-items: center; gap: 8px;">
        <i class="fab fa-whatsapp" style="color: #25D366;"></i> Link do Formulário (Será enviado por WhatsApp):
       </label>
@@ -324,44 +541,43 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
       <button type="button" class="btn btn-cancelar" onclick="fecharModalEnviarFormulario()">
        <i class="fas fa-times"></i> Cancelar
       </button>
-      <button type="button" class="btn btn-salvar" id="btn-enviar-mensagem-boas-vindas" 
-       onclick="salvarEEnviarMensagens('${candidatoId}')" disabled>
+      
+      <button type="button" class="btn btn-salvar" id="btn-enviar-mensagem-boas-vindas" disabled>
        <i class="fas fa-paper-plane"></i> Enviar WhatsApp e E-mail
       </button>
+      
      </div>
     </div>
-    </div>
+   </div>
   `;
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
 
-    // --- LÓGICA DE LINK SEM TOKEN (ATUALIZADO) ---
+    // --- LÓGICA DE LINK E EVENT LISTENER ---
     const linkInput = document.getElementById("link-formulario-cadastro");
     const btnCopiar = document.getElementById("btn-copiar-link-form");
-
-    // --- ⚠️ ATUALIZAÇÃO AQUI ---
-    // Habilita o novo botão
     const btnEnviar = document.getElementById(
       "btn-enviar-mensagem-boas-vindas"
     );
-    // --- ⚠️ FIM DA ATUALIZAÇÃO ---
+
+    // --- ⚠️ CORREÇÃO AQUI: ADICIONANDO O LISTENER ---
+    // Adicionamos o listener de clique aqui, usando o 'candidatoId'
+    // que está no escopo desta função.
+    btnEnviar.addEventListener("click", () => {
+      salvarEEnviarMensagens(candidatoId);
+    });
+    // --- ⚠️ FIM DA CORREÇÃO ---
 
     try {
-      // Define o link do formulário (sem token)
       linkInput.value = linkFormularioBase;
-
-      // Habilita os botões
       btnCopiar.disabled = false;
-      // --- ⚠️ ATUALIZAÇÃO AQUI ---
-      btnEnviar.disabled = false;
-      // --- ⚠️ FIM DA ATUALIZAÇÃO ---
+      btnEnviar.disabled = false; // Habilita o botão
     } catch (error) {
       console.error("Erro ao definir link:", error);
       linkInput.value = "Erro ao gerar link. Tente novamente.";
       window.showToast?.("Erro ao gerar link.", "error");
     }
-    // --- FIM DA LÓGICA DO LINK ---
   } catch (error) {
     console.error("❌ Erro ao criar modal de envio de formulário:", error);
     alert("Erro ao abrir modal.");
@@ -369,34 +585,12 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
 }
 
 /**
- * Fecha o modal de envio de formulário
- */
-window.fecharModalEnviarFormulario = function () {
-  console.log("❌ Fechando modal de envio de formulário");
-  const modal = document.getElementById("modal-enviar-formulario");
-  if (modal) {
-    modal.remove();
-  }
-  document.body.style.overflow = "";
-};
-
-/**
- * Copia o link do formulário
- */
-window.copiarLinkFormulario = function () {
-  const input = document.getElementById("link-formulario-cadastro");
-  if (input) {
-    input.select();
-    document.execCommand("copy");
-    window.showToast?.("Link copiado!", "success");
-  }
-};
-
-/**
  * ⚠️ FUNÇÃO ATUALIZADA (v1.3.2)
  * Salva, abre WhatsApp (com instruções) e dispara E-mail (com novo CSS e link do formulário)
+ *
+ * --- ⚠️ CORREÇÃO AQUI: Removido 'window.' ---
  */
-window.salvarEEnviarMensagens = async function (candidatoId) {
+async function salvarEEnviarMensagens(candidatoId) {
   console.log("💾 Iniciando envio de boas-vindas (WhatsApp e E-mail)...");
 
   const modal = document.getElementById("modal-enviar-formulario");
@@ -457,7 +651,7 @@ window.salvarEEnviarMensagens = async function (candidatoId) {
     console.log("📱 Abrindo WhatsApp...");
     const telefoneLimpo = telefone_contato.replace(/\D/g, "");
 
-    // --- ⚠️ MENSAGEM WHATSAPP ATUALIZADA ---
+    // --- MENSAGEM WHATSAPP ATUALIZADA ---
     const mensagemWhatsApp = `🎉 Olá, ${nome_completo}! Seja bem-vindo(a) à EuPsico!
     
 Sua conta de e-mail corporativa foi criada.
@@ -483,7 +677,7 @@ Qualquer dúvida, fale com o RH.`;
     console.log("📨 Chamando Cloud Function 'enviarEmail' (duas vezes)...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
 
-    // --- ⚠️ E-MAIL HTML ATUALIZADO (COM CSS) ---
+    // --- E-MAIL HTML ATUALIZADO (COM CSS) ---
     const assuntoEmail = `🎉 Bem-vindo(a) à EuPsico! Seus próximos passos estão aqui.`;
 
     const emailHtml = `
@@ -570,13 +764,12 @@ Qualquer dúvida, fale com o RH.`;
 
       console.log("✅ E-mails de boas-vindas enviados com sucesso.");
     } catch (emailError) {
-      // Se um dos e-mails falhar, o processo para e avisa o usuário.
       console.error("❌ Falha ao enviar um dos e-mails:", emailError);
       throw new Error(
         `Falha ao enviar e-mail: ${emailError.message}. O WhatsApp pode ter sido aberto, mas o e-mail falhou.`
       );
     }
-    // --- ⚠️ FIM DA MUDANÇA ---
+    // --- FIM DA MUDANÇA ---
 
     // === 5. AÇÃO 3: Atualizar Firestore ===
     console.log("💾 Atualizando Firestore...");
@@ -609,4 +802,4 @@ Qualquer dúvida, fale com o RH.`;
         '<i class="fas fa-paper-plane"></i> Enviar WhatsApp e E-mail';
     }
   }
-};
+}
