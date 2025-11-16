@@ -1,5 +1,5 @@
 // ====================================================================
-// assets/js/candidatura-publica.js - VERSÃO COMPLETA COM ESPECIALIZAÇÕES
+// assets/js/candidatura-publica.js - VERSÃO ORIGINAL + NOVOS CAMPOS
 // ====================================================================
 
 import {
@@ -236,36 +236,18 @@ async function handleCandidatura(e) {
   const vagaId = selectVaga.value;
   const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo");
 
-  // Capturar TODOS os campos do formulário
+  // ⭐ CAPTURANDO CAMPOS ORIGINAIS
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
   const telefone = document.getElementById("telefone-candidato").value.trim();
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
+  const complemento = document.getElementById("complemento-endereco")
+    ? document.getElementById("complemento-endereco").value.trim()
+    : "";
   const rua = enderecoRua.value.trim();
   const cidade = cidadeEndereco.value.trim();
   const estado = estadoEndereco.value.trim();
-
-  // Novos campos
-  const dataNascimento = document
-    .getElementById("data-nascimento")
-    .value.trim();
-  const genero = document.getElementById("genero").value;
-  const escolaridade = document.getElementById("escolaridade").value;
-  const areaFormacao = document.getElementById("area-formacao").value.trim();
-  const especializacoes =
-    document.getElementById("especializacoes").value.trim() || "Não informado";
-  const disponibilidadeInicio = document.getElementById(
-    "disponibilidade-inicio"
-  ).value;
-  const experienciaArea = document.getElementById("experiencia-area").value;
-  const linkedinUrl =
-    document.getElementById("linkedin-url").value.trim() || "";
-  const portfolioUrl =
-    document.getElementById("portfolio-url").value.trim() || "";
-  const motivacao = document.getElementById("motivacao").value.trim();
-  const pcd = document.getElementById("pcd").value || "Não informado";
-
   const resumoExperiencia = document
     .getElementById("resumo-experiencia")
     .value.trim();
@@ -274,6 +256,43 @@ async function handleCandidatura(e) {
     .value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
   const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
+
+  // ⭐ NOVOS CAMPOS ADICIONADOS
+  const dataNascimento = document.getElementById("data-nascimento")
+    ? document.getElementById("data-nascimento").value.trim()
+    : "";
+  const genero = document.getElementById("genero")
+    ? document.getElementById("genero").value
+    : "";
+  const escolaridade = document.getElementById("escolaridade")
+    ? document.getElementById("escolaridade").value
+    : "";
+  const areaFormacao = document.getElementById("area-formacao")
+    ? document.getElementById("area-formacao").value.trim()
+    : "";
+  const especializacoes = document.getElementById("especializacoes")
+    ? document.getElementById("especializacoes").value.trim()
+    : "Não informado";
+  const disponibilidadeInicio = document.getElementById(
+    "disponibilidade-inicio"
+  )
+    ? document.getElementById("disponibilidade-inicio").value
+    : "";
+  const experienciaArea = document.getElementById("experiencia-area")
+    ? document.getElementById("experiencia-area").value
+    : "";
+  const linkedinUrl = document.getElementById("linkedin-url")
+    ? document.getElementById("linkedin-url").value.trim()
+    : "";
+  const portfolioUrl = document.getElementById("portfolio-url")
+    ? document.getElementById("portfolio-url").value.trim()
+    : "";
+  const motivacao = document.getElementById("motivacao")
+    ? document.getElementById("motivacao").value.trim()
+    : "";
+  const pcd = document.getElementById("pcd")
+    ? document.getElementById("pcd").value
+    : "Não informado";
 
   // Validação de campos obrigatórios
   if (
@@ -285,13 +304,6 @@ async function handleCandidatura(e) {
     !numero ||
     !cidade ||
     !estado ||
-    !dataNascimento ||
-    !genero ||
-    !escolaridade ||
-    !areaFormacao ||
-    !disponibilidadeInicio ||
-    !experienciaArea ||
-    !motivacao ||
     !resumoExperiencia ||
     !habilidades ||
     !comoConheceu ||
@@ -325,7 +337,7 @@ async function handleCandidatura(e) {
     );
     console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
-    // TODOS OS CAMPOS DA CANDIDATURA
+    // ⭐ OBJETO COM TODOS OS CAMPOS (ORIGINAIS + NOVOS)
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
@@ -334,9 +346,15 @@ async function handleCandidatura(e) {
       telefone_contato: telefone,
       cep: cep,
       numero_endereco: numero,
+      complemento_endereco: complemento,
       endereco_rua: rua,
       cidade: cidade,
       estado: estado,
+      resumo_experiencia: resumoExperiencia,
+      habilidades_competencias: habilidades,
+      como_conheceu: comoConheceu,
+      link_curriculo_drive: linkCurriculoDrive,
+      // ⭐ NOVOS CAMPOS
       data_nascimento: dataNascimento,
       genero: genero,
       escolaridade: escolaridade,
@@ -348,10 +366,6 @@ async function handleCandidatura(e) {
       portfolio_url: portfolioUrl,
       motivacao: motivacao,
       pcd: pcd,
-      resumo_experiencia: resumoExperiencia,
-      habilidades_competencias: habilidades,
-      como_conheceu: comoConheceu,
-      link_curriculo_drive: linkCurriculoDrive,
     };
 
     console.log("🔥 Salvando candidatura no Firebase...");
