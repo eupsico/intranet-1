@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.1.0 (Botão "Ver Currículo" movido para o footer do modal)
+ * Versão: 6.2.0 (Botão "Ver Currículo" estilizado com cor laranja)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -1369,7 +1369,9 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   // ============================================
   // ✅ INÍCIO DA ATUALIZAÇÃO
   // ============================================
-  const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
+  const btnVerCurriculo = document.getElementById(
+    "entrevista-rh-ver-curriculo"
+  );
   // Encontra o footer do modal
   const modalFooter = modalAvaliacaoRH.querySelector(".modal-footer");
 
@@ -1378,19 +1380,22 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.href = linkCurriculo;
 
     if (!linkCurriculo || linkCurriculo === "#") {
-      //btnVerCurriculo.disabled = true; // Desabilita
-      btnVerCurriculo.style.display = "none"; // Ou esconde
+      btnVerCurriculo.style.display = "none"; // Esconde
     } else {
-      //btnVerCurriculo.disabled = false; // Habilita
       btnVerCurriculo.style.display = "inline-flex"; // Garante que é visível
     }
 
     // Adiciona classes de botão de rodapé
-    btnVerCurriculo.classList.add("action-button", "secondary");
+    btnVerCurriculo.classList.add("action-button"); // Remove 'secondary'
     btnVerCurriculo.style.marginRight = "auto"; // Alinha à esquerda
     btnVerCurriculo.target = "_blank";
     btnVerCurriculo.innerHTML =
       '<i class="fas fa-file-alt me-2"></i> Ver Currículo';
+
+    // ✅ Adiciona estilo laranja
+    btnVerCurriculo.style.backgroundColor = "#ff9800";
+    btnVerCurriculo.style.borderColor = "#ff9800";
+    btnVerCurriculo.style.color = "white";
 
     // Move o botão para o rodapé (no início)
     modalFooter.prepend(btnVerCurriculo);
@@ -1446,7 +1451,7 @@ async function submeterAvaliacaoRH(e) {
 
   console.log("🔹 Entrevistas: Submetendo avaliação");
 
-  const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
+  const modalAvaliacaoRH = document.getElementById("modal-scss");
   const btnRegistrarAvaliacao = document.getElementById(
     "btn-registrar-entrevista-rh"
   );
@@ -1501,7 +1506,7 @@ async function submeterAvaliacaoRH(e) {
     notas: {
       motivacao: notaMotivacao,
       aderencia: notaAderencia,
-      comunicação: notaComunicacao,
+      comunicacao: notaComunicacao,
     },
     pontos_fortes: pontosFortes,
     pontos_atencao: pontosAtencao,
