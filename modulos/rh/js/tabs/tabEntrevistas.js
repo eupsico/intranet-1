@@ -1369,9 +1369,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   // ============================================
   // ✅ INÍCIO DA ATUALIZAÇÃO
   // ============================================
-  const btnVerCurriculo = document.getElementById(
-    "entrevista-rh-ver-curriculo"
-  );
+  const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
   // Encontra o footer do modal
   const modalFooter = modalAvaliacaoRH.querySelector(".modal-footer");
 
