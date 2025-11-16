@@ -385,17 +385,17 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
 }
 
 /**
- * Salva, abre WhatsApp e dispara E-mail
- * VERSÃO 1.4.0 - Com validação de senha e mensagens profissionais
+ * Salva e envia mensagens
+ * VERSÃO 1.5.0 - Com validação e modal de reset de senha
  */
 async function salvarEEnviarMensagens(candidatoId) {
-  console.log("💾 Iniciando envio de boas-vindas (WhatsApp e E-mail)...");
+  console.log("💾 Iniciando envio de boas-vindas...");
 
   const modal = document.getElementById("modal-enviar-formulario");
   const btnEnviar = modal?.querySelector("#btn-enviar-mensagem-boas-vindas");
   const linkInput = modal?.querySelector("#link-formulario-cadastro");
 
-  // 1. Validar dados do candidato
+  // Validar dados do candidato
   if (!dadosCandidatoAtual || dadosCandidatoAtual.id !== candidatoId) {
     console.error("❌ Dados do candidato não encontrados");
     window.showToast?.("Erro: Dados do candidato não carregados.", "error");
@@ -412,24 +412,26 @@ async function salvarEEnviarMensagens(candidatoId) {
 
   const linkFormulario = linkInput ? linkInput.value : "";
 
-  // ⭐ VALIDAÇÃO: Verificar se a senha existe
+  // ⭐ VALIDAÇÃO: Se não houver senha, abrir modal de reset
   if (
     !senha_temporaria ||
     senha_temporaria === "N/A" ||
     senha_temporaria === ""
   ) {
-    window.showToast?.(
-      "❌ Erro: Senha temporária não encontrada. Por favor, solicite a criação do e-mail corporativo primeiro (Etapa 1).",
-      "error"
-    );
-    console.error(
-      "❌ Senha temporária não encontrada para o candidato:",
+    console.log(
+      "⚠️ Senha temporária não encontrada para o candidato:",
       candidatoId
     );
+
+    // Fechar o modal atual de envio
+    window.fecharModalEnviarFormulario();
+
+    // Abrir modal de reset de senha
+    abrirModalResetSenha(candidatoId, email_novo, nome_completo);
     return;
   }
 
-  // Validação completa dos dados
+  // Validação completa dos outros dados
   if (
     !nome_completo ||
     !email_pessoal ||
@@ -437,10 +439,7 @@ async function salvarEEnviarMensagens(candidatoId) {
     !telefone_contato ||
     !linkFormulario
   ) {
-    window.showToast?.(
-      "Erro: Dados do candidato incompletos. Verifique e-mail, telefone e credenciais.",
-      "error"
-    );
+    window.showToast?.("Erro: Dados do candidato incompletos.", "error");
     console.error("❌ Dados incompletos:", dadosCandidatoAtual);
     return;
   }
@@ -453,7 +452,7 @@ async function salvarEEnviarMensagens(candidatoId) {
   try {
     const primeiroNome = nome_completo.split(" ")[0];
 
-    // === MENSAGEM WHATSAPP (Profissional e clara) ===
+    // === MENSAGEM WHATSAPP ===
     const mensagemWhatsApp = `Olá, ${primeiroNome}! 👋
 
 Seja bem-vindo(a) à equipe EuPsico! Estamos muito felizes em tê-lo(a) conosco.
@@ -491,7 +490,7 @@ Equipe EuPsico 💙`;
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
     window.open(linkWhatsApp, "_blank");
 
-    // === E-MAIL HTML (Profissional e acolhedor) ===
+    // === E-MAIL (usando a mesma Cloud Function de enviar e-mail que você já tem) ===
     console.log("📨 Enviando e-mails de boas-vindas...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
     const assuntoEmail = `Boas-vindas à EuPsico - Seus dados de acesso`;
@@ -511,12 +510,10 @@ Equipe EuPsico 💙`;
     .credentials-box { background: #ffffff; padding: 20px; margin: 25px 0; border-left: 4px solid #007bff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .credentials-box h3 { margin: 0 0 15px 0; color: #007bff; font-size: 18px; }
     .credentials-box p { margin: 8px 0; font-size: 15px; }
-    .credentials-box strong { color: #333; font-weight: 600; }
     .credential-value { background: #f0f4f8; padding: 8px 12px; border-radius: 4px; display: inline-block; font-family: 'Courier New', monospace; font-size: 14px; }
     .btn-primary { display: inline-block; background: #007bff; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; text-align: center; }
     .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 18px; margin: 25px 0; border-radius: 6px; }
     .warning-box h3 { margin: 0 0 12px 0; color: #856404; font-size: 16px; }
-    .warning-box p { margin: 8px 0; color: #856404; }
     .steps-box { background: #ffffff; padding: 20px; margin: 25px 0; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .steps-box h3 { margin: 0 0 15px 0; color: #28a745; font-size: 18px; }
     .steps-box ol { margin: 10px 0 0 20px; padding: 0; }
@@ -533,13 +530,13 @@ Equipe EuPsico 💙`;
     <div class="content">
       <div class="greeting">
         <p>Olá, <strong>${nome_completo}</strong>!</p>
-        <p>É com grande alegria que recebemos você na equipe EuPsico. Estamos ansiosos para contar com a sua contribuição e talento.</p>
+        <p>É com grande alegria que recebemos você na equipe EuPsico. Estamos ansiosos para contar com sua contribuição e talento.</p>
       </div>
       
       <div class="credentials-box">
         <h3>🔐 Suas Credenciais de Acesso</h3>
-        <p><strong>E-mail Corporativo:</strong> <span class="credential-value">${email_novo}</span></p>
-        <p><strong>Senha Temporária:</strong> <span class="credential-value">${senha_temporaria}</span></p>
+        <p><strong>E-mail Corporativo:</strong><br><span class="credential-value">${email_novo}</span></p>
+        <p><strong>Senha Temporária:</strong><br><span class="credential-value">${senha_temporaria}</span></p>
         <div style="text-align: center; margin-top: 20px;">
           <a href="https://mail.google.com" class="btn-primary" target="_blank">
             Acessar Meu E-mail
@@ -550,17 +547,19 @@ Equipe EuPsico 💙`;
       <div class="warning-box">
         <h3>⚠️ Ação Obrigatória nas Próximas 24 Horas</h3>
         <p>Por questões de segurança, você deve <strong>alterar sua senha</strong> no primeiro acesso. O sistema solicitará automaticamente essa alteração.</p>
-        <p><strong>Importante:</strong> Após 24 horas sem alteração, a senha temporária será bloqueada por segurança.</p>
+        <p><strong>Importante:</strong> Após 24 horas sem alteração, a senha temporária será bloqueada.</p>
       </div>
       
       <div class="steps-box">
         <h3>📋 Próximos Passos</h3>
         <ol>
           <li>Acesse <strong>mail.google.com</strong> e faça login com suas credenciais</li>
-          <li>Troque sua senha temporária (o sistema solicitará)</li>
+          <li>Troque sua senha temporária quando solicitado</li>
           <li>Acesse o formulário de cadastro pelo link abaixo</li>
         </ol>
-        <p style="margin-top: 15px;"><strong>📝 Observação importante:</strong> O formulário de cadastro só pode ser acessado usando seu e-mail corporativo @eupsico.org.br. Certifique-se de fazer login antes de clicar no link.</p>
+        <p style="margin-top: 15px; background: #e7f3ff; padding: 12px; border-radius: 4px;">
+          <strong>📝 Importante:</strong> O formulário de cadastro só pode ser acessado usando seu e-mail corporativo @eupsico.org.br. Certifique-se de fazer login antes de clicar no link.
+        </p>
         <div style="text-align: center; margin-top: 20px;">
           <a href="${linkFormulario}" class="btn-primary" style="background: #28a745;" target="_blank">
             Acessar Formulário de Cadastro
@@ -569,7 +568,7 @@ Equipe EuPsico 💙`;
       </div>
       
       <p style="margin-top: 25px; font-size: 14px; color: #666;">
-        Se tiver qualquer dúvida durante o processo, não hesite em entrar em contato com o departamento de RH pelo e-mail <a href="mailto:rh@eupsico.org.br" style="color: #007bff;">rh@eupsico.org.br</a>.
+        Se tiver qualquer dúvida, entre em contato com o RH: <a href="mailto:rh@eupsico.org.br" style="color: #007bff;">rh@eupsico.org.br</a>
       </p>
       
       <p style="margin-top: 20px;">
@@ -579,64 +578,57 @@ Equipe EuPsico 💙`;
     </div>
     
     <div class="footer">
-      <p>Este é um e-mail automático. Por favor, não responda diretamente a esta mensagem.</p>
-      <p>© ${new Date().getFullYear()} EuPsico - Todos os direitos reservados</p>
+      <p>Este é um e-mail automático. Por favor, não responda diretamente.</p>
+      <p>© ${new Date().getFullYear()} EuPsico</p>
     </div>
   </div>
 </body>
 </html>
     `;
 
-    // Enviar e-mails
     try {
-      // 1. E-mail pessoal
-      console.log(`Enviando e-mail para ${email_pessoal}...`);
+      const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
+
       await enviarEmailFunc({
         destinatario: email_pessoal,
         assunto: assuntoEmail,
         html: emailHtml,
       });
 
-      // 2. E-mail corporativo
-      console.log(`Enviando e-mail para ${email_novo}...`);
       await enviarEmailFunc({
         destinatario: email_novo,
         assunto: assuntoEmail,
         html: emailHtml,
       });
 
-      console.log("✅ E-mails enviados com sucesso");
+      console.log("✅ E-mails enviados");
     } catch (emailError) {
       console.error("❌ Falha ao enviar e-mail:", emailError);
-      throw new Error(`Falha ao enviar e-mail: ${emailError.message}`);
     }
 
-    // === Atualizar Firestore ===
-    console.log("💾 Atualizando Firestore...");
+    // Atualizar Firestore
     const { candidatosCollection, currentUserData } = getGlobalState();
     const candidatoRef = doc(candidatosCollection, candidatoId);
-    const novoStatus = "FORM_ENVIADO";
 
     await updateDoc(candidatoRef, {
-      status_recrutamento: novoStatus,
+      status_recrutamento: "FORM_ENVIADO",
       "admissao_info.link_formulario": linkFormulario,
       "admissao_info.data_envio_formulario": new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: `✅ Boas-vindas enviadas via WhatsApp e e-mail. Credenciais: ${email_novo}`,
+        acao: `✅ Boas-vindas enviadas (WhatsApp + E-mail). Credenciais: ${email_novo}`,
         usuario: currentUserData?.uid || "rh_admin",
       }),
     });
 
-    console.log(`✅ Status atualizado para ${novoStatus}`);
+    console.log("✅ Status atualizado");
     window.showToast?.("✅ Mensagens enviadas com sucesso!", "success");
 
     window.fecharModalEnviarFormulario();
     renderizarCadastroDocumentos(getGlobalState());
   } catch (error) {
-    console.error("❌ Erro ao enviar mensagens:", error);
+    console.error("❌ Erro:", error);
     alert(`Erro: ${error.message}`);
-    window.showToast?.(`Erro: ${error.message}`, "error");
 
     if (btnEnviar) {
       btnEnviar.disabled = false;
@@ -645,3 +637,163 @@ Equipe EuPsico 💙`;
     }
   }
 }
+
+/**
+ * Abre modal para resetar senha quando não encontrada
+ * NOVO - Versão 1.0
+ */
+function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
+  console.log("🔑 Abrindo modal de reset de senha");
+
+  const modalExistente = document.getElementById("modal-reset-senha");
+  if (modalExistente) {
+    modalExistente.remove();
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "modal-reset-senha";
+  modal.className = "modal-overlay is-visible";
+  modal.innerHTML = `
+    <div class="modal-content">
+      <button class="btn-fechar-modal" onclick="fecharModalResetSenha()">×</button>
+      <h3>🔑 Resetar Senha Temporária</h3>
+      
+      <div class="alert warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Senha não encontrada!</strong>
+        <p>Não foi possível localizar a senha temporária para este candidato.</p>
+      </div>
+      
+      <div class="info-box">
+        <p><strong>Candidato:</strong> ${nomeCandidato}</p>
+        <p><strong>E-mail Corporativo:</strong> ${emailCorporativo}</p>
+      </div>
+      
+      <p>Clique no botão abaixo para gerar uma nova senha temporária no Google Workspace:</p>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fecharModalResetSenha()">
+          Cancelar
+        </button>
+        <button 
+          id="btn-confirmar-reset-senha" 
+          class="btn btn-primary"
+          data-candidato-id="${candidatoId}"
+          data-email="${emailCorporativo}"
+        >
+          <i class="fas fa-key"></i> Gerar Nova Senha
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+
+  // Event listener para o botão de confirmar
+  document
+    .getElementById("btn-confirmar-reset-senha")
+    .addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const candidatoId = btn.dataset.candidatoId;
+      const email = btn.dataset.email;
+
+      await executarResetSenha(candidatoId, email);
+    });
+}
+
+/**
+ * Executa o reset de senha via Apps Script
+ * NOVO - Versão 1.0
+ */
+async function executarResetSenha(candidatoId, email) {
+  const btn = document.getElementById("btn-confirmar-reset-senha");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetando...';
+  }
+
+  try {
+    console.log("🔄 Chamando Apps Script para resetar senha:", email);
+
+    // URL do Google Apps Script (a mesma que você usa para criar usuários)
+    const APPS_SCRIPT_URL =
+      "https://script.google.com/macros/s/SUA_URL_AQUI/exec";
+
+    const response = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        acao: "resetar",
+        email: email,
+      }),
+    });
+
+    const resultado = await response.json();
+
+    if (resultado && resultado.sucesso === true) {
+      console.log("✅ Senha resetada com sucesso:", resultado.novaSenha);
+
+      // Salvar a nova senha no Firestore
+      const state = getGlobalState();
+      const { candidatosCollection, currentUserData } = state;
+      const candidatoRef = doc(candidatosCollection, candidatoId);
+
+      await updateDoc(candidatoRef, {
+        "admissao_info.senha_temporaria": resultado.novaSenha,
+        "admissao_info.data_reset_senha": new Date(),
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `🔑 Senha temporária resetada. Nova senha: ${resultado.novaSenha}`,
+          usuario: currentUserData?.uid || "rh_admin",
+        }),
+      });
+
+      console.log("✅ Senha salva no Firestore");
+
+      // Fechar modal de reset
+      fecharModalResetSenha();
+
+      // Mostrar sucesso e instruções
+      window.showToast?.(
+        "✅ Senha resetada com sucesso! Agora você pode enviar o formulário.",
+        "success"
+      );
+
+      alert(
+        `✅ Senha resetada com sucesso!\n\nNova senha: ${resultado.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
+      );
+
+      // Recarregar a listagem para pegar a nova senha
+      renderizarCadastroDocumentos(state);
+    } else {
+      throw new Error(resultado.mensagem || "Erro ao resetar senha");
+    }
+  } catch (error) {
+    console.error("❌ Erro ao resetar senha:", error);
+    window.showToast?.("❌ Erro ao resetar senha", "error");
+    alert(`Erro: ${error.message}`);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-key"></i> Gerar Nova Senha';
+    }
+  }
+}
+
+/**
+ * Fecha o modal de reset de senha
+ */
+function fecharModalResetSenha() {
+  const modal = document.getElementById("modal-reset-senha");
+  if (modal) {
+    modal.remove();
+    document.body.style.overflow = "auto";
+  }
+}
+
+// Expor funções globalmente
+window.fecharModalResetSenha = fecharModalResetSenha;
