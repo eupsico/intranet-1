@@ -1104,11 +1104,11 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
 // FUNÇÃO: uploadCurriculo (CORRIGIDA)
 // ====================================================================
 exports.uploadCurriculo = onRequest(
-  { 
-    cors: true,  // ✅ CORS HABILITADO CORRETAMENTE
+  {
+    cors: true, // ✅ CORS HABILITADO CORRETAMENTE
     timeoutSeconds: 60,
-    memory: "256MiB"
-  }, 
+    memory: "256MiB",
+  },
   async (req, res) => {
     // Validar método
     if (req.method !== "POST") {
@@ -1117,7 +1117,8 @@ exports.uploadCurriculo = onRequest(
     }
 
     try {
-      const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
+      const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } =
+        req.body;
 
       // Validar campos obrigatórios
       if (!fileData || !mimeType || !fileName) {
@@ -1157,7 +1158,10 @@ exports.uploadCurriculo = onRequest(
 
       logger.info("📥 Status GAS:", gasResponse.status);
       const responseText = await gasResponse.text();
-      logger.info("📥 Resposta GAS (primeiros 500 chars):", responseText.substring(0, 500));
+      logger.info(
+        "📥 Resposta GAS (primeiros 500 chars):",
+        responseText.substring(0, 500)
+      );
 
       // Tentar parsear JSON
       let gasJson;
@@ -1185,7 +1189,7 @@ exports.uploadCurriculo = onRequest(
     } catch (error) {
       logger.error("❌ Erro na uploadCurriculo:", error.message);
       logger.error("Stack trace:", error.stack);
-      
+
       res.status(500).json({
         status: "error",
         message: `Erro ao fazer upload: ${error.message}`,
@@ -1194,14 +1198,14 @@ exports.uploadCurriculo = onRequest(
   }
 );
 
-/ ====================================================================
+// ====================================================================
 // FUNÇÃO: salvarCandidatura (CORRIGIDA)
 // ====================================================================
 exports.salvarCandidatura = onCall(
-  { 
+  {
     cors: true,
-    timeoutSeconds: 60 
-  }, 
+    timeoutSeconds: 60,
+  },
   async (request) => {
     try {
       const data = request.data;
@@ -1253,7 +1257,9 @@ exports.salvarCandidatura = onCall(
       logger.info("💾 Salvando no Firestore...");
 
       // Salvar no Firestore
-      const docRef = await db.collection("candidaturas").add(novaCandidaturaData);
+      const docRef = await db
+        .collection("candidaturas")
+        .add(novaCandidaturaData);
 
       logger.info("✅ Candidatura salva com sucesso! ID:", docRef.id);
 
@@ -1273,7 +1279,6 @@ exports.salvarCandidatura = onCall(
     }
   }
 );
-
 
 /**
  * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/validarTokenTeste
