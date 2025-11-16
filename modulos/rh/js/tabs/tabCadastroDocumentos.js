@@ -801,8 +801,8 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
 }
 
 /**
- * Executa o reset de senha via Apps Script
- * NOVO - Versão 1.0
+ * Executa o reset de senha via Cloud Function
+ * VERSÃO 2.0 - Usando Cloud Function (evita CORS)
  */
 async function executarResetSenha(candidatoId, email) {
   const btn = document.getElementById("btn-confirmar-reset-senha");
@@ -813,27 +813,18 @@ async function executarResetSenha(candidatoId, email) {
   }
 
   try {
-    console.log("🔄 Chamando Apps Script para resetar senha:", email);
+    console.log("🔄 Chamando Cloud Function para resetar senha:", email);
 
-    // URL do Google Apps Script (a mesma que você usa para criar usuários)
-    const APPS_SCRIPT_URL =
-      "https://script.google.com/macros/s/SUA_URL_AQUI/exec";
+    // ⭐ USAR CLOUD FUNCTION (igual criarEmailGoogleWorkspace)
+    const resetarSenha = httpsCallable(
+      functions,
+      "resetarSenhaGoogleWorkspace"
+    );
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        acao: "resetar",
-        email: email,
-      }),
-    });
+    const resultado = await resetarSenha({ email: email });
 
-    const resultado = await response.json();
-
-    if (resultado && resultado.sucesso === true) {
-      console.log("✅ Senha resetada com sucesso:", resultado.novaSenha);
+    if (resultado.data && resultado.data.sucesso === true) {
+      console.log("✅ Senha resetada com sucesso:", resultado.data.novaSenha);
 
       // Salvar a nova senha no Firestore
       const state = getGlobalState();
@@ -841,11 +832,11 @@ async function executarResetSenha(candidatoId, email) {
       const candidatoRef = doc(candidatosCollection, candidatoId);
 
       await updateDoc(candidatoRef, {
-        "admissao_info.senha_temporaria": resultado.novaSenha,
+        "admissao_info.senha_temporaria": resultado.data.novaSenha,
         "admissao_info.data_reset_senha": new Date(),
         historico: arrayUnion({
           data: new Date(),
-          acao: `🔑 Senha temporária resetada. Nova senha: ${resultado.novaSenha}`,
+          acao: `🔑 Senha temporária resetada. Nova senha: ${resultado.data.novaSenha}`,
           usuario: currentUserData?.uid || "rh_admin",
         }),
       });
@@ -862,13 +853,13 @@ async function executarResetSenha(candidatoId, email) {
       );
 
       alert(
-        `✅ Senha resetada com sucesso!\n\nNova senha: ${resultado.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
+        `✅ Senha resetada com sucesso!\n\nNova senha: ${resultado.data.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
       );
 
       // Recarregar a listagem para pegar a nova senha
       renderizarCadastroDocumentos(state);
     } else {
-      throw new Error(resultado.mensagem || "Erro ao resetar senha");
+      throw new Error(resultado.data?.mensagem || "Erro ao resetar senha");
     }
   } catch (error) {
     console.error("❌ Erro ao resetar senha:", error);
