@@ -1,9 +1,14 @@
 /**
  * Arquivo: assets/js/fichas-de-cadastro.js
+ * Versão 2.0 - Com autenticação via e-mail corporativo (sem token)
  * Descrição: Controla a página pública de cadastro de novo colaborador.
  */
 
-import { db, functions, storage } from "./firebase-init.js";
+import { db, auth, functions, storage } from "./firebase-init.js";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 import {
   ref,
@@ -17,88 +22,157 @@ import {
 
 // Elementos do DOM
 const loadingOverlay = document.getElementById("loading-overlay");
+const loginContainer = document.getElementById("login-container");
+const formContainer = document.getElementById("form-container");
 const form = document.getElementById("ficha-inscricao-form");
 const messageContainer = document.getElementById("message-container");
-const tokenInput = document.getElementById("token");
+
+// Elementos de login
+const loginForm = document.getElementById("login-form");
+const loginEmail = document.getElementById("login-email");
+const loginPassword = document.getElementById("login-password");
+const btnLogin = document.getElementById("btn-login");
+
+// Elementos do formulário
 const nomeInput = document.getElementById("prof-nome");
 const emailInput = document.getElementById("prof-email");
 const profissaoSelect = document.getElementById("prof-profissao");
 const btnSubmit = document.getElementById("btn-submit-ficha");
 
-// Funções da Cloud Function
-const validarTokenCadastro = httpsCallable(functions, "validarTokenCadastro");
+// Cloud Functions
 const submeterFichaInscricao = httpsCallable(
   functions,
   "submeterFichaInscricao"
 );
 
 /**
- * Função principal - Chamada ao carregar a página
+ * Função principal - Verificar se usuário está logado
  */
 window.addEventListener("load", async () => {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
+  setLoading(true, "Carregando...");
 
-  if (!token) {
-    return showError(
-      "Link inválido ou expirado. Por favor, solicite um novo link ao RH."
-    );
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Usuário está logado
+      console.log("✅ Usuário logado:", user.email);
+
+      // Verificar se é e-mail corporativo
+      if (!user.email.endsWith("@eupsico.org.br")) {
+        setLoading(false);
+        return showError(
+          "Acesso negado. Use seu e-mail corporativo @eupsico.org.br"
+        );
+      }
+
+      // Mostrar formulário
+      await carregarFormulario(user);
+    } else {
+      // Mostrar tela de login
+      setLoading(false);
+      mostrarTelaLogin();
+    }
+  });
+});
+
+/**
+ * Mostrar tela de login
+ */
+function mostrarTelaLogin() {
+  loginContainer.style.display = "block";
+  formContainer.style.display = "none";
+  messageContainer.style.display = "none";
+}
+
+/**
+ * Processar login
+ */
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
+
+  if (!email.endsWith("@eupsico.org.br")) {
+    return showMessage("Use seu e-mail corporativo @eupsico.org.br", "error");
   }
 
-  tokenInput.value = token;
+  setLoading(true, "Fazendo login...");
+  btnLogin.disabled = true;
 
   try {
-    // 1. Validar o token e buscar os dados
-    console.log("Validando token...");
-    const result = await validarTokenCadastro({ token: token });
+    await signInWithEmailAndPassword(auth, email, password);
+    console.log("✅ Login realizado com sucesso");
+    // O onAuthStateChanged vai carregar o formulário automaticamente
+  } catch (error) {
+    console.error("❌ Erro no login:", error);
+    setLoading(false);
+    btnLogin.disabled = false;
 
-    if (!result.data.sucesso) {
-      throw new Error(result.data.erro || "Token inválido ou já utilizado.");
+    let mensagem = "Erro ao fazer login. Verifique suas credenciais.";
+
+    if (error.code === "auth/wrong-password") {
+      mensagem =
+        "Senha incorreta. Verifique a senha temporária enviada pelo RH.";
+    } else if (error.code === "auth/user-not-found") {
+      mensagem = "E-mail não encontrado. Verifique o e-mail corporativo.";
+    } else if (error.code === "auth/invalid-email") {
+      mensagem = "E-mail inválido.";
     }
 
-    const dados = result.data;
-    console.log("Token validado:", dados);
-
-    // 2. Preencher o formulário
-    if (nomeInput) nomeInput.value = dados.nome;
-    if (emailInput) emailInput.value = dados.email;
-
-    // 3. Carregar profissões (baseado no gestao_profissionais.js)
-    await carregarListaDeProfissoes(dados.profissao);
-
-    // 4. Mostrar formulário
-    showForm();
-  } catch (error) {
-    console.error("Erro na validação do token:", error);
-    showError(error.message);
+    showMessage(mensagem, "error");
   }
 });
+
+/**
+ * Carregar formulário para usuário logado
+ */
+async function carregarFormulario(user) {
+  try {
+    setLoading(true, "Carregando seus dados...");
+
+    // Preencher dados básicos
+    if (nomeInput) nomeInput.value = user.displayName || "";
+    if (emailInput) emailInput.value = user.email;
+
+    // Carregar lista de profissões
+    await carregarListaDeProfissoes();
+
+    // Mostrar formulário
+    loginContainer.style.display = "none";
+    formContainer.style.display = "block";
+    messageContainer.style.display = "none";
+    setLoading(false);
+  } catch (error) {
+    console.error("❌ Erro ao carregar formulário:", error);
+    setLoading(false);
+    showError("Erro ao carregar formulário. Tente novamente.");
+  }
+}
 
 /**
  * Carrega a lista de profissões das configurações do sistema
  */
 async function carregarListaDeProfissoes(profissaoDefault = "") {
   if (!profissaoSelect) return;
+
   try {
     const configRef = doc(db, "configuracoesSistema", "geral");
     const docSnap = await getDoc(configRef);
+
     if (docSnap.exists() && docSnap.data().listas?.profissoes) {
       const profissoes = docSnap.data().listas.profissoes;
-      let optionsHtml =
-        '<option value="" disabled>Selecione uma profissão</option>';
+
+      let optionsHtml = '<option value="">Selecione sua profissão</option>';
       profissoes.forEach((p) => {
         const selected = p === profissaoDefault ? "selected" : "";
         optionsHtml += `<option value="${p}" ${selected}>${p}</option>`;
       });
+
       profissaoSelect.innerHTML = optionsHtml;
-      // Se a profissão veio da vaga, seleciona ela
-      if (profissaoDefault && !profissoes.includes(profissaoDefault)) {
-        profissaoSelect.innerHTML += `<option value="${profissaoDefault}" selected>${profissaoDefault}</option>`;
-      }
     } else {
       console.warn("Lista de profissões não encontrada.");
       profissaoSelect.innerHTML =
-        '<option value="">Não foi possível carregar</option>';
+        '<option value="">Lista não disponível</option>';
     }
   } catch (error) {
     console.error("Erro ao carregar lista de profissões:", error);
@@ -110,21 +184,16 @@ async function carregarListaDeProfissoes(profissaoDefault = "") {
  */
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  const user = auth.currentUser;
+  if (!user) {
+    return showMessage(
+      "Você precisa estar logado para enviar o formulário.",
+      "error"
+    );
+  }
+
   console.log("Submetendo formulário...");
-
-  const token = tokenInput.value;
-  const password = document.getElementById("prof-password").value;
-  const passwordConfirm = document.getElementById(
-    "prof-password-confirm"
-  ).value;
-
-  // Validações
-  if (password !== passwordConfirm) {
-    return showMessage("As senhas não conferem.", "error");
-  }
-  if (password.length < 6) {
-    return showMessage("A senha deve ter no mínimo 6 caracteres.", "error");
-  }
 
   setLoading(true, "Enviando cadastro...");
 
@@ -139,48 +208,42 @@ form.addEventListener("submit", async (e) => {
 
     setLoading(true, "Enviando documentos (1/2)...");
     const identidadeURL = await uploadArquivo(
-      token,
+      user.uid,
       "identidade",
       fileIdentidade
     );
 
     setLoading(true, "Enviando documentos (2/2)...");
-    const diplomaURL = await uploadArquivo(token, "diploma", fileDiploma);
+    const diplomaURL = await uploadArquivo(user.uid, "diploma", fileDiploma);
 
     // 2. Coletar dados do formulário
     const formData = {
       nome: nomeInput.value,
       email: emailInput.value,
-      password: password,
       contato: document.getElementById("prof-contato").value,
       profissao: profissaoSelect.value,
-      // Adicione outros campos aqui (CPF, Endereço, etc.)
-      // ...
+      userId: user.uid,
       documentos: {
         identidade: identidadeURL,
         diploma: diplomaURL,
-        // Adicione outros URLs de docs aqui
       },
     };
 
     // 3. Enviar para a Cloud Function
-    setLoading(true, "Criando seu usuário...");
-    const result = await submeterFichaInscricao({
-      token: token,
-      formData: formData,
-    });
+    setLoading(true, "Salvando dados...");
+    const result = await submeterFichaInscricao({ formData: formData });
 
     if (!result.data.sucesso) {
-      throw new Error(result.data.erro || "Erro ao criar usuário.");
+      throw new Error(result.data.erro || "Erro ao salvar cadastro.");
     }
 
     // 4. Sucesso
     setLoading(false);
-    showForm(false);
+    formContainer.style.display = "none";
     showMessage(
       "Cadastro realizado com sucesso!",
       "success",
-      "Seu usuário foi criado e seus documentos enviados. O RH entrará em contato para os próximos passos. Você já pode fechar esta página."
+      "Seu cadastro foi enviado. O RH entrará em contato para os próximos passos. Você já pode fechar esta página."
     );
   } catch (error) {
     console.error("Erro ao submeter:", error);
@@ -192,17 +255,17 @@ form.addEventListener("submit", async (e) => {
 /**
  * Função auxiliar para upload de arquivos
  */
-async function uploadArquivo(token, tipoDocumento, file) {
+async function uploadArquivo(userId, tipoDocumento, file) {
   if (!file) throw new Error(`Arquivo ${tipoDocumento} não encontrado.`);
 
-  // Usamos o token como parte do path para segurança
   const storageRef = ref(
     storage,
-    `admissoes/${token}/${tipoDocumento}_${file.name}`
+    `admissoes/${userId}/${tipoDocumento}_${file.name}`
   );
 
   const snapshot = await uploadBytes(storageRef, file);
   const downloadURL = await getDownloadURL(snapshot.ref);
+
   console.log(`Arquivo ${tipoDocumento} enviado: ${downloadURL}`);
   return downloadURL;
 }
@@ -211,38 +274,42 @@ async function uploadArquivo(token, tipoDocumento, file) {
 
 function setLoading(isLoading, message = "") {
   if (isLoading) {
-    loadingOverlay.innerHTML = `<div class="loading-spinner"></div><p style="margin-top: 15px; color: #333;">${message}</p>`;
+    loadingOverlay.innerHTML = `
+      <div class="spinner"></div>
+      <p>${message}</p>
+    `;
     loadingOverlay.classList.add("is-visible");
     if (btnSubmit) btnSubmit.disabled = true;
+    if (btnLogin) btnLogin.disabled = true;
   } else {
     loadingOverlay.classList.remove("is-visible");
     if (btnSubmit) btnSubmit.disabled = false;
+    if (btnLogin) btnLogin.disabled = false;
   }
-}
-
-function showForm(show = true) {
-  form.style.display = show ? "block" : "none";
-  loadingOverlay.classList.remove("is-visible");
 }
 
 function showError(message) {
   loadingOverlay.classList.remove("is-visible");
-  form.style.display = "none";
+  loginContainer.style.display = "none";
+  formContainer.style.display = "none";
   messageContainer.style.display = "block";
   messageContainer.innerHTML = `
- 	<div class="alert alert-danger">
- 		<h4>Erro</h4>
- 		<p>${message}</p>
- 	</div>
- `;
+    <div class="alert error">
+      <i class="fas fa-exclamation-circle"></i>
+      ${message}
+    </div>
+  `;
 }
 
-function showMessage(title, type, message) {
+function showMessage(title, type, description = "") {
   messageContainer.style.display = "block";
   messageContainer.innerHTML = `
- 	<div class="alert alert-${type}">
- 		<h4>${title}</h4>
- 		<p>${message}</p>
- 	</div>
- `;
+    <div class="alert ${type}">
+      <i class="fas fa-${
+        type === "success" ? "check-circle" : "exclamation-circle"
+      }"></i>
+      <strong>${title}</strong>
+      ${description ? `<p>${description}</p>` : ""}
+    </div>
+  `;
 }

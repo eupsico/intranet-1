@@ -4,8 +4,9 @@
  <meta charset="UTF-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
  <title>Ficha de Inscrição - EuPsico</title>
-  <link rel="stylesheet" href="../assets/css/design-system.css" />
+ <link rel="stylesheet" href="../assets/css/design-system.css" />
  <link rel="stylesheet" href="../modulos/rh/css/rh.css" />
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
  <style>
   body {
    background-color: #f4f7f6;
@@ -23,6 +24,7 @@
    border-radius: 8px;
    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
    overflow: hidden;
+   position: relative;
   }
   .form-header {
    background: var(--cor-primaria);
@@ -37,102 +39,254 @@
    padding: 30px;
   }
   .form-footer {
-  	padding: 20px 30px;
-  	background: #f9f9f9;
-  	text-align: right;
+   padding: 20px 30px;
+   background: #f9f9f9;
+   text-align: right;
   }
   .loading-overlay {
-  	position: absolute;
-  	top: 0; left: 0; right: 0; bottom: 0;
-  	background: rgba(255,255,255,0.9);
-  	display: none;
-  	justify-content: center;
-  	align-items: center;
-  	z-index: 10;
+   position: absolute;
+   top: 0; left: 0; right: 0; bottom: 0;
+   background: rgba(255,255,255,0.9);
+   display: none;
+   justify-content: center;
+   align-items: center;
+   flex-direction: column;
+   z-index: 10;
   }
- 	.loading-overlay.is-visible { display: flex; }
+  .loading-overlay.is-visible { 
+   display: flex; 
+  }
+  .loading-overlay .spinner {
+   border: 4px solid #f3f3f3;
+   border-top: 4px solid var(--cor-primaria);
+   border-radius: 50%;
+   width: 50px;
+   height: 50px;
+   animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+   0% { transform: rotate(0deg); }
+   100% { transform: rotate(360deg); }
+  }
+  .loading-overlay p {
+   margin-top: 15px;
+   color: #666;
+   font-size: 14px;
+  }
+  
+  /* Estilos do Login Container */
+  #login-container {
+   padding: 40px 30px;
+   max-width: 450px;
+   margin: 0 auto;
+  }
+  #login-container h2 {
+   text-align: center;
+   margin-bottom: 10px;
+   color: #333;
+  }
+  #login-container > p {
+   text-align: center;
+   color: #666;
+   margin-bottom: 30px;
+   font-size: 14px;
+  }
+  #login-form .form-group {
+   margin-bottom: 20px;
+  }
+  #login-form label {
+   display: block;
+   margin-bottom: 8px;
+   font-weight: 600;
+   color: #333;
+  }
+  #login-form input {
+   width: 100%;
+   padding: 12px;
+   border: 1px solid #ddd;
+   border-radius: 6px;
+   box-sizing: border-box;
+   font-size: 14px;
+  }
+  #login-form input:focus {
+   outline: none;
+   border-color: var(--cor-primaria);
+  }
+  #btn-login {
+   width: 100%;
+   padding: 14px;
+   background: #28a745;
+   color: white;
+   border: none;
+   border-radius: 6px;
+   font-size: 16px;
+   font-weight: 600;
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 8px;
+  }
+  #btn-login:hover {
+   background: #218838;
+  }
+  #btn-login:disabled {
+   background: #ccc;
+   cursor: not-allowed;
+  }
+  .login-footer-text {
+   margin-top: 20px;
+   text-align: center;
+   font-size: 13px;
+   color: #999;
+  }
+  
+  /* Alertas */
+  .alert {
+   padding: 15px 20px;
+   border-radius: 6px;
+   margin-bottom: 20px;
+   display: flex;
+   align-items: center;
+   gap: 12px;
+  }
+  .alert i {
+   font-size: 20px;
+  }
+  .alert.error {
+   background: #f8d7da;
+   color: #721c24;
+   border: 1px solid #f5c6cb;
+  }
+  .alert.success {
+   background: #d4edda;
+   color: #155724;
+   border: 1px solid #c3e6cb;
+  }
  </style>
  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
  <div class="form-container">
- 	<div id="loading-overlay" class="loading-overlay is-visible">
- 		<div class="loading-spinner"></div>
- 	</div>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay is-visible">
+   <div class="spinner"></div>
+   <p>Carregando...</p>
+  </div>
 
+  <!-- Header -->
   <div class="form-header">
    <img src="../assets/img/logo-branca.png" alt="Logo EuPsico" />
    <h2 id="form-title">Ficha de Admissão</h2>
    <p id="form-subtitle">Preencha seus dados para finalizarmos sua contratação.</p>
   </div>
 
- 	<form id="ficha-inscricao-form" class="form-body" style="display: none;">
- 		 		<input type="hidden" id="token" name="token" />
+  <!-- Tela de Login -->
+  <div id="login-container" style="display: none;">
+   <h2>🔐 Acesso ao Formulário</h2>
+   <p>Use seu e-mail corporativo e a senha temporária enviada pelo RH.</p>
+   
+   <form id="login-form">
+    <div class="form-group">
+     <label for="login-email">E-mail Corporativo</label>
+     <input 
+      type="email" 
+      id="login-email" 
+      required 
+      placeholder="seu.nome@eupsico.org.br"
+      autocomplete="email"
+     />
+    </div>
+    
+    <div class="form-group">
+     <label for="login-password">Senha Temporária</label>
+     <input 
+      type="password" 
+      id="login-password" 
+      required 
+      placeholder="Digite a senha enviada pelo RH"
+      autocomplete="current-password"
+     />
+    </div>
+    
+    <button type="submit" id="btn-login">
+     <i class="fas fa-sign-in-alt"></i> Acessar Formulário
+    </button>
+   </form>
+   
+   <p class="login-footer-text">
+    Não recebeu suas credenciais? Entre em contato com o RH.
+   </p>
+  </div>
 
- 		<fieldset>
- 			<legend>Dados de Acesso</legend>
- 			<div class="row">
- 				<div class="col-md-6 form-group">
- 					<label for="prof-nome">Nome Completo</label>
- 					<input type="text" id="prof-nome" class="form-control" readonly />
- 				</div>
- 				<div class="col-md-6 form-group">
- 					<label for="prof-email">E-mail Corporativo (Seu login)</label>
- 					<input type="email" id="prof-email" class="form-control" readonly />
- 				</div>
- 			</div>
- 			<div class="row">
- 				<div class="col-md-6 form-group">
- 					<label for="prof-password">Crie uma Senha</label>
- 					<input type="password" id="prof-password" class="form-control" required />
- 				</div>
- 				<div class="col-md-6 form-group">
- 					<label for="prof-password-confirm">Confirme a Senha</label>
- 					<input type="password" id="prof-password-confirm" class="form-control" required />
- 				</div>
- 			</div>
- 		</fieldset>
+  <!-- Formulário de Cadastro (após login) -->
+  <form id="ficha-inscricao-form" class="form-body" style="display: none;">
+   <input type="hidden" id="token" name="token" />
 
- 		<fieldset>
- 			<legend>Informações Pessoais</legend>
- 			<div class="row">
- 				<div class="col-md-6 form-group">
- 					<label for="prof-contato">Telefone (WhatsApp)</label>
- 					<input type="tel" id="prof-contato" class="form-control" required />
- 				</div>
- 				<div class="col-md-6 form-group">
- 					<label for="prof-profissao">Profissão Principal</label>
- 					<select id="prof-profissao" class="form-control" required>
- 						<option value="">Carregando...</option>
- 						 					</select>
- 				</div>
- 			</div>
- 			 		</fieldset>
-		
- 		<fieldset>
- 			<legend>Documentos (Anexar)</legend>
- 			<div class="form-group">
- 				<label for="doc-identidade">Documento de Identidade (RG/CNH)</label>
- 				<input type="file" id="doc-identidade" class="form-control" required />
- 			</div>
- 			<div class="form-group">
- 				<label for="doc-diploma">Diploma/Certificado de Formação</label>
- 				<input type="file" id="doc-diploma" class="form-control" required />
- 			</div>
- 			 		</fieldset>
+   <fieldset>
+    <legend>Dados de Acesso</legend>
+    <div class="row">
+     <div class="col-md-6 form-group">
+      <label for="prof-nome">Nome Completo</label>
+      <input type="text" id="prof-nome" class="form-control" readonly />
+     </div>
+     <div class="col-md-6 form-group">
+      <label for="prof-email">E-mail Corporativo (Seu login)</label>
+      <input type="email" id="prof-email" class="form-control" readonly />
+     </div>
+    </div>
+    <div class="row">
+     <div class="col-md-6 form-group">
+      <label for="prof-password">Crie uma Senha</label>
+      <input type="password" id="prof-password" class="form-control" required />
+     </div>
+     <div class="col-md-6 form-group">
+      <label for="prof-password-confirm">Confirme a Senha</label>
+      <input type="password" id="prof-password-confirm" class="form-control" required />
+     </div>
+    </div>
+   </fieldset>
 
- 		<div class="form-footer">
- 			<button type="submit" id="btn-submit-ficha" class="btn btn-success">
- 				<i class="fas fa-check-circle me-2"></i> Finalizar e Enviar Cadastro
- 			</button>
- 		</div>
- 	</form>
+   <fieldset>
+    <legend>Informações Pessoais</legend>
+    <div class="row">
+     <div class="col-md-6 form-group">
+      <label for="prof-contato">Telefone (WhatsApp)</label>
+      <input type="tel" id="prof-contato" class="form-control" required />
+     </div>
+     <div class="col-md-6 form-group">
+      <label for="prof-profissao">Profissão Principal</label>
+      <select id="prof-profissao" class="form-control" required>
+       <option value="">Carregando...</option>
+      </select>
+     </div>
+    </div>
+   </fieldset>
+   
+   <fieldset>
+    <legend>Documentos (Anexar)</legend>
+    <div class="form-group">
+     <label for="doc-identidade">Documento de Identidade (RG/CNH)</label>
+     <input type="file" id="doc-identidade" class="form-control" required />
+    </div>
+    <div class="form-group">
+     <label for="doc-diploma">Diploma/Certificado de Formação</label>
+     <input type="file" id="doc-diploma" class="form-control" required />
+    </div>
+   </fieldset>
 
- 	<div id="message-container" class="form-body" style="display: none;">
- 		 	</div>
+   <div class="form-footer">
+    <button type="submit" id="btn-submit-ficha" class="btn btn-success">
+     <i class="fas fa-check-circle me-2"></i> Finalizar e Enviar Cadastro
+    </button>
+   </div>
+  </form>
+
+  <!-- Container de Mensagens -->
+  <div id="message-container" class="form-body" style="display: none;"></div>
  </div>
 
-  <script type="module" src="../assets/js/firebase-init.js"></script>
+ <script type="module" src="../assets/js/firebase-init.js"></script>
  <script type="module" src="../assets/js/fichas-de-cadastro.js"></script>
 </body>
 </html>
