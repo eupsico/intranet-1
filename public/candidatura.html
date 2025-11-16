@@ -1,241 +1,564 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formulário de Candidatura - EuPsico</title>
+  <link rel="stylesheet" href="../assets/css/design-system.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    }
 
-    <title>Candidatura de Vaga - EuPsico</title>
+    .container-candidatura {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    .header-candidatura {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
 
-    <link rel="stylesheet" href="../assets/css/design-system.css" />
+    .header-candidatura h1 {
+      margin: 0 0 10px 0;
+      font-size: 32px;
+      font-weight: 700;
+    }
 
-    <style>
-      /* Estilos simples para o formulário público */
-      body {
-        background-color: #f4f7f6;
-        font-family: Arial, sans-serif;
-        padding: 20px;
-      }
-      .container {
-        max-width: 600px;
-        margin: 50px auto;
-        background: #fff;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
-      h2 {
-        color: #2c3e50;
-        text-align: center;
-        margin-bottom: 25px;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-      }
-      input[type="text"],
-      input[type="email"],
-      select,
-      textarea {
-        /* Adicionado textarea */
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box;
-      }
-      .btn-submit {
-        background-color: #3498db;
-        color: white;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
-        font-size: 16px;
-        margin-top: 10px;
-      }
-      .btn-submit:hover {
-        background-color: #2980b9;
-      }
-      .loading-spinner {
-        text-align: center;
-        padding: 20px;
-      }
-      .mensagem-sucesso,
-      .mensagem-erro {
-        padding: 15px;
-        border-radius: 4px;
-        margin-top: 20px;
-        text-align: center;
-      }
-      .mensagem-sucesso {
-        background-color: #e6ffe6;
-        color: #27ae60;
-        border: 1px solid #27ae60;
-      }
-      .mensagem-erro {
-        background-color: #ffe6e6;
-        color: #c0392b;
-        border: 1px solid #c0392b;
-        word-break: break-word; /* Adiciona quebra de linha em caso de erro longo */
-      }
-    </style>
-  </head>
+    .header-candidatura p {
+      margin: 0;
+      font-size: 16px;
+      opacity: 0.95;
+    }
 
-  <body>
-    <div class="container">
-      <h2>Formulário de Candidatura EuPsico</h2>
+    .form-body {
+      padding: 40px 30px;
+    }
 
+    /* Seções do formulário */
+    .form-section {
+      margin-bottom: 40px;
+      padding-bottom: 30px;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .form-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #667eea;
+      margin: 0 0 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title i {
+      font-size: 24px;
+      color: #764ba2;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .required {
+      color: #dc3545;
+      margin-left: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* Campos de URL com ícone */
+    .url-input-group {
+      position: relative;
+    }
+
+    .url-input-group .form-control {
+      padding-left: 45px;
+    }
+
+    .url-input-group i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #667eea;
+      font-size: 18px;
+      pointer-events: none;
+    }
+
+    /* Loading e mensagens */
+    .loading-spinner {
+      text-align: center;
+      padding: 20px;
+      color: #667eea;
+      font-weight: 500;
+    }
+
+    .mensagem-sucesso {
+      background: #d4edda;
+      color: #155724;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #28a745;
+      margin: 20px 0;
+    }
+
+    .mensagem-erro {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #dc3545;
+      margin: 20px 0;
+    }
+
+    /* Botão de envio */
+    .btn-submit {
+      width: 100%;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-submit:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .header-candidatura {
+        padding: 30px 20px;
+      }
+      
+      .header-candidatura h1 {
+        font-size: 24px;
+      }
+      
+      .form-body {
+        padding: 30px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-candidatura">
+    <!-- Header -->
+    <div class="header-candidatura">
+      <h1><i class="fas fa-briefcase"></i> Formulário de Candidatura</h1>
+      <p>Junte-se à equipe EuPsico e faça parte da nossa missão!</p>
+    </div>
+
+    <!-- Corpo do formulário -->
+    <div class="form-body">
       <form id="form-candidatura">
-        <div id="loading-vagas" class="loading-spinner">
-          Carregando vagas disponíveis...
+        
+        <!-- SEÇÃO: VAGA -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-bullseye"></i>
+            Vaga de Interesse
+          </h2>
+          
+          <div id="loading-vagas" class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i> Carregando vagas disponíveis...
+          </div>
+          
+          <div id="vaga-select-group" style="display: none;">
+            <div class="form-group">
+              <label for="select-vaga">Selecione a Vaga: <span class="required">*</span></label>
+              <select id="select-vaga" class="form-control" required>
+                <option value="">Selecione a vaga...</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group" id="vaga-select-group" style="display: none">
-          <label for="select-vaga">Selecione a Vaga:</label>
-          <select id="select-vaga" required>
-            <option value="">Selecione a vaga...</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="nome-candidato">Nome Completo:</label>
-          <input type="text" id="nome-candidato" required />
-        </div>
-
-        <div class="form-group">
-          <label for="email-candidato">Email para Contato:</label>
-          <input type="email" id="email-candidato" required />
-        </div>
-
-        <div class="form-group">
-          <label for="telefone-candidato"
-            >Telefone (com DDD), de preferência o WhatsApp:</label
-          >
-
-          <input
-            type="text"
-            id="telefone-candidato"
-            required
-            placeholder="(XX) XXXXX-XXXX"
-          />
-        </div>
-
-        <hr />
-
-        <div class="row">
-          <div class="col-md-4 form-group">
-            <label for="cep-candidato">CEP:</label>
-            <input
-              type="text"
-              id="cep-candidato"
-              required
-              maxlength="9"
-              placeholder="Ex: 00000-000"
+        <!-- SEÇÃO: DADOS PESSOAIS -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-user"></i>
+            Dados Pessoais
+          </h2>
+          
+          <div class="form-group">
+            <label for="nome-candidato">Nome Completo: <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="nome-candidato" 
+              class="form-control" 
+              placeholder="Digite seu nome completo"
+              required 
             />
           </div>
 
-          <div class="col-md-2 form-group">
-            <label for="numero-endereco">Número:</label>
-            <input type="text" id="numero-endereco" required />
+          <div class="form-group">
+            <label for="email-candidato">Email para Contato: <span class="required">*</span></label>
+            <input 
+              type="email" 
+              id="email-candidato" 
+              class="form-control" 
+              placeholder="seu@email.com"
+              required 
+            />
           </div>
 
-          <div class="col-md-6 form-group">
-            <label for="cidade-endereco">Cidade:</label>
-            <input type="text" id="cidade-endereco" required readonly />
+          <div class="form-group">
+            <label for="telefone-candidato">Telefone (com DDD), de preferência o WhatsApp: <span class="required">*</span></label>
+            <input 
+              type="tel" 
+              id="telefone-candidato" 
+              class="form-control" 
+              placeholder="(00) 00000-0000"
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="data-nascimento">Data de Nascimento: <span class="required">*</span></label>
+            <input 
+              type="date" 
+              id="data-nascimento" 
+              class="form-control" 
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="genero">Gênero: <span class="required">*</span></label>
+            <select id="genero" class="form-control" required>
+              <option value="">Selecione...</option>
+              <option value="Feminino (cisgênero)">Feminino (cisgênero)</option>
+              <option value="Masculino (cisgênero)">Masculino (cisgênero)</option>
+              <option value="Mulher trans">Mulher trans</option>
+              <option value="Homem trans">Homem trans</option>
+              <option value="Pessoa não binária">Pessoa não binária</option>
+              <option value="Prefiro não declarar">Prefiro não declarar</option>
+            </select>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-md-6 form-group">
-            <label for="endereco-rua">Endereço (Rua/Av):</label>
-            <input type="text" id="endereco-rua" required readonly />
+        <!-- SEÇÃO: ENDEREÇO -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-map-marker-alt"></i>
+            Endereço
+          </h2>
+
+          <div class="form-group">
+            <label for="cep-candidato">CEP: <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="cep-candidato" 
+              class="form-control" 
+              placeholder="00000-000"
+              required 
+            />
           </div>
 
-          <div class="col-md-6 form-group">
-            <label for="estado-endereco">Estado (UF):</label>
-            <input type="text" id="estado-endereco" required readonly />
+          <div class="form-group">
+            <label for="numero-endereco">Número: <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="numero-endereco" 
+              class="form-control" 
+              placeholder="123"
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="endereco-rua">Endereço (Rua/Av): <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="endereco-rua" 
+              class="form-control" 
+              placeholder="Será preenchido automaticamente"
+              required 
+              readonly
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cidade-endereco">Cidade: <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="cidade-endereco" 
+              class="form-control" 
+              placeholder="Será preenchido automaticamente"
+              required 
+              readonly
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="estado-endereco">Estado (UF): <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="estado-endereco" 
+              class="form-control" 
+              placeholder="SP"
+              required 
+              readonly
+            />
           </div>
         </div>
 
-        <hr />
+        <!-- SEÇÃO: FORMAÇÃO E EXPERIÊNCIA -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-graduation-cap"></i>
+            Formação e Experiência
+          </h2>
 
-        <div class="form-group">
-          <label for="resumo-experiencia"
-            >Resumo da Experiência Profissional (Breve Apresentação
-            Profissional):</label
-          >
+          <div class="form-group">
+            <label for="escolaridade">Escolaridade: <span class="required">*</span></label>
+            <select id="escolaridade" class="form-control" required>
+              <option value="">Selecione...</option>
+              <option value="Ensino Fundamental incompleto">Ensino Fundamental incompleto</option>
+              <option value="Ensino Fundamental completo">Ensino Fundamental completo</option>
+              <option value="Ensino Médio incompleto">Ensino Médio incompleto</option>
+              <option value="Ensino Médio completo">Ensino Médio completo</option>
+              <option value="Ensino Superior incompleto">Ensino Superior incompleto</option>
+              <option value="Ensino Superior completo">Ensino Superior completo</option>
+              <option value="Pós-graduação">Pós-graduação</option>
+            </select>
+          </div>
 
-          <textarea
-            id="resumo-experiencia"
-            rows="4"
-            required
-            placeholder="Fale sobre suas qualificações, tempo de experiência na área e principais conquistas."
-          ></textarea>
+          <div class="form-group">
+            <label for="area-formacao">Área de Formação (curso principal): <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="area-formacao" 
+              class="form-control" 
+              placeholder="Ex: Psicologia, Administração"
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="especializacoes">Especializações (opcional):</label>
+            <textarea 
+              id="especializacoes" 
+              class="form-control" 
+              rows="3"
+              placeholder="Liste suas especializações, cursos complementares, certificações, etc."
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="disponibilidade-inicio">Disponibilidade para Início: <span class="required">*</span></label>
+            <select id="disponibilidade-inicio" class="form-control" required>
+              <option value="">Selecione...</option>
+              <option value="Imediata">Imediata</option>
+              <option value="15 dias">15 dias</option>
+              <option value="30 dias">30 dias</option>
+              <option value="45 dias">45 dias</option>
+              <option value="60 dias ou mais">60 dias ou mais</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="experiencia-area">Tempo de Experiência na Área: <span class="required">*</span></label>
+            <select id="experiencia-area" class="form-control" required>
+              <option value="">Selecione...</option>
+              <option value="Nenhuma">Nenhuma (primeira experiência)</option>
+              <option value="Menos de 1 ano">Menos de 1 ano</option>
+              <option value="1 a 2 anos">1 a 2 anos</option>
+              <option value="3 a 5 anos">3 a 5 anos</option>
+              <option value="5 a 10 anos">5 a 10 anos</option>
+              <option value="Mais de 10 anos">Mais de 10 anos</option>
+            </select>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="habilidades-competencias"
-            >Habilidades/Competências (Separe por vírgulas):</label
-          >
+        <!-- SEÇÃO: LINKS PROFISSIONAIS -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-link"></i>
+            Links Profissionais
+          </h2>
 
-          <textarea
-            id="habilidades-competencias"
-            rows="3"
-            required
-            placeholder="Ex: Python, Machine Learning, Liderança, Comunicação, Firebase, etc."
-          ></textarea>
+          <div class="form-group">
+            <label for="linkedin-url">Link do LinkedIn (opcional):</label>
+            <div class="url-input-group">
+              <i class="fab fa-linkedin"></i>
+              <input 
+                type="url" 
+                id="linkedin-url" 
+                class="form-control" 
+                placeholder="https://linkedin.com/in/seu-perfil"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="portfolio-url">Link do Portfólio/Site (opcional):</label>
+            <div class="url-input-group">
+              <i class="fas fa-globe"></i>
+              <input 
+                type="url" 
+                id="portfolio-url" 
+                class="form-control" 
+                placeholder="https://seu-portfolio.com"
+              />
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="como-conheceu">Como conheceu a EuPsico (e a vaga):</label>
+        <!-- SEÇÃO: INFORMAÇÕES ADICIONAIS -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-clipboard-list"></i>
+            Informações Adicionais
+          </h2>
 
-          <select id="como-conheceu" required>
-            <option value="">Selecione...</option>
+          <div class="form-group">
+            <label for="motivacao">Por que você se interessou por esta vaga? <span class="required">*</span></label>
+            <textarea 
+              id="motivacao" 
+              class="form-control" 
+              placeholder="Conte-nos o que te motivou a se candidatar..."
+              required
+            ></textarea>
+          </div>
 
-            <option value="linkedin">LinkedIn</option>
+          <div class="form-group">
+            <label for="pcd">Pessoa com Deficiência (PCD)?</label>
+            <select id="pcd" class="form-control">
+              <option value="">Selecione...</option>
+              <option value="Sim">Sim</option>
+              <option value="Não">Não</option>
+              <option value="Prefiro não declarar">Prefiro não declarar</option>
+            </select>
+          </div>
 
-            <option value="instagram">Instagram</option>
+          <div class="form-group">
+            <label for="resumo-experiencia">Resumo da Experiência Profissional (Breve Apresentação Profissional): <span class="required">*</span></label>
+            <textarea 
+              id="resumo-experiencia" 
+              class="form-control" 
+              placeholder="Descreva brevemente sua experiência profissional..."
+              required
+            ></textarea>
+          </div>
 
-            <option value="site">Site da EuPsico</option>
+          <div class="form-group">
+            <label for="habilidades-competencias">Habilidades/Competências (Separe por vírgulas): <span class="required">*</span></label>
+            <textarea 
+              id="habilidades-competencias" 
+              class="form-control" 
+              placeholder="Ex: Comunicação, Trabalho em Equipe, Excel Avançado..."
+              required
+            ></textarea>
+          </div>
 
-            <option value="indicacao">Indicação de um Colaborador</option>
-
-            <option value="outros">Outros</option>
-          </select>
+          <div class="form-group">
+            <label for="como-conheceu">Como conheceu a EuPsico (e a vaga): <span class="required">*</span></label>
+            <select id="como-conheceu" class="form-control" required>
+              <option value="">Selecione...</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Site da EuPsico">Site da EuPsico</option>
+              <option value="Indicação de um Colaborador">Indicação de um Colaborador</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
         </div>
 
-        <hr />
+        <!-- SEÇÃO: CURRÍCULO -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <i class="fas fa-file-upload"></i>
+            Anexar Currículo
+          </h2>
 
-        <div class="form-group">
-          <label for="anexo-curriculo"
-            >Anexar Currículo (PDF, DOCX, no máximo 5MB - Será salvo no Google
-            Drive):</label
-          >
-
-          <input
-            type="file"
-            id="anexo-curriculo"
-            accept=".pdf,.docx"
-            required
-          />
+          <div class="form-group">
+            <label for="anexo-curriculo">Anexar Currículo (PDF, DOCX, no máximo 5MB - Será salvo no Google Drive): <span class="required">*</span></label>
+            <input 
+              type="file" 
+              id="anexo-curriculo" 
+              class="form-control" 
+              accept=".pdf,.doc,.docx" 
+              required 
+            />
+          </div>
         </div>
 
+        <!-- Mensagem de feedback -->
+        <div id="mensagem-feedback"></div>
+
+        <!-- Botão de envio -->
         <button type="submit" id="btn-submit" class="btn-submit" disabled>
+          <i class="fas fa-paper-plane"></i>
           Enviar Candidatura
         </button>
-
-        <div id="mensagem-feedback"></div>
       </form>
     </div>
+  </div>
 
-    <script type="module" src="../assets/js/firebase-init.js"></script>
-
-    <script type="module" src="../assets/js/candidatura-publica.js"></script>
-  </body>
+  <script type="module" src="../assets/js/candidatura-publica.js"></script>
+</body>
 </html>
