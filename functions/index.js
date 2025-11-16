@@ -1609,7 +1609,7 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
       console.log("✅ Token gerado com sucesso!");
 
       // ✅ Retorna URL com token (usando a URL correta)
-      const urlTeste = `https://intranet.eupsico.org.br/intranet-1/public/avaliacao-publica.html?token=${token}`;
+      const urlTeste = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?token=${token}`;
 
       return res.status(200).json({
         sucesso: true,
