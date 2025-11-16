@@ -31,7 +31,11 @@ const googleWorkspaceServiceAccount = defineSecret(
 initializeApp();
 const db = getFirestore();
 const adminAuth = getAuth();
+const bucket = admin.storage().bucket();
 
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 // ====================================================================
 // FUNÇÃO AUXILIAR: gerarUsernameUnico
 // ====================================================================
@@ -1077,18 +1081,21 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
 });
 
 // ====================================================================
-// FUNÇÃO: uploadCurriculo (CORRIGIDA)
+// FUNÇÃO: uploadCurriculo - SALVA NO FIREBASE STORAGE
 // ====================================================================
 exports.uploadCurriculo = onRequest(
   {
-    cors: true, // ✅ CORS HABILITADO CORRETAMENTE
+    cors: true,
     timeoutSeconds: 60,
-    memory: "256MiB",
+    memory: "512MiB", // Aumentado para lidar com arquivos grandes
   },
   async (req, res) => {
     // Validar método
     if (req.method !== "POST") {
-      res.status(405).json({ error: "Método não permitido. Use POST." });
+      res.status(405).json({
+        status: "error",
+        message: "Método não permitido. Use POST.",
+      });
       return;
     }
 
@@ -1105,65 +1112,66 @@ exports.uploadCurriculo = onRequest(
         return;
       }
 
-      // URL do Google Apps Script
-      const GAS_URL =
-        "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
-
-      const payload = {
-        fileData: fileData,
-        mimeType: mimeType,
-        fileName: fileName,
-        nomeCandidato: nomeCandidato || "Candidato",
-        vagaTitulo: vagaTitulo || "Vaga",
-      };
-
-      logger.info("📤 Enviando para GAS:", {
+      logger.info("📤 Iniciando upload para Firebase Storage:", {
         fileName,
         nomeCandidato,
         vagaTitulo,
+        mimeType,
       });
 
-      // Enviar para Google Apps Script
-      const gasResponse = await fetch(GAS_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Converter base64 para Buffer
+      const fileBuffer = Buffer.from(fileData, "base64");
+
+      // Gerar nome único para o arquivo
+      const timestamp = Date.now();
+      const sanitizedNome = (nomeCandidato || "candidato")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]/g, "_");
+
+      const sanitizedVaga = (vagaTitulo || "vaga")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]/g, "_");
+
+      const fileExtension = fileName.split(".").pop();
+      const storagePath = `curriculos/${sanitizedVaga}/${timestamp}_${sanitizedNome}.${fileExtension}`;
+
+      logger.info("📂 Caminho do arquivo:", storagePath);
+
+      // Fazer upload para Firebase Storage
+      const file = bucket.file(storagePath);
+
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: mimeType,
+          metadata: {
+            nomeCandidato: nomeCandidato || "Não informado",
+            vagaTitulo: vagaTitulo || "Não informada",
+            originalFileName: fileName,
+            uploadedAt: new Date().toISOString(),
+          },
         },
-        body: JSON.stringify(payload),
       });
 
-      logger.info("📥 Status GAS:", gasResponse.status);
-      const responseText = await gasResponse.text();
-      logger.info(
-        "📥 Resposta GAS (primeiros 500 chars):",
-        responseText.substring(0, 500)
-      );
+      logger.info("✅ Arquivo salvo no Storage!");
 
-      // Tentar parsear JSON
-      let gasJson;
-      try {
-        gasJson = JSON.parse(responseText);
-      } catch (e) {
-        logger.error("❌ GAS retornou HTML, não JSON!");
-        logger.error("Resposta completa:", responseText.substring(0, 1000));
-        throw new Error(
-          `GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`
-        );
-      }
+      // Tornar o arquivo público (ou gerar URL assinada)
+      await file.makePublic();
 
-      // Verificar resposta do GAS
-      if (gasJson.status === "success" && gasJson.fileUrl) {
-        logger.info("✅ Upload bem-sucedido!");
-        res.status(200).json({
-          status: "success",
-          message: "Arquivo salvo em Google Drive com sucesso!",
-          fileUrl: gasJson.fileUrl,
-        });
-      } else {
-        throw new Error(gasJson.message || "Erro desconhecido no GAS");
-      }
+      // Gerar URL pública
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+
+      logger.info("🔗 URL pública gerada:", publicUrl);
+
+      res.status(200).json({
+        status: "success",
+        message: "Currículo salvo no Firebase Storage com sucesso!",
+        fileUrl: publicUrl,
+        storagePath: storagePath,
+      });
     } catch (error) {
-      logger.error("❌ Erro na uploadCurriculo:", error.message);
+      logger.error("❌ Erro ao fazer upload:", error.message);
       logger.error("Stack trace:", error.stack);
 
       res.status(500).json({
@@ -1175,7 +1183,7 @@ exports.uploadCurriculo = onRequest(
 );
 
 // ====================================================================
-// FUNÇÃO: salvarCandidatura (CORRIGIDA)
+// FUNÇÃO: salvarCandidatura - SALVA NO FIRESTORE
 // ====================================================================
 exports.salvarCandidatura = onCall(
   {
@@ -1209,7 +1217,7 @@ exports.salvarCandidatura = onCall(
         endereco_rua: data.endereco_rua || "",
         cidade: data.cidade || "",
         estado: data.estado || "",
-        // ⭐ NOVOS CAMPOS ADICIONADOS
+        // Novos campos
         data_nascimento: data.data_nascimento || "",
         genero: data.genero || "",
         escolaridade: data.escolaridade || "",
@@ -1221,11 +1229,12 @@ exports.salvarCandidatura = onCall(
         portfolio_url: data.portfolio_url || "",
         motivacao: data.motivacao || "",
         pcd: data.pcd || "",
-        // CAMPOS ORIGINAIS
+        // Campos originais
         resumo_experiencia: data.resumo_experiencia || "",
         habilidades_competencias: data.habilidades_competencias || "",
         como_conheceu: data.como_conheceu || "",
         link_curriculo_drive: data.link_curriculo_drive,
+        storage_path: data.storage_path || "", // Caminho no Storage
         data_candidatura: FieldValue.serverTimestamp(),
         status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
       };

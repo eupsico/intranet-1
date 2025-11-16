@@ -1,7 +1,7 @@
-// ====================================================================
-// assets/js/candidatura-publica.js - VERSÃO ORIGINAL + NOVOS CAMPOS
-// ====================================================================
+// assets/js/candidatura-publica.js
+// Versão: 1.6 - Implementa upload real via Google Apps Script (Base64/JSON).
 
+// Importa as funções necessárias e as instâncias (functions, httpsCallable)
 import {
   db,
   collection,
@@ -12,11 +12,16 @@ import {
   httpsCallable,
 } from "./firebase-init.js";
 
-const CLOUD_FUNCTION_URL =
-  "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/uploadCurriculo";
+// =====================================================================
+// VARIÁVEIS GLOBAIS E CONFIGURAÇÃO DE UPLOAD
+// =====================================================================
+
+// URL REAL do Google Apps Script para processar o upload do currículo.
+const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbwel_QR6LBdcK0dzn1Igp35ZNmqSbrBniM7Q0QXtxbZe_SAvAwh1PStYn4qifF2H7sUYA/exec";
 
 const VAGAS_COLLECTION_NAME = "vagas";
-const CANDIDATURAS_COLLECTION_NAME = "candidaturas";
+const CANDIDATURAS_COLLECTION_NAME = "candidaturas"; // Coleção de destino no Firestore
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 
@@ -28,21 +33,29 @@ const msgFeedback = document.getElementById("mensagem-feedback");
 const vagaSelectGroup = document.getElementById("vaga-select-group");
 const loadingVagas = document.getElementById("loading-vagas");
 
+// Campos de Endereço
 const cepCandidato = document.getElementById("cep-candidato");
 const enderecoRua = document.getElementById("endereco-rua");
 const cidadeEndereco = document.getElementById("cidade-endereco");
 const estadoEndereco = document.getElementById("estado-endereco");
 
+// Inicialização e Callable Function
+// Esta é a função que salvará os metadados no Firestore (Backend)
 const salvarCandidaturaCallable = httpsCallable(functions, "salvarCandidatura");
 
-// ====================================================================
-// FUNÇÃO: Upload Currículo
-// ====================================================================
+/**
+ * NOVO: Função que lê o arquivo binário e o envia como Base64 para o Apps Script.
+ * @param {File} file Arquivo do currículo.
+ * @param {string} vagaTitulo Título da vaga.
+ * @param {string} nomeCandidato Nome do candidato.
+ * @returns {Promise<string>} Promessa que resolve com o link (URL) do arquivo no Drive.
+ */
 function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error("Nenhum arquivo anexado."));
 
     const reader = new FileReader();
+
     reader.onload = function (e) {
       const fileData = e.target.result.split(",")[1];
 
@@ -54,48 +67,27 @@ function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
         vagaTitulo: vagaTitulo,
       };
 
-      console.log(`🔵 LOG-CLIENTE: Enviando POST para Cloud Function`);
-      console.log(
-        `📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`
-      );
-      console.log(`👤 Candidato: ${nomeCandidato}`);
-      console.log(`💼 Vaga: ${vagaTitulo}`);
-
-      fetch(CLOUD_FUNCTION_URL, {
+      fetch(WEB_APP_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "text/plain;charset=utf-8", // funciona com Apps Script
         },
         body: JSON.stringify(payload),
       })
-        .then((res) => {
-          console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-          }
-
-          return res.json();
-        })
+        .then((res) => res.json())
         .then((response) => {
-          console.log(
-            "📦 LOG-CLIENTE: Resposta JSON da Cloud Function:",
-            response
-          );
-
           if (response.status === "success" && response.fileUrl) {
-            console.log("✅ Currículo salvo no Drive:", response.fileUrl);
             resolve(response.fileUrl);
           } else {
             reject(
               new Error(
-                response.message || "Erro desconhecido na Cloud Function."
+                response.message || "Erro desconhecido no servidor Apps Script."
               )
             );
           }
         })
         .catch((error) => {
-          console.error("💥 LOG-CLIENTE: FETCH/REDE FALHOU. DETALHES:", error);
+          console.error("Fetch Error:", error);
           reject(
             new Error(
               `Falha na comunicação com o servidor de upload. Detalhes: ${error.message}`
@@ -111,13 +103,13 @@ function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
     reader.readAsDataURL(file);
   });
 }
-
-// ====================================================================
-// FUNÇÃO: Salvar Candidatura no Firebase
-// ====================================================================
+/**
+ * Função que envia os dados da candidatura para o Firebase.
+ */
 async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   try {
     const result = await salvarCandidaturaCallable(dadosCandidatura);
+
     if (result.data && result.data.success) {
       exibirFeedback(
         "mensagem-sucesso",
@@ -143,9 +135,9 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   }
 }
 
-// ====================================================================
-// FUNÇÃO: Carregar Vagas Ativas
-// ====================================================================
+/**
+ * Função para carregar as vagas ativas e popular o campo Select.
+ */
 async function carregarVagasAtivas() {
   try {
     const q = query(vagasCollection, where("status", "==", "em-divulgacao"));
@@ -183,11 +175,12 @@ async function carregarVagasAtivas() {
   }
 }
 
-// ====================================================================
-// FUNÇÃO: Buscar CEP
-// ====================================================================
+/**
+ * Consulta a API ViaCEP e preenche os campos de endereço.
+ */
 async function buscarCEP() {
   const cep = cepCandidato.value.replace(/\D/g, "");
+
   if (cep.length !== 8) return;
 
   enderecoRua.value = "Buscando...";
@@ -197,6 +190,7 @@ async function buscarCEP() {
   try {
     const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const data = await response.json();
+
     if (data.erro) {
       exibirFeedback(
         "mensagem-erro",
@@ -212,22 +206,24 @@ async function buscarCEP() {
     enderecoRua.value = data.logradouro || "";
     cidadeEndereco.value = data.localidade || "";
     estadoEndereco.value = data.uf || "";
+
     exibirFeedback("", "", false);
   } catch (error) {
     console.error("Erro ao buscar CEP:", error);
     exibirFeedback(
       "mensagem-erro",
-      "Falha na comunicação com a API de CEP. Preencha manualmente.",
+      "Falha na comunicação com a API de CEP. Por favor, preencha o endereço manualmente.",
       true
     );
   }
 }
 
-// ====================================================================
-// FUNÇÃO: Handler Principal do Formulário
-// ====================================================================
+/**
+ * Função principal que lida com o envio do formulário.
+ */
 async function handleCandidatura(e) {
   e.preventDefault();
+
   btnSubmit.disabled = true;
   msgFeedback.innerHTML =
     '<div class="loading-spinner">Enviando candidatura e currículo...</div>';
@@ -236,16 +232,11 @@ async function handleCandidatura(e) {
   const vagaId = selectVaga.value;
   const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo");
 
-  // ⭐ CAPTURANDO CAMPOS ORIGINAIS
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
   const telefone = document.getElementById("telefone-candidato").value.trim();
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
-  const complemento = document.getElementById("complemento-endereco")
-    ? document.getElementById("complemento-endereco").value.trim()
-    : "";
-  const rua = enderecoRua.value.trim();
   const cidade = cidadeEndereco.value.trim();
   const estado = estadoEndereco.value.trim();
   const resumoExperiencia = document
@@ -257,44 +248,7 @@ async function handleCandidatura(e) {
   const comoConheceu = document.getElementById("como-conheceu").value;
   const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
 
-  // ⭐ NOVOS CAMPOS ADICIONADOS
-  const dataNascimento = document.getElementById("data-nascimento")
-    ? document.getElementById("data-nascimento").value.trim()
-    : "";
-  const genero = document.getElementById("genero")
-    ? document.getElementById("genero").value
-    : "";
-  const escolaridade = document.getElementById("escolaridade")
-    ? document.getElementById("escolaridade").value
-    : "";
-  const areaFormacao = document.getElementById("area-formacao")
-    ? document.getElementById("area-formacao").value.trim()
-    : "";
-  const especializacoes = document.getElementById("especializacoes")
-    ? document.getElementById("especializacoes").value.trim()
-    : "Não informado";
-  const disponibilidadeInicio = document.getElementById(
-    "disponibilidade-inicio"
-  )
-    ? document.getElementById("disponibilidade-inicio").value
-    : "";
-  const experienciaArea = document.getElementById("experiencia-area")
-    ? document.getElementById("experiencia-area").value
-    : "";
-  const linkedinUrl = document.getElementById("linkedin-url")
-    ? document.getElementById("linkedin-url").value.trim()
-    : "";
-  const portfolioUrl = document.getElementById("portfolio-url")
-    ? document.getElementById("portfolio-url").value.trim()
-    : "";
-  const motivacao = document.getElementById("motivacao")
-    ? document.getElementById("motivacao").value.trim()
-    : "";
-  const pcd = document.getElementById("pcd")
-    ? document.getElementById("pcd").value
-    : "Não informado";
-
-  // Validação de campos obrigatórios
+  // Validação
   if (
     !vagaId ||
     !nome ||
@@ -317,7 +271,6 @@ async function handleCandidatura(e) {
     return;
   }
 
-  // Validação de tamanho de arquivo
   const maxFileSize = 5 * 1024 * 1024;
   if (arquivoCurriculo.size > maxFileSize) {
     exibirFeedback(
@@ -329,49 +282,33 @@ async function handleCandidatura(e) {
   }
 
   try {
-    console.log("🚀 Iniciando upload do currículo...");
+    // Etapa 1: Upload do currículo
     const linkCurriculoDrive = await uploadCurriculoToCloudFunction(
       arquivoCurriculo,
       tituloVagaOriginal,
       nome
     );
-    console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
-    // ⭐ OBJETO COM TODOS OS CAMPOS (ORIGINAIS + NOVOS)
+    // Etapa 2: Envio da candidatura
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
       nome_completo: nome,
-      email_candidato: email,
+      email: email,
       telefone_contato: telefone,
       cep: cep,
       numero_endereco: numero,
-      complemento_endereco: complemento,
-      endereco_rua: rua,
       cidade: cidade,
       estado: estado,
       resumo_experiencia: resumoExperiencia,
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
       link_curriculo_drive: linkCurriculoDrive,
-      // ⭐ NOVOS CAMPOS
-      data_nascimento: dataNascimento,
-      genero: genero,
-      escolaridade: escolaridade,
-      area_formacao: areaFormacao,
-      especializacoes: especializacoes,
-      disponibilidade_inicio: disponibilidadeInicio,
-      experiencia_area: experienciaArea,
-      linkedin_url: linkedinUrl,
-      portfolio_url: portfolioUrl,
-      motivacao: motivacao,
-      pcd: pcd,
     };
 
-    console.log("🔥 Salvando candidatura no Firebase...");
     await enviarCandidaturaParaFirebase(novaCandidatura);
   } catch (error) {
-    console.error("❌ Erro completo na candidatura:", error);
+    console.error("Erro completo na candidatura:", error);
     exibirFeedback(
       "mensagem-erro",
       `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
@@ -380,27 +317,30 @@ async function handleCandidatura(e) {
   }
 }
 
-// ====================================================================
-// FUNÇÃO: Exibir Feedback
-// ====================================================================
+/**
+ * Exibe a mensagem de feedback para o usuário.
+ */
 function exibirFeedback(classe, mensagem, reHabilitar) {
   msgFeedback.innerHTML = `<div class="${classe}">${mensagem}</div>`;
   if (reHabilitar) {
     btnSubmit.disabled = false;
-  } else if (classe === "mensagem-sucesso") {
-    setTimeout(() => {
+  } else {
+    // Se foi sucesso, mantém desabilitado e limpa após um tempo
+    if (classe === "mensagem-sucesso") {
+      setTimeout(() => {
+        msgFeedback.innerHTML = "";
+        carregarVagasAtivas(); // Recarrega as vagas para um novo envio
+      }, 5000);
+    } else if (!classe) {
+      // Se for apenas para limpar status (ex: CEP ok), não reabilita
       msgFeedback.innerHTML = "";
-      btnSubmit.disabled = false;
-      carregarVagasAtivas();
-    }, 5000);
-  } else if (!classe) {
-    msgFeedback.innerHTML = "";
+    }
   }
 }
 
-// ====================================================================
-// EVENT LISTENERS
-// ====================================================================
+// Adiciona listener para consulta de CEP
 cepCandidato.addEventListener("blur", buscarCEP);
+
+// Inicializa o módulo
 document.addEventListener("DOMContentLoaded", carregarVagasAtivas);
 formCandidatura.addEventListener("submit", handleCandidatura);
