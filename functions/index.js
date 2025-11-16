@@ -2440,3 +2440,84 @@ exports.criarEmailGoogleWorkspace = onCall(
     }
   }
 );
+// 🔑 CLOUD FUNCTION PARA RESETAR SENHA NO GOOGLE WORKSPACE
+exports.resetarSenhaGoogleWorkspace = onCall(
+  { cors: true },
+  async (request) => {
+    const { email, novaSenha } = request.data;
+
+    console.log("🔹 Recebendo requisição para resetar senha:", email);
+
+    // Validações
+    if (!email) {
+      throw new HttpsError("invalid-argument", "Campo obrigatório: email");
+    }
+
+    if (!email.match(/[a-z0-9.-]+@eupsico.org.br/i)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "E-mail deve estar no domínio @eupsico.org.br"
+      );
+    }
+
+    try {
+      const APPS_SCRIPT_URL =
+        process.env.APPS_SCRIPT_URL ||
+        "https://script.google.com/macros/s/AKfycbz8DGNVG6P0x-Gv5VOEvP5kiyO6Rr2qqWQeA8Xvc6o0Fk9JiuzG6psxb42pSpgrF3d9DA/exec";
+
+      const senhaTemporaria = novaSenha || gerarSenhaTemporaria();
+
+      console.log("🔄 Chamando Google Apps Script para resetar senha...");
+
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          acao: "resetar",
+          email: email,
+          novaSenha: senhaTemporaria,
+        }),
+      });
+
+      const resultado = await response.json();
+
+      console.log("✅ Resposta do Apps Script:", resultado);
+
+      if (resultado && resultado.sucesso === true) {
+        console.log("✅ Senha resetada com sucesso");
+
+        return {
+          sucesso: true,
+          mensagem: `Senha resetada com sucesso para ${email}`,
+          email: email,
+          novaSenha: resultado.novaSenha,
+        };
+      } else {
+        if (resultado.erro === "user_not_found") {
+          throw new HttpsError(
+            "not-found",
+            `O e-mail ${email} não foi encontrado no Google Workspace`
+          );
+        }
+
+        throw new HttpsError(
+          "internal",
+          resultado.mensagem || "Erro desconhecido ao resetar senha"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Erro ao resetar senha:", error);
+
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      throw new HttpsError(
+        "internal",
+        `Erro ao comunicar com Google Apps Script: ${error.message}`
+      );
+    }
+  }
+);
