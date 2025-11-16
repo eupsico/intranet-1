@@ -8,7 +8,7 @@ const {
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
-const logger = require("firebase-functions");
+const { logger } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -1089,138 +1089,105 @@ exports.uploadCurriculo = onRequest(
   {
     cors: true,
     timeoutSeconds: 120,
-    memory: "512MiB",
+    memory: "1GiB",
   },
   async (req, res) => {
-    // Log inicial
-    logger.info("🔵 uploadCurriculo chamada");
-    logger.info("Método:", req.method);
-
-    // Validar método
-    if (req.method !== "POST") {
-      logger.warn("❌ Método inválido:", req.method);
-      res.status(405).json({
-        status: "error",
-        message: "Método não permitido. Use POST.",
-      });
-      return;
-    }
-
     try {
-      logger.info(
-        "📦 Body recebido (primeiros 200 chars):",
-        JSON.stringify(req.body).substring(0, 200)
-      );
+      console.log("=== INÍCIO uploadCurriculo ===");
+      console.log("Método HTTP:", req.method);
+
+      if (req.method !== "POST") {
+        console.warn("Método inválido:", req.method);
+        return res.status(405).json({
+          status: "error",
+          message: "Método não permitido",
+        });
+      }
 
       const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } =
         req.body;
 
-      // Validar campos obrigatórios
-      if (!fileData) {
-        throw new Error("Campo 'fileData' ausente");
-      }
-      if (!mimeType) {
-        throw new Error("Campo 'mimeType' ausente");
-      }
-      if (!fileName) {
-        throw new Error("Campo 'fileName' ausente");
-      }
-
-      logger.info("📤 Iniciando upload:", {
-        fileName,
-        nomeCandidato: nomeCandidato || "Não informado",
-        vagaTitulo: vagaTitulo || "Não informada",
+      console.log("Dados recebidos:", {
+        hasFileData: !!fileData,
+        fileDataLength: fileData ? fileData.length : 0,
         mimeType,
-        fileDataLength: fileData.length,
+        fileName,
       });
 
-      // Converter base64 para Buffer
-      let fileBuffer;
-      try {
-        fileBuffer = Buffer.from(fileData, "base64");
-        logger.info("✅ Buffer criado. Tamanho:", fileBuffer.length, "bytes");
-      } catch (e) {
-        throw new Error(`Erro ao decodificar base64: ${e.message}`);
+      if (!fileData || !mimeType || !fileName) {
+        console.error("Campos obrigatórios ausentes");
+        return res.status(400).json({
+          status: "error",
+          message: "Campos obrigatórios ausentes",
+        });
       }
 
-      // Gerar nome único para o arquivo
-      const timestamp = Date.now();
+      console.log("Convertendo base64 para Buffer...");
+      const fileBuffer = Buffer.from(fileData, "base64");
+      console.log("Buffer criado:", fileBuffer.length, "bytes");
 
-      // Sanitizar nome do candidato
+      const timestamp = Date.now();
       const sanitizedNome = (nomeCandidato || "candidato")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9]/g, "_")
-        .substring(0, 50);
+        .substring(0, 30);
 
-      // Sanitizar nome da vaga
       const sanitizedVaga = (vagaTitulo || "vaga")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-zA-Z0-9]/g, "_")
-        .substring(0, 50);
+        .substring(0, 30);
 
-      // Extrair extensão do arquivo
       const fileExtension = fileName.split(".").pop().toLowerCase();
-
-      // Montar caminho no Storage
       const storagePath = `curriculos/${sanitizedVaga}/${timestamp}_${sanitizedNome}.${fileExtension}`;
 
-      logger.info("📂 Caminho no Storage:", storagePath);
-      logger.info("🪣 Bucket:", bucket.name);
+      console.log("Caminho:", storagePath);
 
-      // Fazer upload para Firebase Storage
+      const bucket = admin.storage().bucket();
+      console.log("Bucket:", bucket.name);
+
       const file = bucket.file(storagePath);
 
-      try {
-        await file.save(fileBuffer, {
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: mimeType,
           metadata: {
-            contentType: mimeType,
-            metadata: {
-              nomeCandidato: nomeCandidato || "Não informado",
-              vagaTitulo: vagaTitulo || "Não informada",
-              originalFileName: fileName,
-              uploadedAt: new Date().toISOString(),
-            },
+            nomeCandidato: nomeCandidato || "N/A",
+            vagaTitulo: vagaTitulo || "N/A",
+            originalFileName: fileName,
+            uploadedAt: new Date().toISOString(),
           },
-        });
-        logger.info("✅ Arquivo salvo no Storage!");
-      } catch (uploadError) {
-        logger.error("❌ Erro no upload para Storage:", uploadError);
-        throw new Error(`Falha ao salvar no Storage: ${uploadError.message}`);
-      }
+        },
+      });
 
-      // Tornar o arquivo público
+      console.log("Arquivo salvo!");
+
       try {
         await file.makePublic();
-        logger.info("✅ Arquivo tornado público");
-      } catch (publicError) {
-        logger.warn(
-          "⚠️ Não foi possível tornar o arquivo público:",
-          publicError.message
-        );
-        // Não falhar se não conseguir tornar público
+        console.log("Arquivo tornado público");
+      } catch (err) {
+        console.warn("Erro ao tornar público (ignorando):", err.message);
       }
 
-      // Gerar URL pública
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-      logger.info("🔗 URL pública:", publicUrl);
+      console.log("URL:", publicUrl);
+      console.log("=== FIM - SUCESSO ===");
 
-      // Resposta de sucesso
-      res.status(200).json({
+      return res.status(200).json({
         status: "success",
-        message: "Currículo salvo no Firebase Storage com sucesso!",
+        message: "Currículo salvo!",
         fileUrl: publicUrl,
         storagePath: storagePath,
       });
     } catch (error) {
-      logger.error("❌ ERRO na uploadCurriculo:");
-      logger.error("Mensagem:", error.message);
-      logger.error("Stack:", error.stack);
+      console.error("ERRO:", error.message);
+      console.error("Stack:", error.stack);
+      console.log("=== FIM - ERRO ===");
 
-      res.status(500).json({
+      return res.status(500).json({
         status: "error",
-        message: `Erro ao fazer upload: ${error.message}`,
+        message: error.message,
       });
     }
   }
@@ -1230,28 +1197,20 @@ exports.uploadCurriculo = onRequest(
 // FUNÇÃO: salvarCandidatura - SALVA NO FIRESTORE
 // ====================================================================
 exports.salvarCandidatura = onCall(
-  {
-    cors: true,
-    timeoutSeconds: 60,
-  },
+  { cors: true, timeoutSeconds: 60 },
   async (request) => {
     try {
       const data = request.data;
 
-      logger.info("📥 Recebendo candidatura:", {
-        nome: data.nome_completo,
-        vaga_id: data.vaga_id,
-      });
+      console.log("salvarCandidatura:", data.nome_completo);
 
-      // Validar campos obrigatórios
       if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
         throw new HttpsError(
           "invalid-argument",
-          "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
+          "Campos obrigatórios ausentes"
         );
       }
 
-      // Preparar dados da candidatura
       const novaCandidaturaData = {
         vaga_id: data.vaga_id,
         titulo_vaga_original: data.titulo_vaga_original || "",
@@ -1273,29 +1232,19 @@ exports.salvarCandidatura = onCall(
         status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
       };
 
-      logger.info("💾 Salvando no Firestore...");
-
-      // Salvar no Firestore
       const docRef = await db
         .collection("candidaturas")
         .add(novaCandidaturaData);
-
-      logger.info("✅ Candidatura salva! ID:", docRef.id);
+      console.log("Candidatura salva:", docRef.id);
 
       return {
         success: true,
-        message: "Candidatura registrada com sucesso!",
+        message: "Candidatura registrada!",
         id: docRef.id,
       };
     } catch (error) {
-      logger.error("❌ Erro ao processar candidatura:");
-      logger.error("Mensagem:", error.message);
-      logger.error("Stack:", error.stack);
-
-      throw new HttpsError(
-        "internal",
-        "Ocorreu um erro interno ao salvar sua candidatura: " + error.message
-      );
+      console.error("Erro salvarCandidatura:", error.message);
+      throw new HttpsError("internal", error.message);
     }
   }
 );
