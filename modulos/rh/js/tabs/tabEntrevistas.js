@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.5.1 (Corrigido ReferenceError: statusTeste is not defined)
- * Data: 16/11/2025
+ * Versão: 6.5.2 (Corrigido link 'hardcoded' do teste para usar o domínio correto)
+ * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
 
@@ -1282,11 +1282,18 @@ document.addEventListener("change", (e) => {
     const prazoDias = option.getAttribute("data-prazo") || "7";
 
     if (linkInput) {
+      // ============================================
+      // ✅ INÍCIO DA ATUALIZAÇÃO (v6.5.2)
+      // ============================================
       if (linkTeste) {
         linkInput.value = linkTeste;
       } else {
-        linkInput.value = `https://eupsico.github.io/intranet-1/public/avaliacao-publica.html?id=${option.value}`;
+        // CORRIGIDO: Usa o domínio correto
+        linkInput.value = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?id=${option.value}`;
       }
+      // ============================================
+      // ✅ FIM DA ATUALIZAÇÃO
+      // ============================================
       console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
 
