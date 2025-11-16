@@ -1101,164 +1101,179 @@ exports.getTodosUsuarios = onCall({ cors: true }, async (request) => {
 });
 
 // ====================================================================
-// FUNÇÃO: uploadCurriculo + salvarCandidatura (AMBAS FUNCIONAIS)
+// FUNÇÃO: uploadCurriculo (CORRIGIDA)
 // ====================================================================
-exports.uploadCurriculo = onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.status(200).send("OK");
-    return;
-  }
-
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Método não permitido" });
-    return;
-  }
-
-  try {
-    const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } =
-      req.body;
-
-    if (!fileData || !mimeType || !fileName) {
-      res.status(400).json({
-        status: "error",
-        message: "Campos obrigatórios ausentes",
-      });
+exports.uploadCurriculo = onRequest(
+  { 
+    cors: true,  // ✅ CORS HABILITADO CORRETAMENTE
+    timeoutSeconds: 60,
+    memory: "256MiB"
+  }, 
+  async (req, res) => {
+    // Validar método
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Método não permitido. Use POST." });
       return;
     }
 
-    // ✅ COLOQUE A URL NOVA QUE VOCÊ COPIOU AQUI
-    const GAS_URL =
-      "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
-
-    const payload = {
-      fileData: fileData,
-      mimeType: mimeType,
-      fileName: fileName,
-      nomeCandidato: nomeCandidato,
-      vagaTitulo: vagaTitulo,
-    };
-
-    logger.log("📤 Enviando para GAS:", {
-      fileName,
-      nomeCandidato,
-      vagaTitulo,
-    });
-
-    const gasResponse = await fetch(GAS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      timeout: 30000,
-    });
-
-    logger.log("📥 Status GAS:", gasResponse.status);
-    const responseText = await gasResponse.text();
-    logger.log(
-      "📥 Resposta GAS (primeiros 500 chars):",
-      responseText.substring(0, 500)
-    );
-
-    let gasJson;
     try {
-      gasJson = JSON.parse(responseText);
-    } catch (e) {
-      logger.error("❌ GAS retornou HTML, não JSON!");
-      logger.error("Resposta completa:", responseText.substring(0, 1000));
-      throw new Error(
-        `GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`
-      );
-    }
+      const { fileData, mimeType, fileName, nomeCandidato, vagaTitulo } = req.body;
 
-    if (gasJson.status === "success" && gasJson.fileUrl) {
-      logger.log("✅ Sucesso!");
-      res.json({
-        status: "success",
-        message: "Arquivo salvo em Google Drive com sucesso!",
-        fileUrl: gasJson.fileUrl,
+      // Validar campos obrigatórios
+      if (!fileData || !mimeType || !fileName) {
+        res.status(400).json({
+          status: "error",
+          message: "Campos obrigatórios ausentes: fileData, mimeType, fileName",
+        });
+        return;
+      }
+
+      // URL do Google Apps Script
+      const GAS_URL =
+        "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
+
+      const payload = {
+        fileData: fileData,
+        mimeType: mimeType,
+        fileName: fileName,
+        nomeCandidato: nomeCandidato || "Candidato",
+        vagaTitulo: vagaTitulo || "Vaga",
+      };
+
+      logger.info("📤 Enviando para GAS:", {
+        fileName,
+        nomeCandidato,
+        vagaTitulo,
       });
-    } else {
-      throw new Error(gasJson.message || "Erro desconhecido no GAS");
+
+      // Enviar para Google Apps Script
+      const gasResponse = await fetch(GAS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      logger.info("📥 Status GAS:", gasResponse.status);
+      const responseText = await gasResponse.text();
+      logger.info("📥 Resposta GAS (primeiros 500 chars):", responseText.substring(0, 500));
+
+      // Tentar parsear JSON
+      let gasJson;
+      try {
+        gasJson = JSON.parse(responseText);
+      } catch (e) {
+        logger.error("❌ GAS retornou HTML, não JSON!");
+        logger.error("Resposta completa:", responseText.substring(0, 1000));
+        throw new Error(
+          `GAS retornou HTML. Status: ${gasResponse.status}. Verifique se a URL está correta e o Apps Script foi deployado.`
+        );
+      }
+
+      // Verificar resposta do GAS
+      if (gasJson.status === "success" && gasJson.fileUrl) {
+        logger.info("✅ Upload bem-sucedido!");
+        res.status(200).json({
+          status: "success",
+          message: "Arquivo salvo em Google Drive com sucesso!",
+          fileUrl: gasJson.fileUrl,
+        });
+      } else {
+        throw new Error(gasJson.message || "Erro desconhecido no GAS");
+      }
+    } catch (error) {
+      logger.error("❌ Erro na uploadCurriculo:", error.message);
+      logger.error("Stack trace:", error.stack);
+      
+      res.status(500).json({
+        status: "error",
+        message: `Erro ao fazer upload: ${error.message}`,
+      });
     }
-  } catch (error) {
-    logger.error("❌ Erro na uploadCurriculo:", error.message);
-    res.status(500).json({
-      status: "error",
-      message: `Erro: ${error.message}`,
-    });
   }
-});
+);
 
+/ ====================================================================
+// FUNÇÃO: salvarCandidatura (CORRIGIDA)
 // ====================================================================
-// FUNÇÃO: salvarCandidatura (SALVA NO FIREBASE)
-// ====================================================================
+exports.salvarCandidatura = onCall(
+  { 
+    cors: true,
+    timeoutSeconds: 60 
+  }, 
+  async (request) => {
+    try {
+      const data = request.data;
 
-exports.salvarCandidatura = onCall({ cors: true }, async (request) => {
-  try {
-    // ✅ Em Callable Functions, os dados vêm em request.data
-    const data = request.data;
+      logger.info("📥 Recebendo candidatura:", { nome: data.nome_completo });
 
-    logger.log("📥 Recebendo candidatura:", data);
+      // Validar campos obrigatórios
+      if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
+        );
+      }
 
-    // Validar campos obrigatórios
-    if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
+      // Preparar dados da candidatura
+      const novaCandidaturaData = {
+        vaga_id: data.vaga_id,
+        titulo_vaga_original: data.titulo_vaga_original || "",
+        nome_completo: data.nome_completo,
+        email_candidato: data.email_candidato || "",
+        telefone_contato: data.telefone_contato || "",
+        cep: data.cep || "",
+        numero_endereco: data.numero_endereco || "",
+        complemento_endereco: data.complemento_endereco || "",
+        endereco_rua: data.endereco_rua || "",
+        cidade: data.cidade || "",
+        estado: data.estado || "",
+        // ⭐ NOVOS CAMPOS ADICIONADOS
+        data_nascimento: data.data_nascimento || "",
+        genero: data.genero || "",
+        escolaridade: data.escolaridade || "",
+        area_formacao: data.area_formacao || "",
+        especializacoes: data.especializacoes || "",
+        disponibilidade_inicio: data.disponibilidade_inicio || "",
+        experiencia_area: data.experiencia_area || "",
+        linkedin_url: data.linkedin_url || "",
+        portfolio_url: data.portfolio_url || "",
+        motivacao: data.motivacao || "",
+        pcd: data.pcd || "",
+        // CAMPOS ORIGINAIS
+        resumo_experiencia: data.resumo_experiencia || "",
+        habilidades_competencias: data.habilidades_competencias || "",
+        como_conheceu: data.como_conheceu || "",
+        link_curriculo_drive: data.link_curriculo_drive,
+        data_candidatura: FieldValue.serverTimestamp(),
+        status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
+      };
+
+      logger.info("💾 Salvando no Firestore...");
+
+      // Salvar no Firestore
+      const docRef = await db.collection("candidaturas").add(novaCandidaturaData);
+
+      logger.info("✅ Candidatura salva com sucesso! ID:", docRef.id);
+
+      return {
+        success: true,
+        message: "Candidatura registrada com sucesso!",
+        id: docRef.id,
+      };
+    } catch (error) {
+      logger.error("❌ Erro ao processar candidatura:", error.message);
+      logger.error("Stack trace:", error.stack);
+
       throw new HttpsError(
-        "invalid-argument",
-        "Os campos vaga_id, nome_completo e link_curriculo_drive são obrigatórios."
+        "internal",
+        "Ocorreu um erro interno ao salvar sua candidatura: " + error.message
       );
     }
-
-    // Preparar dados da candidatura
-    const novaCandidaturaData = {
-      vaga_id: data.vaga_id,
-      titulo_vaga_original: data.titulo_vaga_original || "",
-      nome_completo: data.nome_completo,
-      email_candidato: data.email_candidato || "",
-      telefone_contato: data.telefone_contato || "",
-      cep: data.cep || "",
-      numero_endereco: data.numero_endereco || "",
-      complemento_endereco: data.complemento_endereco || "",
-      endereco_rua: data.endereco_rua || "",
-      cidade: data.cidade || "",
-      estado: data.estado || "",
-      resumo_experiencia: data.resumo_experiencia || "",
-      habilidades_competencias: data.habilidades_competencias || "",
-      como_conheceu: data.como_conheceu || "",
-      link_curriculo_drive: data.link_curriculo_drive,
-      data_candidatura: FieldValue.serverTimestamp(),
-      status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
-    };
-
-    logger.log("💾 Salvando no Firestore...");
-
-    // Salvar no Firestore
-    const docRef = await db.collection("candidaturas").add(novaCandidaturaData);
-
-    logger.log("✅ Candidatura salva com sucesso! ID:", docRef.id);
-
-    return {
-      success: true,
-      message: "Candidatura registrada com sucesso!",
-      id: docRef.id,
-    };
-  } catch (error) {
-    logger.error("❌ Erro ao processar candidatura:", error);
-
-    throw new HttpsError(
-      "internal",
-      "Ocorreu um erro interno ao salvar sua candidatura: " + error.message
-    );
   }
-});
+);
 
-// ============================================
-// CLOUD FUNCTION: Validar Token e Retornar Teste
-// ============================================
 
 /**
  * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/validarTokenTeste
