@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.6.0 (Corrigido ReferenceError e Lógica de Avaliação)
+ * Versão: 6.7.0 (Corrigido 'rh_system_user' buscando nome do Firestore e 'statusTeste' ReferenceError)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -17,6 +17,7 @@ import {
   db,
   addDoc,
   getDoc,
+  auth,
 } from "../../../../assets/js/firebase-init.js";
 
 // ============================================
@@ -38,6 +39,41 @@ const CF_SALVAR_RESPOSTAS = `${CLOUD_FUNCTIONS_BASE}/salvarRespostasTeste`;
 // ============================================
 const modalEnviarTeste = document.getElementById("modal-enviar-teste");
 const formEnviarTeste = document.getElementById("form-enviar-teste");
+
+// ============================================
+// ✅ INÍCIO DA ATUALIZAÇÃO (REQ 2)
+// ============================================
+/**
+ * Helper function para buscar o NOME do usuário logado na coleção 'usuarios'.
+ * Isso corrige o problema do 'rh_system_user'.
+ */
+async function getCurrentUserName() {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return "rh_system_user (Não autenticado)";
+    }
+
+    // Use o user.uid para buscar o documento na coleção 'usuarios'
+    const userDocRef = doc(db, "usuarios", user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      const userData = userDocSnap.data();
+      // Retorna o campo 'nome' (como visto na image_0da3a4.jpg)
+      return userData.nome || userData.email || user.uid;
+    } else {
+      // Fallback caso o documento do usuário não exista
+      return user.email || user.uid;
+    }
+  } catch (error) {
+    console.error("Erro ao buscar nome do usuário:", error);
+    return "rh_system_user (Erro)";
+  }
+}
+// ============================================
+// ✅ FIM DA ATUALIZAÇÃO
+// ============================================
 
 // ============================================
 // FUNÇÕES DE UTILIDADE
@@ -601,7 +637,7 @@ function toggleCamposAvaliacaoTeste() {
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v6.6.0)
+ * Abre o modal de avaliação do teste (ATUALIZADO v6.7.0)
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -721,7 +757,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
 
         // ============================================
-        // ✅ INÍCIO DA CORREÇÃO (v6.5.1)
+        // ✅ INÍCIO DA CORREÇÃO (v6.7.0)
         // ============================================
         const statusTeste = teste.status || "enviado";
         // ============================================
@@ -933,7 +969,7 @@ Se tiver dúvidas, entre em contato com o RH.
 };
 
 /**
- * Submete a avaliação do teste (ATUALIZADO COM GESTOR)
+ * Submete a avaliação do teste (ATUALIZADO v6.7.0)
  */
 async function submeterAvaliacaoTeste(e) {
   e.preventDefault();
@@ -948,7 +984,7 @@ async function submeterAvaliacaoTeste(e) {
   const state = getGlobalState();
   const {
     candidatosCollection,
-    currentUserData,
+    currentUserData, // Este ainda vem do getGlobalState, mas está incompleto
     handleTabClick,
     statusCandidaturaTabs,
   } = state;
@@ -998,14 +1034,19 @@ async function submeterAvaliacaoTeste(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // (REQ 2): Correção do nome do avaliador
-  const avaliadorNome =
-    currentUserData.nome || currentUserData.email || "rh_system_user";
+  // ============================================
+  // ✅ INÍCIO DA ATUALIZAÇÃO (REQ 2)
+  // ============================================
+  // Busca o nome do usuário ATUAL, em vez de usar o state incompleto
+  const avaliadorNome = await getCurrentUserName();
+  // ============================================
+  // ✅ FIM DA ATUALIZAÇÃO
+  // ============================================
 
   const dadosAvaliacaoTeste = {
     resultado: resultado,
     data_avaliacao: new Date(),
-    avaliador_nome: avaliadorNome, // REQ 2
+    avaliador_nome: avaliadorNome, // ✅ REQ 2
     observacoes: observacoes || "",
     // SALVA O GESTOR DESIGNADO
     gestor_designado: isAprovado
@@ -1028,7 +1069,7 @@ async function submeterAvaliacaoTeste(e) {
         acao: `Avaliação do Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
           isAprovado ? `Gestor designado: ${gestorNome}` : "Processo finalizado"
         }. Novo Status: ${novoStatusCandidato}`,
-        usuario: avaliadorNome, // REQ 2
+        usuario: avaliadorNome, // ✅ REQ 2
       }),
     });
 
@@ -1061,7 +1102,7 @@ async function submeterAvaliacaoTeste(e) {
 }
 
 /**
- * Submete o agendamento da Entrevista RH
+ * Submete o agendamento da Entrevista RH (ATUALIZADO v6.7.0)
  */
 async function submeterAgendamentoRH(e) {
   e.preventDefault();
@@ -1109,9 +1150,8 @@ async function submeterAgendamentoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // (REQ 2): Correção do nome do usuário
-  const usuarioNome =
-    currentUserData.nome || currentUserData.email || "rh_system_user";
+  // ✅ (REQ 2): Correção do nome do usuário
+  const usuarioNome = await getCurrentUserName();
 
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
@@ -1124,7 +1164,7 @@ async function submeterAgendamentoRH(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}. Status: ${statusAtual}`,
-        usuario: usuarioNome, // REQ 2
+        usuario: usuarioNome, // ✅ REQ 2
       }),
     };
 
@@ -1457,25 +1497,26 @@ Se tiver dúvidas, não hesite em nos contactar!
   } finally {
     btnEnviar.disabled = false;
     btnEnviar.innerHTML =
-      '<i class="fas fa-whatsapp me-2"></i> Enviar via WhatsApp';
+      '<i class="fab fa-whatsapp me-2"></i> Enviar via WhatsApp';
   }
 }
 
 /**
- * ✅ Salva o envio do teste no Firestore (histórico) (ATUALIZADO v6.5.1)
+ * ✅ Salva o envio do teste no Firestore (histórico) (ATUALIZADO v6.7.0)
  */
 async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
 
-  const state = getGlobalState();
-  const { candidatosCollection, currentUserData } = state;
-
-  // (REQ 2): Correção do nome do usuário
-  const usuarioNome =
-    currentUserData.nome || currentUserData.email || "rh_system_user";
+  // ============================================
+  // ✅ INÍCIO DA ATUALIZAÇÃO (REQ 2)
+  // ============================================
+  const usuarioNome = await getCurrentUserName();
+  // ============================================
+  // ✅ FIM DA ATUALIZAÇÃO
+  // ============================================
 
   try {
-    const candidatoRef = doc(candidatosCollection, candidatoId);
+    const candidatoRef = doc(db, "candidaturas", candidatoId);
 
     await updateDoc(candidatoRef, {
       status_recrutamento: "Testes Pendente (Enviado)",
@@ -1484,7 +1525,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
         tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
-        enviado_por: usuarioNome, // REQ 2
+        enviado_por: usuarioNome, // ✅ REQ 2
         status: "enviado",
       }),
       historico: arrayUnion({
@@ -1492,7 +1533,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
         acao: `Teste enviado via Cloud Function. Token: ${
           tokenId?.substring(0, 8) || "N/A"
         }...`,
-        usuario: usuarioNome, // REQ 2
+        usuario: usuarioNome, // ✅ REQ 2
       }),
     });
 
@@ -1744,7 +1785,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
 };
 
 /**
- * Submete a avaliação da Entrevista RH
+ * Submete a avaliação da Entrevista RH (ATUALIZADO v6.7.0)
  */
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
@@ -1829,9 +1870,13 @@ async function submeterAvaliacaoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // (REQ 2): Correção do nome do avaliador
-  const avaliadorNome =
-    currentUserData.nome || currentUserData.email || "rh_system_user";
+  // ============================================
+  // ✅ INÍCIO DA ATUALIZAÇÃO (REQ 2)
+  // ============================================
+  const avaliadorNome = await getCurrentUserName();
+  // ============================================
+  // ✅ FIM DA ATUALIZAÇÃO
+  // ============================================
 
   const dadosAvaliacao = {
     resultado: resultado,
