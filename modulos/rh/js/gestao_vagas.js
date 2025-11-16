@@ -1243,10 +1243,16 @@ async function abrirModalDivulgacao(vagaId) {
   }
 }
 
+/**
+ * Salva divulgação
+ * VERSÃO 2.1 - COM VALIDAÇÃO DETALHADA
+ */
 async function handleSalvarDivulgacao(e) {
   e.preventDefault();
 
   const vagaId = document.getElementById("vaga-id-divulgacao").value;
+
+  // Coletar datas separadas
   const dataInicio =
     document.getElementById("vaga-data-inicio-divulgacao")?.value || "";
   const dataFim =
@@ -1257,12 +1263,53 @@ async function handleSalvarDivulgacao(e) {
     (opt) => opt.value
   );
 
-  if (!dataInicio || !dataFim || canais.length === 0) {
-    window.showToast?.(
-      "Por favor, preencha todos os campos obrigatórios.",
-      "error"
-    );
+  // ⭐ VALIDAÇÃO DETALHADA COM MENSAGENS ESPECÍFICAS
+  const camposFaltando = [];
+
+  if (!dataInicio) {
+    camposFaltando.push("Data de Início da Divulgação");
+  }
+
+  if (!dataFim) {
+    camposFaltando.push("Data de Fim da Divulgação");
+  }
+
+  if (canais.length === 0) {
+    camposFaltando.push("Canais de Divulgação (selecione pelo menos um)");
+  }
+
+  if (camposFaltando.length > 0) {
+    const mensagem = `Por favor, preencha os seguintes campos:\n\n• ${camposFaltando.join(
+      "\n• "
+    )}`;
+
+    // Mostrar toast
+    if (window.showToast) {
+      window.showToast("Campos obrigatórios não preenchidos", "error");
+    }
+
+    // Mostrar alert com detalhes
+    alert(mensagem);
+
+    console.warn("⚠️ Campos faltando:", camposFaltando);
     return;
+  }
+
+  // Validação de datas lógicas
+  if (dataInicio && dataFim) {
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+
+    if (fim < inicio) {
+      const mensagem = "A Data de Fim não pode ser anterior à Data de Início.";
+
+      if (window.showToast) {
+        window.showToast(mensagem, "error");
+      }
+
+      alert(mensagem);
+      return;
+    }
   }
 
   console.log(`🔹 Salvando divulgação: ${vagaId}`);
@@ -1276,25 +1323,37 @@ async function handleSalvarDivulgacao(e) {
 
   try {
     const vagaRef = doc(vagasCollection, vagaId);
+
     await updateDoc(vagaRef, {
       dataInicioDivulgacao: dataInicio,
       dataFimDivulgacao: dataFim,
-      canaisdivulgacao: canais,
+      canais_divulgacao: canais,
       data_atualizacao: new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Divulgação registrada nos canais: ${canais.join(", ")}`,
+        acao: `Divulgação registrada de ${formatarData(
+          dataInicio
+        )} até ${formatarData(dataFim)} nos canais: ${canais.join(", ")}`,
         usuario: currentUserData?.uid || "sistema",
       }),
     });
 
-    window.showToast?.("Divulgação salva com sucesso!", "success");
+    if (window.showToast) {
+      window.showToast("Divulgação salva com sucesso!", "success");
+    }
+
+    console.log("✅ Divulgação salva");
+
     fecharModal(ID_MODAL_DIVULGACAO);
     carregarVagas(statusAbaAtiva);
-    console.log("✅ Divulgação salva");
   } catch (error) {
     console.error("❌ Erro ao salvar divulgação:", error);
-    window.showToast?.(`Erro: ${error.message}`, "error");
+
+    if (window.showToast) {
+      window.showToast(`Erro ao salvar: ${error.message}`, "error");
+    }
+
+    alert(`Erro ao salvar divulgação: ${error.message}`);
   } finally {
     if (submitButton) {
       submitButton.disabled = false;
