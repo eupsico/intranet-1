@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabTriagem.js
- * Versão: 3.1.0 (Corrigido: Timestamps, Validações e CSS dos Cards)
+ * Versão: 3.2.0 (Estilo de Card alinhado com tabGestor.js)
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -366,17 +366,29 @@ export async function renderizarTriagem(state) {
       return;
     }
 
-    let listaHtml = '<div class="list-candidaturas-triagem">';
+    // ======================================================
+    // ✅ INÍCIO DA ATUALIZAÇÃO DO LAYOUT
+    // ======================================================
+    let listaHtml = '<div class="candidatos-container candidatos-grid">';
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
 
       const statusTriagem = cand.status_recrutamento || "Aguardando Triagem";
-      let corStatus = "secondary";
-      if (statusTriagem.includes("Aprovada")) corStatus = "success";
-      else if (statusTriagem.includes("Reprovada")) corStatus = "danger";
-      else if (statusTriagem.includes("Recebida")) corStatus = "info";
+
+      // Lógica de classe de status (igual ao tabGestor.js)
+      let statusClass = "status-info"; // Default
+      if (
+        statusTriagem.toLowerCase().includes("pendente") ||
+        statusTriagem.toLowerCase().includes("recebida")
+      ) {
+        statusClass = "status-warning";
+      } else if (statusTriagem.toLowerCase().includes("aprovada")) {
+        statusClass = "status-success";
+      } else if (statusTriagem.toLowerCase().includes("reprovada")) {
+        statusClass = "status-rejeitada";
+      }
 
       const telefone = cand.telefone_contato?.replace(/\D/g, "") || "";
       const linkWhatsApp = telefone
@@ -386,53 +398,57 @@ export async function renderizarTriagem(state) {
       const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
 
       listaHtml += `
-        <div class="card card-candidato-triagem">
-          <div class="card-header">
-            <h5 class="card-title">${
-              cand.nome_completo || "Candidato Sem Nome"
-            }</h5>
-            <span class="badge bg-${corStatus}">${statusTriagem.replace(
-        /_/g,
-        " "
-      )}</span>
-          </div>
+        <div class="card card-candidato-triagem" data-id="${candidatoId}">
           
-          <div class="card-body">
-            <p class="card-text">
-              <strong>Email:</strong> ${cand.email_candidato || "N/A"}
+          <div class="info-primaria">
+            <h4 class="nome-candidato">
+              ${cand.nome_completo || "Candidato Sem Nome"}
+              <span class="status-badge ${statusClass}">
+                <i class="fas fa-tag"></i> ${statusTriagem.replace(/_/g, " ")}
+              </span>
+            </h4>
+            <p class="small-info">
+              <i class="fas fa-briefcase"></i> Etapa: Avaliação de Currículo
             </p>
-            <p class="card-text">
-              <strong>Telefone:</strong> 
-              <a href="${linkWhatsApp}" target="_blank" class="text-success ${
+          </div>
+
+          <div class="info-contato">
+            ${
+              cand.email_candidato
+                ? `<p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>`
+                : ""
+            }
+            
+            <a href="${linkWhatsApp}" target="_blank" class="whatsapp ${
         !telefone ? "disabled" : ""
       }">
-                <i class="fab fa-whatsapp me-1"></i> ${
-                  cand.telefone_contato || "N/A"
-                }
-              </a>
-            </p>
-            <p class="card-text text-muted small">
-              ${cand.resumo_experiencia || "Sem informações de experiência"}
-            </p>
+               <i class="fab fa-whatsapp"></i> ${cand.telefone_contato || "N/A"}
+            </a>
+          </div>
+
+          <div class="acoes-candidato">
+            <button 
+              class="action-button primary btn-avaliar-triagem" 
+              data-id="${candidatoId}"
+              data-candidato-data='${jsonCand}'
+              style="background-color: #ff9800; border-color: #ff9800;">
+              <i class="fas fa-edit"></i> Avaliar Currículo
+            </button>
+            
+            <button 
+              class="action-button secondary btn-detalhes-triagem" 
+              data-id="${candidatoId}"
+              data-candidato-data='${jsonCand}'>
+              <i class="fas fa-eye"></i> Detalhes
+            </button>
           </div>
           
-          <div class="card-footer">
-            <button 
-              class="btn btn-sm btn-info btn-detalhes-triagem" 
-              data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
-              <i class="fas fa-info-circle me-1"></i> Detalhes
-            </button>
-            <button 
-              class="btn btn-sm btn-warning btn-avaliar-triagem" 
-              data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
-              <i class="fas fa-edit me-1"></i> Avaliar
-            </button>
-          </div>
         </div>
       `;
     });
+    // ======================================================
+    // ✅ FIM DA ATUALIZAÇÃO DO LAYOUT
+    // ======================================================
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
