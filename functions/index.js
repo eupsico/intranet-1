@@ -1381,173 +1381,142 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
 // CLOUD FUNCTION - exports.salvarRespostasTeste
 // ATUALIZADA (v2.0) - Agora atualiza o status em 'testes_enviados'
 // ===================================================================
-exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      if (req.method !== "POST") {
-        return res.status(405).json({
-          erro: "Método não permitido. Use POST.",
-        });
-      }
-
-      const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
-
-      if (!token) {
-        return res.status(400).json({
-          erro: "Token não informado",
-        });
-      }
-
-      console.log(
-        `🔹 Salvando respostas do token: ${token.substring(0, 10)}...`
-      );
-
-      // ✅ 1. Busca o token
-      const tokenSnap = await db
-        .collection("tokens_acesso")
-        .where("token", "==", token)
-        .limit(1)
-        .get();
-
-      if (tokenSnap.empty) {
-        return res.status(404).json({
-          erro: "Token não encontrado",
-        });
-      }
-
-      const tokenDoc = tokenSnap.docs[0];
-      const dadosToken = tokenDoc.data();
-      const tokenId = tokenDoc.id; // ID do documento do token
-
-      // ✅ 2. Verifica se já foi respondido
-      if (dadosToken.usado === true) {
-        return res.status(403).json({
-          erro: "Este teste já foi respondido",
-        });
-      }
-
-      // ✅ 3. Verifica expiração
-      const agora = new Date();
-      const dataExpiracao =
-        dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
-      if (dataExpiracao && agora > new Date(dataExpiracao)) {
-        return res.status(403).json({
-          erro: "Token expirado",
-        });
-      }
-
-      // ✅ 4. Atualiza o token como utilizado
-      await db
-        .collection("tokens_acesso")
-        .doc(tokenId)
-        .update({
-          usado: true,
-          respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
-          respostas: respostas || {},
-          tempoRespostaSegundos: tempoGasto || 0,
-          navegador: navegador || "desconhecido",
-          ipAddress: ipAddress || "não registrado",
-        });
-
-      // ✅ 5. Busca dados do teste
-      const testeSnap = await db
-        .collection("estudos_de_caso")
-        .doc(dadosToken.testeId)
-        .get();
-
-      const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
-
-      // ============================================
-      // ✅ INÍCIO DA ATUALIZAÇÃO (REQ 1)
-      // ============================================
-
-      // 6. Busca a candidatura para atualizar o array 'testes_enviados'
-      const candidaturaRef = db
-        .collection("candidaturas")
-        .doc(dadosToken.candidatoId);
-      const candidaturaSnap = await candidaturaRef.get();
-
-      let testesEnviadosAtualizado = [];
-
-      // Define o link onde o RH poderá ver as respostas (ajuste se necessário)
-      const linkRespostas = `/rh/painel/respostas?token=${tokenId}`;
-
-      if (candidaturaSnap.exists) {
-        const dadosCandidatura = candidaturaSnap.data();
-        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || [];
-
-        // Encontra o teste enviado pelo tokenId e atualiza seu status
-        const testeIndex = testesEnviadosAtualizado.findIndex(
-          (t) => t.tokenId === tokenId
-        );
-
-        if (testeIndex !== -1) {
-          console.log(
-            `Atualizando status do teste [${testeIndex}] para 'respondido'`
-          );
-          testesEnviadosAtualizado[testeIndex].status = "respondido";
-          testesEnviadosAtualizado[testeIndex].dataResposta = new Date();
-          // Adiciona o link para o RH ver as respostas
-          testesEnviadosAtualizado[testeIndex].link_respostas = linkRespostas;
-        } else {
-          console.warn(
-            `Token ${tokenId} não encontrado no array 'testes_enviados' da candidatura ${dadosToken.candidatoId}`
-          );
-        }
-      }
-
-      // 7. Salva as respostas na coleção 'testes_respondidos' (como na imagem)
-      // E atualiza a candidatura com o array modificado
-
-      // Primeiro, salva as respostas na coleção principal (como na imagem)
-      await db
-        .collection("testes_respondidos")
-        .doc(tokenId)
-        .set({
-          testeId: dadosToken.testeId,
-          candidatoId: dadosToken.candidatoId,
-          tokenId: tokenId,
-          nomeTeste: nomeTeste,
-          dataResposta: new Date(),
-          tempoGasto: tempoGasto || 0,
-          respostas: respostas || {},
-          respostasCount: Object.keys(respostas || {}).length,
-          titulo_vaga_original: candidaturaSnap.exists
-            ? candidaturaSnap.data().titulo_vaga_original
-            : "",
-        });
-
-      // Segundo, atualiza o documento da candidatura
-      await candidaturaRef.update({
-        testes_enviados: testesEnviadosAtualizado, // Sobrescreve o array com o status atualizado
-        historico: admin.firestore.FieldValue.arrayUnion({
-          data: new Date(),
-          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
-          usuario: "candidato_via_token",
-        }),
-      });
-      // ============================================
-      // ✅ FIM DA ATUALIZAÇÃO
-      // ============================================
-
-      console.log("✅ Respostas salvas e status atualizado com sucesso!");
-
-      return res.status(200).json({
-        sucesso: true,
-        mensagem: "Respostas registradas com sucesso!",
-        tokenId: tokenId,
-        dataResposta: agora.toISOString(),
-        tempoGasto: tempoGasto,
-      });
-    } catch (error) {
-      console.error("❌ Erro ao salvar respostas:", error);
-      return res.status(500).json({
-        erro: "Erro ao salvar respostas",
-        detalhes: error.message,
-      });
+exports.salvarRespostasTeste = functions.https.onRequest((req, res) => cors(req, res, async () => {
+  try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ erro: 'Método não permitido. Use POST.' });
     }
-  });
-});
+
+    const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ erro: 'Token não informado' });
+    }
+
+    console.log(`Salvando respostas do token ${token.substring(0, 10)}...`);
+
+    // 1. Busca o token
+    const tokenSnap = await db
+      .collection('tokensacesso')
+      .where('token', '==', token)
+      .limit(1)
+      .get();
+
+    if (tokenSnap.empty) {
+      return res.status(404).json({ erro: 'Token não encontrado' });
+    }
+
+    const tokenDoc = tokenSnap.docs[0];
+    const dadosToken = tokenDoc.data();
+    const tokenId = tokenDoc.id;
+
+    // 2. Verifica se já foi respondido
+    if (dadosToken.usado === true) {
+      return res.status(403).json({ erro: 'Este teste já foi respondido' });
+    }
+
+    // 3. Verifica expiração
+    const agora = new Date();
+    const dataExpiracao = dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
+
+    if (dataExpiracao && agora > new Date(dataExpiracao)) {
+      return res.status(403).json({ erro: 'Token expirado' });
+    }
+
+    // 4. Atualiza o token como utilizado
+    await db
+      .collection('tokensacesso')
+      .doc(tokenId)
+      .update({
+        usado: true,
+        respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
+        respostas: respostas,
+        tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+        navegador: navegador || 'desconhecido',
+        ipAddress: ipAddress || 'não registrado',
+      });
+
+    // 5. Busca dados do teste
+    const testeSnap = await db
+      .collection('estudosdecaso')
+      .doc(dadosToken.testeId)
+      .get();
+
+    const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : 'Teste';
+
+    // 6. Busca a candidatura para atualizar o array testesenviados
+    const candidaturaRef = db
+      .collection('candidaturas')
+      .doc(dadosToken.candidatoId);
+
+    const candidaturaSnap = await candidaturaRef.get();
+    let testesEnviadosAtualizado = [];
+
+    const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
+
+    if (candidaturaSnap.exists) {
+      const dadosCandidatura = candidaturaSnap.data();
+      testesEnviadosAtualizado = dadosCandidatura.testesenviados || [];
+
+      // Encontra o teste enviado pelo tokenId e atualiza seu status
+      const testeIndex = testesEnviadosAtualizado.findIndex(t => t.tokenId === tokenId);
+
+      if (testeIndex !== -1) {
+        console.log(`Atualizando status do teste índice ${testeIndex} para respondido`);
+        testesEnviadosAtualizado[testeIndex].status = 'respondido';
+        testesEnviadosAtualizado[testeIndex].dataResposta = admin.firestore.FieldValue.serverTimestamp();
+        testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
+        testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0; // ✅ CORRIGIDO
+      } else {
+        console.warn(`Token ${tokenId} não encontrado no array testesenviados da candidatura ${dadosToken.candidatoId}`);
+      }
+    }
+
+    // 7. Salva as respostas na coleção testesrespondidos
+    await db
+      .collection('testesrespondidos')
+      .doc(tokenId)
+      .set({
+        testeId: dadosToken.testeId,
+        candidatoId: dadosToken.candidatoId,
+        tokenId: tokenId,
+        nomeTeste: nomeTeste,
+        dataResposta: admin.firestore.FieldValue.serverTimestamp(),
+        data_envio: dadosToken.criadoEm, // ✅ ADICIONADO: data_envio
+        tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+        respostas: respostas,
+        respostasCount: Object.keys(respostas).length,
+        titulovagaoriginal: candidaturaSnap.exists ? candidaturaSnap.data().titulovagaoriginal : '',
+      });
+
+    // 8. Atualiza o documento da candidatura
+    await candidaturaRef.update({
+      testesenviados: testesEnviadosAtualizado,
+      historico: admin.firestore.FieldValue.arrayUnion({
+        data: admin.firestore.FieldValue.serverTimestamp(),
+        acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
+        usuario: 'candidato-via-token',
+      }),
+    });
+
+    console.log('Respostas salvas e status atualizado com sucesso!');
+
+    return res.status(200).json({
+      sucesso: true,
+      mensagem: 'Respostas registradas com sucesso!',
+      tokenId: tokenId,
+      dataResposta: agora.toISOString(),
+      tempoGasto: tempoGasto,
+    });
+  } catch (error) {
+    console.error('Erro ao salvar respostas:', error);
+    return res.status(500).json({
+      erro: 'Erro ao salvar respostas',
+      detalhes: error.message,
+    });
+  }
+})
+
 
 // ============================================
 // CLOUD FUNCTION: Gerar Token Teste
