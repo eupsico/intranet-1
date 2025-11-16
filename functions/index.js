@@ -2463,7 +2463,7 @@ exports.resetarSenhaGoogleWorkspace = onCall(
     try {
       const APPS_SCRIPT_URL =
         process.env.APPS_SCRIPT_URL ||
-        "https://script.google.com/macros/s/AKfycbz8DGNVG6P0x-Gv5VOEvP5kiyO6Rr2qqWQeA8Xvc6o0Fk9JiuzG6psxb42pSpgrF3d9DA/exec";
+        "https://script.google.com/macros/s/AKfycbxjfXLEGUkPus6ijRV00SV7hO0LSsqND5Sh8_y1Rv9qaXcpiNVytSS5rm5h2yidkQWKDg/exec";
 
       const senhaTemporaria = novaSenha || gerarSenhaTemporaria();
 
