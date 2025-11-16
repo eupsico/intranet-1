@@ -47,6 +47,7 @@ export async function renderizarAssinaturaDocs(state) {
       where("status_recrutamento", "in", [
         "AGUARDANDO_PREENCHIMENTO_FORM", // Para monitorar quem não preencheu
         "AGUARDANDO_ASSINATURA", // Pronto para enviar docs
+        "FORM_ENVIADO",
       ])
     );
     const snapshot = await getDocs(q); // Atualiza contagem na aba
