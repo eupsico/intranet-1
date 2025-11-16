@@ -12,7 +12,7 @@ import {
   httpsCallable,
 } from "./firebase-init.js";
 
-const CLOUD_FUNCTION_URL = 
+const CLOUD_FUNCTION_URL =
   "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/uploadCurriculo";
 
 const VAGAS_COLLECTION_NAME = "vagas";
@@ -55,29 +55,34 @@ function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
       };
 
       console.log(`🔵 LOG-CLIENTE: Enviando POST para Cloud Function`);
-      console.log(`📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+      console.log(
+        `📄 Arquivo: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`
+      );
       console.log(`👤 Candidato: ${nomeCandidato}`);
       console.log(`💼 Vaga: ${vagaTitulo}`);
 
       fetch(CLOUD_FUNCTION_URL, {
         method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       })
         .then((res) => {
           console.log(`✅ LOG-CLIENTE: Status HTTP: ${res.status}`);
-          
+
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           }
-          
+
           return res.json();
         })
         .then((response) => {
-          console.log("📦 LOG-CLIENTE: Resposta JSON da Cloud Function:", response);
-          
+          console.log(
+            "📦 LOG-CLIENTE: Resposta JSON da Cloud Function:",
+            response
+          );
+
           if (response.status === "success" && response.fileUrl) {
             console.log("✅ Currículo salvo no Drive:", response.fileUrl);
             resolve(response.fileUrl);
@@ -98,11 +103,11 @@ function uploadCurriculoToCloudFunction(file, vagaTitulo, nomeCandidato) {
           );
         });
     };
-    
+
     reader.onerror = function (error) {
       reject(new Error("Erro ao ler o arquivo: " + error.message));
     };
-    
+
     reader.readAsDataURL(file);
   });
 }
@@ -230,21 +235,50 @@ async function handleCandidatura(e) {
   const vagaSelectOption = selectVaga.options[selectVaga.selectedIndex];
   const vagaId = selectVaga.value;
   const tituloVagaOriginal = vagaSelectOption.getAttribute("data-titulo");
-  
+
   // Capturar TODOS os campos do formulário
   const nome = document.getElementById("nome-candidato").value.trim();
   const email = document.getElementById("email-candidato").value.trim();
   const telefone = document.getElementById("telefone-candidato").value.trim();
   const cep = cepCandidato.value.trim();
   const numero = document.getElementById("numero-endereco").value.trim();
-  const complemento = document.getElementById("complemento-endereco") ? document.getElementById("complemento-endereco").value.trim() : "";
+  const complemento = document.getElementById("complemento-endereco")
+    ? document.getElementById("complemento-endereco").value.trim()
+    : "";
   const rua = enderecoRua.value.trim();
   const cidade = cidadeEndereco.value.trim();
   const estado = estadoEndereco.value.trim();
-  const resumoExperiencia = document.getElementById("resumo-experiencia").value.trim();
-  const habilidades = document.getElementById("habilidades-competencias").value.trim();
+  const resumoExperiencia = document
+    .getElementById("resumo-experiencia")
+    .value.trim();
+  const habilidades = document
+    .getElementById("habilidades-competencias")
+    .value.trim();
   const comoConheceu = document.getElementById("como-conheceu").value;
   const arquivoCurriculo = document.getElementById("anexo-curriculo").files[0];
+  // ⭐ NOVOS CAMPOS ADICIONADOS
+  const dataNascimento = document
+    .getElementById("data-nascimento")
+    .value.trim();
+  const genero = document.getElementById("genero").value;
+  const escolaridade = document.getElementById("escolaridade").value;
+  const areaFormacao = document.getElementById("area-formacao").value.trim();
+  const disponibilidadeInicio = document.getElementById(
+    "disponibilidade-inicio"
+  ).value;
+  const pretensaoSalarial =
+    document.getElementById("pretensao-salarial").value.trim() ||
+    "Não informado";
+  const experienciaArea = document.getElementById("experiencia-area").value;
+  const possuiVeiculo =
+    document.getElementById("possui-veiculo").value || "Não informado";
+  const cnh = document.getElementById("cnh").value || "Não informado";
+  const linkedinUrl =
+    document.getElementById("linkedin-url").value.trim() || "";
+  const portfolioUrl =
+    document.getElementById("portfolio-url").value.trim() || "";
+  const motivacao = document.getElementById("motivacao").value.trim();
+  const pcd = document.getElementById("pcd").value || "Não informado";
 
   // Validação de campos obrigatórios
   if (
@@ -259,7 +293,14 @@ async function handleCandidatura(e) {
     !resumoExperiencia ||
     !habilidades ||
     !comoConheceu ||
-    !arquivoCurriculo
+    !arquivoCurriculo ||
+    !dataNascimento || // ⭐ NOVO
+    !genero || // ⭐ NOVO
+    !escolaridade || // ⭐ NOVO
+    !areaFormacao || // ⭐ NOVO
+    !disponibilidadeInicio || // ⭐ NOVO
+    !experienciaArea || // ⭐ NOVO
+    !motivacao // ⭐ NOVO
   ) {
     exibirFeedback(
       "mensagem-erro",
@@ -306,6 +347,20 @@ async function handleCandidatura(e) {
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
       link_curriculo_drive: linkCurriculoDrive,
+      // ⭐ NOVOS CAMPOS ADICIONADOS
+      data_nascimento: dataNascimento,
+      genero: genero,
+      escolaridade: escolaridade,
+      area_formacao: areaFormacao,
+      disponibilidade_inicio: disponibilidadeInicio,
+      pretensao_salarial: pretensaoSalarial,
+      experiencia_area: experienciaArea,
+      possui_veiculo: possuiVeiculo,
+      cnh: cnh,
+      linkedin_url: linkedinUrl,
+      portfolio_url: portfolioUrl,
+      motivacao: motivacao,
+      pcd: pcd,
     };
 
     console.log("🔥 Salvando candidatura no Firebase...");
