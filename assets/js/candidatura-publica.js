@@ -116,15 +116,8 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   try {
     const result = await salvarCandidaturaCallable(dadosCandidatura);
     if (result.data && result.data.success) {
-      exibirFeedback(
-        "mensagem-sucesso",
-        `Candidatura enviada com sucesso para a vaga de ${dadosCandidatura.titulo_vaga_original}!`,
-        false
-      );
-      formCandidatura.reset();
-      enderecoRua.value = "";
-      cidadeEndereco.value = "";
-      estadoEndereco.value = "";
+      // ✅ NOVA LÓGICA: Chamar a tela de sucesso permanente
+      mostrarSucessoCandidatura(dadosCandidatura.nome_completo);
     } else {
       throw new Error(
         result.data.message || "Erro desconhecido ao processar candidatura."
@@ -293,6 +286,22 @@ async function handleCandidatura(e) {
     );
     console.log("✅ Currículo enviado com sucesso! URL:", linkCurriculoDrive);
 
+    // Coleta todos os dados do formulário para enviar
+    const dadosFormulario = {
+      data_nascimento: document.getElementById("data-nascimento").value,
+      genero: document.getElementById("genero").value,
+      escolaridade: document.getElementById("escolaridade").value,
+      area_formacao: document.getElementById("area-formacao").value,
+      especializacoes: document.getElementById("especializacoes").value,
+      disponibilidade_inicio: document.getElementById("disponibilidade-inicio")
+        .value,
+      experiencia_area: document.getElementById("experiencia-area").value,
+      linkedin_url: document.getElementById("linkedin-url").value,
+      portfolio_url: document.getElementById("portfolio-url").value,
+      motivacao: document.getElementById("motivacao").value,
+      pcd: document.getElementById("pcd").value,
+    };
+
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
@@ -308,6 +317,9 @@ async function handleCandidatura(e) {
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
       link_curriculo_drive: linkCurriculoDrive,
+      ...dadosFormulario, // Adiciona todos os outros campos
+      status: "recebido", // Status inicial
+      data_candidatura: new Date().toISOString(), // Data de envio
     };
 
     console.log("🔥 Salvando candidatura no Firebase...");
@@ -323,19 +335,37 @@ async function handleCandidatura(e) {
 }
 
 // ====================================================================
-// FUNÇÃO: Exibir Feedback
+// FUNÇÃO: Mostrar Tela de Sucesso
+// ====================================================================
+function mostrarSucessoCandidatura(nomeCandidato) {
+  const formBody = document.querySelector(".form-body");
+  if (!formBody) {
+    console.error("Container .form-body não encontrado.");
+    return;
+  }
+
+  // Substitui o conteúdo do form-body pela mensagem de sucesso
+  formBody.innerHTML = `
+        <div class="success-message">
+            <div class="success-icon">✓</div>
+            <h2>Obrigado por se candidatar!</h2>
+            <p>Olá, <strong>${nomeCandidato || "Candidato(a)"}</strong>!</p>
+            <p>Recebemos sua candidatura com sucesso. Seu currículo será analisado cuidadosamente pela nossa equipe de RH.</p>
+            <p>Entraremos em contato após o término do processo de recrutamento.</p>
+            <p style="margin-top: 20px; font-weight: 600; color: #667eea;">Atenciosamente,<br>Equipe EuPsico</p>
+        </div>
+    `;
+}
+
+// ====================================================================
+// FUNÇÃO: Exibir Feedback (Simplificada)
 // ====================================================================
 function exibirFeedback(classe, mensagem, reHabilitar) {
   msgFeedback.innerHTML = `<div class="${classe}">${mensagem}</div>`;
   if (reHabilitar) {
     btnSubmit.disabled = false;
-  } else if (classe === "mensagem-sucesso") {
-    setTimeout(() => {
-      msgFeedback.innerHTML = "";
-      btnSubmit.disabled = false;
-      carregarVagasAtivas();
-    }, 5000);
   } else if (!classe) {
+    // Limpa mensagens que não sejam de erro ou re-habilitação
     msgFeedback.innerHTML = "";
   }
 }
