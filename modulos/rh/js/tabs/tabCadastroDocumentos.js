@@ -640,7 +640,7 @@ Equipe EuPsico 💙`;
 
 /**
  * Abre modal para resetar senha quando não encontrada
- * NOVO - Versão 1.0
+ * NOVO - Versão 1.0 (Estilizado)
  */
 function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   console.log("🔑 Abrindo modal de reset de senha");
@@ -651,53 +651,151 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   }
 
   const modal = document.createElement("div");
-  modal.id = "modal-reset-senha";
-  modal.className = "modal-overlay is-visible";
+  modal.id = "modal-reset-senha"; // A classe "modal-overlay is-visible" é removida e controlada pelo CSS interno
   modal.innerHTML = `
-    <div class="modal-content">
-      <button class="btn-fechar-modal" onclick="fecharModalResetSenha()">×</button>
-      <h3>🔑 Resetar Senha Temporária</h3>
+    <style>
+      /* Estilos do modal-enviar-formulario adaptados para modal-reset-senha */
+      #modal-reset-senha {
+       all: initial !important; display: block !important; position: fixed !important;
+       top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
+       z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important;
+        font-family: inherit !important;
+      }
+      #modal-reset-senha .modal-container {
+       position: fixed !important; top: 50% !important; left: 50% !important;
+       transform: translate(-50%, -50%) !important; max-width: 700px !important;
+       background: #ffffff !important; border-radius: 12px !important;
+       box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important;
+       overflow: hidden !important; animation: modalPopupOpen 0.3s ease-out !important;
+      }
+      @keyframes modalPopupOpen {
+       from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
+       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
       
-      <div class="alert warning">
-        <i class="fas fa-exclamation-triangle"></i>
-        <strong>Senha não encontrada!</strong>
-        <p>Não foi possível localizar a senha temporária para este candidato.</p>
-      </div>
+      /* Header de Aviso (Amarelo) */
+      #modal-reset-senha .modal-header {
+       background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+       color: #212529 !important;
+       padding: 20px !important; display: flex !important;
+       justify-content: space-between !important; align-items: center !important;
+      }
+      #modal-reset-senha .modal-title {
+        display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important;
+      }
+      #modal-reset-senha .modal-title i { font-size: 24px !important; }
+      #modal-reset-senha .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
+      #modal-reset-senha .modal-close {
+        background: rgba(0,0,0,0.1) !important; border: none !important; color: #212529 !important;
+        width: 36px !important; height: 36px !important; border-radius: 50% !important; cursor: pointer !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        font-size: 18px !important; transition: all 0.2s !important;
+      }
       
-      <div class="info-box">
-        <p><strong>Candidato:</strong> ${nomeCandidato}</p>
-        <p><strong>E-mail Corporativo:</strong> ${emailCorporativo}</p>
-      </div>
+      #modal-reset-senha .modal-body {
+        padding: 25px !important; max-height: 500px !important; overflow-y: auto !important;
+        background: #f8f9fa !important; font-family: inherit !important;
+      }
       
-      <p>Clique no botão abaixo para gerar uma nova senha temporária no Google Workspace:</p>
+      /* Estilo .info-card (reutilizado) */
+      #modal-reset-senha .info-card {
+        background: white !important; padding: 15px !important; border-radius: 8px !important;
+        margin-bottom: 20px !important; border-left: 4px solid #17a2b8 !important;
+      }
+      #modal-reset-senha .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
+      #modal-reset-senha .info-card strong { color: #333; }
+
+      /* Estilo para .alert-warning (baseado no seu .alert.warning) */
+      #modal-reset-senha .alert-warning {
+          background: #fff3cd !important;
+          border: 1px solid #ffeeba !important;
+          border-left: 5px solid #ffc107 !important;
+          color: #856404 !important;
+          padding: 15px !important;
+          border-radius: 8px !important;
+          margin-bottom: 20px !important;
+          display: flex;
+          gap: 12px;
+          align-items: center;
+      }
+       #modal-reset-senha .alert-warning i { font-size: 20px; }
+       #modal-reset-senha .alert-warning p { margin: 0 !important; }
+
+      #modal-reset-senha .modal-footer {
+        padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important;
+        display: flex !important; justify-content: flex-end !important; /* Alinha botões à direita */
+        gap: 12px !important;
+      }
+      #modal-reset-senha .btn {
+        padding: 12px 24px !important; border-radius: 6px !important; cursor: pointer !important;
+        font-weight: 500 !important; border: none !important; display: inline-flex; gap: 8px; align-items: center;
+      }
+      #modal-reset-senha .btn-cancelar { background: #6c757d !important; color: white !important; }
       
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="fecharModalResetSenha()">
-          Cancelar
-        </button>
-        <button 
-          id="btn-confirmar-reset-senha" 
-          class="btn btn-primary"
-          data-candidato-id="${candidatoId}"
-          data-email="${emailCorporativo}"
-        >
-          <i class="fas fa-key"></i> Gerar Nova Senha
-        </button>
-      </div>
+      /* Botão Primário (Amarelo) */
+      #modal-reset-senha .btn-primary { 
+          background: #ffc107 !important; 
+          color: #212529 !important; 
+          font-weight: 600 !important; 
+      }
+      #modal-reset-senha .btn-primary:disabled { background: #ccc !important; color: #666 !important; }
+    </style>
+
+    <div class="modal-container">
+      
+      <div class="modal-header">
+         <div class="modal-title">
+           <i class="fas fa-key"></i>
+           <h3>Resetar Senha Temporária</h3>
+         </div>
+         <button class="modal-close" onclick="fecharModalResetSenha()">
+           <i class="fas fa-times"></i>
+         </button>
+       </div>
+       
+       <div class="modal-body">
+          
+          <div class="alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+              <strong>Senha não encontrada!</strong>
+              <p>Não foi possível localizar a senha temporária para este candidato.</p>
+            </div>
+          </div>
+          
+          <div class="info-card"> <p><strong>Candidato:</strong> ${nomeCandidato}</p>
+            <p><strong>E-mail Corporativo:</strong> ${emailCorporativo}</p>
+          </div>
+          
+          <p>Clique no botão abaixo para gerar uma nova senha temporária no Google Workspace:</p>
+       </div>
+       
+       <div class="modal-footer">
+         <button type="button" class="btn btn-cancelar" onclick="fecharModalResetSenha()">
+           Cancelar
+         </button>
+         <button 
+           id="btn-confirmar-reset-senha" 
+           class="btn btn-primary"
+           data-candidato-id="${candidatoId}"
+           data-email="${emailCorporativo}"
+         >
+           <i class="fas fa-key"></i> Gerar Nova Senha
+         </button>
+       </div>
+
     </div>
-  `;
+ `;
 
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
+  document.body.style.overflow = "hidden"; // Event listener para o botão de confirmar
 
-  // Event listener para o botão de confirmar
   document
     .getElementById("btn-confirmar-reset-senha")
     .addEventListener("click", async (e) => {
       const btn = e.currentTarget;
       const candidatoId = btn.dataset.candidatoId;
       const email = btn.dataset.email;
-
       await executarResetSenha(candidatoId, email);
     });
 }
