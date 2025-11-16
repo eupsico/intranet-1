@@ -266,9 +266,6 @@ async function handleCandidatura(e) {
   const disponibilidadeInicio = document.getElementById(
     "disponibilidade-inicio"
   ).value;
-  const pretensaoSalarial =
-    document.getElementById("pretensao-salarial").value.trim() ||
-    "Não informado";
   const experienciaArea = document.getElementById("experiencia-area").value;
   const possuiVeiculo =
     document.getElementById("possui-veiculo").value || "Não informado";
