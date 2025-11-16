@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.3.0 (Corrigido: Botão 'Registrar' e lógica de reprovação)
+ * Versão: 6.4.0 (Corrigida lógica de obrigatoriedade 'Pontos Fortes' e 'Pontos de Atenção')
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -1333,7 +1333,7 @@ if (modalEnviarTeste) {
 // ============================================
 
 /**
- * ✅ NOVA FUNÇÃO
+ * ✅ ATUALIZADO (v6.4.0)
  * Gerencia a exibição dos campos "Pontos Fortes" e "Pontos de Atenção"
  * com base na seleção do resultado (Aprovado/Reprovado).
  */
@@ -1355,31 +1355,37 @@ function toggleCamposAvaliacaoRH() {
   const containerPontosAtencao = document
     .getElementById("pontos-atencao")
     ?.closest(".form-group");
+
+  const textareaPontosFortes = document.getElementById("pontos-fortes");
   const textareaPontosAtencao = document.getElementById("pontos-atencao");
 
   if (
     !containerPontosFortes ||
     !containerPontosAtencao ||
-    !textareaPontosAtencao
+    !textareaPontosAtencao ||
+    !textareaPontosFortes
   ) {
     console.warn(
-      "toggleCamposAvaliacaoRH: Não foi possível encontrar os containers dos textareas."
+      "toggleCamposAvaliacaoRH: Não foi possível encontrar os containers ou textareas."
     );
     return;
   }
 
   if (radioAprovado && radioAprovado.checked) {
     containerPontosFortes.style.display = "block";
+    textareaPontosFortes.required = true;
     containerPontosAtencao.style.display = "none";
     textareaPontosAtencao.required = false;
   } else if (radioReprovado && radioReprovado.checked) {
     containerPontosFortes.style.display = "none";
+    textareaPontosFortes.required = false;
     containerPontosAtencao.style.display = "block";
     textareaPontosAtencao.required = true;
   } else {
     // Estado inicial (nenhum selecionado)
-    containerPontosFortes.style.display = "block";
-    containerPontosAtencao.style.display = "block";
+    containerPontosFortes.style.display = "none";
+    containerPontosAtencao.style.display = "none";
+    textareaPontosFortes.required = false;
     textareaPontosAtencao.required = false;
   }
 }
@@ -1418,9 +1424,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
-  // ============================================
   // Botão Ver Currículo (Movido para o Footer)
-  // ============================================
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );
@@ -1473,9 +1477,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     }
   }
 
-  // ============================================
-  // ✅ INÍCIO DA ATUALIZAÇÃO (LÓGICA DE EXIBIÇÃO)
-  // ============================================
   // Adicionar listeners para os radio buttons
   const radiosResultado = form.querySelectorAll(
     'input[name="resultado_entrevista"]'
@@ -1487,9 +1488,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
 
   // Chamar a função uma vez para setar o estado inicial
   toggleCamposAvaliacaoRH();
-  // ============================================
-  // ✅ FIM DA ATUALIZAÇÃO (LÓGICA DE EXIBIÇÃO)
-  // ============================================
 
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
@@ -1514,11 +1512,11 @@ async function submeterAvaliacaoRH(e) {
   console.log("🔹 Entrevistas: Submetendo avaliação");
 
   // ============================================
-  // ✅ INÍCIO DA ATUALIZAÇÃO (CORREÇÃO DO ID)
+  // ✅ CORREÇÃO (v6.3.0)
   // ============================================
   const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
   // ============================================
-  // ✅ FIM DA ATUALIZAÇÃO (CORREÇÃO DO ID)
+  // ✅ FIM DA CORREÇÃO
   // ============================================
 
   const btnRegistrarAvaliacao = document.getElementById(
@@ -1562,20 +1560,31 @@ async function submeterAvaliacaoRH(e) {
   }
 
   // ============================================
-  // ✅ INÍCIO DA ATUALIZAÇÃO (VALIDAÇÃO DE REPROVAÇÃO)
+  // ✅ ATUALIZAÇÃO (v6.4.0 - VALIDAÇÃO DE APROV/REPROV)
   // ============================================
+  if (
+    resultado === "Aprovado" &&
+    (!pontosFortes || pontosFortes.trim().length === 0)
+  ) {
+    window.showToast?.(
+      "Para aprovar, é obrigatório preencher os Pontos Fortes.",
+      "error"
+    );
+    return;
+  }
+
   if (
     resultado === "Reprovado" &&
     (!pontosAtencao || pontosAtencao.trim().length === 0)
   ) {
     window.showToast?.(
-      "Para reprovar, é obrigatório preencher os Pontos de Atenção.",
+      "Para reprovar, é obrigatório preencher os Motivos da Reprovação (Pontos de Atenção).",
       "error"
     );
     return;
   }
   // ============================================
-  // ✅ FIM DA ATUALIZAÇÃO (VALIDAÇÃO DE REPROVAÇÃO)
+  // ✅ FIM DA ATUALIZAÇÃO
   // ============================================
 
   btnRegistrarAvaliacao.disabled = true;
