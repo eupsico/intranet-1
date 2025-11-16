@@ -204,12 +204,12 @@ async function salvarAutoSave() {
         ...dadosVaga,
         status: "Em Elaboração (Ficha Técnica)",
         datacriacao: new Date(),
-        criadopor: currentUserData?.id || "sistema",
+        criadopor: currentUserData?.uid || "sistema",
         historico: [
           {
             data: new Date(),
             acao: "Vaga criada automaticamente",
-            usuario: currentUserData?.id || "sistema",
+            usuario: currentUserData?.uid || "sistema",
           },
         ],
       };
@@ -792,7 +792,7 @@ async function handleSalvarVaga(e) {
         historico: arrayUnion({
           data: new Date(),
           acao: "Ficha Técnica salva",
-          usuario: currentUserData?.id || "sistema",
+          usuario: currentUserData?.uid || "sistema",
         }),
       });
 
@@ -803,12 +803,12 @@ async function handleSalvarVaga(e) {
         ...dadosVaga,
         status: "Em Elaboração (Ficha Técnica)",
         data_criacao: new Date(),
-        criado_por: currentUserData?.id || "sistema",
+        criado_por: currentUserData?.uid || "sistema",
         historico: [
           {
             data: new Date(),
             acao: "Vaga criada",
-            usuario: currentUserData?.id || "sistema",
+            usuario: currentUserData?.uid || "sistema",
           },
         ],
       };
@@ -858,7 +858,7 @@ async function enviarParaAprovacao(vagaId) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Vaga enviada para aprovação da Ficha Técnica",
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -885,7 +885,7 @@ async function aprovarFichaTecnica(vagaId) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Ficha Técnica aprovada",
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -1009,7 +1009,7 @@ async function handleEnviarAprovacaoArte(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Arte enviada para aprovação",
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -1071,7 +1071,7 @@ async function aprovarArte(vagaId) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Arte aprovada",
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -1152,7 +1152,7 @@ async function handleSolicitarCorrecao(e) {
         historico: arrayUnion({
           data: new Date(),
           acao: `Correção de Ficha Técnica solicitada: ${motivo}`,
-          usuario: currentUserData?.id || "sistema",
+          usuario: currentUserData?.uid || "sistema",
         }),
       };
       mensagemSucesso = "Solicitação de correção da Ficha Técnica enviada!";
@@ -1164,7 +1164,7 @@ async function handleSolicitarCorrecao(e) {
         historico: arrayUnion({
           data: new Date(),
           acao: `Correção de Arte solicitada: ${motivo}`,
-          usuario: currentUserData?.id || "sistema",
+          usuario: currentUserData?.uid || "sistema",
         }),
       };
       mensagemSucesso = "Solicitação de correção da Arte enviada!";
@@ -1212,8 +1212,22 @@ async function abrirModalDivulgacao(vagaId) {
       vaga.arte_link || "#";
     document.getElementById("divulgacao-texto-aprovado").textContent =
       vaga.texto_divulgacao || "N/A";
-    document.getElementById("vaga-periodo-divulgacao").value =
-      vaga.periodo_divulgacao || "";
+    // Período de divulgação (separado)
+    if (vaga.dataInicioDivulgacao) {
+      document.getElementById("vaga-data-inicio-divulgacao").value =
+        vaga.dataInicioDivulgacao;
+    }
+    if (vaga.dataFimDivulgacao) {
+      document.getElementById("vaga-data-fim-divulgacao").value =
+        vaga.dataFimDivulgacao;
+    }
+    // Retrocompatibilidade com formato antigo
+    if (!vaga.dataInicioDivulgacao && vaga.periododivulgacao) {
+      console.log(
+        "⚠️ Formato antigo de período detectado:",
+        vaga.periododivulgacao
+      );
+    }
 
     const canaisSelect = document.getElementById("vaga-canais-divulgacao");
     const canais = vaga.canais_divulgacao || [];
@@ -1233,16 +1247,21 @@ async function handleSalvarDivulgacao(e) {
   e.preventDefault();
 
   const vagaId = document.getElementById("vaga-id-divulgacao").value;
-  const periodo = document
-    .getElementById("vaga-periodo-divulgacao")
-    .value.trim();
+  const dataInicio =
+    document.getElementById("vaga-data-inicio-divulgacao")?.value || "";
+  const dataFim =
+    document.getElementById("vaga-data-fim-divulgacao")?.value || "";
+
   const canaisSelect = document.getElementById("vaga-canais-divulgacao");
   const canais = Array.from(canaisSelect.selectedOptions).map(
     (opt) => opt.value
   );
 
-  if (!periodo || canais.length === 0) {
-    window.showToast?.("Por favor, preencha todos os campos.", "error");
+  if (!dataInicio || !dataFim || canais.length === 0) {
+    window.showToast?.(
+      "Por favor, preencha todos os campos obrigatórios.",
+      "error"
+    );
     return;
   }
 
@@ -1258,13 +1277,14 @@ async function handleSalvarDivulgacao(e) {
   try {
     const vagaRef = doc(vagasCollection, vagaId);
     await updateDoc(vagaRef, {
-      periodo_divulgacao: periodo,
-      canais_divulgacao: canais,
+      dataInicioDivulgacao: dataInicio,
+      dataFimDivulgacao: dataFim,
+      canaisdivulgacao: canais,
       data_atualizacao: new Date(),
       historico: arrayUnion({
         data: new Date(),
         acao: `Divulgação registrada nos canais: ${canais.join(", ")}`,
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -1301,7 +1321,7 @@ async function handleEncerrarVaga() {
       historico: arrayUnion({
         data: new Date(),
         acao: `Vaga encerrada: ${motivo}`,
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       }),
     });
 
@@ -1413,7 +1433,7 @@ async function reaproveitarVaga(vagaId) {
       {
         data: new Date(),
         acao: `Reaproveitada da vaga ${dados.nome}`,
-        usuario: currentUserData?.id || "sistema",
+        usuario: currentUserData?.uid || "sistema",
       },
     ];
 
@@ -1589,7 +1609,7 @@ export async function initGestaoVagas(user, userData) {
           historico: arrayUnion({
             data: new Date(),
             acao: "Vaga cancelada manualmente",
-            usuario: currentUserData?.id || "sistema",
+            usuario: currentUserData?.uid || "sistema",
           }),
         });
 
@@ -1692,7 +1712,7 @@ async function handleSalvarProximaEtapa(e) {
         historico: arrayUnion({
           data: new Date(),
           acao: `Alterações salvas. Status: ${novoStatus}`,
-          usuario: currentUserData?.id || "sistema",
+          usuario: currentUserData?.uid || "sistema",
         }),
       });
 
