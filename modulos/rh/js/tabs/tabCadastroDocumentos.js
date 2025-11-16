@@ -383,11 +383,6 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     alert("Erro ao abrir modal.");
   }
 }
-
-/**
- * Salva e envia mensagens
- * VERSÃO 1.5.0 - Com validação e modal de reset de senha
- */
 async function salvarEEnviarMensagens(candidatoId) {
   console.log("💾 Iniciando envio de boas-vindas...");
 
@@ -422,16 +417,12 @@ async function salvarEEnviarMensagens(candidatoId) {
       "⚠️ Senha temporária não encontrada para o candidato:",
       candidatoId
     );
-
-    // Fechar o modal atual de envio
     window.fecharModalEnviarFormulario();
-
-    // Abrir modal de reset de senha
     abrirModalResetSenha(candidatoId, email_novo, nome_completo);
     return;
   }
 
-  // Validação completa dos outros dados
+  // Validação completa
   if (
     !nome_completo ||
     !email_pessoal ||
@@ -450,6 +441,28 @@ async function salvarEEnviarMensagens(candidatoId) {
   }
 
   try {
+    // ⭐ CRIAR USUÁRIO NO FIREBASE AUTH (igual gestao_profissionais.js)
+    console.log("🔄 Criando usuário no Firebase Auth...");
+
+    const criarProfissional = httpsCallable(functions, "criarNovoProfissional");
+
+    try {
+      const resultado = await criarProfissional({
+        nome: nome_completo,
+        email: email_novo,
+        contato: telefone_contato,
+        profissao: "", // Será preenchido no formulário
+        funcoes: ["todos"], // Permissão básica
+      });
+
+      if (resultado.data && resultado.data.sucesso) {
+        console.log("✅ Usuário criado no Firebase Auth:", resultado.data.uid);
+      }
+    } catch (authError) {
+      // Se já existir, apenas loga e continua
+      console.warn("⚠️ Erro ao criar usuário (pode já existir):", authError);
+    }
+
     const primeiroNome = nome_completo.split(" ")[0];
 
     // === MENSAGEM WHATSAPP ===
@@ -490,7 +503,7 @@ Equipe EuPsico 💙`;
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
     window.open(linkWhatsApp, "_blank");
 
-    // === E-MAIL (usando a mesma Cloud Function de enviar e-mail que você já tem) ===
+    // === E-MAIL ===
     console.log("📨 Enviando e-mails de boas-vindas...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
     const assuntoEmail = `Boas-vindas à EuPsico - Seus dados de acesso`;
@@ -587,8 +600,6 @@ Equipe EuPsico 💙`;
     `;
 
     try {
-      const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
-
       await enviarEmailFunc({
         destinatario: email_pessoal,
         assunto: assuntoEmail,
@@ -616,7 +627,7 @@ Equipe EuPsico 💙`;
       "admissao_info.data_envio_formulario": new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: `✅ Boas-vindas enviadas (WhatsApp + E-mail). Credenciais: ${email_novo}`,
+        acao: `✅ Boas-vindas enviadas (WhatsApp + E-mail) e usuário criado no Firebase Auth. Credenciais: ${email_novo}`,
         usuario: currentUserData?.uid || "rh_admin",
       }),
     });
