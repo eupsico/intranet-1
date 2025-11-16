@@ -385,10 +385,8 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
 }
 
 /**
- * ⚠️ FUNÇÃO ATUALIZADA (v1.3.2)
- * Salva, abre WhatsApp (com instruções) e dispara E-mail (com novo CSS e link do formulário)
- *
- * --- ⚠️ CORREÇÃO AQUI: Removido 'window.' ---
+ * Salva, abre WhatsApp e dispara E-mail
+ * VERSÃO 1.4.0 - Com validação de senha e mensagens profissionais
  */
 async function salvarEEnviarMensagens(candidatoId) {
   console.log("💾 Iniciando envio de boas-vindas (WhatsApp e E-mail)...");
@@ -397,47 +395,53 @@ async function salvarEEnviarMensagens(candidatoId) {
   const btnEnviar = modal?.querySelector("#btn-enviar-mensagem-boas-vindas");
   const linkInput = modal?.querySelector("#link-formulario-cadastro");
 
-  // 1. Validar se temos os dados do candidato (setados no abrirModal)
+  // 1. Validar dados do candidato
   if (!dadosCandidatoAtual || dadosCandidatoAtual.id !== candidatoId) {
-    console.error(
-      "❌ Erro: Dados do candidato atual não encontrados ou inconsistentes."
-    );
+    console.error("❌ Dados do candidato não encontrados");
     window.showToast?.("Erro: Dados do candidato não carregados.", "error");
     return;
   }
 
-  // 2. Coletar todos os dados necessários
   const {
     nome_completo,
-    email_pessoal, // Vem de email_candidato
-    email_novo, // Vem de email_solicitado
+    email_pessoal,
+    email_novo,
     senha_temporaria,
     telefone_contato,
   } = dadosCandidatoAtual;
 
   const linkFormulario = linkInput ? linkInput.value : "";
 
+  // ⭐ VALIDAÇÃO: Verificar se a senha existe
+  if (
+    !senha_temporaria ||
+    senha_temporaria === "N/A" ||
+    senha_temporaria === ""
+  ) {
+    window.showToast?.(
+      "❌ Erro: Senha temporária não encontrada. Por favor, solicite a criação do e-mail corporativo primeiro (Etapa 1).",
+      "error"
+    );
+    console.error(
+      "❌ Senha temporária não encontrada para o candidato:",
+      candidatoId
+    );
+    return;
+  }
+
+  // Validação completa dos dados
   if (
     !nome_completo ||
     !email_pessoal ||
     !email_novo ||
-    !senha_temporaria ||
     !telefone_contato ||
     !linkFormulario
   ) {
     window.showToast?.(
-      "Erro: Dados do candidato incompletos (Verifique E-mail, Senha e Telefone).",
+      "Erro: Dados do candidato incompletos. Verifique e-mail, telefone e credenciais.",
       "error"
     );
     console.error("❌ Dados incompletos:", dadosCandidatoAtual);
-    return;
-  }
-
-  if (senha_temporaria === "N/A") {
-    window.showToast?.(
-      "Erro: Senha temporária não encontrada. Verifique a Etapa 1.",
-      "error"
-    );
     return;
   }
 
@@ -447,114 +451,153 @@ async function salvarEEnviarMensagens(candidatoId) {
   }
 
   try {
-    // === 3. AÇÃO 1: Abrir WhatsApp ===
+    const primeiroNome = nome_completo.split(" ")[0];
+
+    // === MENSAGEM WHATSAPP (Profissional e clara) ===
+    const mensagemWhatsApp = `Olá, ${primeiroNome}! 👋
+
+Seja bem-vindo(a) à equipe EuPsico! Estamos muito felizes em tê-lo(a) conosco.
+
+*📧 Suas Credenciais de Acesso*
+
+*E-mail Corporativo:* ${email_novo}
+*Senha Temporária:* ${senha_temporaria}
+
+*⚠️ ATENÇÃO - Primeiros Passos Obrigatórios:*
+
+*1.* Acesse seu e-mail corporativo:
+🔗 https://mail.google.com
+
+*2.* Faça login com as credenciais acima
+
+*3.* *Troque sua senha* (o sistema solicitará automaticamente no primeiro acesso)
+
+*4.* Após trocar a senha, acesse o formulário de cadastro:
+🔗 ${linkFormulario}
+
+*📝 Importante saber:*
+• O acesso ao formulário só é liberado pelo e-mail corporativo @eupsico.org.br
+• A senha temporária expira em 24 horas
+• Após trocar a senha, você terá acesso completo aos sistemas
+
+Qualquer dúvida, estamos à disposição pelo RH.
+
+Equipe EuPsico 💙`;
+
+    // Abrir WhatsApp
     console.log("📱 Abrindo WhatsApp...");
     const telefoneLimpo = telefone_contato.replace(/\D/g, "");
-
-    // --- MENSAGEM WHATSAPP ATUALIZADA ---
-    const mensagemWhatsApp = `🎉 Olá, ${nome_completo}! Seja bem-vindo(a) à EuPsico!
-    
-Sua conta de e-mail corporativa foi criada.
-        
-*Estes são seus dados de acesso:*
-*E-mail:* ${email_novo}
-*Senha Temporária:* ${senha_temporaria}
-    
-*Próximos Passos OBRIGATÓRIOS:*
-1. Acesse: https://mail.google.com/
-2. Faça login com seu novo e-mail e senha temporária.
-3. *Você será solicitado(a) a trocar sua senha.* É muito importante que faça isso.
-4. Após trocar a senha, *verifique a caixa de entrada do seu NOVO e-mail*. Lá você encontrará um e-mail de boas-vindas com o link para o formulário de cadastro.
-    
-Qualquer dúvida, fale com o RH.`;
-
     const mensagemCodificada = encodeURIComponent(mensagemWhatsApp);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
     window.open(linkWhatsApp, "_blank");
 
-    // === 4. AÇÃO 2: Enviar E-mail (Cloud Function) ===
-
-    console.log("📨 Chamando Cloud Function 'enviarEmail' (duas vezes)...");
+    // === E-MAIL HTML (Profissional e acolhedor) ===
+    console.log("📨 Enviando e-mails de boas-vindas...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
-
-    // --- E-MAIL HTML ATUALIZADO (COM CSS) ---
-    const assuntoEmail = `🎉 Bem-vindo(a) à EuPsico! Seus próximos passos estão aqui.`;
+    const assuntoEmail = `Boas-vindas à EuPsico - Seus dados de acesso`;
 
     const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        /* Estilo do Header (Verde do Onboarding) */
-        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .header h2 { margin: 0; }
-        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
-        /* Estilo da Info-Box (Azul para Acesso) */
-        .info-box { background: #ffffff; padding: 20px; margin: 20px 0; border-left: 5px solid #007bff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .info-box p { margin: 10px 0; }
-        .info-box strong { color: #003d7a; }
-        /* Botão de Ação (Primário - Azul) */
-        .button { display: inline-block; background: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; margin: 15px 0; font-weight: bold; text-align: center; }
-        /* Info-Box de Próximo Passo (Amarelo) */
-        .next-step-box { background: #fff3cd; padding: 20px; margin: 25px 0; border-left: 5px solid #ffc107; border-radius: 5px; }
-        .next-step-box h3 { margin-top: 0; color: #856404; }
-        .footer { text-align: center; padding: 20px; color: #777; font-size: 0.9em; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h2>🎉 Bem-vindo(a), ${nome_completo}!</h2>
-        </div>
-        <div class="content">
-          <p>Estamos muito felizes em ter você na equipe EuPsico!</p>
-          <p>Criamos seu e-mail corporativo. Abaixo estão seus dados de acesso:</p>
-          
-          <div class="info-box">
-            <h3 style="margin-top: 0; color: #007bff;">Seus Dados de Acesso</h3>
-            <p><strong>E-mail:</strong> ${email_novo}</p>
-            <p><strong>Senha Temporária:</strong> ${senha_temporaria}</p>
-            <p style="font-size: 0.9em; color: #dc3545;"><strong>IMPORTANTE:</strong> Você deve alterar esta senha no seu primeiro login.</p>
-            <div style="text-align: center;">
-              <a href="https://mail.google.com/" class="button" target="_blank">
-                Acessar o E-mail (Gmail)
-              </a>
-            </div>
-          </div>
-          
-          <div class="next-step-box">
-            <h3>➡️ Seu Próximo Passo: O Formulário</h3>
-            <p>Após fazer login e trocar sua senha, o próximo passo é preencher nosso formulário de cadastro e documentos.</p>
-            <p><strong>Atenção:</strong> Você *só* conseguirá acessar o link abaixo se estiver logado(a) com a sua nova conta <strong>@eupsico.org.br</strong>.</p>
-            <div style="text-align: center;">
-              <a href="${linkFormulario}" class="button" style="background: #28a745;" target="_blank">
-                Acessar Formulário de Cadastro
-              </a>
-            </div>
-          </div>
-          
-        </div>
-        <div class="footer">
-          <p>Este é um e-mail automático. Por favor, não responda.</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+    .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px 20px; text-align: center; }
+    .header h2 { margin: 0; font-size: 24px; font-weight: 600; }
+    .content { padding: 30px 20px; background: #f8f9fa; }
+    .greeting { font-size: 16px; margin-bottom: 20px; }
+    .credentials-box { background: #ffffff; padding: 20px; margin: 25px 0; border-left: 4px solid #007bff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .credentials-box h3 { margin: 0 0 15px 0; color: #007bff; font-size: 18px; }
+    .credentials-box p { margin: 8px 0; font-size: 15px; }
+    .credentials-box strong { color: #333; font-weight: 600; }
+    .credential-value { background: #f0f4f8; padding: 8px 12px; border-radius: 4px; display: inline-block; font-family: 'Courier New', monospace; font-size: 14px; }
+    .btn-primary { display: inline-block; background: #007bff; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; text-align: center; }
+    .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 18px; margin: 25px 0; border-radius: 6px; }
+    .warning-box h3 { margin: 0 0 12px 0; color: #856404; font-size: 16px; }
+    .warning-box p { margin: 8px 0; color: #856404; }
+    .steps-box { background: #ffffff; padding: 20px; margin: 25px 0; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .steps-box h3 { margin: 0 0 15px 0; color: #28a745; font-size: 18px; }
+    .steps-box ol { margin: 10px 0 0 20px; padding: 0; }
+    .steps-box li { margin: 10px 0; line-height: 1.8; }
+    .footer { text-align: center; padding: 25px; color: #6c757d; font-size: 13px; background: #ffffff; border-top: 1px solid #e9ecef; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🎉 Boas-vindas à EuPsico!</h2>
+    </div>
+    
+    <div class="content">
+      <div class="greeting">
+        <p>Olá, <strong>${nome_completo}</strong>!</p>
+        <p>É com grande alegria que recebemos você na equipe EuPsico. Estamos ansiosos para contar com a sua contribuição e talento.</p>
+      </div>
+      
+      <div class="credentials-box">
+        <h3>🔐 Suas Credenciais de Acesso</h3>
+        <p><strong>E-mail Corporativo:</strong> <span class="credential-value">${email_novo}</span></p>
+        <p><strong>Senha Temporária:</strong> <span class="credential-value">${senha_temporaria}</span></p>
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="https://mail.google.com" class="btn-primary" target="_blank">
+            Acessar Meu E-mail
+          </a>
         </div>
       </div>
-    </body>
-    </html>
+      
+      <div class="warning-box">
+        <h3>⚠️ Ação Obrigatória nas Próximas 24 Horas</h3>
+        <p>Por questões de segurança, você deve <strong>alterar sua senha</strong> no primeiro acesso. O sistema solicitará automaticamente essa alteração.</p>
+        <p><strong>Importante:</strong> Após 24 horas sem alteração, a senha temporária será bloqueada por segurança.</p>
+      </div>
+      
+      <div class="steps-box">
+        <h3>📋 Próximos Passos</h3>
+        <ol>
+          <li>Acesse <strong>mail.google.com</strong> e faça login com suas credenciais</li>
+          <li>Troque sua senha temporária (o sistema solicitará)</li>
+          <li>Acesse o formulário de cadastro pelo link abaixo</li>
+        </ol>
+        <p style="margin-top: 15px;"><strong>📝 Observação importante:</strong> O formulário de cadastro só pode ser acessado usando seu e-mail corporativo @eupsico.org.br. Certifique-se de fazer login antes de clicar no link.</p>
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="${linkFormulario}" class="btn-primary" style="background: #28a745;" target="_blank">
+            Acessar Formulário de Cadastro
+          </a>
+        </div>
+      </div>
+      
+      <p style="margin-top: 25px; font-size: 14px; color: #666;">
+        Se tiver qualquer dúvida durante o processo, não hesite em entrar em contato com o departamento de RH pelo e-mail <a href="mailto:rh@eupsico.org.br" style="color: #007bff;">rh@eupsico.org.br</a>.
+      </p>
+      
+      <p style="margin-top: 20px;">
+        Estamos muito felizes em tê-lo(a) conosco! 🚀<br>
+        <strong>Equipe EuPsico</strong>
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p>Este é um e-mail automático. Por favor, não responda diretamente a esta mensagem.</p>
+      <p>© ${new Date().getFullYear()} EuPsico - Todos os direitos reservados</p>
+    </div>
+  </div>
+</body>
+</html>
     `;
 
+    // Enviar e-mails
     try {
-      // 1. Envia para o E-MAIL PESSOAL
+      // 1. E-mail pessoal
       console.log(`Enviando e-mail para ${email_pessoal}...`);
       await enviarEmailFunc({
         destinatario: email_pessoal,
         assunto: assuntoEmail,
         html: emailHtml,
-        // 'remetente' é opcional na CF, usará o padrão "EuPsico <atendimento@eupsico.org.br>"
       });
 
-      // 2. Envia para o E-MAIL CORPORATIVO
+      // 2. E-mail corporativo
       console.log(`Enviando e-mail para ${email_novo}...`);
       await enviarEmailFunc({
         destinatario: email_novo,
@@ -562,38 +605,37 @@ Qualquer dúvida, fale com o RH.`;
         html: emailHtml,
       });
 
-      console.log("✅ E-mails de boas-vindas enviados com sucesso.");
+      console.log("✅ E-mails enviados com sucesso");
     } catch (emailError) {
-      console.error("❌ Falha ao enviar um dos e-mails:", emailError);
-      throw new Error(
-        `Falha ao enviar e-mail: ${emailError.message}. O WhatsApp pode ter sido aberto, mas o e-mail falhou.`
-      );
+      console.error("❌ Falha ao enviar e-mail:", emailError);
+      throw new Error(`Falha ao enviar e-mail: ${emailError.message}`);
     }
-    // --- FIM DA MUDANÇA ---
 
-    // === 5. AÇÃO 3: Atualizar Firestore ===
+    // === Atualizar Firestore ===
     console.log("💾 Atualizando Firestore...");
     const { candidatosCollection, currentUserData } = getGlobalState();
     const candidatoRef = doc(candidatosCollection, candidatoId);
-    const novoStatus = "AGUARDANDO_PREENCHIMENTO_FORM";
+    const novoStatus = "FORM_ENVIADO";
 
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
+      "admissao_info.link_formulario": linkFormulario,
+      "admissao_info.data_envio_formulario": new Date(),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Boas-vindas (Email/WhatsApp) e link do formulário enviados. E-mail: ${email_novo}.`,
-        usuario: currentUserData.id || "rh_admin",
+        acao: `✅ Boas-vindas enviadas via WhatsApp e e-mail. Credenciais: ${email_novo}`,
+        usuario: currentUserData?.uid || "rh_admin",
       }),
     });
 
-    console.log(`✅ Status do candidato atualizado para ${novoStatus}`);
-    window.showToast?.("Mensagens enviadas e candidato movido!", "success");
+    console.log(`✅ Status atualizado para ${novoStatus}`);
+    window.showToast?.("✅ Mensagens enviadas com sucesso!", "success");
 
     window.fecharModalEnviarFormulario();
-    renderizarCadastroDocumentos(getGlobalState()); // Recarrega a aba
+    renderizarCadastroDocumentos(getGlobalState());
   } catch (error) {
-    console.error("❌ Erro ao enviar mensagens ou salvar:", error);
-    alert(`Erro: ${error.message}. Verifique o console.`);
+    console.error("❌ Erro ao enviar mensagens:", error);
+    alert(`Erro: ${error.message}`);
     window.showToast?.(`Erro: ${error.message}`, "error");
 
     if (btnEnviar) {
