@@ -568,7 +568,7 @@ window.abrirModalReenviarFormulario = function (candidatoId, dadosCodificados) {
     }
 
     const urlBase = window.location.origin;
-    const linkFormulario = `${urlBase}/public/fichas-de-inscricao.html?candidaturaId=${candidatoId}`;
+    const linkFormulario = `${urlBase}/public/fichas-de-cadastro.html?candidaturaId=${candidatoId}`;
 
     const modal = document.createElement("div");
     modal.id = "modal-enviar-formulario"; // Mesmo ID da aba anterior, para reutilizar CSS e helpers
