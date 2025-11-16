@@ -166,7 +166,157 @@
         </div>
 
         <hr />
+<!-- NOVOS CAMPOS ADICIONADOS -->
+<div class="form-group">
+  <label for="data-nascimento">Data de Nascimento:</label>
+  <input 
+    type="date" 
+    id="data-nascimento" 
+    name="data-nascimento" 
+    class="form-control" 
+    required 
+  />
+</div>
 
+<div class="form-group">
+  <label for="genero">Gênero: <span class="required">*</span></label>
+  <select id="genero" name="genero" class="form-control" required>
+    <option value="">Selecione...</option>
+    <option value="Feminino (cisgênero)">Feminino (cisgênero)</option>
+    <option value="Masculino (cisgênero)">Masculino (cisgênero)</option>
+    <option value="Mulher trans">Mulher trans</option>
+    <option value="Homem trans">Homem trans</option>
+    <option value="Pessoa não binária">Pessoa não binária</option>
+    <option value="Prefiro não declarar">Prefiro não declarar</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="escolaridade">Escolaridade: <span class="required">*</span></label>
+  <select id="escolaridade" name="escolaridade" class="form-control" required>
+    <option value="">Selecione...</option>
+    <option value="Ensino Fundamental incompleto">Ensino Fundamental incompleto</option>
+    <option value="Ensino Fundamental completo">Ensino Fundamental completo</option>
+    <option value="Ensino Médio incompleto">Ensino Médio incompleto</option>
+    <option value="Ensino Médio completo">Ensino Médio completo</option>
+    <option value="Ensino Superior incompleto">Ensino Superior incompleto</option>
+    <option value="Ensino Superior completo">Ensino Superior completo</option>
+    <option value="Pós-graduação">Pós-graduação</option>
+  </select>
+</div>
+
+    <!-- PERGUNTAS ADICIONAIS RELEVANTES PARA RECRUTAMENTO -->
+    <div class="form-group">
+      <label for="area-formacao">Área de Formação (curso principal): <span class="required">*</span></label>
+      <input 
+        type="text" 
+        id="area-formacao" 
+        name="area-formacao" 
+        class="form-control" 
+        placeholder="Ex: Psicologia, Administração, etc." 
+        required 
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="disponibilidade-inicio">Disponibilidade para Início: <span class="required">*</span></label>
+      <select id="disponibilidade-inicio" name="disponibilidade-inicio" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Imediata">Imediata</option>
+        <option value="15 dias">15 dias</option>
+        <option value="30 dias">30 dias</option>
+        <option value="45 dias">45 dias</option>
+        <option value="60 dias ou mais">60 dias ou mais</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="pretensao-salarial">Pretensão Salarial (opcional):</label>
+      <input 
+        type="text" 
+        id="pretensao-salarial" 
+        name="pretensao-salarial" 
+        class="form-control" 
+        placeholder="Ex: R$ 3.500,00 ou A combinar" 
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="experiencia-area">Tempo de Experiência na Área: <span class="required">*</span></label>
+      <select id="experiencia-area" name="experiencia-area" class="form-control" required>
+        <option value="">Selecione...</option>
+        <option value="Nenhuma">Nenhuma (primeira experiência)</option>
+        <option value="Menos de 1 ano">Menos de 1 ano</option>
+        <option value="1 a 2 anos">1 a 2 anos</option>
+        <option value="3 a 5 anos">3 a 5 anos</option>
+        <option value="5 a 10 anos">5 a 10 anos</option>
+        <option value="Mais de 10 anos">Mais de 10 anos</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="possui-veiculo">Possui Veículo Próprio?</label>
+      <select id="possui-veiculo" name="possui-veiculo" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="cnh">Possui CNH (Carteira de Habilitação)?</label>
+      <select id="cnh" name="cnh" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="linkedin-url">Link do LinkedIn (opcional):</label>
+      <input 
+        type="url" 
+        id="linkedin-url" 
+        name="linkedin-url" 
+        class="form-control" 
+        placeholder="https://linkedin.com/in/seu-perfil" 
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="portfolio-url">Link do Portfólio/Site (opcional):</label>
+      <input 
+        type="url" 
+        id="portfolio-url" 
+        name="portfolio-url" 
+        class="form-control" 
+        placeholder="https://seu-portfolio.com" 
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="motivacao">Por que você se interessou por esta vaga? <span class="required">*</span></label>
+      <textarea 
+        id="motivacao" 
+        name="motivacao" 
+        class="form-control" 
+        rows="4" 
+        placeholder="Conte-nos o que te motivou a se candidatar para esta vaga..."
+        required
+      ></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="pcd">Pessoa com Deficiência (PCD)?</label>
+      <select id="pcd" name="pcd" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+        <option value="Prefiro não declarar">Prefiro não declarar</option>
+      </select>
+    </div>
+
+        <hr />
         <div class="form-group">
           <label for="resumo-experiencia"
             >Resumo da Experiência Profissional (Breve Apresentação
