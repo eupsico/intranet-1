@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.5.2 (Corrigido link 'hardcoded' do teste para usar o domínio correto)
+ * Versão: 6.6.0 (Ajusta exibição de link e seletor de gestor no modal de avaliação de teste)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -474,7 +474,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 };
 
 // ============================================
-// ✅ NOVA FUNÇÃO (REQ 1): Carregar Respostas do Teste
+// ✅ FUNÇÃO (REQ 1 - Avaliar Teste): Carregar Respostas do Teste
 // ============================================
 /**
  * Busca no Firestore as respostas de um teste específico e exibe no modal.
@@ -556,7 +556,7 @@ async function carregarRespostasDoTeste(
 
     respostasHtml += "</ul>";
 
-    // ✅ REQ 4: Verifica se há avaliação/acertos
+    // ✅ Verifica se há avaliação/acertos
     if (data.avaliacao) {
       const acertos = data.avaliacao.acertos || 0;
       const total = data.avaliacao.total || data.respostas?.length || 0;
@@ -571,11 +571,44 @@ async function carregarRespostasDoTeste(
 }
 
 // ============================================
+// ✅ NOVA FUNÇÃO (REQ 4 - Avaliar Teste): Gerenciador de UI
+// ============================================
+/**
+ * Gerencia a exibição do seletor de gestor no modal "Avaliar Teste"
+ */
+function toggleCamposAvaliacaoTeste() {
+  const form = document.getElementById("form-avaliacao-teste");
+  if (!form) return;
+
+  const radioAprovado = form.querySelector(
+    'input[name="resultado_teste"][value="Aprovado"]'
+  );
+
+  // Assumindo que o select E o botão de WhatsApp estão dentro de um container
+  const containerGestor = document.getElementById(
+    "avaliacao-teste-gestor-container"
+  );
+
+  if (!containerGestor) {
+    console.warn(
+      "toggleCamposAvaliacaoTeste: Container #avaliacao-teste-gestor-container não encontrado."
+    );
+    return;
+  }
+
+  if (radioAprovado && radioAprovado.checked) {
+    containerGestor.style.display = "block";
+  } else {
+    containerGestor.style.display = "none";
+  }
+}
+
+// ============================================
 // MODAIS - AVALIAÇÃO DE TESTE
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v6.5.1)
+ * Abre o modal de avaliação do teste (ATUALIZADO v6.6.0)
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -641,13 +674,17 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         let linkHtml = "";
         const tokenId = teste.tokenId || `manual-${index}`; // ID para o container
 
-        // ✅ INÍCIO REQ 4: Lógica de Link de Respostas
+        // ============================================
+        // ✅ INÍCIO REQ 3: Lógica de Link Atualizada
+        // ============================================
         if (statusTeste === "respondido") {
           badgeClass = "bg-success";
           statusTexto = "Respondido";
           if (teste.link_respostas) {
+            // Link para os resultados/avaliação
             linkHtml = `<p><strong>Resultado:</strong> <a href="${teste.link_respostas}" target="_blank">Acessar Respostas e Avaliação</a></p>`;
           } else {
+            // Link para o formulário respondido (ex: Google Forms)
             linkHtml = `<p><strong>Link:</strong> <a href="${teste.link}" target="_blank">Ver Teste Respondido (se aplicável)</a></p>`;
           }
         } else if (statusTeste === "avaliado") {
@@ -657,10 +694,13 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
             linkHtml = `<p><strong>Resultado:</strong> <a href="${teste.link_respostas}" target="_blank">Ver Avaliação</a></p>`;
           }
         } else {
-          // Status "enviado"
-          linkHtml = `<p><strong>Link do Teste:</strong> <a href="${teste.link}" target="_blank">Acessar Teste (Em aberto)</a></p>`;
+          // status === "enviado"
+          // Oculta o link, conforme solicitado
+          linkHtml = `<p><strong>Link do Teste:</strong> (Aguardando resposta do candidato)</p>`;
         }
-        // ✅ FIM REQ 4
+        // ============================================
+        // ✅ FIM REQ 3
+        // ============================================
 
         testesHtml += `
           <div class="teste-item">
@@ -680,25 +720,18 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
             <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
               <span class="text-muted small">Carregando respostas...</span>
             </div>
-            </div>
+          </div>
         `;
       });
 
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      // ✅ INÍCIO REQ 1: Dispara o carregamento das respostas
+      // ✅ (REQ 1): Dispara o carregamento das respostas
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
-
-        // ============================================
-        // ✅ INÍCIO DA CORREÇÃO (v6.5.1)
-        // ============================================
         const statusTeste = teste.status || "enviado";
-        // ============================================
-        // ✅ FIM DA CORREÇÃO
-        // ============================================
 
         if (statusTeste === "respondido" || statusTeste === "avaliado") {
           carregarRespostasDoTeste(tokenId, tipoId, teste.id, candidatoId);
@@ -711,7 +744,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
               '<span class="text-muted small">Teste ainda não respondido.</span>';
         }
       });
-      // ✅ FIM REQ 1
     }
   }
 
@@ -760,6 +792,22 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
 
   // Reseta o formulário
   if (form) form.reset();
+
+  // ============================================
+  // ✅ INÍCIO REQ 4: Lógica de exibição do Gestor
+  // ============================================
+  const radiosResultadoTeste = form.querySelectorAll(
+    'input[name="resultado_teste"]'
+  );
+  radiosResultadoTeste.forEach((radio) => {
+    radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
+    radio.addEventListener("change", toggleCamposAvaliacaoTeste);
+  });
+  // Define o estado inicial (oculto)
+  toggleCamposAvaliacaoTeste();
+  // ============================================
+  // ✅ FIM REQ 4
+  // ============================================
 
   // Configura listener do formulário
   form.removeEventListener("submit", submeterAvaliacaoTeste);
@@ -960,10 +1008,9 @@ async function submeterAvaliacaoTeste(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // ✅ INÍCIO REQ 2: Correção do nome do avaliador
+  // ✅ (REQ 2): Correção do nome do avaliador
   const avaliadorNome =
     currentUserData.nome || currentUserData.email || "rh_system_user";
-  // ✅ FIM REQ 2
 
   const dadosAvaliacaoTeste = {
     resultado: resultado,
@@ -1072,10 +1119,9 @@ async function submeterAgendamentoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // ✅ INÍCIO REQ 2: Correção do nome do usuário
+  // ✅ (REQ 2): Correção do nome do usuário
   const usuarioNome =
     currentUserData.nome || currentUserData.email || "rh_system_user";
-  // ✅ FIM REQ 2
 
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
@@ -1133,7 +1179,7 @@ async function submeterAgendamentoRH(e) {
 // ============================================
 
 /**
- * Abre o modal para enviar teste (ATUALIZADO v6.5.1)
+ * Abre o modal para enviar teste (ATUALIZADO v6.6.0)
  */
 window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -1163,7 +1209,7 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
     const dataInput = document.getElementById("teste-data-envio");
     if (dataInput) dataInput.value = dataFormatada;
 
-    // ✅ INÍCIO REQ 3: Listar testes já enviados
+    // ✅ (REQ 2): Listar testes já enviados
     const containerTestesEnviados = document.getElementById(
       "testes-ja-enviados-container"
     ); // Assumindo que este ID exista no HTML
@@ -1206,7 +1252,6 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
         "Container #testes-ja-enviados-container não encontrado no HTML do modal."
       );
     }
-    // ✅ FIM REQ 3
 
     // Carrega testes disponíveis
     await carregarTestesDisponiveis();
@@ -1271,7 +1316,7 @@ async function carregarTestesDisponiveis() {
 }
 
 /**
- * Atualiza o link quando muda a seleção de teste
+ * Atualiza o link quando muda a seleção de teste (ATUALIZADO v6.5.2)
  */
 document.addEventListener("change", (e) => {
   if (e.target.id === "teste-selecionado") {
@@ -1283,7 +1328,7 @@ document.addEventListener("change", (e) => {
 
     if (linkInput) {
       // ============================================
-      // ✅ INÍCIO DA ATUALIZAÇÃO (v6.5.2)
+      // ✅ INÍCIO DA CORREÇÃO (v6.5.2)
       // ============================================
       if (linkTeste) {
         linkInput.value = linkTeste;
@@ -1292,7 +1337,7 @@ document.addEventListener("change", (e) => {
         linkInput.value = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?id=${option.value}`;
       }
       // ============================================
-      // ✅ FIM DA ATUALIZAÇÃO
+      // ✅ FIM DA CORREÇÃO
       // ============================================
       console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
@@ -1440,10 +1485,9 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
   const state = getGlobalState();
   const { candidatosCollection, currentUserData } = state;
 
-  // ✅ INÍCIO REQ 2: Correção do nome do usuário
+  // ✅ (REQ 2): Correção do nome do usuário
   const usuarioNome =
     currentUserData.nome || currentUserData.email || "rh_system_user";
-  // ✅ FIM REQ 2
 
   try {
     const candidatoRef = doc(candidatosCollection, candidatoId);
@@ -1810,10 +1854,9 @@ async function submeterAvaliacaoRH(e) {
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // ✅ INÍCIO REQ 2: Correção do nome do avaliador
+  // ✅ (REQ 2): Correção do nome do avaliador
   const avaliadorNome =
     currentUserData.nome || currentUserData.email || "rh_system_user";
-  // ✅ FIM REQ 2
 
   const dadosAvaliacao = {
     resultado: resultado,
