@@ -1417,6 +1417,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
 
       const tokenDoc = tokenSnap.docs[0];
       const dadosToken = tokenDoc.data();
+      const tokenId = tokenDoc.id; // ID do documento do token
 
       // ✅ 2. Verifica se já foi respondido
       if (dadosToken.usado === true) {
@@ -1438,7 +1439,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
       // ✅ 4. Atualiza o token como utilizado
       await db
         .collection("tokens_acesso")
-        .doc(tokenDoc.id)
+        .doc(tokenId)
         .update({
           usado: true,
           respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
@@ -1467,7 +1468,9 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
       const candidaturaSnap = await candidaturaRef.get();
 
       let testesEnviadosAtualizado = [];
-      let linkRespostas = `/rh/respostas-teste/${tokenDoc.id}`; // Define um link padrão de resposta
+
+      // Define o link onde o RH poderá ver as respostas (ajuste se necessário)
+      const linkRespostas = `/rh/painel/respostas?token=${tokenId}`;
 
       if (candidaturaSnap.exists) {
         const dadosCandidatura = candidaturaSnap.data();
@@ -1475,7 +1478,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
 
         // Encontra o teste enviado pelo tokenId e atualiza seu status
         const testeIndex = testesEnviadosAtualizado.findIndex(
-          (t) => t.tokenId === tokenDoc.id
+          (t) => t.tokenId === tokenId
         );
 
         if (testeIndex !== -1) {
@@ -1488,23 +1491,35 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
           testesEnviadosAtualizado[testeIndex].link_respostas = linkRespostas;
         } else {
           console.warn(
-            `Token ${tokenDoc.id} não encontrado no array 'testes_enviados' da candidatura ${dadosToken.candidatoId}`
+            `Token ${tokenId} não encontrado no array 'testes_enviados' da candidatura ${dadosToken.candidatoId}`
           );
         }
       }
 
-      // 7. Atualiza a candidatura (com o array modificado)
-      await candidaturaRef.update({
-        testes_enviados: testesEnviadosAtualizado, // Sobrescreve o array com o status atualizado
-        testes_respondidos: admin.firestore.FieldValue.arrayUnion({
+      // 7. Salva as respostas na coleção 'testes_respondidos' (como na imagem)
+      // E atualiza a candidatura com o array modificado
+
+      // Primeiro, salva as respostas na coleção principal (como na imagem)
+      await db
+        .collection("testes_respondidos")
+        .doc(tokenId)
+        .set({
           testeId: dadosToken.testeId,
+          candidatoId: dadosToken.candidatoId,
+          tokenId: tokenId,
           nomeTeste: nomeTeste,
-          tokenId: tokenDoc.id,
-          link_respostas: linkRespostas, // Salva o link aqui também
           dataResposta: new Date(),
           tempoGasto: tempoGasto || 0,
+          respostas: respostas || {},
           respostasCount: Object.keys(respostas || {}).length,
-        }),
+          titulo_vaga_original: candidaturaSnap.exists
+            ? candidaturaSnap.data().titulo_vaga_original
+            : "",
+        });
+
+      // Segundo, atualiza o documento da candidatura
+      await candidaturaRef.update({
+        testes_enviados: testesEnviadosAtualizado, // Sobrescreve o array com o status atualizado
         historico: admin.firestore.FieldValue.arrayUnion({
           data: new Date(),
           acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
@@ -1520,7 +1535,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) => {
       return res.status(200).json({
         sucesso: true,
         mensagem: "Respostas registradas com sucesso!",
-        tokenId: tokenDoc.id,
+        tokenId: tokenId,
         dataResposta: agora.toISOString(),
         tempoGasto: tempoGasto,
       });
