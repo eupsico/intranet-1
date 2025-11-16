@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.0.0 (Com Cloud Functions Integradas)
+ * Versão: 6.1.0 (Botão "Ver Currículo" movido para o footer do modal)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -1361,18 +1361,45 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
   const statusEl = document.getElementById("entrevista-rh-status-atual");
   const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
-  const btnVerCurriculo = document.getElementById(
-    "entrevista-rh-ver-curriculo"
-  );
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
-  if (btnVerCurriculo) {
+  // ============================================
+  // ✅ INÍCIO DA ATUALIZAÇÃO
+  // ============================================
+  const btnVerCurriculo = document.getElementById(
+    "entrevista-rh-ver-curriculo"
+  );
+  // Encontra o footer do modal
+  const modalFooter = modalAvaliacaoRH.querySelector(".modal-footer");
+
+  if (btnVerCurriculo && modalFooter) {
+    // Atualiza o link e o estado
     btnVerCurriculo.href = linkCurriculo;
-    btnVerCurriculo.disabled = !linkCurriculo || linkCurriculo === "#";
+
+    if (!linkCurriculo || linkCurriculo === "#") {
+      //btnVerCurriculo.disabled = true; // Desabilita
+      btnVerCurriculo.style.display = "none"; // Ou esconde
+    } else {
+      //btnVerCurriculo.disabled = false; // Habilita
+      btnVerCurriculo.style.display = "inline-flex"; // Garante que é visível
+    }
+
+    // Adiciona classes de botão de rodapé
+    btnVerCurriculo.classList.add("action-button", "secondary");
+    btnVerCurriculo.style.marginRight = "auto"; // Alinha à esquerda
+    btnVerCurriculo.target = "_blank";
+    btnVerCurriculo.innerHTML =
+      '<i class="fas fa-file-alt me-2"></i> Ver Currículo';
+
+    // Move o botão para o rodapé (no início)
+    modalFooter.prepend(btnVerCurriculo);
   }
+  // ============================================
+  // ✅ FIM DA ATUALIZAÇÃO
+  // ============================================
 
   if (form) form.reset();
 
@@ -1476,7 +1503,7 @@ async function submeterAvaliacaoRH(e) {
     notas: {
       motivacao: notaMotivacao,
       aderencia: notaAderencia,
-      comunicacao: notaComunicacao,
+      comunicação: notaComunicacao,
     },
     pontos_fortes: pontosFortes,
     pontos_atencao: pontosAtencao,
