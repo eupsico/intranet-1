@@ -155,28 +155,25 @@ function mostrarIndicadorAutoSave(mensagem, tipo = "info") {
   }
 }
 
-// ============================================
-// AUTO-SAVE
-// ============================================
-
+/**
+ * Configura o auto-save para o formulário de vagas
+ * VERSÃO 2.0 - Cria vaga automaticamente se não existir
+ */
 function configurarAutoSave() {
   const form = document.getElementById("form-vaga");
   if (!form) return;
 
   let saveTimeout;
-  const AUTOSAVE_DELAY = 2000;
+  const AUTOSAVE_DELAY = 2000; // 2 segundos
 
   const campos = form.querySelectorAll("input, textarea, select");
-
   campos.forEach((campo) => {
     campo.addEventListener("input", () => {
       clearTimeout(saveTimeout);
-      mostrarIndicadorAutoSave("Salvando...");
+      mostrarIndicadorAutoSave("Salvando...", "info");
 
       saveTimeout = setTimeout(async () => {
-        if (vagaAtualId) {
-          await salvarAutoSave();
-        }
+        await salvarAutoSave();
       }, AUTOSAVE_DELAY);
     });
   });
@@ -184,23 +181,66 @@ function configurarAutoSave() {
   console.log("✅ Auto-save configurado");
 }
 
+/**
+ * Salva automaticamente a vaga (cria se não existir, atualiza se existir)
+ * VERSÃO 2.0
+ */
 async function salvarAutoSave() {
-  if (!vagaAtualId) return;
-
   try {
     const dadosVaga = coletarDadosFormularioVaga();
-    const vagaRef = doc(vagasCollection, vagaAtualId);
 
+    // Validar campos mínimos antes de salvar
+    if (!dadosVaga.nome || !dadosVaga.departamento) {
+      console.log("⏸️ Auto-save aguardando campos obrigatórios...");
+      mostrarIndicadorAutoSave("Aguardando dados básicos...", "info");
+      return;
+    }
+
+    // ⭐ SE NÃO EXISTIR vagaAtualId, CRIAR A VAGA AUTOMATICAMENTE
+    if (!vagaAtualId) {
+      console.log("🆕 Criando nova vaga automaticamente...");
+
+      const novaVaga = {
+        ...dadosVaga,
+        status: "Em Elaboração (Ficha Técnica)",
+        datacriacao: new Date(),
+        criadopor: currentUserData?.id || "sistema",
+        historico: [
+          {
+            data: new Date(),
+            acao: "Vaga criada automaticamente",
+            usuario: currentUserData?.id || "sistema",
+          },
+        ],
+      };
+
+      const docRef = await addDoc(vagasCollection, novaVaga);
+      vagaAtualId = docRef.id;
+
+      console.log("✅ Nova vaga criada:", vagaAtualId);
+      mostrarIndicadorAutoSave("✅ Vaga criada e salva!", "success");
+
+      // Atualizar título do modal
+      const titulo = document.getElementById("ficha-title");
+      if (titulo) {
+        titulo.textContent = `Editando: ${dadosVaga.nome || "Nova Vaga"}`;
+      }
+
+      return;
+    }
+
+    // ⭐ SE JÁ EXISTIR, APENAS ATUALIZAR
+    const vagaRef = doc(vagasCollection, vagaAtualId);
     await updateDoc(vagaRef, {
       ...dadosVaga,
-      data_atualizacao: new Date(),
+      dataatualizacao: new Date(),
     });
 
-    mostrarIndicadorAutoSave("✓ Salvo automaticamente", "success");
+    mostrarIndicadorAutoSave("✅ Salvo automaticamente", "success");
     console.log("✅ Auto-save realizado:", vagaAtualId);
   } catch (error) {
     console.error("❌ Erro no auto-save:", error);
-    mostrarIndicadorAutoSave("Erro ao salvar", "error");
+    mostrarIndicadorAutoSave("❌ Erro ao salvar", "error");
   }
 }
 
