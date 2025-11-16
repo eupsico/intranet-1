@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 6.5.0 (Exibe respostas no modal de avaliação, corrige 'enviado_por' e lista testes no modal de envio)
- * Data: 05/11/2025
+ * Versão: 6.5.1 (Corrigido ReferenceError: statusTeste is not defined)
+ * Data: 16/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
 
@@ -575,7 +575,7 @@ async function carregarRespostasDoTeste(
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v6.5.0)
+ * Abre o modal de avaliação do teste (ATUALIZADO v6.5.1)
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -691,6 +691,14 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
+
+        // ============================================
+        // ✅ INÍCIO DA CORREÇÃO (v6.5.1)
+        // ============================================
+        const statusTeste = teste.status || "enviado";
+        // ============================================
+        // ✅ FIM DA CORREÇÃO
+        // ============================================
 
         if (statusTeste === "respondido" || statusTeste === "avaliado") {
           carregarRespostasDoTeste(tokenId, tipoId, teste.id, candidatoId);
@@ -1125,7 +1133,7 @@ async function submeterAgendamentoRH(e) {
 // ============================================
 
 /**
- * Abre o modal para enviar teste (ATUALIZADO v6.5.0)
+ * Abre o modal para enviar teste (ATUALIZADO v6.5.1)
  */
 window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -1417,7 +1425,7 @@ Se tiver dúvidas, não hesite em nos contactar!
 }
 
 /**
- * ✅ Salva o envio do teste no Firestore (histórico) (ATUALIZADO v6.5.0)
+ * ✅ Salva o envio do teste no Firestore (histórico) (ATUALIZADO v6.5.1)
  */
 async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
