@@ -334,7 +334,7 @@ export async function renderizarEntrevistas(state) {
     const q = query(
       candidatosCollection,
       where("vagaid", "==", vagaSelecionadaId),
-      where("statusrecrutamento", "in", [
+      where("status_recrutamento", "in", [
         "Triagem Aprovada",
         "Entrevista Pendente",
         "Entrevista RH Aprovada",
@@ -363,7 +363,7 @@ export async function renderizarEntrevistas(state) {
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
-      const statusAtual = cand.statusrecrutamento || "N/A";
+      const statusAtual = cand.status_recrutamento || "N/A";
       let corStatus = "info";
 
       if (statusAtual.includes("Aprovada")) corStatus = "success";
@@ -546,7 +546,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
     dadosCandidato.triagemrh?.prerequisitosatendidos ||
     dadosCandidato.triagemrh?.comentariosgerais ||
     "N/A";
-  const statusAtual = dadosCandidato.statusrecrutamento || "N/A";
+  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
   const nomeEl = document.getElementById("agendamento-rh-nome-candidato");
   const statusEl = document.getElementById("agendamento-rh-status-atual");
@@ -616,7 +616,7 @@ async function submeterAgendamentoRH(e) {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
     await updateDoc(candidaturaRef, {
-      statusrecrutamento: "Entrevista Pendente",
+      status_recrutamento: "Entrevista Pendente",
       "entrevistarh.agendamento": {
         data: dataEntrevista,
         hora: horaEntrevista,
@@ -857,7 +857,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
     const candidatoRef = doc(db, "candidaturas", candidatoId);
 
     await updateDoc(candidatoRef, {
-      statusrecrutamento: "Testes Pendente Enviado",
+      status_recrutamento: "Testes Pendente Enviado",
       testesenviados: arrayUnion({
         id: testeId,
         tokenId: tokenId,
@@ -988,7 +988,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
   const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
-  const statusAtual = dadosCandidato.statusrecrutamento || "N/A";
+  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
   const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
   const statusEl = document.getElementById("avaliacao-teste-status-atual");
@@ -1313,7 +1313,7 @@ async function submeterAvaliacaoTeste(e) {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
     await updateDoc(candidaturaRef, {
-      statusrecrutamento: novoStatusCandidato,
+      status_recrutamento: novoStatusCandidato,
       avaliacaoteste: dadosAvaliacaoTeste,
       historico: arrayUnion({
         data: new Date(),
@@ -1383,7 +1383,7 @@ window.enviarWhatsAppGestor = function () {
     dadosCandidatoAtual.telefonecontato || "Não informado";
   const emailCandidato = dadosCandidatoAtual.emailcandidato || "Não informado";
   const statusCandidato =
-    dadosCandidatoAtual.statusrecrutamento || "Em avaliação";
+    dadosCandidatoAtual.status_recrutamento || "Em avaliação";
   const vagaInfo = dadosCandidatoAtual.vagatitulo || "Vaga não especificada";
 
   const mensagem = `Olá ${nomeGestor}! 
@@ -1498,7 +1498,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     dadosCandidato.triagemrh?.prerequisitosatendidos ||
     dadosCandidato.triagemrh?.comentariosgerais ||
     "N/A";
-  const statusAtual = dadosCandidato.statusrecrutamento || "N/A";
+  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const linkCurriculo = dadosCandidato.linkcurriculodrive;
 
   const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
@@ -1657,7 +1657,7 @@ async function submeterAvaliacaoRH(e) {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
     await updateDoc(candidaturaRef, {
-      statusrecrutamento: novoStatusCandidato,
+      status_recrutamento: novoStatusCandidato,
       entrevistarh: {
         ...(dadosCandidatoAtual.entrevistarh || {}),
         ...dadosAvaliacao,
