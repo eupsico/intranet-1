@@ -1619,7 +1619,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
     await updateDoc(candidatoRef, {
       status_recrutamento: "Testes Pendente (Enviado)",
       testes_enviados: arrayUnion({
-        id: testeId,
+        id: tokenId,
         tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
