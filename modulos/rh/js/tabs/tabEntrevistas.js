@@ -699,7 +699,7 @@ function toggleCamposAvaliacaoTeste() {
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v6.7.0)
+ * Abre o modal de avaliação de testes com todas as abas funcionando
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -733,11 +733,12 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
-  // Exibe todos os testes enviados
-  const testesEnviados = dadosCandidato.testesenviados || [];
+  // ✅ CARREGAR PAINEL INTEGRADO (Aba 1 - Padrão)
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
   if (infoTestesEl) {
+    const testesEnviados = dadosCandidato.testesenviados || [];
+
     if (testesEnviados.length === 0) {
       infoTestesEl.innerHTML = `
         <div class="alert alert-warning">
@@ -749,7 +750,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       let testesHtml = '<div class="testes-enviados-lista">';
 
       testesEnviados.forEach((teste, index) => {
-        // ✅ Formata data de envio
+        // Formata data de envio
         const dataEnvio = teste.dataenvio?.toDate
           ? teste.dataenvio.toDate().toLocaleDateString("pt-BR", {
               day: "2-digit",
@@ -770,36 +771,9 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         if (statusTeste === "respondido") {
           badgeClass = "bg-success";
           statusTexto = "Respondido";
-          if (teste.linkrespostas) {
-            linkHtml = `
-              <p>
-                <strong>Resultado</strong>
-                <a href="${teste.linkrespostas}" target="_blank">
-                  Acessar Respostas e Avaliação
-                </a>
-              </p>
-            `;
-          }
         } else if (statusTeste === "avaliado") {
           badgeClass = "bg-info";
           statusTexto = "Avaliado";
-          if (teste.linkrespostas) {
-            linkHtml = `
-              <p>
-                <strong>Resultado</strong>
-                <a href="${teste.linkrespostas}" target="_blank">
-                  Ver Avaliação
-                </a>
-              </p>
-            `;
-          }
-        } else {
-          linkHtml = `
-            <p>
-              <strong>Link do Teste</strong>
-              Aguardando resposta do candidato
-            </p>
-          `;
         }
 
         testesHtml += `
@@ -807,21 +781,24 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
             <div class="teste-header">
               <h5 class="teste-titulo">
                 <i class="fas fa-file-alt me-2"></i>
-                ${teste.nomeTeste || teste.id?.substring(0, 5) || "Teste"}
+                ${teste.nomeTeste || "Teste"}
               </h5>
               <span class="badge ${badgeClass}">${statusTexto}</span>
             </div>
             <div class="teste-info">
               <p>
+                <i class="fas fa-calendar me-1"></i>
                 <strong>Data de Envio:</strong> ${dataEnvio}
               </p>
               <p>
+                <i class="fas fa-user me-1"></i>
                 <strong>Enviado por:</strong> ${teste.enviadopor || "N/A"}
               </p>
               ${
                 teste.tempoGasto !== undefined
                   ? `
                 <p>
+                  <i class="fas fa-hourglass-end me-1"></i>
                   <strong>Tempo Gasto:</strong> ${Math.floor(
                     teste.tempoGasto / 60
                   )}m ${teste.tempoGasto % 60}s
@@ -829,7 +806,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
               `
                   : ""
               }
-              ${linkHtml}
             </div>
             <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
               <span class="text-muted small">Carregando respostas...</span>
@@ -845,8 +821,8 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
-
         const statusTeste = teste.status || "enviado";
+
         if (statusTeste === "respondido" || statusTeste === "avaliado") {
           carregarRespostasDoTeste(tokenId, tipoId, teste.id, candidatoId);
         } else {
@@ -866,7 +842,37 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     }
   }
 
-  // CARREGAR GESTORES NO SELECT
+  // ✅ CARREGAR ABAS (2, 3, 4, 5)
+  const abaHistoricoTab = document.getElementById("aba-historico-tab");
+  const abaDashboardTab = document.getElementById("aba-dashboard-tab");
+  const abaTempoRealTab = document.getElementById("aba-tempo-real-tab");
+  const abaEmailTab = document.getElementById("aba-email-tab");
+
+  if (abaHistoricoTab) {
+    abaHistoricoTab.addEventListener("click", () => {
+      setTimeout(() => carregarHistoricoTokens(candidatoId), 100);
+    });
+  }
+
+  if (abaDashboardTab) {
+    abaDashboardTab.addEventListener("click", () => {
+      setTimeout(() => carregarDashboardTeste(candidatoId), 100);
+    });
+  }
+
+  if (abaTempoRealTab) {
+    abaTempoRealTab.addEventListener("click", () => {
+      setTimeout(() => carregarMonitorTempoReal(candidatoId), 100);
+    });
+  }
+
+  if (abaEmailTab) {
+    abaEmailTab.addEventListener("click", () => {
+      // Email não precisa carregar dados, já está pronto
+    });
+  }
+
+  // ✅ CARREGADOR DE GESTOR
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
   const btnWhatsAppGestor = document.getElementById(
     "btn-whatsapp-gestor-avaliacao"
@@ -910,24 +916,23 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       btnWhatsAppGestor.disabled = !telefone || telefone.trim() === "";
     });
 
-    // Estado inicial
     btnWhatsAppGestor.disabled = true;
   }
 
   // Reseta o formulário
   if (form) form.reset();
 
-  // ✅ Lógica de exibição do Gestor
+  // ✅ LÓGICA DE EXIBIÇÃO DO GESTOR
   const radiosResultadoTeste = form.querySelectorAll(
     'input[name="resultadoteste"]'
   );
   radiosResultadoTeste.forEach((radio) => {
-    radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
-    radio.addEventListener("change", toggleCamposAvaliacaoTeste);
+    radio.removeEventListener("change", window.toggleCamposAvaliacaoTeste);
+    radio.addEventListener("change", window.toggleCamposAvaliacaoTeste);
   });
 
   // Define o estado inicial oculto
-  toggleCamposAvaliacaoTeste();
+  window.toggleCamposAvaliacaoTeste();
 
   // Configura listener do formulário
   form.removeEventListener("submit", submeterAvaliacaoTeste);
@@ -942,29 +947,54 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     });
 
   modalAvaliacaoTeste.classList.add("is-visible");
-
-  // ✅ ADICIONADO: Carregar abas de visualização quando abrir modal
-  const abasPaiEl = document.getElementById("abas-visualizacao-respostas");
-  if (abasPaiEl) {
-    const abas = abasPaiEl.querySelectorAll("[data-bs-target]");
-
-    abas.forEach((aba) => {
-      aba.addEventListener("click", (e) => {
-        const target = e.target.getAttribute("data-bs-target");
-
-        if (target === "#aba-historico") {
-          carregarHistoricoTokens(candidatoId);
-        } else if (target === "#aba-dashboard") {
-          carregarDashboardTeste(candidatoId);
-        } else if (target === "#aba-tempo-real") {
-          carregarMonitorTempoReal(candidatoId);
-        }
-      });
-    });
-  }
-
   console.log("Entrevistas: Modal de avaliação de teste aberto");
 };
+
+/**
+ * Fecha o modal de avaliação de teste
+ */
+function fecharModalAvaliacaoTeste() {
+  const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
+  if (modalAvaliacaoTeste) {
+    modalAvaliacaoTeste.classList.remove("is-visible");
+    // Limpa listener de tempo real se existir
+    if (window._abaMonitorUnsubscribe) {
+      window._abaMonitorUnsubscribe();
+      window._abaMonitorUnsubscribe = null;
+    }
+  }
+}
+
+/**
+ * Carrega a lista de gestores disponíveis
+ */
+async function carregarGestores() {
+  try {
+    const state = getGlobalState();
+    const { candidatosCollection } = state;
+    const db = candidatosCollection.firestore;
+
+    const usuariosRef = collection(db, "usuarios");
+    const q = query(usuariosRef, where("role", "==", "gestor"));
+    const snapshot = await getDocs(q);
+
+    const gestores = [];
+    snapshot.forEach((doc) => {
+      const dados = doc.data();
+      gestores.push({
+        id: doc.id,
+        nome: dados.nome || dados.nomecompleto || "Gestor",
+        email: dados.email || "",
+        telefone: dados.telefone || dados.telefonemov || "",
+      });
+    });
+
+    return gestores;
+  } catch (error) {
+    console.error("Erro ao carregar gestores:", error);
+    return [];
+  }
+}
 
 /**
  * Fecha o modal de avaliação de teste
