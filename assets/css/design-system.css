@@ -1622,3 +1622,73 @@ legend {
   right: 20px;
   width: auto;
 }
+/* ============================================
+   22. COMPONENTES - VARIANTES E EXTENSÕES
+   (Necessário para tabTriagem.js)
+   ============================================ */
+
+/* 1. Nova variante de botão para "Atenção" (Laranja) */
+.action-button.warning {
+  background-color: var(--cor-alerta);
+  color: #333; /* Texto escuro para melhor contraste no amarelo/laranja */
+}
+.action-button.warning:hover {
+  background-color: #e6a000; /* Um tom mais escuro de var(--cor-alerta) */
+  color: #333;
+}
+
+/* 2. Estilo para links de contato dentro de cards */
+.card-content .contact-link {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--cor-texto-secundario);
+  font-weight: 500;
+  transition: color var(--transicao-padrao);
+}
+.card-content .contact-link:hover {
+  color: var(--cor-primaria);
+  text-decoration: none;
+}
+.card-content .contact-link.disabled {
+  color: #999;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.card-content .contact-link i {
+  margin-right: 10px;
+  width: 1.2em;
+  text-align: center;
+  color: var(--cor-secundaria);
+}
+
+/* 3. Ajuste para o .module-card ter um footer 
+      (Usado nos cards de candidato) */
+.module-card .card-content {
+  flex-grow: 1; /* Permite que o conteúdo cresça e empurre o footer para baixo */
+}
+.module-card .modal-footer {
+  border-top: 1px solid var(--cor-borda);
+  background-color: var(--cor-fundo); /* Fundo do footer */
+  flex-shrink: 0; /* Impede que o footer encolha */
+  /* Aplica o radius apenas na base do card */
+  border-radius: 0 0 var(--borda-radius) var(--borda-radius);
+}
+
+/* 4. Ajuste para o header do card (card-icon) 
+      (Permite que o "status-badge" fique à direita) */
+.module-card .card-icon {
+  /* Substitui 'align-items: center' para o conteúdo ficar no topo */
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+.module-card .card-icon h3 {
+  margin-bottom: 5px; /* Menos espaço entre título e subtítulo */
+}
+.module-card .card-icon p {
+  margin-bottom: 0; /* Remove margem do parágrafo da etapa */
+}
+.module-card .status-badge {
+  flex-shrink: 0; /* Impede que o badge encolha */
+  white-space: nowrap;
+}
