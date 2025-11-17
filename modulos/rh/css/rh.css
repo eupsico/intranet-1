@@ -1640,7 +1640,7 @@
     padding: 10px 12px;
   }
 }
-<style>
+
   /* Estilo para o teste-header */
   .teste-header {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -1732,4 +1732,4 @@
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
   }
-</style>
+
