@@ -937,7 +937,7 @@ async function carregarMonitorTempoReal(candidatoId) {
   }
 }
 /**
- * Envia resumo das respostas do teste por email (Aba Email)
+ * Envia resumo das respostas do teste por email usando Cloud Function genérica (Aba Email)
  */
 window.enviarResumoEmailTeste = async function () {
   const emailDestino = document.getElementById("email-destino-resumo")?.value;
@@ -978,89 +978,217 @@ window.enviarResumoEmailTeste = async function () {
     const dados = candidaturaSnap.data();
     const nomeCandidato = dados.nomecompleto || "Candidato";
     const emailCandidato = dados.emailcandidato || "não informado";
+    const vagaAplicada =
+      dados.titulovagaoriginal || dados.titulo_vaga_original || "Não informada";
     const tokensAccesso = dados.testesenviados || [];
 
-    // Monta o corpo do email
-    let corpoEmail = `
-      <h2>Resumo de Testes - ${nomeCandidato}</h2>
-      <p><strong>Email do Candidato:</strong> ${emailCandidato}</p>
-      <p><strong>Data do Relatório:</strong> ${new Date().toLocaleDateString(
-        "pt-BR"
-      )}</p>
-      <hr>
+    // ✅ MONTA O CORPO DO EMAIL EM HTML
+    let htmlEmail = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0078d4 0%, #003d7a 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 20px; }
+          .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #0078d4; border-radius: 4px; }
+          .stat-box { display: inline-block; background: white; padding: 15px; margin: 10px; border-left: 4px solid #28a745; border-radius: 4px; width: 45%; }
+          .stat-number { font-size: 28px; font-weight: bold; color: #0078d4; }
+          .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+          .table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          .table th { background: #0078d4; color: white; padding: 10px; text-align: left; }
+          .table td { border-bottom: 1px solid #ddd; padding: 10px; }
+          .table tr:hover { background: #f5f5f5; }
+          .badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+          .badge-success { background: #d4edda; color: #155724; }
+          .badge-warning { background: #fff3cd; color: #856404; }
+          .badge-info { background: #d1ecf1; color: #0c5460; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; border-top: 1px solid #ddd; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>📊 Resumo de Testes - ${nomeCandidato}</h2>
+          </div>
+          <div class="content">
+            <div class="info-box">
+              <h3 style="margin-top: 0; color: #0078d4;">👤 Informações do Candidato</h3>
+              <p><strong>Nome:</strong> ${nomeCandidato}</p>
+              <p><strong>Email:</strong> ${emailCandidato}</p>
+              <p><strong>Vaga Aplicada:</strong> ${vagaAplicada}</p>
+              <p><strong>Data do Relatório:</strong> ${new Date().toLocaleDateString(
+                "pt-BR",
+                {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              )}</p>
+            </div>
     `;
 
+    // ✅ ADICIONA ESTATÍSTICAS SE MARCADO
     if (incluirGraficos) {
       const totalTestes = tokensAccesso.length;
       const testsRespondidos = tokensAccesso.filter(
         (t) => t.status === "respondido" || t.status === "avaliado"
       ).length;
+      const testsPendentes = totalTestes - testsRespondidos;
       const taxaRespostaPct =
         totalTestes > 0
           ? Math.round((testsRespondidos / totalTestes) * 100)
           : 0;
 
-      corpoEmail += `
-        <h3>Estatísticas</h3>
-        <ul>
-          <li>Total de Testes: ${totalTestes}</li>
-          <li>Respondidos: ${testsRespondidos}</li>
-          <li>Pendentes: ${totalTestes - testsRespondidos}</li>
-          <li>Taxa de Resposta: ${taxaRespostaPct}%</li>
-        </ul>
-        <hr>
+      let tempoTotal = 0;
+      let testComTempo = 0;
+      tokensAccesso.forEach((t) => {
+        if (t.tempoGasto) {
+          tempoTotal += t.tempoGasto;
+          testComTempo++;
+        }
+      });
+      const tempoMedio =
+        testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
+
+      htmlEmail += `
+        <div class="info-box">
+          <h3 style="margin-top: 0; color: #0078d4;">📈 Estatísticas Gerais</h3>
+          <div style="text-align: center;">
+            <div class="stat-box">
+              <div class="stat-number">${totalTestes}</div>
+              <div class="stat-label">Total de Testes</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${testsRespondidos}</div>
+              <div class="stat-label">Respondidos</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${testsPendentes}</div>
+              <div class="stat-label">Pendentes</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${taxaRespostaPct}%</div>
+              <div class="stat-label">Taxa de Resposta</div>
+            </div>
+          </div>
+        </div>
       `;
+
+      // Barra de progresso
+      htmlEmail += `
+        <div class="info-box">
+          <h4 style="margin-top: 0;">Progresso Geral</h4>
+          <div style="width: 100%; height: 30px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+            <div style="width: ${taxaRespostaPct}%; height: 100%; background: linear-gradient(90deg, #28a745 0%, #20c997 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+              ${taxaRespostaPct}%
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (tempoMedio > 0) {
+        htmlEmail += `
+          <div class="info-box" style="border-left-color: #6f42c1;">
+            <strong>⏱️ Tempo Médio de Resposta:</strong> ${Math.floor(
+              tempoMedio / 60
+            )}m ${tempoMedio % 60}s
+          </div>
+        `;
+      }
     }
 
-    corpoEmail += "<h3>Detalhamento dos Testes</h3><ul>";
+    // ✅ TABELA COM DETALHAMENTO DOS TESTES
+    htmlEmail += `
+      <div class="info-box">
+        <h3 style="margin-top: 0; color: #0078d4;">📋 Detalhamento dos Testes</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Teste</th>
+              <th>Data de Envio</th>
+              <th>Status</th>
+              <th>Tempo</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
 
     tokensAccesso.forEach((token, index) => {
       const dataEnvio = token.dataenvio?.toDate
-        ? token.dataenvio.toDate().toLocaleDateString("pt-BR")
+        ? token.dataenvio
+            .toDate()
+            .toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
         : "N/A";
 
       const status = token.status || "enviado";
+      let statusBadge = '<span class="badge badge-warning">Pendente</span>';
+
+      if (status === "respondido") {
+        statusBadge = '<span class="badge badge-success">Respondido</span>';
+      } else if (status === "avaliado") {
+        statusBadge = '<span class="badge badge-info">Avaliado</span>';
+      }
+
       const tempoExibir = token.tempoGasto
         ? `${Math.floor(token.tempoGasto / 60)}m ${token.tempoGasto % 60}s`
         : "N/A";
 
-      corpoEmail += `
-        <li>
-          <strong>${index + 1}. ${token.nomeTeste || "Teste"}</strong><br>
-          Enviado: ${dataEnvio}<br>
-          Status: ${status}<br>
-          Tempo: ${tempoExibir}
-        </li>
+      htmlEmail += `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${token.nomeTeste || "Teste"}</strong></td>
+          <td>${dataEnvio}</td>
+          <td>${statusBadge}</td>
+          <td>${tempoExibir}</td>
+        </tr>
       `;
     });
 
-    corpoEmail += "</ul>";
+    htmlEmail += `
+          </tbody>
+        </table>
+      </div>
+    `;
 
-    // Chama Cloud Function para enviar email
-    const response = await fetch(
-      "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/enviarEmailResumoTeste",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          emailDestino: emailDestino,
-          assunto: assunto || `Resumo de Testes - ${nomeCandidato}`,
-          corpo: corpoEmail,
-          candidatoId: candidatoId,
-          nomeCandidato: nomeCandidato,
-        }),
-      }
-    );
+    // ✅ RODAPÉ
+    htmlEmail += `
+      <div class="footer">
+        <p><strong>EuPsico - Sistema de Recrutamento e Seleção</strong></p>
+        <p>Este é um e-mail automático. Não responda diretamente.</p>
+      </div>
+    </div>
+    </body>
+    </html>
+    `;
 
-    const resultadoEnvio = await response.json();
+    // ✅ CHAMA CLOUD FUNCTION GENÉRICA EXISTENTE
+    const enviarEmail = httpsCallable(functions, "enviarEmail");
 
-    if (!response.ok) {
-      throw new Error(resultadoEnvio.erro || "Erro ao enviar email");
+    const resultado = await enviarEmail({
+      destinatario: emailDestino,
+      assunto: assunto || `Resumo de Testes - ${nomeCandidato}`,
+      html: htmlEmail,
+      remetente: "EuPsico Recrutamento <atendimento@eupsico.org.br>",
+    });
+
+    if (resultado.data?.success) {
+      window.showToast?.("Email enviado com sucesso!", "success");
+      document.getElementById("email-destino-resumo").value = "";
+      document.getElementById("assunto-email-resumo").value = "";
+    } else {
+      throw new Error(resultado.data?.message || "Erro desconhecido ao enviar");
     }
-
-    window.showToast?.("Email enviado com sucesso!", "success");
-    document.getElementById("email-destino-resumo").value = "";
-    document.getElementById("assunto-email-resumo").value = "";
   } catch (error) {
     console.error("Erro ao enviar email:", error);
     window.showToast?.(`Erro ao enviar email: ${error.message}`, "error");
