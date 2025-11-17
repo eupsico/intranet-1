@@ -1194,7 +1194,7 @@ exports.uploadCurriculo = onRequest(
 );
 
 // ====================================================================
-// FUNÇÃO: salvarCandidatura - SALVA NO FIRESTORE
+// CLOUD FUNCTION: salvarCandidatura - ATUALIZADO
 // ====================================================================
 exports.salvarCandidatura = onCall(
   { cors: true, timeoutSeconds: 60 },
@@ -1202,32 +1202,51 @@ exports.salvarCandidatura = onCall(
     try {
       const data = request.data;
 
-      console.log("salvarCandidatura:", data.nome_completo);
+      console.log("salvarCandidatura:", data.nome_candidato);
 
-      if (!data.vaga_id || !data.nome_completo || !data.link_curriculo_drive) {
+      // Validação dos campos obrigatórios
+      if (!data.vaga_id || !data.nome_candidato || !data.link_curriculo_drive) {
         throw new HttpsError(
           "invalid-argument",
           "Campos obrigatórios ausentes"
         );
       }
 
+      // ✅ OBJETO COM TODOS OS CAMPOS RENOMEADOS
       const novaCandidaturaData = {
         vaga_id: data.vaga_id,
         titulo_vaga_original: data.titulo_vaga_original || "",
-        nome_completo: data.nome_completo,
+        nome_candidato: data.nome_candidato,
         email_candidato: data.email_candidato || "",
         telefone_contato: data.telefone_contato || "",
-        cep: data.cep || "",
-        numero_endereco: data.numero_endereco || "",
-        complemento_endereco: data.complemento_endereco || "",
-        endereco_rua: data.endereco_rua || "",
-        cidade: data.cidade || "",
-        estado: data.estado || "",
+        cep_candidato: data.cep_candidato || "",
+        endereco_num_candidato: data.endereco_num_candidato || "",
+        complemento_end_candidato: data.complemento_end_candidato || "",
+        endereco_rua_candidato: data.endereco_rua_candidato || "",
+        cidade_candidato: data.cidade_candidato || "",
+        estado_candidato: data.estado_candidato || "",
         resumo_experiencia: data.resumo_experiencia || "",
         habilidades_competencias: data.habilidades_competencias || "",
         como_conheceu: data.como_conheceu || "",
         link_curriculo_drive: data.link_curriculo_drive,
         storage_path: data.storage_path || "",
+
+        // ✅ NOVOS CAMPOS ADICIONADOS (que estavam sendo perdidos)
+        data_nasc_candidato: data.data_nasc_candidato || "",
+        genero_candidato: data.genero_candidato || "",
+        escolaridade_candidato: data.escolaridade_candidato || "",
+        area_formacao_candidato: data.area_formacao_candidato || "",
+        especializacoes_candidato: data.especializacoes_candidato || "",
+        disponibilidade_inicio_candidato:
+          data.disponibilidade_inicio_candidato || "",
+        experiencia_candidato: data.experiencia_candidato || "",
+        linkedin_url_candidato: data.linkedin_url_candidato || "",
+        portfolio_url_candidato: data.portfolio_url_candidato || "",
+        motivacao_candidato: data.motivacao_candidato || "",
+        pcd_candidato: data.pcd_candidato || "",
+        status_candidato: data.status_candidato || "recebido",
+
+        // Campos automáticos do servidor
         data_candidatura: FieldValue.serverTimestamp(),
         status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
       };
@@ -1235,7 +1254,8 @@ exports.salvarCandidatura = onCall(
       const docRef = await db
         .collection("candidaturas")
         .add(novaCandidaturaData);
-      console.log("Candidatura salva:", docRef.id);
+
+      console.log("✅ Candidatura salva com sucesso! ID:", docRef.id);
 
       return {
         success: true,
@@ -1243,7 +1263,7 @@ exports.salvarCandidatura = onCall(
         id: docRef.id,
       };
     } catch (error) {
-      console.error("Erro salvarCandidatura:", error.message);
+      console.error("❌ Erro salvarCandidatura:", error.message);
       throw new HttpsError("internal", error.message);
     }
   }
