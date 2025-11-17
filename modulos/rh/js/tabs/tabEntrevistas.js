@@ -13,6 +13,7 @@ import {
   doc,
   updateDoc,
   arrayUnion,
+  arrayRemove,
   collection,
   db,
   addDoc,
@@ -235,18 +236,19 @@ export async function renderizarEntrevistas(state) {
       return;
     }
 
-    let listaHtml = '<div class="candidatos-container modules-grid">';
+    let listaHtml = '<div class="candidatos-container candidatos-grid">';
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      let statusClass = "status-pendente";
-      if (statusAtual.toLowerCase().includes("aprovada")) {
-        statusClass = "status-concluída";
-      } else if (statusAtual.toLowerCase().includes("reprovada")) {
-        statusClass = "status-rejeitada";
+      // Mantive sua lógica original de 'corStatus'
+      let corStatus = "info";
+      if (statusAtual.includes("Aprovada")) {
+        corStatus = "success";
+      } else if (statusAtual.includes("Testes")) {
+        corStatus = "warning";
       }
 
       const telefone = cand.telefone_contato
@@ -256,61 +258,67 @@ export async function renderizarEntrevistas(state) {
         ? `https://api.whatsapp.com/send?phone=55${telefone}`
         : "#";
 
-      const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
-
+      // Mantive sua estrutura de card original
       listaHtml += `
-        <div class="module-card" data-id="${candidatoId}">
-          
-          <div class="card-icon">
-            <div>
-              <h3>${cand.nome_candidato || "Candidato Sem Nome"}</h3>
-              <p class="text-muted" style="font-size: 0.9rem;">
-                <i class="fas fa-briefcase me-2"></i> Etapa: Entrevistas e Avaliações
-              </p>
-            </div>
-            <span class="status-badge ${statusClass}">
-              ${statusAtual.replace(/_/g, " ")}
-            </span>
+        <div class="card card-candidato-triagem" data-id="${candidatoId}">
+          <div class="info-primaria">
+            <h4>Nome: ${cand.nome_candidato || "Candidato Sem Nome"}</h4>
+            <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
+        /_/g,
+        " "
+      )}</span></p>
+            <p class="small-info">
+              <i class="fas fa-briefcase"></i> Etapa: Entrevistas e avaliações
+            </p>
           </div>
 
-          <div class="card-content">
-            <a href="mailto:${
-              cand.email_candidato || ""
-            }" class="contact-link ${!cand.email_candidato ? "disabled" : ""}">
-              <i class="fas fa-envelope"></i> ${
-                cand.email_candidato || "Email não informado"
-              }
-            </a>
-            <a href="${linkWhatsApp}" target="_blank" class="contact-link whatsapp ${
+          <div class="info-contato">
+            ${
+              cand.email_candidato
+                ? `<p><i class="fas fa-envelope"></i>E-mail: ${cand.email_candidato}</p>`
+                : ""
+            }
+            
+            <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
-      }">
-              <i class="fab fa-whatsapp"></i> ${
-                cand.telefone_contato || "WhatsApp não informado"
-              }
+      }>
+               <i class="fab fa-whatsapp me-1"></i> ${
+                 cand.telefone_contato || "N/A (Sem WhatsApp)"
+               }
             </a>
           </div>
-            
-          <div class="modal-footer">
+          
+          <div class="acoes-candidato">
             <button 
               class="action-button info btn-detalhes-entrevista" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-info-circle me-1"></i> Detalhes
             </button>
       `;
 
+      // LÓGICA: EXIBIÇÃO DOS BOTÕES (Mantida)
       if (statusAtual.includes("Entrevista Pendente")) {
         listaHtml += `
             <button 
               class="action-button secondary btn-agendar-rh" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-calendar-alt me-1"></i> Agendar RH
             </button>
             <button 
-              class="action-button btn-avaliar-rh" 
+              class="action-button primary btn-avaliar-rh" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-edit me-1"></i> Avaliar RH
             </button>
         `;
@@ -321,24 +329,33 @@ export async function renderizarEntrevistas(state) {
       ) {
         listaHtml += `
             <button 
-              class="action-button btn-enviar-teste" 
+              class="action-button primary btn-enviar-teste" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-vial me-1"></i> Enviar Teste
             </button>
             <button 
               class="action-button success btn-avaliar-teste" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-clipboard-check me-1"></i> Avaliar Teste
             </button>
         `;
       } else {
         listaHtml += `
             <button 
-              class="action-button btn-avaliar-rh" 
+              class="action-button primary btn-avaliar-rh" 
               data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
+              data-candidato-data='${JSON.stringify(cand).replace(
+                /'/g,
+                "&#39;"
+              )}'>
               <i class="fas fa-eye me-1"></i> Ver Avaliação
             </button>
         `;
@@ -352,8 +369,6 @@ export async function renderizarEntrevistas(state) {
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
-
-    console.log("🔹 Entrevistas: Anexando listeners aos botões");
 
     // Listeners de Detalhes
     document.querySelectorAll(".btn-detalhes-entrevista").forEach((btn) => {
@@ -455,6 +470,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
 
+  // ✅ CORREÇÃO: "nome_completo" -> "nome_candidato"
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
@@ -489,7 +505,6 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   modalAgendamentoRH.classList.add("is-visible");
   console.log("✅ Entrevistas: Modal de agendamento aberto");
 };
-
 // ============================================
 // FUNÇÃO (Avaliar Teste): Carregar Respostas
 // ============================================
@@ -714,15 +729,20 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
+  // ✅ CORREÇÃO: "nomecompleto" -> "nome_candidato"
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
+  // ✅ CORREÇÃO: "statusrecrutamento" -> "status_recrutamento"
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
+  // Preenche informações do candidato
   const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
   const statusEl = document.getElementById("avaliacao-teste-status-atual");
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
+  // Exibe todos os testes enviados
+  // ✅ CORREÇÃO: "testesenviados" -> "testes_enviados"
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
@@ -735,64 +755,90 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         </div>
       `;
     } else {
-      let testesHtml = "<div>";
+      let testesHtml = '<div class="testes-enviados-lista">';
 
       testesEnviados.forEach((teste, index) => {
+        // ✅ CORREÇÃO: Usa a função formatarDataEnvio
         const dataEnvio = formatarDataEnvio(teste.data_envio);
 
         const statusTeste = teste.status || "enviado";
-        let statusClass = "status-pendente";
+        let badgeClass = "bg-warning"; // Mantendo sua classe original
         let statusTexto = "Pendente";
         let linkHtml = "";
 
         const tokenId = teste.tokenId || `manual-index-${index}`;
 
         if (statusTeste === "respondido") {
-          statusClass = "status-concluída";
+          badgeClass = "bg-success"; // Mantendo sua classe original
           statusTexto = "Respondido";
           if (teste.linkrespostas) {
-            linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-eye me-1"></i> Acessar Respostas</a>`;
+            linkHtml = `
+              <p>
+                <strong>Resultado</strong>
+                <a href="${teste.linkrespostas}" target="_blank">
+                  Acessar Respostas e Avaliação
+                </a>
+              </p>
+            `;
           }
         } else if (statusTeste === "avaliado") {
-          statusClass = "status-pendente";
+          badgeClass = "bg-info"; // Mantendo sua classe original
           statusTexto = "Avaliado";
           if (teste.linkrespostas) {
-            linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-check-circle me-1"></i> Ver Avaliação</a>`;
+            linkHtml = `
+              <p>
+                <strong>Resultado</strong>
+                <a href="${teste.linkrespostas}" target="_blank">
+                  Ver Avaliação
+                </a>
+              </p>
+            `;
           }
         } else {
-          linkHtml = `<p class="text-muted small mt-2">Aguardando resposta do candidato</p>`;
+          linkHtml = `
+            <p>
+              <strong>Link do Teste</strong>
+              Aguardando resposta do candidato
+            </p>
+          `;
         }
 
+        // Mantendo sua estrutura HTML original
         testesHtml += `
-          <div class="info-card mb-3">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <h5 style="margin: 0; color: var(--cor-primaria);">
+          <div class="teste-item">
+            <div class="teste-header">
+              <h5 class="teste-titulo">
                 <i class="fas fa-file-alt me-2"></i>
-                ${
-                  teste.nomeTeste ||
-                  "Teste (ID: " + tokenId.substring(0, 5) + ")"
-                }
+                ${teste.nomeTeste || `Teste (ID: ${tokenId.substring(0, 5)})`}
               </h5>
-              <span class="status-badge ${statusClass}">${statusTexto}</span>
+              <span class="badge ${badgeClass}">${statusTexto}</span>
             </div>
-            <div class="mt-2">
-              <p class="small text-muted mb-1"><strong>Data de Envio:</strong> ${dataEnvio}</p>
-              <p class="small text-muted mb-1"><strong>Enviado por:</strong> ${
-                teste.enviado_por || "N/A"
-              }</p>
+            <div class="teste-info">
+              <p>
+                <strong>Data de Envio:</strong> ${dataEnvio}
+              </p>
+              <p>
+                <strong>Enviado por:</strong> ${teste.enviado_por || "N/A"}
+              </p>
               ${
                 teste.tempoGasto !== undefined
-                  ? `<p class="small text-muted mb-1"><strong>Tempo Gasto:</strong> ${Math.floor(
-                      teste.tempoGasto / 60
-                    )}m ${teste.tempoGasto % 60}s</p>`
+                  ? `
+                <p>
+                  <strong>Tempo Gasto:</strong> ${Math.floor(
+                    teste.tempoGasto / 60
+                  )}m ${teste.tempoGasto % 60}s
+                </p>
+              `
                   : ""
               }
-              <p class="small text-muted mb-1"><strong>Link:</strong> <a href="${
-                teste.link || "#"
-              }" target="_blank">${teste.link ? "Acessar Link" : "N/A"}</a></p>
+              <p>
+                <strong>Link:</strong> <a href="${
+                  teste.link || "#"
+                }" target="_blank">${teste.link ? "Acessar Link" : "N/A"}</a>
+              </p>
               ${linkHtml}
             </div>
-            <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
+            <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
               <span class="text-muted small">Carregando respostas...</span>
             </div>
           </div>
@@ -802,6 +848,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
+      // DISPARAR CARREGAMENTO DAS RESPOSTAS
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
@@ -826,11 +873,11 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     }
   }
 
+  // CARREGAR GESTORES (código mantido)
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
   const btnWhatsAppGestor = document.getElementById(
     "btn-whatsapp-gestor-avaliacao"
   );
-
   if (selectGestor) {
     selectGestor.innerHTML = '<option value="">Carregando gestores...</option>';
     const gestores = await carregarGestores();
@@ -853,10 +900,8 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         `;
       });
       selectGestor.innerHTML = optionsHtml;
-      console.log(`${gestores.length} gestores carregados no select`);
     }
   }
-
   if (selectGestor && btnWhatsAppGestor) {
     selectGestor.addEventListener("change", (e) => {
       const option = e.target.selectedOptions[0];
@@ -865,31 +910,24 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     });
     btnWhatsAppGestor.disabled = true;
   }
-
   if (form) form.reset();
-
   const radiosResultadoTeste = form.querySelectorAll(
-    'input[name="resultadoteste"]'
+    'input[name="resultadoteste"]' // Corrigido
   );
   radiosResultadoTeste.forEach((radio) => {
     radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
-
   toggleCamposAvaliacaoTeste();
-
   form.removeEventListener("submit", submeterAvaliacaoTeste);
   form.addEventListener("submit", submeterAvaliacaoTeste);
-
   document
     .querySelectorAll('[data-modal-id="modal-avaliacao-teste"]')
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAvaliacaoTeste);
       btn.addEventListener("click", fecharModalAvaliacaoTeste);
     });
-
   modalAvaliacaoTeste.classList.add("is-visible");
-  console.log("Entrevistas: Modal de avaliação de teste aberto");
 };
 
 /**
@@ -960,12 +998,14 @@ window.enviarWhatsAppGestor = function () {
     return;
   }
 
+  // ✅ CORREÇÃO: "nome_completo" -> "nome_candidato"
   const nomeCandidato = dadosCandidatoAtual.nome_candidato || "Candidato(a)";
   const telefoneCandidato =
     dadosCandidatoAtual.telefone_contato || "Não informado";
   const emailCandidato = dadosCandidatoAtual.email_candidato || "Não informado";
   const statusCandidato =
     dadosCandidatoAtual.status_recrutamento || "Em avaliação";
+  // ✅ CORREÇÃO: "vaga_titulo" -> "titulo_vaga_original"
   const vagaInfo =
     dadosCandidatoAtual.titulo_vaga_original || "Vaga não especificada";
 
@@ -1005,7 +1045,6 @@ Se tiver dúvidas, entre em contato com o RH.
   window.showToast?.("WhatsApp aberto para notificar gestor", "success");
   console.log("✅ WhatsApp enviado para gestor");
 };
-
 /**
  * Submete a avaliação do teste
  */
@@ -1289,7 +1328,7 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
       modalEnviarTeste.dataset.candidaturaId = candidatoId;
     }
 
-    // ✅ CORREÇÃO: Usando 'nome_candidato'
+    // ✅ CORREÇÃO: "nome_completo" -> "nome_candidato"
     const nomeEl = document.getElementById("teste-nome-candidato");
     const emailEl = document.getElementById("teste-email-candidato");
     const whatsappEl = document.getElementById("teste-whatsapp-candidato");
@@ -1299,52 +1338,75 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
     if (whatsappEl)
       whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
 
+    // (REQ 2): Listar testes já enviados
     const containerTestesEnviados = document.getElementById(
       "testes-ja-enviados-container"
     );
     if (containerTestesEnviados) {
+      // ✅ CORREÇÃO: "testes_enviados"
       const testesEnviados = dadosCandidato.testes_enviados || [];
-
       if (testesEnviados.length === 0) {
         containerTestesEnviados.innerHTML =
-          '<p class="text-muted small mb-3">Nenhum teste foi enviado para este candidato ainda.</p>';
+          '<p class="text-muted small" style="margin-bottom: 15px;">Nenhum teste foi enviado para este candidato ainda.</p>';
       } else {
+        // Mantendo sua estrutura de classes original
         let testesHtml =
-          '<label class="form-label mb-2">Testes Já Enviados:</label><ul class="simple-list mb-3">';
-
+          '<h6 style="margin-bottom: 10px;">Testes Já Enviados:</h6><ul class="list-group mb-3">';
         testesEnviados.forEach((teste) => {
-          // ✅ CORREÇÃO: Usando formatarDataEnvio
+          // ✅ CORREÇÃO: Usa a função formatarDataEnvio
           const dataEnvio = formatarDataEnvio(teste.data_envio);
           const status = teste.status || "enviado";
 
-          let statusClass = "status-pendente";
-          if (status === "respondido") {
-            statusClass = "status-concluída";
-          } else if (status === "avaliado") {
-            statusClass = "status-pendente";
-          }
+          // Prepara o objeto para o botão de exclusão
+          const testeJson = JSON.stringify(teste).replace(/'/g, "&#39;");
 
-          testesHtml += `
-            <li class="simple-list-item">
-              <div class="simple-list-item-content">
-                <strong>${
-                  teste.nomeTeste ||
-                  "Teste (ID: " + (teste.id?.substring(0, 5) || "N/A") + ")"
-                }</strong>
-                <small>Enviado em: ${dataEnvio} por ${
+          testesHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong style="font-size: 0.9rem;">${
+                teste.nomeTeste ||
+                `Teste (ID: ${teste.id?.substring(0, 5) || "N/A"})`
+              }</strong><br/>
+              <small class="text-muted">Enviado em: ${dataEnvio} por ${
             teste.enviado_por || "N/A"
           }</small>
-                <small class="d-block mt-1"><strong>Link:</strong> <a href="${
-                  teste.link || "#"
-                }" target="_blank">${
+              <small class="text-muted d-block mt-1"><strong>Link:</strong> <a href="${
+                teste.link || "#"
+              }" target="_blank">${
             teste.link ? "Acessar Link" : "N/A"
           }</a></small>
-              </div>
-              <span class="status-badge ${statusClass}">${status}</span>
-            </li>`;
+            </div>
+            <div>
+              <span class="badge ${
+                status === "respondido"
+                  ? "bg-success"
+                  : status === "enviado"
+                  ? "bg-warning"
+                  : "bg-info"
+              }">${status}</span>
+              
+              <button 
+                type="button" 
+                class="action-button error small btn-excluir-teste-enviado" 
+                style="padding: 4px 8px; margin-left: 10px;"
+                data-candidato-id="${candidatoId}" 
+                data-teste-obj='${testeJson}'
+                title="Excluir este envio de teste">
+                <i class="fas fa-trash" style="margin-right: 0;"></i>
+              </button>
+            </div>
+          </li>`;
         });
-        testesHtml += "</ul>";
+        testesHtml += "</ul><hr/>";
         containerTestesEnviados.innerHTML = testesHtml;
+
+        // ✅ NOVO: Adiciona listeners aos novos botões de exclusão
+        containerTestesEnviados
+          .querySelectorAll(".btn-excluir-teste-enviado")
+          .forEach((btn) => {
+            // Remove listener antigo para evitar duplicação
+            btn.removeEventListener("click", handleExcluirTesteEnviado);
+            btn.addEventListener("click", handleExcluirTesteEnviado);
+          });
       }
     } else {
       console.warn(
@@ -1352,8 +1414,10 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
       );
     }
 
+    // Carrega testes disponíveis
     await carregarTestesDisponiveis();
 
+    // Abre o modal
     if (modalEnviarTeste) {
       modalEnviarTeste.classList.add("is-visible");
     }
@@ -1364,6 +1428,99 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
   }
 };
 
+/**
+ * ✅ NOVA FUNÇÃO
+ * Lida com a exclusão de um teste já enviado.
+ */
+async function handleExcluirTesteEnviado(e) {
+  const btn = e.currentTarget;
+  const candidatoId = btn.dataset.candidatoId;
+  const testeObjString = btn.dataset.testeObj.replace(/&#39;/g, "'");
+  const testeParaExcluir = JSON.parse(testeObjString);
+
+  // O ID único (seja 'id' or 'tokenId') é o que importa
+  const idParaExcluir = testeParaExcluir.id || testeParaExcluir.tokenId;
+
+  if (!candidatoId || !idParaExcluir) {
+    window.showToast?.(
+      "Erro: ID do teste ou do candidato não encontrado.",
+      "error"
+    );
+    return;
+  }
+
+  if (
+    !confirm(
+      `Tem certeza que deseja excluir o envio do teste "${
+        testeParaExcluir.nomeTeste || "este teste"
+      }"?\n\nEsta ação não pode ser desfeita.`
+    )
+  ) {
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const { candidatosCollection } = getGlobalState();
+    const candidaturaRef = doc(candidatosCollection, candidatoId);
+
+    // 1. Obter o documento ATUAL
+    const docSnap = await getDoc(candidaturaRef);
+    if (!docSnap.exists()) {
+      throw new Error("Documento do candidato não encontrado.");
+    }
+
+    const dadosAtuais = docSnap.data();
+    const testesEnviadosAtuais = dadosAtuais.testes_enviados || [];
+
+    // 2. Filtrar o array, removendo o teste
+    // Usamos o 'id' ou 'tokenId' para garantir a correspondência correta
+    const testesAtualizados = testesEnviadosAtuais.filter((teste) => {
+      const testeId = teste.id || teste.tokenId;
+      return testeId !== idParaExcluir;
+    });
+
+    // 3. Obter o nome do usuário para o histórico
+    const usuarioNome = await getCurrentUserName();
+
+    // 4. Atualizar o documento do candidato com o NOVO array
+    await updateDoc(candidaturaRef, {
+      testes_enviados: testesAtualizados, // Salva o array filtrado
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Envio de teste EXCLUÍDO: ${
+          testeParaExcluir.nomeTeste || idParaExcluir
+        }.`,
+        usuario: usuarioNome,
+      }),
+    });
+
+    window.showToast?.("Envio de teste excluído com sucesso!", "success");
+
+    // 5. Atualizar a UI
+    btn.closest(".list-group-item").remove(); // Remove da lista
+
+    // Atualizar o estado global local
+    dadosCandidatoAtual.testes_enviados = testesAtualizados;
+
+    // Se a lista ficar vazia, exibe a mensagem
+    const container = document.getElementById("testes-ja-enviados-container");
+    if (
+      container &&
+      container.querySelectorAll(".list-group-item").length === 0
+    ) {
+      container.innerHTML =
+        '<p class="text-muted small mb-3">Nenhum teste foi enviado para este candidato ainda.</p>';
+    }
+  } catch (error) {
+    console.error("Erro ao excluir teste:", error);
+    window.showToast?.(`Erro ao excluir: ${error.message}`, "error");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-trash"></i>';
+  }
+}
 /**
  * Carrega testes disponíveis da coleção estudos_de_caso
  */
@@ -1471,13 +1628,13 @@ async function enviarTesteWhatsApp() {
     '<i class="fas fa-spinner fa-spin me-2"></i> Gerando link...';
 
   try {
-    // ✅ REFATORADO: Chama a nova função helper
     const dataToken = await gerarLinkDeTesteComToken(candidatoId, testeId);
 
     const linkComToken = dataToken.urlTeste;
     const nomeTesteElement = document.querySelector(
       `#teste-selecionado option[value="${testeId}"]`
     );
+    // Pega o texto do <option>, que é o nome do teste
     const nomeTeste = nomeTesteElement?.text || "Teste";
     const prazoDias = dataToken.prazoDias || 7;
 
@@ -1514,12 +1671,13 @@ Se tiver dúvidas, não hesite em nos contactar!
 
     window.open(linkWhatsApp, "_blank");
 
+    // ✅ CORREÇÃO: Passa o 'nomeTeste' para a função de salvar
     await salvarEnvioTeste(
       candidatoId,
       testeId,
       linkComToken,
       dataToken.tokenId,
-      nomeTeste
+      nomeTeste // <-- Passa o nome do teste aqui
     );
 
     window.showToast?.("✅ Teste enviado! WhatsApp aberto", "success");
@@ -1534,7 +1692,6 @@ Se tiver dúvidas, não hesite em nos contactar!
       if (activeTab) handleTabClick({ currentTarget: activeTab });
     }, 2000);
   } catch (error) {
-    // O erro 404 da Cloud Function será capturado aqui
     console.error("❌ Erro ao enviar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
@@ -1552,7 +1709,7 @@ async function salvarEnvioTeste(
   testeId,
   linkTeste,
   tokenId,
-  nomeTeste
+  nomeTeste // ✅ CORREÇÃO: Recebe o nome do teste
 ) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
 
@@ -1563,6 +1720,7 @@ async function salvarEnvioTeste(
 
     await updateDoc(candidatoRef, {
       status_recrutamento: "Testes Pendente (Enviado)",
+      // ✅ CORREÇÃO: "testes_enviados"
       testes_enviados: arrayUnion({
         id: tokenId,
         testeId: testeId,
@@ -1571,7 +1729,7 @@ async function salvarEnvioTeste(
         data_envio: new Date(),
         enviado_por: usuarioNome,
         status: "enviado",
-        nomeTeste: nomeTeste || "Teste não nomeado",
+        nomeTeste: nomeTeste || "Teste não nomeado", // ✅ CORREÇÃO: Salva o nome
       }),
       historico: arrayUnion({
         data: new Date(),
@@ -1603,6 +1761,7 @@ async function salvarTesteApenas() {
   const testeId = document.getElementById("teste-selecionado")?.value;
   const btnSalvar = document.getElementById("btn-salvar-teste-apenas");
 
+  // ✅ CORREÇÃO: Pega o nome do teste do <option> selecionado
   const selectTeste = document.getElementById("teste-selecionado");
   const nomeTeste = selectTeste.selectedOptions[0]?.text || "Teste";
 
@@ -1610,22 +1769,19 @@ async function salvarTesteApenas() {
     window.showToast?.("Selecione um teste", "error");
     return;
   }
-
   btnSalvar.disabled = true;
   btnSalvar.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Gerando token...';
 
   try {
-    // ✅ REFATORADO: Chama a nova função helper
     const dataToken = await gerarLinkDeTesteComToken(candidatoId, testeId);
-
     const linkComToken = dataToken.urlTeste;
 
-    // Salva o link correto no Firebase
+    // ✅ CORREÇÃO: Passa o 'nomeTeste'
     await salvarEnvioTeste(
       candidatoId,
       testeId,
-      linkComToken, // Passa o link com token
+      linkComToken,
       dataToken.tokenId,
       nomeTeste
     );
@@ -1638,7 +1794,6 @@ async function salvarTesteApenas() {
     const activeTab = statusCandidaturaTabs?.querySelector(".tab-link.active");
     if (activeTab) handleTabClick({ currentTarget: activeTab });
   } catch (error) {
-    // O erro 404 da Cloud Function será capturado aqui
     console.error("❌ Erro ao salvar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
@@ -1744,6 +1899,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId;
 
+  // ✅ CORREÇÃO: "nome_completo" -> "nome_candidato"
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
@@ -1760,7 +1916,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
-  // ✅ REFATORADO: Botão Ver Currículo
+  // ✅ REFATORADO: Botão Ver Currículo (para usar classes do Design System)
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );
@@ -1769,20 +1925,25 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (btnVerCurriculo && modalFooter) {
     btnVerCurriculo.href = linkCurriculo;
 
+    // Limpa estilos inline e classes antigas
     btnVerCurriculo.className = "";
     btnVerCurriculo.style = "";
 
+    // Adiciona classes do Design System
+    // .warning (laranja) e .ms-auto (margin-left: auto)
     btnVerCurriculo.classList.add("action-button", "warning", "ms-auto");
     btnVerCurriculo.target = "_blank";
     btnVerCurriculo.innerHTML =
       '<i class="fas fa-file-alt me-2"></i> Ver Currículo';
 
+    // Oculta se não houver link
     if (!linkCurriculo || linkCurriculo === "#") {
       btnVerCurriculo.classList.add("hidden");
     } else {
       btnVerCurriculo.classList.remove("hidden");
     }
 
+    // Garante que ele seja o primeiro item no footer
     if (modalFooter.firstChild !== btnVerCurriculo) {
       modalFooter.prepend(btnVerCurriculo);
     }
@@ -1790,6 +1951,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
+  // Preenche dados da avaliação existente
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
@@ -1817,11 +1979,11 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     'input[name="resultado_entrevista"]'
   );
   radiosResultado.forEach((radio) => {
-    radio.removeEventListener("change", toggleCamposAvaliacaoRH);
+    radio.removeEventListener("change", toggleCamposAvaliacaoRH); // Mantendo sua função original
     radio.addEventListener("change", toggleCamposAvaliacaoRH);
   });
 
-  toggleCamposAvaliacaoRH();
+  toggleCamposAvaliacaoRH(); // Mantendo sua função original
 
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
