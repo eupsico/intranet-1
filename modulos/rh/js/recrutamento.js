@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.0.0 (Revisão Completa - Organização e Otimização)
+ * Versão: 3.1.0 (Refatorado para usar <template> e Design System)
  * Data: 04/11/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
@@ -47,6 +47,10 @@ const btnGerenciarConteudo = document.getElementById("btn-gestao-conteudo");
 const modalCandidato = document.getElementById("modal-candidato");
 const modalCandidatoBody = document.getElementById("candidato-modal-body");
 const modalCandidatoFooter = document.getElementById("candidato-modal-footer");
+// Cache do Template
+const templateModalCandidato = document.getElementById(
+  "template-modal-candidato"
+);
 
 // ============================================
 // VARIÁVEIS DE ESTADO GLOBAL
@@ -195,28 +199,29 @@ async function carregarVagasAtivas() {
 }
 
 // ============================================
-// MODAL DE DETALHES DO CANDIDATO
+// MODAL DE DETALHES DO CANDIDATO (REFATORADO)
 // ============================================
 
 /**
- * Abre modal com detalhes completos do candidato
+ * Abre modal com detalhes completos do candidato usando <template>
  * @param {string} candidatoId - ID do documento do candidato
  * @param {string} modo - Modo de visualização (detalhes, editar, etc.)
  * @param {Object} candidato - Dados do candidato (opcional)
  */
 export async function abrirModalCandidato(candidatoId, modo, candidato) {
-  if (!modalCandidato || !modalCandidatoBody) {
-    console.error("❌ Recrutamento: Modal de candidato não encontrado");
+  if (!modalCandidato || !modalCandidatoBody || !templateModalCandidato) {
+    console.error(
+      "❌ Recrutamento: Modal, body ou template do candidato não encontrados"
+    );
     return;
   }
 
   console.log(`🔹 Recrutamento: Abrindo modal para candidato ${candidatoId}`);
+  modalCandidatoBody.innerHTML = '<div class="loading-spinner"></div>';
+  modalCandidato.classList.add("is-visible");
 
   // Se os dados não foram passados, busca no Firestore
   if (!candidato) {
-    modalCandidatoBody.innerHTML = '<div class="loading-spinner"></div>';
-    modalCandidato.classList.add("is-visible");
-
     try {
       const candSnap = await getDoc(doc(candidatosCollection, candidatoId));
       if (!candSnap.exists()) {
@@ -237,248 +242,138 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
 
   // Atualiza título do modal
   document.getElementById("candidato-nome-titulo").textContent = `Detalhes: ${
-    candidato.nome_completo || "Candidato(a)"
+    candidato.nome_completo || candidato.nome_candidato || "Candidato(a)"
   }`;
 
-  // Monta o conteúdo com fieldsets
-  const contentHtml = `
-    <div class="row">
-      <!-- Coluna 1: Informações Pessoais -->
-      <div class="col-lg-6">
-        <fieldset>
-          <legend><i class="fas fa-user me-2"></i>Informações Pessoais</legend>
-          <div class="details-grid">
-            <p class="card-text">
-              <strong>Nome Completo:</strong><br>
-              <span style="color: var(--cor-primaria); font-weight: 600;">${
-                candidato.nome_completo || "N/A"
-              }</span>
-            </p>
-            <p class="card-text">
-              <strong>Email:</strong><br>
-              <span>${candidato.email_candidato || "N/A"}</span>
-            </p>
-            <p class="card-text">
-              <strong>Telefone (WhatsApp):</strong><br>
-              <span>${candidato.telefone_contato || "N/A"}</span>
-            </p>
-            <p class="card-text">
-              <strong>Localidade:</strong><br>
-              <span>${candidato.cidade || "N/A"} / ${
+  // 1. Clonar o template
+  const clone = templateModalCandidato.content.cloneNode(true);
+
+  // 2. Selecionar elementos pelo data-id (Helper function)
+  const sel = (id) => clone.querySelector(`[data-id="${id}"]`);
+
+  // 3. Preencher dados pessoais
+  sel("nome-candidato").textContent =
+    candidato.nome_completo || candidato.nome_candidato || "N/A";
+  sel("email-candidato").textContent = candidato.email_candidato || "N/A";
+  sel("telefone-contato").textContent = candidato.telefone_contato || "N/A";
+  sel("localidade").textContent = `${candidato.cidade || "N/A"} / ${
     candidato.estado || "N/A"
-  }</span>
-            </p>
-            <p class="card-text">
-              <strong>Como Conheceu a EuPsico:</strong><br>
-              <span>${candidato.como_conheceu || "N/A"}</span>
-            </p>
-          </div>
-        </fieldset>
+  }`;
+  sel("como-conheceu").textContent = candidato.como_conheceu || "N/A";
 
-        <fieldset>
-          <legend><i class="fas fa-briefcase me-2"></i>Experiência Profissional</legend>
-          <div class="details-grid">
-            <p class="card-text">
-              <strong>Resumo da Experiência:</strong><br>
-              <span class="text-muted">${
-                candidato.resumo_experiencia || "Não informado"
-              }</span>
-            </p>
-            <p class="card-text">
-              <strong>Habilidades/Competências:</strong><br>
-              <span class="text-muted">${
-                candidato.habilidades_competencias || "Não informadas"
-              }</span>
-            </p>
-          </div>
-        </fieldset>
-      </div>
+  // 4. Preencher dados profissionais
+  sel("resumo-experiencia").textContent =
+    candidato.resumo_experiencia || "Não informado";
+  sel("habilidades").textContent =
+    candidato.habilidades_competencias || "Não informadas";
 
-      <!-- Coluna 2: Status e Avaliações -->
-      <div class="col-lg-6">
-        <fieldset>
-          <legend><i class="fas fa-clipboard-check me-2"></i>Status Atual</legend>
-          <div class="details-grid">
-            <p class="card-text">
-              <strong>Vaga Aplicada:</strong><br>
-              <span>${candidato.titulo_vaga_original || "N/A"}</span>
-            </p>
-            <p class="card-text">
-              <strong>Status do Recrutamento:</strong><br>
-              <span class="status-badge ${getStatusBadgeClass(
-                candidato.status_recrutamento
-              )}">${candidato.status_recrutamento || "N/A"}</span>
-            </p>
-            <p class="card-text">
-              <strong>Data da Candidatura:</strong><br>
-              <span>${formatarTimestamp(candidato.data_candidatura)}</span>
-            </p>
-          </div>
-        </fieldset>
+  // 5. Preencher status
+  sel("vaga-aplicada").textContent = candidato.titulo_vaga_original || "N/A";
+  const statusBadge = sel("status-recrutamento");
+  const statusTexto = candidato.status_recrutamento || "N/A";
+  statusBadge.textContent = statusTexto;
+  statusBadge.className = `status-badge ${getStatusBadgeClass(statusTexto)}`;
+  sel("data-candidatura").textContent = formatarTimestamp(
+    candidato.data_candidatura
+  );
 
-        ${
-          candidato.triagem_rh
-            ? `
-        <fieldset>
-          <legend><i class="fas fa-search me-2"></i>Triagem de Currículo</legend>
-          <div class="details-grid">
-            <p class="card-text">
-              <strong>Resultado:</strong><br>
-              <span class="status-badge ${
-                candidato.triagem_rh.apto_entrevista === "Sim"
-                  ? "status-concluída"
-                  : "status-rejeitada"
-              }">${candidato.triagem_rh.apto_entrevista || "N/A"}</span>
-            </p>
-            <p class="card-text">
-              <strong>Data da Avaliação:</strong><br>
-              <span>${formatarTimestamp(
-                candidato.triagem_rh.data_avaliacao
-              )}</span>
-            </p>
-            <p class="card-text">
-              <strong>Pré-requisitos Atendidos:</strong><br>
-              <span class="text-muted">${
-                candidato.triagem_rh.prerequisitos_atendidos || "N/A"
-              }</span>
-            </p>
-            ${
-              candidato.triagem_rh.motivo_rejeicao
-                ? `
-            <p class="card-text">
-              <strong>Motivo da Reprovação:</strong><br>
-              <span class="text-muted">${candidato.triagem_rh.motivo_rejeicao}</span>
-            </p>
-            `
-                : ""
-            }
-            ${
-              candidato.triagem_rh.info_aprovacao
-                ? `
-            <p class="card-text">
-              <strong>Informações da Aprovação:</strong><br>
-              <span class="text-muted">${candidato.triagem_rh.info_aprovacao}</span>
-            </p>
-            `
-                : ""
-            }
-          </div>
-        </fieldset>
-        `
-            : '<p class="alert alert-info">Triagem ainda não realizada.</p>'
-        }
+  // 6. Preencher Triagem (se existir)
+  if (candidato.triagem_rh) {
+    sel("container-triagem").classList.remove("hidden");
+    const resultadoTriagem = candidato.triagem_rh.apto_entrevista || "N/A";
+    const badgeTriagem = sel("triagem-resultado");
+    badgeTriagem.textContent = resultadoTriagem;
+    badgeTriagem.className = `status-badge ${
+      resultadoTriagem === "Sim" ? "status-concluída" : "status-rejeitada"
+    }`;
+    sel("triagem-data").textContent = formatarTimestamp(
+      candidato.triagem_rh.data_avaliacao
+    );
+    sel("triagem-prerequisitos").textContent =
+      candidato.triagem_rh.prerequisitos_atendidos || "N/A";
 
-        ${
-          candidato.entrevista_rh
-            ? `
-        <fieldset>
-          <legend><i class="fas fa-comments me-2"></i>Entrevista com RH</legend>
-          <div class="details-grid">
-            ${
-              candidato.entrevista_rh.agendamento
-                ? `
-            <p class="card-text">
-              <strong>Agendamento:</strong><br>
-              <span>${candidato.entrevista_rh.agendamento.data} às ${candidato.entrevista_rh.agendamento.hora}</span>
-            </p>
-            `
-                : ""
-            }
-            ${
-              candidato.entrevista_rh.resultado
-                ? `
-            <p class="card-text">
-              <strong>Resultado:</strong><br>
-              <span class="status-badge ${
-                candidato.entrevista_rh.resultado === "Aprovado"
-                  ? "status-concluída"
-                  : "status-rejeitada"
-              }">${candidato.entrevista_rh.resultado}</span>
-            </p>
-            `
-                : ""
-            }
-            ${
-              candidato.entrevista_rh.notas
-                ? `
-            <p class="card-text">
-              <strong>Notas da Entrevista:</strong><br>
-              Motivação: <strong>${
-                candidato.entrevista_rh.notas.motivacao || "N/A"
-              }</strong> | 
-              Aderência: <strong>${
-                candidato.entrevista_rh.notas.aderencia || "N/A"
-              }</strong> | 
-              Comunicação: <strong>${
-                candidato.entrevista_rh.notas.comunicacao || "N/A"
-              }</strong>
-            </p>
-            `
-                : ""
-            }
-            ${
-              candidato.entrevista_rh.pontos_fortes
-                ? `
-            <p class="card-text">
-              <strong>Pontos Fortes:</strong><br>
-              <span class="text-muted">${candidato.entrevista_rh.pontos_fortes}</span>
-            </p>
-            `
-                : ""
-            }
-            ${
-              candidato.entrevista_rh.pontos_atencao
-                ? `
-            <p class="card-text">
-              <strong>Pontos de Atenção:</strong><br>
-              <span class="text-muted">${candidato.entrevista_rh.pontos_atencao}</span>
-            </p>
-            `
-                : ""
-            }
-          </div>
-        </fieldset>
-        `
-            : ""
-        }
+    if (candidato.triagem_rh.motivo_rejeicao) {
+      sel("container-triagem-rejeicao").classList.remove("hidden");
+      sel("triagem-motivo-rejeicao").textContent =
+        candidato.triagem_rh.motivo_rejeicao;
+    }
+    if (candidato.triagem_rh.info_aprovacao) {
+      sel("container-triagem-aprovacao").classList.remove("hidden");
+      sel("triagem-info-aprovacao").textContent =
+        candidato.triagem_rh.info_aprovacao;
+    }
+  } else {
+    // Exibe placeholder se nenhuma outra avaliação existir
+    if (!candidato.entrevista_rh && !candidato.rejeicao) {
+      sel("container-sem-avaliacao").classList.remove("hidden");
+    }
+  }
 
-        ${
-          candidato.rejeicao?.etapa
-            ? `
-        <fieldset style="border-color: var(--cor-erro);">
-          <legend style="color: var(--cor-erro);"><i class="fas fa-times-circle me-2"></i>Rejeição Registrada</legend>
-          <div class="details-grid">
-            <p class="card-text">
-              <strong>Etapa:</strong><br>
-              <span>${candidato.rejeicao.etapa}</span>
-            </p>
-            <p class="card-text">
-              <strong>Data:</strong><br>
-              <span>${formatarTimestamp(candidato.rejeicao.data)}</span>
-            </p>
-            <p class="card-text">
-              <strong>Justificativa:</strong><br>
-              <span class="text-muted">${
-                candidato.rejeicao.justificativa || "N/A"
-              }</span>
-            </p>
-          </div>
-        </fieldset>
-        `
-            : ""
-        }
-      </div>
-    </div>
-  `;
+  // 7. Preencher Entrevista RH (se existir)
+  if (candidato.entrevista_rh) {
+    sel("container-entrevista-rh").classList.remove("hidden");
+    if (candidato.entrevista_rh.agendamento) {
+      sel("container-entrevista-rh-agendamento").classList.remove("hidden");
+      sel("entrevista-rh-agendamento").textContent = `${
+        candidato.entrevista_rh.agendamento.data || "N/A"
+      } às ${candidato.entrevista_rh.agendamento.hora || "N/A"}`;
+    }
+    if (candidato.entrevista_rh.resultado) {
+      sel("container-entrevista-rh-resultado").classList.remove("hidden");
+      const badgeEntrevista = sel("entrevista-rh-resultado");
+      badgeEntrevista.textContent = candidato.entrevista_rh.resultado;
+      badgeEntrevista.className = `status-badge ${
+        candidato.entrevista_rh.resultado === "Aprovado"
+          ? "status-concluída"
+          : "status-rejeitada"
+      }`;
+    }
+    if (candidato.entrevista_rh.notas) {
+      sel("container-entrevista-rh-notas").classList.remove("hidden");
+      sel("entrevista-rh-notas").innerHTML = `Motivação: <strong>${
+        candidato.entrevista_rh.notas.motivacao || "N/A"
+      }</strong> | 
+        Aderência: <strong>${
+          candidato.entrevista_rh.notas.aderencia || "N/A"
+        }</strong> | 
+        Comunicação: <strong>${
+          candidato.entrevista_rh.notas.comunicacao || "N/A"
+        }</strong>`;
+    }
+    if (candidato.entrevista_rh.pontos_fortes) {
+      sel("container-entrevista-rh-fortes").classList.remove("hidden");
+      sel("entrevista-rh-pontos-fortes").textContent =
+        candidato.entrevista_rh.pontos_fortes;
+    }
+    if (candidato.entrevista_rh.pontos_atencao) {
+      sel("container-entrevista-rh-atencao").classList.remove("hidden");
+      sel("entrevista-rh-pontos-atencao").textContent =
+        candidato.entrevista_rh.pontos_atencao;
+    }
+  }
 
-  modalCandidatoBody.innerHTML = contentHtml;
+  // 8. Preencher Rejeição (se existir)
+  if (candidato.rejeicao?.etapa) {
+    sel("container-rejeicao").classList.remove("hidden");
+    sel("rejeicao-etapa").textContent = candidato.rejeicao.etapa;
+    sel("rejeicao-data").textContent = formatarTimestamp(
+      candidato.rejeicao.data
+    );
+    sel("rejeicao-justificativa").textContent =
+      candidato.rejeicao.justificativa || "N/A";
+  }
 
-  // Atualiza o footer com botão de currículo e fechar
-  const linkCurriculo = candidato.link_curriculo_drive || "#";
+  // 9. Inserir o clone preenchido no DOM
+  modalCandidatoBody.innerHTML = "";
+  modalCandidatoBody.appendChild(clone);
+
+  // 10. Atualiza o footer com botão de currículo e fechar
+  const linkCurriculo =
+    candidato.link_curriculo_drive || candidato.link_curriculo_drive || "#";
   modalCandidatoFooter.innerHTML = `
     <a href="${linkCurriculo}" target="_blank" 
-       class="action-button info me-auto" 
-       ${!candidato.link_curriculo_drive ? "disabled" : ""}>
+       class="action-button info ms-auto" 
+       ${linkCurriculo === "#" ? "disabled" : ""}>
       <i class="fas fa-file-pdf me-2"></i> Ver Currículo
     </a>
     <button type="button" class="action-button secondary fechar-modal-candidato">
@@ -486,7 +381,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     </button>
   `;
 
-  // Anexa listener ao botão de fechar
+  // Anexa listener ao botão de fechar (precisa ser re-anexado)
   const btnFechar = modalCandidatoFooter.querySelector(
     ".fechar-modal-candidato"
   );
@@ -496,9 +391,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     });
   }
 
-  // Exibe o modal
-  modalCandidato.classList.add("is-visible");
-  console.log("✅ Recrutamento: Modal de detalhes aberto");
+  console.log("✅ Recrutamento: Modal de detalhes aberto com template");
 }
 
 /**
@@ -511,7 +404,11 @@ function getStatusBadgeClass(status) {
 
   const statusLower = status.toLowerCase();
 
-  if (statusLower.includes("aprovad") || statusLower.includes("contratad")) {
+  if (
+    statusLower.includes("aprovad") ||
+    statusLower.includes("contratad") ||
+    statusLower.includes("concluída")
+  ) {
     return "status-concluída";
   } else if (statusLower.includes("rejeit") || statusLower.includes("reprov")) {
     return "status-rejeitada";
@@ -540,9 +437,9 @@ window.toggleCamposAvaliacaoTeste = function () {
   if (!gestorContainer) return;
 
   if (resultadoSelecionado === "Aprovado") {
-    gestorContainer.style.display = "block";
+    gestorContainer.classList.remove("hidden");
   } else {
-    gestorContainer.style.display = "none";
+    gestorContainer.classList.add("hidden");
   }
 };
 
@@ -563,7 +460,7 @@ async function carregarHistoricoTokens(candidatoId) {
 
     if (!candidaturaSnap.exists()) {
       container.innerHTML =
-        '<p class="text-danger">Candidatura não encontrada.</p>';
+        '<p class="alert alert-error">Candidatura não encontrada.</p>';
       return;
     }
 
@@ -580,20 +477,20 @@ async function carregarHistoricoTokens(candidatoId) {
       return;
     }
 
-    let historicoHtml = '<div class="tokens-historico">';
+    let historicoHtml = "<div>";
     historicoHtml += `<h6 class="mb-3"><i class="fas fa-history me-2"></i>Total de Testes: ${tokensAccesso.length}</h6>`;
 
     tokensAccesso.forEach((token, index) => {
       const status = token.status || "enviado";
-      let badgeClass = "bg-warning";
       let statusTexto = "Pendente";
+      let statusClass = "status-pendente";
 
       if (status === "respondido") {
-        badgeClass = "bg-success";
         statusTexto = "Respondido";
+        statusClass = "status-concluída";
       } else if (status === "avaliado") {
-        badgeClass = "bg-info";
         statusTexto = "Avaliado";
+        statusClass = "status-pendente"; // (ou crie um 'status-avaliado')
       }
 
       const dataEnvio = token.dataenvio?.toDate
@@ -606,36 +503,35 @@ async function carregarHistoricoTokens(candidatoId) {
           })
         : "N/A";
 
+      // REFATORADO: Usa .info-card do design-system
       historicoHtml += `
-        <div class="card mb-2">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <h6 class="card-title">${index + 1}. ${
+        <div class="info-card mb-2">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h6 style="margin: 0 0 5px 0;">${index + 1}. ${
         token.nomeTeste || "Teste"
       }</h6>
-                <p class="card-text text-muted small mb-1">
-                  <i class="fas fa-calendar me-1"></i><strong>Enviado:</strong> ${dataEnvio}
-                </p>
-                <p class="card-text text-muted small mb-1">
-                  <i class="fas fa-user me-1"></i><strong>Por:</strong> ${
-                    token.enviadopor || "N/A"
-                  }
-                </p>
-                ${
-                  token.tempoGasto !== undefined
-                    ? `
-                  <p class="card-text text-muted small mb-1">
-                    <i class="fas fa-hourglass-end me-1"></i><strong>Tempo Gasto:</strong> ${Math.floor(
-                      token.tempoGasto / 60
-                    )}m ${token.tempoGasto % 60}s
-                  </p>
-                `
-                    : ""
+              <p class="text-muted small" style="margin-bottom: 5px;">
+                <i class="fas fa-calendar me-1"></i><strong>Enviado:</strong> ${dataEnvio}
+              </p>
+              <p class="text-muted small" style="margin-bottom: 5px;">
+                <i class="fas fa-user me-1"></i><strong>Por:</strong> ${
+                  token.enviadopor || "N/A"
                 }
-              </div>
-              <span class="badge ${badgeClass}">${statusTexto}</span>
+              </p>
+              ${
+                token.tempoGasto !== undefined
+                  ? `
+                <p class="text-muted small" style="margin-bottom: 0;">
+                  <i class="fas fa-hourglass-end me-1"></i><strong>Tempo Gasto:</strong> ${Math.floor(
+                    token.tempoGasto / 60
+                  )}m ${token.tempoGasto % 60}s
+                </p>
+              `
+                  : ""
+              }
             </div>
+            <span class="status-badge ${statusClass}">${statusTexto}</span>
           </div>
         </div>
       `;
@@ -646,7 +542,7 @@ async function carregarHistoricoTokens(candidatoId) {
   } catch (error) {
     console.error("Erro ao carregar histórico de tokens:", error);
     container.innerHTML = `
-      <p class="text-danger small">
+      <p class="alert alert-error small">
         <i class="fas fa-exclamation-circle me-2"></i>
         Erro ao carregar histórico: ${error.message}
       </p>
@@ -671,14 +567,14 @@ async function carregarDashboardTeste(candidatoId) {
 
     if (!candidaturaSnap.exists()) {
       container.innerHTML =
-        '<p class="text-danger">Candidatura não encontrada.</p>';
+        '<p class="alert alert-error">Candidatura não encontrada.</p>';
       return;
     }
 
     const dados = candidaturaSnap.data();
     const tokensAccesso = dados.testesenviados || [];
 
-    let dashboardHtml = '<div class="dashboard-testes">';
+    let dashboardHtml = "<div>";
 
     // Contadores
     const totalTestes = tokensAccesso.length;
@@ -701,61 +597,33 @@ async function carregarDashboardTeste(candidatoId) {
     const tempoMedio =
       testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
 
-    // Cards de estatísticas
+    // REFATORADO: Cards de estatísticas usam .summary-cards
     dashboardHtml += `
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #0078d4;">
-              <i class="fas fa-file-alt"></i>
-            </div>
-            <div class="stat-content">
-              <p class="stat-label">Total de Testes</p>
-              <p class="stat-value">${totalTestes}</p>
-            </div>
-          </div>
+      <div class="summary-cards mb-3">
+        <div class="card">
+          <h3>Total de Testes</h3>
+          <p>${totalTestes}</p>
         </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #28a745;">
-              <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="stat-content">
-              <p class="stat-label">Respondidos</p>
-              <p class="stat-value">${testsRespondidos}</p>
-            </div>
-          </div>
+        <div class="card" style="border-left-color: var(--cor-sucesso);">
+          <h3 style="color: var(--cor-sucesso);">Respondidos</h3>
+          <p style="color: var(--cor-sucesso);">${testsRespondidos}</p>
         </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #ffc107;">
-              <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-content">
-              <p class="stat-label">Pendentes</p>
-              <p class="stat-value">${testsPendentes}</p>
-            </div>
-          </div>
+        <div class="card" style="border-left-color: var(--cor-alerta);">
+          <h3 style="color: var(--cor-alerta);">Pendentes</h3>
+          <p style="color: var(--cor-alerta);">${testsPendentes}</p>
         </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #6f42c1;">
-              <i class="fas fa-percentage"></i>
-            </div>
-            <div class="stat-content">
-              <p class="stat-label">Taxa de Resposta</p>
-              <p class="stat-value">${taxaRespostaPct}%</p>
-            </div>
-          </div>
+        <div class="card" style="border-left-color: var(--cor-info);">
+          <h3 style="color: var(--cor-info);">Taxa de Resposta</h3>
+          <p style="color: var(--cor-info);">${taxaRespostaPct}%</p>
         </div>
       </div>
     `;
 
-    // Barra de progresso
+    // REFATORADO: Barra de progresso usa .progress
     dashboardHtml += `
-      <div class="progress-section mb-3">
-        <p class="mb-2"><strong>Progresso Geral</strong></p>
-        <div class="progress" style="height: 30px;">
+      <div class="form-group mb-3">
+        <label class="mb-2"><strong>Progresso Geral</strong></label>
+        <div class="progress" style="height: 30px; font-size: 1rem;">
           <div class="progress-bar bg-success" role="progressbar" style="width: ${taxaRespostaPct}%" aria-valuenow="${taxaRespostaPct}" aria-valuemin="0" aria-valuemax="100">
             ${taxaRespostaPct}%
           </div>
@@ -778,8 +646,8 @@ async function carregarDashboardTeste(candidatoId) {
     // Tabela detalhada
     dashboardHtml += `
       <h6 class="mt-4 mb-3"><i class="fas fa-table me-2"></i>Detalhamento por Teste</h6>
-      <div class="table-responsive">
-        <table class="table table-striped table-sm">
+      <div style="overflow-x: auto;">
+        <table class="table">
           <thead>
             <tr>
               <th>#</th>
@@ -802,16 +670,10 @@ async function carregarDashboardTeste(candidatoId) {
         : "N/A";
 
       const status = token.status || "enviado";
-      let badgeClass = "bg-warning text-dark";
+      let statusBadge = getStatusBadgeClass(status);
       let statusTexto = "Pendente";
-
-      if (status === "respondido") {
-        badgeClass = "bg-success";
-        statusTexto = "Respondido";
-      } else if (status === "avaliado") {
-        badgeClass = "bg-info";
-        statusTexto = "Avaliado";
-      }
+      if (status === "respondido") statusTexto = "Respondido";
+      if (status === "avaliado") statusTexto = "Avaliado";
 
       const tempoExibir = token.tempoGasto
         ? `${Math.floor(token.tempoGasto / 60)}m ${token.tempoGasto % 60}s`
@@ -822,7 +684,7 @@ async function carregarDashboardTeste(candidatoId) {
           <td>${index + 1}</td>
           <td>${token.nomeTeste || "Teste"}</td>
           <td>${dataEnvio}</td>
-          <td><span class="badge ${badgeClass}">${statusTexto}</span></td>
+          <td><span class="status-badge ${statusBadge}">${statusTexto}</span></td>
           <td>${tempoExibir}</td>
         </tr>
       `;
@@ -839,7 +701,7 @@ async function carregarDashboardTeste(candidatoId) {
   } catch (error) {
     console.error("Erro ao carregar dashboard:", error);
     container.innerHTML = `
-      <p class="text-danger small">
+      <p class="alert alert-error small">
         <i class="fas fa-exclamation-circle me-2"></i>
         Erro ao carregar dashboard: ${error.message}
       </p>
@@ -868,14 +730,14 @@ async function carregarMonitorTempoReal(candidatoId) {
     const unsubscribe = onSnapshot(candidaturaRef, (snapshot) => {
       if (!snapshot.exists()) {
         container.innerHTML =
-          '<p class="text-danger">Candidatura não encontrada.</p>';
+          '<p class="alert alert-error">Candidatura não encontrada.</p>';
         return;
       }
 
       const dados = snapshot.data();
       const tokensAccesso = dados.testesenviados || [];
 
-      let monitorHtml = '<div class="monitor-tempo-real">';
+      let monitorHtml = "<div>";
       monitorHtml += `<h6 class="mb-3"><i class="fas fa-video me-2"></i>Monitoramento em Tempo Real (Auto-atualiza)</h6>`;
 
       if (tokensAccesso.length === 0) {
@@ -890,11 +752,12 @@ async function carregarMonitorTempoReal(candidatoId) {
               ? token.dataResposta.toDate().toLocaleTimeString("pt-BR")
               : "N/A";
             statusHtml = `
-              <span class="badge bg-success me-2">Respondido</span>
+              <span class="status-badge status-concluída me-2">Respondido</span>
               <small class="text-muted">em ${dataResposta}</small>
             `;
           } else if (status === "avaliado") {
-            statusHtml = '<span class="badge bg-info">Avaliado</span>';
+            statusHtml =
+              '<span class="status-badge status-pendente">Avaliado</span>';
           } else {
             const agora = new Date();
             const dataEnvio = token.dataenvio?.toDate
@@ -904,13 +767,14 @@ async function carregarMonitorTempoReal(candidatoId) {
               (agora - dataEnvio) / (1000 * 60 * 60)
             );
             statusHtml = `
-              <span class="badge bg-warning text-dark">Pendente</span>
+              <span class="status-badge status-pendente">Pendente</span>
               <small class="text-muted">(${horasDecorridas}h desde envio)</small>
             `;
           }
 
+          // REFATORADO: Usa .info-card
           monitorHtml += `
-            <div class="monitor-item" style="padding: 10px; border-left: 4px solid #0078d4; margin-bottom: 8px; background: #f8f9fa; border-radius: 4px;">
+            <div class="info-card mb-2">
               <p class="mb-1"><strong>${index + 1}. ${
             token.nomeTeste || "Teste"
           }</strong></p>
@@ -929,7 +793,7 @@ async function carregarMonitorTempoReal(candidatoId) {
   } catch (error) {
     console.error("Erro ao carregar monitor em tempo real:", error);
     container.innerHTML = `
-      <p class="text-danger small">
+      <p class="alert alert-error small">
         <i class="fas fa-exclamation-circle me-2"></i>
         Erro ao conectar ao monitoramento: ${error.message}
       </p>
@@ -938,10 +802,12 @@ async function carregarMonitorTempoReal(candidatoId) {
 }
 /**
  * Envia resumo das respostas do teste por email usando Cloud Function genérica (Aba Email)
+ * NOTA: O HTML deste e-mail não foi refatorado, pois e-mails EXIGEM
+ * estilos inline e tabelas para compatibilidade. Não mexa.
  */
 window.enviarResumoEmailTeste = async function () {
   const emailDestino = document.getElementById("email-destino-resumo")?.value;
-  const assunto = document.getElementById("assunto-email-resumo")?.value;
+  // const assunto = document.getElementById("assunto-email-resumo")?.value; // ID não existe no HTML, removido.
   const incluirGraficos = document.getElementById(
     "incluir-graficos-email"
   )?.checked;
@@ -976,13 +842,14 @@ window.enviarResumoEmailTeste = async function () {
     }
 
     const dados = candidaturaSnap.data();
-    const nomeCandidato = dados.nomecompleto || "Candidato";
+    const nomeCandidato =
+      dados.nome_completo || dados.nome_candidato || "Candidato";
     const emailCandidato = dados.emailcandidato || "não informado";
     const vagaAplicada =
       dados.titulovagaoriginal || dados.titulo_vaga_original || "Não informada";
     const tokensAccesso = dados.testesenviados || [];
 
-    // ✅ MONTA O CORPO DO EMAIL EM HTML
+    // ✅ MONTA O CORPO DO EMAIL EM HTML (ESTILOS INLINE SÃO NECESSÁRIOS AQUI)
     let htmlEmail = `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -1175,7 +1042,7 @@ window.enviarResumoEmailTeste = async function () {
 
     const resultado = await enviarEmail({
       destinatario: emailDestino,
-      assunto: assunto || `Resumo de Testes - ${nomeCandidato}`,
+      assunto: `Resumo de Testes - ${nomeCandidato}`,
       html: htmlEmail,
       remetente: "EuPsico Recrutamento <atendimento@eupsico.org.br>",
     });
@@ -1183,7 +1050,7 @@ window.enviarResumoEmailTeste = async function () {
     if (resultado.data?.success) {
       window.showToast?.("Email enviado com sucesso!", "success");
       document.getElementById("email-destino-resumo").value = "";
-      document.getElementById("assunto-email-resumo").value = "";
+      // document.getElementById("assunto-email-resumo").value = "";
     } else {
       throw new Error(resultado.data?.message || "Erro desconhecido ao enviar");
     }
@@ -1356,7 +1223,11 @@ function handleTabClick(e) {
  * Carrega estatísticas rápidas dos testes
  */
 async function carregarEstatisticasTestes(candidatoId) {
+  const container = document.getElementById("avaliacao-teste-stats");
+  if (!container) return;
+
   try {
+    container.innerHTML = '<div class="loading-spinner"></div>';
     const candidaturaRef = doc(candidatosCollection, candidatoId);
     const candidaturaSnap = await getDoc(candidaturaRef);
 
@@ -1366,7 +1237,7 @@ async function carregarEstatisticasTestes(candidatoId) {
     const tokensAccesso = dados.testesenviados || [];
 
     if (tokensAccesso.length === 0) {
-      document.getElementById("avaliacao-teste-stats").innerHTML = `
+      container.innerHTML = `
         <p class="text-muted">Nenhum teste enviado ainda.</p>
       `;
       return;
@@ -1389,32 +1260,35 @@ async function carregarEstatisticasTestes(candidatoId) {
     const tempoMedio =
       testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
 
+    // REFATORADO: Usa .stat-card-mini-grid
     const statsHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #0078d4;">
-          <strong style="font-size: 18px; color: #0078d4;">${totalTestes}</strong>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Total de Testes</p>
+      <div class="stat-card-mini-grid">
+        <div class="stat-card-mini">
+          <strong>${totalTestes}</strong>
+          <p>Total de Testes</p>
         </div>
-        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #28a745;">
-          <strong style="font-size: 18px; color: #28a745;">${testsRespondidos}</strong>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Respondidos</p>
+        <div class="stat-card-mini border-success">
+          <strong>${testsRespondidos}</strong>
+          <p>Respondidos</p>
         </div>
-        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #ffc107;">
-          <strong style="font-size: 18px; color: #ffc107;">${testsPendentes}</strong>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Pendentes</p>
+        <div class="stat-card-mini border-warning">
+          <strong>${testsPendentes}</strong>
+          <p>Pendentes</p>
         </div>
-        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #6f42c1;">
-          <strong style="font-size: 18px; color: #6f42c1;">${
+        <div class="stat-card-mini border-info">
+          <strong>${
             tempoMedio > 0 ? Math.floor(tempoMedio / 60) + "m" : "N/A"
           }</strong>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Tempo Médio</p>
+          <p>Tempo Médio</p>
         </div>
       </div>
     `;
 
-    document.getElementById("avaliacao-teste-stats").innerHTML = statsHtml;
+    container.innerHTML = statsHtml;
   } catch (error) {
     console.error("Erro ao carregar estatísticas:", error);
+    container.innerHTML =
+      '<p class="alert alert-error">Erro ao carregar stats.</p>';
   }
 }
 
