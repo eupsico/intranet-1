@@ -17,50 +17,29 @@
 <div class="modal-header" 
      style="display: flex; 
             align-items: center; 
-            justify-content: space-between; 
-            text-align: center; 
-            color: white;">
-
-  <!-- Texto centralizado -->
-  <div style="flex: 1;">
-    <h1 style="margin: 0; font-size: 24px; font-weight: 700;">
-      Formulário de Candidatura
-    </h1>
-    <p style="margin: 0; font-size: 16px; font-weight: 500; color: white;">
-      Junte-se à equipe EuPsico e faça parte da nossa missão!
-    </p>
-  </div>
+            justify-content: flex-start; 
+            gap: 20px; 
+            color: white; 
+            flex-wrap: wrap; 
+            padding: 10px 20px;">
 
   <!-- Logo à esquerda -->
   <img src="/assets/img/logo-branca.png" 
        alt="Logo EuPsico" 
        class="login-logo" 
-       style="max-width: 80px; margin-right: 30px;">
+       style="max-width: 80px; flex-shrink: 0;">
+
+  <!-- Texto à direita, centralizado verticalmente -->
+  <div style="flex: 1; min-width: 200px; text-align: center;">
+    <h1 style="margin: 0; font-size: 20px; font-weight: 600;">
+      Formulário de Candidatura
+    </h1>
+    <p style="color: white; margin: 0; font-size: 16px; opacity: 0.95;">
+      Junte-se à equipe EuPsico e faça parte da nossa missão!
+    </p>
+  </div>
 </div>
 
-
-    <div class="modal-body">
-      <form id="form-candidatura">
-        
-        <div class="modal-section">
-          <h4>
-            <i class="fas fa-bullseye" style="margin-right: 10px;"></i>
-            Vaga de Interesse
-          </h4>
-          
-          <div id="loading-vagas" class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i> Carregando vagas disponíveis...
-          </div>
-          
-          <div id="vaga-select-group" class="hidden">
-            <div class="form-group">
-              <label for="select-vaga">Selecione a Vaga: <span class="required">*</span></label>
-              <select id="select-vaga" required>
-                <option value="">Selecione a vaga...</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
         <div class="modal-section">
           <h4>
