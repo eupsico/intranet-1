@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 7.0.0 (Refatorado para Design System - CSS 100%)
+ * Versão: 7.1.0 (Corrigido Nomes, Datas, Links e Refatorado para Design System)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -80,7 +80,8 @@ function formatarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   const dataFormatada = `${dia}/${mes}/${ano}`;
   const [horas, minutos] = horaEntrevista.split(":");
   const horaFormatada = `${horas}h${minutos}`;
-  const nomeCandidato = candidato.nome_completo || "Candidato(a)";
+  // ✅ CORREÇÃO: Usando 'nome_candidato'
+  const nomeCandidato = candidato.nome_candidato || "Candidato(a)";
 
   const mensagem = `
 🎉 *Parabéns ${nomeCandidato}!* 🎉
@@ -266,7 +267,7 @@ export async function renderizarEntrevistas(state) {
           
           <div class="card-icon">
             <div>
-              <h3>${cand.nome_completo || "Candidato Sem Nome"}</h3>
+              <h3>${cand.nome_candidato || "Candidato Sem Nome"}</h3>
               <p class="text-muted" style="font-size: 0.9rem;">
                 <i class="fas fa-briefcase me-2"></i> Etapa: Entrevistas e Avaliações
               </p>
@@ -459,7 +460,8 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  // ✅ CORREÇÃO: Usando 'nome_candidato'
+  const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
@@ -539,8 +541,18 @@ async function carregarRespostasDoTeste(
     const data = docSnap.data();
 
     let respostasHtml = "";
-    // O cabeçalho já está no `abrirModalAvaliacaoTeste`,
-    // esta função só carrega as respostas.
+    respostasHtml += `
+      <div class="info-card" style="background-color: var(--cor-fundo);">
+        <h5 style="margin-top:0; color: var(--cor-primaria);">
+          <i class="fas fa-file-alt me-2"></i>
+          ${data.nomeTeste || "Teste"}
+        </h5>
+        <small class="text-muted d-block mb-3">
+          <i class="fas fa-calendar me-1"></i>
+          <strong>Data de Envio:</strong> ${formatarDataEnvio(data.data_envio)}
+        </small>
+      </div>
+    `;
 
     respostasHtml += `<h6 class="mt-3">Respostas do Candidato</h6>`;
     // ✅ REFATORADO: Usa .simple-list
@@ -622,15 +634,28 @@ async function carregarRespostasDoTeste(
 function formatarDataEnvio(timestamp) {
   if (!timestamp) return "N/A";
   let date;
+
   if (timestamp.toDate && typeof timestamp.toDate === "function") {
+    // É um objeto Timestamp do Firestore
     date = timestamp.toDate();
+  } else if (typeof timestamp === "string") {
+    // ✅ CORREÇÃO: É uma string ISO (vinda do JSON.parse)
+    date = new Date(timestamp);
   } else if (timestamp instanceof Date) {
+    // Já é um objeto Date
     date = timestamp;
   } else if (typeof timestamp === "number") {
+    // É um timestamp Unix (segundos)
     date = new Date(timestamp * 1000);
   } else {
     return "N/A";
   }
+
+  // Verifica se a data é válida
+  if (isNaN(date.getTime())) {
+    return "Data Inválida";
+  }
+
   return date.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -678,7 +703,7 @@ function toggleCamposAvaliacaoTeste() {
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v7.0.0)
+ * Abre o modal de avaliação do teste (ATUALIZADO v7.1.0)
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -702,18 +727,17 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // No HTML, o nome é "nome_completo"
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  // ✅ CORREÇÃO: Usando 'nome_candidato'
+  const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
-  // Preenche informações do candidato
   const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
   const statusEl = document.getElementById("avaliacao-teste-status-atual");
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
-  // Exibe todos os testes enviados
+  // ✅ CORREÇÃO: Usando 'testes_enviados'
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
@@ -726,20 +750,12 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         </div>
       `;
     } else {
-      let testesHtml = "<div>"; // Container simples
+      let testesHtml = "<div>"; // Container
 
       testesEnviados.forEach((teste, index) => {
-        const dataEnvio = teste.data_envio?.toDate
-          ? teste.data_envio.toDate().toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "N/A";
+        // ✅ CORREÇÃO: Usando formatarDataEnvio
+        const dataEnvio = formatarDataEnvio(teste.data_envio);
 
-        // ✅ REFATORADO: Lógica de status
         const statusTeste = teste.status || "enviado";
         let statusClass = "status-pendente";
         let statusTexto = "Pendente";
@@ -769,7 +785,10 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <h5 style="margin: 0; color: var(--cor-primaria);">
                 <i class="fas fa-file-alt me-2"></i>
-                ${teste.nomeTeste || teste.id?.substring(0, 5) || "Teste"}
+                ${
+                  teste.nomeTeste ||
+                  "Teste (ID: " + tokenId.substring(0, 5) + ")"
+                }
               </h5>
               <span class="status-badge ${statusClass}">${statusTexto}</span>
             </div>
@@ -785,6 +804,9 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
                     )}m ${teste.tempoGasto % 60}s</p>`
                   : ""
               }
+              <p class="small text-muted mb-1"><strong>Link:</strong> <a href="${
+                teste.link || "#"
+              }" target="_blank">${teste.link ? "Acessar Link" : "N/A"}</a></p>
               ${linkHtml}
             </div>
             <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
@@ -797,7 +819,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      // DISPARAR CARREGAMENTO DAS RESPOSTAS
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
@@ -822,7 +843,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     }
   }
 
-  // CARREGAR GESTORES NO SELECT
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
   const btnWhatsAppGestor = document.getElementById(
     "btn-whatsapp-gestor-avaliacao"
@@ -854,7 +874,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     }
   }
 
-  // HABILITA/DESABILITA BOTÃO WHATSAPP
   if (selectGestor && btnWhatsAppGestor) {
     selectGestor.addEventListener("change", (e) => {
       const option = e.target.selectedOptions[0];
@@ -866,16 +885,14 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Lógica de exibição do Gestor
   const radiosResultadoTeste = form.querySelectorAll(
-    'input[name="resultadoteste"]' // Corrigido
+    'input[name="resultadoteste"]'
   );
   radiosResultadoTeste.forEach((radio) => {
     radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
 
-  // Define o estado inicial (oculto)
   toggleCamposAvaliacaoTeste();
 
   form.removeEventListener("submit", submeterAvaliacaoTeste);
@@ -906,9 +923,6 @@ function fecharModalAvaliacaoTeste() {
 // CARREGAR GESTORES DO FIRESTORE
 // ============================================
 
-/**
- * Carrega lista de gestores da coleção 'usuarios'
- */
 async function carregarGestores() {
   console.log("🔹 Carregando gestores do Firestore...");
   try {
@@ -963,7 +977,8 @@ window.enviarWhatsAppGestor = function () {
     return;
   }
 
-  const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";
+  // ✅ CORREÇÃO: Usando 'nome_candidato'
+  const nomeCandidato = dadosCandidatoAtual.nome_candidato || "Candidato(a)";
   const telefoneCandidato =
     dadosCandidatoAtual.telefone_contato || "Não informado";
   const emailCandidato = dadosCandidatoAtual.email_candidato || "Não informado";
@@ -1030,7 +1045,7 @@ async function submeterAvaliacaoTeste(e) {
   if (!form) return;
 
   const resultado = form.querySelector(
-    'input[name="resultadoteste"]:checked' // Corrigido
+    'input[name="resultadoteste"]:checked'
   )?.value;
   const observacoes =
     form.querySelector("#avaliacao-teste-observacoes")?.value || "";
@@ -1060,7 +1075,7 @@ async function submeterAvaliacaoTeste(e) {
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
     ? "Entrevista com Gestor"
-    : "Finalizado - Reprovado no Teste"; // Nome do status atualizado
+    : "Finalizado - Reprovado no Teste";
 
   const abaRecarregar = statusCandidaturaTabs
     .querySelector(".tab-link.active")
@@ -1071,7 +1086,7 @@ async function submeterAvaliacaoTeste(e) {
   const dadosAvaliacaoTeste = {
     resultado: resultado,
     dataavaliacao: new Date(),
-    avaliador_nome: avaliadorNome, // Corrigido
+    avaliador_nome: avaliadorNome,
     observacoes: observacoes || null,
   };
 
@@ -1087,7 +1102,7 @@ async function submeterAvaliacaoTeste(e) {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
     await updateDoc(candidaturaRef, {
-      status_recrutamento: novoStatusCandidato, // Corrigido
+      status_recrutamento: novoStatusCandidato,
       avaliacao_teste: dadosAvaliacaoTeste, // Corrigido
       historico: arrayUnion({
         data: new Date(),
@@ -1250,11 +1265,12 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
       modalEnviarTeste.dataset.candidaturaId = candidatoId;
     }
 
+    // ✅ CORREÇÃO: Usando 'nome_candidato'
     const nomeEl = document.getElementById("teste-nome-candidato");
     const emailEl = document.getElementById("teste-email-candidato");
     const whatsappEl = document.getElementById("teste-whatsapp-candidato");
 
-    if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo || "N/A";
+    if (nomeEl) nomeEl.textContent = dadosCandidato.nome_candidato || "N/A";
     if (emailEl) emailEl.textContent = dadosCandidato.email_candidato || "N/A";
     if (whatsappEl)
       whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
@@ -1264,7 +1280,6 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
       "testes-ja-enviados-container"
     );
     if (containerTestesEnviados) {
-      // ✅ REFATORADO: Usa 'testes_enviados'
       const testesEnviados = dadosCandidato.testes_enviados || [];
 
       if (testesEnviados.length === 0) {
@@ -1276,12 +1291,10 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
           '<label class="form-label mb-2">Testes Já Enviados:</label><ul class="simple-list mb-3">';
 
         testesEnviados.forEach((teste) => {
-          const dataEnvio = teste.data_envio?.toDate
-            ? teste.data_envio.toDate().toLocaleDateString("pt-BR")
-            : "Data N/A";
+          // ✅ CORREÇÃO: Usando formatarDataEnvio
+          const dataEnvio = formatarDataEnvio(teste.data_envio);
           const status = teste.status || "enviado";
 
-          // ✅ REFATORADO: Lógica de status
           let statusClass = "status-pendente";
           if (status === "respondido") {
             statusClass = "status-concluída";
@@ -1292,12 +1305,18 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
           testesHtml += `
             <li class="simple-list-item">
               <div class="simple-list-item-content">
-                <strong>Teste (ID: ${
-                  teste.id?.substring(0, 5) || "N/A"
-                })</strong>
+                <strong>${
+                  teste.nomeTeste ||
+                  "Teste (ID: " + (teste.id?.substring(0, 5) || "N/A") + ")"
+                }</strong>
                 <small>Enviado em: ${dataEnvio} por ${
             teste.enviado_por || "N/A"
           }</small>
+                <small class="d-block mt-1"><strong>Link:</strong> <a href="${
+                  teste.link || "#"
+                }" target="_blank">${
+            teste.link ? "Acessar Link" : "N/A"
+          }</a></small>
               </div>
               <span class="status-badge ${statusClass}">${status}</span>
             </li>`;
@@ -1395,6 +1414,7 @@ document.addEventListener("change", (e) => {
     // ✅ REFATORADO: Usa .classList
     if (prazoDisplay && prazoTexto) {
       prazoTexto.textContent = `Prazo: ${prazoDias} dias`;
+      // No HTML, o #teste-prazo é um .info-card, então usamos .hidden
       prazoDisplay.classList.remove("hidden");
     }
   }
@@ -1439,7 +1459,7 @@ async function enviarTesteWhatsApp() {
       body: JSON.stringify({
         candidatoId: candidatoId,
         testeId: testeId,
-        prazoDias: 7, // Você pode parametrizar isso se quiser
+        prazoDias: 7,
       }),
     });
 
@@ -1455,11 +1475,12 @@ async function enviarTesteWhatsApp() {
     const nomeTesteElement = document.querySelector(
       `#teste-selecionado option[value="${testeId}"]`
     );
-    const nomeTeste = nomeTesteElement?.textContent || "Teste";
+    // ✅ CORREÇÃO: Pega o .text do option
+    const nomeTeste = nomeTesteElement?.text || "Teste";
     const prazoDias = dataToken.prazoDias || 7;
 
     const mensagemPadrao = `
-🎯 *Olá ${dadosCandidatoAtual.nome_completo || "Candidato"}!* 🎯
+🎯 *Olá ${dadosCandidatoAtual.nome_candidato || "Candidato"}!* 🎯
 
 Chegou a hora de você realizar o próximo teste da sua avaliação!
 
@@ -1491,11 +1512,13 @@ Se tiver dúvidas, não hesite em nos contactar!
 
     window.open(linkWhatsApp, "_blank");
 
+    // ✅ CORREÇÃO: Passa o nomeTeste para a função de salvar
     await salvarEnvioTeste(
       candidatoId,
       testeId,
       linkComToken,
-      dataToken.tokenId
+      dataToken.tokenId,
+      nomeTeste // <-- Nome do teste adicionado
     );
 
     window.showToast?.("✅ Teste enviado! WhatsApp aberto", "success");
@@ -1522,7 +1545,13 @@ Se tiver dúvidas, não hesite em nos contactar!
 /**
  * Salva o envio do teste no Firestore (histórico)
  */
-async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
+async function salvarEnvioTeste(
+  candidatoId,
+  testeId,
+  linkTeste,
+  tokenId,
+  nomeTeste // ✅ CORREÇÃO: Recebe o nome do teste
+) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
 
   const usuarioNome = await getCurrentUserName();
@@ -1534,12 +1563,14 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
       status_recrutamento: "Testes Pendente (Enviado)",
       testes_enviados: arrayUnion({
         // Nome do campo corrigido
-        id: tokenId,
+        id: tokenId, // ID do token é o ID principal
+        testeId: testeId, // ID do 'estudos_de_caso'
         tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
         enviado_por: usuarioNome,
         status: "enviado",
+        nomeTeste: nomeTeste || "Teste não nomeado", // ✅ CORREÇÃO: Salva o nome
       }),
       historico: arrayUnion({
         data: new Date(),
@@ -1574,6 +1605,10 @@ async function salvarTesteApenas() {
   const linkTeste = document.getElementById("teste-link")?.value;
   const btnSalvar = document.getElementById("btn-salvar-teste-apenas");
 
+  // ✅ CORREÇÃO: Pega o nome do teste
+  const selectTeste = document.getElementById("teste-selecionado");
+  const nomeTeste = selectTeste.selectedOptions[0]?.text || "Teste";
+
   if (!testeId || !linkTeste) {
     window.showToast?.("Selecione um teste", "error");
     return;
@@ -1584,7 +1619,14 @@ async function salvarTesteApenas() {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
-    await salvarEnvioTeste(candidatoId, testeId, linkTeste, "manual-save");
+    // ✅ CORREÇÃO: Passa o nomeTeste
+    await salvarEnvioTeste(
+      candidatoId,
+      testeId,
+      linkTeste,
+      "manual-save",
+      nomeTeste
+    );
     window.showToast?.("Teste salvo com sucesso!", "success");
 
     fecharModalEnvioTeste();
@@ -1698,7 +1740,8 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  // ✅ CORREÇÃO: Usando 'nome_candidato'
+  const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
@@ -1728,6 +1771,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.style = ""; // Limpa qualquer CSS inline
 
     // Adiciona classes do Design System
+    // .warning (laranja) e .ms-auto (margin-left: auto)
     btnVerCurriculo.classList.add("action-button", "warning", "ms-auto");
     btnVerCurriculo.target = "_blank";
     btnVerCurriculo.innerHTML =
