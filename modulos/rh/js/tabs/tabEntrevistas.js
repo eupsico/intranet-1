@@ -267,7 +267,7 @@ export async function renderizarEntrevistas(state) {
       listaHtml += `
         <div class="card card-candidato-triagem" data-id="${candidatoId}">
           <div class="info-primaria">
-            <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
+            <h4>Nome: ${cand.nome_completo || "Candidato Sem Nome"}</h4>
             <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
         /_/g,
         " "
