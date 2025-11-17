@@ -1606,21 +1606,31 @@ legend {
 }
 /* ============================================
    21. COMPONENTES - POPUP / TOAST (NOTIFICAÇÕES)
+   (VERSÃO REFORÇADA PARA GARANTIR VISIBILIDADE)
    ============================================ */
 
-/* Isto garante que os popups (provavelmente do seu showToast) 
-  apareçam sobre o overlay do modal (que tem z-index: 1000).
-  A classe .toast-container é um palpite comum; se o seu 
-  showToast usar outra classe (ex: .notification-center), 
-  você pode ajustar o seletor.
+/* Esta é uma regra "agressiva" para garantir que os popups
+  de notificação (do seu showToast) apareçam SOBRE
+  o modal (que tem z-index: 1000).
+
+  Estamos incluindo vários seletores de bibliotecas comuns
+  e usando !important para forçar a sobreposição.
 */
 .toast-container,
-.notification-popup-wrapper {
-  position: fixed;
-  z-index: 1050; /* Mais alto que o modal-overlay (1000) */
-  top: 20px;
-  right: 20px;
-  width: auto;
+.notification-popup-wrapper,
+.iziToast-wrapper,       /* Para a biblioteca iziToast */
+#toast-container,        /* Para a biblioteca Toastr */
+.noty_layout,            /* Para a biblioteca Noty */
+.toastify,               /* Para a biblioteca Toastify */
+.notifications {         /* Um seletor genérico comum */
+  
+  /* O !important é crucial aqui para garantir que 
+    esta regra vença qualquer outra e o popup apareça na frente.
+  */
+  z-index: 1050 !important;
+  
+  /* Apenas para garantir que estão posicionados corretamente */
+  position: fixed; 
 }
 /* ============================================
    22. COMPONENTES - VARIANTES E EXTENSÕES
