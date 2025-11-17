@@ -1269,6 +1269,9 @@ exports.salvarCandidatura = onCall(
   }
 );
 
+// ==========================================================
+// exports.salvarRespostasTeste
+// ==========================================================
 exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
@@ -1323,20 +1326,21 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           usado: true,
           respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
           respostas: respostas,
-          tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+          tempoGasto: tempoGasto || 0,
           navegador: navegador || "desconhecido",
           ipAddress: ipAddress || "não registrado",
         });
 
       // 5. Busca dados do teste
+      // ✅ CORREÇÃO: Coleção "estudos_de_caso"
       const testeSnap = await db
-        .collection("estudosdecaso")
+        .collection("estudos_de_caso")
         .doc(dadosToken.testeId)
         .get();
 
       const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
 
-      // 6. Busca a candidatura para atualizar o array testesenviados
+      // 6. Busca a candidatura para atualizar o array
       const candidaturaRef = db
         .collection("candidaturas")
         .doc(dadosToken.candidatoId);
@@ -1348,7 +1352,8 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       if (candidaturaSnap.exists) {
         const dadosCandidatura = candidaturaSnap.data();
-        testesEnviadosAtualizado = dadosCandidatura.testesenviados || [];
+        // ✅ CORREÇÃO: Array "testes_enviados"
+        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || [];
 
         // Encontra o teste enviado pelo tokenId e atualiza seu status
         const testeIndex = testesEnviadosAtualizado.findIndex(
@@ -1363,10 +1368,11 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           testesEnviadosAtualizado[testeIndex].dataResposta =
             admin.firestore.FieldValue.serverTimestamp();
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
-          testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0; // ✅ CORRIGIDO
+          testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0;
         } else {
           console.warn(
-            `Token ${tokenId} não encontrado no array testesenviados da candidatura ${dadosToken.candidatoId}`
+            // ✅ CORREÇÃO: Array "testes_enviados"
+            `Token ${tokenId} não encontrado no array testes_enviados da candidatura ${dadosToken.candidatoId}`
           );
         }
       }
@@ -1381,8 +1387,8 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           tokenId: tokenId,
           nomeTeste: nomeTeste,
           dataResposta: admin.firestore.FieldValue.serverTimestamp(),
-          data_envio: dadosToken.criadoEm, // ✅ ADICIONADO: data_envio
-          tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+          data_envio: dadosToken.criadoEm,
+          tempoGasto: tempoGasto || 0,
           respostas: respostas,
           respostasCount: Object.keys(respostas).length,
           titulovagaoriginal: candidaturaSnap.exists
@@ -1392,7 +1398,8 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       // 8. Atualiza o documento da candidatura
       await candidaturaRef.update({
-        testesenviados: testesEnviadosAtualizado,
+        // ✅ CORREÇÃO: Array "testes_enviados"
+        testes_enviados: testesEnviadosAtualizado,
         historico: admin.firestore.FieldValue.arrayUnion({
           data: admin.firestore.FieldValue.serverTimestamp(),
           acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
@@ -1419,6 +1426,9 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
   })
 );
 
+// ==========================================================
+// exports.validarTokenTeste
+// ==========================================================
 exports.validarTokenTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
@@ -1473,8 +1483,9 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) =>
       }
 
       // Busca o teste
+      // ✅ CORREÇÃO: Coleção "estudos_de_caso"
       const testeSnap = await db
-        .collection("estudosdecaso")
+        .collection("estudos_de_caso")
         .doc(dadosToken.testeId)
         .get();
 
@@ -1502,7 +1513,8 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) =>
           id: dadosToken.candidatoId,
           nome:
             dadosToken.nomeCandidato ||
-            dadosCandidato?.nomecompleto ||
+            // ✅ CORREÇÃO: Campo "nome_candidato"
+            dadosCandidato?.nome_candidato ||
             "Candidato",
           email: dadosCandidato?.emailcandidato || "não informado",
         },
@@ -1520,7 +1532,7 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) =>
         diasRestantes: Math.ceil(
           (new Date(dataExpiracao) - agora) / (1000 * 60 * 60 * 24)
         ),
-        data_envio: dadosToken.criadoEm?.toDate?.() || dadosToken.criadoEm, // ✅ ADICIONADO
+        data_envio: dadosToken.criadoEm?.toDate?.() || dadosToken.criadoEm,
       });
     } catch (error) {
       console.error("Erro ao validar token:", error);
@@ -1532,6 +1544,9 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) =>
   })
 );
 
+// ==========================================================
+// exports.gerarTokenTeste
+// ==========================================================
 exports.gerarTokenTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
@@ -1566,14 +1581,14 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) =>
 
       const dadosCandidato = candSnap.exists ? candSnap.data() : {};
 
-      // ✅ CORRIGIDO: Usando data_envio como campo para rastrear quando foi gerado
       const novoToken = await db.collection("tokensacesso").add({
         token: token,
         testeId: testeId,
         candidatoId: candidatoId,
-        nomeCandidato: dadosCandidato.nomecompleto || "Candidato",
+        // ✅ CORREÇÃO: Campo "nome_candidato"
+        nomeCandidato: dadosCandidato.nome_candidato || "Candidato",
         criadoEm: admin.firestore.FieldValue.serverTimestamp(),
-        data_envio: admin.firestore.FieldValue.serverTimestamp(), // ✅ ADICIONADO
+        data_envio: admin.firestore.FieldValue.serverTimestamp(),
         expiraEm: dataExpiracao,
         prazoDias: prazoDias,
         usado: false,
@@ -1604,16 +1619,16 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) =>
   })
 );
 
-/**
- * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/listarTokens
- * Método: GET
- */
+// ==========================================================
+// exports.listarTokens
+// ==========================================================
 exports.listarTokens = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     try {
       const { status, candidatoId } = req.query;
 
-      let q = db.collection("tokens_acesso");
+      // ✅ CORREÇÃO: Coleção "tokensacesso"
+      let q = db.collection("tokensacesso");
 
       if (status === "usado") {
         q = q.where("usado", "==", true);
