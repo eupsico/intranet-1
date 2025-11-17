@@ -386,6 +386,11 @@ export async function renderizarEntrevistas(state) {
         / /g,
         "-"
       )}</span></p>
+      ${
+        cand.email_candidato
+          ? `<p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>`
+          : ""
+      }
           </div>
           <div class="info-contato">
             <a href="${linkWhatsApp || "#"}" target="blank" class="whatsapp ${
