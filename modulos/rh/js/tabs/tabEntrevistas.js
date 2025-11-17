@@ -2021,4 +2021,434 @@ async function submeterAvaliacaoRH(e) {
     btnRegistrarAvaliacao.innerHTML =
       '<i class="fas fa-check-circle me-2"></i> Registrar Avaliação';
   }
+  // ============================================================
+  // MODAIS - AVALIAR TESTE (COM 5 OPÇÕES DE VISUALIZAÇÃO)
+  // ============================================================
+
+  /**
+   * Abre o modal de avaliação de testes com todas as informações
+   */
+  window.abrirModalAvaliacaoTeste = async function (
+    candidatoId,
+    dadosCandidato
+  ) {
+    console.log(
+      "Entrevistas: Abrindo modal de avaliação de teste para",
+      candidatoId
+    );
+
+    const modalAvaliacaoTeste = document.getElementById(
+      "modal-avaliacao-teste"
+    );
+    const form = document.getElementById("form-avaliacao-teste");
+
+    if (!modalAvaliacaoTeste || !form) {
+      window.showToast?.(
+        "Erro: Modal de Avaliação de Teste não encontrado.",
+        "error"
+      );
+      console.error(
+        "Entrevistas: Elemento modal-avaliacao-teste não encontrado"
+      );
+      return;
+    }
+
+    dadosCandidatoAtual = dadosCandidato;
+    dadosCandidato.id = candidatoId;
+    modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
+
+    const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
+    const statusAtual = dadosCandidato.statusrecrutamento || "N/A";
+
+    // Preenche informações do candidato
+    const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
+    const statusEl = document.getElementById("avaliacao-teste-status-atual");
+
+    if (nomeEl) nomeEl.textContent = nomeCompleto;
+    if (statusEl) statusEl.textContent = statusAtual;
+
+    // Carregar dados dos testes
+    const testesEnviados = dadosCandidato.testesenviados || [];
+    const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
+
+    if (infoTestesEl) {
+      if (testesEnviados.length === 0) {
+        infoTestesEl.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Nenhum teste foi enviado para este candidato ainda.
+        </div>
+      `;
+      } else {
+        let testesHtml = '<div class="testes-enviados-lista">';
+
+        testesEnviados.forEach((teste, index) => {
+          // Formata data de envio
+          const dataEnvio = teste.dataenvio?.toDate
+            ? teste.dataenvio.toDate().toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "N/A";
+
+          const statusTeste = teste.status || "enviado";
+          let badgeClass = "bg-warning";
+          let statusTexto = "Pendente";
+
+          const tokenId = teste.tokenId || `manual-index-${index}`;
+
+          if (statusTeste === "respondido") {
+            badgeClass = "bg-success";
+            statusTexto = "Respondido";
+          } else if (statusTeste === "avaliado") {
+            badgeClass = "bg-info";
+            statusTexto = "Avaliado";
+          }
+
+          testesHtml += `
+          <div class="teste-item">
+            <div class="teste-header">
+              <h5 class="teste-titulo">
+                <i class="fas fa-file-alt me-2"></i>
+                ${teste.nomeTeste || "Teste"}
+              </h5>
+              <span class="badge ${badgeClass}">${statusTexto}</span>
+            </div>
+            <div class="teste-info">
+              <p>
+                <i class="fas fa-calendar me-1"></i>
+                <strong>Data de Envio:</strong> ${dataEnvio}
+              </p>
+              <p>
+                <i class="fas fa-user me-1"></i>
+                <strong>Enviado por:</strong> ${teste.enviadopor || "N/A"}
+              </p>
+              ${
+                teste.tempoGasto !== undefined
+                  ? `
+                <p>
+                  <i class="fas fa-hourglass-end me-1"></i>
+                  <strong>Tempo Gasto:</strong> ${Math.floor(
+                    teste.tempoGasto / 60
+                  )}m ${teste.tempoGasto % 60}s
+                </p>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+        `;
+        });
+
+        testesHtml += "</div>";
+        infoTestesEl.innerHTML = testesHtml;
+      }
+    }
+
+    // Carregar estatísticas
+    const statsEl = document.getElementById("avaliacao-teste-stats");
+    if (statsEl) {
+      const totalTestes = testesEnviados.length;
+      const testsRespondidos = testesEnviados.filter(
+        (t) => t.status === "respondido" || t.status === "avaliado"
+      ).length;
+      const testsPendentes = totalTestes - testsRespondidos;
+
+      let tempoTotal = 0;
+      let testComTempo = 0;
+      testesEnviados.forEach((t) => {
+        if (t.tempoGasto) {
+          tempoTotal += t.tempoGasto;
+          testComTempo++;
+        }
+      });
+      const tempoMedio =
+        testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
+
+      const statsHtml = `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #0078d4;">
+          <strong style="font-size: 18px; color: #0078d4;">${totalTestes}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Total de Testes</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #28a745;">
+          <strong style="font-size: 18px; color: #28a745;">${testsRespondidos}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Respondidos</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #ffc107;">
+          <strong style="font-size: 18px; color: #ffc107;">${testsPendentes}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Pendentes</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #6f42c1;">
+          <strong style="font-size: 18px; color: #6f42c1;">${
+            tempoMedio > 0 ? Math.floor(tempoMedio / 60) + "m" : "N/A"
+          }</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Tempo Médio</p>
+        </div>
+      </div>
+    `;
+
+      statsEl.innerHTML = statsHtml;
+    }
+
+    // Carregar gestores
+    const selectGestor = document.getElementById("avaliacao-teste-gestor");
+    const btnWhatsAppGestor = document.getElementById(
+      "btn-whatsapp-gestor-avaliacao"
+    );
+
+    if (selectGestor) {
+      selectGestor.innerHTML =
+        '<option value="">Carregando gestores...</option>';
+
+      try {
+        const usuariosRef = collection(db, "usuarios");
+        const q = query(usuariosRef, where("role", "==", "gestor"));
+        const snapshot = await getDocs(q);
+
+        const gestores = [];
+        snapshot.forEach((doc) => {
+          const dados = doc.data();
+          gestores.push({
+            id: doc.id,
+            nome: dados.nome || dados.nomecompleto || "Gestor",
+            email: dados.email || "",
+            telefone: dados.telefone || dados.telefonemov || "",
+          });
+        });
+
+        if (gestores.length === 0) {
+          selectGestor.innerHTML =
+            '<option value="">Nenhum gestor disponível</option>';
+          if (btnWhatsAppGestor) btnWhatsAppGestor.disabled = true;
+        } else {
+          let optionsHtml = '<option value="">Selecione um gestor...</option>';
+
+          gestores.forEach((gestor) => {
+            optionsHtml += `
+            <option 
+              value="${gestor.id}" 
+              data-nome="${gestor.nome}" 
+              data-telefone="${gestor.telefone || ""}" 
+              data-email="${gestor.email || ""}"
+            >
+              ${gestor.nome}${gestor.email ? ` (${gestor.email})` : ""}
+            </option>
+          `;
+          });
+
+          selectGestor.innerHTML = optionsHtml;
+        }
+      } catch (error) {
+        console.error("Erro ao carregar gestores:", error);
+        selectGestor.innerHTML =
+          '<option value="">Erro ao carregar gestores</option>';
+      }
+    }
+
+    // HABILITA/DESABILITA BOTÃO WHATSAPP
+    if (selectGestor && btnWhatsAppGestor) {
+      selectGestor.addEventListener("change", (e) => {
+        const option = e.target.selectedOptions[0];
+        const telefone = option?.getAttribute("data-telefone");
+        btnWhatsAppGestor.disabled = !telefone || telefone.trim() === "";
+      });
+
+      btnWhatsAppGestor.disabled = true;
+    }
+
+    // Reseta o formulário
+    if (form) form.reset();
+
+    // ✅ LÓGICA DE EXIBIÇÃO DO GESTOR
+    const radiosResultadoTeste = form.querySelectorAll(
+      'input[name="resultadoteste"]'
+    );
+    radiosResultadoTeste.forEach((radio) => {
+      radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
+      radio.addEventListener("change", toggleCamposAvaliacaoTeste);
+    });
+
+    // Define o estado inicial oculto
+    toggleCamposAvaliacaoTeste();
+
+    // Configura listener do formulário
+    form.removeEventListener("submit", submeterAvaliacaoTeste);
+    form.addEventListener("submit", submeterAvaliacaoTeste);
+
+    // Configura listener de fechar
+    document
+      .querySelectorAll('[data-modal-id="modal-avaliacao-teste"]')
+      .forEach((btn) => {
+        btn.removeEventListener("click", fecharModalAvaliacaoTeste);
+        btn.addEventListener("click", fecharModalAvaliacaoTeste);
+      });
+
+    modalAvaliacaoTeste.classList.add("is-visible");
+    console.log("Entrevistas: Modal de avaliação de teste aberto");
+  };
+
+  /**
+   * Alterna visibilidade dos campos de avaliação de teste
+   */
+  function toggleCamposAvaliacaoTeste() {
+    const form = document.getElementById("form-avaliacao-teste");
+    if (!form) return;
+
+    const resultadoSelecionado = form.querySelector(
+      'input[name="resultadoteste"]:checked'
+    )?.value;
+    const gestorContainer = document.getElementById(
+      "avaliacao-teste-gestor-container"
+    );
+
+    if (!gestorContainer) return;
+
+    if (resultadoSelecionado === "Aprovado") {
+      gestorContainer.style.display = "block";
+    } else {
+      gestorContainer.style.display = "none";
+    }
+  }
+
+  /**
+   * Fecha o modal de avaliação de teste
+   */
+  function fecharModalAvaliacaoTeste() {
+    const modalAvaliacaoTeste = document.getElementById(
+      "modal-avaliacao-teste"
+    );
+    if (modalAvaliacaoTeste) {
+      modalAvaliacaoTeste.classList.remove("is-visible");
+    }
+  }
+
+  /**
+   * Submete a avaliação do teste
+   */
+  async function submeterAvaliacaoTeste(e) {
+    e.preventDefault();
+
+    console.log("Entrevistas: Submetendo avaliação de teste");
+
+    const modalAvaliacaoTeste = document.getElementById(
+      "modal-avaliacao-teste"
+    );
+    const btnRegistrarAvaliacao = document.getElementById(
+      "btn-registrar-avaliacao-teste"
+    );
+    const state = getGlobalState();
+    const { candidatosCollection, handleTabClick, statusCandidaturaTabs } =
+      state;
+
+    const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
+
+    if (!candidaturaId || !btnRegistrarAvaliacao) return;
+
+    const form = document.getElementById("form-avaliacao-teste");
+    if (!form) return;
+
+    const resultado = form.querySelector(
+      'input[name="resultadoteste"]:checked'
+    )?.value;
+    const observacoes =
+      form.querySelector("#avaliacao-teste-observacoes")?.value || "";
+
+    const selectGestor = document.getElementById("avaliacao-teste-gestor");
+    const gestorSelecionadoId = selectGestor?.value || null;
+    const gestorOption = selectGestor?.selectedOptions[0];
+    const gestorNome = gestorOption?.getAttribute("data-nome") || null;
+
+    if (!resultado) {
+      window.showToast?.("Por favor, selecione o Resultado do Teste.", "error");
+      return;
+    }
+
+    if (resultado === "Aprovado" && !gestorSelecionadoId) {
+      window.showToast?.(
+        "Por favor, selecione um gestor para aprovar o candidato.",
+        "error"
+      );
+      return;
+    }
+
+    btnRegistrarAvaliacao.disabled = true;
+    btnRegistrarAvaliacao.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+
+    const isAprovado = resultado === "Aprovado";
+    const novoStatusCandidato = isAprovado
+      ? "Entrevista com Gestor"
+      : "Finalizado - Reprovado no Teste";
+
+    const abaRecarregar = statusCandidaturaTabs
+      .querySelector(".tab-link.active")
+      .getAttribute("data-status");
+
+    const avaliadorNome = "rhsystemuser"; // Você pode substituir com currentUserData.nome
+
+    const dadosAvaliacaoTeste = {
+      resultado: resultado,
+      dataavaliacao: new Date(),
+      avaliadornome: avaliadorNome,
+      observacoes: observacoes || null,
+    };
+
+    if (isAprovado && gestorSelecionadoId) {
+      dadosAvaliacaoTeste.gestordesignado = {
+        id: gestorSelecionadoId,
+        nome: gestorNome,
+        datadesignacao: new Date(),
+      };
+    }
+
+    try {
+      const candidaturaRef = doc(candidatosCollection, candidaturaId);
+
+      await updateDoc(candidaturaRef, {
+        statusrecrutamento: novoStatusCandidato,
+        avaliacaoteste: dadosAvaliacaoTeste,
+        historico: arrayUnion({
+          data: new Date(),
+          acao: `Avaliação do Teste ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
+            isAprovado
+              ? `Gestor designado: ${gestorNome}`
+              : "Processo finalizado."
+          }. Novo Status: ${novoStatusCandidato}`,
+          usuario: avaliadorNome,
+        }),
+      });
+
+      window.showToast?.(
+        `Teste ${
+          isAprovado ? "aprovado" : "reprovado"
+        }! Status atualizado: ${novoStatusCandidato}`,
+        "success"
+      );
+
+      console.log("Entrevistas: Avaliação de teste salva no Firestore");
+
+      fecharModalAvaliacaoTeste();
+
+      const activeTab = statusCandidaturaTabs.querySelector(
+        `[data-status="${abaRecarregar}"]`
+      );
+      if (activeTab) {
+        handleTabClick({ currentTarget: activeTab });
+      }
+    } catch (error) {
+      console.error("Entrevistas: Erro ao salvar avaliação de teste:", error);
+      window.showToast?.(
+        `Erro ao registrar a avaliação: ${error.message}`,
+        "error"
+      );
+    } finally {
+      btnRegistrarAvaliacao.disabled = false;
+      btnRegistrarAvaliacao.innerHTML =
+        '<i class="fas fa-check-circle me-2"></i>Registrar Avaliação';
+    }
+  }
 }
