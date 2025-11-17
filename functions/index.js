@@ -1326,7 +1326,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       // 4. Atualiza o token como utilizado
       await db.collection("tokensacesso").doc(tokenId).update({
         usado: true,
-        respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
+        respondidoEm: admin.firestore.FieldValue.serverTimestamp(), // Isso está CORRETO
         respostas: safeRespostas,
         tempoGasto: safeTempoGasto,
         navegador: safeNavegador,
@@ -1349,15 +1349,10 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       const candidaturaSnap = await candidaturaRef.get();
       let testesEnviadosAtualizado = [];
 
-      // ==========================================================
-      // ✅ CORREÇÃO APLICADA AQUI
-      // Define um valor seguro para 'titulovagaoriginal'
-      // ==========================================================
       const safeTituloVaga =
         candidaturaSnap.exists && candidaturaSnap.data().titulovagaoriginal
           ? candidaturaSnap.data().titulovagaoriginal
           : "Vaga não informada";
-      // ==========================================================
 
       const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
 
@@ -1374,8 +1369,13 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
             `Atualizando status do teste índice ${testeIndex} para respondido`
           );
           testesEnviadosAtualizado[testeIndex].status = "respondido";
-          testesEnviadosAtualizado[testeIndex].dataResposta =
-            admin.firestore.FieldValue.serverTimestamp();
+
+          // ==========================================================
+          // ✅ CORREÇÃO APLICADA AQUI
+          // Trocamos 'admin.firestore.FieldValue.serverTimestamp()' por 'new Date()'
+          // ==========================================================
+          testesEnviadosAtualizado[testeIndex].dataResposta = new Date();
+
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
           testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto;
         } else {
@@ -1394,24 +1394,33 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           candidatoId: dadosToken.candidatoId,
           tokenId: tokenId,
           nomeTeste: nomeTeste,
-          dataResposta: admin.firestore.FieldValue.serverTimestamp(),
+          dataResposta: admin.firestore.FieldValue.serverTimestamp(), // Isso está CORRETO
           data_envio: dadosToken.criadoEm,
           tempoGasto: safeTempoGasto,
           respostas: safeRespostas,
           respostasCount: Object.keys(safeRespostas).length,
-          titulovagaoriginal: safeTituloVaga, // ✅ CORRIGIDO: Usa a variável segura
+          titulovagaoriginal: safeTituloVaga,
         });
 
-      // 8. Atualiza o documento da candidatura
-      await candidaturaRef.update({
-        testes_enviados: testesEnviadosAtualizado,
-        historico: admin.firestore.FieldValue.arrayUnion({
-          data: admin.firestore.FieldValue.serverTimestamp(),
-          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`,
-          usuario: "candidato-via-token",
-        }),
-      });
+      // 8. Atualiza o documento da candidatura (SOMENTE SE ELE EXISTIR)
+      if (candidaturaSnap.exists) {
+        await candidaturaRef.update({
+          testes_enviados: testesEnviadosAtualizado, // Agora o array está limpo
+          historico: admin.firestore.FieldValue.arrayUnion({
+            // Isso está CORRETO
+            data: admin.firestore.FieldValue.serverTimestamp(),
+            acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`,
+            usuario: "candidato-via-token",
+          }),
+        });
+        console.log("Candidatura atualizada com sucesso.");
+      } else {
+        console.warn(
+          `Candidatura ${dadosToken.candidatoId} não encontrada. As respostas foram salvas em "testesrespondidos", mas a candidatura não foi atualizada.`
+        );
+      }
 
+      // 9. Retorna sucesso
       console.log("Respostas salvas e status atualizado com sucesso!");
 
       return res.status(200).json({
