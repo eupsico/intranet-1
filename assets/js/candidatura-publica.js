@@ -125,8 +125,9 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
     }
   } catch (error) {
     console.error("Erro ao salvar candidatura no Firebase:", error);
+    // ATUALIZADO: Usando classes do Design System
     exibirFeedback(
-      "mensagem-erro",
+      "alert alert-error",
       `Erro ao salvar candidatura. Detalhes: ${error.message}`,
       true
     );
@@ -145,14 +146,16 @@ async function carregarVagasAtivas() {
     if (snapshot.empty) {
       loadingVagas.textContent =
         "Não há vagas abertas para candidatura no momento.";
-      loadingVagas.style.display = "block";
-      vagaSelectGroup.style.display = "none";
+      // ATUALIZADO: Usando classes do Design System (hidden)
+      loadingVagas.classList.remove("hidden");
+      vagaSelectGroup.classList.add("hidden");
       btnSubmit.disabled = true;
       return;
     }
 
-    loadingVagas.style.display = "none";
-    vagaSelectGroup.style.display = "block";
+    // ATUALIZADO: Usando classes do Design System (hidden)
+    loadingVagas.classList.add("hidden");
+    vagaSelectGroup.classList.remove("hidden");
     btnSubmit.disabled = false;
 
     snapshot.forEach((doc) => {
@@ -168,7 +171,8 @@ async function carregarVagasAtivas() {
     loadingVagas.textContent =
       "Erro ao carregar as vagas. Tente novamente mais tarde.";
     btnSubmit.disabled = true;
-    vagaSelectGroup.style.display = "none";
+    // ATUALIZADO: Usando classes do Design System (hidden)
+    vagaSelectGroup.classList.add("hidden");
   }
 }
 
@@ -187,8 +191,9 @@ async function buscarCEP() {
     const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const data = await response.json();
     if (data.erro) {
+      // ATUALIZADO: Usando classes do Design System
       exibirFeedback(
-        "mensagem-erro",
+        "alert alert-error",
         "CEP não encontrado. Verifique e digite o endereço manualmente.",
         true
       );
@@ -204,8 +209,9 @@ async function buscarCEP() {
     exibirFeedback("", "", false);
   } catch (error) {
     console.error("Erro ao buscar CEP:", error);
+    // ATUALIZADO: Usando classes do Design System
     exibirFeedback(
-      "mensagem-erro",
+      "alert alert-error",
       "Falha na comunicação com a API de CEP. Preencha manualmente.",
       true
     );
@@ -218,6 +224,7 @@ async function buscarCEP() {
 async function handleCandidatura(e) {
   e.preventDefault();
   btnSubmit.disabled = true;
+  // NOTA: A classe 'loading-spinner' já existe no design-system.css
   msgFeedback.innerHTML =
     '<div class="loading-spinner">Enviando candidatura e currículo...</div>';
 
@@ -257,8 +264,9 @@ async function handleCandidatura(e) {
     !comoConheceu ||
     !arquivoCurriculo
   ) {
+    // ATUALIZADO: Usando classes do Design System
     exibirFeedback(
-      "mensagem-erro",
+      "alert alert-error",
       "Preencha todos os campos obrigatórios e anexe o currículo.",
       true
     );
@@ -268,8 +276,9 @@ async function handleCandidatura(e) {
   // Validação de tamanho de arquivo
   const maxFileSize = 5 * 1024 * 1024;
   if (arquivoCurriculo.size > maxFileSize) {
+    // ATUALIZADO: Usando classes do Design System
     exibirFeedback(
-      "mensagem-erro",
+      "alert alert-error",
       "O arquivo do currículo não pode exceder 5MB.",
       true
     );
@@ -327,8 +336,9 @@ async function handleCandidatura(e) {
     await enviarCandidaturaParaFirebase(novaCandidatura);
   } catch (error) {
     console.error("❌ Erro completo na candidatura:", error);
+    // ATUALIZADO: Usando classes do Design System
     exibirFeedback(
-      "mensagem-erro",
+      "alert alert-error",
       `Erro ao enviar a candidatura. Detalhes: ${error.message}`,
       true
     );
@@ -339,21 +349,25 @@ async function handleCandidatura(e) {
 // FUNÇÃO: Mostrar Tela de Sucesso
 // ====================================================================
 function mostrarSucessoCandidatura(nomeCandidato) {
-  const formBody = document.querySelector(".form-body");
+  // ATUALIZADO: O 'form-body' agora é '.modal-body'
+  const formBody = document.querySelector(".modal-body");
   if (!formBody) {
-    console.error("Container .form-body não encontrado.");
+    console.error("Container .modal-body não encontrado.");
     return;
   }
 
-  // Substitui o conteúdo do form-body pela mensagem de sucesso
+  // ATUALIZADO: HTML de sucesso reescrito para usar
+  // classes do Design System (alert, alert-success) e incluir a logo azul.
   formBody.innerHTML = `
-        <div class="success-message">
-            <div class="success-icon">✓</div>
-            <h2>Obrigado por se candidatar!</h2>
-            <p>Olá, <strong>${nomeCandidato || "Candidato(a)"}</strong>!</p>
+        <div class="alert alert-success" style="text-align: center; padding: 30px;">
+            <img src="assets/img/logo-eupsico.png" alt="Logo EuPsico" style="max-width: 160px; margin-bottom: 20px;">
+            <h2 style="color: var(--cor-texto-principal); margin-bottom: 15px;">Obrigado por se candidatar!</h2>
+            <p style="font-size: 1.1rem;">Olá, <strong>${
+              nomeCandidato || "Candidato(a)"
+            }</strong>!</p>
             <p>Recebemos sua candidatura com sucesso. Seu currículo será analisado cuidadosamente pela nossa equipe de RH.</p>
             <p>Entraremos em contato após o término do processo de recrutamento.</p>
-            <p style="margin-top: 20px; font-weight: 600; color: #667eea;">Atenciosamente,<br>Equipe EuPsico</p>
+            <p style="margin-top: 20px; font-weight: 600; color: var(--cor-primaria);">Atenciosamente,<br>Equipe EuPsico</p>
         </div>
     `;
 }
@@ -362,6 +376,7 @@ function mostrarSucessoCandidatura(nomeCandidato) {
 // FUNÇÃO: Exibir Feedback (Simplificada)
 // ====================================================================
 function exibirFeedback(classe, mensagem, reHabilitar) {
+  // NOTA: 'classe' agora espera 'alert alert-error'
   msgFeedback.innerHTML = `<div class="${classe}">${mensagem}</div>`;
   if (reHabilitar) {
     btnSubmit.disabled = false;
