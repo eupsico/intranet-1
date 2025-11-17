@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 7.1.0 (Corrigido Nomes, Datas, Links e Refatorado para Design System)
+ * Versão: 7.2.0 (Refatorado 'salvarTesteApenas' para gerar Token)
  * Data: 05/11/2025
  * Descrição: Gerencia Entrevistas usando Cloud Functions para Token e Respostas
  */
@@ -80,7 +80,6 @@ function formatarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   const dataFormatada = `${dia}/${mes}/${ano}`;
   const [horas, minutos] = horaEntrevista.split(":");
   const horaFormatada = `${horas}h${minutos}`;
-  // ✅ CORREÇÃO: Usando 'nome_candidato'
   const nomeCandidato = candidato.nome_candidato || "Candidato(a)";
 
   const mensagem = `
@@ -236,7 +235,6 @@ export async function renderizarEntrevistas(state) {
       return;
     }
 
-    // ✅ REFATORADO: Usa .modules-grid
     let listaHtml = '<div class="candidatos-container modules-grid">';
 
     snapshot.docs.forEach((docSnap) => {
@@ -244,8 +242,7 @@ export async function renderizarEntrevistas(state) {
       const candidatoId = docSnap.id;
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      // ✅ REFATORADO: Lógica de status
-      let statusClass = "status-pendente"; // Default
+      let statusClass = "status-pendente";
       if (statusAtual.toLowerCase().includes("aprovada")) {
         statusClass = "status-concluída";
       } else if (statusAtual.toLowerCase().includes("reprovada")) {
@@ -261,7 +258,6 @@ export async function renderizarEntrevistas(state) {
 
       const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
 
-      // ✅ REFATORADO: HTML do Card
       listaHtml += `
         <div class="module-card" data-id="${candidatoId}">
           
@@ -303,7 +299,6 @@ export async function renderizarEntrevistas(state) {
             </button>
       `;
 
-      // LÓGICA: EXIBIÇÃO DOS BOTÕES
       if (statusAtual.includes("Entrevista Pendente")) {
         listaHtml += `
             <button 
@@ -460,7 +455,6 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
 
-  // ✅ CORREÇÃO: Usando 'nome_candidato'
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
@@ -497,7 +491,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 };
 
 // ============================================
-// FUNÇÃO (Avaliar Teste): Carregar Respostas (REFATORADO)
+// FUNÇÃO (Avaliar Teste): Carregar Respostas
 // ============================================
 async function carregarRespostasDoTeste(
   identificador,
@@ -555,7 +549,6 @@ async function carregarRespostasDoTeste(
     `;
 
     respostasHtml += `<h6 class="mt-3">Respostas do Candidato</h6>`;
-    // ✅ REFATORADO: Usa .simple-list
     respostasHtml += `<ul class="simple-list">`;
 
     if (data.respostas && Array.isArray(data.respostas)) {
@@ -636,22 +629,17 @@ function formatarDataEnvio(timestamp) {
   let date;
 
   if (timestamp.toDate && typeof timestamp.toDate === "function") {
-    // É um objeto Timestamp do Firestore
     date = timestamp.toDate();
   } else if (typeof timestamp === "string") {
-    // ✅ CORREÇÃO: É uma string ISO (vinda do JSON.parse)
     date = new Date(timestamp);
   } else if (timestamp instanceof Date) {
-    // Já é um objeto Date
     date = timestamp;
   } else if (typeof timestamp === "number") {
-    // É um timestamp Unix (segundos)
     date = new Date(timestamp * 1000);
   } else {
     return "N/A";
   }
 
-  // Verifica se a data é válida
   if (isNaN(date.getTime())) {
     return "Data Inválida";
   }
@@ -666,7 +654,7 @@ function formatarDataEnvio(timestamp) {
 }
 
 // ============================================
-// FUNÇÃO (Avaliar Teste): Gerenciador de UI (REFATORADO)
+// FUNÇÃO (Avaliar Teste): Gerenciador de UI
 // ============================================
 /**
  * Gerencia a exibição do seletor de gestor no modal "Avaliar Teste"
@@ -676,7 +664,7 @@ function toggleCamposAvaliacaoTeste() {
   if (!form) return;
 
   const radioAprovado = form.querySelector(
-    'input[name="resultadoteste"][value="Aprovado"]' // Nome do input corrigido
+    'input[name="resultadoteste"][value="Aprovado"]'
   );
 
   const containerGestor = document.getElementById(
@@ -690,7 +678,6 @@ function toggleCamposAvaliacaoTeste() {
     return;
   }
 
-  // ✅ REFATORADO: Usa .classList
   if (radioAprovado && radioAprovado.checked) {
     containerGestor.classList.remove("hidden");
   } else {
@@ -699,11 +686,11 @@ function toggleCamposAvaliacaoTeste() {
 }
 
 // ============================================
-// MODAIS - AVALIAÇÃO DE TESTE (REFATORADO)
+// MODAIS - AVALIAÇÃO DE TESTE
 // ============================================
 
 /**
- * Abre o modal de avaliação do teste (ATUALIZADO v7.1.0)
+ * Abre o modal de avaliação do teste
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
@@ -727,7 +714,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // ✅ CORREÇÃO: Usando 'nome_candidato'
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
@@ -737,7 +723,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   if (nomeEl) nomeEl.textContent = nomeCompleto;
   if (statusEl) statusEl.textContent = statusAtual;
 
-  // ✅ CORREÇÃO: Usando 'testes_enviados'
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
@@ -750,10 +735,9 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         </div>
       `;
     } else {
-      let testesHtml = "<div>"; // Container
+      let testesHtml = "<div>";
 
       testesEnviados.forEach((teste, index) => {
-        // ✅ CORREÇÃO: Usando formatarDataEnvio
         const dataEnvio = formatarDataEnvio(teste.data_envio);
 
         const statusTeste = teste.status || "enviado";
@@ -770,7 +754,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
             linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-eye me-1"></i> Acessar Respostas</a>`;
           }
         } else if (statusTeste === "avaliado") {
-          statusClass = "status-pendente"; // (info)
+          statusClass = "status-pendente";
           statusTexto = "Avaliado";
           if (teste.linkrespostas) {
             linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-check-circle me-1"></i> Ver Avaliação</a>`;
@@ -779,7 +763,6 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
           linkHtml = `<p class="text-muted small mt-2">Aguardando resposta do candidato</p>`;
         }
 
-        // ✅ REFATORADO: HTML usa .info-card
         testesHtml += `
           <div class="info-card mb-3">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -977,7 +960,6 @@ window.enviarWhatsAppGestor = function () {
     return;
   }
 
-  // ✅ CORREÇÃO: Usando 'nome_candidato'
   const nomeCandidato = dadosCandidatoAtual.nome_candidato || "Candidato(a)";
   const telefoneCandidato =
     dadosCandidatoAtual.telefone_contato || "Não informado";
@@ -1103,7 +1085,7 @@ async function submeterAvaliacaoTeste(e) {
 
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
-      avaliacao_teste: dadosAvaliacaoTeste, // Corrigido
+      avaliacao_teste: dadosAvaliacaoTeste,
       historico: arrayUnion({
         data: new Date(),
         acao: `Avaliação do Teste ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
@@ -1251,6 +1233,48 @@ async function submeterAgendamentoRH(e) {
 // ============================================
 
 /**
+ * ✅ NOVA FUNÇÃO HELPER
+ * Chama a Cloud Function para gerar um link de teste com token.
+ */
+async function gerarLinkDeTesteComToken(candidatoId, testeId) {
+  console.log(`🔹 Chamando Cloud Function: gerarTokenTeste`);
+
+  const testeOption = document.querySelector(
+    `#teste-selecionado option[value="${testeId}"]`
+  );
+  const prazoDias = parseInt(
+    testeOption?.getAttribute("data-prazo") || "7",
+    10
+  );
+
+  const responseGerarToken = await fetch(CF_GERAR_TOKEN, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      candidatoId: candidatoId,
+      testeId: testeId,
+      prazoDias: prazoDias,
+    }),
+  });
+
+  // ✅ MELHORIA: Tratamento de Erro 404
+  if (!responseGerarToken.ok) {
+    throw new Error(
+      `Erro ${responseGerarToken.status} ao chamar a Cloud Function. Verifique se a URL ${CF_GERAR_TOKEN} está correta e implantada.`
+    );
+  }
+
+  const dataToken = await responseGerarToken.json();
+
+  if (!dataToken.sucesso) {
+    throw new Error(dataToken.erro || "Erro desconhecido ao gerar token");
+  }
+
+  console.log("✅ Token gerado pela Cloud Function:", dataToken.token);
+  return dataToken;
+}
+
+/**
  * Abre o modal para enviar teste
  */
 window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
@@ -1275,7 +1299,6 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
     if (whatsappEl)
       whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
 
-    // Listar testes já enviados
     const containerTestesEnviados = document.getElementById(
       "testes-ja-enviados-container"
     );
@@ -1286,20 +1309,19 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
         containerTestesEnviados.innerHTML =
           '<p class="text-muted small mb-3">Nenhum teste foi enviado para este candidato ainda.</p>';
       } else {
-        // ✅ REFATORADO: HTML usa .simple-list
         let testesHtml =
           '<label class="form-label mb-2">Testes Já Enviados:</label><ul class="simple-list mb-3">';
 
         testesEnviados.forEach((teste) => {
           // ✅ CORREÇÃO: Usando formatarDataEnvio
-          const data_envio = formatarDataEnvio(teste.data_envio);
+          const dataEnvio = formatarDataEnvio(teste.data_envio);
           const status = teste.status || "enviado";
 
           let statusClass = "status-pendente";
           if (status === "respondido") {
             statusClass = "status-concluída";
           } else if (status === "avaliado") {
-            statusClass = "status-pendente"; // (info)
+            statusClass = "status-pendente";
           }
 
           testesHtml += `
@@ -1309,7 +1331,7 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
                   teste.nomeTeste ||
                   "Teste (ID: " + (teste.id?.substring(0, 5) || "N/A") + ")"
                 }</strong>
-                <small>Enviado em: ${data_envio} por ${
+                <small>Enviado em: ${dataEnvio} por ${
             teste.enviado_por || "N/A"
           }</small>
                 <small class="d-block mt-1"><strong>Link:</strong> <a href="${
@@ -1391,7 +1413,7 @@ async function carregarTestesDisponiveis() {
 }
 
 /**
- * Atualiza o link quando muda a seleção de teste (REFATORADO)
+ * Atualiza o link quando muda a seleção de teste
  */
 document.addEventListener("change", (e) => {
   if (e.target.id === "teste-selecionado") {
@@ -1411,17 +1433,15 @@ document.addEventListener("change", (e) => {
       console.log(`✅ Link atualizado: ${linkInput.value}`);
     }
 
-    // ✅ REFATORADO: Usa .classList
     if (prazoDisplay && prazoTexto) {
       prazoTexto.textContent = `Prazo: ${prazoDias} dias`;
-      // No HTML, o #teste-prazo é um .info-card, então usamos .hidden
       prazoDisplay.classList.remove("hidden");
     }
   }
 });
 
 /**
- * CLOUD FUNCTION: Envia teste via WhatsApp
+ * ✅ REFATORADO: CLOUD FUNCTION: Envia teste via WhatsApp
  */
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-enviar-teste-whatsapp") {
@@ -1451,31 +1471,13 @@ async function enviarTesteWhatsApp() {
     '<i class="fas fa-spinner fa-spin me-2"></i> Gerando link...';
 
   try {
-    console.log(`🔹 Chamando Cloud Function: gerarTokenTeste`);
-
-    const responseGerarToken = await fetch(CF_GERAR_TOKEN, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        candidatoId: candidatoId,
-        testeId: testeId,
-        prazoDias: 7,
-      }),
-    });
-
-    const dataToken = await responseGerarToken.json();
-
-    if (!dataToken.sucesso) {
-      throw new Error(dataToken.erro || "Erro ao gerar token");
-    }
-
-    console.log("✅ Token gerado pela Cloud Function:", dataToken.token);
+    // ✅ REFATORADO: Chama a nova função helper
+    const dataToken = await gerarLinkDeTesteComToken(candidatoId, testeId);
 
     const linkComToken = dataToken.urlTeste;
     const nomeTesteElement = document.querySelector(
       `#teste-selecionado option[value="${testeId}"]`
     );
-    // ✅ CORREÇÃO: Pega o .text do option
     const nomeTeste = nomeTesteElement?.text || "Teste";
     const prazoDias = dataToken.prazoDias || 7;
 
@@ -1512,13 +1514,12 @@ Se tiver dúvidas, não hesite em nos contactar!
 
     window.open(linkWhatsApp, "_blank");
 
-    // ✅ CORREÇÃO: Passa o nomeTeste para a função de salvar
     await salvarEnvioTeste(
       candidatoId,
       testeId,
       linkComToken,
       dataToken.tokenId,
-      nomeTeste // <-- Nome do teste adicionado
+      nomeTeste
     );
 
     window.showToast?.("✅ Teste enviado! WhatsApp aberto", "success");
@@ -1533,6 +1534,7 @@ Se tiver dúvidas, não hesite em nos contactar!
       if (activeTab) handleTabClick({ currentTarget: activeTab });
     }, 2000);
   } catch (error) {
+    // O erro 404 da Cloud Function será capturado aqui
     console.error("❌ Erro ao enviar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
@@ -1550,7 +1552,7 @@ async function salvarEnvioTeste(
   testeId,
   linkTeste,
   tokenId,
-  nomeTeste // ✅ CORREÇÃO: Recebe o nome do teste
+  nomeTeste
 ) {
   console.log(`🔹 Salvando envio de teste: ${candidatoId}`);
 
@@ -1562,21 +1564,18 @@ async function salvarEnvioTeste(
     await updateDoc(candidatoRef, {
       status_recrutamento: "Testes Pendente (Enviado)",
       testes_enviados: arrayUnion({
-        // Nome do campo corrigido
-        id: tokenId, // ID do token é o ID principal
-        testeId: testeId, // ID do 'estudos_de_caso'
+        id: tokenId,
+        testeId: testeId,
         tokenId: tokenId,
         link: linkTeste,
         data_envio: new Date(),
         enviado_por: usuarioNome,
         status: "enviado",
-        nomeTeste: nomeTeste || "Teste não nomeado", // ✅ CORREÇÃO: Salva o nome
+        nomeTeste: nomeTeste || "Teste não nomeado",
       }),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Teste enviado via Cloud Function. Token: ${
-          tokenId?.substring(0, 8) || "N/A"
-        }...`,
+        acao: `Teste enviado. Token: ${tokenId?.substring(0, 8) || "N/A"}...`,
         usuario: usuarioNome,
       }),
     });
@@ -1589,7 +1588,7 @@ async function salvarEnvioTeste(
 }
 
 /**
- * Listener para botão "Salvar Apenas"
+ * ✅ REFATORADO: Listener para botão "Salvar Apenas"
  */
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-salvar-teste-apenas") {
@@ -1598,36 +1597,40 @@ document.addEventListener("click", (e) => {
 });
 
 async function salvarTesteApenas() {
-  console.log("🔹 Entrevistas: Salvando teste (sem WhatsApp)");
+  console.log("🔹 Entrevistas: Salvando teste (com geração de token)");
 
   const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
   const testeId = document.getElementById("teste-selecionado")?.value;
-  const linkTeste = document.getElementById("teste-link")?.value;
   const btnSalvar = document.getElementById("btn-salvar-teste-apenas");
 
-  // ✅ CORREÇÃO: Pega o nome do teste
   const selectTeste = document.getElementById("teste-selecionado");
   const nomeTeste = selectTeste.selectedOptions[0]?.text || "Teste";
 
-  if (!testeId || !linkTeste) {
+  if (!testeId) {
     window.showToast?.("Selecione um teste", "error");
     return;
   }
 
   btnSalvar.disabled = true;
   btnSalvar.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+    '<i class="fas fa-spinner fa-spin me-2"></i> Gerando token...';
 
   try {
-    // ✅ CORREÇÃO: Passa o nomeTeste
+    // ✅ REFATORADO: Chama a nova função helper
+    const dataToken = await gerarLinkDeTesteComToken(candidatoId, testeId);
+
+    const linkComToken = dataToken.urlTeste;
+
+    // Salva o link correto no Firebase
     await salvarEnvioTeste(
       candidatoId,
       testeId,
-      linkTeste,
-      "manual-save",
+      linkComToken, // Passa o link com token
+      dataToken.tokenId,
       nomeTeste
     );
-    window.showToast?.("Teste salvo com sucesso!", "success");
+
+    window.showToast?.("Teste salvo com token de acesso!", "success");
 
     fecharModalEnvioTeste();
     const state = getGlobalState();
@@ -1635,7 +1638,8 @@ async function salvarTesteApenas() {
     const activeTab = statusCandidaturaTabs?.querySelector(".tab-link.active");
     if (activeTab) handleTabClick({ currentTarget: activeTab });
   } catch (error) {
-    console.error("❌ Erro:", error);
+    // O erro 404 da Cloud Function será capturado aqui
+    console.error("❌ Erro ao salvar teste:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
     btnSalvar.disabled = false;
@@ -1740,7 +1744,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId;
 
-  // ✅ CORREÇÃO: Usando 'nome_candidato'
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
@@ -1766,12 +1769,9 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   if (btnVerCurriculo && modalFooter) {
     btnVerCurriculo.href = linkCurriculo;
 
-    // Limpa classes e estilos antigos
     btnVerCurriculo.className = "";
-    btnVerCurriculo.style = ""; // Limpa qualquer CSS inline
+    btnVerCurriculo.style = "";
 
-    // Adiciona classes do Design System
-    // .warning (laranja) e .ms-auto (margin-left: auto)
     btnVerCurriculo.classList.add("action-button", "warning", "ms-auto");
     btnVerCurriculo.target = "_blank";
     btnVerCurriculo.innerHTML =
@@ -1783,7 +1783,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
       btnVerCurriculo.classList.remove("hidden");
     }
 
-    // Garante que ele seja o primeiro item no footer
     if (modalFooter.firstChild !== btnVerCurriculo) {
       modalFooter.prepend(btnVerCurriculo);
     }
@@ -1791,7 +1790,6 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Preenche dados da avaliação existente
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
