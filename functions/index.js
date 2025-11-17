@@ -1283,6 +1283,15 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
 
+      // ==========================================================
+      // ✅ CORREÇÃO APLICADA AQUI (Tratamento de undefined/null)
+      // ==========================================================
+      const safeRespostas = respostas || {};
+      const safeTempoGasto = tempoGasto || 0;
+      const safeNavegador = navegador || "desconhecido";
+      const safeIpAddress = ipAddress || "não registrado";
+      // ==========================================================
+
       if (!token) {
         return res.status(400).json({ erro: "Token não informado" });
       }
@@ -1318,23 +1327,19 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
         return res.status(403).json({ erro: "Token expirado" });
       }
 
-      // 4. Atualiza o token como utilizado
-      await db
-        .collection("tokensacesso")
-        .doc(tokenId)
-        .update({
-          usado: true,
-          respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
-          respostas: respostas,
-          tempoGasto: tempoGasto || 0,
-          navegador: navegador || "desconhecido",
-          ipAddress: ipAddress || "não registrado",
-        });
+      // 4. Atualiza o token como utilizado (usando variáveis seguras)
+      await db.collection("tokensacesso").doc(tokenId).update({
+        usado: true,
+        respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
+        respostas: safeRespostas, // ✅ CORRIGIDO
+        tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
+        navegador: safeNavegador, // ✅ CORRIGIDO
+        ipAddress: safeIpAddress, // ✅ CORRIGIDO
+      });
 
       // 5. Busca dados do teste
-      // ✅ CORREÇÃO: Coleção "estudos_de_caso"
       const testeSnap = await db
-        .collection("estudos_de_caso")
+        .collection("estudos_de_caso") // (Já corrigido)
         .doc(dadosToken.testeId)
         .get();
 
@@ -1352,10 +1357,8 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       if (candidaturaSnap.exists) {
         const dadosCandidatura = candidaturaSnap.data();
-        // ✅ CORREÇÃO: Array "testes_enviados"
-        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || [];
+        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || []; // (Já corrigido)
 
-        // Encontra o teste enviado pelo tokenId e atualiza seu status
         const testeIndex = testesEnviadosAtualizado.findIndex(
           (t) => t.tokenId === tokenId
         );
@@ -1368,16 +1371,15 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           testesEnviadosAtualizado[testeIndex].dataResposta =
             admin.firestore.FieldValue.serverTimestamp();
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
-          testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0;
+          testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto; // ✅ CORRIGIDO
         } else {
           console.warn(
-            // ✅ CORREÇÃO: Array "testes_enviados"
             `Token ${tokenId} não encontrado no array testes_enviados da candidatura ${dadosToken.candidatoId}`
           );
         }
       }
 
-      // 7. Salva as respostas na coleção testesrespondidos
+      // 7. Salva as respostas na coleção testesrespondidos (usando variáveis seguras)
       await db
         .collection("testesrespondidos")
         .doc(tokenId)
@@ -1388,9 +1390,9 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           nomeTeste: nomeTeste,
           dataResposta: admin.firestore.FieldValue.serverTimestamp(),
           data_envio: dadosToken.criadoEm,
-          tempoGasto: tempoGasto || 0,
-          respostas: respostas,
-          respostasCount: Object.keys(respostas).length,
+          tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
+          respostas: safeRespostas, // ✅ CORRIGIDO
+          respostasCount: Object.keys(safeRespostas).length, // ✅ CORRIGIDO
           titulovagaoriginal: candidaturaSnap.exists
             ? candidaturaSnap.data().titulovagaoriginal
             : "",
@@ -1398,11 +1400,10 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       // 8. Atualiza o documento da candidatura
       await candidaturaRef.update({
-        // ✅ CORREÇÃO: Array "testes_enviados"
-        testes_enviados: testesEnviadosAtualizado,
+        testes_enviados: testesEnviadosAtualizado, // (Já corrigido)
         historico: admin.firestore.FieldValue.arrayUnion({
           data: admin.firestore.FieldValue.serverTimestamp(),
-          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
+          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`, // ✅ CORRIGIDO
           usuario: "candidato-via-token",
         }),
       });
@@ -1414,7 +1415,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
         mensagem: "Respostas registradas com sucesso!",
         tokenId: tokenId,
         dataResposta: agora.toISOString(),
-        tempoGasto: tempoGasto,
+        tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
       });
     } catch (error) {
       console.error("Erro ao salvar respostas:", error);
@@ -1598,7 +1599,7 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) =>
 
       console.log("Token gerado com sucesso!");
 
-      const urlTeste = `https://intranet.eupsico.org.br/publico/avaliacao-publica.html?token=${token}`;
+      const urlTeste = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?token=${token}`;
 
       return res.status(200).json({
         sucesso: true,
