@@ -509,9 +509,6 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
 // ============================================
 // FUNÇÃO (Avaliar Teste): Carregar Respostas do Teste
 // ============================================
-/**
- * Busca no Firestore as respostas de um teste específico e exibe no modal.
- */
 async function carregarRespostasDoTeste(
   identificador,
   tipoId,
@@ -521,16 +518,16 @@ async function carregarRespostasDoTeste(
   const container = document.getElementById(
     `respostas-container-${identificador}`
   );
+
   if (!container) return;
 
   try {
-    const respostasRef = collection(db, "respostas_testes");
+    const respostasRef = collection(db, "testesrespondidos");
     let q;
 
     if (tipoId === "tokenId") {
       q = query(respostasRef, where("tokenId", "==", identificador));
     } else {
-      // Fallback para testes salvos manualmente
       q = query(
         respostasRef,
         where("testeId", "==", testeIdFallback),
@@ -541,62 +538,127 @@ async function carregarRespostasDoTeste(
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      container.innerHTML =
-        '<p class="text-danger small">As respostas deste teste não foram encontradas no banco de dados.</p>';
+      container.innerHTML = `
+        <p class="text-danger small">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          As respostas deste teste não foram encontradas no banco de dados.
+        </p>
+      `;
       return;
     }
 
-    const docSnap = snapshot.docs[0]; // Assume uma resposta por token/teste
+    const docSnap = snapshot.docs[0];
     const data = docSnap.data();
 
-    let respostasHtml =
-      '<h6>Respostas do Candidato:</h6><ul class="list-group list-group-flush">';
+    // ✅ ADICIONADO: Obter título do teste
+    let respostasHtml = "";
+    respostasHtml += `
+      <div class="teste-header">
+        <h5 class="teste-titulo">
+          <i class="fas fa-file-alt me-2"></i>
+          ${data.nomeTeste || "Teste"}
+        </h5>
+        <small class="text-muted d-block mb-3">
+          <i class="fas fa-calendar me-1"></i>
+          <strong>Data de Envio:</strong> ${formatarDataEnvio(data.data_envio)}
+        </small>
+      </div>
+    `;
+
+    respostasHtml += `<h6 class="mt-3">Respostas do Candidato</h6>`;
+    respostasHtml += `<ul class="list-group list-group-flush">`;
 
     if (data.respostas && Array.isArray(data.respostas)) {
-      // Estrutura: [{pergunta: '...', resposta: '...'}]
       data.respostas.forEach((r, i) => {
         respostasHtml += `
           <li class="list-group-item">
             <strong>P${i + 1}: ${
           r.pergunta || "Pergunta não registrada"
         }</strong>
-            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">${
-              r.resposta || "Sem resposta"
-            }</p>
+            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">
+              ${r.resposta || "Sem resposta"}
+            </p>
           </li>
         `;
       });
     } else if (data.respostas && typeof data.respostas === "object") {
-      // Estrutura: {perguntaId: 'resposta', ...}
       Object.keys(data.respostas).forEach((key, i) => {
         respostasHtml += `
           <li class="list-group-item">
-            <strong>P${i + 1} (ID: ${key}):</strong>
-            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">${
-              data.respostas[key] || "Sem resposta"
-            }</p>
+            <strong>P${i + 1} (ID: ${key})</strong>
+            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">
+              ${data.respostas[key] || "Sem resposta"}
+            </p>
           </li>
         `;
       });
     } else {
-      respostasHtml +=
-        '<li class="list-group-item">Formato de respostas não reconhecido.</li>';
+      respostasHtml += `<li class="list-group-item">Formato de respostas não reconhecido.</li>`;
     }
 
-    respostasHtml += "</ul>";
+    respostasHtml += `</ul>`;
 
-    // Verifica se há avaliação/acertos
+    // ✅ ADICIONADO: Exibir tempo gasto
+    if (data.tempoGasto !== undefined && data.tempoGasto !== null) {
+      const minutos = Math.floor(data.tempoGasto / 60);
+      const segundos = data.tempoGasto % 60;
+      respostasHtml += `
+        <div class="alert alert-info mt-3 small">
+          <i class="fas fa-hourglass-end me-2"></i>
+          <strong>Tempo Gasto:</strong> ${minutos}m ${segundos}s
+        </div>
+      `;
+    }
+
+    // ✅ ADICIONADO: Estatísticas se disponível
     if (data.avaliacao) {
       const acertos = data.avaliacao.acertos || 0;
       const total = data.avaliacao.total || data.respostas?.length || 0;
-      respostasHtml += `<div class="alert alert-info mt-2"><strong>Avaliação Automática:</strong> ${acertos} de ${total} acertos.</div>`;
+      const percentual = total > 0 ? Math.round((acertos / total) * 100) : 0;
+
+      respostasHtml += `
+        <div class="alert alert-info mt-2">
+          <strong>Avaliação Automática</strong><br>
+          Acertos: ${acertos} de ${total} (${percentual}%)
+        </div>
+      `;
     }
 
     container.innerHTML = respostasHtml;
   } catch (error) {
-    console.error("❌ Erro ao carregar respostas:", error);
-    container.innerHTML = `<p class="text-danger small">Erro ao carregar respostas: ${error.message}</p>`;
+    console.error("Erro ao carregar respostas:", error);
+    container.innerHTML = `
+      <p class="text-danger small">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        Erro ao carregar respostas: ${error.message}
+      </p>
+    `;
   }
+}
+
+// ✅ ADICIONADO: Helper function para formatar data
+function formatarDataEnvio(timestamp) {
+  if (!timestamp) return "N/A";
+
+  let date;
+
+  if (timestamp.toDate && typeof timestamp.toDate === "function") {
+    date = timestamp.toDate();
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp === "number") {
+    date = new Date(timestamp * 1000);
+  } else {
+    return "N/A";
+  }
+
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // ============================================
@@ -641,7 +703,8 @@ function toggleCamposAvaliacaoTeste() {
  */
 window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   console.log(
-    `🔹 Entrevistas: Abrindo modal de avaliação de teste para ${candidatoId}`
+    "Entrevistas: Abrindo modal de avaliação de teste para",
+    candidatoId
   );
 
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
@@ -652,17 +715,16 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       "Erro: Modal de Avaliação de Teste não encontrado.",
       "error"
     );
-    console.error(
-      "❌ Entrevistas: Elemento modal-avaliacao-teste não encontrado"
-    );
+    console.error("Entrevistas: Elemento modal-avaliacao-teste não encontrado");
     return;
   }
 
-  dadosCandidatoAtual = dadosCandidato; // dadosCandidato.id (candidatoId) já está aqui
+  dadosCandidatoAtual = dadosCandidato;
+  dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
-  const statusAtual = dadosCandidato.status_recrutamento || "N/A";
+  const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
+  const statusAtual = dadosCandidato.statusrecrutamento || "N/A";
 
   // Preenche informações do candidato
   const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
@@ -672,7 +734,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   if (statusEl) statusEl.textContent = statusAtual;
 
   // Exibe todos os testes enviados
-  const testesEnviados = dadosCandidato.testes_enviados || [];
+  const testesEnviados = dadosCandidato.testesenviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
   if (infoTestesEl) {
@@ -687,8 +749,9 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       let testesHtml = '<div class="testes-enviados-lista">';
 
       testesEnviados.forEach((teste, index) => {
-        const dataEnvio = teste.data_envio?.toDate
-          ? teste.data_envio.toDate().toLocaleDateString("pt-BR", {
+        // ✅ Formata data de envio
+        const dataEnvio = teste.dataenvio?.toDate
+          ? teste.dataenvio.toDate().toLocaleDateString("pt-BR", {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",
@@ -701,46 +764,73 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         let badgeClass = "bg-warning";
         let statusTexto = "Pendente";
         let linkHtml = "";
-        const tokenId = teste.tokenId || `manual-${index}`; // ID para o container
 
-        // (REQ 3): Lógica de Link Atualizada
+        const tokenId = teste.tokenId || `manual-index-${index}`;
+
         if (statusTeste === "respondido") {
           badgeClass = "bg-success";
           statusTexto = "Respondido";
-          if (teste.link_respostas) {
-            // Link para os resultados/avaliação
-            linkHtml = `<p><strong>Resultado:</strong> <a href="${teste.link_respostas}" target="_blank">Acessar Respostas e Avaliação</a></p>`;
-          } else {
-            // Link para o formulário respondido (ex: Google Forms)
-            linkHtml = `<p><strong>Link:</strong> <a href="${teste.link}" target="_blank">Ver Teste Respondido (se aplicável)</a></p>`;
+          if (teste.linkrespostas) {
+            linkHtml = `
+              <p>
+                <strong>Resultado</strong>
+                <a href="${teste.linkrespostas}" target="_blank">
+                  Acessar Respostas e Avaliação
+                </a>
+              </p>
+            `;
           }
         } else if (statusTeste === "avaliado") {
           badgeClass = "bg-info";
           statusTexto = "Avaliado";
-          if (teste.link_respostas) {
-            linkHtml = `<p><strong>Resultado:</strong> <a href="${teste.link_respostas}" target="_blank">Ver Avaliação</a></p>`;
+          if (teste.linkrespostas) {
+            linkHtml = `
+              <p>
+                <strong>Resultado</strong>
+                <a href="${teste.linkrespostas}" target="_blank">
+                  Ver Avaliação
+                </a>
+              </p>
+            `;
           }
         } else {
-          // status === "enviado"
-          // Oculta o link, conforme solicitado
-          linkHtml = `<p><strong>Link do Teste:</strong> (Aguardando resposta do candidato)</p>`;
+          linkHtml = `
+            <p>
+              <strong>Link do Teste</strong>
+              Aguardando resposta do candidato
+            </p>
+          `;
         }
 
         testesHtml += `
           <div class="teste-item">
             <div class="teste-header">
-              <h5>📝 Teste (ID: ${teste.id?.substring(0, 5) || "N/A"})</h5>
+              <h5 class="teste-titulo">
+                <i class="fas fa-file-alt me-2"></i>
+                ${teste.nomeTeste || teste.id?.substring(0, 5) || "Teste"}
+              </h5>
               <span class="badge ${badgeClass}">${statusTexto}</span>
             </div>
             <div class="teste-info">
-              <p><strong>Token ID:</strong> ${
-                teste.tokenId?.substring(0, 8) || "N/A"
-              }</p>
-              <p><strong>Data de Envio:</strong> ${dataEnvio}</p>
-              <p><strong>Enviado por:</strong> ${teste.enviado_por || "N/A"}</p>
+              <p>
+                <strong>Data de Envio:</strong> ${dataEnvio}
+              </p>
+              <p>
+                <strong>Enviado por:</strong> ${teste.enviadopor || "N/A"}
+              </p>
+              ${
+                teste.tempoGasto !== undefined
+                  ? `
+                <p>
+                  <strong>Tempo Gasto:</strong> ${Math.floor(
+                    teste.tempoGasto / 60
+                  )}m ${teste.tempoGasto % 60}s
+                </p>
+              `
+                  : ""
+              }
               ${linkHtml}
             </div>
-            
             <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
               <span class="text-muted small">Carregando respostas...</span>
             </div>
@@ -751,28 +841,26 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      // (REQ 1): Dispara o carregamento das respostas
+      // ✅ DISPARAR CARREGAMENTO DAS RESPOSTAS
       testesEnviados.forEach((teste, index) => {
-        const tokenId = teste.tokenId || `manual-${index}`;
+        const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
 
-        // ============================================
-        // ✅ INÍCIO DA CORREÇÃO (v6.7.0)
-        // ============================================
         const statusTeste = teste.status || "enviado";
-        // ============================================
-        // ✅ FIM DA CORREÇÃO
-        // ============================================
-
         if (statusTeste === "respondido" || statusTeste === "avaliado") {
           carregarRespostasDoTeste(tokenId, tipoId, teste.id, candidatoId);
         } else {
           const container = document.getElementById(
             `respostas-container-${tokenId}`
           );
-          if (container)
-            container.innerHTML =
-              '<span class="text-muted small">Teste ainda não respondido.</span>';
+          if (container) {
+            container.innerHTML = `
+              <span class="text-muted small">
+                <i class="fas fa-hourglass-half me-2"></i>
+                Teste ainda não respondido.
+              </span>
+            `;
+          }
         }
       });
     }
@@ -795,17 +883,22 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
       if (btnWhatsAppGestor) btnWhatsAppGestor.disabled = true;
     } else {
       let optionsHtml = '<option value="">Selecione um gestor...</option>';
+
       gestores.forEach((gestor) => {
-        optionsHtml += `<option 
-          value="${gestor.id}" 
-          data-nome="${gestor.nome}"
-          data-telefone="${gestor.telefone}"
-          data-email="${gestor.email}">
-          ${gestor.nome}${gestor.email ? ` (${gestor.email})` : ""}
-        </option>`;
+        optionsHtml += `
+          <option 
+            value="${gestor.id}" 
+            data-nome="${gestor.nome}" 
+            data-telefone="${gestor.telefone || ""}" 
+            data-email="${gestor.email || ""}"
+          >
+            ${gestor.nome}${gestor.email ? ` (${gestor.email})` : ""}
+          </option>
+        `;
       });
+
       selectGestor.innerHTML = optionsHtml;
-      console.log(`✅ ${gestores.length} gestor(es) carregado(s) no select`);
+      console.log(`${gestores.length} gestores carregados no select`);
     }
   }
 
@@ -814,7 +907,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     selectGestor.addEventListener("change", (e) => {
       const option = e.target.selectedOptions[0];
       const telefone = option?.getAttribute("data-telefone");
-      btnWhatsAppGestor.disabled = !telefone || telefone === "";
+      btnWhatsAppGestor.disabled = !telefone || telefone.trim() === "";
     });
 
     // Estado inicial
@@ -824,15 +917,16 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   // Reseta o formulário
   if (form) form.reset();
 
-  // (REQ 4): Lógica de exibição do Gestor
+  // ✅ Lógica de exibição do Gestor
   const radiosResultadoTeste = form.querySelectorAll(
-    'input[name="resultado_teste"]'
+    'input[name="resultadoteste"]'
   );
   radiosResultadoTeste.forEach((radio) => {
     radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
-  // Define o estado inicial (oculto)
+
+  // Define o estado inicial oculto
   toggleCamposAvaliacaoTeste();
 
   // Configura listener do formulário
@@ -841,14 +935,14 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
 
   // Configura listener de fechar
   document
-    .querySelectorAll(`[data-modal-id='modal-avaliacao-teste']`)
+    .querySelectorAll('[data-modal-id="modal-avaliacao-teste"]')
     .forEach((btn) => {
       btn.removeEventListener("click", fecharModalAvaliacaoTeste);
       btn.addEventListener("click", fecharModalAvaliacaoTeste);
     });
 
   modalAvaliacaoTeste.classList.add("is-visible");
-  console.log("✅ Entrevistas: Modal de avaliação de teste aberto");
+  console.log("Entrevistas: Modal de avaliação de teste aberto");
 };
 
 /**
@@ -974,20 +1068,15 @@ Se tiver dúvidas, entre em contato com o RH.
 async function submeterAvaliacaoTeste(e) {
   e.preventDefault();
 
-  console.log("🔹 Entrevistas: Submetendo avaliação de teste");
+  console.log("Entrevistas: Submetendo avaliação de teste");
 
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
   const btnRegistrarAvaliacao = document.getElementById(
     "btn-registrar-avaliacao-teste"
   );
-
   const state = getGlobalState();
-  const {
-    candidatosCollection,
-    currentUserData, // Este ainda vem do getGlobalState, mas está incompleto
-    handleTabClick,
-    statusCandidaturaTabs,
-  } = state;
+  const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
+
   const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
 
   if (!candidaturaId || !btnRegistrarAvaliacao) return;
@@ -996,11 +1085,12 @@ async function submeterAvaliacaoTeste(e) {
   if (!form) return;
 
   const resultado = form.querySelector(
-    'input[name="resultado_teste"]:checked'
+    'input[name="resultadoteste"]:checked'
   )?.value;
-  const observacoes = form.querySelector("#avaliacao-teste-observacoes")?.value;
+  const observacoes =
+    form.querySelector("#avaliacao-teste-observacoes")?.value || "";
 
-  // CAPTURA O GESTOR SELECIONADO
+  // ✅ CAPTURA O GESTOR SELECIONADO
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
   const gestorSelecionadoId = selectGestor?.value || null;
   const gestorOption = selectGestor?.selectedOptions[0];
@@ -1022,54 +1112,50 @@ async function submeterAvaliacaoTeste(e) {
 
   btnRegistrarAvaliacao.disabled = true;
   btnRegistrarAvaliacao.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+    '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
 
-  // Define próximo status baseado na decisão
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
     ? "Entrevista com Gestor"
-    : "Finalizado (Reprovado no Teste)";
+    : "Finalizado - Reprovado no Teste";
 
   const abaRecarregar = statusCandidaturaTabs
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
 
-  // ============================================
-  // ✅ INÍCIO DA ATUALIZAÇÃO (REQ 2)
-  // ============================================
-  // Busca o nome do usuário ATUAL, em vez de usar o state incompleto
+  // ✅ CORRIGIDO: Busca o nome do usuário ATUAL
   const avaliadorNome = await getCurrentUserName();
-  // ============================================
-  // ✅ FIM DA ATUALIZAÇÃO
-  // ============================================
 
   const dadosAvaliacaoTeste = {
     resultado: resultado,
-    data_avaliacao: new Date(),
-    avaliador_nome: avaliadorNome, // ✅ REQ 2
-    observacoes: observacoes || "",
-    // SALVA O GESTOR DESIGNADO
-    gestor_designado: isAprovado
-      ? {
-          id: gestorSelecionadoId,
-          nome: gestorNome,
-          data_designacao: new Date(),
-        }
-      : null,
+    dataavaliacao: new Date(),
+    avaliadornome: avaliadorNome,
+    observacoes: observacoes || null,
   };
+
+  // ✅ SALVA O GESTOR DESIGNADO
+  if (isAprovado && gestorSelecionadoId) {
+    dadosAvaliacaoTeste.gestordesignado = {
+      id: gestorSelecionadoId,
+      nome: gestorNome,
+      datadesignacao: new Date(),
+    };
+  }
 
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
     await updateDoc(candidaturaRef, {
-      status_recrutamento: novoStatusCandidato,
-      avaliacao_teste: dadosAvaliacaoTeste,
+      statusrecrutamento: novoStatusCandidato,
+      avaliacaoteste: dadosAvaliacaoTeste,
       historico: arrayUnion({
         data: new Date(),
-        acao: `Avaliação do Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
-          isAprovado ? `Gestor designado: ${gestorNome}` : "Processo finalizado"
+        acao: `Avaliação do Teste ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
+          isAprovado
+            ? `Gestor designado: ${gestorNome}`
+            : "Processo finalizado."
         }. Novo Status: ${novoStatusCandidato}`,
-        usuario: avaliadorNome, // ✅ REQ 2
+        usuario: avaliadorNome,
       }),
     });
 
@@ -1079,7 +1165,8 @@ async function submeterAvaliacaoTeste(e) {
       }! Status atualizado: ${novoStatusCandidato}`,
       "success"
     );
-    console.log("✅ Entrevistas: Avaliação de teste salva no Firestore");
+
+    console.log("Entrevistas: Avaliação de teste salva no Firestore");
 
     fecharModalAvaliacaoTeste();
 
@@ -1087,9 +1174,11 @@ async function submeterAvaliacaoTeste(e) {
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
-    if (activeTab) handleTabClick({ currentTarget: activeTab });
+    if (activeTab) {
+      handleTabClick({ currentTarget: activeTab });
+    }
   } catch (error) {
-    console.error("❌ Entrevistas: Erro ao salvar avaliação de teste:", error);
+    console.error("Entrevistas: Erro ao salvar avaliação de teste:", error);
     window.showToast?.(
       `Erro ao registrar a avaliação: ${error.message}`,
       "error"
@@ -1097,7 +1186,7 @@ async function submeterAvaliacaoTeste(e) {
   } finally {
     btnRegistrarAvaliacao.disabled = false;
     btnRegistrarAvaliacao.innerHTML =
-      '<i class="fas fa-check-circle me-2"></i> Registrar Avaliação';
+      '<i class="fas fa-check-circle me-2"></i>Registrar Avaliação';
   }
 }
 
