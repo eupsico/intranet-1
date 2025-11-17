@@ -942,6 +942,27 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
     });
 
   modalAvaliacaoTeste.classList.add("is-visible");
+
+  // ✅ ADICIONADO: Carregar abas de visualização quando abrir modal
+  const abasPaiEl = document.getElementById("abas-visualizacao-respostas");
+  if (abasPaiEl) {
+    const abas = abasPaiEl.querySelectorAll("[data-bs-target]");
+
+    abas.forEach((aba) => {
+      aba.addEventListener("click", (e) => {
+        const target = e.target.getAttribute("data-bs-target");
+
+        if (target === "#aba-historico") {
+          carregarHistoricoTokens(candidatoId);
+        } else if (target === "#aba-dashboard") {
+          carregarDashboardTeste(candidatoId);
+        } else if (target === "#aba-tempo-real") {
+          carregarMonitorTempoReal(candidatoId);
+        }
+      });
+    });
+  }
+
   console.log("Entrevistas: Modal de avaliação de teste aberto");
 };
 
