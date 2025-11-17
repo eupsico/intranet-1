@@ -1283,14 +1283,10 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
 
       const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
 
-      // ==========================================================
-      // ✅ CORREÇÃO APLICADA AQUI (Tratamento de undefined/null)
-      // ==========================================================
       const safeRespostas = respostas || {};
       const safeTempoGasto = tempoGasto || 0;
       const safeNavegador = navegador || "desconhecido";
       const safeIpAddress = ipAddress || "não registrado";
-      // ==========================================================
 
       if (!token) {
         return res.status(400).json({ erro: "Token não informado" });
@@ -1327,25 +1323,25 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
         return res.status(403).json({ erro: "Token expirado" });
       }
 
-      // 4. Atualiza o token como utilizado (usando variáveis seguras)
+      // 4. Atualiza o token como utilizado
       await db.collection("tokensacesso").doc(tokenId).update({
         usado: true,
         respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
-        respostas: safeRespostas, // ✅ CORRIGIDO
-        tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
-        navegador: safeNavegador, // ✅ CORRIGIDO
-        ipAddress: safeIpAddress, // ✅ CORRIGIDO
+        respostas: safeRespostas,
+        tempoGasto: safeTempoGasto,
+        navegador: safeNavegador,
+        ipAddress: safeIpAddress,
       });
 
       // 5. Busca dados do teste
       const testeSnap = await db
-        .collection("estudos_de_caso") // (Já corrigido)
+        .collection("estudos_de_caso")
         .doc(dadosToken.testeId)
         .get();
 
       const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
 
-      // 6. Busca a candidatura para atualizar o array
+      // 6. Busca a candidatura
       const candidaturaRef = db
         .collection("candidaturas")
         .doc(dadosToken.candidatoId);
@@ -1353,11 +1349,21 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       const candidaturaSnap = await candidaturaRef.get();
       let testesEnviadosAtualizado = [];
 
+      // ==========================================================
+      // ✅ CORREÇÃO APLICADA AQUI
+      // Define um valor seguro para 'titulovagaoriginal'
+      // ==========================================================
+      const safeTituloVaga =
+        candidaturaSnap.exists && candidaturaSnap.data().titulovagaoriginal
+          ? candidaturaSnap.data().titulovagaoriginal
+          : "Vaga não informada";
+      // ==========================================================
+
       const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
 
       if (candidaturaSnap.exists) {
         const dadosCandidatura = candidaturaSnap.data();
-        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || []; // (Já corrigido)
+        testesEnviadosAtualizado = dadosCandidatura.testes_enviados || [];
 
         const testeIndex = testesEnviadosAtualizado.findIndex(
           (t) => t.tokenId === tokenId
@@ -1371,7 +1377,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           testesEnviadosAtualizado[testeIndex].dataResposta =
             admin.firestore.FieldValue.serverTimestamp();
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
-          testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto; // ✅ CORRIGIDO
+          testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto;
         } else {
           console.warn(
             `Token ${tokenId} não encontrado no array testes_enviados da candidatura ${dadosToken.candidatoId}`
@@ -1379,7 +1385,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
         }
       }
 
-      // 7. Salva as respostas na coleção testesrespondidos (usando variáveis seguras)
+      // 7. Salva as respostas na coleção testesrespondidos
       await db
         .collection("testesrespondidos")
         .doc(tokenId)
@@ -1390,20 +1396,18 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           nomeTeste: nomeTeste,
           dataResposta: admin.firestore.FieldValue.serverTimestamp(),
           data_envio: dadosToken.criadoEm,
-          tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
-          respostas: safeRespostas, // ✅ CORRIGIDO
-          respostasCount: Object.keys(safeRespostas).length, // ✅ CORRIGIDO
-          titulovagaoriginal: candidaturaSnap.exists
-            ? candidaturaSnap.data().titulovagaoriginal
-            : "",
+          tempoGasto: safeTempoGasto,
+          respostas: safeRespostas,
+          respostasCount: Object.keys(safeRespostas).length,
+          titulovagaoriginal: safeTituloVaga, // ✅ CORRIGIDO: Usa a variável segura
         });
 
       // 8. Atualiza o documento da candidatura
       await candidaturaRef.update({
-        testes_enviados: testesEnviadosAtualizado, // (Já corrigido)
+        testes_enviados: testesEnviadosAtualizado,
         historico: admin.firestore.FieldValue.arrayUnion({
           data: admin.firestore.FieldValue.serverTimestamp(),
-          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`, // ✅ CORRIGIDO
+          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`,
           usuario: "candidato-via-token",
         }),
       });
@@ -1415,7 +1419,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
         mensagem: "Respostas registradas com sucesso!",
         tokenId: tokenId,
         dataResposta: agora.toISOString(),
-        tempoGasto: safeTempoGasto, // ✅ CORRIGIDO
+        tempoGasto: safeTempoGasto,
       });
     } catch (error) {
       console.error("Erro ao salvar respostas:", error);
@@ -1426,7 +1430,6 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
     }
   })
 );
-
 // ==========================================================
 // exports.validarTokenTeste
 // ==========================================================
