@@ -1604,3 +1604,21 @@ legend {
   pointer-events: none; /* Permite clicar no input "através" do ícone */
   z-index: 2;
 }
+/* ============================================
+   21. COMPONENTES - POPUP / TOAST (NOTIFICAÇÕES)
+   ============================================ */
+
+/* Isto garante que os popups (provavelmente do seu showToast) 
+  apareçam sobre o overlay do modal (que tem z-index: 1000).
+  A classe .toast-container é um palpite comum; se o seu 
+  showToast usar outra classe (ex: .notification-center), 
+  você pode ajustar o seletor.
+*/
+.toast-container,
+.notification-popup-wrapper {
+  position: fixed;
+  z-index: 1050; /* Mais alto que o modal-overlay (1000) */
+  top: 20px;
+  right: 20px;
+  width: auto;
+}

@@ -800,6 +800,37 @@ async function carregarMonitorTempoReal(candidatoId) {
     `;
   }
 }
+
+/**
+ * ✅ NOVO - Alterna os campos de aprovação/reprovação no modal de triagem
+ */
+window.toggleMotivoAprovacaoRejeicao = function () {
+  const radioAprovado = document.getElementById("modal-apto-sim");
+  const radioReprovado = document.getElementById("modal-apto-nao");
+
+  const containerAprovacao = document.getElementById(
+    "modal-info-aprovacao-container"
+  );
+  const containerRejeicao = document.getElementById(
+    "modal-motivo-rejeicao-container"
+  );
+
+  if (!containerAprovacao || !containerRejeicao) {
+    console.warn("Campos de aprovação/rejeição não encontrados no modal.");
+    return;
+  }
+
+  if (radioAprovado && radioAprovado.checked) {
+    containerAprovacao.classList.remove("hidden");
+    containerRejeicao.classList.add("hidden");
+  } else if (radioReprovado && radioReprovado.checked) {
+    containerAprovacao.classList.add("hidden");
+    containerRejeicao.classList.remove("hidden");
+  } else {
+    containerAprovacao.classList.add("hidden");
+    containerRejeicao.classList.add("hidden");
+  }
+};
 /**
  * Envia resumo das respostas do teste por email usando Cloud Function genérica (Aba Email)
  * NOTA: O HTML deste e-mail não foi refatorado, pois e-mails EXIGEM
