@@ -272,9 +272,18 @@ export async function renderizarEntrevistas(state) {
         /_/g,
         " "
       )}</span></p>
+            <p class="small-info">
+              <i class="fas fa-briefcase"></i> Etapa: Entrevistas e avaliações
+            </p>
           </div>
-          
+
           <div class="info-contato">
+            ${
+              cand.email_candidato
+                ? `<p><i class="fas fa-envelope"></i>E-mail: ${cand.email_candidato}</p>`
+                : ""
+            }
+
             <a href="${linkWhatsApp}" target="_blank" class="whatsapp" ${
         !telefone ? "disabled" : ""
       }>
