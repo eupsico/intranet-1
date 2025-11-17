@@ -1292,13 +1292,13 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
           testesHtml += `
             <li class="simple-list-item">
               <div class="simple-list-item-content">
-                <strong>Teste: ${teste.titulo || "N/A"})</strong>
-                <small>Enviado em: ${data_Envio} por ${
+                <strong>Teste (ID: ${
+                  teste.id?.substring(0, 5) || "N/A"
+                })</strong>
+                <small>Enviado em: ${dataEnvio} por ${
             teste.enviado_por || "N/A"
           }</small>
-           })</strong>
-                <small>Link: ${link} || "N/A"
-          }</small>
+              </div>
               <span class="status-badge ${statusClass}">${status}</span>
             </li>`;
         });
