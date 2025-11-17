@@ -18,7 +18,7 @@ import {
   addDoc,
   getDoc,
   auth,
-} from "../../../assets/js/firebase-init.js";
+} from "../../../../assets/js/firebase-init.js";
 
 // ============================================================
 // VARIÁVEIS DE ESTADO
