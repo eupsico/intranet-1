@@ -448,8 +448,16 @@ window.toggleCamposAvaliacaoTeste = function () {
  * @param {string} candidatoId - ID do candidato
  */
 async function carregarHistoricoTokens(candidatoId) {
-  const container = document.getElementById("avaliacao-teste-historico-tokens");
-  if (!container) return;
+  // =================================================================
+  // ✅ CORREÇÃO AQUI:
+  // O ID no HTML é "avaliacao-teste-info-testes",
+  // mas a função original procurava por "avaliacao-teste-historico-tokens".
+  // =================================================================
+  const container = document.getElementById("avaliacao-teste-info-testes");
+  if (!container) {
+    console.error("Container 'avaliacao-teste-info-testes' não encontrado.");
+    return;
+  }
 
   try {
     container.innerHTML =
@@ -460,7 +468,7 @@ async function carregarHistoricoTokens(candidatoId) {
 
     if (!candidaturaSnap.exists()) {
       container.innerHTML =
-        '<p class="alert alert-error">Candidatura não encontrada.</p>';
+        '<p class="text-danger">Candidatura não encontrada.</p>';
       return;
     }
 
@@ -468,29 +476,31 @@ async function carregarHistoricoTokens(candidatoId) {
     const tokensAccesso = dados.testesenviados || [];
 
     if (tokensAccesso.length === 0) {
+      // Esta é a mensagem que você está vendo na imagem
       container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle me-2"></i>
-          Nenhum token de acesso foi enviado para este candidato ainda.
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Nenhum teste foi enviado para este candidato ainda.
         </div>
       `;
       return;
     }
 
-    let historicoHtml = "<div>";
+    // Se encontrar testes, substitui o "Nenhum teste..." pelo histórico
+    let historicoHtml = '<div class="tokens-historico">';
     historicoHtml += `<h6 class="mb-3"><i class="fas fa-history me-2"></i>Total de Testes: ${tokensAccesso.length}</h6>`;
 
     tokensAccesso.forEach((token, index) => {
       const status = token.status || "enviado";
+      let badgeClass = "status-pendente";
       let statusTexto = "Pendente";
-      let statusClass = "status-pendente";
 
       if (status === "respondido") {
+        badgeClass = "status-concluída";
         statusTexto = "Respondido";
-        statusClass = "status-concluída";
       } else if (status === "avaliado") {
+        badgeClass = "status-info"; // (Usando uma cor de 'info')
         statusTexto = "Avaliado";
-        statusClass = "status-pendente"; // (ou crie um 'status-avaliado')
       }
 
       const dataEnvio = token.dataenvio?.toDate
@@ -503,7 +513,7 @@ async function carregarHistoricoTokens(candidatoId) {
           })
         : "N/A";
 
-      // REFATORADO: Usa .info-card do design-system
+      // Usando o .info-card do design-system
       historicoHtml += `
         <div class="info-card mb-2">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -531,7 +541,7 @@ async function carregarHistoricoTokens(candidatoId) {
                   : ""
               }
             </div>
-            <span class="status-badge ${statusClass}">${statusTexto}</span>
+            <span class="status-badge ${badgeClass}">${statusTexto}</span>
           </div>
         </div>
       `;
@@ -542,7 +552,7 @@ async function carregarHistoricoTokens(candidatoId) {
   } catch (error) {
     console.error("Erro ao carregar histórico de tokens:", error);
     container.innerHTML = `
-      <p class="alert alert-error small">
+      <p class="text-danger small">
         <i class="fas fa-exclamation-circle me-2"></i>
         Erro ao carregar histórico: ${error.message}
       </p>
@@ -800,7 +810,42 @@ async function carregarMonitorTempoReal(candidatoId) {
     `;
   }
 }
+/**
+ * ✅ NOVA FUNÇÃO
+ * Abre o modal de avaliação de TESTE (Etapa 3 ou 4)
+ * Esta função deve ser chamada pelo botão "Avaliar Teste"
+ */
+window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
+  const modal = document.getElementById("modal-avaliacao-teste");
+  if (!modal) {
+    console.error("Modal 'modal-avaliacao-teste' não encontrado.");
+    return;
+  }
 
+  // Armazena o ID no modal para o formulário usar
+  modal.dataset.candidaturaId = candidatoId;
+
+  // 1. Preenche os dados básicos (Nome e Status)
+  const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
+  const statusEl = document.getElementById("avaliacao-teste-status-atual");
+
+  if (nomeEl) {
+    nomeEl.textContent = dadosCandidato.nome_completo || "Candidato(a)";
+  }
+  if (statusEl) {
+    const status = dadosCandidato.status_recrutamento || "N/A";
+    statusEl.textContent = status;
+    statusEl.className = `status-badge ${getStatusBadgeClass(status)}`;
+  }
+
+  // 2. Chama as funções helper para carregar dados assíncronos
+  // (Isso estava faltando)
+  carregarHistoricoTokens(candidatoId);
+  carregarEstatisticasTestes(candidatoId);
+
+  // 3. Exibe o modal
+  modal.classList.add("is-visible");
+};
 /**
  * ✅ NOVO - Alterna os campos de aprovação/reprovação no modal de triagem
  */
