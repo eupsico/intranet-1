@@ -75,7 +75,7 @@ function formatarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   const dataFormatada = `${dia}/${mes}/${ano}`;
   const [horas, minutos] = horaEntrevista.split(":");
   const horaFormatada = `${horas}:${minutos}`;
-  const nomeCandidato = candidato.nomecompleto || "Candidato(a)";
+  const nomeCandidato = candidato.nome_completo || "Candidato(a)";
 
   const mensagem = `
 Parabéns ${nomeCandidato}! 
@@ -110,7 +110,7 @@ Equipe de Recrutamento - EuPsico
  * Envia mensagem de WhatsApp com agendamento
  */
 function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
-  if (!candidato.telefonecontato) {
+  if (!candidato.telefone_contato) {
     console.warn("Entrevistas: Telefone não disponível para envio de WhatsApp");
     return;
   }
@@ -122,7 +122,7 @@ function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
       horaEntrevista
     );
     const mensagemCodificada = encodeURIComponent(mensagem);
-    const telefoneLimpo = candidato.telefonecontato.replace(/\D/g, "");
+    const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
 
     window.open(linkWhatsApp, "blank");
@@ -328,16 +328,15 @@ export async function renderizarEntrevistas(state) {
     return;
   }
 
-  conteudoRecrutamento.innerHTML = `<div class="loading-spinner"></div>`;
+  conteudoRecrutamento.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
     const q = query(
       candidatosCollection,
-      where("vagaid", "==", vagaSelecionadaId),
+      where("vaga_id", "==", vagaSelecionadaId),
       where("status_recrutamento", "in", [
-        "Triagem Aprovada",
-        "Entrevista Pendente",
-        "Entrevista RH Aprovada",
+        "Triagem Aprovada (Entrevista Pendente)",
+        "Entrevista RH Aprovada (Testes Pendente)",
         "Testes Pendente",
         "Testes Pendente (Enviado)",
       ])
@@ -358,19 +357,22 @@ export async function renderizarEntrevistas(state) {
       return;
     }
 
-    let listaHtml = `<div class="candidatos-container candidatos-grid">`;
+    let listaHtml = '<div class="candidatos-container candidatos-grid">';
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
       const statusAtual = cand.status_recrutamento || "N/A";
+
       let corStatus = "info";
+      if (statusAtual.includes("Aprovada")) {
+        corStatus = "success";
+      } else if (statusAtual.includes("Testes")) {
+        corStatus = "warning";
+      }
 
-      if (statusAtual.includes("Aprovada")) corStatus = "success";
-      else if (statusAtual.includes("Testes")) corStatus = "warning";
-
-      const telefone = cand.telefonecontato
-        ? cand.telefonecontato.replace(/\D/g, "")
+      const telefone = cand.telefone_contato
+        ? cand.telefone_contato.replace(/\D/g, "")
         : null;
       const linkWhatsApp = telefone
         ? `https://api.whatsapp.com/send?phone=55${telefone}`
@@ -379,7 +381,7 @@ export async function renderizarEntrevistas(state) {
       listaHtml += `
         <div class="card card-candidato-triagem" data-id="${candidatoId}">
           <div class="info-primaria">
-            <h4>${cand.nomecompleto || "Candidato Sem Nome"}</h4>
+            <h4>${cand.nome_completo || "Candidato Sem Nome"}</h4>
             <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
         / /g,
         "-"
@@ -390,7 +392,7 @@ export async function renderizarEntrevistas(state) {
         !telefone ? "disabled" : ""
       }">
               <i class="fab fa-whatsapp me-1"></i>
-              ${cand.telefonecontato || "N/A - Sem WhatsApp"}
+              ${cand.telefone_contato || "N/A - Sem WhatsApp"}
             </a>
           </div>
           <div class="acoes-candidato">
@@ -541,7 +543,7 @@ window.abrirModalAgendamentoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagemrh?.prerequisitosatendidos ||
     dadosCandidato.triagemrh?.comentariosgerais ||
@@ -615,16 +617,22 @@ async function submeterAgendamentoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    await updateDoc(candidaturaRef, {
-      status_recrutamento: "Entrevista Pendente",
-      "entrevistarh.agendamento": {
-        data: dataEntrevista,
-        hora: horaEntrevista,
-      },
+    await updateDoc(candidatoRef, {
+      status_recrutamento: "Testes Pendente (Enviado)",
+      testes_enviados: arrayUnion({
+        id: testeId,
+        tokenId: tokenId,
+        link: linkTeste,
+        data_envio: new Date(),
+        enviado_por: usuarioNome, // ✅ REQ 2
+        status: "enviado",
+      }),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}.`,
-        usuario: usuarioNome,
+        acao: `Teste enviado via Cloud Function. Token: ${
+          tokenId?.substring(0, 8) || "N/A"
+        }...`,
+        usuario: usuarioNome, // ✅ REQ 2
       }),
     });
 
@@ -633,7 +641,7 @@ async function submeterAgendamentoRH(e) {
       "success"
     );
 
-    if (dadosCandidatoAtual.telefonecontato) {
+    if (dadosCandidatoAtual.telefone_contato) {
       setTimeout(() => {
         enviarMensagemWhatsApp(
           dadosCandidatoAtual,
@@ -682,10 +690,11 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
       const emailEl = document.getElementById("teste-email-candidato");
       const whatsappEl = document.getElementById("teste-whatsapp-candidato");
 
-      if (nomeEl) nomeEl.textContent = dadosCandidato.nomecompleto || "N/A";
-      if (emailEl) emailEl.textContent = dadosCandidato.emailcandidato || "N/A";
+      if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo || "N/A";
+      if (emailEl)
+        emailEl.textContent = dadosCandidato.email_candidato || "N/A";
       if (whatsappEl)
-        whatsappEl.textContent = dadosCandidato.telefonecontato || "N/A";
+        whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
 
       await carregarTestesDisponiveis();
       modalEnviarTeste.classList.add("is-visible");
@@ -767,7 +776,7 @@ async function enviarTesteWhatsApp() {
 
   const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
   const testeId = document.getElementById("teste-selecionado")?.value;
-  const telefone = dadosCandidatoAtual?.telefonecontato;
+  const telefone = dadosCandidatoAtual?.telefone_contato;
   const btnEnviar = document.getElementById("btn-enviar-teste-whatsapp");
 
   if (!testeId || !telefone) {
@@ -803,7 +812,7 @@ async function enviarTesteWhatsApp() {
         ?.textContent || "Teste";
     const prazoDias = dataToken.prazoDias || 7;
 
-    const mensagem = `Olá ${dadosCandidatoAtual.nomecompleto || "Candidato"}!
+    const mensagem = `Olá ${dadosCandidatoAtual.nome_completo || "Candidato"}!
 
 Chegou a hora de você realizar o próximo teste da sua avaliação!
 
@@ -987,7 +996,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
 
   const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
@@ -1152,7 +1161,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
         const dados = doc.data();
         gestores.push({
           id: doc.id,
-          nome: dados.nome || dados.nomecompleto || "Gestor",
+          nome: dados.nome || dados.nome_completo || "Gestor",
           email: dados.email || "",
           telefone: dados.telefone || dados.telefonemov || "",
         });
@@ -1378,10 +1387,10 @@ window.enviarWhatsAppGestor = function () {
     return;
   }
 
-  const nomeCandidato = dadosCandidatoAtual.nomecompleto || "Candidato(a)";
+  const nomeCandidato = dadosCandidatoAtual.nome_completo || "Candidato(a)";
   const telefoneCandidato =
-    dadosCandidatoAtual.telefonecontato || "Não informado";
-  const emailCandidato = dadosCandidatoAtual.emailcandidato || "Não informado";
+    dadosCandidatoAtual.telefone_contato || "Não informado";
+  const emailCandidato = dadosCandidatoAtual.email_candidato || "Não informado";
   const statusCandidato =
     dadosCandidatoAtual.status_recrutamento || "Em avaliação";
   const vagaInfo = dadosCandidatoAtual.vagatitulo || "Vaga não especificada";
@@ -1493,7 +1502,7 @@ window.abrirModalAvaliacaoRH = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoRH.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nomecompleto || "Candidato(a)";
+  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagemrh?.prerequisitosatendidos ||
     dadosCandidato.triagemrh?.comentariosgerais ||
