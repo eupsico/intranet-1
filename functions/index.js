@@ -1249,98 +1249,232 @@ exports.salvarCandidatura = onCall(
   }
 );
 
-/**
- * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/validarTokenTeste
- * Método: POST
- * Body: { token: "xxx" }
- *
- * Retorna dados do teste se o token for válido
- */
-exports.validarTokenTeste = functions.https.onRequest((req, res) => {
+exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
-      // ✅ Apenas POST permitido
       if (req.method !== "POST") {
-        return res.status(405).json({
-          erro: "Método não permitido. Use POST.",
-        });
+        return res
+          .status(405)
+          .json({ erro: "Método não permitido. Use POST." });
       }
 
-      const { token } = req.body;
+      const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
 
-      // ✅ Valida se token foi informado
-      if (!token || typeof token !== "string") {
-        return res.status(400).json({
-          erro: "Token inválido ou não informado",
-        });
+      if (!token) {
+        return res.status(400).json({ erro: "Token não informado" });
       }
 
-      console.log(`🔹 Validando token: ${token.substring(0, 10)}...`);
+      console.log(`Salvando respostas do token ${token.substring(0, 10)}...`);
 
-      // ✅ Busca o token no Firestore
+      // 1. Busca o token
       const tokenSnap = await db
-        .collection("tokens_acesso")
+        .collection("tokensacesso")
         .where("token", "==", token)
         .limit(1)
         .get();
 
       if (tokenSnap.empty) {
-        console.log("❌ Token não encontrado");
-        return res.status(404).json({
-          erro: "Token inválido ou expirado",
-        });
+        return res.status(404).json({ erro: "Token não encontrado" });
       }
 
       const tokenDoc = tokenSnap.docs[0];
       const dadosToken = tokenDoc.data();
+      const tokenId = tokenDoc.id;
 
-      // ✅ Verifica se o token foi usado
+      // 2. Verifica se já foi respondido
       if (dadosToken.usado === true) {
-        console.log("❌ Token já foi utilizado");
-        return res.status(403).json({
-          erro: "Este teste já foi respondido",
-        });
+        return res.status(403).json({ erro: "Este teste já foi respondido" });
       }
 
-      // ✅ Verifica se o token expirou
+      // 3. Verifica expiração
       const agora = new Date();
       const dataExpiracao =
         dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
 
       if (dataExpiracao && agora > new Date(dataExpiracao)) {
-        console.log("❌ Token expirado");
+        return res.status(403).json({ erro: "Token expirado" });
+      }
+
+      // 4. Atualiza o token como utilizado
+      await db
+        .collection("tokensacesso")
+        .doc(tokenId)
+        .update({
+          usado: true,
+          respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
+          respostas: respostas,
+          tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+          navegador: navegador || "desconhecido",
+          ipAddress: ipAddress || "não registrado",
+        });
+
+      // 5. Busca dados do teste
+      const testeSnap = await db
+        .collection("estudosdecaso")
+        .doc(dadosToken.testeId)
+        .get();
+
+      const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : "Teste";
+
+      // 6. Busca a candidatura para atualizar o array testesenviados
+      const candidaturaRef = db
+        .collection("candidaturas")
+        .doc(dadosToken.candidatoId);
+
+      const candidaturaSnap = await candidaturaRef.get();
+      let testesEnviadosAtualizado = [];
+
+      const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
+
+      if (candidaturaSnap.exists) {
+        const dadosCandidatura = candidaturaSnap.data();
+        testesEnviadosAtualizado = dadosCandidatura.testesenviados || [];
+
+        // Encontra o teste enviado pelo tokenId e atualiza seu status
+        const testeIndex = testesEnviadosAtualizado.findIndex(
+          (t) => t.tokenId === tokenId
+        );
+
+        if (testeIndex !== -1) {
+          console.log(
+            `Atualizando status do teste índice ${testeIndex} para respondido`
+          );
+          testesEnviadosAtualizado[testeIndex].status = "respondido";
+          testesEnviadosAtualizado[testeIndex].dataResposta =
+            admin.firestore.FieldValue.serverTimestamp();
+          testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
+          testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0; // ✅ CORRIGIDO
+        } else {
+          console.warn(
+            `Token ${tokenId} não encontrado no array testesenviados da candidatura ${dadosToken.candidatoId}`
+          );
+        }
+      }
+
+      // 7. Salva as respostas na coleção testesrespondidos
+      await db
+        .collection("testesrespondidos")
+        .doc(tokenId)
+        .set({
+          testeId: dadosToken.testeId,
+          candidatoId: dadosToken.candidatoId,
+          tokenId: tokenId,
+          nomeTeste: nomeTeste,
+          dataResposta: admin.firestore.FieldValue.serverTimestamp(),
+          data_envio: dadosToken.criadoEm, // ✅ ADICIONADO: data_envio
+          tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
+          respostas: respostas,
+          respostasCount: Object.keys(respostas).length,
+          titulovagaoriginal: candidaturaSnap.exists
+            ? candidaturaSnap.data().titulovagaoriginal
+            : "",
+        });
+
+      // 8. Atualiza o documento da candidatura
+      await candidaturaRef.update({
+        testesenviados: testesEnviadosAtualizado,
+        historico: admin.firestore.FieldValue.arrayUnion({
+          data: admin.firestore.FieldValue.serverTimestamp(),
+          acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
+          usuario: "candidato-via-token",
+        }),
+      });
+
+      console.log("Respostas salvas e status atualizado com sucesso!");
+
+      return res.status(200).json({
+        sucesso: true,
+        mensagem: "Respostas registradas com sucesso!",
+        tokenId: tokenId,
+        dataResposta: agora.toISOString(),
+        tempoGasto: tempoGasto,
+      });
+    } catch (error) {
+      console.error("Erro ao salvar respostas:", error);
+      return res.status(500).json({
+        erro: "Erro ao salvar respostas",
+        detalhes: error.message,
+      });
+    }
+  })
+);
+
+exports.validarTokenTeste = functions.https.onRequest((req, res) =>
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res
+          .status(405)
+          .json({ erro: "Método não permitido. Use POST." });
+      }
+
+      const token = req.body.token;
+
+      if (!token || typeof token !== "string") {
+        return res
+          .status(400)
+          .json({ erro: "Token inválido ou não informado" });
+      }
+
+      console.log(`Validando token ${token.substring(0, 10)}...`);
+
+      // Busca o token no Firestore
+      const tokenSnap = await db
+        .collection("tokensacesso")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+
+      if (tokenSnap.empty) {
+        console.log("Token não encontrado");
+        return res.status(404).json({ erro: "Token inválido ou expirado" });
+      }
+
+      const tokenDoc = tokenSnap.docs[0];
+      const dadosToken = tokenDoc.data();
+
+      // Verifica se o token foi usado
+      if (dadosToken.usado === true) {
+        console.log("Token já foi utilizado");
+        return res.status(403).json({ erro: "Este teste já foi respondido" });
+      }
+
+      // Verifica se o token expirou
+      const agora = new Date();
+      const dataExpiracao =
+        dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
+
+      if (dataExpiracao && agora > new Date(dataExpiracao)) {
+        console.log("Token expirado");
         return res.status(403).json({
           erro: "Token expirado. Solicite um novo link.",
           expiraEm: dataExpiracao?.toISOString(),
         });
       }
 
-      // ✅ Busca o teste
+      // Busca o teste
       const testeSnap = await db
-        .collection("estudos_de_caso")
+        .collection("estudosdecaso")
         .doc(dadosToken.testeId)
         .get();
 
       if (!testeSnap.exists) {
-        console.log("❌ Teste não encontrado");
-        return res.status(404).json({
-          erro: "Teste não encontrado",
-        });
+        console.log("Teste não encontrado");
+        return res.status(404).json({ erro: "Teste não encontrado" });
       }
 
       const dadosTeste = testeSnap.data();
 
-      // ✅ Busca dados do candidato
+      // Busca dados do candidato
       const candidatoSnap = await db
         .collection("candidaturas")
         .doc(dadosToken.candidatoId)
         .get();
 
-      const dadosCandidato = candidatoSnap.exists ? candidatoSnap.data() : {};
+      const dadosCandidato = candidatoSnap.exists ? candidatoSnap.data() : null;
 
-      console.log("✅ Token validado com sucesso!");
+      console.log("Token validado com sucesso!");
 
-      // ✅ Retorna dados completos
       return res.status(200).json({
         sucesso: true,
         tokenId: tokenDoc.id,
@@ -1348,212 +1482,63 @@ exports.validarTokenTeste = functions.https.onRequest((req, res) => {
           id: dadosToken.candidatoId,
           nome:
             dadosToken.nomeCandidato ||
-            dadosCandidato.nome_completo ||
+            dadosCandidato?.nomecompleto ||
             "Candidato",
-          email: dadosCandidato.email_candidato || "não informado",
+          email: dadosCandidato?.emailcandidato || "não informado",
         },
         teste: {
           id: dadosToken.testeId,
           titulo: dadosTeste.titulo || "Teste",
           descricao: dadosTeste.descricao || "",
-          tipo: dadosTeste.tipo || "estudoDeCaso",
+          tipo: dadosTeste.tipo || "estudo-de-caso",
           conteudo: dadosTeste.conteudo || "",
           perguntas: dadosTeste.perguntas || [],
-          tempoLimite: dadosTeste.tempo_limite_minutos || 45,
+          tempoLimite: dadosTeste.tempolimiteminutos || 45,
         },
         prazoDias: dadosToken.prazoDias || 7,
         expiraEm: dataExpiracao,
         diasRestantes: Math.ceil(
           (new Date(dataExpiracao) - agora) / (1000 * 60 * 60 * 24)
         ),
+        data_envio: dadosToken.criadoEm?.toDate?.() || dadosToken.criadoEm, // ✅ ADICIONADO
       });
     } catch (error) {
-      console.error("❌ Erro ao validar token:", error);
+      console.error("Erro ao validar token:", error);
       return res.status(500).json({
         erro: "Erro interno do servidor",
         detalhes: error.message,
       });
     }
-  });
-});
+  })
+);
 
-// ===================================================================
-// CLOUD FUNCTION - exports.salvarRespostasTeste
-// ATUALIZADA (v2.0) - Agora atualiza o status em 'testes_enviados'
-// ===================================================================
-exports.salvarRespostasTeste = functions.https.onRequest((req, res) => cors(req, res, async () => {
-  try {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ erro: 'Método não permitido. Use POST.' });
-    }
-
-    const { token, respostas, tempoGasto, navegador, ipAddress } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ erro: 'Token não informado' });
-    }
-
-    console.log(`Salvando respostas do token ${token.substring(0, 10)}...`);
-
-    // 1. Busca o token
-    const tokenSnap = await db
-      .collection('tokensacesso')
-      .where('token', '==', token)
-      .limit(1)
-      .get();
-
-    if (tokenSnap.empty) {
-      return res.status(404).json({ erro: 'Token não encontrado' });
-    }
-
-    const tokenDoc = tokenSnap.docs[0];
-    const dadosToken = tokenDoc.data();
-    const tokenId = tokenDoc.id;
-
-    // 2. Verifica se já foi respondido
-    if (dadosToken.usado === true) {
-      return res.status(403).json({ erro: 'Este teste já foi respondido' });
-    }
-
-    // 3. Verifica expiração
-    const agora = new Date();
-    const dataExpiracao = dadosToken.expiraEm?.toDate?.() || dadosToken.expiraEm;
-
-    if (dataExpiracao && agora > new Date(dataExpiracao)) {
-      return res.status(403).json({ erro: 'Token expirado' });
-    }
-
-    // 4. Atualiza o token como utilizado
-    await db
-      .collection('tokensacesso')
-      .doc(tokenId)
-      .update({
-        usado: true,
-        respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
-        respostas: respostas,
-        tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
-        navegador: navegador || 'desconhecido',
-        ipAddress: ipAddress || 'não registrado',
-      });
-
-    // 5. Busca dados do teste
-    const testeSnap = await db
-      .collection('estudosdecaso')
-      .doc(dadosToken.testeId)
-      .get();
-
-    const nomeTeste = testeSnap.exists ? testeSnap.data().titulo : 'Teste';
-
-    // 6. Busca a candidatura para atualizar o array testesenviados
-    const candidaturaRef = db
-      .collection('candidaturas')
-      .doc(dadosToken.candidatoId);
-
-    const candidaturaSnap = await candidaturaRef.get();
-    let testesEnviadosAtualizado = [];
-
-    const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
-
-    if (candidaturaSnap.exists) {
-      const dadosCandidatura = candidaturaSnap.data();
-      testesEnviadosAtualizado = dadosCandidatura.testesenviados || [];
-
-      // Encontra o teste enviado pelo tokenId e atualiza seu status
-      const testeIndex = testesEnviadosAtualizado.findIndex(t => t.tokenId === tokenId);
-
-      if (testeIndex !== -1) {
-        console.log(`Atualizando status do teste índice ${testeIndex} para respondido`);
-        testesEnviadosAtualizado[testeIndex].status = 'respondido';
-        testesEnviadosAtualizado[testeIndex].dataResposta = admin.firestore.FieldValue.serverTimestamp();
-        testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
-        testesEnviadosAtualizado[testeIndex].tempoGasto = tempoGasto || 0; // ✅ CORRIGIDO
-      } else {
-        console.warn(`Token ${tokenId} não encontrado no array testesenviados da candidatura ${dadosToken.candidatoId}`);
-      }
-    }
-
-    // 7. Salva as respostas na coleção testesrespondidos
-    await db
-      .collection('testesrespondidos')
-      .doc(tokenId)
-      .set({
-        testeId: dadosToken.testeId,
-        candidatoId: dadosToken.candidatoId,
-        tokenId: tokenId,
-        nomeTeste: nomeTeste,
-        dataResposta: admin.firestore.FieldValue.serverTimestamp(),
-        data_envio: dadosToken.criadoEm, // ✅ ADICIONADO: data_envio
-        tempoGasto: tempoGasto || 0, // ✅ CORRIGIDO: tempoGasto (não tempoGastos)
-        respostas: respostas,
-        respostasCount: Object.keys(respostas).length,
-        titulovagaoriginal: candidaturaSnap.exists ? candidaturaSnap.data().titulovagaoriginal : '',
-      });
-
-    // 8. Atualiza o documento da candidatura
-    await candidaturaRef.update({
-      testesenviados: testesEnviadosAtualizado,
-      historico: admin.firestore.FieldValue.arrayUnion({
-        data: admin.firestore.FieldValue.serverTimestamp(),
-        acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${tempoGasto}s`,
-        usuario: 'candidato-via-token',
-      }),
-    });
-
-    console.log('Respostas salvas e status atualizado com sucesso!');
-
-    return res.status(200).json({
-      sucesso: true,
-      mensagem: 'Respostas registradas com sucesso!',
-      tokenId: tokenId,
-      dataResposta: agora.toISOString(),
-      tempoGasto: tempoGasto,
-    });
-  } catch (error) {
-    console.error('Erro ao salvar respostas:', error);
-    return res.status(500).json({
-      erro: 'Erro ao salvar respostas',
-      detalhes: error.message,
-    });
-  }
-})
-
-
-// ============================================
-// CLOUD FUNCTION: Gerar Token Teste
-// ============================================
-
-/**
- * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/gerarTokenTeste
- * Método: POST
- * Body: { candidatoId, testeId, prazoDias }
- */
-exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
+exports.gerarTokenTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
       if (req.method !== "POST") {
-        return res.status(405).json({
-          erro: "Método não permitido. Use POST.",
-        });
+        return res
+          .status(405)
+          .json({ erro: "Método não permitido. Use POST." });
       }
 
       const { candidatoId, testeId, prazoDias = 7 } = req.body;
 
       if (!candidatoId || !testeId) {
-        return res.status(400).json({
-          erro: "candidatoId e testeId são obrigatórios",
-        });
+        return res
+          .status(400)
+          .json({ erro: "candidatoId e testeId são obrigatórios" });
       }
 
-      console.log(`🔹 Gerando token para candidato: ${candidatoId}`);
+      console.log(`Gerando token para candidato ${candidatoId}`);
 
-      // ✅ Gera token aleatório
+      // Gera token aleatório
       const token = generateRandomToken();
 
-      // ✅ Calcula data de expiração
+      // Calcula data de expiração
       const dataExpiracao = new Date();
       dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
 
-      // ✅ Busca dados do candidato
+      // Busca dados do candidato
       const candSnap = await db
         .collection("candidaturas")
         .doc(candidatoId)
@@ -1561,13 +1546,14 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
 
       const dadosCandidato = candSnap.exists ? candSnap.data() : {};
 
-      // ✅ Cria documento do token
-      const novoToken = await db.collection("tokens_acesso").add({
+      // ✅ CORRIGIDO: Usando data_envio como campo para rastrear quando foi gerado
+      const novoToken = await db.collection("tokensacesso").add({
         token: token,
         testeId: testeId,
         candidatoId: candidatoId,
-        nomeCandidato: dadosCandidato.nome_completo || "Candidato",
+        nomeCandidato: dadosCandidato.nomecompleto || "Candidato",
         criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        data_envio: admin.firestore.FieldValue.serverTimestamp(), // ✅ ADICIONADO
         expiraEm: dataExpiracao,
         prazoDias: prazoDias,
         usado: false,
@@ -1575,10 +1561,9 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
         respostas: {},
       });
 
-      console.log("✅ Token gerado com sucesso!");
+      console.log("Token gerado com sucesso!");
 
-      // ✅ Retorna URL com token (usando a URL correta)
-      const urlTeste = `https://intranet.eupsico.org.br/public/avaliacao-publica.html?token=${token}`;
+      const urlTeste = `https://intranet.eupsico.org.br/publico/avaliacao-publica.html?token=${token}`;
 
       return res.status(200).json({
         sucesso: true,
@@ -1590,18 +1575,14 @@ exports.gerarTokenTeste = functions.https.onRequest((req, res) => {
         mensagem: "Token gerado com sucesso! Compartilhe o link acima.",
       });
     } catch (error) {
-      console.error("❌ Erro ao gerar token:", error);
+      console.error("Erro ao gerar token:", error);
       return res.status(500).json({
         erro: "Erro ao gerar token",
         detalhes: error.message,
       });
     }
-  });
-});
-
-// ============================================
-// CLOUD FUNCTION: Listar Tokens (para debug)
-// ============================================
+  })
+);
 
 /**
  * URL: https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net/listarTokens
