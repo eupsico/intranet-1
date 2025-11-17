@@ -80,7 +80,7 @@
     </div>
   </div>
 
-  <div id="modal-avaliacao-teste" class="modal-overlay">
+<div id="modal-avaliacao-teste" class="modal-overlay">
   <div class="modal-content modal-lg">
     <div class="modal-header">
       <h3><i class="fas fa-clipboard-check me-2"></i> Avaliar Teste</h3>
@@ -106,8 +106,150 @@
           </p>
         </div>
 
-        <div id="avaliacao-teste-info-testes" class="mt-3">
+        <!-- ✅ ADICIONADO: Abas para visualizar respostas -->
+        <ul class="nav nav-tabs mt-4" id="abas-visualizacao-respostas" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link active" 
+              id="aba-painel-integrado-tab" 
+              data-bs-toggle="tab" 
+              data-bs-target="#aba-painel-integrado" 
+              type="button" 
+              role="tab">
+              <i class="fas fa-list me-2"></i>Painel Integrado
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              id="aba-historico-tab" 
+              data-bs-toggle="tab" 
+              data-bs-target="#aba-historico" 
+              type="button" 
+              role="tab">
+              <i class="fas fa-history me-2"></i>Histórico de Tokens
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              id="aba-dashboard-tab" 
+              data-bs-toggle="tab" 
+              data-bs-target="#aba-dashboard" 
+              type="button" 
+              role="tab">
+              <i class="fas fa-chart-bar me-2"></i>Dashboard
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              id="aba-tempo-real-tab" 
+              data-bs-toggle="tab" 
+              data-bs-target="#aba-tempo-real" 
+              type="button" 
+              role="tab">
+              <i class="fas fa-video me-2"></i>Tempo Real
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              id="aba-email-tab" 
+              data-bs-toggle="tab" 
+              data-bs-target="#aba-email" 
+              type="button" 
+              role="tab">
+              <i class="fas fa-envelope me-2"></i>Enviar Resumo
+            </button>
+          </li>
+        </ul>
+
+        <!-- Conteúdo das abas -->
+        <div class="tab-content mt-3" id="conteudo-abas-visualizacao">
+          <!-- Aba 1: Painel Integrado -->
+          <div class="tab-pane fade show active" id="aba-painel-integrado" role="tabpanel">
+            <div id="avaliacao-teste-info-testes" class="mt-3">
+            </div>
           </div>
+
+          <!-- Aba 2: Histórico de Tokens -->
+          <div class="tab-pane fade" id="aba-historico" role="tabpanel">
+            <div id="avaliacao-teste-historico-tokens" class="mt-3">
+              <p class="text-muted small">
+                <i class="fas fa-spinner fa-spin me-2"></i>Carregando histórico...
+              </p>
+            </div>
+          </div>
+
+          <!-- Aba 3: Dashboard -->
+          <div class="tab-pane fade" id="aba-dashboard" role="tabpanel">
+            <div id="avaliacao-teste-dashboard" class="mt-3">
+              <p class="text-muted small">
+                <i class="fas fa-spinner fa-spin me-2"></i>Carregando dados...
+              </p>
+            </div>
+          </div>
+
+          <!-- Aba 4: Tempo Real -->
+          <div class="tab-pane fade" id="aba-tempo-real" role="tabpanel">
+            <div id="avaliacao-teste-tempo-real" class="mt-3">
+              <p class="text-muted small">
+                <i class="fas fa-spinner fa-spin me-2"></i>Monitorando respostas em tempo real...
+              </p>
+            </div>
+          </div>
+
+          <!-- Aba 5: Email -->
+          <div class="tab-pane fade" id="aba-email" role="tabpanel">
+            <div id="avaliacao-teste-email" class="mt-3">
+              <form id="form-enviar-resumo-email">
+                <div class="form-group">
+                  <label for="email-destino-resumo" class="form-label">
+                    <i class="fas fa-envelope me-2"></i>Email de Destino
+                  </label>
+                  <input 
+                    type="email" 
+                    id="email-destino-resumo" 
+                    class="form-control" 
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="assunto-email-resumo" class="form-label">
+                    Assunto (Opcional)
+                  </label>
+                  <input 
+                    type="text" 
+                    id="assunto-email-resumo" 
+                    class="form-control" 
+                    placeholder="Deixe em branco para usar padrão"
+                  />
+                </div>
+                <div class="form-check">
+                  <input 
+                    type="checkbox" 
+                    id="incluir-graficos-email" 
+                    class="form-check-input"
+                    checked
+                  />
+                  <label class="form-check-label" for="incluir-graficos-email">
+                    Incluir gráficos e estatísticas
+                  </label>
+                </div>
+                <button 
+                  type="button" 
+                  id="btn-enviar-email-resumo" 
+                  class="btn btn-success mt-3"
+                  onclick="enviarResumoEmailTeste()"
+                >
+                  <i class="fas fa-paper-plane me-2"></i>Enviar Resumo por Email
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
 
         <fieldset class="mt-4">
           <legend>Resultado da Avaliação do Teste</legend>
@@ -118,7 +260,7 @@
               <label class="radio-label">
                 <input
                   type="radio"
-                  name="resultado_teste"
+                  name="resultadoteste"
                   value="Aprovado"
                   required
                 />
@@ -130,7 +272,7 @@
               <label class="radio-label">
                 <input
                   type="radio"
-                  name="resultado_teste"
+                  name="resultadoteste"
                   value="Reprovado"
                   required
                 />
@@ -205,9 +347,10 @@
           <i class="fas fa-check-circle me-2"></i> Registrar Avaliação
         </button>
       </div>
-      </form>
+    </form>
   </div>
 </div>
+
 
 
   <div id="modal-edicao-cronograma" class="modal-overlay">
