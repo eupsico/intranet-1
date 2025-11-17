@@ -997,56 +997,6 @@ async function carregarGestores() {
 }
 
 /**
- * Fecha o modal de avaliação de teste
- */
-function fecharModalAvaliacaoTeste() {
-  console.log("🔹 Entrevistas: Fechando modal de avaliação de teste");
-  const modalOverlay = document.getElementById("modal-avaliacao-teste");
-  if (modalOverlay) {
-    modalOverlay.classList.remove("is-visible");
-  }
-}
-// ============================================
-// CARREGAR GESTORES DO FIRESTORE (✅ ÚNICA)
-// ============================================
-
-/**
- * Carrega lista de gestores da coleção 'usuarios'
- */
-async function carregarGestores() {
-  console.log("🔹 Carregando gestores do Firestore...");
-
-  try {
-    const usuariosRef = collection(db, "usuarios");
-    const q = query(usuariosRef, where("funcoes", "array-contains", "gestor"));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      console.log("ℹ️ Nenhum gestor encontrado");
-      return [];
-    }
-
-    const gestores = [];
-    snapshot.forEach((docSnap) => {
-      const gestor = docSnap.data();
-      gestores.push({
-        id: docSnap.id,
-        nome: gestor.nome || gestor.email || "Gestor",
-        email: gestor.email || "",
-        telefone: gestor.telefone || gestor.celular || "",
-        ...gestor,
-      });
-    });
-
-    console.log(`✅ ${gestores.length} gestor(es) carregado(s)`);
-    return gestores;
-  } catch (error) {
-    console.error("❌ Erro ao carregar gestores:", error);
-    return [];
-  }
-}
-
-/**
  * Envia mensagem de WhatsApp para o gestor selecionado
  */
 window.enviarWhatsAppGestor = function () {
