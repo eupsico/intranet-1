@@ -339,7 +339,7 @@ export async function renderizarEntrevistas(state) {
         "Entrevista Pendente",
         "Entrevista RH Aprovada",
         "Testes Pendente",
-        "Testes Pendente Enviado",
+        "Testes Pendente (Enviado)",
       ])
     );
 
@@ -857,7 +857,7 @@ async function salvarEnvioTeste(candidatoId, testeId, linkTeste, tokenId) {
     const candidatoRef = doc(db, "candidaturas", candidatoId);
 
     await updateDoc(candidatoRef, {
-      status_recrutamento: "Testes Pendente Enviado",
+      status_recrutamento: "Testes Pendente (Enviado)",
       testesenviados: arrayUnion({
         id: testeId,
         tokenId: tokenId,
