@@ -1702,3 +1702,51 @@ legend {
   flex-shrink: 0; /* Impede que o badge encolha */
   white-space: nowrap;
 }
+/* ============================================
+   23. COMPONENTES - LISTAS SIMPLES
+   (Substituto for .list-group do Bootstrap)
+   ============================================ */
+
+/* Usado nos modais para listar testes já enviados */
+.simple-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+  overflow: hidden;
+}
+
+.simple-list-item {
+  padding: 12px 15px;
+  background-color: var(--cor-surface);
+  border-bottom: 1px solid var(--cor-borda);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.simple-list-item:last-child {
+  border-bottom: none;
+}
+
+.simple-list-item:nth-of-type(even) {
+  background-color: var(--cor-fundo);
+}
+
+.simple-list-item-content {
+  flex-grow: 1;
+}
+
+.simple-list-item-content strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--cor-texto-principal);
+  margin-bottom: 4px;
+}
+
+.simple-list-item-content small {
+  font-size: 0.85rem;
+  color: var(--cor-texto-secundario);
+}
