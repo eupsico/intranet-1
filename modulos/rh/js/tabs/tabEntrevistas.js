@@ -1292,7 +1292,7 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
 
         testesEnviados.forEach((teste) => {
           // ✅ CORREÇÃO: Usando formatarDataEnvio
-          const dataEnvio = formatarDataEnvio(teste.data_envio);
+          const data_envio = formatarDataEnvio(teste.data_envio);
           const status = teste.status || "enviado";
 
           let statusClass = "status-pendente";
@@ -1309,7 +1309,7 @@ window.abrirModalEnviarTeste = async function (candidatoId, dadosCandidato) {
                   teste.nomeTeste ||
                   "Teste (ID: " + (teste.id?.substring(0, 5) || "N/A") + ")"
                 }</strong>
-                <small>Enviado em: ${dataEnvio} por ${
+                <small>Enviado em: ${data_envio} por ${
             teste.enviado_por || "N/A"
           }</small>
                 <small class="d-block mt-1"><strong>Link:</strong> <a href="${
