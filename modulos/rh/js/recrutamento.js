@@ -1122,13 +1122,11 @@ window.enviarResumoEmailTeste = async function () {
 
     tokensAccesso.forEach((token, index) => {
       const dataEnvio = token.dataenvio?.toDate
-        ? token.dataenvio
-            .toDate()
-            .toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
+        ? token.dataenvio.toDate().toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
         : "N/A";
 
       const status = token.status || "enviado";
@@ -1352,6 +1350,71 @@ function handleTabClick(e) {
     default:
       conteudoRecrutamento.innerHTML =
         '<p class="alert alert-warning">Selecione uma etapa do processo.</p>';
+  }
+}
+/**
+ * Carrega estatísticas rápidas dos testes
+ */
+async function carregarEstatisticasTestes(candidatoId) {
+  try {
+    const candidaturaRef = doc(candidatosCollection, candidatoId);
+    const candidaturaSnap = await getDoc(candidaturaRef);
+
+    if (!candidaturaSnap.exists()) return;
+
+    const dados = candidaturaSnap.data();
+    const tokensAccesso = dados.testesenviados || [];
+
+    if (tokensAccesso.length === 0) {
+      document.getElementById("avaliacao-teste-stats").innerHTML = `
+        <p class="text-muted">Nenhum teste enviado ainda.</p>
+      `;
+      return;
+    }
+
+    const totalTestes = tokensAccesso.length;
+    const testsRespondidos = tokensAccesso.filter(
+      (t) => t.status === "respondido" || t.status === "avaliado"
+    ).length;
+    const testsPendentes = totalTestes - testsRespondidos;
+
+    let tempoTotal = 0;
+    let testComTempo = 0;
+    tokensAccesso.forEach((t) => {
+      if (t.tempoGasto) {
+        tempoTotal += t.tempoGasto;
+        testComTempo++;
+      }
+    });
+    const tempoMedio =
+      testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
+
+    const statsHtml = `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #0078d4;">
+          <strong style="font-size: 18px; color: #0078d4;">${totalTestes}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Total de Testes</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #28a745;">
+          <strong style="font-size: 18px; color: #28a745;">${testsRespondidos}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Respondidos</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #ffc107;">
+          <strong style="font-size: 18px; color: #ffc107;">${testsPendentes}</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Pendentes</p>
+        </div>
+        <div style="background: white; padding: 10px; border-radius: 4px; text-align: center; border-left: 3px solid #6f42c1;">
+          <strong style="font-size: 18px; color: #6f42c1;">${
+            tempoMedio > 0 ? Math.floor(tempoMedio / 60) + "m" : "N/A"
+          }</strong>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Tempo Médio</p>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("avaliacao-teste-stats").innerHTML = statsHtml;
+  } catch (error) {
+    console.error("Erro ao carregar estatísticas:", error);
   }
 }
 

@@ -813,7 +813,7 @@ window.abrirModalAvaliacaoTeste = async function (candidatoId, dadosCandidato) {
           </div>
         `;
       });
-
+      await carregarEstatisticasTestes(candidatoId);
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
