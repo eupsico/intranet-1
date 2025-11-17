@@ -1677,9 +1677,7 @@ async function submeterAvaliacaoRH(e) {
     );
 
     console.log("Entrevistas: Avaliação salva no Firestore");
-
     fecharModalAvaliacao();
-
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
