@@ -597,6 +597,7 @@ table tbody tr:hover {
 .form-group input[type="date"],
 .form-group input[type="time"],
 .form-group input[type="tel"],
+.form-group input[type="url"],
 .form-group input[type="password"],
 .form-group select,
 .form-group textarea {
@@ -1443,4 +1444,40 @@ legend {
   word-wrap: break-word;
 }
 
-/* Fim do Design System */
+/* ============================================
+   19. COMPONENTES - FORMULÁRIOS (EXTENSÕES)
+   ============================================ */
+   
+/* Componente Genérico: Input com Ícone
+  Uso:
+  <div class="form-group">
+    <div class="input-icon-group">
+      <i class="icon fas fa-algum-icone"></i>
+      <input type="text" ... />
+    </div>
+  </div>
+*/
+.input-icon-group {
+  position: relative;
+}
+
+/* O seletor (.form-group .input-icon-group input) é 
+  específico o suficiente para sobrescrever o padding padrão 
+  sem precisar de !important.
+*/
+.form-group .input-icon-group input {
+  padding-left: 45px;
+}
+
+/* Classe genérica para o ícone
+*/
+.input-icon-group .icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cor-secundaria); /* Usando a cor do design system */
+  font-size: 18px;
+  pointer-events: none; /* Permite clicar no input "através" do ícone */
+  z-index: 2;
+}
