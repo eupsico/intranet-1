@@ -116,8 +116,8 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
   try {
     const result = await salvarCandidaturaCallable(dadosCandidatura);
     if (result.data && result.data.success) {
-      // ✅ NOVA LÓGICA: Chamar a tela de sucesso permanente
-      mostrarSucessoCandidatura(dadosCandidatura.nome_completo);
+      // ✅ CAMPO RENOMEADO: nome_completo → nome_candidato
+      mostrarSucessoCandidatura(dadosCandidatura.nome_candidato);
     } else {
       throw new Error(
         result.data.message || "Erro desconhecido ao processar candidatura."
@@ -132,7 +132,6 @@ async function enviarCandidaturaParaFirebase(dadosCandidatura) {
     );
   }
 }
-
 // ====================================================================
 // FUNÇÃO: Carregar Vagas Ativas
 // ====================================================================
@@ -214,7 +213,7 @@ async function buscarCEP() {
 }
 
 // ====================================================================
-// FUNÇÃO: Handler Principal do Formulário
+// FUNÇÃO: Handler Principal do Formulário - ATUALIZADO
 // ====================================================================
 async function handleCandidatura(e) {
   e.preventDefault();
@@ -288,37 +287,39 @@ async function handleCandidatura(e) {
 
     // Coleta todos os dados do formulário para enviar
     const dadosFormulario = {
-      data_nascimento: document.getElementById("data-nascimento").value,
-      genero: document.getElementById("genero").value,
-      escolaridade: document.getElementById("escolaridade").value,
-      area_formacao: document.getElementById("area-formacao").value,
-      especializacoes: document.getElementById("especializacoes").value,
-      disponibilidade_inicio: document.getElementById("disponibilidade-inicio")
-        .value,
-      experiencia_area: document.getElementById("experiencia-area").value,
-      linkedin_url: document.getElementById("linkedin-url").value,
-      portfolio_url: document.getElementById("portfolio-url").value,
-      motivacao: document.getElementById("motivacao").value,
-      pcd: document.getElementById("pcd").value,
+      data_nasc_candidato: document.getElementById("data-nascimento").value,
+      genero_candidato: document.getElementById("genero").value,
+      escolaridade_candidato: document.getElementById("escolaridade").value,
+      area_formacao_candidato: document.getElementById("area-formacao").value,
+      especializacoes_candidato:
+        document.getElementById("especializacoes").value,
+      disponibilidade_inicio_candidato: document.getElementById(
+        "disponibilidade-inicio"
+      ).value,
+      experiencia_candidato: document.getElementById("experiencia-area").value,
+      linkedin_url_candidato: document.getElementById("linkedin-url").value,
+      portfolio_url_candidato: document.getElementById("portfolio-url").value,
+      motivacao_candidato: document.getElementById("motivacao").value,
+      pcd_candidato: document.getElementById("pcd").value,
     };
 
     const novaCandidatura = {
       vaga_id: vagaId,
       titulo_vaga_original: tituloVagaOriginal,
-      nome_completo: nome,
+      nome_candidato: nome,
       email_candidato: email,
       telefone_contato: telefone,
-      cep: cep,
-      numero_endereco: numero,
-      endereco_rua: rua,
-      cidade: cidade,
-      estado: estado,
+      cep_candidato: cep,
+      endereco_num_candidato: numero,
+      endereco_rua_candidato: rua,
+      cidade_candidato: cidade,
+      estado_candidato: estado,
       resumo_experiencia: resumoExperiencia,
       habilidades_competencias: habilidades,
       como_conheceu: comoConheceu,
       link_curriculo_drive: linkCurriculoDrive,
       ...dadosFormulario, // Adiciona todos os outros campos
-      status: "recebido", // Status inicial
+      status_candidato: "recebido", // Status inicial
       data_candidatura: new Date().toISOString(), // Data de envio
     };
 
