@@ -1382,6 +1382,12 @@ export async function initRecrutamento(user, userData) {
 
   currentUserData = userData || {};
 
+  // ✅ CORREÇÃO: Publica a função 'getGlobalState' no window
+  // Isso quebra a dependência circular, permitindo que os submódulos
+  // de modal a acessem sem precisar importar 'recrutamento.js'.
+  window.getGlobalRecrutamentoState = getGlobalState;
+  // =========================================================
+
   // 1. Carrega lista de vagas ativas
   await carregarVagasAtivas();
 
