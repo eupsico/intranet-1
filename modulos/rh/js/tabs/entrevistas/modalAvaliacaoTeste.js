@@ -702,4 +702,4 @@ async function submeterAvaliacaoTeste(e) {
 }
 
 // Exporta as funções
-export { abrirModalAvaliacaoTeste, fecharModalAvaliacaoTeste };
+export { fecharModalAvaliacaoTeste };
