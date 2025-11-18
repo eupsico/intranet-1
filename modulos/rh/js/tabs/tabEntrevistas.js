@@ -637,35 +637,57 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * Helper function para formatar data
+ * Helper function para formatar data (CORRIGIDA)
  */
 function formatarDataEnvio(timestamp) {
   if (!timestamp) return "N/A";
   let date;
 
-  if (timestamp.toDate && typeof timestamp.toDate === "function") {
-    date = timestamp.toDate();
-  } else if (typeof timestamp === "string") {
-    date = new Date(timestamp);
-  } else if (timestamp instanceof Date) {
-    date = timestamp;
-  } else if (typeof timestamp === "number") {
-    date = new Date(timestamp * 1000);
-  } else {
-    return "N/A";
-  }
+  try {
+    if (timestamp.toDate && typeof timestamp.toDate === "function") {
+      // 1. Caso: É um Timestamp "ao vivo" do Firebase (raro no modal)
+      date = timestamp.toDate();
+    } else if (typeof timestamp === "string") {
+      // 2. Caso: É uma string ISO (ex: "2025-11-17T23:58:02.000Z")
+      date = new Date(timestamp);
+    } else if (timestamp.seconds && typeof timestamp.seconds === "number") {
+      // 3. ✅ CORREÇÃO: É um objeto Timestamp serializado (v9+)
+      //    (ex: { seconds: 1763462282, nanoseconds: ... })
+      date = new Date(timestamp.seconds * 1000);
+    } else if (timestamp._seconds && typeof timestamp._seconds === "number") {
+      // 4. ✅ CORREÇÃO: É um objeto Timestamp serializado (Legado)
+      //    (ex: { _seconds: 1763462282, _nanoseconds: ... })
+      date = new Date(timestamp._seconds * 1000);
+    } else if (timestamp instanceof Date) {
+      // 5. Caso: Já é um objeto Date
+      date = timestamp;
+    } else if (typeof timestamp === "number") {
+      // 6. Caso: É um número Unix (pouco provável)
+      date = new Date(timestamp * 1000);
+    } else {
+      // Não foi possível identificar o formato
+      console.warn("Formato de data não reconhecido:", timestamp);
+      return "N/A";
+    }
 
-  if (isNaN(date.getTime())) {
-    return "Data Inválida";
-  }
+    // Verifica se a data é válida
+    if (isNaN(date.getTime())) {
+      console.warn("Data inválida após conversão:", timestamp);
+      return "Data Inválida";
+    }
 
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+    // Formata para o padrão pt-BR com hora
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    console.error("Erro ao formatar data:", error, timestamp);
+    return "Erro na data";
+  }
 }
 
 // ============================================
