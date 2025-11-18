@@ -164,8 +164,8 @@ export async function renderizarEntrevistas(state) {
         statusAtual === "Testes Respondido" // <-- ADICIONADO AQUI
       ) {
         // Se o teste ainda não foi respondido, mostra "Enviar Teste"
-        if (statusAtual !== "Testes Respondido") {
-          listaHtml += `
+
+        listaHtml += `
               <button 
                 class="action-button primary btn-enviar-teste" 
                 data-id="${candidatoId}"
@@ -173,7 +173,6 @@ export async function renderizarEntrevistas(state) {
                 <i class="fas fa-vial me-1"></i> Enviar Teste
               </button>
           `;
-        }
 
         // Mostra "Avaliar Teste" (seja pendente ou respondido)
         listaHtml += `

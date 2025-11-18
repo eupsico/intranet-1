@@ -16,6 +16,8 @@ import {
   getDoc,
   arrayUnion,
   onSnapshot,
+  functions,
+  httpsCallable,
 } from "../../../assets/js/firebase-init.js";
 
 // Importação dos módulos de abas (tabs)
