@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.7.2 - CORRIGIDO: Busca por tokenId e Renderização de Respostas (Map)
+ * Versão: 1.7.3 - CORRIGIDO: 1) URL 404 (index.html) 2) Falha no carregamento das estatísticas.
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -14,8 +14,8 @@ import {
   getDocs,
   query,
   where,
-  orderBy, // Adicionado para a função carregarEstatisticasTestes
-  limit, // Adicionado para a função carregarEstatisticasTestes
+  orderBy, // Necessário para simulação de ordenação
+  limit, // Necessário para simulação de limitação
 } from "../../../../../assets/js/firebase-init.js";
 
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
@@ -223,6 +223,7 @@ Equipe de Recrutamento - EuPsico`.trim();
 
 /**
  * Carrega as respostas de um teste específico para o modal de avaliação
+ * (Lógica de carregar respostas DENTRO do modal. Preferimos a nova página de detalhes)
  */
 async function carregarRespostasDoTeste(
   identificador,
@@ -418,40 +419,37 @@ async function carregarRespostasDoTeste(
 
 /**
  * Carrega estatísticas rápidas dos testes (Acertos/Erros)
- * NOTA: Esta função é uma simulação, pois o gabarito e a pontuação
- * não são persistidos na coleção testesrespondidos. O back-end (Cloud
- * Function) precisa ser alterado para incluir a pontuação.
  */
-async function carregarEstatisticasTestes(candidatoId) {
-  // A coleção 'estudos_de_caso' precisa ser consultada para pegar o gabarito
-  // e comparar com as 'respostas' em 'testesrespondidos'.
-
+async function carregarEstatisticasTestes(listaDeTestes) {
   const container = document.getElementById("avaliacao-teste-stats");
   if (!container) return;
 
   container.innerHTML = '<div class="loading-spinner"></div>';
 
-  // Busca o último teste respondido para fins de simulação
   try {
-    const respostasRef = collection(db, "testesrespondidos");
-    const q = query(
-      respostasRef,
-      where("candidatoId", "==", candidatoId),
-      orderBy("dataResposta", "desc"), // Assumindo que a dataResposta existe
-      limit(1)
+    // Busca o teste respondido mais recente na lista fornecida
+    const testeRespondido = listaDeTestes.find(
+      (t) => t.status === "respondido"
     );
-    const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
+    if (!testeRespondido) {
       container.innerHTML = `<p class="alert alert-info">Nenhum teste respondido para calcular estatísticas.</p>`;
       return;
     }
 
-    const dadosResposta = snapshot.docs[0].data();
-    const totalRespostas = Object.keys(dadosResposta.respostas || {}).length;
+    // Se o gabarito não foi consultado, faremos a simulação baseada no tempo gasto/respostas.
 
-    // --- SIMULAÇÃO DE CÁLCULO (Substituir com a lógica real após ajuste do Back-end) ---
-    // Simulação: 70% acertos, 30% erros
+    // NOTA: Para um cálculo REAL de Acertos/Erros, o frontend precisaria
+    // chamar uma função que buscasse o gabarito. Por ora, usamos a simulação
+    // de 70% de acerto que é a lógica padrão do novo módulo detalhes_teste.js.
+
+    const totalRespostas = Object.keys(
+      testeRespondido.respostasCompletas?.respostas || {}
+    ).length;
+    const tempoGasto = testeRespondido.tempoGasto || 0;
+
+    // --- SIMULAÇÃO DE CÁLCULO (Ajustar após integração real) ---
+    // Usamos uma suposição de pontuação se não houver lógica de pontuação no Firestore
     const acertosSimulados = Math.round(totalRespostas * 0.7);
     const errosSimulados = totalRespostas - acertosSimulados;
     const taxaAcertoPct =
@@ -480,7 +478,11 @@ async function carregarEstatisticasTestes(candidatoId) {
         </div>
       </div>
       <p class="text-muted small mt-2">
-        <i class="fas fa-exclamation-triangle me-1"></i> A contagem de acertos/erros é simulada. O gabarito precisa ser incluído na coleção 'testesrespondidos' para o cálculo ser real.
+        <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
+          tempoGasto / 60
+        )}m ${tempoGasto % 60}s.
+        <br>
+        <i class="fas fa-exclamation-triangle me-1"></i> A pontuação é uma simulação, clique em "Ver Respostas" para a avaliação detalhada.
       </p>
     `;
 
@@ -496,7 +498,7 @@ async function carregarEstatisticasTestes(candidatoId) {
 
 /**
  * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.2 - Correções aplicadas.
+ * VERSÃO DEBUG v1.7.3 - Correções aplicadas.
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -675,9 +677,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // ========== BUSCA E RENDERIZA TESTES ==========
   console.log("🧪 ========== BUSCANDO E RENDERIZANDO TESTES ==========");
 
-  // Adicionar chamada para a nova função de estatísticas
-  await carregarEstatisticasTestes(candidatoId);
-
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
   console.log(
     "🔍 [TESTES] Elemento avaliacao-teste-info-testes encontrado:",
@@ -788,6 +787,9 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // ========== RENDERIZA A LISTA ==========
   console.log("\n🎨 ========== RENDERIZANDO LISTA DE TESTES ==========");
 
+  // AQUI: Chama a função de estatísticas antes de renderizar a lista final
+  await carregarEstatisticasTestes(listaDeTestes);
+
   if (infoTestesEl) {
     if (listaDeTestes.length === 0) {
       console.warn(
@@ -805,8 +807,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       listaDeTestes.forEach((teste, idx) => {
         console.log(`   🎨 Renderizando teste ${idx + 1}:`, teste.nomeTeste);
 
-        const dataEnvio = teste.data_envio
-          ? formatarDataEnvio(teste.data_envio)
+        const dataEnvio = teste.dataenvio
+          ? formatarDataEnvio(teste.dataenvio)
           : "N/A";
 
         const statusBadge =
@@ -876,8 +878,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           const tokenId = this.getAttribute("data-teste-id");
           const candId = this.getAttribute("data-candidato-id");
 
-          // === NOVO COMPORTAMENTO: Abrir nova aba/rota para detalhes ===
-          const novaURL = `index.html#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
+          // === CORREÇÃO: URL Raiz para evitar 404 ===
+          const novaURL = `/index.html#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
           window.open(novaURL, "_blank");
 
           window.showToast?.(
@@ -886,20 +888,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           );
 
           console.log("📋 [RENDER] Abrindo nova URL:", novaURL);
-
-          // Lógica antiga de abrir respostas DENTRO do modal (agora desabilitada)
-          /*
-          const tipoId = this.getAttribute("data-tipo");
-          const testeEncontrado = listaDeTestes.find(
-            (t) => t.id === testeId || t.tokenId === testeId
-          );
-          carregarRespostasDoTeste(
-            testeId,
-            tipoId,
-            testeEncontrado?.id,
-            candId
-          );
-          */
         });
       });
 
@@ -963,8 +951,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.classList.add("is-visible");
   console.log("✅ [MODAL] Classe 'is-visible' adicionada");
   console.log("✅ [MODAL] Modal de avaliação de teste ABERTO COM SUCESSO");
+
+  console.log(
+    "╔════════════════════════════════════════════════════════════════╗"
+  );
   console.log(
     "║       ✅ MODAL ABERTO - FUNÇÃO CONCLUÍDA                      ║"
+  );
+  console.log(
+    "╚════════════════════════════════════════════════════════════════╝\n"
   );
 }
 
