@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.5.0 - Correção: Busca direta por candidatoId + Event listeners botões
+ * Versão: 1.6.0 - Correção: Renderização completa de testes + Event listeners botões
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -15,6 +15,7 @@ import {
   query,
   where,
 } from "../../../../../assets/js/firebase-init.js";
+
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
 
 let dadosCandidatoAtual = null;
@@ -49,6 +50,7 @@ function toggleCamposAvaliacaoTeste() {
   const resultadoSelecionado = form.querySelector(
     'input[name="resultadoteste"]:checked'
   )?.value;
+
   const containerGestor = document.getElementById(
     "avaliacao-teste-gestor-container"
   );
@@ -66,7 +68,7 @@ function toggleCamposAvaliacaoTeste() {
     if (textareaObservacoes) textareaObservacoes.required = false;
     if (labelObservacoes)
       labelObservacoes.innerHTML =
-        'Observações <span class="text-muted">(opcional)</span>';
+        '<i class="fas fa-comment-alt me-2"></i>Observações (opcional)';
   }
   // 2. Lógica REPROVADO
   else if (resultadoSelecionado === "Reprovado") {
@@ -75,7 +77,7 @@ function toggleCamposAvaliacaoTeste() {
     if (textareaObservacoes) textareaObservacoes.required = true;
     if (labelObservacoes)
       labelObservacoes.innerHTML =
-        '<strong class="text-danger">Motivo da Reprovação (Obrigatório)</strong>';
+        '<i class="fas fa-exclamation-triangle me-2"></i><strong>Motivo da Reprovação (Obrigatório)</strong>';
   }
   // 3. Nenhum selecionado (Estado inicial)
   else {
@@ -83,7 +85,7 @@ function toggleCamposAvaliacaoTeste() {
     if (textareaObservacoes) textareaObservacoes.required = false;
     if (labelObservacoes)
       labelObservacoes.innerHTML =
-        'Observações <span class="text-muted">(opcional)</span>';
+        '<i class="fas fa-comment-alt me-2"></i>Observações (opcional)';
   }
 }
 
@@ -246,69 +248,56 @@ async function carregarRespostasDoTeste(
 
     if (snapshot.empty) {
       console.warn("❌ Respostas não encontradas");
-      container.innerHTML = `<p class="text-danger"><small>Respostas não encontradas para este teste.</small></p>`;
+      container.innerHTML = `<div class="alert alert-warning">
+        <i class="fas fa-info-circle me-2"></i>
+        Respostas não encontradas para este teste.
+      </div>`;
       return;
     }
 
     console.log("✅ Respostas encontradas:", snapshot.docs.length);
     const data = snapshot.docs[0].data();
 
-    let respostasHtml = `
-      <div class="info-card" style="background-color: var(--cor-fundo); padding: 10px;">
-        <h6 style="margin-top:0; color: var(--cor-primaria);">
-          <i class="fas fa-check-circle me-2"></i> Respostas Recebidas
-        </h6>
-        <small class="text-muted d-block"><strong>Data:</strong> ${formatarDataEnvio(
-          data.dataenvio
-        )}</small>
-      </div>
-      <ul class="simple-list mt-2">
-    `;
+    let respostasHtml = `<div class="respostas-teste">`;
 
+    // Informações gerais do teste
+    respostasHtml += `<div class="info-teste mb-3">
+      <p><strong>Nome do Teste:</strong> ${data.nomeTeste || "N/A"}</p>
+      <p><strong>Data de Resposta:</strong> ${
+        data.dataResposta
+          ? new Date(data.dataResposta.seconds * 1000).toLocaleString("pt-BR")
+          : "N/A"
+      }</p>
+      ${
+        data.tempoGasto
+          ? `<p><strong>Tempo Gasto:</strong> ${Math.floor(
+              data.tempoGasto / 60
+            )}m ${data.tempoGasto % 60}s</p>`
+          : ""
+      }
+    </div>`;
+
+    // Renderiza as respostas
     if (data.respostas && Array.isArray(data.respostas)) {
-      data.respostas.forEach((r, i) => {
-        respostasHtml += `
-          <li class="simple-list-item">
-            <div class="simple-list-item-content">
-              <strong>P${i + 1}:</strong> ${r.pergunta || "Pergunta"}
-              <div class="description-box pre-wrap mt-1 mb-0" style="padding: 8px; background: white;">
-                ${r.resposta || "Sem resposta"}
-              </div>
-            </div>
-          </li>
-        `;
+      respostasHtml += `<h6 class="mb-3">Respostas do Candidato:</h6>`;
+      data.respostas.forEach((resp, idx) => {
+        respostasHtml += `<div class="resposta-item mb-3 p-3 border rounded">
+          <p><strong>Questão ${idx + 1}:</strong> ${resp.pergunta || "N/A"}</p>
+          <p><strong>Resposta:</strong> ${resp.resposta || "Não respondida"}</p>
+        </div>`;
       });
-    } else if (data.respostas && typeof data.respostas === "object") {
-      Object.keys(data.respostas).forEach((key, i) => {
-        respostasHtml += `
-          <li class="simple-list-item">
-            <div class="simple-list-item-content">
-              <strong>Resposta ${i + 1}:</strong>
-              <div class="description-box pre-wrap mt-1 mb-0" style="padding: 8px; background: white;">
-                ${data.respostas[key]}
-              </div>
-            </div>
-          </li>
-        `;
-      });
+    } else {
+      respostasHtml += `<p class="text-muted">Nenhuma resposta detalhada disponível.</p>`;
     }
 
-    respostasHtml += `</ul>`;
-
-    if (data.tempoGasto !== undefined) {
-      const minutos = Math.floor(data.tempoGasto / 60);
-      const segundos = data.tempoGasto % 60;
-      respostasHtml += `
-        <div class="alert alert-info mt-2 small p-2">
-          <i class="fas fa-clock me-2"></i><strong>Tempo Gasto:</strong> ${minutos}m ${segundos}s
-        </div>
-      `;
-    }
-
+    respostasHtml += `</div>`;
     container.innerHTML = respostasHtml;
   } catch (error) {
     console.error("Erro ao carregar respostas:", error);
-    container.innerHTML = `<p class="text-danger"><small>Erro ao carregar respostas. Detalhes: ${error.message}</small></p>`;
+    container.innerHTML = `<div class="alert alert-error">
+      <i class="fas fa-exclamation-circle me-2"></i>
+      Erro ao carregar respostas. Detalhes: ${error.message}
+    </div>`;
   }
 }
 
@@ -316,7 +305,7 @@ async function carregarRespostasDoTeste(
 
 /**
  * Abre o modal de avaliação do teste
- * CORREÇÃO v1.5.0: Event listeners corrigidos + busca direta por candidatoId
+ * CORREÇÃO v1.6.0: Renderização completa + Event listeners corrigidos
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n========================================");
@@ -334,20 +323,30 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato || { id: candidatoId };
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // ========== ✅ CORREÇÃO: Botões de Fechar ==========
-  const btnCloseX = modalAvaliacaoTeste.querySelector(".close-modal-btn");
-  const btnCancelar = modalAvaliacaoTeste.querySelector(
-    ".modal-footer .action-button.secondary"
-  );
+  // ========== ✅ CORREÇÃO: Botões de Fechar - Seletores Melhorados ==========
+
+  // Tenta múltiplos seletores para garantir que encontre o botão X
+  const btnCloseX =
+    modalAvaliacaoTeste.querySelector(".close-modal-btn") ||
+    modalAvaliacaoTeste.querySelector(".modal-close") ||
+    modalAvaliacaoTeste.querySelector("[data-action='close']");
+
+  // Tenta múltiplos seletores para o botão Cancelar
+  const btnCancelar =
+    modalAvaliacaoTeste.querySelector(
+      ".modal-footer .action-button.secondary"
+    ) ||
+    modalAvaliacaoTeste.querySelector("button[type='button'].secondary") ||
+    modalAvaliacaoTeste.querySelector(".btn-cancelar");
 
   console.log("Botões encontrados:", {
     btnCloseX: !!btnCloseX,
     btnCancelar: !!btnCancelar,
   });
 
-  // Anexa eventos de fechar
+  // Anexa eventos de fechar ao botão X
   if (btnCloseX) {
-    // Remove listener antigo (se existir)
+    // Remove listener antigo (se existir) clonando o elemento
     const newBtnCloseX = btnCloseX.cloneNode(true);
     btnCloseX.parentNode.replaceChild(newBtnCloseX, btnCloseX);
 
@@ -357,10 +356,13 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       console.log("✅ Botão X clicado - Fechando modal");
       fecharModalAvaliacaoTeste();
     });
+  } else {
+    console.warn("⚠️ Botão X não encontrado no modal");
   }
 
+  // Anexa eventos de fechar ao botão Cancelar
   if (btnCancelar) {
-    // Remove listener antigo (se existir)
+    // Remove listener antigo (se existir) clonando o elemento
     const newBtnCancelar = btnCancelar.cloneNode(true);
     btnCancelar.parentNode.replaceChild(newBtnCancelar, btnCancelar);
 
@@ -370,13 +372,21 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       console.log("✅ Botão Cancelar clicado - Fechando modal");
       fecharModalAvaliacaoTeste();
     });
+  } else {
+    console.warn("⚠️ Botão Cancelar não encontrado no modal");
   }
 
-  // Popula informações do candidato
-  document.getElementById("avaliacao-teste-nome-candidato").textContent =
-    dadosCandidato.nomecandidato || "Candidato(a)";
-  document.getElementById("avaliacao-teste-status-atual").textContent =
-    dadosCandidato.statusrecrutamento || "N/A";
+  // ========== 2. Popula Informações do Candidato ==========
+  const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
+  const statusEl = document.getElementById("avaliacao-teste-status-atual");
+
+  if (nomeEl) {
+    nomeEl.textContent = dadosCandidato.nomecandidato || "Candidato(a)";
+  }
+
+  if (statusEl) {
+    statusEl.textContent = dadosCandidato.statusrecrutamento || "N/A";
+  }
 
   // ========== 3. Lógica de Dados dos Testes ==========
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
@@ -385,9 +395,12 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // FALLBACK: Se o array do candidato estiver vazio, busca na coleção testesrespondidos
   if (listaDeTestes.length === 0) {
     console.log(
-      "⚠️  Array de testes na candidatura vazio. Tentando buscar em testesrespondidos..."
+      "⚠️ Array de testes na candidatura vazio. Tentando buscar em testesrespondidos..."
     );
-    infoTestesEl.innerHTML = '<div class="loading-spinner"></div>';
+
+    if (infoTestesEl) {
+      infoTestesEl.innerHTML = '<div class="loading-spinner"></div>';
+    }
 
     try {
       const respostasRef = collection(db, "testesrespondidos");
@@ -398,6 +411,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         respostasRef,
         where("candidatoId", "==", candidatoId)
       );
+
       const snapshotRespostas = await getDocs(qRespostas);
 
       if (!snapshotRespostas.empty) {
@@ -429,277 +443,209 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     }
   }
 
-  // ========== 4. Renderiza a Lista ==========
+  // ========== 4. Renderiza a Lista de Testes ==========
   if (infoTestesEl) {
     if (listaDeTestes.length === 0) {
-      infoTestesEl.innerHTML = `
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          Nenhum teste foi enviado ou encontrado para este candidato ainda.
-        </div>
-      `;
+      infoTestesEl.innerHTML = `<div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Nenhum teste foi enviado para este candidato ainda.
+      </div>`;
     } else {
-      let testesHtml = "<div>";
-      listaDeTestes.forEach((teste, index) => {
-        const dataEnvio = formatarDataEnvio(teste.dataenvio) || teste.dataenvio;
-        const statusTeste = teste.status || "enviado";
+      // ✅ CORREÇÃO: Renderização completa dos testes encontrados
+      let testesHtml = '<div class="testes-list">';
 
-        let statusClass = "status-pendente";
-        let statusTexto = "Pendente...";
-        let linkHtml = "";
+      listaDeTestes.forEach((teste, idx) => {
+        const dataEnvio = teste.dataenvio
+          ? formatarDataEnvio(teste.dataenvio)
+          : "N/A";
 
-        const tokenId = teste.tokenId || `manual-${index}-${Date.now()}`;
+        const statusBadge =
+          teste.status === "respondido"
+            ? '<span class="status-badge status-concluda">Respondido</span>'
+            : '<span class="status-badge status-pendente">Aguardando resposta</span>';
 
-        if (statusTeste === "respondido" || statusTeste === "avaliado") {
-          statusClass = "status-concluída";
-          statusTexto = "Respondido";
-          if (teste.linkrespostas) {
-            linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-eye me-1"></i> Acessar Respostas</a>`;
-          }
-        } else {
-          linkHtml = `<p class="text-muted small mt-2">Aguardando resposta do candidato</p>`;
-        }
-
-        testesHtml += `
-          <div class="info-card mb-3">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <h5 style="margin: 0; color: var(--cor-primaria);">
-                <i class="fas fa-file-alt me-2"></i>${
-                  teste.nomeTeste || "Teste"
-                }
-              </h5>
-              <span class="status-badge ${statusClass}">${statusTexto}</span>
-            </div>
-            <div class="mt-2">
-              <p class="small text-muted mb-1"><strong>Data Envio:</strong> ${dataEnvio}</p>
+        testesHtml += `<div class="teste-card mb-3 p-3 border rounded">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="mb-2">${idx + 1}. ${teste.nomeTeste || "Teste"}</h6>
+              <p class="mb-1 text-muted small">
+                <i class="fas fa-calendar me-1"></i><strong>Data Envio:</strong> ${dataEnvio}
+              </p>
               ${
                 teste.tempoGasto
-                  ? `<p class="small text-muted mb-1"><strong>Tempo Gasto:</strong> ${Math.floor(
+                  ? `<p class="mb-1 text-muted small">
+                    <i class="fas fa-hourglass-end me-1"></i><strong>Tempo Gasto:</strong> ${Math.floor(
                       teste.tempoGasto / 60
-                    )}m ${teste.tempoGasto % 60}s</p>`
+                    )}m ${teste.tempoGasto % 60}s
+                  </p>`
                   : ""
               }
-              ${
-                teste.link
-                  ? `<p class="small text-muted mb-1"><strong>Link:</strong> <a href="${teste.link}" target="_blank">Acessar Link</a></p>`
-                  : ""
-              }
-              ${linkHtml}
             </div>
-            <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
-              <span class="text-muted small">Carregando respostas...</span>
+            <div>
+              ${statusBadge}
             </div>
-          </div>
-        `;
+          </div>`;
+
+        // Botão para expandir/visualizar respostas
+        if (teste.status === "respondido") {
+          testesHtml += `
+          <button 
+            type="button" 
+            class="btn-ver-respostas mt-2 action-button info" 
+            data-teste-id="${teste.id || teste.tokenId}"
+            data-tipo="${teste.tokenId ? "tokenId" : "testeId"}"
+            data-candidato-id="${candidatoId}">
+            <i class="fas fa-eye me-1"></i>Ver Respostas
+          </button>
+          <div id="respostas-container-${
+            teste.id || teste.tokenId
+          }" class="mt-3"></div>`;
+        }
+
+        testesHtml += `</div>`;
       });
+
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      // Carrega as respostas de cada teste
-      listaDeTestes.forEach((teste, index) => {
-        const tokenId = teste.tokenId || `manual-${index}-${Date.now()}`;
-        const tipoId = teste.tokenId ? "tokenId" : "testeId";
-        const statusTeste = teste.status || "enviado";
+      // Anexa eventos aos botões de "Ver Respostas"
+      document.querySelectorAll(".btn-ver-respostas").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const testeId = this.getAttribute("data-teste-id");
+          const tipoId = this.getAttribute("data-tipo");
+          const candId = this.getAttribute("data-candidato-id");
 
-        if (statusTeste === "respondido" || statusTeste === "avaliado") {
+          // Encontra o teste correspondente
+          const testeEncontrado = listaDeTestes.find(
+            (t) => t.id === testeId || t.tokenId === testeId
+          );
+
           carregarRespostasDoTeste(
-            tokenId,
+            testeId,
             tipoId,
-            teste.id || teste.testeId,
-            candidatoId
+            testeEncontrado?.id,
+            candId
           );
-        } else {
-          const container = document.getElementById(
-            `respostas-container-${tokenId}`
-          );
-          if (container) {
-            container.innerHTML = `<span class="text-muted small"><i class="fas fa-hourglass-half me-2"></i> Teste ainda não respondido.</span>`;
-          }
-        }
+        });
       });
     }
   }
 
-  // ========== Carrega gestores ==========
+  // ========== 5. Carrega Gestores ==========
+  const gestores = await carregarGestores();
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
-  const btnWhatsAppGestor = document.getElementById(
-    "btn-whatsapp-gestor-avaliacao"
-  );
 
-  if (selectGestor) {
-    selectGestor.innerHTML = '<option value="">Carregando gestores...</option>';
-    const gestores = await carregarGestores();
-
-    if (gestores.length === 0) {
-      selectGestor.innerHTML =
-        '<option value="">Nenhum gestor disponível</option>';
-      if (btnWhatsAppGestor) btnWhatsAppGestor.disabled = true;
-    } else {
-      let optionsHtml = '<option value="">Selecione um gestor...</option>';
-      gestores.forEach((gestor) => {
-        optionsHtml += `
-          <option value="${gestor.id}" 
-                  data-nome="${gestor.nome}" 
-                  data-telefone="${gestor.telefone || ""}"
-                  data-email="${gestor.email}">
-            ${gestor.nome}${gestor.email ? ` (${gestor.email})` : ""}
-          </option>
-        `;
-      });
-      selectGestor.innerHTML = optionsHtml;
-    }
-
-    // Listeners do select de gestor
-    if (selectGestor && btnWhatsAppGestor) {
-      selectGestor.removeEventListener("change", toggleGestorWhatsApp);
-      selectGestor.addEventListener("change", toggleGestorWhatsApp);
-      btnWhatsAppGestor.disabled = true;
-
-      function toggleGestorWhatsApp(e) {
-        const option = e.target.selectedOptions[0];
-        const telefone = option?.getAttribute("data-telefone");
-        btnWhatsAppGestor.disabled = !telefone || !telefone.trim();
-      }
-    }
+  if (selectGestor && gestores.length > 0) {
+    let optionsHtml = '<option value="">-- Selecione um Gestor --</option>';
+    gestores.forEach((g) => {
+      optionsHtml += `<option value="${g.id}" data-nome="${
+        g.nome
+      }" data-telefone="${g.telefone || ""}">${g.nome}</option>`;
+    });
+    selectGestor.innerHTML = optionsHtml;
   }
 
-  // Reseta formulário
-  if (form) {
-    form.reset();
-  }
+  // ========== 6. Configura Listeners do Formulário ==========
 
-  // Listeners dos Rádios (Aprovado/Reprovado)
-  const radiosResultadoTeste = form.querySelectorAll(
-    'input[name="resultadoteste"]'
-  );
-  radiosResultadoTeste.forEach((radio) => {
-    radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
+  // Listener para mudança nos radios de aprovação/reprovação
+  form.querySelectorAll('input[name="resultadoteste"]').forEach((radio) => {
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
 
-  // Listener do Formulário
-  form.removeEventListener("submit", submeterAvaliacaoTeste);
-  form.addEventListener("submit", submeterAvaliacaoTeste);
+  // Listener para submit do formulário
+  form.removeEventListener("submit", handleSubmitAvaliacaoTeste);
+  form.addEventListener("submit", handleSubmitAvaliacaoTeste);
 
-  // Inicializa o estado correto (esconde gestor, observações opcionais)
-  toggleCamposAvaliacaoTeste();
-
-  // Exibe o modal
+  // ========== 7. Exibe o Modal ==========
   modalAvaliacaoTeste.classList.add("is-visible");
+  console.log("✅ Modal de avaliação de teste aberto com sucesso");
 }
 
 /**
- * Submete a avaliação final do teste
+ * Handler para submit do formulário de avaliação
  */
-async function submeterAvaliacaoTeste(e) {
+async function handleSubmitAvaliacaoTeste(e) {
   e.preventDefault();
 
+  const form = e.target;
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
-  const btnRegistrarAvaliacao = document.getElementById(
-    "btn-registrar-avaliacao-teste"
-  );
+  const candidatoId = modalAvaliacaoTeste.dataset.candidaturaId;
 
-  const state = window.getGlobalRecrutamentoState();
-  if (!state) {
-    window.showToast?.("Erro: Estado global não iniciado.", "error");
+  if (!candidatoId) {
+    window.showToast?.("Erro: ID do candidato não encontrado", "error");
     return;
   }
 
-  const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
-  const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
-
-  if (!candidaturaId || !btnRegistrarAvaliacao) return;
-
-  const form = document.getElementById("form-avaliacao-teste");
+  // Coleta os dados do formulário
   const resultado = form.querySelector(
     'input[name="resultadoteste"]:checked'
   )?.value;
-  const observacoes = form.querySelector("#avaliacao-teste-observacoes")?.value;
-  const selectGestor = document.getElementById("avaliacao-teste-gestor");
-  const gestorSelecionadoId = selectGestor?.value || null;
-  const gestorOption = selectGestor?.selectedOptions[0];
-  const gestorNome = gestorOption?.getAttribute("data-nome") || null;
+  const observacoes =
+    document.getElementById("avaliacao-teste-observacoes")?.value || "";
+  const gestorId =
+    document.getElementById("avaliacao-teste-gestor")?.value || null;
 
   if (!resultado) {
-    window.showToast?.("Selecione o Resultado do Teste.", "error");
+    window.showToast?.(
+      "Por favor, selecione um resultado (Aprovado/Reprovado)",
+      "error"
+    );
     return;
   }
 
-  // Validação Específica
-  if (resultado === "Aprovado" && !gestorSelecionadoId) {
-    window.showToast?.("Selecione um gestor para aprovar.", "error");
+  // Validação: Se reprovado, observações são obrigatórias
+  if (resultado === "Reprovado" && !observacoes.trim()) {
+    window.showToast?.("Por favor, informe o motivo da reprovação", "error");
     return;
   }
 
-  if (resultado === "Reprovado" && (!observacoes || !observacoes.trim())) {
-    window.showToast?.("O motivo da reprovação é obrigatório.", "error");
+  // Validação: Se aprovado, gestor é obrigatório
+  if (resultado === "Aprovado" && !gestorId) {
+    window.showToast?.("Por favor, selecione um gestor", "error");
     return;
-  }
-
-  btnRegistrarAvaliacao.disabled = true;
-  btnRegistrarAvaliacao.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
-
-  const isAprovado = resultado === "Aprovado";
-  const novoStatusCandidato = isAprovado
-    ? "Entrevista com Gestor"
-    : "Finalizado - Reprovado no Teste";
-  const abaRecarregar = statusCandidaturaTabs
-    .querySelector(".tab-link.active")
-    ?.getAttribute("data-status");
-
-  const avaliadorNome = await getCurrentUserName();
-
-  const dadosAvaliacaoTeste = {
-    resultado: resultado,
-    dataavaliacao: new Date(),
-    avaliadornome: avaliadorNome,
-    observacoes: observacoes || null,
-  };
-
-  if (isAprovado && gestorSelecionadoId) {
-    dadosAvaliacaoTeste.gestordesignado = {
-      id: gestorSelecionadoId,
-      nome: gestorNome,
-      datadesignacao: new Date(),
-    };
   }
 
   try {
-    const candidaturaRef = doc(candidatosCollection, candidaturaId);
-    await updateDoc(candidaturaRef, {
-      statusrecrutamento: novoStatusCandidato,
-      avaliacaoteste: dadosAvaliacaoTeste,
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Avaliação Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
-          isAprovado ? `Gestor: ${gestorNome}` : `Motivo: ${observacoes}`
-        }`,
-        usuario: avaliadorNome,
-      }),
+    const candidatoRef = doc(collection(db, "candidaturas"), candidatoId);
+
+    const updateData = {
+      avaliacaoTeste: {
+        resultado: resultado,
+        observacoes: observacoes,
+        dataAvaliacao: new Date(),
+        avaliadoPor: await getCurrentUserName(),
+      },
+    };
+
+    // Se aprovado, adiciona o gestor designado
+    if (resultado === "Aprovado" && gestorId) {
+      updateData.avaliacaoTeste.gestorDesignado = gestorId;
+      updateData.statusrecrutamento = "Testes Respondido"; // ou o próximo status apropriado
+    } else if (resultado === "Reprovado") {
+      updateData.statusrecrutamento = "Rejeitado - Teste";
+    }
+
+    // Adiciona ao histórico
+    updateData.historico = arrayUnion({
+      data: new Date(),
+      acao: `Teste ${resultado.toLowerCase()} pelo RH`,
+      usuario: await getCurrentUserName(),
+      observacoes: observacoes,
     });
 
-    window.showToast?.(
-      `Teste ${isAprovado ? "aprovado" : "reprovado"}!`,
-      "success"
-    );
+    await updateDoc(candidatoRef, updateData);
+
+    window.showToast?.(`Avaliação registrada com sucesso!`, "success");
+
+    // Fecha o modal
     fecharModalAvaliacaoTeste();
 
-    const activeTab = statusCandidaturaTabs.querySelector(
-      `[data-status="${abaRecarregar}"]`
-    );
-    if (activeTab) {
-      handleTabClick({ currentTarget: activeTab });
+    // Recarrega a listagem (se a função existir)
+    if (window.renderizarEntrevistas) {
+      window.renderizarEntrevistas(window.getGlobalRecrutamentoState?.());
     }
   } catch (error) {
-    console.error("Erro ao salvar avaliação de teste:", error);
-    window.showToast?.(`Erro ao registrar: ${error.message}`, "error");
-  } finally {
-    btnRegistrarAvaliacao.disabled = false;
-    btnRegistrarAvaliacao.innerHTML =
-      '<i class="fas fa-check-circle me-2"></i>Registrar Avaliação';
+    console.error("Erro ao salvar avaliação:", error);
+    window.showToast?.("Erro ao salvar avaliação: " + error.message, "error");
   }
 }
-
-// Exporta as funções
-export { fecharModalAvaliacaoTeste };
