@@ -1,38 +1,48 @@
-<div class="dashboard-section">
-    <div class="section-header">
-        <h2 id="detalhes-teste-titulo"><i class="fas fa-eye me-2"></i> Detalhes da Avaliação do Teste</h2>
-        <a href="#rh/recrutamento" class="action-button secondary btn-sm ms-auto">
-            <i class="fas fa-arrow-left me-1"></i> Voltar à Etapa de Entrevistas
-        </a>
-    </div>
-
-    <div class="description-box mb-4">
-        <p><strong>Candidato:</strong> <span id="cand-nome">Carregando...</span></p>
-        <p><strong>Teste:</strong> <span id="teste-nome">Carregando...</span></p>
-        <p><strong>Status:</strong> <span id="teste-status">Carregando...</span></p>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-lg-12">
-            <div id="resumo-pontuacao" class="card card-body mb-3">
-                <h5><i class="fas fa-chart-bar me-2"></i> Resumo de Pontuação</h5>
-                <div id="resumo-pontuacao-conteudo" class="details-grid cols-4">
-                    <p>Total: <strong id="stats-total">N/A</strong></p>
-                    <p class="text-success">Acertos: <strong id="stats-acertos">N/A</strong></p>
-                    <p class="text-danger">Erros: <strong id="stats-erros">N/A</strong></p>
-                    <p class="text-info">Taxa: <strong id="stats-taxa">N/A</strong></p>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Teste</title>
+    <link rel="stylesheet" href="../../assets/css/design-system.css">
+    <link rel="stylesheet" href="../css/rh.css">
+</head>
+<body>
+    <div class="main-content">
+        <!-- Cabeçalho do Teste -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2>Detalhes da Avaliação</h2>
+            </div>
+            
+            <div class="details-grid cols-3">
+                <div class="form-group">
+                    <label>Candidato:</label>
+                    <span id="cand-nome" style="font-weight: 600; color: var(--cor-texto-principal);">Carregando...</span>
+                </div>
+                <div class="form-group">
+                    <label>Teste:</label>
+                    <span id="teste-nome" style="font-weight: 600; color: var(--cor-texto-principal);">Carregando...</span>
+                </div>
+                <div class="form-group">
+                    <label>Status:</label>
+                    <span id="teste-status" class="status-badge">Carregando...</span>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="card p-4">
-        <h4 class="mb-3"><i class="fas fa-list-ol me-2"></i> Comparação de Respostas</h4>
-        <div id="comparacao-respostas-container">
-            <div class="loading-spinner"></div>
-            <p class="text-muted">Aguardando carregamento do gabarito e respostas...</p>
+        <!-- Container de Comparação -->
+        <div id="comparacao-respostas-container" class="table-section">
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p>Aguardando carregamento do gabarito e respostas...</p>
+            </div>
         </div>
-    </div>
-</div>
 
-<script type="module" src="../js/detalhes_teste.js"></script>
+        <!-- Resumo de Pontuação -->
+        <div id="resumo-pontuacao-container"></div>
+    </div>
+
+    <script type="module" src="js/detalhes_teste.js"></script>
+</body>
+</html>
