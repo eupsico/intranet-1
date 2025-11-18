@@ -1351,8 +1351,8 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       let testesEnviadosAtualizado = [];
 
       const safeTituloVaga =
-        candidaturaSnap.exists && candidaturaSnap.data().titulovagaoriginal
-          ? candidaturaSnap.data().titulovagaoriginal
+        candidaturaSnap.exists && candidaturaSnap.data().titulo_vaga_original
+          ? candidaturaSnap.data().titulo_vaga_original
           : "Vaga não informada";
 
       const linkRespostas = `rh?painel=respostas&token=${tokenId}`;
@@ -1394,7 +1394,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           tempoGasto: safeTempoGasto,
           respostas: safeRespostas,
           respostasCount: Object.keys(safeRespostas).length,
-          titulovagaoriginal: safeTituloVaga,
+          titulo_vaga_original: safeTituloVaga,
         });
 
       // 8. Atualiza o documento da candidatura (SOMENTE SE ELE EXISTIR)
