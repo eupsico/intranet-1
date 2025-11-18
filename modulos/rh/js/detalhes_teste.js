@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.2.1 - CORRIGIDO: Nome da função de inicialização
+ * Versão: 1.2.2 - CORRIGIDO: Export da função de inicialização
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora permite ao avaliador marcar cada resposta como correta/incorreta antes de computar.
@@ -337,3 +337,6 @@ function calcularEExibirResumo(totalQuestoes) {
     `📊 Resumo calculado - Total: ${totalQuestoes}, Acertos: ${acertos}, Erros: ${erros}, Taxa: ${taxaAcerto}%`
   );
 }
+
+// ✅ CORREÇÃO: Export correto da função de inicialização
+export { initdetalhesTeste as init };
