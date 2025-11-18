@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.4.0 (Correção: Fechamento modal, Lógica Aprovado/Reprovado e Validação)
+ * Versão: 1.4.1 (Correção: Fechamento modal, Lógica Aprovado/Reprovado e Validação)
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
 
@@ -213,7 +213,8 @@ async function carregarRespostasDoTeste(
       q = query(
         respostasRef,
         where("testeId", "==", testeIdFallback),
-        where("candidatoId", "==", candidatoId)
+        // ✅ CORREÇÃO: Usar 'candidaturaId' como chave de ligação no banco.
+        where("candidaturaId", "==", candidatoId)
       );
     }
     const snapshot = await getDocs(q);
@@ -297,10 +298,10 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // 1. Configura Botões de Fechar (CORRIGIDO)
-  // Garante a seleção tanto do X quanto do botão Cancelar
+  // 1. Configura Botões de Fechar
+  // ✅ CORREÇÃO: Torna a seleção do botão "Cancelar" mais explícita usando o ID
   const btnsFechar = modalAvaliacaoTeste.querySelectorAll(
-    ".close-modal-btn, .action-button.secondary"
+    ".close-modal-btn, #btn-cancelar-avaliacao-teste"
   );
 
   btnsFechar.forEach((btn) => {
@@ -334,7 +335,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     try {
       const qRespostas = query(
         collection(db, "testesrespondidos"),
-        where("candidatoId", "==", candidatoId)
+        // ✅ CORREÇÃO CRÍTICA: Mudar para 'candidaturaId' para buscar corretamente
+        where("candidaturaId", "==", candidatoId)
       );
       const snapshotRespostas = await getDocs(qRespostas);
 
