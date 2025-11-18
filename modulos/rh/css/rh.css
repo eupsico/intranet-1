@@ -1797,3 +1797,204 @@
   background: #e8f4f8 !important;
   transform: translateX(5px);
 }
+/* ============================================
+   DETALHES DO TESTE - AVALIAÇÃO DE RESPOSTAS
+   ============================================ */
+
+/* Card de detalhes da questão */
+.card-detalhes {
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    transition: box-shadow var(--transicao-padrao);
+}
+
+.card-detalhes:hover {
+    box-shadow: var(--sombra-padrao);
+}
+
+/* Utilidade flex-between */
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Grid de detalhes responsivo */
+.details-grid {
+    display: grid;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.details-grid.cols-2 {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.details-grid.cols-3 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.details-grid.cols-4 {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* Stat cards para métricas */
+.stat-card {
+    background-color: var(--cor-fundo-box);
+    padding: 20px;
+    border-radius: var(--borda-radius-pequeno);
+    text-align: center;
+    border-left: 4px solid var(--cor-primaria);
+    transition: transform var(--transicao-padrao);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card .stat-label {
+    font-size: 0.85rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--cor-primaria);
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: var(--borda-radius-pequeno);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-badge.status-pendente {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #856404;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.status-badge.status-sucesso {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #155724;
+    border: 1px solid rgba(40, 167, 69, 0.5);
+}
+
+.status-badge.status-erro {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #721c24;
+    border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+.status-badge.status-alerta {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #856404;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+/* Alertas customizados */
+.alert {
+    padding: 15px 20px;
+    border-radius: var(--borda-radius);
+    margin-bottom: 20px;
+    border-left: 4px solid;
+}
+
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: var(--cor-info);
+    color: #055160;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: var(--cor-erro);
+    color: #721c24;
+}
+
+.alert-alerta {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-color: var(--cor-alerta);
+    color: #856404;
+}
+
+.alert strong {
+    font-weight: 600;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top: 3px solid var(--cor-primaria);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Botões de tamanho pequeno */
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    border-radius: var(--borda-radius-pequeno);
+}
+
+.btn-sucesso {
+    background-color: var(--cor-sucesso);
+    color: white;
+    border: none;
+}
+
+.btn-sucesso:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+.btn-erro {
+    background-color: var(--cor-erro);
+    color: white;
+    border: none;
+}
+
+.btn-erro:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+/* Responsividade para detalhes do teste */
+@media (max-width: 768px) {
+    .details-grid.cols-2,
+    .details-grid.cols-3,
+    .details-grid.cols-4 {
+        grid-template-columns: 1fr;
+    }
+
+    .card-detalhes {
+        padding: 15px;
+    }
+
+    .flex-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+}
