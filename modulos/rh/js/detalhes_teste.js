@@ -102,15 +102,84 @@ function renderizarComparacaoDetalhada(
   let html = "";
   let totalPerguntas = gabaritoPerguntas.length;
   let acertos = 0;
-  let questoesComAvaliacaoManual = 0;
 
   // Mapeia as respostas do candidato para um formato de fácil acesso (chave é o index 0, 1, 2...)
   const respostasMap = {};
   Object.keys(respostas).forEach((key) => {
+    // A chave no Firestore é "resposta-0", "resposta-1", etc.
     const index = parseInt(key.replace("resposta-", ""), 10);
     if (!isNaN(index)) {
       respostasMap[index] = respostas[key];
     }
+  });
+
+  gabaritoPerguntas.forEach((pergunta, index) => {
+    // A chave no gabarito é o índice do array de perguntas
+    const respostaCandidato = respostasMap[index] || "Não respondida";
+
+    // ======================================================================
+    // ✅ CORREÇÃO APLICADA: Busca as chaves prováveis do seu Firestore
+    // ======================================================================
+    const enunciado =
+      pergunta.enunciado || pergunta.pergunta || "Enunciado não encontrado";
+    const gabaritoTexto =
+      pergunta.respostaCorreta || pergunta.gabarito || "Gabarito não fornecido"; // respostaCorreta (com C maiúsculo) é comum em schemas Firebase
+    const comentarios = pergunta.comentarios || pergunta.nota || "N/A";
+    // ======================================================================
+
+    let status = "info";
+    let feedback = "Avaliação Manual";
+
+    if (gabaritoTexto !== "Gabarito não fornecido") {
+      // Lógica de comparação para pontuação automática (string match)
+      // Normalização: Remove espaços e converte para minúsculas para comparação robusta
+      const candNorm = String(respostaCandidato)
+        .replace(/\s/g, "")
+        .toLowerCase()
+        .trim();
+      const corrNorm = String(gabaritoTexto)
+        .replace(/\s/g, "")
+        .toLowerCase()
+        .trim();
+
+      if (candNorm === corrNorm && candNorm.length > 0) {
+        status = "success";
+        acertos++;
+        feedback = '<i class="fas fa-check-circle me-1"></i> Resposta Correta!';
+      } else {
+        status = "danger";
+        feedback =
+          '<i class="fas fa-times-circle me-1"></i> Resposta Incorreta!';
+      }
+    } else {
+      feedback =
+        '<i class="fas fa-exclamation-triangle me-1"></i> Avaliação manual necessária.';
+    }
+
+    const cardClass = `border-${status} bg-white`;
+
+    html += `
+            <div class="comparacao-card card mb-4 ${cardClass}" style="border-left: 5px solid var(--cor-${status});">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Questão ${index + 1}: ${enunciado}</h6>
+                    <small class="text-muted">${feedback}</small>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="d-block mb-1"><strong>Resposta do Candidato:</strong></label>
+                            <div class="p-3 border rounded text-dark">${respostaCandidato}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="d-block mb-1 text-${status}"><strong>Resposta Correta / Gabarito:</strong></label>
+                            <div class="p-3 border rounded border-2 text-${status}">${gabaritoTexto}</div>
+                        </div>
+                    </div>
+                    
+                    <small class="text-muted d-block mt-2"><strong>Comentários (do Gabarito):</strong> ${comentarios}</small>
+                </div>
+            </div>
+        `;
   });
 
   gabaritoPerguntas.forEach((pergunta, index) => {
