@@ -333,7 +333,13 @@ async function carregarRespostasDoTeste(
     // Informações gerais do teste
     respostasHtml += `<div class="info-teste mb-3">
       <p><strong>Nome do Teste:</strong> ${data.nomeTeste || "N/A"}</p>
+      <p><strong>Data de Envio:</strong> ${
+        data.data_envio // <--- CORREÇÃO: Prioriza data_envio
+          ? new Date(data.data_envio.seconds * 1000).toLocaleString("pt-BR")
+          : "N/A"
+      }</p>
       <p><strong>Data de Resposta:</strong> ${
+        // <--- NOVO CAMPO: Data de Resposta
         data.dataResposta
           ? new Date(data.dataResposta.seconds * 1000).toLocaleString("pt-BR")
           : "N/A"
