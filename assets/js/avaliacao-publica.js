@@ -1,6 +1,6 @@
 /**
  * Arquivo: assets/js/avaliacao-publica.js
- * Versão: 2.0.0 (Com Cloud Functions Integradas)
+ * Versão: 2.1.0 (Adicionado feedback de "Enviando" no botão)
  * Data: 05/11/2025
  * Descrição: Valida tokens e carrega testes usando Cloud Functions
  */
@@ -26,7 +26,7 @@ const firebaseConfig = {
   appId: "1:1065838851206:web:32b7a40d7f066d0d7c4c86",
 };
 
-// ✅ Inicializa Firebase
+// Inicializa Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -47,7 +47,7 @@ async function carregarTeste() {
   try {
     console.log("🔹 Iniciando carregamento do teste...");
 
-    // ✅ 1️⃣ PEGA O TOKEN DA URL
+    // 1. PEGA O TOKEN DA URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     const testeIdAntigo = params.get("id"); // Para backward compatibility
@@ -64,7 +64,7 @@ async function carregarTeste() {
       return;
     }
 
-    // ✅ 2️⃣ VALIDA O TOKEN USANDO CLOUD FUNCTION
+    // 2. VALIDA O TOKEN USANDO CLOUD FUNCTION
     if (token) {
       console.log("🔹 Validando token via Cloud Function...");
 
@@ -87,29 +87,26 @@ async function carregarTeste() {
       tokenAtual = token;
       testeData = dataValidacao.teste;
     } else {
-      // FALLBACK: Se não houver token, tenta carregar direto pelo ID
+      // FALLBACK
       console.log("⚠️ Usando ID ao invés de TOKEN (modo compatibilidade)");
-
       const testeSnap = await db
         .collection("estudos_de_caso")
         .doc(testeIdAntigo)
         .get();
-
       if (!testeSnap.exists) {
         mostrarErro("❌ Teste não encontrado.");
         return;
       }
-
       testeData = {
         id: testeIdAntigo,
         ...testeSnap.data(),
       };
     }
 
-    // ✅ 3️⃣ RENDERIZA O TESTE
+    // 3. RENDERIZA O TESTE
     renderizarTeste(testeData);
 
-    // ✅ 4️⃣ MARCA O TEMPO DE INÍCIO
+    // 4. MARCA O TEMPO DE INÍCIO
     tempoInicioResposta = new Date();
     console.log("✅ Teste carregado e renderizado com sucesso!");
   } catch (error) {
@@ -121,7 +118,6 @@ async function carregarTeste() {
 function renderizarTeste(teste) {
   console.log("🔹 Renderizando teste...", teste);
 
-  // ✅ Preenche as informações do teste
   document.getElementById("titulo-teste").innerHTML = `
     <strong>${teste.titulo || "Teste"}</strong><br>
     <small>${teste.tipo ? teste.tipo.replace(/-/g, " ") : "Avaliação"}</small>
@@ -129,16 +125,13 @@ function renderizarTeste(teste) {
   document.getElementById("texto-teste").textContent =
     teste.conteudo || teste.conteudo_texto || "Leia as instruções abaixo.";
 
-  // ✅ NOVO: Exibe informações do candidato (se houver token)
   if (tokenData && tokenData.candidato) {
     document.getElementById("info-candidato-nome").textContent =
       tokenData.candidato.nome || "Candidato(a)";
-
     const diasRestantes = tokenData.diasRestantes || 7;
     const expiraEm = tokenData.expiraEm
       ? new Date(tokenData.expiraEm).toLocaleDateString("pt-BR")
       : "-";
-
     document.getElementById(
       "info-candidato-prazo"
     ).textContent = `${diasRestantes} dias (vence em ${expiraEm})`;
@@ -147,10 +140,8 @@ function renderizarTeste(teste) {
     document.getElementById("info-candidato-prazo").textContent = "-";
   }
 
-  // ✅ Renderiza as perguntas
   const perguntasContainer = document.getElementById("perguntas-container");
   perguntasContainer.innerHTML = "";
-
   const perguntas = teste.perguntas || [];
 
   if (perguntas.length === 0) {
@@ -159,8 +150,6 @@ function renderizarTeste(teste) {
   } else {
     perguntas.forEach((pergunta, index) => {
       let perguntaHtml = "";
-
-      // ✅ RENDERIZA DIFERENTES TIPOS DE PERGUNTAS
       if (pergunta.tipo === "multipla-escolha") {
         perguntaHtml = `
           <div class="pergunta-item">
@@ -170,7 +159,6 @@ function renderizarTeste(teste) {
             </label>
             <div class="mt-3">
         `;
-
         if (pergunta.opcoes && pergunta.opcoes.length > 0) {
           pergunta.opcoes.forEach((opcao, opcaoIdx) => {
             const opcaoTexto =
@@ -185,7 +173,6 @@ function renderizarTeste(teste) {
             `;
           });
         }
-
         perguntaHtml += `</div></div>`;
       } else if (pergunta.tipo === "verdadeiro-falso") {
         perguntaHtml = `
@@ -227,32 +214,31 @@ function renderizarTeste(teste) {
           </div>
         `;
       }
-
       perguntasContainer.innerHTML += perguntaHtml;
     });
   }
 
-  // Mostra o conteúdo
   document.getElementById("carregamento").style.display = "none";
   document.getElementById("conteudo-teste").style.display = "block";
-
   console.log("✅ Teste renderizado com sucesso");
 }
 
 function mostrarErro(mensagem) {
   document.getElementById("carregamento").style.display = "none";
+  document.getElementById("conteudo-teste").style.display = "none"; // Esconde o teste em caso de erro
   document.getElementById("erro-teste").innerHTML = mensagem;
   document.getElementById("erro-teste").style.display = "block";
 }
 
 function mostrarSucesso(mensagem) {
   document.getElementById("conteudo-teste").style.display = "none";
+  document.getElementById("erro-teste").style.display = "none";
   document.getElementById("sucesso-teste").innerHTML = mensagem;
   document.getElementById("sucesso-teste").style.display = "block";
 }
 
 // ============================================
-// LISTENER DO FORMULÁRIO
+// LISTENER DO FORMULÁRIO (COM FEEDBACK DE ENVIO)
 // ============================================
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -261,6 +247,20 @@ document.addEventListener("DOMContentLoaded", function () {
   if (formResposta) {
     formResposta.addEventListener("submit", async function (e) {
       e.preventDefault();
+
+      // ==========================================================
+      // ✅ CORREÇÃO 1: Feedback de Envio
+      // ==========================================================
+      const btnSubmit = e.target.querySelector('button[type="submit"]');
+      if (!btnSubmit) return;
+
+      const originalBtnHtml = btnSubmit.innerHTML;
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = `
+        <i class="fas fa-spinner fa-spin me-2"></i> Enviando respostas...
+      `;
+      // ==========================================================
 
       console.log("🔹 Enviando respostas...");
 
@@ -273,7 +273,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       console.log("✅ Respostas coletadas:", respostas);
 
-      // ✅ CALCULA TEMPO GASTO
       const tempoFim = new Date();
       const tempoGastoSegundos = Math.floor(
         (tempoFim - tempoInicioResposta) / 1000
@@ -284,7 +283,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       console.log(`⏱️ Tempo gasto: ${tempoFormatado}`);
 
-      // ✅ ENVIA PARA CLOUD FUNCTION
       if (tokenAtual) {
         try {
           console.log("🔹 Chamando Cloud Function: salvarRespostasTeste");
@@ -306,6 +304,9 @@ document.addEventListener("DOMContentLoaded", function () {
           if (!dataSalvar.sucesso) {
             mostrarErro(`❌ Erro ao salvar respostas: ${dataSalvar.erro}`);
             console.error("Erro ao salvar:", dataSalvar);
+            // Restaura o botão em caso de erro
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalBtnHtml;
             return;
           }
 
@@ -320,8 +321,12 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
           console.error("❌ Erro ao enviar respostas:", error);
           mostrarErro(`❌ Erro ao enviar respostas: ${error.message}`);
+          // Restaura o botão em caso de erro
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = originalBtnHtml;
         }
       } else {
+        // Modo de fallback (sem token)
         mostrarSucesso(`
           <h4>✅ Respostas Enviadas com Sucesso!</h4>
           <p><strong>Tempo gasto:</strong> ${tempoFormatado}</p>
