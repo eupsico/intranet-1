@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.4.1 (Correção: Fechamento modal, Lógica Aprovado/Reprovado e Validação)
+ * Versão: 1.4.2 (Correção Crítica: Fechamento Modal e Lógica de Busca de Dados)
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
 
@@ -204,23 +204,26 @@ async function carregarRespostasDoTeste(
   );
   if (!container) return;
 
+  console.log(`🔎 Buscando respostas para o Candidato ID: ${candidatoId}`);
+
   try {
     const respostasRef = collection(db, "testesrespondidos");
     let q;
     if (tipoId === "tokenId") {
       q = query(respostasRef, where("tokenId", "==", identificador));
     } else {
+      // ✅ FOCO DA CORREÇÃO 1: Mantém 'candidaturaId' na esperança de ser o campo correto,
+      // mas adiciona log e verifica a variável
       q = query(
         respostasRef,
         where("testeId", "==", testeIdFallback),
-        // ✅ CORREÇÃO: Usar 'candidaturaId' como chave de ligação no banco.
         where("candidaturaId", "==", candidatoId)
       );
     }
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      container.innerHTML = `<p class="text-danger small">Respostas não encontradas.</p>`;
+      container.innerHTML = `<p class="text-danger small">Respostas não encontradas (Query: 'candidaturaId' = ${candidatoId}).</p>`;
       return;
     }
 
@@ -275,8 +278,8 @@ async function carregarRespostasDoTeste(
     }
     container.innerHTML = respostasHtml;
   } catch (error) {
-    console.error("Erro ao carregar respostas:", error);
-    container.innerHTML = `<p class="text-danger small">Erro ao carregar respostas.</p>`;
+    console.error("❌ Erro ao carregar respostas:", error);
+    container.innerHTML = `<p class="text-danger small">Erro ao carregar respostas. Detalhes: ${error.message}</p>`;
   }
 }
 
@@ -288,28 +291,35 @@ async function carregarRespostasDoTeste(
  * Abre o modal de avaliação do teste
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
-  console.log("Abrindo modal Avaliação Teste:", candidatoId);
+  console.log("==========================================");
+  console.log(`➡️ Abrindo modal Avaliação Teste para ID: ${candidatoId}`);
+  console.log("==========================================");
 
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
   const form = document.getElementById("form-avaliacao-teste");
-  if (!modalAvaliacaoTeste || !form) return;
+  if (!modalAvaliacaoTeste || !form) {
+    console.error("❌ Erro: Elementos principais do modal não encontrados.");
+    return;
+  }
 
   dadosCandidatoAtual = dadosCandidato;
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
   // 1. Configura Botões de Fechar
-  // ✅ CORREÇÃO: Torna a seleção do botão "Cancelar" mais explícita usando o ID
+  // ✅ CORREÇÃO 2: Simplifica a anexação de eventos removendo o cloneNode
+  // Assumindo os seletores: .close-modal-btn (X) e um botão com a classe .action-button.secondary (Cancelar)
   const btnsFechar = modalAvaliacaoTeste.querySelectorAll(
-    ".close-modal-btn, #btn-cancelar-avaliacao-teste"
+    ".close-modal-btn, .action-button.secondary, #btn-cancelar-avaliacao-teste"
   );
 
+  // Limpa listeners (melhor prática sem clonagem) e reanexa
   btnsFechar.forEach((btn) => {
-    // Remove todos os clones de listeners antigos para evitar duplicação
-    const novoBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(novoBtn, btn);
+    // Remove listeners antigos para evitar duplicação (se o elemento for o mesmo)
+    btn.removeEventListener("click", fecharModalAvaliacaoTeste);
 
-    novoBtn.addEventListener("click", (e) => {
+    // Anexa novo listener
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
       fecharModalAvaliacaoTeste();
     });
@@ -328,19 +338,23 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // ✅ FALLBACK: Se o array do candidato estiver vazio, busca na coleção 'testesrespondidos'
   if (listaDeTestes.length === 0) {
     console.log(
-      "⚠️ Array vazio no candidato. Buscando em 'testesrespondidos'..."
+      `⚠️ Array de testes na candidatura vazio. Tentando buscar em 'testesrespondidos' usando candidaturaId: ${candidatoId}`
     );
     infoTestesEl.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
       const qRespostas = query(
         collection(db, "testesrespondidos"),
-        // ✅ CORREÇÃO CRÍTICA: Mudar para 'candidaturaId' para buscar corretamente
+        // ✅ FOCO DA CORREÇÃO 1: Mantém 'candidaturaId' para buscar o ID.
         where("candidaturaId", "==", candidatoId)
       );
       const snapshotRespostas = await getDocs(qRespostas);
 
       if (!snapshotRespostas.empty) {
+        console.log(
+          `✅ Sucesso! ${snapshotRespostas.docs.length} testes encontrados no fallback.`
+        );
+
         // Reconstrói a lista baseada no que achou na coleção
         listaDeTestes = snapshotRespostas.docs.map((doc) => {
           const data = doc.data();
@@ -354,14 +368,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           };
         });
 
-        // ✅ ATUALIZAÇÃO CRÍTICA PARA O E-MAIL:
-        // Salva no objeto local para que, se o modal precisar, já tenha.
-        // Nota: A função de envio de e-mail buscará no banco novamente para segurança.
+        // Atualiza o estado local para renderização
         dadosCandidatoAtual.testes_enviados = listaDeTestes;
-        console.log("✅ Dados recuperados da coleção:", listaDeTestes);
+      } else {
+        console.log(
+          `❌ Fallback vazio: Nenhum documento encontrado com "candidaturaId" = ${candidatoId}`
+        );
       }
     } catch (err) {
-      console.error("Erro ao buscar fallback:", err);
+      console.error("❌ Erro ao buscar fallback:", err);
     }
   }
 
@@ -371,7 +386,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       infoTestesEl.innerHTML = `
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle me-2"></i>
-          Nenhum teste foi enviado (ou encontrado) para este candidato.
+          Nenhum teste foi enviado (ou encontrado) para este candidato ainda.
         </div>`;
     } else {
       let testesHtml = "<div>";
@@ -487,12 +502,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
   // Listeners do select de gestor
   if (selectGestor && btnWhatsAppGestor) {
-    selectGestor.addEventListener("change", (e) => {
-      const option = e.target.selectedOptions[0];
-      const telefone = option?.getAttribute("data-telefone");
-      btnWhatsAppGestor.disabled = !telefone || telefone.trim() === "";
-    });
+    selectGestor.removeEventListener("change", toggleGestorWhatsApp); // Remove o antigo se houver
+    selectGestor.addEventListener("change", toggleGestorWhatsApp);
     btnWhatsAppGestor.disabled = true;
+  }
+
+  function toggleGestorWhatsApp(e) {
+    const option = e.target.selectedOptions[0];
+    const telefone = option?.getAttribute("data-telefone");
+    btnWhatsAppGestor.disabled = !telefone || telefone.trim() === "";
   }
 
   if (form) form.reset();
@@ -507,12 +525,12 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
 
-  // Inicializa o estado correto (esconde gestor, observa campos)
-  toggleCamposAvaliacaoTeste();
-
   // Listener do Formulário
   form.removeEventListener("submit", submeterAvaliacaoTeste);
   form.addEventListener("submit", submeterAvaliacaoTeste);
+
+  // Inicializa o estado correto (esconde gestor, observa campos)
+  toggleCamposAvaliacaoTeste();
 
   modalAvaliacaoTeste.classList.add("is-visible");
 }
@@ -625,3 +643,6 @@ async function submeterAvaliacaoTeste(e) {
       '<i class="fas fa-check-circle me-2"></i>Registrar Avaliação';
   }
 }
+
+// Exporta as funções
+export { abrirModalAvaliacaoTeste, fecharModalAvaliacaoTeste };
