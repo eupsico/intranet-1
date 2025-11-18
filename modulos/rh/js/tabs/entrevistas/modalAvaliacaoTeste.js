@@ -1,11 +1,9 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.3.0 (Correção Crítica: Busca direta em testesrespondidos + Fechar Modal)
- * Data: 05/11/2025
+ * Versão: 1.4.0 (Correção: Fechamento modal, Lógica Aprovado/Reprovado e Validação)
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
 
-// ✅ CORREÇÃO: Removida a importação de 'getGlobalState' de '../recrutamento.js'
 import {
   db,
   collection,
@@ -33,36 +31,60 @@ function fecharModalAvaliacaoTeste() {
   const modalOverlay = document.getElementById("modal-avaliacao-teste");
   if (modalOverlay) {
     modalOverlay.classList.remove("is-visible");
+
+    // Reseta o formulário ao fechar para evitar estados inconsistentes na reabertura
+    const form = document.getElementById("form-avaliacao-teste");
+    if (form) form.reset();
   }
 }
 
 /**
- * Gerencia a exibição do seletor de gestor no modal "Avaliar Teste"
- * (Refatorado para usar .classList)
+ * Gerencia a exibição do seletor de gestor e obrigatoriedade da reprovação
  */
 function toggleCamposAvaliacaoTeste() {
   const form = document.getElementById("form-avaliacao-teste");
   if (!form) return;
 
-  const radioAprovado = form.querySelector(
-    'input[name="resultadoteste"][value="Aprovado"]'
-  );
+  // Verifica qual radio está checado
+  const resultadoSelecionado = form.querySelector(
+    'input[name="resultadoteste"]:checked'
+  )?.value;
 
   const containerGestor = document.getElementById(
     "avaliacao-teste-gestor-container"
   );
+  const labelObservacoes = form.querySelector(
+    'label[for="avaliacao-teste-observacoes"]'
+  );
+  const textareaObservacoes = document.getElementById(
+    "avaliacao-teste-observacoes"
+  );
 
-  if (!containerGestor) {
-    console.warn(
-      "toggleCamposAvaliacaoTeste: Container #avaliacao-teste-gestor-container não encontrado."
-    );
-    return;
+  // 1. Lógica APROVADO
+  if (resultadoSelecionado === "Aprovado") {
+    if (containerGestor) containerGestor.classList.remove("hidden");
+
+    // Observações voltam a ser opcionais
+    if (textareaObservacoes) textareaObservacoes.required = false;
+    if (labelObservacoes)
+      labelObservacoes.innerHTML = "Observações (opcional):";
   }
+  // 2. Lógica REPROVADO
+  else if (resultadoSelecionado === "Reprovado") {
+    if (containerGestor) containerGestor.classList.add("hidden");
 
-  if (radioAprovado && radioAprovado.checked) {
-    containerGestor.classList.remove("hidden");
-  } else {
-    containerGestor.classList.add("hidden");
+    // Observações viram Motivo de Reprovação (Obrigatório)
+    if (textareaObservacoes) textareaObservacoes.required = true;
+    if (labelObservacoes)
+      labelObservacoes.innerHTML =
+        '<strong class="text-danger">* Motivo da Reprovação (Obrigatório):</strong>';
+  }
+  // 3. Nenhum selecionado (Estado inicial)
+  else {
+    if (containerGestor) containerGestor.classList.add("hidden");
+    if (textareaObservacoes) textareaObservacoes.required = false;
+    if (labelObservacoes)
+      labelObservacoes.innerHTML = "Observações (opcional):";
   }
 }
 
@@ -211,7 +233,7 @@ async function carregarRespostasDoTeste(
           <strong>Data:</strong> ${formatarDataEnvio(data.data_envio)}
         </small>
       </div>
-      <ul class="simple-list mt-2">`; // Mantendo suas classes
+      <ul class="simple-list mt-2">`;
 
     if (data.respostas && Array.isArray(data.respostas)) {
       data.respostas.forEach((r, i) => {
@@ -275,18 +297,19 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // 1. Configura Botões de Fechar (CORREÇÃO)
-  // Seleciona botões com data-modal-id E o botão específico "secondary" dentro do footer deste modal
+  // 1. Configura Botões de Fechar (CORRIGIDO)
+  // Garante a seleção tanto do X quanto do botão Cancelar
   const btnsFechar = modalAvaliacaoTeste.querySelectorAll(
-    '[data-modal-id="modal-avaliacao-teste"], .modal-footer .action-button.secondary'
+    ".close-modal-btn, .action-button.secondary"
   );
 
   btnsFechar.forEach((btn) => {
-    // Remove listener antigo para evitar duplicação
-    btn.removeEventListener("click", fecharModalAvaliacaoTeste);
-    // Adiciona novo listener
-    btn.addEventListener("click", (e) => {
-      e.preventDefault(); // Previne submit se estiver dentro de form
+    // Remove todos os clones de listeners antigos para evitar duplicação
+    const novoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(novoBtn, btn);
+
+    novoBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       fecharModalAvaliacaoTeste();
     });
   });
@@ -296,7 +319,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   document.getElementById("avaliacao-teste-status-atual").textContent =
     dadosCandidato.status_recrutamento || "N/A";
 
-  // 3. Lógica de Dados dos Testes (CORREÇÃO CRÍTICA)
+  // 3. Lógica de Dados dos Testes (Busca na coleção nova se necessário)
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
   let listaDeTestes =
     dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
@@ -323,14 +346,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
             id: data.testeId,
             nomeTeste: data.nomeTeste,
             data_envio: data.data_envio,
-            status: "respondido", // Se está nessa coleção, foi respondido
+            status: "respondido",
             tokenId: doc.id,
-            // Adiciona os dados completos para evitar novo fetch
             respostasCompletas: data,
           };
         });
 
-        // ✅ Atualiza o objeto global para que o EMAIL funcione
+        // ✅ ATUALIZAÇÃO CRÍTICA PARA O E-MAIL:
+        // Salva no objeto local para que, se o modal precisar, já tenha.
+        // Nota: A função de envio de e-mail buscará no banco novamente para segurança.
         dadosCandidatoAtual.testes_enviados = listaDeTestes;
         console.log("✅ Dados recuperados da coleção:", listaDeTestes);
       }
@@ -471,14 +495,17 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Listeners dos Rádios
+  // Listeners dos Rádios (Aprovado / Reprovado)
   const radiosResultadoTeste = form.querySelectorAll(
     'input[name="resultadoteste"]'
   );
   radiosResultadoTeste.forEach((radio) => {
+    // Remove e readiciona para evitar duplicação
     radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
+
+  // Inicializa o estado correto (esconde gestor, observa campos)
   toggleCamposAvaliacaoTeste();
 
   // Listener do Formulário
@@ -498,16 +525,11 @@ async function submeterAvaliacaoTeste(e) {
     "btn-registrar-avaliacao-teste"
   );
 
-  // ==========================================================
-  // ✅ CORREÇÃO APLICADA AQUI
-  // Obtém o estado do 'window' para quebrar o loop de importação
-  // ==========================================================
   const state = window.getGlobalRecrutamentoState();
   if (!state) {
     window.showToast?.("Erro: Estado global não iniciado.", "error");
     return;
   }
-  // ==========================================================
 
   const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
   const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
@@ -528,8 +550,17 @@ async function submeterAvaliacaoTeste(e) {
     window.showToast?.("Selecione o Resultado do Teste.", "error");
     return;
   }
+
+  // Validação Específica
   if (resultado === "Aprovado" && !gestorSelecionadoId) {
     window.showToast?.("Selecione um gestor para aprovar.", "error");
+    return;
+  }
+  if (
+    resultado === "Reprovado" &&
+    (!observacoes || observacoes.trim() === "")
+  ) {
+    window.showToast?.("O motivo da reprovação é obrigatório.", "error");
     return;
   }
 
@@ -568,7 +599,7 @@ async function submeterAvaliacaoTeste(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Avaliação Teste: ${isAprovado ? "APROVADO" : "REPROVADO"}. ${
-          isAprovado ? `Gestor: ${gestorNome}` : ""
+          isAprovado ? `Gestor: ${gestorNome}` : `Motivo: ${observacoes}`
         }`,
         usuario: avaliadorNome,
       }),
