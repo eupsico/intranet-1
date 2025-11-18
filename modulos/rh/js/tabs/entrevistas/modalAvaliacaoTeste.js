@@ -1,11 +1,11 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.0.0 (Módulo Refatorado)
+ * Versão: 1.1.0 (Corrigida dependência circular)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
 
-import { getGlobalState } from "../recrutamento.js";
+// ✅ CORREÇÃO: Removida a importação de 'getGlobalState' de '../recrutamento.js'
 import {
   db,
   collection,
@@ -38,7 +38,7 @@ function fecharModalAvaliacaoTeste() {
 
 /**
  * Gerencia a exibição do seletor de gestor no modal "Avaliar Teste"
- * (Refatorado para usar .classList)
+ * (Mantendo sua lógica original com style.display)
  */
 function toggleCamposAvaliacaoTeste() {
   const form = document.getElementById("form-avaliacao-teste");
@@ -60,9 +60,9 @@ function toggleCamposAvaliacaoTeste() {
   }
 
   if (radioAprovado && radioAprovado.checked) {
-    containerGestor.classList.remove("hidden");
+    containerGestor.style.display = "block";
   } else {
-    containerGestor.classList.add("hidden");
+    containerGestor.style.display = "none";
   }
 }
 
@@ -197,28 +197,33 @@ async function carregarRespostasDoTeste(
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      container.innerHTML = `<p class="alert alert-error small">Respostas não encontradas.</p>`;
+      container.innerHTML = `<p class="text-danger small">Respostas não encontradas.</p>`;
       return;
     }
 
     const data = snapshot.docs[0].data();
-    let respostasHtml = "";
-
-    // Não precisamos do <div class="info-card"> aqui pois ele já existe no modal
-
-    respostasHtml += `<h6 class="mt-3">Respostas do Candidato</h6>`;
-    respostasHtml += `<ul class="simple-list">`;
+    let respostasHtml = `
+      <div class="teste-header">
+        <h5 class="teste-titulo">
+          <i class="fas fa-file-alt me-2"></i>
+          ${data.nomeTeste || "Teste"}
+        </h5>
+        <small class="text-muted d-block mb-3">
+          <i class="fas fa-calendar me-1"></i>
+          <strong>Data de Envio:</strong> ${formatarDataEnvio(data.data_envio)}
+        </small>
+      </div>
+      <h6 class="mt-3">Respostas do Candidato</h6>
+      <ul class="list-group list-group-flush">`; // Mantendo suas classes
 
     if (data.respostas && Array.isArray(data.respostas)) {
       data.respostas.forEach((r, i) => {
         respostasHtml += `
-          <li class="simple-list-item">
-            <div class="simple-list-item-content">
-              <strong>P${i + 1}: ${r.pergunta || "Pergunta"}</strong>
-              <div class="description-box pre-wrap mt-2" style="margin-bottom: 0;">
-                ${r.resposta || "Sem resposta"}
-              </div>
-            </div>
+          <li class="list-group-item">
+            <strong>P${i + 1}: ${r.pergunta || "Pergunta"}</strong>
+            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">
+              ${r.resposta || "Sem resposta"}
+            </p>
           </li>`;
       });
     }
@@ -236,7 +241,7 @@ async function carregarRespostasDoTeste(
     container.innerHTML = respostasHtml;
   } catch (error) {
     console.error("Erro ao carregar respostas:", error);
-    container.innerHTML = `<p class="alert alert-error small">Erro ao carregar respostas.</p>`;
+    container.innerHTML = `<p class="text-danger small">Erro ao carregar respostas.</p>`;
   }
 }
 
@@ -248,21 +253,9 @@ async function carregarRespostasDoTeste(
  * Abre o modal de avaliação do teste
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
-  console.log(
-    "Entrevistas: Abrindo modal de avaliação de teste para",
-    candidatoId
-  );
-
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
   const form = document.getElementById("form-avaliacao-teste");
-
-  if (!modalAvaliacaoTeste || !form) {
-    window.showToast?.(
-      "Erro: Modal de Avaliação de Teste não encontrado.",
-      "error"
-    );
-    return;
-  }
+  if (!modalAvaliacaoTeste || !form) return;
 
   dadosCandidatoAtual = dadosCandidato;
   dadosCandidato.id = candidatoId;
@@ -273,7 +266,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   document.getElementById("avaliacao-teste-status-atual").textContent =
     dadosCandidato.status_recrutamento || "N/A";
 
-  // Exibe todos os testes enviados
   const testesEnviados = dadosCandidato.testes_enviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
@@ -289,53 +281,53 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       testesEnviados.forEach((teste, index) => {
         const dataEnvio = formatarDataEnvio(teste.data_envio);
         const statusTeste = teste.status || "enviado";
-        let statusClass = "status-pendente";
+        let badgeClass = "bg-warning";
         let statusTexto = "Pendente";
         let linkHtml = "";
         const tokenId = teste.tokenId || `manual-index-${index}`;
 
         if (statusTeste === "respondido") {
-          statusClass = "status-concluída";
+          badgeClass = "bg-success";
           statusTexto = "Respondido";
-          // Um link placeholder, já que as respostas são carregadas abaixo
-          linkHtml = `<span class="text-muted small mt-2">Respostas prontas para avaliação.</span>`;
+          if (teste.linkrespostas)
+            linkHtml = `<a href="${teste.linkrespostas}" target="_blank">Acessar Respostas</a>`;
         } else if (statusTeste === "avaliado") {
-          statusClass = "status-pendente";
+          badgeClass = "bg-info";
           statusTexto = "Avaliado";
+          if (teste.linkrespostas)
+            linkHtml = `<a href="${teste.linkrespostas}" target="_blank">Ver Avaliação</a>`;
         } else {
-          linkHtml = `<p class="text-muted small mt-2">Aguardando resposta do candidato</p>`;
+          linkHtml = `Aguardando resposta do candidato`;
         }
 
         testesHtml += `
-          <div class="info-card mb-3">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <h5 style="margin: 0; color: var(--cor-primaria);">
+          <div class="teste-item">
+            <div class="teste-header">
+              <h5 class="teste-titulo">
                 <i class="fas fa-file-alt me-2"></i>
                 ${
                   teste.nomeTeste ||
                   "Teste (ID: " + tokenId.substring(0, 5) + ")"
                 }
               </h5>
-              <span class="status-badge ${statusClass}">${statusTexto}</span>
+              <span class="badge ${badgeClass}">${statusTexto}</span>
             </div>
-            <div class="mt-2">
-              <p class="small text-muted mb-1"><strong>Data de Envio:</strong> ${dataEnvio}</p>
-              <p class="small text-muted mb-1"><strong>Enviado por:</strong> ${
-                teste.enviado_por || "N/A"
-              }</p>
+            <div class="teste-info">
+              <p><strong>Data de Envio:</strong> ${dataEnvio}</p>
+              <p><strong>Enviado por:</strong> ${teste.enviado_por || "N/A"}</p>
               ${
                 teste.tempoGasto
-                  ? `<p class="small text-muted mb-1"><strong>Tempo Gasto:</strong> ${Math.floor(
+                  ? `<p><strong>Tempo Gasto:</strong> ${Math.floor(
                       teste.tempoGasto / 60
                     )}m ${teste.tempoGasto % 60}s</p>`
                   : ""
               }
-              <p class="small text-muted mb-1"><strong>Link:</strong> <a href="${
+              <p><strong>Link:</strong> <a href="${
                 teste.link || "#"
               }" target="_blank">${teste.link ? "Acessar Link" : "N/A"}</a></p>
-              ${linkHtml}
+              <p><strong>Resultado:</strong> ${linkHtml}</p>
             </div>
-            <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
+            <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
               <span class="text-muted small">Carregando respostas...</span>
             </div>
           </div>`;
@@ -343,7 +335,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      // Dispara o carregamento das respostas
       testesEnviados.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
@@ -361,7 +352,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     }
   }
 
-  // Carrega gestores no select
+  // Carrega gestores
   const selectGestor = document.getElementById("avaliacao-teste-gestor");
   const btnWhatsAppGestor = document.getElementById(
     "btn-whatsapp-gestor-avaliacao"
@@ -387,7 +378,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     }
   }
 
-  // Habilita/Desabilita botão de WhatsApp
+  // Listeners do select de gestor
   if (selectGestor && btnWhatsAppGestor) {
     selectGestor.addEventListener("change", (e) => {
       const option = e.target.selectedOptions[0];
@@ -399,7 +390,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Listeners dos Rádios (Aprovado/Reprovado)
+  // Listeners dos Rádios
   const radiosResultadoTeste = form.querySelectorAll(
     'input[name="resultadoteste"]'
   );
@@ -407,7 +398,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     radio.removeEventListener("change", toggleCamposAvaliacaoTeste);
     radio.addEventListener("change", toggleCamposAvaliacaoTeste);
   });
-  toggleCamposAvaliacaoTeste(); // Seta estado inicial
+  toggleCamposAvaliacaoTeste();
 
   // Listener do Formulário
   form.removeEventListener("submit", submeterAvaliacaoTeste);
@@ -433,8 +424,19 @@ async function submeterAvaliacaoTeste(e) {
   const btnRegistrarAvaliacao = document.getElementById(
     "btn-registrar-avaliacao-teste"
   );
-  const { candidatosCollection, handleTabClick, statusCandidaturaTabs } =
-    getGlobalState();
+
+  // ==========================================================
+  // ✅ CORREÇÃO APLICADA AQUI
+  // Obtém o estado do 'window' para quebrar o loop de importação
+  // ==========================================================
+  const state = window.getGlobalRecrutamentoState();
+  if (!state) {
+    window.showToast?.("Erro: Estado global não iniciado.", "error");
+    return;
+  }
+  // ==========================================================
+
+  const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
   const candidaturaId = modalAvaliacaoTeste?.dataset.candidaturaId;
   if (!candidaturaId || !btnRegistrarAvaliacao) return;
 
