@@ -878,16 +878,21 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           const tokenId = this.getAttribute("data-teste-id");
           const candId = this.getAttribute("data-candidato-id");
 
-          // === CORREÇÃO: URL Raiz para evitar 404 ===
-          const novaURL = `/index.html#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
-          window.open(novaURL, "_blank");
+          // === CORREÇÃO: Mudar o hash na janela atual (navegação SPA) ===
+          const novaHash = `#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
+
+          // 1. Navega na janela atual (o roteador do rh-painel.js faz o resto)
+          window.location.hash = novaHash;
+
+          // 2. Fecha o modal de avaliação
+          fecharModalAvaliacaoTeste();
 
           window.showToast?.(
-            "A página de detalhes com gabarito será carregada em nova aba. (Funcionalidade em desenvolvimento)",
+            "A página de detalhes do teste foi carregada.",
             "info"
           );
 
-          console.log("📋 [RENDER] Abrindo nova URL:", novaURL);
+          console.log("📋 [RENDER] Navegando para:", novaHash);
         });
       });
 
