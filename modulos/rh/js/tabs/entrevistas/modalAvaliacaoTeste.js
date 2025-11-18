@@ -951,15 +951,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.classList.add("is-visible");
   console.log("✅ [MODAL] Classe 'is-visible' adicionada");
   console.log("✅ [MODAL] Modal de avaliação de teste ABERTO COM SUCESSO");
-
-  console.log(
-    "╔════════════════════════════════════════════════════════════════╗"
-  );
   console.log(
     "║       ✅ MODAL ABERTO - FUNÇÃO CONCLUÍDA                      ║"
-  );
-  console.log(
-    "╚════════════════════════════════════════════════════════════════╝\n"
   );
 }
 
