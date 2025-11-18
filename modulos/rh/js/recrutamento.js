@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.3.0 (Correção Completa: Email + Restauração de Funções Dashboard/Monitor)
+ * Versão: 3.4.0 (CORREÇÃO DE CONFLITO: Removida lógica duplicada de Avaliação de Teste)
  * Data: 04/11/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
@@ -427,451 +427,6 @@ window.abrirModalCandidato = abrirModalCandidato;
 // ====================================================
 
 /**
- * Alterna visibilidade dos campos de avaliação de teste (ex: gestor) baseado no resultado
- */
-window.toggleCamposAvaliacaoTeste = function () {
-  const form = document.getElementById("form-avaliacao-teste");
-  if (!form) return;
-
-  const resultadoSelecionado = form.querySelector(
-    'input[name="resultadoteste"]:checked'
-  )?.value;
-  const gestorContainer = document.getElementById(
-    "avaliacao-teste-gestor-container"
-  );
-
-  if (!gestorContainer) return;
-
-  if (resultadoSelecionado === "Aprovado") {
-    gestorContainer.classList.remove("hidden");
-  } else {
-    gestorContainer.classList.add("hidden");
-  }
-};
-
-/**
- * Carrega histórico de tokens/testes enviados para um candidato (Aba Histórico)
- * @param {string} candidatoId - ID do candidato
- */
-async function carregarHistoricoTokens(candidatoId) {
-  const container = document.getElementById("avaliacao-teste-info-testes");
-  if (!container) {
-    console.error("Container 'avaliacao-teste-info-testes' não encontrado.");
-    return;
-  }
-
-  try {
-    container.innerHTML =
-      '<p class="text-muted small"><i class="fas fa-spinner fa-spin me-2"></i>Carregando histórico...</p>';
-
-    const candidaturaRef = doc(candidatosCollection, candidatoId);
-    const candidaturaSnap = await getDoc(candidaturaRef);
-
-    if (!candidaturaSnap.exists()) {
-      container.innerHTML =
-        '<p class="text-danger">Candidatura não encontrada.</p>';
-      return;
-    }
-
-    const dados = candidaturaSnap.data();
-    const tokensAccesso = dados.testesenviados || [];
-
-    if (tokensAccesso.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          Nenhum teste foi enviado para este candidato ainda.
-        </div>
-      `;
-      return;
-    }
-
-    let historicoHtml = '<div class="tokens-historico">';
-    historicoHtml += `<h6 class="mb-3"><i class="fas fa-history me-2"></i>Total de Testes: ${tokensAccesso.length}</h6>`;
-
-    tokensAccesso.forEach((token, index) => {
-      const status = token.status || "enviado";
-      let badgeClass = "status-pendente";
-      let statusTexto = "Pendente";
-
-      if (status === "respondido") {
-        badgeClass = "status-concluída";
-        statusTexto = "Respondido";
-      } else if (status === "avaliado") {
-        badgeClass = "status-info";
-        statusTexto = "Avaliado";
-      }
-
-      let dataEnvio = "N/A";
-      if (token.dataenvio?.toDate) {
-        dataEnvio = token.dataenvio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-      } else if (token.data_envio?.toDate) {
-        dataEnvio = token.data_envio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-      }
-
-      historicoHtml += `
-        <div class="info-card mb-2">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <h6 style="margin: 0 0 5px 0;">${index + 1}. ${
-        token.nomeTeste || "Teste"
-      }</h6>
-              <p class="text-muted small" style="margin-bottom: 5px;">
-                <i class="fas fa-calendar me-1"></i><strong>Enviado:</strong> ${dataEnvio}
-              </p>
-              <p class="text-muted small" style="margin-bottom: 5px;">
-                <i class="fas fa-user me-1"></i><strong>Por:</strong> ${
-                  token.enviadopor || "N/A"
-                }
-              </p>
-              ${
-                token.tempoGasto !== undefined
-                  ? `
-                <p class="text-muted small" style="margin-bottom: 0;">
-                  <i class="fas fa-hourglass-end me-1"></i><strong>Tempo Gasto:</strong> ${Math.floor(
-                    token.tempoGasto / 60
-                  )}m ${token.tempoGasto % 60}s
-                </p>
-              `
-                  : ""
-              }
-            </div>
-            <span class="status-badge ${badgeClass}">${statusTexto}</span>
-          </div>
-        </div>
-      `;
-    });
-
-    historicoHtml += "</div>";
-    container.innerHTML = historicoHtml;
-  } catch (error) {
-    console.error("Erro ao carregar histórico de tokens:", error);
-    container.innerHTML = `
-      <p class="text-danger small">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        Erro ao carregar histórico: ${error.message}
-      </p>
-    `;
-  }
-}
-
-/**
- * Carrega dashboard com estatísticas de testes do candidato (Aba Dashboard)
- * @param {string} candidatoId - ID do candidato
- */
-async function carregarDashboardTeste(candidatoId) {
-  const container = document.getElementById("avaliacao-teste-dashboard");
-  if (!container) return;
-
-  try {
-    container.innerHTML =
-      '<p class="text-muted small"><i class="fas fa-spinner fa-spin me-2"></i>Carregando dados...</p>';
-
-    const candidaturaRef = doc(candidatosCollection, candidatoId);
-    const candidaturaSnap = await getDoc(candidaturaRef);
-
-    if (!candidaturaSnap.exists()) {
-      container.innerHTML =
-        '<p class="alert alert-error">Candidatura não encontrada.</p>';
-      return;
-    }
-
-    const dados = candidaturaSnap.data();
-    const tokensAccesso = dados.testesenviados || [];
-
-    let dashboardHtml = "<div>";
-
-    // Contadores
-    const totalTestes = tokensAccesso.length;
-    const testsRespondidos = tokensAccesso.filter(
-      (t) => t.status === "respondido" || t.status === "avaliado"
-    ).length;
-    const testsPendentes = totalTestes - testsRespondidos;
-    const taxaRespostaPct =
-      totalTestes > 0 ? Math.round((testsRespondidos / totalTestes) * 100) : 0;
-
-    // Tempo médio
-    let tempoTotal = 0;
-    let testComTempo = 0;
-    tokensAccesso.forEach((t) => {
-      if (t.tempoGasto) {
-        tempoTotal += t.tempoGasto;
-        testComTempo++;
-      }
-    });
-    const tempoMedio =
-      testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
-
-    dashboardHtml += `
-      <div class="summary-cards mb-3">
-        <div class="card">
-          <h3>Total de Testes</h3>
-          <p>${totalTestes}</p>
-        </div>
-        <div class="card" style="border-left-color: var(--cor-sucesso);">
-          <h3 style="color: var(--cor-sucesso);">Respondidos</h3>
-          <p style="color: var(--cor-sucesso);">${testsRespondidos}</p>
-        </div>
-        <div class="card" style="border-left-color: var(--cor-alerta);">
-          <h3 style="color: var(--cor-alerta);">Pendentes</h3>
-          <p style="color: var(--cor-alerta);">${testsPendentes}</p>
-        </div>
-        <div class="card" style="border-left-color: var(--cor-info);">
-          <h3 style="color: var(--cor-info);">Taxa de Resposta</h3>
-          <p style="color: var(--cor-info);">${taxaRespostaPct}%</p>
-        </div>
-      </div>
-    `;
-
-    dashboardHtml += `
-      <div class="form-group mb-3">
-        <label class="mb-2"><strong>Progresso Geral</strong></label>
-        <div class="progress" style="height: 30px; font-size: 1rem;">
-          <div class="progress-bar bg-success" role="progressbar" style="width: ${taxaRespostaPct}%" aria-valuenow="${taxaRespostaPct}" aria-valuemin="0" aria-valuemax="100">
-            ${taxaRespostaPct}%
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Tempo médio
-    if (tempoMedio > 0) {
-      dashboardHtml += `
-        <div class="alert alert-info">
-          <i class="fas fa-hourglass-half me-2"></i>
-          <strong>Tempo Médio de Resposta:</strong> ${Math.floor(
-            tempoMedio / 60
-          )}m ${tempoMedio % 60}s
-        </div>
-      `;
-    }
-
-    // Tabela detalhada
-    dashboardHtml += `
-      <h6 class="mt-4 mb-3"><i class="fas fa-table me-2"></i>Detalhamento por Teste</h6>
-      <div style="overflow-x: auto;">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Teste</th>
-              <th>Data de Envio</th>
-              <th>Status</th>
-              <th>Tempo Gasto</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    tokensAccesso.forEach((token, index) => {
-      let dataEnvio = "N/A";
-      if (token.dataenvio?.toDate) {
-        dataEnvio = token.dataenvio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
-      } else if (token.data_envio?.toDate) {
-        dataEnvio = token.data_envio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
-      }
-
-      const status = token.status || "enviado";
-      let statusBadge = getStatusBadgeClass(status);
-      let statusTexto = "Pendente";
-      if (status === "respondido") statusTexto = "Respondido";
-      if (status === "avaliado") statusTexto = "Avaliado";
-
-      const tempoExibir = token.tempoGasto
-        ? `${Math.floor(token.tempoGasto / 60)}m ${token.tempoGasto % 60}s`
-        : "N/A";
-
-      dashboardHtml += `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${token.nomeTeste || "Teste"}</td>
-          <td>${dataEnvio}</td>
-          <td><span class="status-badge ${statusBadge}">${statusTexto}</span></td>
-          <td>${tempoExibir}</td>
-        </tr>
-      `;
-    });
-
-    dashboardHtml += `
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    dashboardHtml += "</div>";
-    container.innerHTML = dashboardHtml;
-  } catch (error) {
-    console.error("Erro ao carregar dashboard:", error);
-    container.innerHTML = `
-      <p class="alert alert-error small">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        Erro ao carregar dashboard: ${error.message}
-      </p>
-    `;
-  }
-}
-
-/**
- * Carrega monitor de tempo real de respostas (Aba Tempo Real)
- * @param {string} candidatoId - ID do candidato
- */
-async function carregarMonitorTempoReal(candidatoId) {
-  const container = document.getElementById("avaliacao-teste-tempo-real");
-  if (!container) return;
-
-  try {
-    container.innerHTML = `
-      <div class="alert alert-info">
-        <i class="fas fa-spinner fa-spin me-2"></i>
-        <strong>Monitorando...</strong> Sincronizando dados em tempo real...
-      </div>
-    `;
-
-    const candidaturaRef = doc(candidatosCollection, candidatoId);
-
-    // Configura listener em tempo real
-    const unsubscribe = onSnapshot(candidaturaRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        container.innerHTML =
-          '<p class="alert alert-error">Candidatura não encontrada.</p>';
-        return;
-      }
-
-      const dados = snapshot.data();
-      const tokensAccesso = dados.testesenviados || [];
-
-      let monitorHtml = "<div>";
-      monitorHtml += `<h6 class="mb-3"><i class="fas fa-video me-2"></i>Monitoramento em Tempo Real (Auto-atualiza)</h6>`;
-
-      if (tokensAccesso.length === 0) {
-        monitorHtml += '<p class="text-muted">Nenhum teste enviado ainda.</p>';
-      } else {
-        tokensAccesso.forEach((token, index) => {
-          const status = token.status || "enviado";
-          let statusHtml = "";
-
-          if (status === "respondido") {
-            const dataResposta = token.dataResposta?.toDate
-              ? token.dataResposta.toDate().toLocaleTimeString("pt-BR")
-              : "N/A";
-            statusHtml = `
-              <span class="status-badge status-concluída me-2">Respondido</span>
-              <small class="text-muted">em ${dataResposta}</small>
-            `;
-          } else if (status === "avaliado") {
-            statusHtml =
-              '<span class="status-badge status-pendente">Avaliado</span>';
-          } else {
-            const agora = new Date();
-            // Tratamento robusto de data
-            let dataEnvioDate = new Date();
-            if (token.dataenvio?.toDate)
-              dataEnvioDate = token.dataenvio.toDate();
-            else if (token.data_envio?.toDate)
-              dataEnvioDate = token.data_envio.toDate();
-
-            const horasDecorridas = Math.floor(
-              (agora - dataEnvioDate) / (1000 * 60 * 60)
-            );
-            statusHtml = `
-              <span class="status-badge status-pendente">Pendente</span>
-              <small class="text-muted">(${horasDecorridas}h desde envio)</small>
-            `;
-          }
-
-          // REFATORADO: Usa .info-card
-          monitorHtml += `
-            <div class="info-card mb-2">
-              <p class="mb-1"><strong>${index + 1}. ${
-            token.nomeTeste || "Teste"
-          }</strong></p>
-              <p class="mb-0">${statusHtml}</p>
-            </div>
-          `;
-        });
-      }
-
-      monitorHtml += "</div>";
-      container.innerHTML = monitorHtml;
-    });
-
-    // Armazena o unsubscribe para limpeza posterior
-    window._abaMonitorUnsubscribe = unsubscribe;
-  } catch (error) {
-    console.error("Erro ao carregar monitor em tempo real:", error);
-    container.innerHTML = `
-      <p class="alert alert-error small">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        Erro ao conectar ao monitoramento: ${error.message}
-      </p>
-    `;
-  }
-}
-
-/**
- * Abre o modal de avaliação de TESTE (Etapa 3 ou 4)
- * Esta função deve ser chamada pelo botão "Avaliar Teste"
- */
-window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
-  const modal = document.getElementById("modal-avaliacao-teste");
-  if (!modal) {
-    console.error("Modal 'modal-avaliacao-teste' não encontrado.");
-    return;
-  }
-
-  // Armazena o ID no modal para o formulário usar
-  modal.dataset.candidaturaId = candidatoId;
-
-  // 1. Preenche os dados básicos (Nome e Status)
-  const nomeEl = document.getElementById("avaliacao-teste-nome-candidato");
-  const statusEl = document.getElementById("avaliacao-teste-status-atual");
-
-  if (nomeEl) {
-    nomeEl.textContent = dadosCandidato.nome_completo || "Candidato(a)";
-  }
-  if (statusEl) {
-    const status = dadosCandidato.status_recrutamento || "N/A";
-    statusEl.textContent = status;
-    statusEl.className = `status-badge ${getStatusBadgeClass(status)}`;
-  }
-
-  // 2. Chama as funções helper para carregar dados assíncronos
-  carregarHistoricoTokens(candidatoId);
-  carregarEstatisticasTestes(candidatoId);
-
-  // 3. Exibe o modal
-  modal.classList.add("is-visible");
-};
-
-/**
  * ✅ Alterna os campos de aprovação/reprovação no modal de triagem
  */
 window.toggleMotivoAprovacaoRejeicao = function () {
@@ -905,6 +460,7 @@ window.toggleMotivoAprovacaoRejeicao = function () {
 
 /**
  * Envia resumo das respostas do teste por email usando Cloud Function genérica (Aba Email)
+ * Mantido aqui pois é chamado diretamente pelo HTML do modal, mas não está no módulo de avaliação
  */
 window.enviarResumoEmailTeste = async function () {
   const emailDestino = document.getElementById("email-destino-resumo")?.value;
@@ -948,7 +504,7 @@ window.enviarResumoEmailTeste = async function () {
     const vagaAplicada =
       dados.titulovagaoriginal || dados.titulo_vaga_original || "Não informada";
 
-    // ✅ CORREÇÃO: Tenta buscar de testesenviados ou da coleção 'testesrespondidos'
+    // Busca de testesenviados ou da coleção 'testesrespondidos'
     let tokensAccesso = dados.testesenviados || [];
 
     if (tokensAccesso.length === 0) {
@@ -1120,21 +676,17 @@ window.enviarResumoEmailTeste = async function () {
       // Tratamento robusto para diferentes formatos de data
       let dataEnvio = "N/A";
       if (token.dataenvio?.toDate) {
-        dataEnvio = token.dataenvio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
+        dataEnvio = token.dataenvio.toDate().toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
       } else if (token.data_envio?.toDate) {
-        dataEnvio = token.data_envio
-          .toDate()
-          .toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
+        dataEnvio = token.data_envio.toDate().toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
       }
 
       const status = token.status || "enviado";
@@ -1324,7 +876,7 @@ function handleTabClick(e) {
   // Adiciona classe ativa na aba clicada
   e.currentTarget.classList.add("active");
 
-  // Valida se há vaga selecionada (exceto para gestão de conteúdo)
+  // Validações de vaga (exceto para gestão de conteúdo)
   if (!vagaSelecionadaId && status !== "gestao-conteudo") {
     conteudoRecrutamento.innerHTML =
       '<p class="alert alert-info">Por favor, selecione uma vaga para visualizar esta etapa.</p>';
@@ -1357,78 +909,6 @@ function handleTabClick(e) {
     default:
       conteudoRecrutamento.innerHTML =
         '<p class="alert alert-warning">Selecione uma etapa do processo.</p>';
-  }
-}
-/**
- * Carrega estatísticas rápidas dos testes
- */
-async function carregarEstatisticasTestes(candidatoId) {
-  const container = document.getElementById("avaliacao-teste-stats");
-  if (!container) return;
-
-  try {
-    container.innerHTML = '<div class="loading-spinner"></div>';
-    const candidaturaRef = doc(candidatosCollection, candidatoId);
-    const candidaturaSnap = await getDoc(candidaturaRef);
-
-    if (!candidaturaSnap.exists()) return;
-
-    const dados = candidaturaSnap.data();
-    const tokensAccesso = dados.testesenviados || [];
-
-    if (tokensAccesso.length === 0) {
-      container.innerHTML = `
-        <p class="text-muted">Nenhum teste enviado ainda.</p>
-      `;
-      return;
-    }
-
-    const totalTestes = tokensAccesso.length;
-    const testsRespondidos = tokensAccesso.filter(
-      (t) => t.status === "respondido" || t.status === "avaliado"
-    ).length;
-    const testsPendentes = totalTestes - testsRespondidos;
-
-    let tempoTotal = 0;
-    let testComTempo = 0;
-    tokensAccesso.forEach((t) => {
-      if (t.tempoGasto) {
-        tempoTotal += t.tempoGasto;
-        testComTempo++;
-      }
-    });
-    const tempoMedio =
-      testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
-
-    // REFATORADO: Usa .stat-card-mini-grid
-    const statsHtml = `
-      <div class="stat-card-mini-grid">
-        <div class="stat-card-mini">
-          <strong>${totalTestes}</strong>
-          <p>Total de Testes</p>
-        </div>
-        <div class="stat-card-mini border-success">
-          <strong>${testsRespondidos}</strong>
-          <p>Respondidos</p>
-        </div>
-        <div class="stat-card-mini border-warning">
-          <strong>${testsPendentes}</strong>
-          <p>Pendentes</p>
-        </div>
-        <div class="stat-card-mini border-info">
-          <strong>${
-            tempoMedio > 0 ? Math.floor(tempoMedio / 60) + "m" : "N/A"
-          }</strong>
-          <p>Tempo Médio</p>
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = statsHtml;
-  } catch (error) {
-    console.error("Erro ao carregar estatísticas:", error);
-    container.innerHTML =
-      '<p class="alert alert-error">Erro ao carregar stats.</p>';
   }
 }
 
