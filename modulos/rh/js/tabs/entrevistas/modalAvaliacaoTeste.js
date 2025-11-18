@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.7.3 - CORRIGIDO: 1) URL 404 (index.html) 2) Falha no carregamento das estatísticas.
+ * Versão: 1.7.4 - CORRIGIDO: Datas (Envio/Resposta) e Busca de Enunciados da Questão.
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -14,8 +14,8 @@ import {
   getDocs,
   query,
   where,
-  orderBy, // Necessário para simulação de ordenação
-  limit, // Necessário para simulação de limitação
+  orderBy, // Adicionado para a função carregarEstatisticasTestes
+  limit, // Adicionado para a função carregarEstatisticasTestes
 } from "../../../../../assets/js/firebase-init.js";
 
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
@@ -223,7 +223,6 @@ Equipe de Recrutamento - EuPsico`.trim();
 
 /**
  * Carrega as respostas de um teste específico para o modal de avaliação
- * (Lógica de carregar respostas DENTRO do modal. Preferimos a nova página de detalhes)
  */
 async function carregarRespostasDoTeste(
   identificador,
@@ -320,6 +319,33 @@ async function carregarRespostasDoTeste(
 
     console.log("✅ [RESPOSTAS] Respostas encontradas! Processando dados...");
     const data = snapshot.docs[0].data();
+
+    // ==========================================================
+    // 1. BUSCAR GABARITO E ENUNCIADOS NA COLEÇÃO 'estudos_de_caso'
+    // ==========================================================
+    const testeId = data.testeId;
+    let gabaritoPerguntas = [];
+
+    try {
+      const gabaritoSnap = await getDoc(doc(db, "estudos_de_caso", testeId));
+      if (gabaritoSnap.exists()) {
+        gabaritoPerguntas = gabaritoSnap.data().perguntas || [];
+        console.log(
+          `✅ [GABARITO] ${gabaritoPerguntas.length} perguntas carregadas do gabarito.`
+        );
+      } else {
+        console.warn(
+          "⚠️ [GABARITO] Documento do teste original não encontrado."
+        );
+      }
+    } catch (e) {
+      console.error(
+        "❌ [GABARITO] Erro ao buscar documento do teste original:",
+        e
+      );
+    }
+    // ==========================================================
+
     console.log("📋 [RESPOSTAS] Dados do teste:", {
       nomeTeste: data.nomeTeste,
       dataResposta: data.dataResposta,
@@ -339,7 +365,6 @@ async function carregarRespostasDoTeste(
           : "N/A"
       }</p>
       <p><strong>Data de Resposta:</strong> ${
-        // <--- NOVO CAMPO: Data de Resposta
         data.dataResposta
           ? new Date(data.dataResposta.seconds * 1000).toLocaleString("pt-BR")
           : "N/A"
@@ -378,13 +403,22 @@ async function carregarRespostasDoTeste(
 
       chaves.forEach((chave, idx) => {
         const respostaTexto = data.respostas[chave];
-        const numeroQuestao = parseInt(chave.replace("resposta-", ""), 10) + 1;
+        const indexQuestao = parseInt(chave.replace("resposta-", ""), 10);
+
+        // Busca o enunciado e gabarito usando o índice
+        const enunciado =
+          gabaritoPerguntas[indexQuestao]?.enunciado ||
+          `Questão ${indexQuestao + 1} (Enunciado não encontrado)`;
+        const gabaritoTexto =
+          gabaritoPerguntas[indexQuestao]?.respostaCorreta ||
+          "Gabarito não fornecido";
 
         respostasHtml += `<div class="resposta-item mb-3 p-3 border rounded">
-          <p><strong>Questão ${
-            numeroQuestao || idx + 1
-          }:</strong> (Chave: ${chave})</p>
-          <p><strong>Resposta:</strong> ${respostaTexto || "Não respondida"}</p>
+          <p><strong>Questão ${indexQuestao + 1}:</strong> ${enunciado}</p>
+          <p class="text-danger"><strong>Gabarito:</strong> ${gabaritoTexto}</p>
+          <p><strong>Resposta do Candidato:</strong> ${
+            respostaTexto || "Não respondida"
+          }</p>
         </div>`;
       });
     } else if (data.respostas && Array.isArray(data.respostas)) {
@@ -504,7 +538,7 @@ async function carregarEstatisticasTestes(listaDeTestes) {
 
 /**
  * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.3 - Correções aplicadas.
+ * VERSÃO DEBUG v1.7.4 - Correções aplicadas.
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -758,7 +792,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           return {
             id: data.testeId,
             nomeTeste: data.nomeTeste,
-            dataenvio: data.data_envio,
+            dataenvio: data.data_envio, // <--- CORREÇÃO: Mapeia data_envio para dataenvio
+            dataResposta: data.dataResposta, // <--- NOVO: Mapeia dataResposta
             status: "respondido",
             tokenId: doc.id,
             tempoGasto: data.tempoGasto,
@@ -814,7 +849,11 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         console.log(`   🎨 Renderizando teste ${idx + 1}:`, teste.nomeTeste);
 
         const dataEnvio = teste.dataenvio
-          ? formatarDataEnvio(teste.data_envio)
+          ? formatarDataEnvio(teste.dataenvio)
+          : "N/A";
+
+        const dataResposta = teste.dataResposta
+          ? formatarDataEnvio(teste.dataResposta)
           : "N/A";
 
         const statusBadge =
@@ -830,6 +869,9 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         }</h6>
               <p class="mb-1 text-muted small">
                 <i class="fas fa-calendar me-1"></i><strong>Data Envio:</strong> ${dataEnvio}
+              </p>
+              <p class="mb-1 text-muted small">
+                <i class="fas fa-clock me-1"></i><strong>Data Resposta:</strong> ${dataResposta}
               </p>
               ${
                 teste.tempoGasto
@@ -884,13 +926,9 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           const tokenId = this.getAttribute("data-teste-id");
           const candId = this.getAttribute("data-candidato-id");
 
-          // === CORREÇÃO: Mudar o hash na janela atual (navegação SPA) ===
+          // === CORREÇÃO: Navegação SPA para a página de detalhes ===
           const novaHash = `#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
-
-          // 1. Navega na janela atual (o roteador do rh-painel.js faz o resto)
           window.location.hash = novaHash;
-
-          // 2. Fecha o modal de avaliação
           fecharModalAvaliacaoTeste();
 
           window.showToast?.(
@@ -962,8 +1000,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.classList.add("is-visible");
   console.log("✅ [MODAL] Classe 'is-visible' adicionada");
   console.log("✅ [MODAL] Modal de avaliação de teste ABERTO COM SUCESSO");
+
+  console.log(
+    "╔════════════════════════════════════════════════════════════════╗"
+  );
   console.log(
     "║       ✅ MODAL ABERTO - FUNÇÃO CONCLUÍDA                      ║"
+  );
+  console.log(
+    "╚════════════════════════════════════════════════════════════════╝\n"
   );
 }
 
