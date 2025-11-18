@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.2.0 - NOVO: Avaliação manual antes do cálculo de pontuação
+ * Versão: 1.2.1 - CORRIGIDO: Nome da função de inicialização
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora permite ao avaliador marcar cada resposta como correta/incorreta antes de computar.
@@ -20,8 +20,9 @@ const avaliacoes = new Map(); // Map<questaoId, boolean> (true = correta, false 
 
 /**
  * 1. Função principal de inicialização da view
+ * IMPORTANTE: O nome deve ser initdetalhes_teste (sem hífen, com underscore)
  */
-export async function initDetalhesTeste() {
+export async function initdetalhes_teste() {
   console.log("🔹 Detalhes Teste: Inicializando view...");
 
   const hash = window.location.hash;
