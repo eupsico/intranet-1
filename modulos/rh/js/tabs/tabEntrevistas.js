@@ -14,10 +14,10 @@ import {
 } from "../../../../assets/js/firebase-init.js";
 
 // ✅ 1. Importar a lógica dos submódulos
-import { abrirModalAgendamentoRH } from "./entrevistas/modalAgendamentoRH.js";
-import { abrirModalAvaliacaoRH } from "./entrevistas/modalAvaliacaoRH.js";
-import { abrirModalEnviarTeste } from "./entrevistas/modalEnviarTeste.js";
-import { abrirModalAvaliacaoTeste } from "./entrevistas/modalAvaliacaoTeste.js";
+import { abrirModalAgendamentoRH } from "../tabs/entrevistas/modalAgendamentoRH.js";
+import { abrirModalAvaliacaoRH } from "../tabs/entrevistas/modalAvaliacaoRH.js";
+import { abrirModalEnviarTeste } from "../tabs/entrevistas/modalEnviarTeste.js";
+import { abrirModalAvaliacaoTeste } from "../tabs/entrevistas/modalAvaliacaoTeste.js";
 
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM (Única função principal)
