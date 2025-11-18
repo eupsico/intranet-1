@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.7.1 - CORRIGIDO: Busca por tokenId e Renderização de Respostas (Map)
+ * Versão: 1.7.2 - CORRIGIDO: Busca por tokenId e Renderização de Respostas (Map)
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -14,6 +14,8 @@ import {
   getDocs,
   query,
   where,
+  orderBy, // Adicionado para a função carregarEstatisticasTestes
+  limit, // Adicionado para a função carregarEstatisticasTestes
 } from "../../../../../assets/js/firebase-init.js";
 
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
@@ -414,11 +416,87 @@ async function carregarRespostasDoTeste(
   console.log("========== FIM CARREGANDO RESPOSTAS ==========\n");
 }
 
+/**
+ * Carrega estatísticas rápidas dos testes (Acertos/Erros)
+ * NOTA: Esta função é uma simulação, pois o gabarito e a pontuação
+ * não são persistidos na coleção testesrespondidos. O back-end (Cloud
+ * Function) precisa ser alterado para incluir a pontuação.
+ */
+async function carregarEstatisticasTestes(candidatoId) {
+  // A coleção 'estudos_de_caso' precisa ser consultada para pegar o gabarito
+  // e comparar com as 'respostas' em 'testesrespondidos'.
+
+  const container = document.getElementById("avaliacao-teste-stats");
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading-spinner"></div>';
+
+  // Busca o último teste respondido para fins de simulação
+  try {
+    const respostasRef = collection(db, "testesrespondidos");
+    const q = query(
+      respostasRef,
+      where("candidatoId", "==", candidatoId),
+      orderBy("dataResposta", "desc"), // Assumindo que a dataResposta existe
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      container.innerHTML = `<p class="alert alert-info">Nenhum teste respondido para calcular estatísticas.</p>`;
+      return;
+    }
+
+    const dadosResposta = snapshot.docs[0].data();
+    const totalRespostas = Object.keys(dadosResposta.respostas || {}).length;
+
+    // --- SIMULAÇÃO DE CÁLCULO (Substituir com a lógica real após ajuste do Back-end) ---
+    // Simulação: 70% acertos, 30% erros
+    const acertosSimulados = Math.round(totalRespostas * 0.7);
+    const errosSimulados = totalRespostas - acertosSimulados;
+    const taxaAcertoPct =
+      totalRespostas > 0
+        ? Math.round((acertosSimulados / totalRespostas) * 100)
+        : 0;
+    // ----------------------------------------------------------------------------------
+
+    const statsHtml = `
+      <div class="stat-card-mini-grid">
+        <div class="stat-card-mini border-success">
+          <strong>${totalRespostas}</strong>
+          <p>Total de Perguntas</p>
+        </div>
+        <div class="stat-card-mini border-success">
+          <strong>${acertosSimulados}</strong>
+          <p>Acertos (Simulado)</p>
+        </div>
+        <div class="stat-card-mini border-danger">
+          <strong>${errosSimulados}</strong>
+          <p>Erros (Simulado)</p>
+        </div>
+        <div class="stat-card-mini border-info">
+          <strong>${taxaAcertoPct}%</strong>
+          <p>Taxa de Acerto</p>
+        </div>
+      </div>
+      <p class="text-muted small mt-2">
+        <i class="fas fa-exclamation-triangle me-1"></i> A contagem de acertos/erros é simulada. O gabarito precisa ser incluído na coleção 'testesrespondidos' para o cálculo ser real.
+      </p>
+    `;
+
+    container.innerHTML = statsHtml;
+  } catch (error) {
+    console.error("Erro ao carregar estatísticas:", error);
+    container.innerHTML =
+      '<p class="alert alert-error">Erro ao carregar stats.</p>';
+  }
+}
+
 /* ==================== FUNÇÃO PRINCIPAL (Exportada) ==================== */
 
 /**
  * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.1 - Correções aplicadas.
+ * VERSÃO DEBUG v1.7.2 - Correções aplicadas.
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -597,6 +675,9 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // ========== BUSCA E RENDERIZA TESTES ==========
   console.log("🧪 ========== BUSCANDO E RENDERIZANDO TESTES ==========");
 
+  // Adicionar chamada para a nova função de estatísticas
+  await carregarEstatisticasTestes(candidatoId);
+
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
   console.log(
     "🔍 [TESTES] Elemento avaliacao-teste-info-testes encontrado:",
@@ -736,7 +817,9 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         testesHtml += `<div class="teste-card mb-3 p-3 border rounded">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <h6 class="mb-2">${idx + 1}. ${teste.nomeTeste || "Teste"}</h6>
+              <h6 class="mb-2" style="text-transform: uppercase;">${idx + 1}. ${
+          teste.nomeTeste || "Teste"
+        }</h6>
               <p class="mb-1 text-muted small">
                 <i class="fas fa-calendar me-1"></i><strong>Data Envio:</strong> ${dataEnvio}
               </p>
@@ -786,32 +869,37 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
       botoesVerRespostas.forEach((btn, idx) => {
         console.log(`   ✅ Anexando listener ao botão ${idx + 1}`);
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
           console.log("🖱️ [RENDER] Botão 'Ver Respostas' clicado");
+          e.preventDefault();
 
-          const testeId = this.getAttribute("data-teste-id");
-          const tipoId = this.getAttribute("data-tipo");
+          const tokenId = this.getAttribute("data-teste-id");
           const candId = this.getAttribute("data-candidato-id");
 
-          console.log("📋 [RENDER] Dados do botão:", {
-            testeId,
-            tipoId,
-            candId,
-          });
+          // === NOVO COMPORTAMENTO: Abrir nova aba/rota para detalhes ===
+          const novaURL = `index.html#rh/detalhes_teste?token=${tokenId}&candidato=${candId}`;
+          window.open(novaURL, "_blank");
 
-          // Encontra o teste correspondente (apenas para fallback, identificador é o tokenId)
+          window.showToast?.(
+            "A página de detalhes com gabarito será carregada em nova aba. (Funcionalidade em desenvolvimento)",
+            "info"
+          );
+
+          console.log("📋 [RENDER] Abrindo nova URL:", novaURL);
+
+          // Lógica antiga de abrir respostas DENTRO do modal (agora desabilitada)
+          /*
+          const tipoId = this.getAttribute("data-tipo");
           const testeEncontrado = listaDeTestes.find(
             (t) => t.id === testeId || t.tokenId === testeId
           );
-
-          console.log("🔍 [RENDER] Teste encontrado:", !!testeEncontrado);
-
           carregarRespostasDoTeste(
             testeId,
             tipoId,
             testeEncontrado?.id,
             candId
           );
+          */
         });
       });
 
