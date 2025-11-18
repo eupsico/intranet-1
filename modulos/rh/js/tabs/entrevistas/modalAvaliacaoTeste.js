@@ -150,7 +150,7 @@ window.enviarWhatsAppGestor = function () {
   const statusCandidato =
     dadosCandidatoAtual.statusrecrutamento || "Em avaliação";
   const vagaInfo =
-    dadosCandidatoAtual.titulovagaoriginal || "Vaga não especificada";
+    dadosCandidatoAtual.titulo_vaga_original || "Vaga não especificada";
 
   const mensagem = `Olá ${nomeGestor}!
 
