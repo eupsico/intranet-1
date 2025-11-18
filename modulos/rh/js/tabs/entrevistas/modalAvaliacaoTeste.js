@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.2.0 (Correção de Fechamento, Dados Visíveis e Compatibilidade)
+ * Versão: 1.3.0 (Correção Crítica: Busca direta em testesrespondidos + Fechar Modal)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
@@ -275,13 +275,20 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
-  // ✅ Configura os botões de fechar aqui dentro
-  const closeBtns = modalAvaliacaoTeste.querySelectorAll(
-    ".close-modal-btn, .action-button.secondary"
+  // 1. Configura Botões de Fechar (CORREÇÃO)
+  // Seleciona botões com data-modal-id E o botão específico "secondary" dentro do footer deste modal
+  const btnsFechar = modalAvaliacaoTeste.querySelectorAll(
+    '[data-modal-id="modal-avaliacao-teste"], .modal-footer .action-button.secondary'
   );
-  closeBtns.forEach((btn) => {
+
+  btnsFechar.forEach((btn) => {
+    // Remove listener antigo para evitar duplicação
     btn.removeEventListener("click", fecharModalAvaliacaoTeste);
-    btn.addEventListener("click", fecharModalAvaliacaoTeste);
+    // Adiciona novo listener
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); // Previne submit se estiver dentro de form
+      fecharModalAvaliacaoTeste();
+    });
   });
 
   document.getElementById("avaliacao-teste-nome-candidato").textContent =
@@ -289,13 +296,52 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   document.getElementById("avaliacao-teste-status-atual").textContent =
     dadosCandidato.status_recrutamento || "N/A";
 
-  // ✅ Verifica AMBOS os nomes de campo (novo e legado)
-  const testesEnviados =
-    dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
+  // 3. Lógica de Dados dos Testes (CORREÇÃO CRÍTICA)
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
+  let listaDeTestes =
+    dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
 
+  // ✅ FALLBACK: Se o array do candidato estiver vazio, busca na coleção 'testesrespondidos'
+  if (listaDeTestes.length === 0) {
+    console.log(
+      "⚠️ Array vazio no candidato. Buscando em 'testesrespondidos'..."
+    );
+    infoTestesEl.innerHTML = '<div class="loading-spinner"></div>';
+
+    try {
+      const qRespostas = query(
+        collection(db, "testesrespondidos"),
+        where("candidatoId", "==", candidatoId)
+      );
+      const snapshotRespostas = await getDocs(qRespostas);
+
+      if (!snapshotRespostas.empty) {
+        // Reconstrói a lista baseada no que achou na coleção
+        listaDeTestes = snapshotRespostas.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: data.testeId,
+            nomeTeste: data.nomeTeste,
+            data_envio: data.data_envio,
+            status: "respondido", // Se está nessa coleção, foi respondido
+            tokenId: doc.id,
+            // Adiciona os dados completos para evitar novo fetch
+            respostasCompletas: data,
+          };
+        });
+
+        // ✅ Atualiza o objeto global para que o EMAIL funcione
+        dadosCandidatoAtual.testes_enviados = listaDeTestes;
+        console.log("✅ Dados recuperados da coleção:", listaDeTestes);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar fallback:", err);
+    }
+  }
+
+  // 4. Renderiza a Lista
   if (infoTestesEl) {
-    if (testesEnviados.length === 0) {
+    if (listaDeTestes.length === 0) {
       infoTestesEl.innerHTML = `
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle me-2"></i>
@@ -303,7 +349,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         </div>`;
     } else {
       let testesHtml = "<div>";
-      testesEnviados.forEach((teste, index) => {
+      listaDeTestes.forEach((teste, index) => {
         const dataEnvio = formatarDataEnvio(
           teste.data_envio || teste.dataenvio
         );
@@ -313,7 +359,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         let linkHtml = "";
         const tokenId = teste.tokenId || `manual-index-${index}`;
 
-        if (statusTeste === "respondido") {
+        if (statusTeste === "respondido" || statusTeste === "respondido") {
           statusClass = "status-concluída";
           statusTexto = "Respondido";
           if (teste.linkrespostas)
@@ -354,18 +400,22 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
               ${linkHtml}
             </div>
             <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
-              <span class="text-muted small">Carregando dados do teste...</span>
+              <span class="text-muted small">Carregando respostas...</span>
             </div>
           </div>`;
       });
       testesHtml += "</div>";
       infoTestesEl.innerHTML = testesHtml;
 
-      testesEnviados.forEach((teste, index) => {
+      listaDeTestes.forEach((teste, index) => {
         const tokenId = teste.tokenId || `manual-index-${index}`;
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
         const statusTeste = teste.status || "enviado";
-        if (statusTeste === "respondido" || statusTeste === "avaliado") {
+        if (
+          statusTeste === "respondido" ||
+          statusTeste === "avaliado" ||
+          statusTeste === "respondido"
+        ) {
           carregarRespostasDoTeste(
             tokenId,
             tipoId,
