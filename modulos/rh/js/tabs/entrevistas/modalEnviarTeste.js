@@ -81,7 +81,7 @@ export async function abrirModalEnviarTeste(candidatoId, dadosCandidato) {
           '<p class="text-muted small" style="margin-bottom: 15px;">Nenhum teste foi enviado para este candidato ainda.</p>';
       } else {
         let testesHtml =
-          '<h2 style="margin-bottom: 10px;">Testes Já Enviados:</h2><ul class="list-group mb-3">';
+          '<h4 style="margin-bottom: 10px;">Testes Enviados:</h4><ul class="list-group mb-3">';
         testesEnviados.forEach((teste) => {
           const dataEnvio = formatarDataEnvio(teste.data_envio);
           const status = teste.status || "enviado";
