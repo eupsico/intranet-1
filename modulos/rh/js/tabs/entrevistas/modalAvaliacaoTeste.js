@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.1.0 (Corrigida dependência circular)
+ * Versão: 1.2.0 (Correção de Fechamento, Dados Visíveis e Compatibilidade)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação de teste (com gestor).
  */
@@ -38,7 +38,7 @@ function fecharModalAvaliacaoTeste() {
 
 /**
  * Gerencia a exibição do seletor de gestor no modal "Avaliar Teste"
- * (Mantendo sua lógica original com style.display)
+ * (Refatorado para usar .classList)
  */
 function toggleCamposAvaliacaoTeste() {
   const form = document.getElementById("form-avaliacao-teste");
@@ -60,9 +60,9 @@ function toggleCamposAvaliacaoTeste() {
   }
 
   if (radioAprovado && radioAprovado.checked) {
-    containerGestor.style.display = "block";
+    containerGestor.classList.remove("hidden");
   } else {
-    containerGestor.style.display = "none";
+    containerGestor.classList.add("hidden");
   }
 }
 
@@ -203,39 +203,51 @@ async function carregarRespostasDoTeste(
 
     const data = snapshot.docs[0].data();
     let respostasHtml = `
-      <div class="teste-header">
-        <h5 class="teste-titulo">
-          <i class="fas fa-file-alt me-2"></i>
-          ${data.nomeTeste || "Teste"}
-        </h5>
-        <small class="text-muted d-block mb-3">
-          <i class="fas fa-calendar me-1"></i>
-          <strong>Data de Envio:</strong> ${formatarDataEnvio(data.data_envio)}
+      <div class="info-card" style="background-color: var(--cor-fundo); padding: 10px;">
+        <h6 style="margin-top:0; color: var(--cor-primaria);">
+          <i class="fas fa-check-circle me-2"></i> Respostas Recebidas
+        </h6>
+        <small class="text-muted d-block">
+          <strong>Data:</strong> ${formatarDataEnvio(data.data_envio)}
         </small>
       </div>
-      <h6 class="mt-3">Respostas do Candidato</h6>
-      <ul class="list-group list-group-flush">`; // Mantendo suas classes
+      <ul class="simple-list mt-2">`; // Mantendo suas classes
 
     if (data.respostas && Array.isArray(data.respostas)) {
       data.respostas.forEach((r, i) => {
         respostasHtml += `
-          <li class="list-group-item">
-            <strong>P${i + 1}: ${r.pergunta || "Pergunta"}</strong>
-            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 5px;">
-              ${r.resposta || "Sem resposta"}
-            </p>
+          <li class="simple-list-item">
+            <div class="simple-list-item-content">
+              <strong>P${i + 1}: ${r.pergunta || "Pergunta"}</strong>
+              <div class="description-box pre-wrap mt-1 mb-0" style="padding: 8px; background: white;">
+                ${r.resposta || "Sem resposta"}
+              </div>
+            </div>
           </li>`;
       });
+    } else if (data.respostas && typeof data.respostas === "object") {
+      Object.keys(data.respostas).forEach((key, i) => {
+        respostasHtml += `
+            <li class="simple-list-item">
+                <div class="simple-list-item-content">
+                <strong>Resposta ${i + 1}:</strong>
+                <div class="description-box pre-wrap mt-1 mb-0" style="padding: 8px; background: white;">
+                    ${data.respostas[key]}
+                </div>
+                </div>
+            </li>
+            `;
+      });
     }
+
     respostasHtml += `</ul>`;
 
     if (data.tempoGasto !== undefined) {
       const minutos = Math.floor(data.tempoGasto / 60);
       const segundos = data.tempoGasto % 60;
       respostasHtml += `
-        <div class="alert alert-info mt-3 small">
-          <i class="fas fa-hourglass-end me-2"></i>
-          <strong>Tempo Gasto:</strong> ${minutos}m ${segundos}s
+        <div class="alert alert-info mt-2 small p-2">
+          <i class="fas fa-clock me-2"></i> <strong>Tempo Gasto:</strong> ${minutos}m ${segundos}s
         </div>`;
     }
     container.innerHTML = respostasHtml;
@@ -253,6 +265,8 @@ async function carregarRespostasDoTeste(
  * Abre o modal de avaliação do teste
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
+  console.log("Abrindo modal Avaliação Teste:", candidatoId);
+
   const modalAvaliacaoTeste = document.getElementById("modal-avaliacao-teste");
   const form = document.getElementById("form-avaliacao-teste");
   if (!modalAvaliacaoTeste || !form) return;
@@ -261,12 +275,23 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   dadosCandidato.id = candidatoId;
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
+  // ✅ Configura os botões de fechar aqui dentro
+  const closeBtns = modalAvaliacaoTeste.querySelectorAll(
+    ".close-modal-btn, .action-button.secondary"
+  );
+  closeBtns.forEach((btn) => {
+    btn.removeEventListener("click", fecharModalAvaliacaoTeste);
+    btn.addEventListener("click", fecharModalAvaliacaoTeste);
+  });
+
   document.getElementById("avaliacao-teste-nome-candidato").textContent =
     dadosCandidato.nome_candidato || "Candidato(a)";
   document.getElementById("avaliacao-teste-status-atual").textContent =
     dadosCandidato.status_recrutamento || "N/A";
 
-  const testesEnviados = dadosCandidato.testes_enviados || [];
+  // ✅ Verifica AMBOS os nomes de campo (novo e legado)
+  const testesEnviados =
+    dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
   const infoTestesEl = document.getElementById("avaliacao-teste-info-testes");
 
   if (infoTestesEl) {
@@ -274,61 +299,62 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       infoTestesEl.innerHTML = `
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle me-2"></i>
-          Nenhum teste foi enviado para este candidato ainda.
+          Nenhum teste foi enviado (ou encontrado) para este candidato.
         </div>`;
     } else {
       let testesHtml = "<div>";
       testesEnviados.forEach((teste, index) => {
-        const dataEnvio = formatarDataEnvio(teste.data_envio);
+        const dataEnvio = formatarDataEnvio(
+          teste.data_envio || teste.dataenvio
+        );
         const statusTeste = teste.status || "enviado";
-        let badgeClass = "bg-warning";
+        let statusClass = "status-pendente";
         let statusTexto = "Pendente";
         let linkHtml = "";
         const tokenId = teste.tokenId || `manual-index-${index}`;
 
         if (statusTeste === "respondido") {
-          badgeClass = "bg-success";
+          statusClass = "status-concluída";
           statusTexto = "Respondido";
           if (teste.linkrespostas)
-            linkHtml = `<a href="${teste.linkrespostas}" target="_blank">Acessar Respostas</a>`;
+            linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-eye me-1"></i> Acessar Respostas (Link)</a>`;
         } else if (statusTeste === "avaliado") {
-          badgeClass = "bg-info";
+          statusClass = "status-pendente";
           statusTexto = "Avaliado";
           if (teste.linkrespostas)
-            linkHtml = `<a href="${teste.linkrespostas}" target="_blank">Ver Avaliação</a>`;
+            linkHtml = `<a href="${teste.linkrespostas}" target="_blank" class="action-button small info mt-2"><i class="fas fa-check-circle me-1"></i> Ver Avaliação</a>`;
         } else {
-          linkHtml = `Aguardando resposta do candidato`;
+          linkHtml = `<p class="text-muted small mt-2">Aguardando resposta do candidato</p>`;
         }
 
         testesHtml += `
-          <div class="teste-item">
-            <div class="teste-header">
-              <h5 class="teste-titulo">
+          <div class="info-card mb-3">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <h5 style="margin: 0; color: var(--cor-primaria);">
                 <i class="fas fa-file-alt me-2"></i>
                 ${
                   teste.nomeTeste ||
                   "Teste (ID: " + tokenId.substring(0, 5) + ")"
                 }
               </h5>
-              <span class="badge ${badgeClass}">${statusTexto}</span>
+              <span class="status-badge ${statusClass}">${statusTexto}</span>
             </div>
-            <div class="teste-info">
-              <p><strong>Data de Envio:</strong> ${dataEnvio}</p>
-              <p><strong>Enviado por:</strong> ${teste.enviado_por || "N/A"}</p>
+            <div class="mt-2">
+              <p class="small text-muted mb-1"><strong>Data Envio:</strong> ${dataEnvio}</p>
               ${
                 teste.tempoGasto
-                  ? `<p><strong>Tempo Gasto:</strong> ${Math.floor(
+                  ? `<p class="small text-muted mb-1"><strong>Tempo Gasto:</strong> ${Math.floor(
                       teste.tempoGasto / 60
                     )}m ${teste.tempoGasto % 60}s</p>`
                   : ""
               }
-              <p><strong>Link:</strong> <a href="${
+              <p class="small text-muted mb-1"><strong>Link:</strong> <a href="${
                 teste.link || "#"
               }" target="_blank">${teste.link ? "Acessar Link" : "N/A"}</a></p>
-              <p><strong>Resultado:</strong> ${linkHtml}</p>
+              ${linkHtml}
             </div>
-            <div class="respostas-container" id="respostas-container-${tokenId}" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
-              <span class="text-muted small">Carregando respostas...</span>
+            <div class="respostas-container mt-3 pt-3" id="respostas-container-${tokenId}" style="border-top: 1px solid var(--cor-borda);">
+              <span class="text-muted small">Carregando dados do teste...</span>
             </div>
           </div>`;
       });
@@ -340,7 +366,12 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         const tipoId = teste.tokenId ? "tokenId" : "testeId";
         const statusTeste = teste.status || "enviado";
         if (statusTeste === "respondido" || statusTeste === "avaliado") {
-          carregarRespostasDoTeste(tokenId, tipoId, teste.id, candidatoId);
+          carregarRespostasDoTeste(
+            tokenId,
+            tipoId,
+            teste.id || teste.testeId,
+            candidatoId
+          );
         } else {
           const container = document.getElementById(
             `respostas-container-${tokenId}`
@@ -403,14 +434,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // Listener do Formulário
   form.removeEventListener("submit", submeterAvaliacaoTeste);
   form.addEventListener("submit", submeterAvaliacaoTeste);
-
-  // Listeners de Fechar
-  document
-    .querySelectorAll('[data-modal-id="modal-avaliacao-teste"]')
-    .forEach((btn) => {
-      btn.removeEventListener("click", fecharModalAvaliacaoTeste);
-      btn.addEventListener("click", fecharModalAvaliacaoTeste);
-    });
 
   modalAvaliacaoTeste.classList.add("is-visible");
 }
