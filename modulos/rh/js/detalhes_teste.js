@@ -342,10 +342,16 @@ function atualizarEstatisticas(total, acertos) {
   const erros = total - acertos;
   const taxa = total > 0 ? ((acertos / total) * 100).toFixed(2) + "%" : "N/A";
 
-  document.getElementById("stats-total").textContent = total;
-  document.getElementById("stats-acertos").textContent = acertos;
-  document.getElementById("stats-erros").textContent = erros;
-  document.getElementById("stats-taxa").textContent = taxa;
+  // IDs ORIGINAIS do seu HTML
+  const statsTotal = document.getElementById("stats-total");
+  const statsAcertos = document.getElementById("stats-acertos");
+  const statsErros = document.getElementById("stats-erros");
+  const statsTaxa = document.getElementById("stats-taxa");
+
+  if (statsTotal) statsTotal.textContent = total;
+  if (statsAcertos) statsAcertos.textContent = acertos;
+  if (statsErros) statsErros.textContent = erros;
+  if (statsTaxa) statsTaxa.textContent = taxa;
 }
 
 // Expõe a função de inicialização
