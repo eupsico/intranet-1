@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.7.0 - DEBUG PROFUNDO - Logs detalhados em todas etapas
+ * Versão: 1.7.1 - CORRIGIDO: Busca por tokenId e Renderização de Respostas (Map)
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -212,7 +212,7 @@ Equipe de Recrutamento - EuPsico`.trim();
 
   const telefoneLimpo = telefoneGestor.replace(/\D/g, "");
   const mensagemCodificada = encodeURIComponent(mensagem);
-  const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
+  const linkWhatsApp = `https://wa.me/${telefoneLimpo}?text=${mensagemCodificada}`;
 
   console.log("✅ [WHATSAPP] Abrindo WhatsApp com link gerado");
   window.open(linkWhatsApp, "_blank");
@@ -256,6 +256,7 @@ async function carregarRespostasDoTeste(
 
     if (tipoId === "tokenId") {
       console.log("🔑 [RESPOSTAS] Buscando por tokenId:", identificador);
+      // Aqui, 'identificador' DEVE ser o tokenId
       q = query(respostasRef, where("tokenId", "==", identificador));
     } else {
       console.log("🔑 [RESPOSTAS] Buscando por testeId + candidatoId");
@@ -320,7 +321,8 @@ async function carregarRespostasDoTeste(
       nomeTeste: data.nomeTeste,
       dataResposta: data.dataResposta,
       tempoGasto: data.tempoGasto,
-      quantidadeRespostas: data.respostas?.length || 0,
+      quantidadeRespostas:
+        data.respostas?.length || Object.keys(data.respostas || {}).length || 0,
     });
 
     let respostasHtml = `<div class="respostas-teste">`;
@@ -340,16 +342,50 @@ async function carregarRespostasDoTeste(
             )}m ${data.tempoGasto % 60}s</p>`
           : ""
       }
+      <p><strong>Vaga:</strong> ${data.titulo_vaga_original || "N/A"}</p>
     </div>`;
 
     // Renderiza as respostas
-    if (data.respostas && Array.isArray(data.respostas)) {
+    if (
+      data.respostas &&
+      typeof data.respostas === "object" &&
+      !Array.isArray(data.respostas)
+    ) {
+      const chaves = Object.keys(data.respostas);
+      chaves.sort((a, b) => {
+        // Ordenação robusta (ex: resposta-1, resposta-10, resposta-2)
+        const numA = parseInt(a.replace("resposta-", ""), 10);
+        const numB = parseInt(b.replace("resposta-", ""), 10);
+        if (isNaN(numA) || isNaN(numB)) return a.localeCompare(b);
+        return numA - numB;
+      });
+
       console.log(
         "📝 [RESPOSTAS] Renderizando",
+        chaves.length,
+        "respostas (Map)"
+      );
+      respostasHtml += `<h6 class="mb-3">Respostas do Candidato:</h6>`;
+
+      chaves.forEach((chave, idx) => {
+        const respostaTexto = data.respostas[chave];
+        const numeroQuestao = parseInt(chave.replace("resposta-", ""), 10) + 1;
+
+        respostasHtml += `<div class="resposta-item mb-3 p-3 border rounded">
+          <p><strong>Questão ${
+            numeroQuestao || idx + 1
+          }:</strong> (Chave: ${chave})</p>
+          <p><strong>Resposta:</strong> ${respostaTexto || "Não respondida"}</p>
+        </div>`;
+      });
+    } else if (data.respostas && Array.isArray(data.respostas)) {
+      // Caso de fallback para estrutura array legada (mantida do código original)
+      console.log(
+        "📝 [RESPOSTAS] Renderizando (Array Legado)",
         data.respostas.length,
         "respostas"
       );
-      respostasHtml += `<h6 class="mb-3">Respostas do Candidato:</h6>`;
+      respostasHtml += `<h6 class="mb-3">Respostas do Candidato: (Array Legado)</h6>`;
       data.respostas.forEach((resp, idx) => {
         respostasHtml += `<div class="resposta-item mb-3 p-3 border rounded">
           <p><strong>Questão ${idx + 1}:</strong> ${resp.pergunta || "N/A"}</p>
@@ -382,7 +418,7 @@ async function carregarRespostasDoTeste(
 
 /**
  * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.0 - Logs profundos em todas etapas
+ * VERSÃO DEBUG v1.7.1 - Correções aplicadas.
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -418,6 +454,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
   console.log("✅ [MAIN] Elementos principais encontrados");
 
+  // ✅ CORREÇÃO: Usar nome correto das chaves (nome_candidato)
   dadosCandidatoAtual = dadosCandidato || { id: candidatoId };
   modalAvaliacaoTeste.dataset.candidaturaId = candidatoId;
 
@@ -542,13 +579,15 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("   - avaliacao-teste-status-atual:", !!statusEl);
 
   if (nomeEl) {
-    const nome = dadosCandidato.nomecandidato || "Candidato(a)";
+    // ✅ CORREÇÃO: Usar nome correto das chaves (nome_candidato)
+    const nome = dadosCandidato.nome_candidato || "Candidato(a)";
     nomeEl.textContent = nome;
     console.log("✅ [CANDIDATO] Nome definido:", nome);
   }
 
   if (statusEl) {
-    const status = dadosCandidato.statusrecrutamento || "N/A";
+    // ✅ CORREÇÃO: Usar nome correto das chaves (status_recrutamento)
+    const status = dadosCandidato.status_recrutamento || "N/A";
     statusEl.textContent = status;
     console.log("✅ [CANDIDATO] Status definido:", status);
   }
@@ -564,9 +603,10 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     !!infoTestesEl
   );
 
-  let listaDeTestes = dadosCandidato.testesenviados || [];
+  let listaDeTestes =
+    dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
   console.log(
-    "📋 [TESTES] Array testesenviados do candidato:",
+    "📋 [TESTES] Array testes_enviados/testesenviados do candidato:",
     listaDeTestes.length,
     "testes"
   );
@@ -632,7 +672,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           return {
             id: data.testeId,
             nomeTeste: data.nomeTeste,
-            dataenvio: data.dataenvio,
+            dataenvio: data.data_envio,
             status: "respondido",
             tokenId: doc.id,
             tempoGasto: data.tempoGasto,
@@ -690,7 +730,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
         const statusBadge =
           teste.status === "respondido"
-            ? '<span class="status-badge status-concluda">Respondido</span>'
+            ? '<span class="status-badge status-concluida">Respondido</span>'
             : '<span class="status-badge status-pendente">Aguardando resposta</span>';
 
         testesHtml += `<div class="teste-card mb-3 p-3 border rounded">
@@ -721,14 +761,12 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
           <button 
             type="button" 
             class="btn-ver-respostas mt-2 action-button info" 
-            data-teste-id="${teste.id || teste.tokenId}"
-            data-tipo="${teste.tokenId ? "tokenId" : "testeId"}"
+            data-teste-id="${teste.tokenId}"
+            data-tipo="tokenId"
             data-candidato-id="${candidatoId}">
             <i class="fas fa-eye me-1"></i>Ver Respostas
           </button>
-          <div id="respostas-container-${
-            teste.id || teste.tokenId
-          }" class="mt-3"></div>`;
+          <div id="respostas-container-${teste.tokenId}" class="mt-3"></div>`;
         }
 
         testesHtml += `</div>`;
@@ -761,7 +799,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
             candId,
           });
 
-          // Encontra o teste correspondente
+          // Encontra o teste correspondente (apenas para fallback, identificador é o tokenId)
           const testeEncontrado = listaDeTestes.find(
             (t) => t.id === testeId || t.tokenId === testeId
           );
@@ -837,15 +875,8 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   modalAvaliacaoTeste.classList.add("is-visible");
   console.log("✅ [MODAL] Classe 'is-visible' adicionada");
   console.log("✅ [MODAL] Modal de avaliação de teste ABERTO COM SUCESSO");
-
-  console.log(
-    "╔════════════════════════════════════════════════════════════════╗"
-  );
   console.log(
     "║       ✅ MODAL ABERTO - FUNÇÃO CONCLUÍDA                      ║"
-  );
-  console.log(
-    "╚════════════════════════════════════════════════════════════════╝\n"
   );
 }
 
@@ -924,10 +955,10 @@ async function handleSubmitAvaliacaoTeste(e) {
 
     if (resultado === "Aprovado" && gestorId) {
       updateData.avaliacaoTeste.gestorDesignado = gestorId;
-      updateData.statusrecrutamento = "Testes Respondido";
+      updateData.status_recrutamento = "Testes Respondido";
       console.log("✅ [SUBMIT] Aprovado - Gestor designado:", gestorId);
     } else if (resultado === "Reprovado") {
-      updateData.statusrecrutamento = "Rejeitado - Teste";
+      updateData.status_recrutamento = "Rejeitado - Teste";
       console.log("❌ [SUBMIT] Reprovado - Status atualizado");
     }
 
