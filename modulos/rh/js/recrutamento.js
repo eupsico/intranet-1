@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.1.0 (Refatorado para usar <template> e Design System)
+ * Versão: 3.3.0 (Correção Completa: Email + Restauração de Funções Dashboard/Monitor)
  * Data: 04/11/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
@@ -422,6 +422,10 @@ function getStatusBadgeClass(status) {
 // Expõe a função globalmente
 window.abrirModalCandidato = abrirModalCandidato;
 
+// ====================================================
+// FUNÇÕES RESTAURADAS (DASHBOARD, MONITOR, TOGGLES)
+// ====================================================
+
 /**
  * Alterna visibilidade dos campos de avaliação de teste (ex: gestor) baseado no resultado
  */
@@ -450,11 +454,6 @@ window.toggleCamposAvaliacaoTeste = function () {
  * @param {string} candidatoId - ID do candidato
  */
 async function carregarHistoricoTokens(candidatoId) {
-  // =================================================================
-  // ✅ CORREÇÃO AQUI:
-  // O ID no HTML é "avaliacao-teste-info-testes",
-  // mas a função original procurava por "avaliacao-teste-historico-tokens".
-  // =================================================================
   const container = document.getElementById("avaliacao-teste-info-testes");
   if (!container) {
     console.error("Container 'avaliacao-teste-info-testes' não encontrado.");
@@ -478,7 +477,6 @@ async function carregarHistoricoTokens(candidatoId) {
     const tokensAccesso = dados.testesenviados || [];
 
     if (tokensAccesso.length === 0) {
-      // Esta é a mensagem que você está vendo na imagem
       container.innerHTML = `
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle me-2"></i>
@@ -488,7 +486,6 @@ async function carregarHistoricoTokens(candidatoId) {
       return;
     }
 
-    // Se encontrar testes, substitui o "Nenhum teste..." pelo histórico
     let historicoHtml = '<div class="tokens-historico">';
     historicoHtml += `<h6 class="mb-3"><i class="fas fa-history me-2"></i>Total de Testes: ${tokensAccesso.length}</h6>`;
 
@@ -501,21 +498,33 @@ async function carregarHistoricoTokens(candidatoId) {
         badgeClass = "status-concluída";
         statusTexto = "Respondido";
       } else if (status === "avaliado") {
-        badgeClass = "status-info"; // (Usando uma cor de 'info')
+        badgeClass = "status-info";
         statusTexto = "Avaliado";
       }
 
-      const dataEnvio = token.dataenvio?.toDate
-        ? token.dataenvio.toDate().toLocaleDateString("pt-BR", {
+      let dataEnvio = "N/A";
+      if (token.dataenvio?.toDate) {
+        dataEnvio = token.dataenvio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-          })
-        : "N/A";
+          });
+      } else if (token.data_envio?.toDate) {
+        dataEnvio = token.data_envio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+      }
 
-      // Usando o .info-card do design-system
       historicoHtml += `
         <div class="info-card mb-2">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -609,7 +618,6 @@ async function carregarDashboardTeste(candidatoId) {
     const tempoMedio =
       testComTempo > 0 ? Math.round(tempoTotal / testComTempo) : 0;
 
-    // REFATORADO: Cards de estatísticas usam .summary-cards
     dashboardHtml += `
       <div class="summary-cards mb-3">
         <div class="card">
@@ -631,7 +639,6 @@ async function carregarDashboardTeste(candidatoId) {
       </div>
     `;
 
-    // REFATORADO: Barra de progresso usa .progress
     dashboardHtml += `
       <div class="form-group mb-3">
         <label class="mb-2"><strong>Progresso Geral</strong></label>
@@ -673,13 +680,24 @@ async function carregarDashboardTeste(candidatoId) {
     `;
 
     tokensAccesso.forEach((token, index) => {
-      const dataEnvio = token.dataenvio?.toDate
-        ? token.dataenvio.toDate().toLocaleDateString("pt-BR", {
+      let dataEnvio = "N/A";
+      if (token.dataenvio?.toDate) {
+        dataEnvio = token.dataenvio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
-          })
-        : "N/A";
+          });
+      } else if (token.data_envio?.toDate) {
+        dataEnvio = token.data_envio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+      }
 
       const status = token.status || "enviado";
       let statusBadge = getStatusBadgeClass(status);
@@ -720,6 +738,7 @@ async function carregarDashboardTeste(candidatoId) {
     `;
   }
 }
+
 /**
  * Carrega monitor de tempo real de respostas (Aba Tempo Real)
  * @param {string} candidatoId - ID do candidato
@@ -772,11 +791,15 @@ async function carregarMonitorTempoReal(candidatoId) {
               '<span class="status-badge status-pendente">Avaliado</span>';
           } else {
             const agora = new Date();
-            const dataEnvio = token.dataenvio?.toDate
-              ? token.dataenvio.toDate()
-              : new Date();
+            // Tratamento robusto de data
+            let dataEnvioDate = new Date();
+            if (token.dataenvio?.toDate)
+              dataEnvioDate = token.dataenvio.toDate();
+            else if (token.data_envio?.toDate)
+              dataEnvioDate = token.data_envio.toDate();
+
             const horasDecorridas = Math.floor(
-              (agora - dataEnvio) / (1000 * 60 * 60)
+              (agora - dataEnvioDate) / (1000 * 60 * 60)
             );
             statusHtml = `
               <span class="status-badge status-pendente">Pendente</span>
@@ -812,8 +835,8 @@ async function carregarMonitorTempoReal(candidatoId) {
     `;
   }
 }
+
 /**
- * ✅ NOVA FUNÇÃO
  * Abre o modal de avaliação de TESTE (Etapa 3 ou 4)
  * Esta função deve ser chamada pelo botão "Avaliar Teste"
  */
@@ -841,15 +864,15 @@ window.abrirModalAvaliacaoTeste = function (candidatoId, dadosCandidato) {
   }
 
   // 2. Chama as funções helper para carregar dados assíncronos
-  // (Isso estava faltando)
   carregarHistoricoTokens(candidatoId);
   carregarEstatisticasTestes(candidatoId);
 
   // 3. Exibe o modal
   modal.classList.add("is-visible");
 };
+
 /**
- * ✅ NOVO - Alterna os campos de aprovação/reprovação no modal de triagem
+ * ✅ Alterna os campos de aprovação/reprovação no modal de triagem
  */
 window.toggleMotivoAprovacaoRejeicao = function () {
   const radioAprovado = document.getElementById("modal-apto-sim");
@@ -862,8 +885,9 @@ window.toggleMotivoAprovacaoRejeicao = function () {
     "modal-motivo-rejeicao-container"
   );
 
+  // Verificação de segurança
   if (!containerAprovacao || !containerRejeicao) {
-    console.warn("Campos de aprovação/rejeição não encontrados no modal.");
+    console.warn("toggleMotivoAprovacaoRejeicao: Containers não encontrados.");
     return;
   }
 
@@ -878,14 +902,12 @@ window.toggleMotivoAprovacaoRejeicao = function () {
     containerRejeicao.classList.add("hidden");
   }
 };
+
 /**
  * Envia resumo das respostas do teste por email usando Cloud Function genérica (Aba Email)
- * NOTA: O HTML deste e-mail não foi refatorado, pois e-mails EXIGEM
- * estilos inline e tabelas para compatibilidade. Não mexa.
  */
 window.enviarResumoEmailTeste = async function () {
   const emailDestino = document.getElementById("email-destino-resumo")?.value;
-  // const assunto = document.getElementById("assunto-email-resumo")?.value; // ID não existe no HTML, removido.
   const incluirGraficos = document.getElementById(
     "incluir-graficos-email"
   )?.checked;
@@ -925,7 +947,36 @@ window.enviarResumoEmailTeste = async function () {
     const emailCandidato = dados.emailcandidato || "não informado";
     const vagaAplicada =
       dados.titulovagaoriginal || dados.titulo_vaga_original || "Não informada";
-    const tokensAccesso = dados.testesenviados || [];
+
+    // ✅ CORREÇÃO: Tenta buscar de testesenviados ou da coleção 'testesrespondidos'
+    let tokensAccesso = dados.testesenviados || [];
+
+    if (tokensAccesso.length === 0) {
+      console.log(
+        "Email: Array vazio no candidato. Buscando em 'testesrespondidos'..."
+      );
+      try {
+        const qRespostas = query(
+          collection(db, "testesrespondidos"),
+          where("candidatoId", "==", candidatoId)
+        );
+        const snapshotRespostas = await getDocs(qRespostas);
+
+        if (!snapshotRespostas.empty) {
+          tokensAccesso = snapshotRespostas.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              nomeTeste: data.nomeTeste,
+              dataenvio: data.data_envio, // Normaliza nome do campo
+              status: "respondido",
+              tempoGasto: data.tempoGasto,
+            };
+          });
+        }
+      } catch (fetchError) {
+        console.error("Erro ao buscar fallback para email:", fetchError);
+      }
+    }
 
     // ✅ MONTA O CORPO DO EMAIL EM HTML (ESTILOS INLINE SÃO NECESSÁRIOS AQUI)
     let htmlEmail = `
@@ -1066,13 +1117,25 @@ window.enviarResumoEmailTeste = async function () {
     `;
 
     tokensAccesso.forEach((token, index) => {
-      const dataEnvio = token.dataenvio?.toDate
-        ? token.dataenvio.toDate().toLocaleDateString("pt-BR", {
+      // Tratamento robusto para diferentes formatos de data
+      let dataEnvio = "N/A";
+      if (token.dataenvio?.toDate) {
+        dataEnvio = token.dataenvio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
-          })
-        : "N/A";
+          });
+      } else if (token.data_envio?.toDate) {
+        dataEnvio = token.data_envio
+          .toDate()
+          .toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+      }
 
       const status = token.status || "enviado";
       let statusBadge = '<span class="badge badge-warning">Pendente</span>';
@@ -1128,7 +1191,6 @@ window.enviarResumoEmailTeste = async function () {
     if (resultado.data?.success) {
       window.showToast?.("Email enviado com sucesso!", "success");
       document.getElementById("email-destino-resumo").value = "";
-      // document.getElementById("assunto-email-resumo").value = "";
     } else {
       throw new Error(resultado.data?.message || "Erro desconhecido ao enviar");
     }
