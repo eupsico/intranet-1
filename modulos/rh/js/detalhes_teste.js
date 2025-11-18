@@ -1,9 +1,9 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.1.1 - CORRIGIDO: Mapeamento de campos do Gabarito (Cross-Collection).
+ * Versão: 1.2.0 - NOVO: Avaliação manual antes do cálculo de pontuação
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
- * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
+ * Agora permite ao avaliador marcar cada resposta como correta/incorreta antes de computar.
  */
 
 import {
@@ -12,194 +12,327 @@ import {
   httpsCallable,
 } from "../../../assets/js/firebase-init.js";
 
-// Definição da função Cloud Function (deve ser a que você implementou no index.js)
+// Definição da função Cloud Function
 const getDetalhesTeste = httpsCallable(functions, "getDetalhesTeste");
+
+// Estado global para controle de avaliações
+const avaliacoes = new Map(); // Map<questaoId, boolean> (true = correta, false = incorreta)
 
 /**
  * 1. Função principal de inicialização da view
  */
-export async function initdetalhesTeste() {
+export async function initDetalhesTeste() {
   console.log("🔹 Detalhes Teste: Inicializando view...");
 
-  // O roteador (rh-painel.js) usa window.location.hash
   const hash = window.location.hash;
   const urlParams = new URLSearchParams(hash.split("?")[1]);
 
-  // Parâmetros passados pelo modal AvaliacaoTeste.js
   const tokenId = urlParams.get("token");
   const candidatoId = urlParams.get("candidato");
 
   if (!tokenId || !candidatoId) {
-    document.getElementById("comparacao-respostas-container").innerHTML =
-      '<div class="alert alert-danger">Erro: Token ou ID do Candidato ausente na URL.</div>';
+    console.error("❌ Parâmetros 'token' ou 'candidato' ausentes no hash.");
+    document.getElementById("comparacao-respostas-container").innerHTML = `
+      <div class="alert alert-danger">
+        <strong>Erro:</strong> Parâmetros inválidos para exibir os detalhes.
+      </div>
+    `;
     return;
   }
 
-  // Limpa a tela antes de carregar
-  document.getElementById("comparacao-respostas-container").innerHTML =
-    '<div class="loading-spinner"></div><p class="text-muted text-center mt-3">Carregando dados da avaliação...</p>';
+  // Exibe informações do candidato e teste
+  await exibirInfoHeader(tokenId, candidatoId);
 
+  // Chama a Cloud Function para obter dados consolidados
+  await carregarDetalhesTeste(tokenId, candidatoId);
+}
+
+/**
+ * 2. Exibe informações do cabeçalho (Candidato, Teste, Status)
+ */
+async function exibirInfoHeader(tokenId, candidatoId) {
   try {
-    // 1.1 Chamar Cloud Function para obter todos os dados consolidados
-    const result = await getDetalhesTeste({ tokenId, candidatoId });
-    const {
-      nomeCandidato,
-      statusCandidato,
-      respostasCandidato,
-      gabarito,
-      nomeTeste,
-      tempoGasto,
-    } = result.data;
-
-    if (!result.data.success) {
-      throw new Error(
-        result.data.message || "Falha ao obter detalhes do teste."
-      );
+    const tokenSnap = await db.collection("TestesTokens").doc(tokenId).get();
+    if (!tokenSnap.exists) {
+      document.getElementById("cand-nome").textContent = "Token não encontrado";
+      return;
     }
 
-    // 2. Preencher o cabeçalho
-    document.getElementById("cand-nome").textContent = nomeCandidato;
-    document.getElementById("teste-nome").textContent = nomeTeste;
-    document.getElementById("teste-status").textContent = statusCandidato;
+    const tokenData = tokenSnap.data();
+    const testeId = tokenData.testeId;
+    const respostaId = tokenData.respostaId;
 
-    // 3. Renderizar comparação e calcular estatísticas
-    // Passamos as respostas do candidato, o gabarito do teste original e o tempo gasto
-    renderizarComparacaoDetalhada(
-      respostasCandidato,
-      gabarito,
-      nomeTeste,
-      tempoGasto
-    );
+    // Buscar nome do candidato
+    const candSnap = await db.collection("Candidatos").doc(candidatoId).get();
+    const candidatoNome = candSnap.exists
+      ? candSnap.data().nome
+      : "Desconhecido";
+
+    // Buscar nome do teste
+    const testeSnap = await db.collection("Testes").doc(testeId).get();
+    const testeNome = testeSnap.exists ? testeSnap.data().nome : "Desconhecido";
+
+    // Buscar status da resposta
+    let statusTexto = "Não iniciado";
+    let statusClass = "status-badge status-pendente";
+
+    if (respostaId) {
+      const respostaSnap = await db
+        .collection("TestesRespostas")
+        .doc(respostaId)
+        .get();
+      if (respostaSnap.exists) {
+        const status = respostaSnap.data().status || "iniciado";
+        if (status === "finalizado") {
+          statusTexto = "Finalizado";
+          statusClass = "status-badge status-sucesso";
+        } else if (status === "iniciado") {
+          statusTexto = "Em andamento";
+          statusClass = "status-badge status-alerta";
+        }
+      }
+    }
+
+    document.getElementById("cand-nome").textContent = candidatoNome;
+    document.getElementById("teste-nome").textContent = testeNome;
+    const statusEl = document.getElementById("teste-status");
+    statusEl.textContent = statusTexto;
+    statusEl.className = statusClass;
   } catch (error) {
-    console.error("❌ Erro ao carregar detalhes do teste:", error);
-    document.getElementById(
-      "comparacao-respostas-container"
-    ).innerHTML = `<div class="alert alert-danger">Não foi possível carregar os detalhes do teste. Detalhes: ${error.message}</div>`;
+    console.error("❌ Erro ao exibir info do header:", error);
   }
 }
 
 /**
- * 2. Função de renderização e cálculo
+ * 3. Chama a Cloud Function e monta a comparação
  */
-function renderizarComparacaoDetalhada(
-  respostas,
-  gabaritoPerguntas,
-  nomeTeste,
-  tempoGasto
-) {
-  if (!respostas || !gabaritoPerguntas || gabaritoPerguntas.length === 0) {
-    document.getElementById("comparacao-respostas-container").innerHTML =
-      '<div class="alert alert-warning">Não foi possível calcular a pontuação. Gabarito ou respostas ausentes.</div>';
-    return;
-  }
-
+async function carregarDetalhesTeste(tokenId, candidatoId) {
   const container = document.getElementById("comparacao-respostas-container");
-  let html = "";
-  let totalPerguntas = gabaritoPerguntas.length;
-  let acertos = 0;
 
-  // Mapeia as respostas do candidato para um formato de fácil acesso (chave é o index 0, 1, 2...)
-  const respostasMap = {};
-  Object.keys(respostas).forEach((key) => {
-    // A chave no Firestore é "resposta-0", "resposta-1", etc.
-    const index = parseInt(key.replace("resposta-", ""), 10);
-    if (!isNaN(index)) {
-      respostasMap[index] = respostas[key];
-    }
-  });
+  container.innerHTML = `
+    <div style="text-align: center; padding: 40px;">
+      <div class="loading-spinner"></div>
+      <p>Carregando detalhes do teste...</p>
+    </div>
+  `;
 
-  gabaritoPerguntas.forEach((pergunta, index) => {
-    // A chave no gabarito é o índice do array de perguntas
-    const respostaCandidato = respostasMap[index] || "Não respondida";
+  try {
+    const result = await getDetalhesTeste({ tokenId, candidatoId });
+    const dados = result.data;
 
-    // ======================================================================
-    // ✅ CORREÇÃO APLICADA: Busca as chaves prováveis do seu Firestore
-    // ======================================================================
-    const enunciado =
-      pergunta.enunciado || pergunta.pergunta || "Enunciado não encontrado";
-    const gabaritoTexto =
-      pergunta.respostaCorreta || pergunta.gabarito || "Gabarito não fornecido"; // respostaCorreta (com C maiúsculo) é comum em schemas Firebase
-    const comentarios = pergunta.comentarios || pergunta.nota || "N/A";
-    // ======================================================================
+    console.log("✅ Dados consolidados recebidos:", dados);
 
-    let status = "info";
-    let feedback = "Avaliação Manual";
-
-    if (gabaritoTexto !== "Gabarito não fornecido") {
-      // Lógica de comparação para pontuação automática (string match)
-      // Normalização: Remove espaços e converte para minúsculas para comparação robusta
-      const candNorm = String(respostaCandidato)
-        .replace(/\s/g, "")
-        .toLowerCase()
-        .trim();
-      const corrNorm = String(gabaritoTexto)
-        .replace(/\s/g, "")
-        .toLowerCase()
-        .trim();
-
-      if (candNorm === corrNorm && candNorm.length > 0) {
-        status = "success";
-        acertos++;
-        feedback = '<i class="fas fa-check-circle me-1"></i> Resposta Correta!';
-      } else {
-        status = "danger";
-        feedback =
-          '<i class="fas fa-times-circle me-1"></i> Resposta Incorreta!';
-      }
-    } else {
-      feedback =
-        '<i class="fas fa-exclamation-triangle me-1"></i> Avaliação manual necessária.';
+    if (!dados || !dados.questoes || dados.questoes.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <strong>Info:</strong> Nenhuma questão encontrada para este teste.
+        </div>
+      `;
+      return;
     }
 
-    const cardClass = `border-${status} bg-white`;
+    // Limpar avaliações anteriores
+    avaliacoes.clear();
+
+    // Renderizar questões para avaliação
+    renderizarQuestoes(dados.questoes, container);
+
+    // Renderizar alerta de avaliação pendente
+    renderizarAlertaAvaliacao();
+  } catch (error) {
+    console.error("❌ Erro ao chamar Cloud Function:", error);
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <strong>Erro:</strong> ${
+          error.message || "Falha ao carregar dados do teste"
+        }
+      </div>
+    `;
+  }
+}
+
+/**
+ * 4. Renderiza o alerta de avaliação pendente
+ */
+function renderizarAlertaAvaliacao() {
+  const resumoContainer = document.getElementById("resumo-pontuacao-container");
+  resumoContainer.innerHTML = `
+    <div class="dashboard-section">
+      <div class="alert alert-alerta" style="display: flex; align-items: center; gap: 10px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <div>
+          <strong>Avaliação Pendente:</strong> Analise cada resposta e marque como correta ou incorreta. 
+          O resumo de pontuação será calculado automaticamente após todas as avaliações.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 5. Renderiza as questões com controles de avaliação
+ */
+function renderizarQuestoes(questoes, container) {
+  let html = `
+    <div class="dashboard-section">
+      <div class="section-header">
+        <h3>Comparação de Respostas</h3>
+      </div>
+  `;
+
+  questoes.forEach((q, index) => {
+    const questaoId = q.questaoId || index;
+    const statusClass = avaliacoes.has(questaoId)
+      ? avaliacoes.get(questaoId)
+        ? "status-sucesso"
+        : "status-erro"
+      : "status-pendente";
+
+    const statusTexto = avaliacoes.has(questaoId)
+      ? avaliacoes.get(questaoId)
+        ? "Correta"
+        : "Incorreta"
+      : "Aguardando Avaliação";
 
     html += `
-            <div class="comparacao-card card mb-4 ${cardClass}" style="border-left: 5px solid var(--cor-${status});">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">Questão ${index + 1}: ${enunciado}</h6>
-                    <small class="text-muted">${feedback}</small>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="d-block mb-1"><strong>Resposta do Candidato:</strong></label>
-                            <div class="p-3 border rounded text-dark">${respostaCandidato}</div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="d-block mb-1 text-${status}"><strong>Resposta Correta / Gabarito:</strong></label>
-                            <div class="p-3 border rounded border-2 text-${status}">${gabaritoTexto}</div>
-                        </div>
-                    </div>
-                    
-                    <small class="text-muted d-block mt-2"><strong>Comentários (do Gabarito):</strong> ${comentarios}</small>
-                </div>
-            </div>
-        `;
+      <div class="card-detalhes" style="margin-bottom: 20px;">
+        <div class="flex-between" style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--cor-borda);">
+          <strong style="color: var(--cor-primaria); font-size: 1.1rem;">Questão ${
+            index + 1
+          }</strong>
+          <span class="status-badge ${statusClass}" id="status-${questaoId}">${statusTexto}</span>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <p style="font-size: 1rem; line-height: 1.6; color: var(--cor-texto-principal);">
+            <strong>Pergunta:</strong> ${q.pergunta || "Sem texto disponível"}
+          </p>
+        </div>
+
+        <div style="display: grid; gap: 15px; margin-bottom: 15px;">
+          <div style="padding: 15px; background-color: rgba(29, 112, 183, 0.1); border-left: 4px solid var(--cor-secundaria); border-radius: var(--borda-radius-pequeno);">
+            <strong style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--cor-texto-secundario);">Resposta do Candidato:</strong>
+            <p style="margin: 0; font-size: 1rem;">${
+              q.respostaCandidato || "Não respondida"
+            }</p>
+          </div>
+          
+          <div style="padding: 15px; background-color: rgba(40, 167, 69, 0.1); border-left: 4px solid var(--cor-sucesso); border-radius: var(--borda-radius-pequeno);">
+            <strong style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--cor-texto-secundario);">Resposta Correta (Gabarito):</strong>
+            <p style="margin: 0; font-size: 1rem;">${
+              q.respostaGabarito || "Gabarito não definido"
+            }</p>
+          </div>
+        </div>
+
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--cor-borda); display: flex; gap: 10px; align-items: center;">
+          <label style="font-weight: 500; color: var(--cor-texto-principal); margin-right: 10px;">Avaliação:</label>
+          <button class="btn btn-sm btn-sucesso" onclick="window.avaliarResposta('${questaoId}', true)">
+            ✓ Correta
+          </button>
+          <button class="btn btn-sm btn-erro" onclick="window.avaliarResposta('${questaoId}', false)">
+            ✗ Incorreta
+          </button>
+        </div>
+      </div>
+    `;
   });
 
-  // Atualiza estatísticas no topo
-  totalPerguntas = gabaritoPerguntas.length;
-  const erros = totalPerguntas - acertos;
-  const taxa =
-    totalPerguntas > 0
-      ? ((acertos / totalPerguntas) * 100).toFixed(2) + "%"
-      : "N/A";
-
-  document.getElementById("stats-total").textContent = totalPerguntas;
-  document.getElementById("stats-acertos").textContent = acertos;
-  document.getElementById("stats-erros").textContent = erros;
-  document.getElementById("stats-taxa").textContent = taxa;
-
-  // Atualiza título da página com o nome do teste e tempo gasto
-  const tempoGastoDisplay = tempoGasto
-    ? `${Math.floor(tempoGasto / 60)}m ${tempoGasto % 60}s`
-    : "N/A";
-  document.getElementById(
-    "detalhes-teste-titulo"
-  ).innerHTML = `<i class="fas fa-eye me-2"></i> Avaliação: ${nomeTeste} <small class="text-muted" style="font-size: 0.6em;"> (Tempo Gasto: ${tempoGastoDisplay})</small>`;
-
+  html += `</div>`;
   container.innerHTML = html;
 }
 
-// Expõe a função de inicialização
-export { initdetalhesTeste as init };
+/**
+ * 6. Função global para avaliar uma resposta
+ */
+window.avaliarResposta = function (questaoId, isCorreta) {
+  avaliacoes.set(questaoId, isCorreta);
+
+  // Atualizar badge de status
+  const statusEl = document.getElementById(`status-${questaoId}`);
+  if (statusEl) {
+    statusEl.className = `status-badge ${
+      isCorreta ? "status-sucesso" : "status-erro"
+    }`;
+    statusEl.textContent = isCorreta ? "Correta" : "Incorreta";
+  }
+
+  console.log(
+    `✅ Questão ${questaoId} avaliada como: ${
+      isCorreta ? "Correta" : "Incorreta"
+    }`
+  );
+
+  // Verificar se todas as questões foram avaliadas
+  verificarAvaliacaoCompleta();
+};
+
+/**
+ * 7. Verifica se todas as questões foram avaliadas e calcula pontuação
+ */
+function verificarAvaliacaoCompleta() {
+  const totalQuestoes = document.querySelectorAll(".card-detalhes").length;
+
+  if (avaliacoes.size === totalQuestoes) {
+    console.log("✅ Todas as questões avaliadas. Calculando pontuação...");
+    calcularEExibirResumo(totalQuestoes);
+  }
+}
+
+/**
+ * 8. Calcula e exibe o resumo de pontuação
+ */
+function calcularEExibirResumo(totalQuestoes) {
+  let acertos = 0;
+  let erros = 0;
+
+  avaliacoes.forEach((isCorreta) => {
+    if (isCorreta) {
+      acertos++;
+    } else {
+      erros++;
+    }
+  });
+
+  const taxaAcerto =
+    totalQuestoes > 0 ? ((acertos / totalQuestoes) * 100).toFixed(1) : 0;
+
+  const resumoContainer = document.getElementById("resumo-pontuacao-container");
+  resumoContainer.innerHTML = `
+    <div class="dashboard-section">
+      <div class="section-header">
+        <h3>Resumo de Pontuação</h3>
+      </div>
+      
+      <div class="details-grid cols-4">
+        <div class="stat-card">
+          <div class="stat-label">Total de Questões</div>
+          <div class="stat-value" style="color: var(--cor-primaria);">${totalQuestoes}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-label">Acertos</div>
+          <div class="stat-value" style="color: var(--cor-sucesso);">${acertos}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-label">Erros</div>
+          <div class="stat-value" style="color: var(--cor-erro);">${erros}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-label">Taxa de Acerto</div>
+          <div class="stat-value" style="color: var(--cor-info);">${taxaAcerto}%</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  console.log(
+    `📊 Resumo calculado - Total: ${totalQuestoes}, Acertos: ${acertos}, Erros: ${erros}, Taxa: ${taxaAcerto}%`
+  );
+}
