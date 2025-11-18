@@ -51,6 +51,7 @@ export async function renderizarEntrevistas(state) {
         "Entrevista RH Aprovada (Testes Pendente)",
         "Testes Pendente",
         "Testes Pendente (Enviado)",
+        "Testes Respondido",
       ])
     );
 
