@@ -55,6 +55,14 @@ export function initrhPanel(user, db, userData) {
       roles: ["admin", "rh"],
       icon: icons.recrutamento,
     },
+    // <-- NOVO BLOCO ADICIONADO PARA ROTA DE DETALHES
+    {
+      id: "detalhes_teste",
+      name: "Detalhes do Teste (Avaliação)",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_estudos_de_caso,
+      hideInMenu: true, // Oculta do menu lateral, pois é uma tela de detalhes
+    },
     {
       id: "gestao_estudos_de_caso",
       name: "3. Gerenciar Estudos/Testes",

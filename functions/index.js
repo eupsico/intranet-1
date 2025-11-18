@@ -1984,7 +1984,86 @@ exports.criarEventoGoogleCalendar = onCall({ cors: true }, async (request) => {
     );
   }
 });
+// Arquivo: index.js (NOVO BLOCO)
 
+// ====================================================================
+// FUNÇÃO: getDetalhesTeste (NOVA - Para tela de avaliação)
+// ====================================================================
+exports.getDetalhesTeste = onCall(
+  { cors: true, timeoutSeconds: 60 },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError(
+        "unauthenticated",
+        "Você precisa estar autenticado."
+      );
+    }
+
+    const { tokenId, candidatoId } = request.data;
+
+    if (!tokenId || !candidatoId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "tokenId e candidatoId são obrigatórios."
+      );
+    }
+
+    try {
+      // 1. Busca as Respostas (do candidato)
+      const respostaSnap = await db
+        .collection("testesrespondidos")
+        .doc(tokenId)
+        .get();
+      if (!respostaSnap.exists) {
+        throw new HttpsError(
+          "not-found",
+          "Respostas do teste não encontradas."
+        );
+      }
+      const respostaData = respostaSnap.data();
+
+      // 2. Busca o Gabarito (do teste original)
+      // Usamos o testeId armazenado na resposta
+      const gabaritoSnap = await db
+        .collection("estudos_de_caso")
+        .doc(respostaData.testeId)
+        .get();
+      if (!gabaritoSnap.exists) {
+        throw new HttpsError(
+          "not-found",
+          "Gabarito do teste original não encontrado."
+        );
+      }
+      const gabaritoData = gabaritoSnap.data();
+
+      // 3. Busca o Candidato
+      const candSnap = await db
+        .collection("candidaturas")
+        .doc(candidatoId)
+        .get();
+      const candData = candSnap.exists ? candSnap.data() : null;
+
+      return {
+        success: true,
+        nomeCandidato: candData?.nome_candidato || "Candidato Desconhecido",
+        statusCandidato: candData?.status_recrutamento || "N/A",
+
+        // Dados do Teste Respondido
+        respostasCandidato: respostaData.respostas || {},
+        tempoGasto: respostaData.tempoGasto,
+        dataResposta: respostaData.dataResposta,
+
+        // Dados do Gabarito (perguntas + respostas corretas)
+        gabarito: gabaritoData.perguntas || [],
+        nomeTeste: gabaritoData.titulo || "Teste Sem Título",
+      };
+    } catch (error) {
+      logger.error("❌ Erro em getDetalhesTeste:", error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("internal", "Erro ao buscar detalhes da avaliação.");
+    }
+  }
+);
 // ====================================================================
 // FUNÇÃO: marcarPresenca (Trigger de atualização)
 // ====================================================================
