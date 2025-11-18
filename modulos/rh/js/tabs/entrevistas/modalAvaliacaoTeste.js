@@ -808,7 +808,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
         console.log(`   🎨 Renderizando teste ${idx + 1}:`, teste.nomeTeste);
 
         const dataEnvio = teste.dataenvio
-          ? formatarDataEnvio(teste.dataenvio)
+          ? formatarDataEnvio(teste.data_envio)
           : "N/A";
 
         const statusBadge =
