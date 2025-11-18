@@ -176,7 +176,7 @@ export function initrhPanel(user, db, userData) {
 
     try {
       // 1. Carrega o HTML da view
-      const htmlPath = `./${baseView}.html`;
+      const htmlPath = `../rh/page/${baseView}.html`;
       console.log(`🔹 RH Panel: Carregando HTML de ${htmlPath}`);
 
       const response = await fetch(htmlPath);
@@ -191,7 +191,7 @@ export function initrhPanel(user, db, userData) {
       tempDiv.querySelectorAll("script").forEach((script) => script.remove());
       contentArea.innerHTML = tempDiv.innerHTML; // 2. Carrega e executa o JavaScript da view
 
-      const jsPath = `../js/${baseView}.js`;
+      const jsPath = `../rh/js/${baseView}.js`;
       console.log(`🔹 RH Panel: Importando JS de ${jsPath}`);
 
       const viewModule = await import(jsPath + "?t=" + Date.now()); // Tenta diferentes padrões de nome de função de inicialização
