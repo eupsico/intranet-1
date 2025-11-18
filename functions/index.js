@@ -1272,6 +1272,7 @@ exports.salvarCandidatura = onCall(
 // ==========================================================
 // exports.salvarRespostasTeste
 // ==========================================================
+
 exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
   cors(req, res, async () => {
     try {
@@ -1369,7 +1370,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
             `Atualizando status do teste índice ${testeIndex} para respondido`
           );
           testesEnviadosAtualizado[testeIndex].status = "respondido";
-          testesEnviadosAtualizado[testeIndex].dataResposta = new Date(); // Corrigido na etapa anterior
+          testesEnviadosAtualizado[testeIndex].dataResposta = new Date();
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
           testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto;
         } else {
@@ -1400,11 +1401,13 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       if (candidaturaSnap.exists) {
         await candidaturaRef.update({
           testes_enviados: testesEnviadosAtualizado,
+
+          // ==========================================================
+          // ✅ CORREÇÃO 2: Atualiza o status do candidato
+          // ==========================================================
+          status_recrutamento: "Testes Respondido",
+
           historico: admin.firestore.FieldValue.arrayUnion({
-            // ==========================================================
-            // ✅ CORREÇÃO APLICADA AQUI
-            // Trocamos 'admin.firestore.FieldValue.serverTimestamp()' por 'new Date()'
-            // ==========================================================
             data: new Date(),
             acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`,
             usuario: "candidato-via-token",
@@ -1436,6 +1439,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
     }
   })
 );
+
 // ==========================================================
 // exports.validarTokenTeste
 // ==========================================================
