@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.1.0
+ * Versão: 1.1.1 - CORRIGIDO: Mapeamento de campos do Gabarito (Cross-Collection).
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
@@ -111,23 +111,28 @@ function renderizarComparacaoDetalhada(
   gabaritoPerguntas.forEach((pergunta, index) => {
     // A chave no gabarito é o índice do array de perguntas
     const respostaCandidato = respostasMap[index] || "Não respondida";
-    // O gabarito é o campo 'resposta_correta' dentro do objeto 'pergunta'
-    const respostaCorreta =
-      pergunta.gabarito ||
-      pergunta.resposta_correta ||
-      "Gabarito não fornecido";
+
+    // ======================================================================
+    // ✅ CORREÇÃO APLICADA: Busca as chaves prováveis do seu Firestore
+    // ======================================================================
+    const enunciado =
+      pergunta.enunciado || pergunta.pergunta || "Enunciado não encontrado";
+    const gabaritoTexto =
+      pergunta.respostaCorreta || pergunta.gabarito || "Gabarito não fornecido"; // respostaCorreta (com C maiúsculo) é comum em schemas Firebase
+    const comentarios = pergunta.comentarios || pergunta.nota || "N/A";
+    // ======================================================================
 
     let status = "info";
     let feedback = "Avaliação Manual";
 
-    if (respostaCorreta !== "Gabarito não fornecido") {
+    if (gabaritoTexto !== "Gabarito não fornecido") {
       // Lógica de comparação para pontuação automática (string match)
       // Normalização: Remove espaços e converte para minúsculas para comparação robusta
       const candNorm = String(respostaCandidato)
         .replace(/\s/g, "")
         .toLowerCase()
         .trim();
-      const corrNorm = String(respostaCorreta)
+      const corrNorm = String(gabaritoTexto)
         .replace(/\s/g, "")
         .toLowerCase()
         .trim();
@@ -151,9 +156,7 @@ function renderizarComparacaoDetalhada(
     html += `
             <div class="comparacao-card card mb-4 ${cardClass}" style="border-left: 5px solid var(--cor-${status});">
                 <div class="card-header bg-light">
-                    <h6 class="mb-0">Questão ${index + 1}: ${
-      pergunta.pergunta || "Pergunta sem texto"
-    }</h6>
+                    <h6 class="mb-0">Questão ${index + 1}: ${enunciado}</h6>
                     <small class="text-muted">${feedback}</small>
                 </div>
                 <div class="card-body">
@@ -164,13 +167,11 @@ function renderizarComparacaoDetalhada(
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="d-block mb-1 text-${status}"><strong>Resposta Correta / Gabarito:</strong></label>
-                            <div class="p-3 border rounded border-2 text-${status}">${respostaCorreta}</div>
+                            <div class="p-3 border rounded border-2 text-${status}">${gabaritoTexto}</div>
                         </div>
                     </div>
                     
-                    <small class="text-muted d-block mt-2"><strong>Comentários (do Gabarito):</strong> ${
-                      pergunta.comentarios || "N/A"
-                    }</small>
+                    <small class="text-muted d-block mt-2"><strong>Comentários (do Gabarito):</strong> ${comentarios}</small>
                 </div>
             </div>
         `;

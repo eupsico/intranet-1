@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoTeste.js
- * Versão: 1.7.4 - CORRIGIDO: Datas (Envio/Resposta) e Busca de Enunciados da Questão.
+ * Versão: 1.7.6 - CORRIGIDO: Mapeamento flexível dos campos do Gabarito (Enunciado/Resposta Correta).
  * Descrição: Gerencia o modal de avaliação de teste com gestor.
  */
 
@@ -406,12 +406,34 @@ async function carregarRespostasDoTeste(
         const indexQuestao = parseInt(chave.replace("resposta-", ""), 10);
 
         // Busca o enunciado e gabarito usando o índice
+        const perguntaData = gabaritoPerguntas[indexQuestao] || {};
+
+        // ======================================================================
+        // ✅ CORREÇÃO APLICADA: Mapeamento de campos FLEXÍVEL
+        // ======================================================================
+        // Busca o enunciado (prioriza enunciado, depois pergunta, depois texto, depois questionText)
         const enunciado =
-          gabaritoPerguntas[indexQuestao]?.enunciado ||
+          perguntaData.enunciado ||
+          perguntaData.pergunta ||
+          perguntaData.texto ||
+          perguntaData.questionText ||
           `Questão ${indexQuestao + 1} (Enunciado não encontrado)`;
+
+        // Busca o gabarito (prioriza respostaCorreta, depois resposta_correta, depois gabarito, depois correctAnswer)
         const gabaritoTexto =
-          gabaritoPerguntas[indexQuestao]?.respostaCorreta ||
+          perguntaData.respostaCorreta ||
+          perguntaData.resposta_correta ||
+          perguntaData.gabarito ||
+          perguntaData.correctAnswer ||
           "Gabarito não fornecido";
+
+        // Busca comentários (prioriza comentários, depois nota, depois feedback)
+        const comentarios =
+          perguntaData.comentarios ||
+          perguntaData.nota ||
+          perguntaData.feedback ||
+          "N/A";
+        // ======================================================================
 
         respostasHtml += `<div class="resposta-item mb-3 p-3 border rounded">
           <p><strong>Questão ${indexQuestao + 1}:</strong> ${enunciado}</p>
@@ -419,6 +441,7 @@ async function carregarRespostasDoTeste(
           <p><strong>Resposta do Candidato:</strong> ${
             respostaTexto || "Não respondida"
           }</p>
+          <small class="text-muted d-block mt-2"><strong>Comentários (do Gabarito):</strong> ${comentarios}</small>
         </div>`;
       });
     } else if (data.respostas && Array.isArray(data.respostas)) {
@@ -538,7 +561,7 @@ async function carregarEstatisticasTestes(listaDeTestes) {
 
 /**
  * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.4 - Correções aplicadas.
+ * VERSÃO DEBUG v1.7.6 - Correções aplicadas.
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -682,7 +705,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
     console.log("✅ [BOTÕES] Event listener anexado ao botão Cancelar");
   } else {
-    console.error("❌ [BOTÕES] BOTÃO CANCELAR NÃO ENCONTRADO!");
+    console.error("❌ [BOTÕES] BOTão CANCELAR NÃO ENCONTRADO!");
     console.error("   - Verifique o HTML do modal e as classes CSS");
   }
 
@@ -920,7 +943,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
       botoesVerRespostas.forEach((btn, idx) => {
         console.log(`   ✅ Anexando listener ao botão ${idx + 1}`);
         btn.addEventListener("click", function (e) {
-          console.log("🖱️ [RENDER] Botão 'Ver Respostas' clicado");
+          console.log("🖱️ [BOTÕES] Botão 'Ver Respostas' clicado");
           e.preventDefault();
 
           const tokenId = this.getAttribute("data-teste-id");
