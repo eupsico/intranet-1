@@ -1326,7 +1326,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       // 4. Atualiza o token como utilizado
       await db.collection("tokensacesso").doc(tokenId).update({
         usado: true,
-        respondidoEm: admin.firestore.FieldValue.serverTimestamp(), // Isso está CORRETO
+        respondidoEm: admin.firestore.FieldValue.serverTimestamp(),
         respostas: safeRespostas,
         tempoGasto: safeTempoGasto,
         navegador: safeNavegador,
@@ -1369,13 +1369,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
             `Atualizando status do teste índice ${testeIndex} para respondido`
           );
           testesEnviadosAtualizado[testeIndex].status = "respondido";
-
-          // ==========================================================
-          // ✅ CORREÇÃO APLICADA AQUI
-          // Trocamos 'admin.firestore.FieldValue.serverTimestamp()' por 'new Date()'
-          // ==========================================================
-          testesEnviadosAtualizado[testeIndex].dataResposta = new Date();
-
+          testesEnviadosAtualizado[testeIndex].dataResposta = new Date(); // Corrigido na etapa anterior
           testesEnviadosAtualizado[testeIndex].linkrespostas = linkRespostas;
           testesEnviadosAtualizado[testeIndex].tempoGasto = safeTempoGasto;
         } else {
@@ -1394,7 +1388,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           candidatoId: dadosToken.candidatoId,
           tokenId: tokenId,
           nomeTeste: nomeTeste,
-          dataResposta: admin.firestore.FieldValue.serverTimestamp(), // Isso está CORRETO
+          dataResposta: admin.firestore.FieldValue.serverTimestamp(),
           data_envio: dadosToken.criadoEm,
           tempoGasto: safeTempoGasto,
           respostas: safeRespostas,
@@ -1405,10 +1399,13 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
       // 8. Atualiza o documento da candidatura (SOMENTE SE ELE EXISTIR)
       if (candidaturaSnap.exists) {
         await candidaturaRef.update({
-          testes_enviados: testesEnviadosAtualizado, // Agora o array está limpo
+          testes_enviados: testesEnviadosAtualizado,
           historico: admin.firestore.FieldValue.arrayUnion({
-            // Isso está CORRETO
-            data: admin.firestore.FieldValue.serverTimestamp(),
+            // ==========================================================
+            // ✅ CORREÇÃO APLICADA AQUI
+            // Trocamos 'admin.firestore.FieldValue.serverTimestamp()' por 'new Date()'
+            // ==========================================================
+            data: new Date(),
             acao: `Teste respondido: ${nomeTeste}. Tempo gasto: ${safeTempoGasto}s`,
             usuario: "candidato-via-token",
           }),
