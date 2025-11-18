@@ -5,7 +5,6 @@
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
 
-import { getGlobalState } from "../recrutamento.js";
 import {
   doc,
   updateDoc,
@@ -212,13 +211,16 @@ async function submeterAvaliacaoRH(e) {
   e.preventDefault();
 
   console.log("🔹 Entrevistas: Submetendo avaliação");
-
+  const state = window.getGlobalRecrutamentoState();
+  if (!state) {
+    window.showToast?.("Erro: Estado global não iniciado.", "error");
+    return;
+  }
   const modalAvaliacaoRH = document.getElementById("modal-avaliacao-rh");
   const btnRegistrarAvaliacao = document.getElementById(
     "btn-registrar-entrevista-rh"
   );
 
-  const state = getGlobalState();
   const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
   const candidaturaId = modalAvaliacaoRH?.dataset.candidaturaId;
 

@@ -5,7 +5,6 @@
  * Descrição: Gerencia o modal de envio de testes (com Cloud Functions).
  */
 
-import { getGlobalState } from "../recrutamento.js";
 import {
   db,
   collection,
@@ -187,7 +186,7 @@ async function handleExcluirTesteEnviado(e) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
   try {
-    const { candidatosCollection } = getGlobalState();
+    const { candidatosCollection } = window.getGlobalRecrutamentoState();
     const candidaturaRef = doc(candidatosCollection, candidatoId);
 
     // 1. Obter o documento ATUAL
@@ -396,7 +395,7 @@ ${linkComToken}
 
     setTimeout(() => {
       fecharModalEnvioTeste();
-      const state = getGlobalState();
+      const state = window.getGlobalRecrutamentoState();
       const { handleTabClick, statusCandidaturaTabs } = state;
       const activeTab =
         statusCandidaturaTabs?.querySelector(".tab-link.active");
@@ -482,7 +481,7 @@ async function salvarTesteApenas() {
     window.showToast?.("Teste salvo com token de acesso!", "success");
 
     fecharModalEnvioTeste();
-    const state = getGlobalState();
+    const state = window.getGlobalRecrutamentoState();
     const { handleTabClick, statusCandidaturaTabs } = state;
     const activeTab = statusCandidaturaTabs?.querySelector(".tab-link.active");
     if (activeTab) handleTabClick({ currentTarget: activeTab });
