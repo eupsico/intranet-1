@@ -1,9 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.3.1 - Corrigido: Usando Timestamp.now() em vez de serverTimestamp.
+ * Versão: 1.3.2 - Corrigido: Usando setDoc com merge em vez de updateDoc.
  * Data: 18/11/2025
- * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
- * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
  */
 
 import {
@@ -11,12 +9,12 @@ import {
   functions,
   httpsCallable,
   doc,
-  updateDoc,
+  setDoc, // ← Trocado de updateDoc para setDoc
   Timestamp,
   getDoc,
 } from "../../../assets/js/firebase-init.js";
 
-// Definição da função Cloud Function (deve ser a que você implementou no index.js)
+// Definição da função Cloud Function
 const getDetalhesTeste = httpsCallable(functions, "getDetalhesTeste");
 
 // Estado global para armazenar validações do avaliador
@@ -31,15 +29,12 @@ let candidatoIdGlobal = null;
 export async function initdetalhesTeste() {
   console.log("🔹 Detalhes Teste: Inicializando view...");
 
-  // O roteador (rh-painel.js) usa window.location.hash
   const hash = window.location.hash;
   const urlParams = new URLSearchParams(hash.split("?")[1]);
 
-  // Parâmetros passados pelo modal AvaliacaoTeste.js
   const tokenId = urlParams.get("token");
   const candidatoId = urlParams.get("candidato");
 
-  // Armazena globalmente para usar no salvamento
   tokenIdGlobal = tokenId;
   candidatoIdGlobal = candidatoId;
 
@@ -49,12 +44,10 @@ export async function initdetalhesTeste() {
     return;
   }
 
-  // Limpa a tela antes de carregar
   document.getElementById("comparacao-respostas-container").innerHTML =
     '<div class="loading-spinner"></div><p class="text-muted text-center mt-3">Carregando dados da avaliação...</p>';
 
   try {
-    // 1.1 Chamar Cloud Function para obter todos os dados consolidados
     const result = await getDetalhesTeste({ tokenId, candidatoId });
     const {
       nomeCandidato,
@@ -71,13 +64,10 @@ export async function initdetalhesTeste() {
       );
     }
 
-    // 2. Preencher o cabeçalho
     document.getElementById("cand-nome").textContent = nomeCandidato;
     document.getElementById("teste-nome").textContent = nomeTeste;
     document.getElementById("teste-status").textContent = statusCandidato;
 
-    // 3. Renderizar comparação e calcular estatísticas
-    // Passamos as respostas do candidato, o gabarito do teste original e o tempo gasto
     renderizarComparacaoDetalhada(
       respostasCandidato,
       gabarito,
@@ -85,7 +75,6 @@ export async function initdetalhesTeste() {
       tempoGasto
     );
 
-    // 4. Carregar avaliações já existentes (se houver)
     await carregarAvaliacoesExistentes();
   } catch (error) {
     console.error("❌ Erro ao carregar detalhes do teste:", error);
@@ -99,13 +88,11 @@ export async function initdetalhesTeste() {
  * 2. Função auxiliar para obter o texto de uma alternativa
  */
 function obterTextoAlternativa(pergunta, numeroResposta) {
-  // Se não for um número, retorna o valor original
   const num = parseInt(numeroResposta, 10);
   if (isNaN(num)) {
     return numeroResposta;
   }
 
-  // Verifica se a pergunta tem alternativas (múltipla escolha)
   const alternativas =
     pergunta.alternativas || pergunta.opcoes || pergunta.alternativa;
 
@@ -114,33 +101,25 @@ function obterTextoAlternativa(pergunta, numeroResposta) {
     !Array.isArray(alternativas) ||
     alternativas.length === 0
   ) {
-    return numeroResposta; // Retorna o número se não houver alternativas
+    return numeroResposta;
   }
 
-  // As alternativas geralmente são um array: ["Texto A", "Texto B", "Texto C", "Texto D"]
-  // Ou podem ser objetos: [{texto: "...", valor: "..."}, ...]
-  // O número pode ser 0-based ou 1-based, vamos tentar ambos
   const indexZeroBased = num;
   const indexOneBased = num - 1;
 
   let textoAlternativa = null;
   let indexUsado = -1;
 
-  // Tenta index baseado em 0 (0, 1, 2, 3...)
   if (indexZeroBased >= 0 && indexZeroBased < alternativas.length) {
     textoAlternativa = alternativas[indexZeroBased];
     indexUsado = indexZeroBased;
-  }
-  // Tenta index baseado em 1 (1, 2, 3, 4...)
-  else if (indexOneBased >= 0 && indexOneBased < alternativas.length) {
+  } else if (indexOneBased >= 0 && indexOneBased < alternativas.length) {
     textoAlternativa = alternativas[indexOneBased];
     indexUsado = indexOneBased;
   }
 
   if (textoAlternativa) {
-    // Se for um objeto, extrair o texto
     if (typeof textoAlternativa === "object" && textoAlternativa !== null) {
-      // Tenta diferentes chaves possíveis para o texto
       const textoExtraido =
         textoAlternativa.texto ||
         textoAlternativa.resposta ||
@@ -154,12 +133,10 @@ function obterTextoAlternativa(pergunta, numeroResposta) {
       textoAlternativa = textoExtraido;
     }
 
-    // Retorna formatado: "Alternativa B: Texto da alternativa"
-    const letra = String.fromCharCode(65 + indexUsado); // A, B, C, D...
+    const letra = String.fromCharCode(65 + indexUsado);
     return `<strong>Alternativa ${letra}:</strong> ${textoAlternativa}`;
   }
 
-  // Se não encontrou, retorna o número original
   return numeroResposta;
 }
 
@@ -182,13 +159,10 @@ function renderizarComparacaoDetalhada(
   let html = "";
   totalPerguntas = gabaritoPerguntas.length;
 
-  // Resetar validações (serão recarregadas se existirem)
   validacoesAvaliador = {};
 
-  // Mapeia as respostas do candidato para um formato de fácil acesso (chave é o index 0, 1, 2...)
   const respostasMap = {};
   Object.keys(respostas).forEach((key) => {
-    // A chave no Firestore é "resposta-0", "resposta-1", etc.
     const index = parseInt(key.replace("resposta-", ""), 10);
     if (!isNaN(index)) {
       respostasMap[index] = respostas[key];
@@ -196,7 +170,6 @@ function renderizarComparacaoDetalhada(
   });
 
   gabaritoPerguntas.forEach((pergunta, index) => {
-    // A chave no gabarito é o índice do array de perguntas
     const respostaCandidatoRaw = respostasMap[index] || "Não respondida";
 
     const enunciado =
@@ -205,14 +178,12 @@ function renderizarComparacaoDetalhada(
       pergunta.respostaCorreta || pergunta.gabarito || "Gabarito não fornecido";
     const comentarios = pergunta.comentarios || pergunta.nota || "N/A";
 
-    // Converter respostas numéricas para texto das alternativas
     const respostaCandidato = obterTextoAlternativa(
       pergunta,
       respostaCandidatoRaw
     );
     const gabaritoTexto = obterTextoAlternativa(pergunta, gabaritoTextoRaw);
 
-    // Botões de validação manual
     const botoesValidacao = `
       <div class="mt-3 d-flex gap-2 align-items-center">
         <span class="me-2"><strong>Avaliação do Avaliador:</strong></span>
@@ -251,7 +222,6 @@ function renderizarComparacaoDetalhada(
     `;
   });
 
-  // Atualiza título da página com o nome do teste e tempo gasto
   const tempoGastoDisplay = tempoGasto
     ? `${Math.floor(tempoGasto / 60)}m ${tempoGasto % 60}s`
     : "N/A";
@@ -261,7 +231,6 @@ function renderizarComparacaoDetalhada(
 
   container.innerHTML = html;
 
-  // Inicializar estatísticas como "aguardando avaliação"
   document.getElementById("stats-total").textContent = totalPerguntas;
   document.getElementById("stats-acertos").textContent = "Aguardando";
   document.getElementById("stats-erros").textContent = "Aguardando";
@@ -284,13 +253,11 @@ async function carregarAvaliacoesExistentes() {
       const dados = testeDoc.data();
       const avaliacoesExistentes = dados.avaliacaoAvaliador || {};
 
-      // Restaurar avaliações
       Object.keys(avaliacoesExistentes).forEach((key) => {
         const index = parseInt(key.replace("questao-", ""), 10);
         if (!isNaN(index)) {
           validacoesAvaliador[index] = avaliacoesExistentes[key];
 
-          // Atualizar visual
           const card = document.getElementById(`card-questao-${index}`);
           const statusBadge = document.getElementById(
             `status-questao-${index}`
@@ -316,19 +283,17 @@ async function carregarAvaliacoesExistentes() {
         }
       });
 
-      // Recalcular estatísticas
       calcularEstatisticas();
 
       console.log("✅ Avaliações anteriores carregadas com sucesso");
     }
   } catch (error) {
     console.error("⚠️ Erro ao carregar avaliações existentes:", error);
-    // Não bloqueia a execução, apenas não carrega as avaliações anteriores
   }
 }
 
 /**
- * 5. Função para salvar avaliação no Firebase
+ * 5. Função para salvar avaliação no Firebase - CORRIGIDA
  */
 async function salvarAvaliacaoNoFirebase() {
   try {
@@ -352,22 +317,26 @@ async function salvarAvaliacaoNoFirebase() {
     const erros = totalAvaliadas - acertos;
     const taxa = totalAvaliadas > 0 ? (acertos / totalPerguntas) * 100 : 0;
 
-    // Atualizar documento no Firebase
-    await updateDoc(testeRef, {
-      avaliacaoAvaliador: avaliacaoParaSalvar,
-      estatisticasAvaliacao: {
-        totalQuestoes: totalPerguntas,
-        totalAvaliadas: totalAvaliadas,
-        acertos: acertos,
-        erros: erros,
-        taxaAcerto: parseFloat(taxa.toFixed(2)),
+    // ✅ USAR setDoc com merge: true em vez de updateDoc
+    // Isso cria o documento se não existir, ou atualiza se já existir
+    await setDoc(
+      testeRef,
+      {
+        avaliacaoAvaliador: avaliacaoParaSalvar,
+        estatisticasAvaliacao: {
+          totalQuestoes: totalPerguntas,
+          totalAvaliadas: totalAvaliadas,
+          acertos: acertos,
+          erros: erros,
+          taxaAcerto: parseFloat(taxa.toFixed(2)),
+        },
+        ultimaAtualizacaoAvaliacao: Timestamp.now(),
       },
-      ultimaAtualizacaoAvaliacao: Timestamp.now(),
-    });
+      { merge: true }
+    ); // ← merge: true é essencial
 
     console.log("✅ Avaliação salva no Firebase com sucesso!");
 
-    // Mostrar feedback visual
     mostrarNotificacao("Avaliação salva com sucesso!", "success");
   } catch (error) {
     console.error("❌ Erro ao salvar avaliação no Firebase:", error);
@@ -381,7 +350,6 @@ async function salvarAvaliacaoNoFirebase() {
 window.marcarResposta = function (index, isCorreta) {
   validacoesAvaliador[index] = isCorreta;
 
-  // Atualizar visual da questão
   const card = document.getElementById(`card-questao-${index}`);
   const statusBadge = document.getElementById(`status-questao-${index}`);
 
@@ -399,10 +367,7 @@ window.marcarResposta = function (index, isCorreta) {
     statusBadge.innerHTML = '<i class="fas fa-times me-1"></i> Incorreta';
   }
 
-  // Recalcular estatísticas
   calcularEstatisticas();
-
-  // Salvar automaticamente no Firebase
   salvarAvaliacaoNoFirebase();
 };
 
@@ -413,7 +378,6 @@ function calcularEstatisticas() {
   const totalAvaliadas = Object.keys(validacoesAvaliador).length;
 
   if (totalAvaliadas === 0) {
-    // Nenhuma avaliação ainda
     document.getElementById("stats-acertos").textContent = "Aguardando";
     document.getElementById("stats-erros").textContent = "Aguardando";
     document.getElementById("stats-taxa").textContent = "Aguardando";
@@ -436,7 +400,6 @@ function calcularEstatisticas() {
   document.getElementById("stats-erros").textContent = erros;
   document.getElementById("stats-taxa").textContent = taxa;
 
-  // Se todas as questões foram avaliadas, esconder o aviso
   if (totalAvaliadas === totalPerguntas) {
     document.getElementById("aviso-avaliacao").style.display = "none";
   } else {
@@ -466,7 +429,6 @@ function mostrarNotificacao(mensagem, tipo = "success") {
 
   document.body.appendChild(notificacao);
 
-  // Remove após 3 segundos
   setTimeout(() => {
     notificacao.style.transition = "opacity 0.3s";
     notificacao.style.opacity = "0";
@@ -474,5 +436,4 @@ function mostrarNotificacao(mensagem, tipo = "success") {
   }, 3000);
 }
 
-// Expõe a função de inicialização
 export { initdetalhesTeste as init };
