@@ -6,7 +6,7 @@
         </a>
     </div>
 
-    <div class="description-box mb-4">
+    <div class="info-card mb-4">
         <p><strong>Candidato:</strong> <span id="cand-nome">Carregando...</span></p>
         <p><strong>Teste:</strong> <span id="teste-nome">Carregando...</span></p>
         <p><strong>Status:</strong> <span id="teste-status">Carregando...</span></p>
@@ -14,13 +14,17 @@
 
     <div class="row mb-4">
         <div class="col-lg-12">
-            <div id="resumo-pontuacao" class="card card-body mb-3">
+            <div id="resumo-pontuacao" class="card card-body">
                 <h5><i class="fas fa-chart-bar me-2"></i> Resumo de Pontuação</h5>
                 <div id="resumo-pontuacao-conteudo" class="details-grid cols-4">
                     <p>Total: <strong id="stats-total">N/A</strong></p>
                     <p class="text-success">Acertos: <strong id="stats-acertos">N/A</strong></p>
                     <p class="text-danger">Erros: <strong id="stats-erros">N/A</strong></p>
                     <p class="text-info">Taxa: <strong id="stats-taxa">N/A</strong></p>
+                </div>
+                <div class="alert alert-warning mt-3" id="aviso-avaliacao">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Aguardando avaliação:</strong> Revise cada resposta e marque como correta ou incorreta para calcular a pontuação final.
                 </div>
             </div>
         </div>
