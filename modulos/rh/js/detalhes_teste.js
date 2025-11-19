@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.2.1 - Adicionado exibição de texto das alternativas em múltipla escolha.
+ * Versão: 1.2.2 - Corrigido exibição de alternativas quando são objetos.
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
@@ -105,26 +105,44 @@ function obterTextoAlternativa(pergunta, numeroResposta) {
   }
 
   // As alternativas geralmente são um array: ["Texto A", "Texto B", "Texto C", "Texto D"]
+  // Ou podem ser objetos: [{texto: "...", valor: "..."}, ...]
   // O número pode ser 0-based ou 1-based, vamos tentar ambos
   const indexZeroBased = num;
   const indexOneBased = num - 1;
 
   let textoAlternativa = null;
+  let indexUsado = -1;
 
   // Tenta index baseado em 0 (0, 1, 2, 3...)
   if (indexZeroBased >= 0 && indexZeroBased < alternativas.length) {
     textoAlternativa = alternativas[indexZeroBased];
+    indexUsado = indexZeroBased;
   }
   // Tenta index baseado em 1 (1, 2, 3, 4...)
   else if (indexOneBased >= 0 && indexOneBased < alternativas.length) {
     textoAlternativa = alternativas[indexOneBased];
+    indexUsado = indexOneBased;
   }
 
   if (textoAlternativa) {
+    // Se for um objeto, extrair o texto
+    if (typeof textoAlternativa === "object" && textoAlternativa !== null) {
+      // Tenta diferentes chaves possíveis para o texto
+      const textoExtraido =
+        textoAlternativa.texto ||
+        textoAlternativa.resposta ||
+        textoAlternativa.alternativa ||
+        textoAlternativa.opcao ||
+        textoAlternativa.label ||
+        textoAlternativa.valor ||
+        textoAlternativa.value ||
+        JSON.stringify(textoAlternativa);
+
+      textoAlternativa = textoExtraido;
+    }
+
     // Retorna formatado: "Alternativa B: Texto da alternativa"
-    const letra = String.fromCharCode(
-      65 + (indexOneBased >= 0 ? indexOneBased : indexZeroBased)
-    ); // A, B, C, D...
+    const letra = String.fromCharCode(65 + indexUsado); // A, B, C, D...
     return `<strong>Alternativa ${letra}:</strong> ${textoAlternativa}`;
   }
 
