@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.2.0 - Adicionado sistema de validação manual pelo avaliador.
+ * Versão: 1.2.1 - Adicionado exibição de texto das alternativas em múltipla escolha.
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
@@ -83,7 +83,57 @@ export async function initdetalhesTeste() {
 }
 
 /**
- * 2. Função de renderização e cálculo
+ * 2. Função auxiliar para obter o texto de uma alternativa
+ */
+function obterTextoAlternativa(pergunta, numeroResposta) {
+  // Se não for um número, retorna o valor original
+  const num = parseInt(numeroResposta, 10);
+  if (isNaN(num)) {
+    return numeroResposta;
+  }
+
+  // Verifica se a pergunta tem alternativas (múltipla escolha)
+  const alternativas =
+    pergunta.alternativas || pergunta.opcoes || pergunta.alternativa;
+
+  if (
+    !alternativas ||
+    !Array.isArray(alternativas) ||
+    alternativas.length === 0
+  ) {
+    return numeroResposta; // Retorna o número se não houver alternativas
+  }
+
+  // As alternativas geralmente são um array: ["Texto A", "Texto B", "Texto C", "Texto D"]
+  // O número pode ser 0-based ou 1-based, vamos tentar ambos
+  const indexZeroBased = num;
+  const indexOneBased = num - 1;
+
+  let textoAlternativa = null;
+
+  // Tenta index baseado em 0 (0, 1, 2, 3...)
+  if (indexZeroBased >= 0 && indexZeroBased < alternativas.length) {
+    textoAlternativa = alternativas[indexZeroBased];
+  }
+  // Tenta index baseado em 1 (1, 2, 3, 4...)
+  else if (indexOneBased >= 0 && indexOneBased < alternativas.length) {
+    textoAlternativa = alternativas[indexOneBased];
+  }
+
+  if (textoAlternativa) {
+    // Retorna formatado: "Alternativa B: Texto da alternativa"
+    const letra = String.fromCharCode(
+      65 + (indexOneBased >= 0 ? indexOneBased : indexZeroBased)
+    ); // A, B, C, D...
+    return `<strong>Alternativa ${letra}:</strong> ${textoAlternativa}`;
+  }
+
+  // Se não encontrou, retorna o número original
+  return numeroResposta;
+}
+
+/**
+ * 3. Função de renderização e cálculo
  */
 function renderizarComparacaoDetalhada(
   respostas,
@@ -116,13 +166,20 @@ function renderizarComparacaoDetalhada(
 
   gabaritoPerguntas.forEach((pergunta, index) => {
     // A chave no gabarito é o índice do array de perguntas
-    const respostaCandidato = respostasMap[index] || "Não respondida";
+    const respostaCandidatoRaw = respostasMap[index] || "Não respondida";
 
     const enunciado =
       pergunta.enunciado || pergunta.pergunta || "Enunciado não encontrado";
-    const gabaritoTexto =
+    const gabaritoTextoRaw =
       pergunta.respostaCorreta || pergunta.gabarito || "Gabarito não fornecido";
     const comentarios = pergunta.comentarios || pergunta.nota || "N/A";
+
+    // Converter respostas numéricas para texto das alternativas
+    const respostaCandidato = obterTextoAlternativa(
+      pergunta,
+      respostaCandidatoRaw
+    );
+    const gabaritoTexto = obterTextoAlternativa(pergunta, gabaritoTextoRaw);
 
     // Botões de validação manual
     const botoesValidacao = `
@@ -181,7 +238,7 @@ function renderizarComparacaoDetalhada(
 }
 
 /**
- * 3. Função para marcar uma resposta como correta ou incorreta
+ * 4. Função para marcar uma resposta como correta ou incorreta
  */
 window.marcarResposta = function (index, isCorreta) {
   validacoesAvaliador[index] = isCorreta;
@@ -209,7 +266,7 @@ window.marcarResposta = function (index, isCorreta) {
 };
 
 /**
- * 4. Função para calcular e atualizar as estatísticas
+ * 5. Função para calcular e atualizar as estatísticas
  */
 function calcularEstatisticas() {
   const totalAvaliadas = Object.keys(validacoesAvaliador).length;
