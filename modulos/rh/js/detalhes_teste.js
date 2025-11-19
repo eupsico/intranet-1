@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/detalhes_teste.js
- * Versão: 1.2.2 - Corrigido exibição de alternativas quando são objetos.
+ * Versão: 1.3.1 - Corrigido: Usando Timestamp.now() em vez de serverTimestamp.
  * Data: 18/11/2025
  * Descrição: View de comparação detalhada das respostas de um teste com o gabarito.
  * Agora utiliza a Cloud Function 'getDetalhesTeste' para consolidar os dados.
@@ -10,6 +10,10 @@ import {
   db,
   functions,
   httpsCallable,
+  doc,
+  updateDoc,
+  Timestamp,
+  getDoc,
 } from "../../../assets/js/firebase-init.js";
 
 // Definição da função Cloud Function (deve ser a que você implementou no index.js)
@@ -18,6 +22,8 @@ const getDetalhesTeste = httpsCallable(functions, "getDetalhesTeste");
 // Estado global para armazenar validações do avaliador
 let validacoesAvaliador = {};
 let totalPerguntas = 0;
+let tokenIdGlobal = null;
+let candidatoIdGlobal = null;
 
 /**
  * 1. Função principal de inicialização da view
@@ -32,6 +38,10 @@ export async function initdetalhesTeste() {
   // Parâmetros passados pelo modal AvaliacaoTeste.js
   const tokenId = urlParams.get("token");
   const candidatoId = urlParams.get("candidato");
+
+  // Armazena globalmente para usar no salvamento
+  tokenIdGlobal = tokenId;
+  candidatoIdGlobal = candidatoId;
 
   if (!tokenId || !candidatoId) {
     document.getElementById("comparacao-respostas-container").innerHTML =
@@ -74,6 +84,9 @@ export async function initdetalhesTeste() {
       nomeTeste,
       tempoGasto
     );
+
+    // 4. Carregar avaliações já existentes (se houver)
+    await carregarAvaliacoesExistentes();
   } catch (error) {
     console.error("❌ Erro ao carregar detalhes do teste:", error);
     document.getElementById(
@@ -169,7 +182,7 @@ function renderizarComparacaoDetalhada(
   let html = "";
   totalPerguntas = gabaritoPerguntas.length;
 
-  // Resetar validações
+  // Resetar validações (serão recarregadas se existirem)
   validacoesAvaliador = {};
 
   // Mapeia as respostas do candidato para um formato de fácil acesso (chave é o index 0, 1, 2...)
@@ -256,7 +269,114 @@ function renderizarComparacaoDetalhada(
 }
 
 /**
- * 4. Função para marcar uma resposta como correta ou incorreta
+ * 4. Função para carregar avaliações já existentes
+ */
+async function carregarAvaliacoesExistentes() {
+  try {
+    const testeRef = doc(
+      db,
+      `testesRealizados/${tokenIdGlobal}/candidatos/${candidatoIdGlobal}`
+    );
+
+    const testeDoc = await getDoc(testeRef);
+
+    if (testeDoc.exists()) {
+      const dados = testeDoc.data();
+      const avaliacoesExistentes = dados.avaliacaoAvaliador || {};
+
+      // Restaurar avaliações
+      Object.keys(avaliacoesExistentes).forEach((key) => {
+        const index = parseInt(key.replace("questao-", ""), 10);
+        if (!isNaN(index)) {
+          validacoesAvaliador[index] = avaliacoesExistentes[key];
+
+          // Atualizar visual
+          const card = document.getElementById(`card-questao-${index}`);
+          const statusBadge = document.getElementById(
+            `status-questao-${index}`
+          );
+
+          if (card && statusBadge) {
+            card.classList.remove("border-success", "border-danger");
+
+            if (avaliacoesExistentes[key]) {
+              card.classList.add("border-success");
+              card.style.borderLeft = "5px solid var(--color-success)";
+              statusBadge.className = "badge bg-success ms-2";
+              statusBadge.innerHTML =
+                '<i class="fas fa-check me-1"></i> Correta';
+            } else {
+              card.classList.add("border-danger");
+              card.style.borderLeft = "5px solid var(--color-error)";
+              statusBadge.className = "badge bg-danger ms-2";
+              statusBadge.innerHTML =
+                '<i class="fas fa-times me-1"></i> Incorreta';
+            }
+          }
+        }
+      });
+
+      // Recalcular estatísticas
+      calcularEstatisticas();
+
+      console.log("✅ Avaliações anteriores carregadas com sucesso");
+    }
+  } catch (error) {
+    console.error("⚠️ Erro ao carregar avaliações existentes:", error);
+    // Não bloqueia a execução, apenas não carrega as avaliações anteriores
+  }
+}
+
+/**
+ * 5. Função para salvar avaliação no Firebase
+ */
+async function salvarAvaliacaoNoFirebase() {
+  try {
+    const testeRef = doc(
+      db,
+      `testesRealizados/${tokenIdGlobal}/candidatos/${candidatoIdGlobal}`
+    );
+
+    // Preparar dados para salvar
+    const avaliacaoParaSalvar = {};
+    Object.keys(validacoesAvaliador).forEach((index) => {
+      avaliacaoParaSalvar[`questao-${index}`] = validacoesAvaliador[index];
+    });
+
+    // Calcular estatísticas finais
+    const totalAvaliadas = Object.keys(validacoesAvaliador).length;
+    let acertos = 0;
+    Object.values(validacoesAvaliador).forEach((isCorreta) => {
+      if (isCorreta) acertos++;
+    });
+    const erros = totalAvaliadas - acertos;
+    const taxa = totalAvaliadas > 0 ? (acertos / totalPerguntas) * 100 : 0;
+
+    // Atualizar documento no Firebase
+    await updateDoc(testeRef, {
+      avaliacaoAvaliador: avaliacaoParaSalvar,
+      estatisticasAvaliacao: {
+        totalQuestoes: totalPerguntas,
+        totalAvaliadas: totalAvaliadas,
+        acertos: acertos,
+        erros: erros,
+        taxaAcerto: parseFloat(taxa.toFixed(2)),
+      },
+      ultimaAtualizacaoAvaliacao: Timestamp.now(),
+    });
+
+    console.log("✅ Avaliação salva no Firebase com sucesso!");
+
+    // Mostrar feedback visual
+    mostrarNotificacao("Avaliação salva com sucesso!", "success");
+  } catch (error) {
+    console.error("❌ Erro ao salvar avaliação no Firebase:", error);
+    mostrarNotificacao("Erro ao salvar avaliação. Tente novamente.", "error");
+  }
+}
+
+/**
+ * 6. Função para marcar uma resposta como correta ou incorreta
  */
 window.marcarResposta = function (index, isCorreta) {
   validacoesAvaliador[index] = isCorreta;
@@ -281,10 +401,13 @@ window.marcarResposta = function (index, isCorreta) {
 
   // Recalcular estatísticas
   calcularEstatisticas();
+
+  // Salvar automaticamente no Firebase
+  salvarAvaliacaoNoFirebase();
 };
 
 /**
- * 5. Função para calcular e atualizar as estatísticas
+ * 7. Função para calcular e atualizar as estatísticas
  */
 function calcularEstatisticas() {
   const totalAvaliadas = Object.keys(validacoesAvaliador).length;
@@ -322,6 +445,33 @@ function calcularEstatisticas() {
       <strong>Progresso:</strong> ${totalAvaliadas} de ${totalPerguntas} questões avaliadas. Continue avaliando as respostas restantes.
     `;
   }
+}
+
+/**
+ * 8. Função para mostrar notificação visual
+ */
+function mostrarNotificacao(mensagem, tipo = "success") {
+  const notificacao = document.createElement("div");
+  notificacao.className = `alert alert-${
+    tipo === "success" ? "success" : "danger"
+  } position-fixed`;
+  notificacao.style.cssText =
+    "top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);";
+  notificacao.innerHTML = `
+    <i class="fas fa-${
+      tipo === "success" ? "check-circle" : "exclamation-circle"
+    } me-2"></i>
+    ${mensagem}
+  `;
+
+  document.body.appendChild(notificacao);
+
+  // Remove após 3 segundos
+  setTimeout(() => {
+    notificacao.style.transition = "opacity 0.3s";
+    notificacao.style.opacity = "0";
+    setTimeout(() => notificacao.remove(), 300);
+  }, 3000);
 }
 
 // Expõe a função de inicialização
