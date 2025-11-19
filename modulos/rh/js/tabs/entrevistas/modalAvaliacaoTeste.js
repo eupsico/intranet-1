@@ -500,56 +500,109 @@ async function carregarEstatisticasTestes(listaDeTestes) {
       return;
     }
 
-    // Se o gabarito não foi consultado, faremos a simulação baseada no tempo gasto/respostas.
+    // ✅ CORREÇÃO: Buscar estatísticas reais do Firebase
+    // Estrutura: testesRealizados/{tokenId}/candidatos/{candidatoId}
+    let estatisticas = null;
 
-    // NOTA: Para um cálculo REAL de Acertos/Erros, o frontend precisaria
-    // chamar uma função que buscasse o gabarito. Por ora, usamos a simulação
-    // de 70% de acerto que é a lógica padrão do novo módulo detalhes_teste.js.
+    if (testeRespondido.tokenId && dadosCandidatoAtual?.id) {
+      try {
+        const candidatoRef = doc(
+          db,
+          `testesRealizados/${testeRespondido.tokenId}/candidatos/${dadosCandidatoAtual.id}`
+        );
+        const candidatoDoc = await getDoc(candidatoRef);
 
-    const totalRespostas = Object.keys(
-      testeRespondido.respostasCompletas?.respostas || {}
-    ).length;
-    const tempoGasto = testeRespondido.tempoGasto || 0;
+        if (candidatoDoc.exists()) {
+          const dados = candidatoDoc.data();
+          estatisticas = dados.estatisticasAvaliacao;
+          console.log("✅ Estatísticas carregadas do Firebase:", estatisticas);
+        }
+      } catch (error) {
+        console.warn("⚠️ Erro ao buscar estatísticas do Firebase:", error);
+      }
+    }
 
-    // --- SIMULAÇÃO DE CÁLCULO (Ajustar após integração real) ---
-    // Usamos uma suposição de pontuação se não houver lógica de pontuação no Firestore
-    const acertosSimulados = Math.round(totalRespostas * 0.7);
-    const errosSimulados = totalRespostas - acertosSimulados;
-    const taxaAcertoPct =
-      totalRespostas > 0
-        ? Math.round((acertosSimulados / totalRespostas) * 100)
-        : 0;
-    // ----------------------------------------------------------------------------------
+    // Se encontrou estatísticas reais, usa elas
+    if (estatisticas && estatisticas.totalQuestoes > 0) {
+      const totalRespostas = estatisticas.totalQuestoes;
+      const acertos = estatisticas.acertos || 0;
+      const erros = estatisticas.erros || 0;
+      const taxaAcertoPct = estatisticas.taxaAcerto || 0;
+      const tempoGasto = testeRespondido.tempoGasto || 0;
 
-    const statsHtml = `
-      <div class="stat-card-mini-grid">
-        <div class="stat-card-mini border-success">
-          <strong>${totalRespostas}</strong>
-          <p>Total de Perguntas</p>
+      const statsHtml = `
+        <div class="stat-card-mini-grid">
+          <div class="stat-card-mini border-success">
+            <strong>${totalRespostas}</strong>
+            <p>Total de Perguntas</p>
+          </div>
+          <div class="stat-card-mini border-success">
+            <strong>${acertos}</strong>
+            <p>Acertos</p>
+          </div>
+          <div class="stat-card-mini border-danger">
+            <strong>${erros}</strong>
+            <p>Erros</p>
+          </div>
+          <div class="stat-card-mini border-info">
+            <strong>${taxaAcertoPct}%</strong>
+            <p>Taxa de Acerto</p>
+          </div>
         </div>
-        <div class="stat-card-mini border-success">
-          <strong>${acertosSimulados}</strong>
-          <p>Acertos (Simulado)</p>
-        </div>
-        <div class="stat-card-mini border-danger">
-          <strong>${errosSimulados}</strong>
-          <p>Erros (Simulado)</p>
-        </div>
-        <div class="stat-card-mini border-info">
-          <strong>${taxaAcertoPct}%</strong>
-          <p>Taxa de Acerto</p>
-        </div>
-      </div>
-      <p class="text-muted small mt-2">
-        <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
-          tempoGasto / 60
-        )}m ${tempoGasto % 60}s.
-        <br>
-        <i class="fas fa-exclamation-triangle me-1"></i> A pontuação é uma simulação, clique em "Ver Respostas" para a avaliação detalhada.
-      </p>
-    `;
+        <p class="text-muted small mt-2">
+          <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
+            tempoGasto / 60
+          )}m ${tempoGasto % 60}s.
+          <br>
+          <i class="fas fa-check-circle me-1"></i> Pontuação calculada com base na avaliação do RH.
+        </p>
+      `;
 
-    container.innerHTML = statsHtml;
+      container.innerHTML = statsHtml;
+    } else {
+      // Fallback: Usa simulação apenas se não houver estatísticas
+      const totalRespostas = Object.keys(
+        testeRespondido.respostasCompletas?.respostas || {}
+      ).length;
+      const tempoGasto = testeRespondido.tempoGasto || 0;
+
+      const acertosSimulados = Math.round(totalRespostas * 0.7);
+      const errosSimulados = totalRespostas - acertosSimulados;
+      const taxaAcertoPct =
+        totalRespostas > 0
+          ? Math.round((acertosSimulados / totalRespostas) * 100)
+          : 0;
+
+      const statsHtml = `
+        <div class="stat-card-mini-grid">
+          <div class="stat-card-mini border-success">
+            <strong>${totalRespostas}</strong>
+            <p>Total de Perguntas</p>
+          </div>
+          <div class="stat-card-mini border-success">
+            <strong>${acertosSimulados}</strong>
+            <p>Acertos (Simulado)</p>
+          </div>
+          <div class="stat-card-mini border-danger">
+            <strong>${errosSimulados}</strong>
+            <p>Erros (Simulado)</p>
+          </div>
+          <div class="stat-card-mini border-info">
+            <strong>${taxaAcertoPct}%</strong>
+            <p>Taxa de Acerto</p>
+          </div>
+        </div>
+        <p class="text-muted small mt-2">
+          <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
+            tempoGasto / 60
+          )}m ${tempoGasto % 60}s.
+          <br>
+          <i class="fas fa-exclamation-triangle me-1"></i> A pontuação é uma simulação, clique em "Ver Respostas" para a avaliação detalhada.
+        </p>
+      `;
+
+      container.innerHTML = statsHtml;
+    }
   } catch (error) {
     console.error("Erro ao carregar estatísticas:", error);
     container.innerHTML =
