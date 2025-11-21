@@ -30,8 +30,6 @@ export function initrhPanel(user, db, userData) {
     gestao_estudos_de_caso: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`, // NOVO ÍCONE ADICIONADO (Processo de Admissão - user-check)
     admissao: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>`, // NOVO ÍCONE ADICIONADO (Gestão de Documentos - file-text)
     gestao_documentos: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
-    onboarding_colaboradores: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-4l-3 6L9 3l3 6h4z"/></svg>`,
-    desligamento: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="22" y2="13"/><line x1="22" y1="8" x2="17" y2="13"/></svg>`,
     gestao_profissionais: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
     comunicados: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
   }; // ============================================ // DEFINIÇÃO DE VIEWS E PERMISSÕES // ============================================
@@ -45,53 +43,28 @@ export function initrhPanel(user, db, userData) {
     },
     {
       id: "gestao_vagas",
-      name: "1. Criação e Arte de Vagas",
+      name: "Criação e Arte de Vagas",
       roles: ["admin", "rh"],
       icon: icons.gestao_vagas,
     },
     {
       id: "recrutamento",
-      name: "2. Recrutamento e Fluxo",
+      name: "Recrutamento e Fluxo",
       roles: ["admin", "rh"],
       icon: icons.recrutamento,
     },
-    // <-- NOVO BLOCO ADICIONADO PARA ROTA DE DETALHES
+    {
+      id: "admissao",
+      name: "Processo de Admissão",
+      roles: ["admin", "rh"],
+      icon: icons.admissao,
+    },
     {
       id: "detalhes_teste",
       name: "Detalhes do Teste (Avaliação)",
       roles: ["admin", "rh"],
       icon: icons.gestao_estudos_de_caso,
       hideInMenu: true, // Oculta do menu lateral, pois é uma tela de detalhes
-    },
-    {
-      id: "gestao_estudos_de_caso",
-      name: "3. Gerenciar Estudos/Testes",
-      roles: ["admin", "rh"],
-      icon: icons.gestao_estudos_de_caso,
-    }, // NOVA ROTA ADICIONADA
-    {
-      id: "admissao",
-      name: "4. Processo de Admissão",
-      roles: ["admin", "rh"],
-      icon: icons.admissao,
-    }, // NOVA ROTA ADICIONADA
-    {
-      id: "gestao_documentos",
-      name: "5. Gerenciar Documentos",
-      roles: ["admin", "rh"],
-      icon: icons.gestao_documentos,
-    },
-    {
-      id: "gestao_profissionais",
-      name: "Profissionais",
-      roles: ["admin", "rh"],
-      icon: icons.gestao_profissionais,
-    },
-    {
-      id: "onboarding_colaboradores",
-      name: "Onboarding",
-      roles: ["admin", "rh"],
-      icon: icons.onboarding_colaboradores,
     },
     {
       id: "desligamento",
@@ -104,13 +77,25 @@ export function initrhPanel(user, db, userData) {
       name: "Comunicação",
       roles: ["admin", "rh"],
       icon: icons.comunicados,
-    }, // Rota oculta para cronograma (não aparece no menu)
+    },
     {
-      id: "etapa_cronograma_orcamento",
-      name: "Cronograma e Orçamento",
+      id: "gestao_profissionais",
+      name: "Profissionais",
       roles: ["admin", "rh"],
-      icon: null,
-      hideInMenu: true,
+      icon: icons.gestao_profissionais,
+    },
+    {
+      id: "gestao_estudos_de_caso",
+      name: "3. Gerenciar Estudos/Testes",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_estudos_de_caso,
+    }, // NOVA ROTA ADICIONADA
+
+    {
+      id: "gestao_documentos",
+      name: "5. Gerenciar Documentos",
+      roles: ["admin", "rh"],
+      icon: icons.gestao_documentos,
     },
   ]; // ============================================ // FUNÇÃO DE NOTIFICAÇÃO (TOAST) // ============================================
   /**
