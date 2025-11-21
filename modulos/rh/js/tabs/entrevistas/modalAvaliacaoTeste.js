@@ -1206,6 +1206,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
 
 /**
  * Handler para submit do formulário de avaliação
+ * CORREÇÃO: Status agora avança para "Testes Aprovado (Entrevista Gestor Pendente)"
  */
 async function handleSubmitAvaliacaoTeste(e) {
   console.log("\n📤 ========== SUBMIT FORMULÁRIO AVALIAÇÃO ==========");
@@ -1277,27 +1278,47 @@ async function handleSubmitAvaliacaoTeste(e) {
       },
     };
 
+    // =================================================================
+    // ✅ CORREÇÃO AQUI: Definindo o status correto para avançar a etapa
+    // =================================================================
     if (resultado === "Aprovado" && gestorId) {
       updateData.avaliacaoTeste.gestorDesignado = gestorId;
-      updateData.status_recrutamento = "Testes Respondido";
-      console.log("✅ [SUBMIT] Aprovado - Gestor designado:", gestorId);
+
+      // ANTES: updateData.status_recrutamento = "Testes Respondido"; (ERRADO)
+      // AGORA: Status que move para a próxima aba
+      updateData.status_recrutamento = "Entrevista Gestor Pendente";
+
+      console.log(
+        "✅ [SUBMIT] Aprovado - Status alterado para Gestor Pendente. Gestor:",
+        gestorId
+      );
     } else if (resultado === "Reprovado") {
-      updateData.status_recrutamento = "Rejeitado - Teste";
-      console.log("❌ [SUBMIT] Reprovado - Status atualizado");
+      updateData.status_recrutamento = "Rejeitado (Comunicação Pendente)";
+
+      // Adiciona dados de rejeição para histórico
+      updateData.rejeicao = {
+        etapa: "Testes/Estudos de Caso",
+        justificativa: observacoes,
+        data: new Date(),
+      };
+
+      console.log("❌ [SUBMIT] Reprovado - Status atualizado para Rejeitado");
     }
 
     updateData.historico = arrayUnion({
       data: new Date(),
-      acao: `Teste ${resultado.toLowerCase()} pelo RH`,
+      acao: `Avaliação de Teste: ${resultado.toUpperCase()}. Obs: ${observacoes}`,
       usuario: userName,
-      observacoes: observacoes,
     });
 
     console.log("💾 [SUBMIT] Atualizando documento no Firestore...");
     await updateDoc(candidatoRef, updateData);
     console.log("✅ [SUBMIT] Documento atualizado com sucesso!");
 
-    window.showToast?.(`Avaliação registrada com sucesso!`, "success");
+    window.showToast?.(
+      `Avaliação registrada: Candidato ${resultado}!`,
+      "success"
+    );
 
     fecharModalAvaliacaoTeste();
 
