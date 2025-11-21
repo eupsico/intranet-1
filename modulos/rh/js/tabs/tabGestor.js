@@ -616,6 +616,10 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
             <h4><i class="fas fa-info-circle"></i> Informações do Candidato</h4>
             <div class="info-grid">
               <div class="info-item">
+                <strong>Nome do Candidato:</strong><br>
+                <code>${nome_candidato}</code>
+              </div>
+              <div class="info-item">
                 <strong>ID do Candidato:</strong><br>
                 <code>${candidatoId}</code>
               </div>
@@ -634,8 +638,8 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
                 }</span>
               </div>
               <div class="info-item">
-                <strong>ID da Vaga:</strong><br>
-                <code>${vagaId}</code>
+                <strong>Vaga:</strong><br>
+                <code>${titulo_vaga_original}</code>
               </div>
             </div>
           </div>
