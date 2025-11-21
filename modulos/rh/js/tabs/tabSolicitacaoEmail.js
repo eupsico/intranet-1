@@ -1,7 +1,9 @@
 // modulos/rh/js/tabs/tabSolicitacaoEmail.js
-// VERSÃO 2.3 - Corrigido o rastreamento do usuário (uid vs id)
+
+// VERSÃO 2.4 - CORRIGIDO: Campos ajustados para corresponder ao Firebase
 
 import { getGlobalState } from "../admissao.js";
+
 import {
   db,
   getDocs,
@@ -74,15 +76,16 @@ function gerarOptionsHTML(lista, valorPadrao = null) {
 
 /**
  * Renderiza a listagem de candidatos para Solicitação de E-mail.
+ * ✅ CORRIGIDO: Campos ajustados para corresponder ao Firebase
  */
 export async function renderizarSolicitacaoEmail(state) {
   const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
 
   conteudoAdmissao.innerHTML = `
-  <div class="loading-spinner">
-   <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Admissão...
-  </div>
- `;
+    <div class="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i> Carregando candidatos para Admissão...
+    </div>
+  `;
 
   try {
     const q = query(
@@ -101,102 +104,101 @@ export async function renderizarSolicitacaoEmail(state) {
 
     if (snapshot.empty) {
       conteudoAdmissao.innerHTML = `
-    <div class="alert alert-info">
-     <p><i class="fas fa-check-circle"></i> Nenhum candidato aguardando o início do processo de admissão.</p>
-    </div>
-   `;
+        <div class="alert alert-info">
+          <p><i class="fas fa-check-circle"></i> Nenhum candidato aguardando o início do processo de admissão.</p>
+        </div>
+      `;
       return;
     }
 
     let listaHtml = `
-  	<div class="description-box" style="margin-top: 15px;">
-   	<p>Os candidatos abaixo foram aprovados no Recrutamento. O primeiro passo é solicitar a criação do e-mail corporativo.</p>
-  	</div>
-   <div class="candidatos-container candidatos-grid">
-  `;
+      <div class="description-box" style="margin-top: 15px">
+        <p>Os candidatos abaixo foram aprovados no Recrutamento. O primeiro passo é solicitar a criação do e-mail corporativo.</p>
+      </div>
+      <div class="candidatos-container candidatos-grid">
+    `;
 
     snapshot.docs.forEach((doc) => {
       const cand = doc.data();
       const candidaturaId = doc.id;
+
+      // ✅ CORRIGIDO: Usar campos corretos do Firebase
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
-
       const statusClass = "status-warning";
 
       const dadosCandidato = {
         id: candidaturaId,
-        nome_completo: cand.nome_completo,
+        nome_candidato: cand.nome_candidato, // ✅ CORRIGIDO
         email_pessoal: cand.email_candidato,
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
         vaga_titulo: vagaTitulo,
         gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A",
-        cargo_final: cand.admissao_info?.cargo_final || vagaTitulo,
+        cargo_final: cand.admissaoinfo?.cargo_final || vagaTitulo, // ✅ CORRIGIDO: admissaoinfo
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
       listaHtml += `
-    <div class="card card-candidato-gestor" data-id="${candidaturaId}">
-     <div class="info-primaria">
-      <h4 class="nome-candidato">
-       ${cand.nome_completo || "Candidato Sem Nome"}
-       <span class="status-badge ${statusClass}">
-        <i class="fas fa-tag"></i> ${statusAtual}
-       </span>
-      </h4>
-      <p class="small-info">
-       <i class="fas fa-briefcase"></i> Vaga Aprovada: ${vagaTitulo}
-      </p>
-     </div>
-
-     <div class="info-contato">
-      ${
-        cand.email_candidato
-          ? `<p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>`
-          : ""
-      }
-      ${
-        cand.telefone_contato
-          ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
-          : ""
-      }
-     </div>
-
-     <div class="acoes-candidato">
-      <button class="action-button primary btn-solicitar-email" 
-          data-id="${candidaturaId}"
-          data-dados="${dadosCodificados}"
-          style="padding: 10px 16px; background: var(--cor-primaria); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
-       <i class="fas fa-envelope-open-text"></i> Solicitar E-mail
-      </button>
-      
-      <button class="action-button secondary btn-ver-detalhes-admissao" 
-          data-id="${candidaturaId}"
-          data-dados="${dadosCodificados}"
-          style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
-       <i class="fas fa-eye"></i> Detalhes
-      </button>
-      
-      <button class="action-button danger btn-reprovar-admissao" 
-          data-id="${candidaturaId}"
-       		data-dados="${dadosCodificados}"
-          style="padding: 10px 16px; background: var(--cor-erro); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
-       <i class="fas fa-times-circle"></i> Reprovar Admissão
-      </button>
-     </div>
-    </div>
-   `;
+        <div class="card card-candidato-gestor" data-id="${candidaturaId}">
+          <div class="info-primaria">
+            <h4 class="nome-candidato">
+              ${cand.nome_candidato || "Candidato Sem Nome"}
+              <span class="status-badge ${statusClass}">
+                <i class="fas fa-tag"></i> ${statusAtual}
+              </span>
+            </h4>
+            <p class="small-info">
+              <i class="fas fa-briefcase"></i> Vaga Aprovada: ${vagaTitulo}
+            </p>
+          </div>
+          <div class="info-contato">
+            ${
+              cand.email_candidato
+                ? `<p><i class="fas fa-envelope"></i> ${cand.email_candidato}</p>`
+                : ""
+            }
+            ${
+              cand.telefone_contato
+                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
+                : ""
+            }
+          </div>
+          <div class="acoes-candidato">
+            <button 
+              class="action-button primary btn-solicitar-email" 
+              data-id="${candidaturaId}" 
+              data-dados="${dadosCodificados}"
+              style="padding: 10px 16px; background: var(--cor-primaria); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
+              <i class="fas fa-envelope-open-text"></i> Solicitar E-mail
+            </button>
+            <button 
+              class="action-button secondary btn-ver-detalhes-admissao" 
+              data-id="${candidaturaId}" 
+              data-dados="${dadosCodificados}"
+              style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
+              <i class="fas fa-eye"></i> Detalhes
+            </button>
+            <button 
+              class="action-button danger btn-reprovar-admissao" 
+              data-id="${candidaturaId}" 
+              data-dados="${dadosCodificados}"
+              style="padding: 10px 16px; background: var(--cor-erro); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
+              <i class="fas fa-times-circle"></i> Reprovar Admissão
+            </button>
+          </div>
+        </div>
+      `;
     });
 
-    listaHtml += `
-   </div>
-  `;
-
+    listaHtml += `</div>`;
     conteudoAdmissao.innerHTML = listaHtml;
 
-    console.log("🔗 Admissão(Email): Anexando event listeners..."); // Botão Solicitar E-mail
+    console.log("🔗 Admissão(Email): Anexando event listeners...");
 
+    // Botão Solicitar E-mail
     document.querySelectorAll(".btn-solicitar-email").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -205,14 +207,16 @@ export async function renderizarSolicitacaoEmail(state) {
         const dadosCodificados = btn.getAttribute("data-dados");
         abrirModalSolicitarEmail(candidatoId, dadosCodificados, state);
       });
-    }); // Botão Detalhes
+    });
 
+    // Botão Detalhes
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
+
         if (typeof window.abrirModalCandidato === "function") {
           try {
             const dadosCandidato = JSON.parse(
@@ -226,8 +230,9 @@ export async function renderizarSolicitacaoEmail(state) {
           console.warn("⚠️ Função window.abrirModalCandidato não encontrada.");
         }
       });
-    }); // Botão Reprovar Admissão
+    });
 
+    // Botão Reprovar Admissão
     document.querySelectorAll(".btn-reprovar-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -241,16 +246,16 @@ export async function renderizarSolicitacaoEmail(state) {
   } catch (error) {
     console.error("❌ Admissão(Email): Erro ao carregar:", error);
     conteudoAdmissao.innerHTML = `
-   <div class="alert alert-danger">
-    <p><i class="fas fa-exclamation-circle"></i> Erro: ${error.message}</p>
-   </div>
-  `;
+      <div class="alert alert-danger">
+        <p><i class="fas fa-exclamation-circle"></i> Erro: ${error.message}</p>
+      </div>
+    `;
   }
 }
 
 /**
  * Salva a solicitação de e-mail
- * VERSÃO 3.3 - Adicionado salvamento da senha temporária
+ * VERSÃO 3.4 - CORRIGIDO: Campos ajustados para Firebase
  */
 async function salvarSolicitacaoEmail(
   candidatoId,
@@ -259,6 +264,7 @@ async function salvarSolicitacaoEmail(
   state
 ) {
   console.log("📧 ===== INICIANDO SALVAMENTO DE SOLICITAÇÃO DE E-MAIL =====");
+
   const { candidatosCollection } = state;
   const formId = `form-solicitar-email-${candidatoId}`;
   const form = document.getElementById(formId);
@@ -304,10 +310,7 @@ async function salvarSolicitacaoEmail(
     const solicitanteNome =
       currentUserData?.nome || currentUserData?.email || "Usuário RH";
 
-    // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
-    // 1. Variável para guardar a senha (ou nulo)
     let senhaTemporaria = null;
-    // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
 
     // ⭐ TENTAR CRIAR E-MAIL VIA CLOUD FUNCTION
     try {
@@ -328,7 +331,7 @@ async function salvarSolicitacaoEmail(
       const partesNome = nomeCandidato.trim().split(" ");
       const primeiroNome = partesNome[0] || "";
       const sobrenome =
-        partesNome.length > 1 ? partesNome.slice(1).join(" ") : partesNome[0]; // Se não houver sobrenome, repete o primeiro nome
+        partesNome.length > 1 ? partesNome.slice(1).join(" ") : partesNome[0];
 
       // Validação adicional
       if (!primeiroNome || !sobrenome) {
@@ -349,12 +352,7 @@ async function salvarSolicitacaoEmail(
       // Verificar sucesso
       if (resultado.data && resultado.data.sucesso === true) {
         emailCriadoComSucesso = true;
-
-        // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
-        // 2. Captura a senha da resposta
         senhaTemporaria = resultado.data.senhaTemporaria;
-        // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
-
         logAcao = `✅ E-mail ${emailSugerido} criado com sucesso no Google Workspace. Senha: ${senhaTemporaria}`;
         window.showToast?.("✅ E-mail criado com sucesso!", "success");
         console.log("🎉 E-MAIL CRIADO COM SUCESSO!");
@@ -393,6 +391,7 @@ async function salvarSolicitacaoEmail(
     }
 
     // ✅ ATUALIZAR CANDIDATURA NO FIRESTORE
+    // ✅ CORRIGIDO: Usar campo admissaoinfo (sem underscore)
     const candidatoRef = doc(candidatosCollection, candidatoId);
     await updateDoc(candidatoRef, {
       status_recrutamento: novoStatus,
@@ -401,18 +400,17 @@ async function salvarSolicitacaoEmail(
         acao: logAcao,
         usuario: solicitanteId,
       }),
-      admissao_info: {
+      admissaoinfo: {
+        // ✅ CORRIGIDO: sem underscore
         cargo_final: cargo,
         departamento: departamento,
         email_solicitado: emailSugerido,
         email_criado_via_api: emailCriadoComSucesso,
         data_solicitacao_email: new Date(),
-        // --- ⚠️ ALTERAÇÃO AQUI (Início) ---
-        // 3. Salva a senha (ou nulo, se falhou) no Firestore
         senha_temporaria: senhaTemporaria,
-        // --- ⚠️ ALTERAÇÃO AQUI (Fim) ---
       },
     });
+
     console.log(`✅ Candidatura atualizada para: ${novoStatus}`);
     window.showToast?.(
       "✅ Processo de e-mail iniciado com sucesso!",
@@ -433,7 +431,7 @@ async function salvarSolicitacaoEmail(
     // Opcionalmente, recarregar a lista depois
     setTimeout(() => {
       if (typeof renderizarSolicitacaoEmail === "function") {
-        renderizarSolicitacaoEmail(state); // ✅ Passa state corretamente
+        renderizarSolicitacaoEmail(state);
       }
     }, 500);
   }
@@ -441,16 +439,21 @@ async function salvarSolicitacaoEmail(
 
 /**
  * Abre o modal para solicitar a criação de e-mail
+ * ✅ CORRIGIDO: Campo nome_candidato (era nome_completo)
  */
 async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
   console.log("🎯 Abrindo modal de solicitação de e-mail");
-  const { currentUserData } = state; // Mostra um spinner simples enquanto carrega as listas
 
+  const { currentUserData } = state;
+
+  // Mostra um spinner simples enquanto carrega as listas
   document.body.insertAdjacentHTML(
     "beforeend",
     '<div id="modal-temp-loader" class="modal-overlay is-visible"><div class="loading-spinner"></div></div>'
   );
+
   const { profissoes, departamentos } = await carregarListasConfig();
+
   const tempLoader = document.getElementById("modal-temp-loader");
   if (tempLoader) tempLoader.remove();
 
@@ -462,15 +465,26 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
       modalExistente.remove();
     }
 
-    const nomeLimpo = dadosCandidato.nome_completo
+    // ✅ CORRIGIDO: Validação e tratamento do nome
+    const nomeCompleto = dadosCandidato.nome_candidato || ""; // ✅ CORRIGIDO
+
+    if (!nomeCompleto || nomeCompleto.trim() === "") {
+      window.showToast?.("❌ Nome do candidato não encontrado.", "error");
+      console.error("❌ dadosCandidato.nome_candidato está vazio ou undefined");
+      return;
+    }
+
+    const nomeLimpo = nomeCompleto
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z\s]/g, "")
       .split(" ");
+
     const primeiroNome = nomeLimpo[0] || "nome";
     const ultimoNome =
       nomeLimpo.length > 1 ? nomeLimpo[nomeLimpo.length - 1] : "sobrenome";
+
     const sugestaoEmail = `${primeiroNome}.${ultimoNome}@eupsico.org.br`;
 
     const profissoesOptions = gerarOptionsHTML(
@@ -482,64 +496,59 @@ async function abrirModalSolicitarEmail(candidatoId, dadosCodificados, state) {
     const modal = document.createElement("div");
     modal.id = "modal-solicitar-email";
     modal.className = "modal-overlay is-visible";
+
     modal.innerHTML = `
-  	<div class="modal-content" style="max-width: 600px;">
-  		<div class="modal-header">
-  			<h3 class="modal-title-text"><i class="fas fa-envelope-open-text me-2"></i> Solicitar E-mail Corporativo</h3>
-  			<button type="button" class="close-modal-btn" data-modal-id="modal-solicitar-email" aria-label="Fechar modal">
-  				&times;
-  			</button>
-  		</div>
-  		<div class="modal-body">
-  			<form id="form-solicitar-email-${candidatoId}">
-  				<div class="form-group">
-  					<label class="form-label" for="solicitar-nome">Nome Completo</label>
-  					<input type="text" id="solicitar-nome" class="form-control" 
-  						value="${dadosCandidato.nome_completo}" readonly>
-  				</div>
-  				
-  				<div class="form-group">
-  					<label class="form-label" for="solicitar-cargo">Cargo / Função</label>
-  					<select id="solicitar-cargo" class="form-control" required>
-  						${profissoesOptions}
-  					</select>
-  				</div>
-  				
-  				<div class="form-group">
-  					<label class="form-label" for="solicitar-departamento">Departamento</label>
-  					<select id="solicitar-departamento" class="form-control" required>
-  						${departamentosOptions}
-  					</select>
-  				</div>
-  				
-  				<div class="form-group">
-  					<label class="form-label" for="solicitar-email-sugerido">E-mail Sugerido</label>
-  					<input type="email" id="solicitar-email-sugerido" class="form-control" 
-  						value="${sugestaoEmail}" required>
-  				</div>
-  				<small class="form-text text-muted">
-  					Ao salvar, o sistema tentará criar o e-mail via API. Se falhar, uma solicitação será aberta para o TI.
-  				</small>
-  			</form>
-  		</div>
-  		<div class="modal-footer">
-  			<button type="button" class="action-button secondary" data-modal-id="modal-solicitar-email">
-  				<i class="fas fa-times me-2"></i> Cancelar
-  			</button>
-  			<button type="button" class="action-button primary" id="btn-salvar-solicitacao">
-  				<i class="fas fa-paper-plane me-2"></i> Salvar e Solicitar
-  			</button>
-  		</div>
-  	</div>
-  `;
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 class="modal-title-text"><i class="fas fa-envelope-open-text me-2"></i> Solicitar E-mail Corporativo</h3>
+          <button type="button" class="close-modal-btn" data-modal-id="modal-solicitar-email" aria-label="Fechar modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="form-solicitar-email-${candidatoId}">
+            <div class="form-group">
+              <label class="form-label" for="solicitar-nome">Nome Completo</label>
+              <input type="text" id="solicitar-nome" class="form-control" value="${nomeCompleto}" readonly />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="solicitar-cargo">Cargo / Função</label>
+              <select id="solicitar-cargo" class="form-control" required>
+                ${profissoesOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="solicitar-departamento">Departamento</label>
+              <select id="solicitar-departamento" class="form-control" required>
+                ${departamentosOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="solicitar-email-sugerido">E-mail Sugerido</label>
+              <input type="email" id="solicitar-email-sugerido" class="form-control" value="${sugestaoEmail}" required />
+            </div>
+            <small class="form-text text-muted">
+              Ao salvar, o sistema tentará criar o e-mail via API. Se falhar, uma solicitação será aberta para o TI.
+            </small>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-solicitar-email">
+            <i class="fas fa-times me-2"></i> Cancelar
+          </button>
+          <button type="button" class="action-button primary" id="btn-salvar-solicitacao">
+            <i class="fas fa-paper-plane me-2"></i> Salvar e Solicitar
+          </button>
+        </div>
+      </div>
+    `;
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
+
     const btnSalvar = document.getElementById("btn-salvar-solicitacao");
     btnSalvar.addEventListener("click", () => {
       salvarSolicitacaoEmail(
         candidatoId,
-        dadosCandidato.nome_completo,
+        nomeCompleto, // ✅ CORRIGIDO
         currentUserData,
         state
       );
@@ -579,6 +588,7 @@ function fecharModalSolicitarEmail() {
 
 /**
  * Abre o modal para Reprovar a Admissão
+ * ✅ CORRIGIDO: Campo nome_candidato (era nome_completo)
  */
 function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
   console.log(`🎯 Abrindo modal de REPROVAÇÃO para ${candidatoId}`);
@@ -591,40 +601,37 @@ function abrirModalReprovarAdmissao(candidatoId, dadosCandidato, state) {
   const modal = document.createElement("div");
   modal.id = "modal-reprovar-admissao";
   modal.dataset.candidaturaId = candidatoId;
-  modal.className = "modal-overlay is-visible"; // Usa classe CSS existente
+  modal.className = "modal-overlay is-visible";
 
   modal.innerHTML = `
- 	<div class="modal-content" style="max-width: 600px;">
- 		<div class="modal-header" style="background-color: var(--cor-erro-dark, #dc3545); color: white;">
- 			<h3 class="modal-title-text"><i class="fas fa-times-circle me-2"></i> Reprovar Candidato na Admissão</h3>
- 			<button type="button" class="close-modal-btn" data-modal-id="modal-reprovar-admissao" aria-label="Fechar modal">
- 				&times;
- 			</button>
- 		</div>
- 		<div class="modal-body">
- 			<p>Você está prestes a reprovar <strong>${dadosCandidato.nome_completo}</strong> no processo de admissão.</p>
- 			<form id="form-reprovar-admissao-${candidatoId}">
- 				<div class="form-group">
- 					<label class="form-label" for="reprovar-justificativa">Justificativa (Obrigatório)</label>
- 					<textarea id="reprovar-justificativa" class="form-control" rows="4"
- 						placeholder="Descreva o motivo da reprovação (Ex: Desistência do candidato, falha na entrega de documentos, etc.)"
- 						required></textarea>
- 				</div>
- 			</form>
- 		</div>
- 		<div class="modal-footer">
- 			<button type="button" class="action-button secondary" data-modal-id="modal-reprovar-admissao">
- 				<i class="fas fa-times me-2"></i> Cancelar
- 			</button>
- 			<button type="button" class="action-button danger" id="btn-salvar-reprovacao">
- 				<i class="fas fa-check-circle me-2"></i> Confirmar Reprovação
- 			</button>
- 		</div>
- 	</div>
- `;
+    <div class="modal-content" style="max-width: 600px">
+      <div class="modal-header" style="background-color: var(--cor-erro-dark, #dc3545); color: white">
+        <h3 class="modal-title-text"><i class="fas fa-times-circle me-2"></i> Reprovar Candidato na Admissão</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-reprovar-admissao" aria-label="Fechar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Você está prestes a reprovar <strong>${dadosCandidato.nome_candidato}</strong> no processo de admissão.</p>
+        <form id="form-reprovar-admissao-${candidatoId}">
+          <div class="form-group">
+            <label class="form-label" for="reprovar-justificativa">Justificativa (Obrigatório)</label>
+            <textarea id="reprovar-justificativa" class="form-control" rows="4" placeholder="Descreva o motivo da reprovação (Ex: Desistência do candidato, falha na entrega de documentos, etc.)" required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="action-button secondary" data-modal-id="modal-reprovar-admissao">
+          <i class="fas fa-times me-2"></i> Cancelar
+        </button>
+        <button type="button" class="action-button danger" id="btn-salvar-reprovacao">
+          <i class="fas fa-check-circle me-2"></i> Confirmar Reprovação
+        </button>
+      </div>
+    </div>
+  `;
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
+
   const btnSalvar = document.getElementById("btn-salvar-reprovacao");
   btnSalvar.addEventListener("click", () => {
     submeterReprovacaoAdmissao(candidatoId, state);
@@ -656,10 +663,10 @@ function fecharModalReprovarAdmissao() {
 
 /**
  * Submete a reprovação (chamada pelo modal)
- * CORRIGIDO: Usa .uid
  */
 async function submeterReprovacaoAdmissao(candidatoId, state) {
   const { candidatosCollection, currentUserData } = state;
+
   const justificativaEl = document.getElementById("reprovar-justificativa");
   const justificativa = justificativaEl ? justificativaEl.value : null;
 
@@ -685,13 +692,13 @@ async function submeterReprovacaoAdmissao(candidatoId, state) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Candidatura REJEITADA na ADMISSÃO. Motivo: ${justificativa}`,
-        usuario: currentUserData.uid || "rh_admin_fallback_uid", // <-- CORRIGIDO
+        usuario: currentUserData.uid || "rh_admin_fallback_uid",
       }),
     });
 
     window.showToast?.("Candidato reprovado com sucesso.", "success");
     fecharModalReprovarAdmissao();
-    renderizarSolicitacaoEmail(state); // Recarrega a aba
+    renderizarSolicitacaoEmail(state);
   } catch (error) {
     console.error("❌ Erro ao reprovar candidato:", error);
     window.showToast?.(`Erro ao reprovar: ${error.message}`, "error");
