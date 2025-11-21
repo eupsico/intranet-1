@@ -482,6 +482,7 @@ async function carregarRespostasDoTeste(
 
 /**
  * ✅ Carrega e exibe estatísticas de testes do candidato
+ * (Versão corrigida para ler estatisticasAvaliacao gerado pelo detalhes_teste.js)
  */
 async function carregarEstatisticasTestes(listaTestes) {
   console.log(
@@ -512,66 +513,104 @@ async function carregarEstatisticasTestes(listaTestes) {
   try {
     console.log(`✅ [STATS] Processando ${listaTestes.length} teste(s)...`);
 
-    // Calcular estatísticas
+    // Variáveis acumuladoras
     let totalTestes = listaTestes.length;
     let totalPerguntas = 0;
     let totalAcertos = 0;
     let totalErros = 0;
     let testesComNotas = 0;
 
-    listaTestes.forEach((teste) => {
-      // Tenta obter dados da raiz ou de respostasCompletas (fallback)
-      const dados = teste.respostasCompletas || teste;
+    listaTestes.forEach((teste, index) => {
+      console.log(`🔍 [STATS] Analisando teste #${index + 1}:`, teste);
 
-      const acertos = parseInt(dados.acertos) || 0;
-      const erros = parseInt(dados.erros) || 0;
-      // Se totalPerguntas não existir, tenta somar acertos e erros, ou assume 0
-      const totalQ = parseInt(dados.totalPerguntas) || acertos + erros || 0;
+      // Lógica de Extração Robusta: Tenta encontrar os dados em diferentes locais
+      let dadosStats = {};
 
-      // Só soma nas estatísticas se houver algum dado de acerto/erro computado
+      // 1. Tenta pegar direto do objeto (estrutura legada)
+      if (teste.acertos !== undefined) {
+        dadosStats = teste;
+      }
+      // 2. Tenta pegar de 'estatisticasAvaliacao' (estrutura nova do detalhes_teste.js)
+      else if (teste.estatisticasAvaliacao) {
+        dadosStats = teste.estatisticasAvaliacao;
+      }
+      // 3. Tenta pegar de respostasCompletas (se veio do Firestore query)
+      else if (teste.respostasCompletas) {
+        if (teste.respostasCompletas.estatisticasAvaliacao) {
+          dadosStats = teste.respostasCompletas.estatisticasAvaliacao;
+        } else {
+          dadosStats = teste.respostasCompletas;
+        }
+      }
+
+      // Extrai os valores garantindo que sejam números
+      const acertos = parseInt(dadosStats.acertos) || 0;
+      const erros = parseInt(dadosStats.erros) || 0;
+
+      // Tenta pegar o total. Se não existir, soma acertos + erros
+      const totalQ =
+        parseInt(dadosStats.totalPerguntas) ||
+        parseInt(dadosStats.totalQuestoes) ||
+        acertos + erros ||
+        0;
+
+      // Log para debug (ajuda a ver se pegou certo)
+      console.log(
+        `   > Dados extraídos: Acertos=${acertos}, Erros=${erros}, Total=${totalQ}`
+      );
+
+      // Só soma nas estatísticas gerais se houver algum dado válido
       if (acertos > 0 || erros > 0 || totalQ > 0) {
         totalPerguntas += totalQ;
         totalAcertos += acertos;
         totalErros += erros;
         testesComNotas++;
       }
-
-      console.log(`  📋 Teste: ${teste.nomeTeste || "Sem nome"}`);
-      console.log(
-        `     Acertos: ${acertos}, Erros: ${erros}, Total: ${totalQ}`
-      );
     });
 
-    // Calcular taxa média (baseada apenas nos testes que já foram avaliados/respondidos)
-    // Se totalPerguntas for 0, evita divisão por zero
+    // Calcular taxa média
+    // Evita divisão por zero se nenhum teste tiver perguntas contabilizadas
     const taxaMedia =
       totalPerguntas > 0
         ? ((totalAcertos / totalPerguntas) * 100).toFixed(1)
         : "0.0";
 
     console.log(
-      `📊 [STATS] Resumo Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% média`
+      `📊 [STATS] Resumo Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% aproveitamento`
     );
 
     // Renderizar HTML
     statsDiv.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+        
         <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
           <div style="font-size: 24px; font-weight: bold; color: #6c757d;">${totalTestes}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">📝 Testes Enviados</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">
+            <i class="fas fa-file-alt me-1"></i> Testes Enviados
+          </div>
         </div>
+
         <div style="text-align: center; padding: 15px; background: #f0fff4; border-radius: 8px; border: 1px solid #c3e6cb;">
           <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalAcertos}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">✅ Acertos Totais</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">
+            <i class="fas fa-check-circle me-1"></i> Acertos Totais
+          </div>
         </div>
+
         <div style="text-align: center; padding: 15px; background: #fff5f5; border-radius: 8px; border: 1px solid #f5c6cb;">
           <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${totalErros}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">❌ Erros Totais</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">
+            <i class="fas fa-times-circle me-1"></i> Erros Totais
+          </div>
         </div>
+
         <div style="text-align: center; padding: 15px; background: #e7f1ff; border-radius: 8px; border: 1px solid #b8daff;">
           <div style="font-size: 24px; font-weight: bold; color: #007bff;">${taxaMedia}%</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">📈 Aproveitamento</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">
+            <i class="fas fa-chart-line me-1"></i> Aproveitamento
+          </div>
         </div>
+
       </div>
     `;
 
@@ -586,7 +625,6 @@ async function carregarEstatisticasTestes(listaTestes) {
     `;
   }
 }
-
 /**
  * ✅ CORREÇÃO: Carrega gestores para o select ao abrir o modal
  */
