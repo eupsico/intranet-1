@@ -481,82 +481,105 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * ✅ Carrega e exibe estatísticas somando dados da coleção 'testesRealizados'
- * Estrutura: testesRealizados/{tokenId}/candidatos/{candidatoId}/estatisticasAvaliacao
+ * ✅ Carrega estatísticas combinando dados do perfil do candidato (envios)
+ * com os resultados detalhados em testesRealizados.
  */
 async function carregarEstatisticasTestes(candidatoId) {
-  console.log("📊 [STATS] Iniciando cálculo detalhado para ID:", candidatoId);
+  console.log("📊 [STATS] Iniciando cálculo HÍBRIDO para ID:", candidatoId);
 
   const statsDiv = document.getElementById("avaliacao-teste-stats");
   if (!statsDiv) return;
 
   try {
-    // 1. Primeiro, descobrimos QUAIS testes o candidato respondeu
-    const testesRef = collection(db, "testesrespondidos");
-    const q = query(testesRef, where("candidatoId", "==", candidatoId));
+    // 1. Busca o documento do CANDIDATO para pegar o array de testes enviados
+    const candidatoRef = doc(db, "candidaturas", candidatoId);
+    const candidatoSnap = await getDoc(candidatoRef);
 
-    console.log("🔍 [STATS] Buscando lista de testes respondidos...");
-    const snapshot = await getDocs(q);
+    if (!candidatoSnap.exists()) {
+      console.error("❌ [STATS] Candidato não encontrado no banco.");
+      return;
+    }
 
-    let totalTestes = snapshot.size;
+    const dadosCandidato = candidatoSnap.data();
+    // Tenta pegar o array com tratamento para variações de nome de campo
+    const arrayTestes =
+      dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
+
+    // AQUI define a quantidade correta de testes enviados
+    let totalTestes = arrayTestes.length;
+
     let totalAcertos = 0;
     let totalErros = 0;
-    let totalQuestoesGeral = 0; // Para calcular a média ponderada correta
+    let totalQuestoesGeral = 0;
 
-    if (snapshot.empty) {
-      console.warn("⚠️ [STATS] Nenhum teste encontrado em testesrespondidos.");
+    console.log(
+      `✅ [STATS] Total de testes no perfil (Enviados): ${totalTestes}`
+    );
+
+    if (totalTestes === 0) {
+      console.warn("⚠️ [STATS] Array de testes enviados está vazio.");
     } else {
-      console.log(
-        `✅ [STATS] Encontrados ${totalTestes} registros de testes. Buscando notas em 'testesRealizados'...`
-      );
+      // 2. Itera sobre o array para buscar as notas em 'testesRealizados' usando o Token
+      const promessasDeBusca = arrayTestes.map(async (testeItem) => {
+        // O ID do teste (Token) geralmente está em .id, .tokenId ou .testeId dentro do objeto do array
+        const tokenId = testeItem.id || testeItem.tokenId || testeItem.testeId;
+        const nomeTeste = testeItem.nome || testeItem.nomeTeste || "Teste";
 
-      // 2. Para cada teste respondido, buscamos a avaliação detalhada na outra coleção
-      // Usamos map + Promise.all para fazer as buscas em paralelo
-      const promessasDeBusca = snapshot.docs.map(async (docResposta) => {
-        const dataResp = docResposta.data();
-
-        // O ID do documento em 'testesrespondidos' geralmente é o Token, ou existe um campo tokenId.
-        // Vamos tentar garantir que temos o ID correto da coleção 'testesRealizados'.
-        const tokenId = dataResp.tokenId || docResposta.id;
-
-        if (!tokenId) return null;
+        if (!tokenId) {
+          console.warn("⚠️ [STATS] Item do array sem Token/ID:", testeItem);
+          return null;
+        }
 
         try {
-          // Caminho exato conforme suas imagens:
-          // testesRealizados / {tokenId} / candidatos / {candidatoId}
+          // Caminho EXATO solicitado: testesRealizados -> tokenId -> candidatos -> candidatoId
           const path = `testesRealizados/${tokenId}/candidatos/${candidatoId}`;
-          const avaliacaoRef = doc(db, path);
+          console.log(`🔍 [STATS] Buscando nota em: ${path}`);
+
+          const avaliacaoRef = doc(
+            db,
+            "testesRealizados",
+            tokenId,
+            "candidatos",
+            candidatoId
+          );
           const avaliacaoSnap = await getDoc(avaliacaoRef);
 
           if (avaliacaoSnap.exists()) {
-            const dadosDetalhados = avaliacaoSnap.data();
-            // Retorna apenas o objeto de estatísticas se existir
-            return dadosDetalhados.estatisticasAvaliacao || null;
+            const dados = avaliacaoSnap.data();
+            console.log(
+              `   📄 Dados encontrados para ${nomeTeste}:`,
+              dados.estatisticasAvaliacao
+            );
+            return dados.estatisticasAvaliacao || null;
+          } else {
+            console.log(
+              `   Build [STATS] Documento não encontrado para ${nomeTeste} (Candidato talvez não tenha terminado)`
+            );
           }
         } catch (err) {
-          console.error(`❌ Erro ao buscar detalhe do token ${tokenId}:`, err);
+          console.error(`❌ Erro ao buscar token ${tokenId}:`, err);
         }
         return null;
       });
 
-      // Aguarda todas as buscas terminarem
-      const resultadosDetalhados = await Promise.all(promessasDeBusca);
+      // Aguarda todas as buscas
+      const resultados = await Promise.all(promessasDeBusca);
 
-      // 3. Soma os resultados encontrados
-      resultadosDetalhados.forEach((stats) => {
+      // 3. Soma os valores
+      resultados.forEach((stats) => {
         if (stats) {
-          // Converte para número para garantir a soma
           const acertos = parseInt(stats.acertos) || 0;
           const erros = parseInt(stats.erros) || 0;
-          const totalQ = parseInt(stats.totalQuestoes) || acertos + erros || 0;
+          // Soma questões para média ponderada ou usa acertos+erros
+          const totalQ =
+            parseInt(stats.totalQuestoes) ||
+            parseInt(stats.totalAvaliadadas) ||
+            acertos + erros ||
+            0;
 
           totalAcertos += acertos;
           totalErros += erros;
           totalQuestoesGeral += totalQ;
-
-          console.log(
-            `   > Somando: +${acertos} acertos, +${erros} erros (Total Q: ${totalQ})`
-          );
         }
       });
     }
@@ -568,7 +591,7 @@ async function carregarEstatisticasTestes(candidatoId) {
         : "0.0";
 
     console.log(
-      `📊 [STATS] Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% aproveitamento`
+      `📊 [STATS] Final: ${totalTestes} enviados, ${totalAcertos} acertos, ${totalErros} erros`
     );
 
     // 5. Renderização HTML
