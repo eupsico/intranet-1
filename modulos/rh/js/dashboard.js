@@ -1908,4 +1908,134 @@ export async function initdashboard(user, userData) {
       window.showToast?.("❌ Erro ao exportar PDF", "error");
     }
   }
+  // ============================================
+  // INICIALIZAR DASHBOARD AO CARREGAR
+  // ============================================
+
+  fetchRHDashboardData()
+    .then((data) => {
+      console.log("📊 Dados do Dashboard RH carregados:", data);
+
+      // Preencher métricas
+      if (metricAtivos) metricAtivos.textContent = data.ativos;
+      if (metricVagas) metricVagas.textContent = data.vagas;
+      if (metricOnboarding) metricOnboarding.textContent = data.onboarding;
+      if (metricComunicados) metricComunicados.textContent = data.comunicados;
+
+      // Renderizar gráficos
+      if (funcoesChartCtx) {
+        new Chart(funcoesChartCtx, {
+          type: "doughnut",
+          data: {
+            labels: data.funcoesData.labels,
+            datasets: [
+              {
+                label: "Total",
+                data: data.funcoesData.data,
+                backgroundColor: [
+                  "#4e73df",
+                  "#1cc88a",
+                  "#36b9cc",
+                  "#f6c23e",
+                  "#6f42c1",
+                  "#20c997",
+                ],
+                hoverOffset: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: {
+                  padding: 20,
+                },
+              },
+              title: {
+                display: false,
+              },
+            },
+          },
+        });
+      }
+
+      if (rhProfissaoChartCtx) {
+        new Chart(rhProfissaoChartCtx, {
+          type: "bar",
+          data: {
+            labels: data.profissaoData.labels,
+            datasets: [
+              {
+                label: "Profissionais Ativos",
+                data: data.profissaoData.data,
+                backgroundColor: "#1d70b7",
+                borderColor: "#04396d",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+            scales: {
+              x: {
+                beginAtZero: true,
+                precision: 0,
+              },
+            },
+            plugins: {
+              legend: {
+                display: false,
+              },
+            },
+          },
+        });
+      }
+
+      if (desligamentoChartCtx) {
+        new Chart(desligamentoChartCtx, {
+          type: "bar",
+          data: {
+            labels: data.desligamentoData.labels,
+            datasets: [
+              {
+                label: "Desligamentos",
+                data: data.desligamentoData.data,
+                backgroundColor: "#e74a3b",
+                borderColor: "#e74a3b",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                precision: 0,
+              },
+            },
+            plugins: {
+              legend: {
+                display: false,
+              },
+            },
+          },
+        });
+      }
+
+      console.log("✅ Dashboard RH carregado com sucesso");
+    })
+    .catch((error) => {
+      console.error("❌ Erro ao carregar dados do Dashboard RH:", error);
+      window.showToast?.(
+        "Erro ao carregar dashboard: " + error.message,
+        "error"
+      );
+    });
 }
