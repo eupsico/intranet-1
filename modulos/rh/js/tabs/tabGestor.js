@@ -11,11 +11,6 @@ import {
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
 
-/**
- * Renderiza a listagem de candidatos para Entrevista com Gestor.
- * Modal corrigido para abrir como POPUP centralizado na tela.
- * Botão "Ver Currículo" substituído por "Agendar Reunião" com padrão do tabEntrevistas.
- */
 export async function renderizarEntrevistaGestor(state) {
   const {
     vagaSelecionadaId,
@@ -40,17 +35,17 @@ export async function renderizarEntrevistaGestor(state) {
   `;
 
   try {
-    // Query Firestore - AJUSTE OS STATUS DO SEU FIRESTORE
+    // Query Firestore
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
       where("status_recrutamento", "in", [
-        // SUBSTITUA POR STATUS REAIS DO SEU FIRESTORE
         "Testes Aprovado",
         "Entrevista Gestor Pendente",
         "Entrevista Gestor Agendada",
         "Aguardando Avaliação Gestor",
         "Teste Aprovado (Entrevista com Gestor Pendente)",
+        "Testes Aprovado (Entrevista Gestor Pendente)", // Adicionado para garantir compatibilidade
       ])
     );
 
@@ -95,7 +90,29 @@ export async function renderizarEntrevistaGestor(state) {
         statusClass = "status-success";
       }
 
-      // Dados encoded para modal
+      // --- FORMATAÇÃO DA DATA ---
+      let dataCadastroFormatada = "N/A";
+      if (cand.data_candidatura) {
+        try {
+          const dataObj = cand.data_candidatura.toDate
+            ? cand.data_candidatura.toDate()
+            : cand.data_candidatura.seconds
+            ? new Date(cand.data_candidatura.seconds * 1000)
+            : new Date(cand.data_candidatura);
+
+          dataCadastroFormatada = dataObj.toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch (e) {
+          console.warn("Erro ao formatar data:", e);
+        }
+      }
+
+      // --- DADOS PARA OS MODAIS ---
       const dadosCandidato = {
         id: candidaturaId,
         nome_completo: cand.nome_candidato,
@@ -103,7 +120,14 @@ export async function renderizarEntrevistaGestor(state) {
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
         vaga_id: vagaId,
+        // ✅ Campo essencial para sua solicitação:
+        titulo_vaga_original:
+          cand.titulo_vaga_original ||
+          cand.nome_vaga ||
+          "Vaga não identificada",
+        data_cadastro_formatada: dataCadastroFormatada,
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
@@ -135,7 +159,6 @@ export async function renderizarEntrevistaGestor(state) {
           </div>
 
           <div class="acoes-candidato">
-            <!-- BOTÃO AVALIAR GESTOR - CORRIGIDO -->
             <button class="action-button primary btn-avaliar-gestor" 
                     data-id="${candidaturaId}"
                     data-vaga="${vagaId}"
@@ -144,7 +167,6 @@ export async function renderizarEntrevistaGestor(state) {
               <i class="fas fa-user-tie"></i> Avaliar Gestor
             </button>
             
-            <!-- BOTÃO DETALHES - CORRIGIDO -->
             <button class="action-button secondary btn-ver-detalhes" 
                     data-id="${candidaturaId}"
                     data-dados="${dadosCodificados}"
@@ -152,7 +174,6 @@ export async function renderizarEntrevistaGestor(state) {
               <i class="fas fa-eye"></i> Detalhes
             </button>
             
-            <!-- NOVO BOTÃO AGENDAR REUNIÃO - PADRÃO DO tabEntrevistas -->
             <button class="action-button info btn-agendar-rh" 
                     data-id="${candidaturaId}"
                     data-dados="${dadosCodificados}"
@@ -170,103 +191,61 @@ export async function renderizarEntrevistaGestor(state) {
 
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // === EVENT LISTENERS CORRIGIDOS ===
-    console.log("🔗 Gestor: Anexando event listeners...");
-
-    // VERIFICA SE OS BOTÕES FORAM CRIADOS
+    // === EVENT LISTENERS ===
     const botoesAvaliar = document.querySelectorAll(".btn-avaliar-gestor");
     const botoesDetalhes = document.querySelectorAll(".btn-ver-detalhes");
     const botoesAgendar = document.querySelectorAll(".btn-agendar-rh");
 
-    console.log(
-      `🔍 Encontrados: ${botoesAvaliar.length} botões Avaliar, ${botoesDetalhes.length} Detalhes, ${botoesAgendar.length} Agendar`
-    );
-
-    // Botão Avaliar Gestor - CORRIGIDO
-    botoesAvaliar.forEach((btn, index) => {
-      console.log(`🔧 Anexando listener ao botão Avaliar #${index + 1}`);
+    // Botão Avaliar Gestor
+    botoesAvaliar.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        e.stopPropagation();
-
-        console.log("🎯 Clique no botão Avaliar Gestor detectado");
-
         const candidatoId = btn.getAttribute("data-id");
         const vagaId = btn.getAttribute("data-vaga");
         const dadosCodificados = btn.getAttribute("data-dados");
-
-        console.log(`📋 Dados: ID=${candidatoId}, Vaga=${vagaId}`);
-
-        // CORREÇÃO: Chama a função local diretamente (não depende de window)
         try {
           abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados);
         } catch (error) {
           console.error("❌ Erro ao abrir modal:", error);
-          alert("Erro ao abrir modal de avaliação");
         }
       });
     });
 
-    // Botão Detalhes - CORRIGIDO
-    botoesDetalhes.forEach((btn, index) => {
-      console.log(`🔧 Anexando listener ao botão Detalhes #${index + 1}`);
+    // Botão Detalhes
+    botoesDetalhes.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        e.stopPropagation();
-
-        console.log("👁️ Clique no botão Detalhes detectado");
-
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
-
         try {
           abrirModalDetalhesModal(candidatoId, dadosCodificados);
         } catch (error) {
-          console.error("❌ Erro ao abrir modal de detalhes:", error);
-          alert("Erro ao abrir modal de detalhes");
+          console.error("❌ Erro ao abrir detalhes:", error);
         }
       });
     });
 
-    // Botão Agendar Reunião - PADRÃO DO tabEntrevistas
-    botoesAgendar.forEach((btn, index) => {
-      console.log(`🔧 Anexando listener ao botão Agendar #${index + 1}`);
+    // Botão Agendar Reunião
+    botoesAgendar.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        e.stopPropagation();
-
-        console.log("📅 Clique no botão Agendar Reunião detectado");
-
         const candidatoId = btn.getAttribute("data-id");
         const dadosCodificados = btn.getAttribute("data-dados");
 
-        // Chama a função global que existe no tabEntrevistas.js
         if (typeof window.abrirModalAgendamentoRH === "function") {
           try {
             const dadosCandidato = JSON.parse(
               decodeURIComponent(dadosCodificados)
             );
             window.abrirModalAgendamentoRH(candidatoId, dadosCandidato);
-            console.log("✅ Modal de agendamento aberto via função global");
           } catch (error) {
-            console.error("❌ Erro ao abrir modal de agendamento:", error);
-            alert("Erro ao abrir modal de agendamento");
+            console.error("❌ Erro ao abrir agendamento:", error);
           }
         } else {
-          console.warn(
-            "⚠️ Função window.abrirModalAgendamentoRH não encontrada"
-          );
-          // Fallback: cria modal de agendamento simples
           abrirModalAgendamentoFallback(candidatoId, dadosCodificados);
         }
       });
     });
-
-    console.log(
-      `✅ Todos listeners anexados: ${
-        botoesAvaliar.length + botoesDetalhes.length + botoesAgendar.length
-      } botões configurados`
-    );
   } catch (error) {
     console.error("❌ Gestor: Erro ao carregar:", error);
     conteudoRecrutamento.innerHTML = `
@@ -288,312 +267,54 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
     const modalExistente = document.getElementById("modal-avaliacao-gestor");
     if (modalExistente) {
       modalExistente.remove();
-      console.log("🧹 Modal anterior removido");
     }
 
-    // Cria novo modal com posicionamento garantido
+    // Cria novo modal
     const modal = document.createElement("div");
     modal.id = "modal-avaliacao-gestor";
 
-    // CSS EMBEDDED GARANTIDO - SOBRESCREVE TUDO
+    // CSS (Mantido o mesmo da versão anterior corrigida)
     modal.innerHTML = `
       <style>
-        /* RESET E POSICIONAMENTO ABSOLUTO */
-        #modal-avaliacao-gestor {
-          all: initial !important;
-          display: block !important;
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          z-index: 999999 !important;
-          background: rgba(0, 0, 0, 0.7) !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-container {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          width: 95% !important;
-          max-width: 650px !important;
-          max-height: 90vh !important;
-          background: #ffffff !important;
-          border-radius: 12px !important;
-          box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important;
-          overflow: hidden !important;
-          z-index: 1000000 !important;
-          animation: modalPopupOpen 0.3s ease-out !important;
-        }
-        
-        @keyframes modalPopupOpen {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -60%) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-          }
-        }
-        
-        /* HEADER DO MODAL */
-        #modal-avaliacao-gestor .modal-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-          color: white !important;
-          padding: 20px !important;
-          display: flex !important;
-          justify-content: space-between !important;
-          align-items: center !important;
-          position: relative !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-title {
-          display: flex !important;
-          align-items: center !important;
-          gap: 12px !important;
-          margin: 0 !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-title i {
-          font-size: 24px !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-title h3 {
-          margin: 0 !important;
-          font-size: 20px !important;
-          font-weight: 600 !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-close {
-          background: rgba(255,255,255,0.2) !important;
-          border: none !important;
-          color: white !important;
-          width: 36px !important;
-          height: 36px !important;
-          border-radius: 50% !important;
-          cursor: pointer !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          font-size: 18px !important;
-          transition: all 0.2s !important;
-        }
-        
-        #modal-avaliacao-gestor .modal-close:hover {
-          background: rgba(255,255,255,0.3) !important;
-          transform: scale(1.1) !important;
-        }
-        
-        /* BODY DO MODAL */
-        #modal-avaliacao-gestor .modal-body {
-          padding: 25px !important;
-          max-height: 500px !important;
-          overflow-y: auto !important;
-          background: #f8f9fa !important;
-        }
-        
-        #modal-avaliacao-gestor .info-card {
-          background: white !important;
-          padding: 20px !important;
-          border-radius: 8px !important;
-          margin-bottom: 25px !important;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
-          border-left: 4px solid #667eea !important;
-        }
-        
-        #modal-avaliacao-gestor .info-grid {
-          display: grid !important;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
-          gap: 15px !important;
-          font-size: 14px !important;
-        }
-        
-        #modal-avaliacao-gestor .info-item {
-          line-height: 1.6 !important;
-        }
-        
-        #modal-avaliacao-gestor .status-badge {
-          display: inline-block !important;
-          padding: 4px 12px !important;
-          background: #e3f2fd !important;
-          color: #1976d2 !important;
-          border-radius: 20px !important;
-          font-size: 12px !important;
-          font-weight: 500 !important;
-        }
-        
-        /* FORMULÁRIO */
-        #modal-avaliacao-gestor .form-group {
-          margin-bottom: 20px !important;
-        }
-        
-        #modal-avaliacao-gestor .form-label {
-          font-weight: 600 !important;
-          margin-bottom: 8px !important;
-          display: block !important;
-          color: #333 !important;
-          font-size: 14px !important;
-        }
-        
-        #modal-avaliacao-gestor .form-textarea {
-          width: 100% !important;
-          min-height: 120px !important;
-          padding: 12px !important;
-          border: 1px solid #ddd !important;
-          border-radius: 6px !important;
-          font-family: inherit !important;
-          resize: vertical !important;
-          box-sizing: border-box !important;
-          font-size: 14px !important;
-        }
-        
-        #modal-avaliacao-gestor .form-textarea:focus {
-          outline: none !important;
-          border-color: #667eea !important;
-          box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
-        }
-        
-        /* OPÇÕES DE RESULTADO */
-        #modal-avaliacao-gestor .resultado-options {
-          display: flex !important;
-          flex-direction: column !important;
-          gap: 12px !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-option {
-          display: flex !important;
-          align-items: center !important;
-          gap: 12px !important;
-          cursor: pointer !important;
-          padding: 12px !important;
-          border: 1px solid #e9ecef !important;
-          border-radius: 8px !important;
-          transition: all 0.2s !important;
-          background: white !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-option:hover {
-          border-color: #667eea !important;
-          background: #f8f9ff !important;
-          transform: translateY(-1px) !important;
-          box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1) !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-option input[type="radio"] {
-          margin: 0 !important;
-          width: 18px !important;
-          height: 18px !important;
-          accent-color: #667eea !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-icon {
-          width: 24px !important;
-          height: 24px !important;
-          border-radius: 50% !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          font-size: 12px !important;
-          color: white !important;
-          flex-shrink: 0 !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-aprovado .resultado-icon {
-          background: #28a745 !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-rejeitado .resultado-icon {
-          background: #dc3545 !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-pendente .resultado-icon {
-          background: #ffc107 !important;
-          color: #212529 !important;
-        }
-        
-        #modal-avaliacao-gestor .resultado-text {
-          font-weight: 500 !important;
-          margin: 0 !important;
-        }
-        
-        /* FOOTER */
-        #modal-avaliacao-gestor .modal-footer {
-          padding: 20px 25px !important;
-          background: white !important;
-          border-top: 1px solid #e9ecef !important;
-          display: flex !important;
-          justify-content: flex-end !important;
-          gap: 12px !important;
-        }
-        
-        #modal-avaliacao-gestor .btn-cancelar {
-          padding: 12px 24px !important;
-          background: #f8f9fa !important;
-          color: #6c757d !important;
-          border: 1px solid #dee2e6 !important;
-          border-radius: 6px !important;
-          cursor: pointer !important;
-          font-weight: 500 !important;
-          transition: all 0.2s !important;
-        }
-        
-        #modal-avaliacao-gestor .btn-salvar {
-          padding: 12px 24px !important;
-          background: #667eea !important;
-          color: white !important;
-          border: none !important;
-          border-radius: 6px !important;
-          cursor: pointer !important;
-          font-weight: 500 !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 8px !important;
-          transition: all 0.2s !important;
-        }
-        
-        #modal-avaliacao-gestor .btn-salvar:hover {
-          background: #5a67d8 !important;
-          transform: translateY(-1px) !important;
-        }
-        
-        #modal-avaliacao-gestor .btn-salvar:disabled {
-          background: #ccc !important;
-          cursor: not-allowed !important;
-          transform: none !important;
-        }
-        
-        /* RESPONSIVO */
+        /* ... (Mantenha os estilos CSS existentes para o modal) ... */
+        #modal-avaliacao-gestor { all: initial !important; display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important; }
+        #modal-avaliacao-gestor .modal-container { position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; width: 95% !important; max-width: 650px !important; max-height: 90vh !important; background: #ffffff !important; border-radius: 12px !important; box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important; overflow: hidden !important; z-index: 1000000 !important; animation: modalPopupOpen 0.3s ease-out !important; }
+        @keyframes modalPopupOpen { from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        #modal-avaliacao-gestor .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; padding: 20px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; position: relative !important; }
+        #modal-avaliacao-gestor .modal-title { display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important; }
+        #modal-avaliacao-gestor .modal-title i { font-size: 24px !important; }
+        #modal-avaliacao-gestor .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
+        #modal-avaliacao-gestor .modal-close { background: rgba(255,255,255,0.2) !important; border: none !important; color: white !important; width: 36px !important; height: 36px !important; border-radius: 50% !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 18px !important; transition: all 0.2s !important; }
+        #modal-avaliacao-gestor .modal-close:hover { background: rgba(255,255,255,0.3) !important; transform: scale(1.1) !important; }
+        #modal-avaliacao-gestor .modal-body { padding: 25px !important; max-height: 500px !important; overflow-y: auto !important; background: #f8f9fa !important; }
+        #modal-avaliacao-gestor .info-card { background: white !important; padding: 20px !important; border-radius: 8px !important; margin-bottom: 25px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important; border-left: 4px solid #667eea !important; }
+        #modal-avaliacao-gestor .info-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 15px !important; font-size: 14px !important; }
+        #modal-avaliacao-gestor .info-item { line-height: 1.6 !important; }
+        #modal-avaliacao-gestor .status-badge { display: inline-block !important; padding: 4px 12px !important; background: #e3f2fd !important; color: #1976d2 !important; border-radius: 20px !important; font-size: 12px !important; font-weight: 500 !important; }
+        #modal-avaliacao-gestor .form-group { margin-bottom: 20px !important; }
+        #modal-avaliacao-gestor .form-label { font-weight: 600 !important; margin-bottom: 8px !important; display: block !important; color: #333 !important; font-size: 14px !important; }
+        #modal-avaliacao-gestor .form-textarea { width: 100% !important; min-height: 120px !important; padding: 12px !important; border: 1px solid #ddd !important; border-radius: 6px !important; font-family: inherit !important; resize: vertical !important; box-sizing: border-box !important; font-size: 14px !important; }
+        #modal-avaliacao-gestor .form-textarea:focus { outline: none !important; border-color: #667eea !important; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important; }
+        #modal-avaliacao-gestor .resultado-options { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+        #modal-avaliacao-gestor .resultado-option { display: flex !important; align-items: center !important; gap: 12px !important; cursor: pointer !important; padding: 12px !important; border: 1px solid #e9ecef !important; border-radius: 8px !important; transition: all 0.2s !important; background: white !important; }
+        #modal-avaliacao-gestor .resultado-option:hover { border-color: #667eea !important; background: #f8f9ff !important; transform: translateY(-1px) !important; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1) !important; }
+        #modal-avaliacao-gestor .resultado-option input[type="radio"] { margin: 0 !important; width: 18px !important; height: 18px !important; accent-color: #667eea !important; }
+        #modal-avaliacao-gestor .resultado-icon { width: 24px !important; height: 24px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 12px !important; color: white !important; flex-shrink: 0 !important; }
+        #modal-avaliacao-gestor .resultado-aprovado .resultado-icon { background: #28a745 !important; }
+        #modal-avaliacao-gestor .resultado-rejeitado .resultado-icon { background: #dc3545 !important; }
+        #modal-avaliacao-gestor .resultado-pendente .resultado-icon { background: #ffc107 !important; color: #212529 !important; }
+        #modal-avaliacao-gestor .resultado-text { font-weight: 500 !important; margin: 0 !important; }
+        #modal-avaliacao-gestor .modal-footer { padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important; display: flex !important; justify-content: flex-end !important; gap: 12px !important; }
+        #modal-avaliacao-gestor .btn-cancelar { padding: 12px 24px !important; background: #f8f9fa !important; color: #6c757d !important; border: 1px solid #dee2e6 !important; border-radius: 6px !important; cursor: pointer !important; font-weight: 500 !important; transition: all 0.2s !important; }
+        #modal-avaliacao-gestor .btn-salvar { padding: 12px 24px !important; background: #667eea !important; color: white !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; font-weight: 500 !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; }
+        #modal-avaliacao-gestor .btn-salvar:hover { background: #5a67d8 !important; transform: translateY(-1px) !important; }
+        #modal-avaliacao-gestor .btn-salvar:disabled { background: #ccc !important; cursor: not-allowed !important; transform: none !important; }
         @media (max-width: 768px) {
-          #modal-avaliacao-gestor .modal-container {
-            width: 98% !important;
-            max-height: 95vh !important;
-            top: 5% !important;
-            left: 2% !important;
-            transform: none !important;
-            border-radius: 8px !important;
-          }
-          
-          #modal-avaliacao-gestor .modal-body {
-            padding: 15px !important;
-            max-height: 400px !important;
-          }
-          
-          #modal-avaliacao-gestor .info-grid {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-          }
-          
-          #modal-avaliacao-gestor .modal-footer {
-            padding: 15px !important;
-            flex-direction: column !important;
-          }
-          
-          #modal-avaliacao-gestor .btn-cancelar,
-          #modal-avaliacao-gestor .btn-salvar {
-            width: 100% !important;
-          }
+          #modal-avaliacao-gestor .modal-container { width: 98% !important; max-height: 95vh !important; top: 5% !important; left: 2% !important; transform: none !important; border-radius: 8px !important; }
+          #modal-avaliacao-gestor .modal-body { padding: 15px !important; max-height: 400px !important; }
+          #modal-avaliacao-gestor .info-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+          #modal-avaliacao-gestor .modal-footer { padding: 15px !important; flex-direction: column !important; }
+          #modal-avaliacao-gestor .btn-cancelar, #modal-avaliacao-gestor .btn-salvar { width: 100% !important; }
         }
       </style>
       
@@ -617,7 +338,8 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
             <div class="info-grid">
               <div class="info-item">
                 <strong>Nome do Candidato:</strong><br>
-                <code>${dadosCandidato.nome_completo || "N/A"}</code> </div>
+                <code>${dadosCandidato.nome_completo || "N/A"}</code>
+              </div>
               <div class="info-item">
                 <strong>ID do Candidato:</strong><br>
                 <code>${candidatoId}</code>
@@ -636,10 +358,12 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
                   dadosCandidato.status_recrutamento || "N/A"
                 }</span>
               </div>
+              
               <div class="info-item">
                 <strong>Vaga:</strong><br>
-                <code>${vagaId}</code>
+                ${dadosCandidato.titulo_vaga_original || "N/A"}
               </div>
+              
             </div>
           </div>
           
@@ -693,23 +417,15 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
       </div>
     `;
 
-    // ADICIONA AO BODY E MOSTRA
     document.body.appendChild(modal);
-
-    // FORÇA VISIBILIDADE E POSICIONAMENTO
     modal.style.display = "block";
     modal.style.visibility = "visible";
     modal.style.opacity = "1";
-
-    // IMPEDIR SCROLL E CENTRALIZAR
     document.body.style.overflow = "hidden";
     window.scrollTo(0, 0);
 
-    // FOCO NO PRIMEIRO INPUT
     const firstInput = modal.querySelector('textarea[name="observacoes"]');
-    if (firstInput) {
-      firstInput.focus();
-    }
+    if (firstInput) firstInput.focus();
 
     console.log("✅ Modal de avaliação criado e visível");
   } catch (error) {
@@ -834,7 +550,7 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
   }
 };
 
-// === MODAL DE DETALHES - SIMPLIFICADO ===
+// === MODAL DE DETALHES - CORRIGIDO ===
 function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
   console.log("👁️ Abrindo modal de detalhes");
 
@@ -850,184 +566,69 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
 
     modal.innerHTML = `
       <style>
+        /* ... (Mantenha os estilos do modal container/overlay anteriores) ... */
         #modal-detalhes-gestor {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          z-index: 999999 !important;
-          background: rgba(0,0,0,0.7) !important;
-          display: flex !important;
-          justify-content: center !important;
-          align-items: center !important;
+          position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh;
+          z-index: 999999; background: rgba(0,0,0,0.7); display: flex;
+          justify-content: center; align-items: center;
         }
-        
         #modal-detalhes-gestor .detalhes-container {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          width: 90% !important;
-          max-width: 700px !important;
-          max-height: 85vh !important;
-          background: white !important;
-          border-radius: 12px !important;
-          box-shadow: 0 25px 50px rgba(0,0,0,0.3) !important;
-          overflow: hidden !important;
-          z-index: 1000000 !important;
-          animation: modalSlideIn 0.3s ease-out !important;
+          width: 90%; max-width: 700px; max-height: 85vh; background: white;
+          border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
         }
         
-        #modal-detalhes-gestor .detalhes-header {
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-          color: #333 !important;
-          padding: 20px !important;
-          border-bottom: 1px solid #dee2e6 !important;
-          display: flex !important;
-          justify-content: space-between !important;
-          align-items: center !important;
-        }
-        
-        #modal-detalhes-gestor .detalhes-body {
-          padding: 25px !important;
-          max-height: 60vh !important;
-          overflow-y: auto !important;
-        }
-        
-        #modal-detalhes-gestor .info-section {
-          margin-bottom: 25px !important;
-          padding-bottom: 20px !important;
-          border-bottom: 1px solid #eee !important;
-        }
-        
-        #modal-detalhes-gestor .info-section:last-child {
-          border-bottom: none !important;
-          margin-bottom: 0 !important;
-          padding-bottom: 0 !important;
-        }
-        
-        #modal-detalhes-gestor .section-title {
-          margin: 0 0 15px 0 !important;
-          color: #333 !important;
-          font-size: 16px !important;
-          font-weight: 600 !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 8px !important;
-        }
-        
-        #modal-detalhes-gestor .info-grid {
-          display: grid !important;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
-          gap: 15px !important;
-        }
-        
-        #modal-detalhes-gestor .info-item {
-          background: #f8f9fa !important;
-          padding: 12px !important;
-          border-radius: 6px !important;
-          border-left: 3px solid #667eea !important;
-        }
-        
-        #modal-detalhes-gestor .info-label {
-          font-weight: 600 !important;
-          color: #666 !important;
-          margin-bottom: 4px !important;
-          font-size: 13px !important;
-          text-transform: uppercase !important;
-          letter-spacing: 0.5px !important;
-        }
-        
-        #modal-detalhes-gestor .info-value {
-          font-size: 14px !important;
-          color: #333 !important;
-          word-break: break-word !important;
-        }
-        
-        #modal-detalhes-gestor .status-container {
-          display: flex !important;
-          align-items: center !important;
-          gap: 10px !important;
-          margin-top: 10px !important;
-        }
-        
+        /* CORREÇÃO CSS DO STATUS: Forçar cor escura para leitura */
         #modal-detalhes-gestor .status-badge {
           padding: 6px 12px !important;
           border-radius: 20px !important;
           font-size: 13px !important;
-          font-weight: 500 !important;
+          font-weight: 600 !important;
           display: inline-flex !important;
           align-items: center !important;
           gap: 6px !important;
+          background: #e3f2fd !important; /* Fundo padrão claro */
+          color: #333333 !important; /* ⚠️ CORREÇÃO: Texto escuro forçado */
+          border: 1px solid #b3d7ff !important;
         }
         
-        #modal-detalhes-gestor .status-aprovado {
-          background: #d4edda !important;
-          color: #155724 !important;
-          border: 1px solid #c3e6cb !important;
+        /* Cabeçalho */
+        #modal-detalhes-gestor .detalhes-header {
+          background: #f8f9fa; padding: 15px 20px; border-bottom: 1px solid #dee2e6;
+          display: flex; justify-content: space-between; align-items: center;
         }
         
-        #modal-detalhes-gestor .status-pendente {
-          background: #fff3cd !important;
-          color: #856404 !important;
-          border: 1px solid #ffeaa7 !important;
+        /* Botão Fechar apenas X */
+        #modal-detalhes-gestor .btn-icon-close {
+          background: #6c757d; color: white; border: none; 
+          width: 32px; height: 32px; border-radius: 4px;
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        
-        #modal-detalhes-gestor .status-rejeitado {
-          background: #f8d7da !important;
-          color: #721c24 !important;
-          border: 1px solid #f5c6cb !important;
+
+        #modal-detalhes-gestor .detalhes-body {
+          padding: 25px; overflow-y: auto;
         }
-        
+
+        #modal-detalhes-gestor .info-grid {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;
+        }
+        #modal-detalhes-gestor .info-item {
+          background: #f8f9fa; padding: 12px; border-radius: 6px; border-left: 3px solid #667eea;
+        }
+        #modal-detalhes-gestor .info-label {
+          font-size: 11px; text-transform: uppercase; color: #666; font-weight: bold; margin-bottom: 5px;
+        }
+        #modal-detalhes-gestor .info-value {
+          font-size: 14px; color: #333; word-break: break-word;
+        }
+
         #modal-detalhes-gestor .modal-footer {
-          padding: 20px 25px !important;
-          background: #f8f9fa !important;
-          border-top: 1px solid #dee2e6 !important;
-          display: flex !important;
-          justify-content: flex-end !important;
-          gap: 12px !important;
+          padding: 15px 20px; border-top: 1px solid #dee2e6; 
+          display: flex; justify-content: flex-end; gap: 10px;
         }
         
-        #modal-detalhes-gestor .btn-close {
-          padding: 10px 20px !important;
-          background: #6c757d !important;
-          color: white !important;
-          border: none !important;
-          border-radius: 6px !important;
-          cursor: pointer !important;
-          font-weight: 500 !important;
-        }
-        
-        #modal-detalhes-gestor .btn-print {
-          padding: 10px 20px !important;
-          background: #17a2b8 !important;
-          color: white !important;
-          border: none !important;
-          border-radius: 6px !important;
-          cursor: pointer !important;
-          font-weight: 500 !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 8px !important;
-        }
-        
-        @media (max-width: 768px) {
-          #modal-detalhes-gestor .detalhes-container {
-            width: 98% !important;
-            max-height: 95vh !important;
-            top: 5% !important;
-            left: 2% !important;
-            transform: none !important;
-          }
-          
-          #modal-detalhes-gestor .info-grid {
-            grid-template-columns: 1fr !important;
-          }
-          
-          #modal-detalhes-gestor .modal-body {
-            padding: 15px !important;
-          }
+        #modal-detalhes-gestor .btn-close-footer {
+          padding: 10px 20px; background: #6c757d; color: white; 
+          border: none; border-radius: 6px; cursor: pointer;
         }
       </style>
       
@@ -1036,90 +637,84 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
           <div style="display: flex; align-items: center; gap: 12px;">
             <i class="fas fa-eye" style="font-size: 22px; color: #667eea;"></i>
             <div>
-              <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #333;">
-                Detalhes do Candidato
-              </h3>
-              <p style="margin: 2px 0 0 0; color: #666; font-size: 14px;">
-                ${dadosCandidato.nome_completo || "N/A"}
-              </p>
+              <h3 style="margin: 0; font-size: 18px; color: #333;">Detalhes do Candidato</h3>
+              <p style="margin: 0; font-size: 13px; color: #666;">${
+                dadosCandidato.nome_completo || "N/A"
+              }</p>
             </div>
           </div>
-          <button class="btn-close" onclick="fecharModalDetalhesGestor()">
-            <i class="fas fa-times"></i> Fechar
+          <button class="btn-icon-close" onclick="fecharModalDetalhesGestor()">
+            <i class="fas fa-times"></i>
           </button>
         </div>
         
         <div class="detalhes-body">
-          <div class="info-section">
-            <h4 class="section-title">
-              <i class="fas fa-user"></i> Informações Pessoais
-            </h4>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Nome Completo</div>
-                <div class="info-value">${
-                  dadosCandidato.nome_completo || "N/A"
-                }</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Email</div>
-                <div class="info-value">${
-                  dadosCandidato.email_candidato || "N/A"
-                }</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Telefone</div>
-                <div class="info-value">${
-                  dadosCandidato.telefone_contato || "N/A"
-                }</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">ID do Candidato</div>
-                <div class="info-value"><code>${candidatoId}</code></div>
-              </div>
+          <h4 style="margin-top: 0; margin-bottom: 15px; color: #333;">
+            <i class="fas fa-user"></i> Informações Pessoais
+          </h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Nome Completo</div>
+              <div class="info-value">${
+                dadosCandidato.nome_completo || "N/A"
+              }</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Email</div>
+              <div class="info-value">${
+                dadosCandidato.email_candidato || "N/A"
+              }</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Telefone</div>
+              <div class="info-value">${
+                dadosCandidato.telefone_contato || "N/A"
+              }</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">ID do Candidato</div>
+              <div class="info-value"><code>${candidatoId}</code></div>
             </div>
           </div>
           
-          <div class="info-section">
-            <h4 class="section-title">
-              <i class="fas fa-clipboard-list"></i> Status do Processo
-            </h4>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Status Atual</div>
-                <div class="info-value">
-                  <span class="status-badge status-${dadosCandidato.status_recrutamento
-                    .toLowerCase()
-                    .replace(/ /g, "-")}">
-                    ${dadosCandidato.status_recrutamento || "N/A"}
-                  </span>
-                </div>
+          <h4 style="margin-top: 10px; margin-bottom: 15px; color: #333;">
+            <i class="fas fa-clipboard-list"></i> Status do Processo
+          </h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Status Atual</div>
+              <div class="info-value">
+                <span class="status-badge">
+                  ${dadosCandidato.status_recrutamento || "N/A"}
+                </span>
               </div>
-              <div class="info-item">
-                <div class="info-label">ID da Vaga</div>
-                <div class="info-value"><code>${
-                  dadosCandidato.vaga_id
-                }</code></div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">Vaga</div>
+              <div class="info-value">
+                ${
+                  dadosCandidato.titulo_vaga_original || "Vaga não identificada"
+                }
               </div>
-              <div class="info-item">
-                <div class="info-label">Data de Cadastro</div>
-                <div class="info-value">${
-                  dadosCandidato.data_cadastro || "N/A"
-                }</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Etapa Atual</div>
-                <div class="info-value">Entrevista com Gestor</div>
-              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">Data de Cadastro</div>
+              <div class="info-value">${
+                dadosCandidato.data_cadastro_formatada || "N/A"
+              }</div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">Etapa Atual</div>
+              <div class="info-value">Entrevista com Gestor</div>
             </div>
           </div>
         </div>
         
         <div class="modal-footer">
-          <button class="btn-print" onclick="imprimirDetalhesGestor('${candidatoId}')">
-            <i class="fas fa-print"></i> Imprimir
-          </button>
-          <button class="btn-close" onclick="fecharModalDetalhesGestor()">
+          <button class="btn-close-footer" onclick="fecharModalDetalhesGestor()">
             Fechar
           </button>
         </div>
@@ -1128,15 +723,11 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
-    window.scrollTo(0, 0);
-
-    console.log("✅ Modal de detalhes criado e visível");
   } catch (error) {
     console.error("❌ Erro ao criar modal de detalhes:", error);
     alert("Erro ao abrir detalhes do candidato");
   }
 }
-
 // === MODAL DE AGENDAMENTO - FALLBACK ===
 function abrirModalAgendamentoFallback(candidatoId, dadosCodificados) {
   console.log("📅 Abrindo modal de agendamento (fallback)");
