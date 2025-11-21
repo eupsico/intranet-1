@@ -1562,40 +1562,44 @@ export async function initdashboard(user, userData) {
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-   <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-     <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-     <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-       testeDados.titulo || "Teste"
-     }</p>
-     <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-     <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+    <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+      <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+        <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+          testeDados.titulo || "Teste"
+        }</p>
+        <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+        <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+      </div>
+
+      <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+        <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
+          <div>
+            <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+            <div style="font-size: 14px;">✅ Acertos</div>
+          </div>
+          <div>
+            <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+            <div style="font-size: 14px;">❌ Erros</div>
+          </div>
+          <div>
+            <div style="font-size: 32px; font-weight: bold;">${totalPerguntas}</div>
+            <div style="font-size: 14px;">📝 Total</div>
+          </div>
+          <div>
+            <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+            <div style="font-size: 14px;">📈 Aproveitamento</div>
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin: 20px 0;">
+
+      <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+
+      ${perguntasHTML}
     </div>
-   
-        <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-     <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
-     <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-      <div>
-       <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
-       <div style="font-size: 14px;">✅ Acertos</div>
-      </div>
-      <div>
-       <div style="font-size: 32px; font-weight: bold;">${erros}</div>
-       <div style="font-size: 14px;">❌ Erros</div>
-      </div>
-      <div>
-       <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
-       <div style="font-size: 14px;">📈 Aproveitamento</div>
-      </div>
-     </div>
-    </div>
-   
-    <hr style="margin: 20px 0;">
-   
-    <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-   
-    ${perguntasHTML}
-   </div>
   `,
         width: "900px",
         showCancelButton: true,
