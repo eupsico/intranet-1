@@ -98,7 +98,7 @@ export async function renderizarEntrevistaGestor(state) {
       // Dados encoded para modal
       const dadosCandidato = {
         id: candidaturaId,
-        nome_candidato: cand.nome_candidato,
+        nome_completo: cand.nome_candidato,
         email_candidato: cand.email_candidato,
         telefone_contato: cand.telefone_contato,
         status_recrutamento: statusAtual,
@@ -111,7 +111,7 @@ export async function renderizarEntrevistaGestor(state) {
         <div class="card card-candidato-gestor" data-id="${candidaturaId}">
           <div class="info-primaria">
             <h4 class="nome-candidato">
-              ${cand.nome_candidato || "Candidato Sem Nome"}
+              ${cand.nome_completo || "Candidato Sem Nome"}
               <span class="status-badge ${statusClass}">
                 <i class="fas fa-tag"></i> ${statusAtual}
               </span>
@@ -603,7 +603,7 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
             <i class="fas fa-user-tie"></i>
             <h3>Avaliação do Gestor</h3>
             <p style="margin: 0; opacity: 0.9; font-size: 14px;">
-              ${dadosCandidato.nome_candidato || "N/A"}
+              ${dadosCandidato.nome_completo || "N/A"}
             </p>
           </div>
           <button class="modal-close" onclick="fecharModalAvaliacaoGestor()">
@@ -639,7 +639,7 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
               </div>
               <div class="info-item">
                 <strong>Vaga:</strong><br>
-                <code>${titulo_vaga_original}</code>
+                <code>${vagaId}</code>
               </div>
             </div>
           </div>
@@ -1041,7 +1041,7 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
                 Detalhes do Candidato
               </h3>
               <p style="margin: 2px 0 0 0; color: #666; font-size: 14px;">
-                ${dadosCandidato.nome_candidato || "N/A"}
+                ${dadosCandidato.nome_completo || "N/A"}
               </p>
             </div>
           </div>
@@ -1059,7 +1059,7 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
               <div class="info-item">
                 <div class="info-label">Nome Completo</div>
                 <div class="info-value">${
-                  dadosCandidato.nome_candidato || "N/A"
+                  dadosCandidato.nome_completo || "N/A"
                 }</div>
               </div>
               <div class="info-item">
@@ -1105,7 +1105,7 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
               <div class="info-item">
                 <div class="info-label">Data de Cadastro</div>
                 <div class="info-value">${
-                  dadosCandidato.data_candidatura || "N/A"
+                  dadosCandidato.data_cadastro || "N/A"
                 }</div>
               </div>
               <div class="info-item">
@@ -1223,7 +1223,7 @@ function abrirModalAgendamentoFallback(candidatoId, dadosCodificados) {
         <div class="agendamento-body">
           <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
             <h4 style="margin: 0 0 10px 0; color: #28a745;">${
-              dadosCandidato.nome_candidato
+              dadosCandidato.nome_completo
             }</h4>
             <p style="margin: 0; color: #666; font-size: 14px;">
               <i class="fas fa-envelope"></i> ${
