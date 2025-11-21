@@ -1965,26 +1965,6 @@
     background-color: var(--cor-erro);
     color: white;
 }
-
-/* Resumo de pontuação */
-#resumo-pontuacao {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    box-shadow: var(--sombra-suave);
-    padding: 24px;
-}
-
-#resumo-pontuacao h5 {
-    margin: 0 0 20px 0;
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--cor-primaria);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
 /* Grid de estatísticas */
 .details-grid {
     display: grid;
@@ -1992,8 +1972,23 @@
     margin-top: 15px;
 }
 
+/* ✅ CORRIGIDO: Força sempre 4 colunas lado a lado */
 .details-grid.cols-4 {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* ✅ RESPONSIVO: Em telas pequenas, reduz para 2 colunas */
+@media (max-width: 768px) {
+    .details-grid.cols-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ✅ RESPONSIVO: Em telas muito pequenas, reduz para 1 coluna */
+@media (max-width: 480px) {
+    .details-grid.cols-4 {
+        grid-template-columns: 1fr;
+    }
 }
 
 .details-grid p {
@@ -2031,6 +2026,7 @@
 .details-grid p.text-info strong {
     color: #0078d4;
 }
+
 
 /* Alert de avaliação */
 #aviso-avaliacao {
@@ -2131,9 +2127,22 @@
         width: 100%;
         justify-content: center;
     }
+#resumo-pontuacao h5 {
+    margin: 0 0 20px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--cor-primaria);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
     #resumo-pontuacao {
-        padding: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      border: 1px solid var(--cor-borda);
+      border-radius: var(--borda-radius);
+      box-shadow: var(--sombra-suave);
+      padding: 24px;
     }
 
     .info-card {
