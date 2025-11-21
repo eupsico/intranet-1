@@ -372,7 +372,6 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
         { merge: true }
       );
 
-      alert("✅ Agendamento com Gestor salvo com sucesso!");
       modal.classList.remove("is-visible");
 
       // ⚠️ AQUI: Envia o WhatsApp automaticamente se tiver telefone
