@@ -70,15 +70,7 @@ export async function renderizarFinalizados(state) {
 
     // Container com grid responsivo (igual tabEntrevistas)
     let listaHtml = `
-      <div class="candidatos-container candidatos-grid">
-        <div class="section-header">
-          <h3 class="section-title" style="margin-bottom: 20px; color: var(--cor-primaria);">
-            <i class="fas fa-flag-checkered"></i> Candidatos Finalizados (${snapshot.size})
-          </h3>
-          <p class="section-description" style="color: var(--cor-texto-secundario); margin-bottom: 20px;">
-            Lista de candidatos contratados ou que receberam comunicação final de rejeição.
-          </p>
-        </div>
+      <div class="candidatos-container candidatos-grid"></div>
     `;
 
     // Loop forEach com estrutura de cards das outras abas
