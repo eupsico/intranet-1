@@ -481,8 +481,8 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * ✅ Carrega estatísticas combinando dados do perfil do candidato (envios)
- * com os resultados detalhados em testesRealizados.
+ * ✅ Carrega estatísticas (Híbrido)
+ * CORREÇÃO: Tratamento rigoroso para evitar erro "n.split is not a function" no Firebase
  */
 async function carregarEstatisticasTestes(candidatoId) {
   console.log("📊 [STATS] Iniciando cálculo HÍBRIDO para ID:", candidatoId);
@@ -490,8 +490,18 @@ async function carregarEstatisticasTestes(candidatoId) {
   const statsDiv = document.getElementById("avaliacao-teste-stats");
   if (!statsDiv) return;
 
+  // Validação inicial do ID do candidato
+  if (!candidatoId || typeof candidatoId !== "string") {
+    console.error(
+      "❌ [STATS] ID do candidato inválido para busca:",
+      candidatoId
+    );
+    statsDiv.innerHTML = `<p class="text-danger">Erro: ID do candidato inválido.</p>`;
+    return;
+  }
+
   try {
-    // 1. Busca o documento do CANDIDATO para pegar o array de testes enviados
+    // 1. Busca o documento do CANDIDATO
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     const candidatoSnap = await getDoc(candidatoRef);
 
@@ -501,13 +511,10 @@ async function carregarEstatisticasTestes(candidatoId) {
     }
 
     const dadosCandidato = candidatoSnap.data();
-    // Tenta pegar o array com tratamento para variações de nome de campo
     const arrayTestes =
       dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
 
-    // AQUI define a quantidade correta de testes enviados
     let totalTestes = arrayTestes.length;
-
     let totalAcertos = 0;
     let totalErros = 0;
     let totalQuestoesGeral = 0;
@@ -519,42 +526,42 @@ async function carregarEstatisticasTestes(candidatoId) {
     if (totalTestes === 0) {
       console.warn("⚠️ [STATS] Array de testes enviados está vazio.");
     } else {
-      // 2. Itera sobre o array para buscar as notas em 'testesRealizados' usando o Token
+      // 2. Itera sobre o array buscando as notas
       const promessasDeBusca = arrayTestes.map(async (testeItem) => {
-        // O ID do teste (Token) geralmente está em .id, .tokenId ou .testeId dentro do objeto do array
-        const tokenId = testeItem.id || testeItem.tokenId || testeItem.testeId;
+        // Tenta extrair o Token/ID de várias formas possíveis
+        let tokenId = testeItem.id || testeItem.tokenId || testeItem.testeId;
         const nomeTeste = testeItem.nome || testeItem.nomeTeste || "Teste";
 
-        if (!tokenId) {
-          console.warn("⚠️ [STATS] Item do array sem Token/ID:", testeItem);
+        // CORREÇÃO DO ERRO n.split:
+        // Se tokenId for um objeto (ex: uma referência do Firestore), tenta pegar o ID dele
+        if (typeof tokenId === "object" && tokenId !== null && tokenId.id) {
+          tokenId = tokenId.id;
+        }
+
+        // Se após isso o tokenId não for uma string válida, pula este item
+        if (!tokenId || typeof tokenId !== "string") {
+          console.warn(`⚠️ [STATS] Item ignorado (Token inválido):`, testeItem);
           return null;
         }
 
         try {
-          // Caminho EXATO solicitado: testesRealizados -> tokenId -> candidatos -> candidatoId
-          const path = `testesRealizados/${tokenId}/candidatos/${candidatoId}`;
-          console.log(`🔍 [STATS] Buscando nota em: ${path}`);
+          // Força a conversão para String para evitar o erro n.split
+          const strTokenId = String(tokenId).trim();
+          const strCandidatoId = String(candidatoId).trim();
 
+          // Caminho: testesRealizados -> tokenId -> candidatos -> candidatoId
           const avaliacaoRef = doc(
             db,
             "testesRealizados",
-            tokenId,
+            strTokenId,
             "candidatos",
-            candidatoId
+            strCandidatoId
           );
           const avaliacaoSnap = await getDoc(avaliacaoRef);
 
           if (avaliacaoSnap.exists()) {
             const dados = avaliacaoSnap.data();
-            console.log(
-              `   📄 Dados encontrados para ${nomeTeste}:`,
-              dados.estatisticasAvaliacao
-            );
             return dados.estatisticasAvaliacao || null;
-          } else {
-            console.log(
-              `   Build [STATS] Documento não encontrado para ${nomeTeste} (Candidato talvez não tenha terminado)`
-            );
           }
         } catch (err) {
           console.error(`❌ Erro ao buscar token ${tokenId}:`, err);
@@ -562,7 +569,6 @@ async function carregarEstatisticasTestes(candidatoId) {
         return null;
       });
 
-      // Aguarda todas as buscas
       const resultados = await Promise.all(promessasDeBusca);
 
       // 3. Soma os valores
@@ -570,7 +576,6 @@ async function carregarEstatisticasTestes(candidatoId) {
         if (stats) {
           const acertos = parseInt(stats.acertos) || 0;
           const erros = parseInt(stats.erros) || 0;
-          // Soma questões para média ponderada ou usa acertos+erros
           const totalQ =
             parseInt(stats.totalQuestoes) ||
             parseInt(stats.totalAvaliadadas) ||
@@ -584,7 +589,7 @@ async function carregarEstatisticasTestes(candidatoId) {
       });
     }
 
-    // 4. Cálculo da taxa de aproveitamento
+    // 4. Cálculo da taxa
     const taxaMedia =
       totalQuestoesGeral > 0
         ? ((totalAcertos / totalQuestoesGeral) * 100).toFixed(1)
@@ -630,7 +635,7 @@ async function carregarEstatisticasTestes(candidatoId) {
     `;
   } catch (error) {
     console.error("❌ [STATS] Erro fatal ao buscar estatísticas:", error);
-    statsDiv.innerHTML = `<p class="text-danger">Erro ao carregar dados: ${error.message}</p>`;
+    statsDiv.innerHTML = `<p class="text-danger small">Erro ao carregar dados: ${error.message}</p>`;
   }
 }
 /**
