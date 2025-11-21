@@ -117,7 +117,6 @@ export async function initdashboard(user, userData) {
       });
     });
   }
-
   if (relRelatóriosTabs) {
     relRelatóriosTabs.querySelectorAll(".tab-link").forEach((tab) => {
       tab.addEventListener("click", (e) => {
@@ -135,15 +134,159 @@ export async function initdashboard(user, userData) {
       });
     });
   }
-
   if (btnAtualizarRelatorios) {
     btnAtualizarRelatorios.addEventListener("click", carregarRelatorios);
   }
 
   if (relBuscaCandidato) {
     relBuscaCandidato.addEventListener("input", filtrarCandidatos);
-  }
+  } // FUNÇÃO: Criar Gráfico de Inscrições // ============================================
 
+  // ============================================
+  async function criarGraficoInscricoes() {
+    const ctx = document.getElementById("rel-chart-inscricoes");
+    if (!ctx) {
+      console.error("❌ Canvas rel-chart-inscricoes não encontrado");
+      return;
+    }
+
+    if (typeof Chart === "undefined") {
+      console.error("❌ Chart.js não foi importado!");
+      return;
+    }
+
+    const inscricoesPorVaga = {};
+
+    candidatosCache.forEach((cand) => {
+      const vagaId = cand.vaga_id || "Sem vaga";
+      inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
+    });
+
+    const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
+      const vaga = vagasCache.find((v) => v.id === vagaId);
+      return vaga?.titulo || vaga?.nome || vagaId.substring(0, 8);
+    });
+
+    const dados = Object.values(inscricoesPorVaga);
+
+    console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
+
+    if (window.graficoInscricoes) {
+      window.graficoInscricoes.destroy();
+    }
+
+    window.graficoInscricoes = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: vagasNomes,
+        datasets: [
+          {
+            label: "Total de Inscrições",
+            data: dados,
+            backgroundColor: "#667eea",
+            borderColor: "#5568d3",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: true,
+          },
+        },
+      },
+    });
+  } // FUNÇÃO: Renderizar Inscrições por Vaga // ============================================
+
+  // ============================================
+  async function renderizarInscricoesPorVaga() {
+    console.log("🔹 Renderizando inscrições por vaga...");
+
+    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
+    if (!tabelaBody) {
+      console.error("❌ Elemento rel-tbody-inscricoes não encontrado");
+      return;
+    }
+
+    tabelaBody.innerHTML = "";
+
+    const inscricoesPorVaga = {};
+
+    candidatosCache.forEach((cand) => {
+      const vagaId = cand.vaga_id || "Sem vaga";
+
+      if (!inscricoesPorVaga[vagaId]) {
+        inscricoesPorVaga[vagaId] = {
+          total: 0,
+          triagem: 0,
+          aprovados: 0,
+          rejeitados: 0,
+          contratados: 0,
+        };
+      }
+
+      inscricoesPorVaga[vagaId].total++;
+
+      const status = cand.status_recrutamento || "Candidatura Recebida";
+
+      if (
+        status.includes("Triagem") ||
+        status === "Candidatura Recebida" ||
+        status.includes("recebida")
+      ) {
+        inscricoesPorVaga[vagaId].triagem++;
+      } else if (
+        status.includes("Aprovada") ||
+        status.includes("Entrevista Pendente")
+      ) {
+        inscricoesPorVaga[vagaId].aprovados++;
+      } else if (status.includes("Rejeitado") || status.includes("rejeicao")) {
+        inscricoesPorVaga[vagaId].rejeitados++;
+      } else if (status.includes("Contratado")) {
+        inscricoesPorVaga[vagaId].contratados++;
+      }
+    });
+
+    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
+
+    Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
+      const vaga = vagasCache.find((v) => v.id === vagaId);
+      const vagaNome =
+        vaga?.titulo ||
+        vaga?.tituloVaga ||
+        vaga?.nome ||
+        `Vaga ${vagaId.substring(0, 8)}`;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+    <td><strong>${vagaNome}</strong></td>
+    <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
+    <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
+    <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
+    <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
+    <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
+   `;
+      tabelaBody.appendChild(tr);
+    });
+
+    if (Object.keys(inscricoesPorVaga).length === 0) {
+      tabelaBody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
+    }
+
+    await criarGraficoInscricoes();
+  }
   // ============================================
   // FUNÇÃO: Carregar Relatórios
   // ============================================
@@ -285,9 +428,8 @@ export async function initdashboard(user, userData) {
     }
 
     candidatosFiltrados.forEach((candidato) => {
-      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id); // ✅ CORRIGIDO: Priorizar titulo_vaga_original do candidato
 
-      // ✅ CORRIGIDO: Priorizar titulo_vaga_original do candidato
       const vagaNome =
         candidato.titulo_vaga_original ||
         vaga?.titulo ||
@@ -296,9 +438,8 @@ export async function initdashboard(user, userData) {
 
       // ✅ CORRIGIDO: Priorizar nome_completo ou nome_candidato
       const nomeCandidato =
-        candidato.nome_completo || candidato.nome_candidato || "-";
+        candidato.nome_completo || candidato.nome_candidato || "-"; // ✅ CORRIGIDO: Status do Teste
 
-      // ✅ CORRIGIDO: Status do Teste
       const testeEnviado = tokensCache.some(
         (t) => t.candidatoId === candidato.id
       );
@@ -423,10 +564,8 @@ export async function initdashboard(user, userData) {
 
     try {
       let csv = [];
-      const headers = Object.keys(dados[0]);
+      const headers = Object.keys(dados[0]); // ✅ Adiciona BOM (Byte Order Mark) para UTF-8 // Isso faz o Excel reconhecer corretamente os acentos
 
-      // ✅ Adiciona BOM (Byte Order Mark) para UTF-8
-      // Isso faz o Excel reconhecer corretamente os acentos
       const headerRow = headers
         .map((h) => {
           let header = String(h).replace(/"/g, '""');
@@ -434,24 +573,21 @@ export async function initdashboard(user, userData) {
         })
         .join(",");
 
-      csv.push(headerRow);
+      csv.push(headerRow); // ✅ Processa cada linha de dados
 
-      // ✅ Processa cada linha de dados
       dados.forEach((linha) => {
         const row = headers
           .map((h) => {
-            let valor = linha[h] || "";
+            let valor = linha[h] || ""; // Converte valores especiais
 
-            // Converte valores especiais
             if (valor === null || valor === undefined) {
               valor = "";
             } else if (typeof valor === "object") {
               valor = JSON.stringify(valor);
             } else {
               valor = String(valor);
-            }
+            } // Escapa aspas duplas
 
-            // Escapa aspas duplas
             valor = valor.replace(/"/g, '""');
 
             return `"${valor}"`;
@@ -461,21 +597,18 @@ export async function initdashboard(user, userData) {
         csv.push(row);
       });
 
-      const csvContent = csv.join("\n");
+      const csvContent = csv.join("\n"); // ✅ BOM UTF-8 (\uFEFF) faz Excel reconhecer acentos corretamente
 
-      // ✅ BOM UTF-8 (\uFEFF) faz Excel reconhecer acentos corretamente
       const BOM = "\uFEFF";
       const blob = new Blob([BOM + csvContent], {
         type: "text/csv;charset=utf-8;",
-      });
+      }); // ✅ Download do arquivo
 
-      // ✅ Download do arquivo
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
 
-      link.setAttribute("href", url);
+      link.setAttribute("href", url); // ✅ Muda extensão para .csv
 
-      // ✅ Muda extensão para .csv
       const nomeComExtenso = nomeArquivo.includes(".")
         ? nomeArquivo
         : nomeArquivo + ".csv";
@@ -485,9 +618,8 @@ export async function initdashboard(user, userData) {
 
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      document.body.removeChild(link); // Libera memória
 
-      // Libera memória
       URL.revokeObjectURL(url);
 
       console.log("✅ CSV gerado com sucesso!");
@@ -569,9 +701,8 @@ export async function initdashboard(user, userData) {
         orientation: "landscape",
         unit: "mm",
         format: "a4",
-      });
+      }); // ✅ CABEÇALHO
 
-      // ✅ CABEÇALHO
       doc.setFontSize(18);
       doc.setTextColor(102, 126, 234);
       doc.text("EuPsico", 148, 15, { align: "center" });
@@ -595,14 +726,12 @@ export async function initdashboard(user, userData) {
       const dataHora = `Data: ${new Date().toLocaleDateString(
         "pt-BR"
       )} | Hora: ${new Date().toLocaleTimeString("pt-BR")}`;
-      doc.text(dataHora, 148, 38, { align: "center" });
+      doc.text(dataHora, 148, 38, { align: "center" }); // Linha separadora
 
-      // Linha separadora
       doc.setDrawColor(102, 126, 234);
       doc.setLineWidth(0.5);
-      doc.line(14, 42, 283, 42);
+      doc.line(14, 42, 283, 42); // ✅ EXTRAI DADOS DA TABELA
 
-      // ✅ EXTRAI DADOS DA TABELA
       const cabecalhos = [];
       const linhas = [];
 
@@ -622,9 +751,8 @@ export async function initdashboard(user, userData) {
       });
 
       console.log("📊 Cabeçalhos:", cabecalhos);
-      console.log("📊 Linhas:", linhas.length);
+      console.log("📊 Linhas:", linhas.length); // ✅ CRIA A TABELA COM AUTOTABLE
 
-      // ✅ CRIA A TABELA COM AUTOTABLE
       doc.autoTable({
         head: [cabecalhos],
         body: linhas,
@@ -651,30 +779,26 @@ export async function initdashboard(user, userData) {
         columnStyles: {
           0: { cellWidth: "auto" },
         },
-      });
+      }); // ✅ RODAPÉ COM ENDEREÇO, WHATSAPP E CONTATO
 
-      // ✅ RODAPÉ COM ENDEREÇO, WHATSAPP E CONTATO
       const pageCount = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(100, 100, 100);
 
       for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
+        doc.setPage(i); // Linha separadora
 
-        // Linha separadora
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
-        doc.line(14, 182, 283, 182);
+        doc.line(14, 182, 283, 182); // ✅ Informações de contato
 
-        // ✅ Informações de contato
         const endereco =
           "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290";
         const whatsapp = "WhatsApp: 11 99794-9071";
 
         doc.text(endereco, 148, 187, { align: "center", maxWidth: 260 });
-        doc.text(whatsapp, 148, 191, { align: "center" });
+        doc.text(whatsapp, 148, 191, { align: "center" }); // Página e copyright
 
-        // Página e copyright
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
         doc.text(`Página ${i} de ${pageCount}`, 148, 195, { align: "center" });
@@ -684,9 +808,8 @@ export async function initdashboard(user, userData) {
           198,
           { align: "center" }
         );
-      }
+      } // ✅ SALVA O PDF
 
-      // ✅ SALVA O PDF
       doc.save(nomeArquivo);
       console.log("✅ PDF gerado com sucesso!");
       window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
@@ -925,22 +1048,22 @@ export async function initdashboard(user, userData) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-      <td><strong>${candidatoNome}</strong></td>
-      <td>${testeNome}</td>
-      <td>${dataResposta}</td>
-      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-      <td class="text-center">${notaHTML}</td>
-      <td><span class="badge bg-success">✅ Respondido</span></td>
-      <td class="text-center">
-        <button 
-          class="btn btn-sm btn-primary" 
-          title="Ver Respostas" 
-          onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
-        >
-          <i class="fas fa-eye me-1"></i> Ver Respostas
-        </button>
-      </td>
-    `;
+   <td><strong>${candidatoNome}</strong></td>
+   <td>${testeNome}</td>
+   <td>${dataResposta}</td>
+   <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
+   <td class="text-center">${notaHTML}</td>
+   <td><span class="badge bg-success">✅ Respondido</span></td>
+   <td class="text-center">
+    <button
+     class="btn btn-sm btn-primary"
+     title="Ver Respostas"
+     onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
+    >
+     <i class="fas fa-eye me-1"></i> Ver Respostas
+    </button>
+   </td>
+  `;
       tabelaBody.appendChild(tr);
     });
   } // ============================================ // FUNÇÃO ORIGINAL: Busca de dados do Dashboard // ============================================
@@ -1264,45 +1387,45 @@ export async function initdashboard(user, userData) {
             });
 
             opcoesHTML = `
-          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
-            <strong>Opções:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
-            </ul>
-          </div>
-          `;
+     <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+      <strong>Opções:</strong>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+       ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+      </ul>
+     </div>
+     `;
           }
 
           perguntasHTML += `
-        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
-          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-          </p>
-          
-          ${opcoesHTML}
-          
-          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
-            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
-          </div>
-          
-          ${
-            respostaCorreta
-              ? `
-          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
-            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
-          </div>
-          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
-            ${statusResposta}
-          </div>
-          `
-              : `
-          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
-            ${statusResposta}
-          </div>
-          `
-          }
-        </div>
-      `;
+    <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+     <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+      <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+     </p>
+    
+     ${opcoesHTML}
+    
+     <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+      <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+     </div>
+    
+     ${
+       respostaCorreta
+         ? `
+     <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+      <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+     </div>
+     <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+      ${statusResposta}
+     </div>
+     `
+         : `
+     <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+      ${statusResposta}
+     </div>
+     `
+     }
+    </div>
+   `;
         });
       } else {
         perguntasHTML =
@@ -1343,41 +1466,41 @@ export async function initdashboard(user, userData) {
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-          testeDados.titulo || "Teste"
-        }</p>
-          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-        </div>
-        
-                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
-          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
-              <div style="font-size: 14px;">✅ Acertos</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
-              <div style="font-size: 14px;">❌ Erros</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
-              <div style="font-size: 14px;">📈 Aproveitamento</div>
-            </div>
-          </div>
-        </div>
-        
-        <hr style="margin: 20px 0;">
-        
-        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-        
-        ${perguntasHTML}
-      </div>
-    `,
+   <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+     <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+     <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+       testeDados.titulo || "Teste"
+     }</p>
+     <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+     <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+    </div>
+   
+        <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+     <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+     <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+       <div style="font-size: 14px;">✅ Acertos</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+       <div style="font-size: 14px;">❌ Erros</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+       <div style="font-size: 14px;">📈 Aproveitamento</div>
+      </div>
+     </div>
+    </div>
+   
+    <hr style="margin: 20px 0;">
+   
+    <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+   
+    ${perguntasHTML}
+   </div>
+  `,
         width: "900px",
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
@@ -2004,45 +2127,45 @@ export async function initdashboard(user, userData) {
             });
 
             opcoesHTML = `
-          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
-            <strong>Opções:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
-            </ul>
-          </div>
-          `;
+     <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+      <strong>Opções:</strong>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+       ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+      </ul>
+     </div>
+     `;
           }
 
           perguntasHTML += `
-        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
-          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-          </p>
-          
-          ${opcoesHTML}
-          
-          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
-            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
-          </div>
-          
-          ${
-            respostaCorreta
-              ? `
-          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
-            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
-          </div>
-          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
-            ${statusResposta}
-          </div>
-          `
-              : `
-          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
-            ${statusResposta}
-          </div>
-          `
-          }
-        </div>
-      `;
+    <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+     <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+      <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+     </p>
+    
+     ${opcoesHTML}
+    
+     <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+      <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+     </div>
+    
+     ${
+       respostaCorreta
+         ? `
+     <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+      <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+     </div>
+     <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+      ${statusResposta}
+     </div>
+     `
+         : `
+     <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+      ${statusResposta}
+     </div>
+     `
+     }
+    </div>
+   `;
         });
       } else {
         perguntasHTML =
@@ -2083,41 +2206,41 @@ export async function initdashboard(user, userData) {
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-          testeDados.titulo || "Teste"
-        }</p>
-          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-        </div>
-        
-                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
-          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
-              <div style="font-size: 14px;">✅ Acertos</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
-              <div style="font-size: 14px;">❌ Erros</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
-              <div style="font-size: 14px;">📈 Aproveitamento</div>
-            </div>
-          </div>
-        </div>
-        
-        <hr style="margin: 20px 0;">
-        
-        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-        
-        ${perguntasHTML}
-      </div>
-    `,
+   <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+     <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+     <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+       testeDados.titulo || "Teste"
+     }</p>
+     <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+     <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+    </div>
+   
+        <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+     <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+     <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+       <div style="font-size: 14px;">✅ Acertos</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+       <div style="font-size: 14px;">❌ Erros</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+       <div style="font-size: 14px;">📈 Aproveitamento</div>
+      </div>
+     </div>
+    </div>
+   
+    <hr style="margin: 20px 0;">
+   
+    <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+   
+    ${perguntasHTML}
+   </div>
+  `,
         width: "900px",
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
@@ -2744,45 +2867,45 @@ export async function initdashboard(user, userData) {
             });
 
             opcoesHTML = `
-          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
-            <strong>Opções:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
-            </ul>
-          </div>
-          `;
+     <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+      <strong>Opções:</strong>
+      <ul style="margin: 5px 0; padding-left: 20px;">
+       ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+      </ul>
+     </div>
+     `;
           }
 
           perguntasHTML += `
-        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
-          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-          </p>
-          
-          ${opcoesHTML}
-          
-          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
-            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
-          </div>
-          
-          ${
-            respostaCorreta
-              ? `
-          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
-            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
-          </div>
-          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
-            ${statusResposta}
-          </div>
-          `
-              : `
-          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
-            ${statusResposta}
-          </div>
-          `
-          }
-        </div>
-      `;
+    <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+     <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+      <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+     </p>
+    
+     ${opcoesHTML}
+    
+     <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+      <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+     </div>
+    
+     ${
+       respostaCorreta
+         ? `
+     <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+      <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+     </div>
+     <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+      ${statusResposta}
+     </div>
+     `
+         : `
+     <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+      ${statusResposta}
+     </div>
+     `
+     }
+    </div>
+   `;
         });
       } else {
         perguntasHTML =
@@ -2823,41 +2946,41 @@ export async function initdashboard(user, userData) {
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-          testeDados.titulo || "Teste"
-        }</p>
-          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-        </div>
-        
-                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
-          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
-              <div style="font-size: 14px;">✅ Acertos</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
-              <div style="font-size: 14px;">❌ Erros</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
-              <div style="font-size: 14px;">📈 Aproveitamento</div>
-            </div>
-          </div>
-        </div>
-        
-        <hr style="margin: 20px 0;">
-        
-        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-        
-        ${perguntasHTML}
-      </div>
-    `,
+   <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+     <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+     <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+       testeDados.titulo || "Teste"
+     }</p>
+     <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+     <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+    </div>
+   
+        <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+     <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+     <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+       <div style="font-size: 14px;">✅ Acertos</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+       <div style="font-size: 14px;">❌ Erros</div>
+      </div>
+      <div>
+       <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+       <div style="font-size: 14px;">📈 Aproveitamento</div>
+      </div>
+     </div>
+    </div>
+   
+    <hr style="margin: 20px 0;">
+   
+    <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+   
+    ${perguntasHTML}
+   </div>
+  `,
         width: "900px",
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
