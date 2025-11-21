@@ -483,104 +483,106 @@ async function carregarRespostasDoTeste(
 /**
  * ✅ Carrega e exibe estatísticas de testes do candidato
  */
-async function carregarEstatisticasTestes(candidatoId) {
+async function carregarEstatisticasTestes(listaTestes) {
   console.log(
-    "📊 [STATS] Carregando estatísticas de testes para:",
-    candidatoId
+    "📊 [STATS] Calculando estatísticas a partir da lista fornecida..."
   );
 
-  try {
-    const statsDiv = document.getElementById("avaliacao-teste-stats");
+  const statsDiv = document.getElementById("avaliacao-teste-stats");
 
-    if (!statsDiv) {
-      console.error(
-        "❌ [STATS] Elemento #avaliacao-teste-stats não encontrado"
-      );
-      return;
-    }
+  if (!statsDiv) {
+    console.error("❌ [STATS] Elemento #avaliacao-teste-stats não encontrado");
+    return;
+  }
 
-    // Buscar testes respondidos do candidato
-    const testesRef = collection(db, "testesrespondidos");
-    const q = query(testesRef, where("candidatoId", "==", candidatoId));
-
-    console.log("🔍 [STATS] Buscando testes respondidos...");
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      console.warn("⚠️ [STATS] Nenhum teste respondido encontrado");
-      statsDiv.innerHTML = `
-        <p class="text-muted">
-          <i class="fas fa-info-circle me-2"></i>
-          Nenhum teste respondido ainda para este candidato.
-        </p>
+  // Verifica se a lista é válida e tem itens
+  if (!listaTestes || !Array.isArray(listaTestes) || listaTestes.length === 0) {
+    console.warn("⚠️ [STATS] Lista de testes vazia ou inválida");
+    statsDiv.innerHTML = `
+        <div class="text-center p-3">
+          <p class="text-muted mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            Nenhum dado de teste disponível para estatísticas.
+          </p>
+        </div>
       `;
-      return;
-    }
+    return;
+  }
 
-    console.log(`✅ [STATS] ${snapshot.docs.length} teste(s) encontrado(s)`);
+  try {
+    console.log(`✅ [STATS] Processando ${listaTestes.length} teste(s)...`);
 
     // Calcular estatísticas
-    let totalTestes = snapshot.docs.length;
+    let totalTestes = listaTestes.length;
     let totalPerguntas = 0;
     let totalAcertos = 0;
     let totalErros = 0;
+    let testesComNotas = 0;
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
+    listaTestes.forEach((teste) => {
+      // Tenta obter dados da raiz ou de respostasCompletas (fallback)
+      const dados = teste.respostasCompletas || teste;
 
-      // Dados individuais do teste
-      const acertos = data.acertos || 0;
-      const erros = data.erros || 0;
-      const total = data.totalPerguntas || acertos + erros || 0;
+      const acertos = parseInt(dados.acertos) || 0;
+      const erros = parseInt(dados.erros) || 0;
+      // Se totalPerguntas não existir, tenta somar acertos e erros, ou assume 0
+      const totalQ = parseInt(dados.totalPerguntas) || acertos + erros || 0;
 
-      totalPerguntas += total;
-      totalAcertos += acertos;
-      totalErros += erros;
+      // Só soma nas estatísticas se houver algum dado de acerto/erro computado
+      if (acertos > 0 || erros > 0 || totalQ > 0) {
+        totalPerguntas += totalQ;
+        totalAcertos += acertos;
+        totalErros += erros;
+        testesComNotas++;
+      }
 
-      console.log(`  📋 Teste: ${data.nomeTeste || "Sem nome"}`);
-      console.log(`     Acertos: ${acertos}, Erros: ${erros}, Total: ${total}`);
+      console.log(`  📋 Teste: ${teste.nomeTeste || "Sem nome"}`);
+      console.log(
+        `     Acertos: ${acertos}, Erros: ${erros}, Total: ${totalQ}`
+      );
     });
 
-    // Calcular taxa média
+    // Calcular taxa média (baseada apenas nos testes que já foram avaliados/respondidos)
+    // Se totalPerguntas for 0, evita divisão por zero
     const taxaMedia =
       totalPerguntas > 0
         ? ((totalAcertos / totalPerguntas) * 100).toFixed(1)
-        : 0;
+        : "0.0";
 
     console.log(
-      `📊 [STATS] Resumo: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% média`
+      `📊 [STATS] Resumo Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% média`
     );
 
     // Renderizar HTML
     statsDiv.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
           <div style="font-size: 24px; font-weight: bold; color: #6c757d;">${totalTestes}</div>
           <div style="font-size: 12px; color: #666; margin-top: 5px;">📝 Testes Enviados</div>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center; padding: 15px; background: #f0fff4; border-radius: 8px; border: 1px solid #c3e6cb;">
           <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalAcertos}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">✅ Acertos</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">✅ Acertos Totais</div>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center; padding: 15px; background: #fff5f5; border-radius: 8px; border: 1px solid #f5c6cb;">
           <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${totalErros}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">❌ Erros</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">❌ Erros Totais</div>
         </div>
-        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center; padding: 15px; background: #e7f1ff; border-radius: 8px; border: 1px solid #b8daff;">
           <div style="font-size: 24px; font-weight: bold; color: #007bff;">${taxaMedia}%</div>
-          <div style="font-size: 12px; color: #666; margin-top: 5px;">📈 Taxa Média</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">📈 Aproveitamento</div>
         </div>
       </div>
     `;
 
-    console.log("✅ [STATS] Estatísticas carregadas com sucesso");
+    console.log("✅ [STATS] Estatísticas renderizadas com sucesso");
   } catch (error) {
-    console.error("❌ [STATS] Erro ao carregar estatísticas:", error);
-    document.getElementById("avaliacao-teste-stats").innerHTML = `
-      <p class="text-danger">
+    console.error("❌ [STATS] Erro ao calcular estatísticas:", error);
+    statsDiv.innerHTML = `
+      <div class="alert alert-danger small">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        Erro ao carregar estatísticas: ${error.message}
-      </p>
+        Erro ao calcular estatísticas: ${error.message}
+      </div>
     `;
   }
 }
