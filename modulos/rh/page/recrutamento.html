@@ -185,11 +185,12 @@
                   <select id="avaliacao-teste-gestor" required>
                     <option value="">Selecione um gestor...</option>
                   </select>
+                  <!-- ✅ CORREÇÃO: Alterado de enviarWhatsAppGestor() para window.enviarWhatsAppGestor() -->
                   <button
                     type="button"
                     id="btn-whatsapp-gestor-avaliacao"
                     class="action-button small whatsapp"
-                    onclick="enviarWhatsAppGestor()"
+                    onclick="window.enviarWhatsAppGestor()"
                     disabled
                     title="Notificar gestor via WhatsApp"
                   >
