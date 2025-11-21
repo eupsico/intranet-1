@@ -243,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Substitui placeholders (Assumindo nome do candidato e vaga)
-    const nomeCandidato = dadosCandidatura.nome_completo || "Candidato(a)";
+    const nomeCandidato = dadosCandidatura.nome_candidato || "Candidato(a)";
     const tituloVaga = dadosCandidatura.titulo_vaga_original || "Vaga";
     textoMensagemFinal.value = textoMensagemFinal.value
       .replace("[NOME_CANDIDATO]", nomeCandidato)
