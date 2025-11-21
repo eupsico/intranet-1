@@ -888,11 +888,81 @@ export async function initdashboard(user, userData) {
 
   async function renderizarListaCandidatos() {
     console.log("🔹 Renderizando lista de candidatos...");
-
     const tabelaBody = document.getElementById("rel-tbody-candidatos");
     if (!tabelaBody) return;
 
-    atualizarTabelaCandidatos(candidatosCache, tabelaBody);
+    tabelaBody.innerHTML = "";
+
+    const filtroVaga = relFiltroVaga?.value;
+    const filtroStatus = relFiltroStatus?.value;
+    const buscaNome = relBuscaCandidato?.value.toLowerCase() || "";
+
+    const respostasCache = window.respostasCache || [];
+
+    let candidatosFiltrados = candidatosCache;
+
+    if (filtroVaga) {
+      candidatosFiltrados = candidatosFiltrados.filter(
+        (c) => c.vaga_id === filtroVaga
+      );
+    }
+
+    if (filtroStatus) {
+      candidatosFiltrados = candidatosFiltrados.filter(
+        (c) => c.status_recrutamento === filtroStatus
+      );
+    }
+
+    if (buscaNome) {
+      candidatosFiltrados = candidatosFiltrados.filter((c) =>
+        (c.nome_completo || "").toLowerCase().includes(buscaNome)
+      );
+    }
+
+    candidatosFiltrados.forEach((candidato) => {
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
+
+      // ✅ CORRIGIDO: Verificar teste enviado e respondido na nova estrutura
+      const testeEnviado = tokensCache.some(
+        (t) => t.candidatoId === candidato.id
+      );
+
+      const testeRespondido = respostasCache.some(
+        (r) => r.candidatoId === candidato.id
+      );
+
+      let statusTeste = "Não enviado";
+      if (testeRespondido) {
+        statusTeste = "Respondido";
+      } else if (testeEnviado) {
+        statusTeste = "Enviado";
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+      <td><strong>${candidato.nome_completo || "-"}</strong></td>
+      <td>${candidato.email_candidato || "-"}</td>
+      <td>${candidato.telefone_contato || "-"}</td>
+      <td>${vagaNome}</td>
+      <td><span class="badge bg-info">${
+        candidato.status_recrutamento || "-"
+      }</span></td>
+      <td><span class="badge ${
+        statusTeste === "Respondido"
+          ? "bg-success"
+          : statusTeste === "Enviado"
+          ? "bg-warning"
+          : "bg-secondary"
+      }">${statusTeste}</span></td>
+    `;
+      tabelaBody.appendChild(tr);
+    });
+
+    if (candidatosFiltrados.length === 0) {
+      tabelaBody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
+    }
   }
 
   function atualizarTabelaCandidatos(candidatos, tabelaBody) {
@@ -966,129 +1036,95 @@ export async function initdashboard(user, userData) {
 
     tabelaBody.innerHTML = "";
 
-    // ✅ CORREÇÃO: Buscar dados da nova estrutura testesRealizados
-    try {
-      const testesRealizadosRef = collection(db, "testesRealizados");
-      const testesSnapshot = await getDocs(testesRealizadosRef);
+    const respostasCache = window.respostasCache || [];
 
-      const respostasProcessadas = [];
-
-      for (const testeDoc of testesSnapshot.docs) {
-        const tokenId = testeDoc.id;
-
-        // Buscar subcoleção candidatos
-        const candidatosRef = collection(
-          db,
-          `testesRealizados/${tokenId}/candidatos`
-        );
-        const candidatosSnapshot = await getDocs(candidatosRef);
-
-        for (const candidatoDoc of candidatosSnapshot.docs) {
-          const dados = candidatoDoc.data();
-          const candidatoId = candidatoDoc.id;
-
-          // Buscar informações do candidato
-          const candidato = candidatosCache.find((c) => c.id === candidatoId);
-
-          // Buscar informações do teste (do token original)
-          let teste = null;
-          const tokenOriginal = tokensCache.find((t) => t.id === tokenId);
-          if (tokenOriginal) {
-            teste = estudosCache.find((t) => t.id === tokenOriginal.testeId);
-          }
-
-          const candidatoNome =
-            candidato?.nome_completo || candidato?.nome_candidato || "-";
-          const testeNome =
-            teste?.titulo || teste?.nome || dados.nomeTeste || "-";
-
-          const dataResposta = dados.dataResposta
-            ? new Date(
-                dados.dataResposta.toDate?.() || dados.dataResposta
-              ).toLocaleDateString("pt-BR", {
-                weekday: "short",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-";
-
-          const tempoSegundos = dados.tempoGasto || 0;
-          const tempoMinutos = Math.floor(tempoSegundos / 60);
-          const tempoFormatado =
-            tempoMinutos > 0
-              ? `${tempoMinutos}min ${tempoSegundos % 60}s`
-              : `${tempoSegundos}s`;
-
-          // ✅ USAR ESTATÍSTICAS SALVAS PELO AVALIADOR
-          let notaHTML =
-            '<span class="badge bg-secondary">Aguardando Avaliação</span>';
-
-          if (
-            dados.estatisticasAvaliacao &&
-            dados.estatisticasAvaliacao.totalQuestoes > 0
-          ) {
-            const stats = dados.estatisticasAvaliacao;
-            const acertos = stats.acertos || 0;
-            const totalQuestoes = stats.totalQuestoes;
-            const porcentagem = stats.taxaAcerto || 0;
-
-            let corBadge = "bg-danger";
-            if (porcentagem >= 70) {
-              corBadge = "bg-success";
-            } else if (porcentagem >= 50) {
-              corBadge = "bg-warning text-dark";
-            }
-
-            notaHTML = `<span class="badge ${corBadge}">${acertos}/${totalQuestoes} (${porcentagem}%)</span>`;
-          }
-
-          respostasProcessadas.push({
-            tokenId,
-            candidatoId,
-            candidatoNome,
-            testeNome,
-            dataResposta,
-            tempoFormatado,
-            notaHTML,
-          });
-        }
-      }
-
-      // Renderizar todas as respostas
-      respostasProcessadas.forEach((resposta) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-        <td><strong>${resposta.candidatoNome}</strong></td>
-        <td>${resposta.testeNome}</td>
-        <td>${resposta.dataResposta}</td>
-        <td class="text-center"><span class="badge bg-info">${resposta.tempoFormatado}</span></td>
-        <td class="text-center">${resposta.notaHTML}</td>
-        <td><span class="badge bg-success">✅ Respondido</span></td>
-        <td class="text-center">
-          <button 
-            class="btn btn-sm btn-primary" 
-            title="Ver Respostas" 
-            onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
-          >
-            <i class="fas fa-eye me-1"></i> Ver Respostas
-          </button>
-        </td>
-      `;
-        tabelaBody.appendChild(tr);
-      });
-
-      if (respostasProcessadas.length === 0) {
-        tabelaBody.innerHTML =
-          '<tr><td colspan="7" class="text-center text-muted">Nenhuma resposta encontrada</td></tr>';
-      }
-    } catch (error) {
-      console.error("❌ Erro ao renderizar respostas aos testes:", error);
+    if (respostasCache.length === 0) {
       tabelaBody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+        '<tr><td colspan="7" class="text-center text-muted">Nenhuma resposta encontrada</td></tr>';
+      return;
     }
+
+    respostasCache.forEach((resposta) => {
+      // Buscar informações do candidato
+      const candidato = candidatosCache.find(
+        (c) => c.id === resposta.candidatoId
+      );
+
+      // Buscar informações do teste (do token original)
+      const tokenOriginal = tokensCache.find((t) => t.id === resposta.tokenId);
+      let teste = null;
+      if (tokenOriginal) {
+        teste = estudosCache.find((t) => t.id === tokenOriginal.testeId);
+      }
+
+      const candidatoNome =
+        candidato?.nome_completo || candidato?.nome_candidato || "-";
+      const testeNome =
+        teste?.titulo || teste?.nome || resposta.nomeTeste || "-";
+
+      const dataResposta = resposta.dataResposta
+        ? new Date(
+            resposta.dataResposta.toDate?.() || resposta.dataResposta
+          ).toLocaleDateString("pt-BR", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoSegundos = resposta.tempoGasto || 0;
+      const tempoMinutos = Math.floor(tempoSegundos / 60);
+      const tempoFormatado =
+        tempoMinutos > 0
+          ? `${tempoMinutos}min ${tempoSegundos % 60}s`
+          : `${tempoSegundos}s`;
+
+      // ✅ USAR ESTATÍSTICAS SALVAS PELO AVALIADOR
+      let notaHTML =
+        '<span class="badge bg-secondary">Aguardando Avaliação</span>';
+
+      if (
+        resposta.estatisticasAvaliacao &&
+        resposta.estatisticasAvaliacao.totalQuestoes > 0
+      ) {
+        const stats = resposta.estatisticasAvaliacao;
+        const acertos = stats.acertos || 0;
+        const totalQuestoes = stats.totalQuestoes;
+        const porcentagem = stats.taxaAcerto || 0;
+
+        let corBadge = "bg-danger";
+        if (porcentagem >= 70) {
+          corBadge = "bg-success";
+        } else if (porcentagem >= 50) {
+          corBadge = "bg-warning text-dark";
+        }
+
+        notaHTML = `<span class="badge ${corBadge}">${acertos}/${totalQuestoes} (${porcentagem}%)</span>`;
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+      <td><strong>${candidatoNome}</strong></td>
+      <td>${testeNome}</td>
+      <td>${dataResposta}</td>
+      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
+      <td class="text-center">${notaHTML}</td>
+      <td><span class="badge bg-success">✅ Respondido</span></td>
+      <td class="text-center">
+        <button 
+          class="btn btn-sm btn-primary" 
+          title="Ver Respostas" 
+          onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
+        >
+          <i class="fas fa-eye me-1"></i> Ver Respostas
+        </button>
+      </td>
+    `;
+      tabelaBody.appendChild(tr);
+    });
   }
 
   // ============================================
