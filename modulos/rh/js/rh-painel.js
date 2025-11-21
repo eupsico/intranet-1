@@ -87,14 +87,14 @@ export function initrhPanel(user, db, userData) {
     },
     {
       id: "gestao_estudos_de_caso",
-      name: "3. Gerenciar Estudos/Testes",
+      name: "Gerenciar Estudos/Testes",
       roles: ["admin", "rh"],
       icon: icons.gestao_estudos_de_caso,
     }, // NOVA ROTA ADICIONADA
 
     {
       id: "gestao_documentos",
-      name: "5. Gerenciar Documentos",
+      name: "Gerenciar Documentos",
       roles: ["admin", "rh"],
       icon: icons.gestao_documentos,
     },
