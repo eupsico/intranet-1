@@ -86,9 +86,11 @@
     text-align: right;
 }
 
-.action-button.btn-sm {
+.action-button.btn-sm.btn-primary {
     padding: 5px 10px;
     font-size: 0.8em;
+     border-radius: .25rem;
+    background-color: var(--cor-secundaria);
 }
 
 .action-button.primary {
