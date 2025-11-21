@@ -617,7 +617,7 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
             <div class="info-grid">
               <div class="info-item">
                 <strong>Nome do Candidato:</strong><br>
-                <code>${nome_candidato}</code>
+                <code>${nome_completo}</code>
               </div>
               <div class="info-item">
                 <strong>ID do Candidato:</strong><br>
