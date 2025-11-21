@@ -116,7 +116,7 @@ export async function renderizarEntrevistaGestor(state) {
         }
       }
 
-      // --- DADOS PARA OS MODAIS ---
+      // --- DADOS COMPLETOS PARA OS MODAIS ---
       const dadosCandidato = {
         id: candidaturaId,
         nome_completo: cand.nome_candidato || cand.nome_completo,
@@ -225,7 +225,6 @@ export async function renderizarEntrevistaGestor(state) {
           const dadosCandidato = JSON.parse(
             decodeURIComponent(dadosCodificados)
           );
-          // Chama a função local correta para agendamento do GESTOR
           abrirModalAgendamentoGestorLocal(id, dadosCandidato);
         } catch (error) {
           console.error("Erro ao abrir agendamento:", error);
@@ -239,7 +238,41 @@ export async function renderizarEntrevistaGestor(state) {
 }
 
 // ============================================================
-// ✅ FUNÇÃO: AGENDAMENTO GESTOR (Reutiliza Modal RH mas CORRIGE Títulos/Botões)
+// ✅ FUNÇÃO AUXILIAR: ENVIO WHATSAPP
+// ============================================================
+function enviarMensagemWhatsAppGestor(nome, telefone, data, hora) {
+  if (!telefone) return;
+
+  // Formatar Data (yyyy-mm-dd para dd/mm/yyyy)
+  const partesData = data.split("-");
+  const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+
+  const mensagem = `
+Olá *${nome}*! Tudo bem?
+
+Parabéns pela aprovação na etapa anterior! 🎉
+
+Gostaríamos de confirmar o agendamento da sua *Entrevista com o Gestor*.
+
+📅 *Data:* ${dataFormatada}
+⏰ *Horário:* ${hora}
+
+Por favor, confirme o recebimento desta mensagem e sua disponibilidade.
+
+Boa sorte! 🚀
+  `.trim();
+
+  const telefoneLimpo = telefone.replace(/\D/g, "");
+  const url = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${encodeURIComponent(
+    mensagem
+  )}`;
+
+  // Abre em nova aba
+  window.open(url, "_blank");
+}
+
+// ============================================================
+// ✅ FUNÇÃO: AGENDAMENTO GESTOR (Com envio de WhatsApp)
 // ============================================================
 function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
   console.log(
@@ -273,7 +306,6 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
   if (elStatus)
     elStatus.textContent = dadosCandidato.status_recrutamento || "N/A";
 
-  // No resumo, mostramos info relevante ou o resumo da triagem
   if (elResumo) {
     elResumo.textContent =
       dadosCandidato.resumo_triagem || "Sem informações adicionais.";
@@ -342,6 +374,20 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
 
       alert("✅ Agendamento com Gestor salvo com sucesso!");
       modal.classList.remove("is-visible");
+
+      // ⚠️ AQUI: Envia o WhatsApp automaticamente se tiver telefone
+      if (dadosCandidato.telefone_contato) {
+        console.log("📱 Iniciando envio de WhatsApp...");
+        setTimeout(() => {
+          enviarMensagemWhatsAppGestor(
+            dadosCandidato.nome_completo,
+            dadosCandidato.telefone_contato,
+            dataAgendada,
+            horaAgendada
+          );
+        }, 500); // Pequeno delay para UX
+      }
+
       renderizarEntrevistaGestor(getGlobalState());
     } catch (error) {
       console.error("Erro ao agendar:", error);
@@ -353,12 +399,12 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
     }
   });
 
-  // 5. Configurar botão de fechar (CORRIGIDO para funcionar)
-  // Seleciona todos os botões de fechar dentro do modal e reanexa o evento
+  // 5. Configurar botão de fechar e cancelar
   modal
-    .querySelectorAll(".close-modal-btn, .action-button.secondary")
+    .querySelectorAll(
+      ".close-modal-btn, .action-button.secondary, .btn-secondary"
+    )
     .forEach((btn) => {
-      // Clona para limpar listeners antigos
       const novoBtn = btn.cloneNode(true);
       btn.parentNode.replaceChild(novoBtn, btn);
 
@@ -375,7 +421,7 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
 }
 
 // ============================================================
-// ✅ MODAL DE AVALIAÇÃO GESTOR (ESTILO ORIGINAL RESTAURADO)
+// ✅ MODAL DE AVALIAÇÃO GESTOR
 // ============================================================
 function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
   console.log("🎯 Abrindo avaliação gestor");
@@ -415,7 +461,6 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
         #modal-avaliacao-gestor .resultado-options { display: flex; gap: 15px; flex-direction: column; }
         #modal-avaliacao-gestor .resultado-option { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #eee; border-radius: 6px; background: white; cursor: pointer; }
         #modal-avaliacao-gestor .resultado-option:hover { background: #f0f4ff; border-color: #667eea; }
-        #modal-avaliacao-gestor .resultado-option input { margin: 0; width: 18px; height: 18px; }
         
         /* Footer */
         #modal-avaliacao-gestor .modal-footer { padding: 20px; background: white; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 12px; }
@@ -505,7 +550,7 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
 }
 
 // ============================================================
-// ✅ MODAL DE DETALHES (ESTILO ORIGINAL RESTAURADO + CORREÇÃO COR)
+// ✅ MODAL DE DETALHES
 // ============================================================
 function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
   try {
@@ -521,7 +566,6 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
         #modal-detalhes-gestor { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; }
         .detalhes-container { width: 90%; max-width: 700px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         
-        /* Header Limpo */
         .detalhes-header { background: #fff; padding: 20px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .detalhes-header h3 { margin: 0; color: #333; font-size: 18px; display: flex; align-items: center; gap: 10px; }
         
@@ -535,7 +579,6 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
         .info-label { font-size: 11px; color: #777; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
         .info-value { font-size: 15px; color: #222; font-weight: 500; word-break: break-word; }
         
-        /* CORREÇÃO STATUS: Cor azul escura para leitura */
         .status-badge-detalhe {
             display: inline-block; padding: 5px 12px; border-radius: 15px;
             font-size: 12px; font-weight: bold; text-transform: uppercase;
@@ -682,6 +725,5 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
 // Fallback para Agendamento Simples se modal de RH falhar
 function abrirModalAgendamentoFallback(candidatoId, dadosCodificados) {
   console.warn("Usando fallback para agendamento");
-  // Implementação básica caso necessário, mas a função Local acima deve resolver
   alert("Erro: Use a função abrirModalAgendamentoGestorLocal");
 }
