@@ -45,6 +45,7 @@ export async function renderizarFinalizados(state) {
         "Reprovado Final",
         "Processo Concluído - Rejeitado",
         "Processo Concluído - Contratado",
+        "AGUARDANDO_ADMISSAO",
       ])
     );
 
