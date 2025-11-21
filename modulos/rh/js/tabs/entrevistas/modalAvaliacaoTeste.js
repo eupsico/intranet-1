@@ -481,36 +481,54 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * ✅ Carrega estatísticas (Híbrido)
- * CORREÇÃO: Tratamento rigoroso para evitar erro "n.split is not a function" no Firebase
+ * ✅ Carrega estatísticas (Híbrido + Auto-Correção de ID)
+ * CORREÇÃO FINAL: Se o ID vier errado (como array ou null), pega do dataset do modal.
  */
-async function carregarEstatisticasTestes(candidatoId) {
-  console.log("📊 [STATS] Iniciando cálculo HÍBRIDO para ID:", candidatoId);
+async function carregarEstatisticasTestes(parametroId) {
+  console.log("📊 [STATS] Iniciando cálculo. Parâmetro recebido:", parametroId);
 
   const statsDiv = document.getElementById("avaliacao-teste-stats");
   if (!statsDiv) return;
 
-  // Validação inicial do ID do candidato
+  let candidatoId = parametroId;
+
+  // 1. AUTO-CORREÇÃO: Se o parâmetro não for uma string (ex: é o array antigo, null ou objeto)
+  // Tenta recuperar o ID salvo no atributo 'data-candidatura-id' do modal
   if (!candidatoId || typeof candidatoId !== "string") {
-    console.error(
-      "❌ [STATS] ID do candidato inválido para busca:",
-      candidatoId
+    console.warn(
+      "⚠️ [STATS] Parâmetro inválido (provavelmente lista antiga). Tentando recuperar ID do modal..."
     );
-    statsDiv.innerHTML = `<p class="text-danger">Erro: ID do candidato inválido.</p>`;
-    return;
+
+    const modal = document.getElementById("modal-avaliacao-teste");
+    if (modal && modal.dataset.candidaturaId) {
+      candidatoId = modal.dataset.candidaturaId;
+      console.log(
+        "✅ [STATS] ID recuperado com sucesso do modal:",
+        candidatoId
+      );
+    } else {
+      console.error(
+        "❌ [STATS] Falha fatal: ID não encontrado nem no parâmetro nem no modal."
+      );
+      statsDiv.innerHTML = `<p class="text-danger">Erro: Não foi possível identificar o candidato.</p>`;
+      return;
+    }
   }
 
   try {
-    // 1. Busca o documento do CANDIDATO
+    // 2. Busca o documento do CANDIDATO para pegar o array de testes enviados
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     const candidatoSnap = await getDoc(candidatoRef);
 
     if (!candidatoSnap.exists()) {
-      console.error("❌ [STATS] Candidato não encontrado no banco.");
+      console.error(
+        "❌ [STATS] Candidato não encontrado no banco (ID: " + candidatoId + ")"
+      );
       return;
     }
 
     const dadosCandidato = candidatoSnap.data();
+    // Pega o array de testes enviados (suporta variações de nome)
     const arrayTestes =
       dadosCandidato.testes_enviados || dadosCandidato.testesenviados || [];
 
@@ -520,32 +538,26 @@ async function carregarEstatisticasTestes(candidatoId) {
     let totalQuestoesGeral = 0;
 
     console.log(
-      `✅ [STATS] Total de testes no perfil (Enviados): ${totalTestes}`
+      `✅ [STATS] ID: ${candidatoId} | Testes Enviados: ${totalTestes}`
     );
 
     if (totalTestes === 0) {
+      // Se não tem testes enviados, zera tudo visualmente
       console.warn("⚠️ [STATS] Array de testes enviados está vazio.");
     } else {
-      // 2. Itera sobre o array buscando as notas
+      // 3. Itera sobre o array para buscar as notas em 'testesRealizados'
       const promessasDeBusca = arrayTestes.map(async (testeItem) => {
-        // Tenta extrair o Token/ID de várias formas possíveis
+        // Tenta extrair o Token/ID
         let tokenId = testeItem.id || testeItem.tokenId || testeItem.testeId;
-        const nomeTeste = testeItem.nome || testeItem.nomeTeste || "Teste";
 
-        // CORREÇÃO DO ERRO n.split:
-        // Se tokenId for um objeto (ex: uma referência do Firestore), tenta pegar o ID dele
-        if (typeof tokenId === "object" && tokenId !== null && tokenId.id) {
-          tokenId = tokenId.id;
-        }
+        // Correção extra: Se o tokenId for objeto/referência, tenta pegar o .id
+        if (typeof tokenId === "object" && tokenId?.id) tokenId = tokenId.id;
 
-        // Se após isso o tokenId não for uma string válida, pula este item
-        if (!tokenId || typeof tokenId !== "string") {
-          console.warn(`⚠️ [STATS] Item ignorado (Token inválido):`, testeItem);
-          return null;
-        }
+        // Se ainda não for string válida, ignora
+        if (!tokenId || typeof tokenId !== "string") return null;
 
         try {
-          // Força a conversão para String para evitar o erro n.split
+          // Garante que são strings limpas
           const strTokenId = String(tokenId).trim();
           const strCandidatoId = String(candidatoId).trim();
 
@@ -571,11 +583,12 @@ async function carregarEstatisticasTestes(candidatoId) {
 
       const resultados = await Promise.all(promessasDeBusca);
 
-      // 3. Soma os valores
+      // 4. Soma os valores encontrados
       resultados.forEach((stats) => {
         if (stats) {
           const acertos = parseInt(stats.acertos) || 0;
           const erros = parseInt(stats.erros) || 0;
+          // Tenta pegar o total de questões ou soma acertos+erros
           const totalQ =
             parseInt(stats.totalQuestoes) ||
             parseInt(stats.totalAvaliadadas) ||
@@ -589,7 +602,7 @@ async function carregarEstatisticasTestes(candidatoId) {
       });
     }
 
-    // 4. Cálculo da taxa
+    // 5. Cálculo da taxa
     const taxaMedia =
       totalQuestoesGeral > 0
         ? ((totalAcertos / totalQuestoesGeral) * 100).toFixed(1)
@@ -599,7 +612,7 @@ async function carregarEstatisticasTestes(candidatoId) {
       `📊 [STATS] Final: ${totalTestes} enviados, ${totalAcertos} acertos, ${totalErros} erros`
     );
 
-    // 5. Renderização HTML
+    // 6. Renderização HTML
     statsDiv.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
         
@@ -635,7 +648,7 @@ async function carregarEstatisticasTestes(candidatoId) {
     `;
   } catch (error) {
     console.error("❌ [STATS] Erro fatal ao buscar estatísticas:", error);
-    statsDiv.innerHTML = `<p class="text-danger small">Erro ao carregar dados: ${error.message}</p>`;
+    statsDiv.innerHTML = `<p class="text-danger small">Erro técnico: ${error.message}</p>`;
   }
 }
 /**
