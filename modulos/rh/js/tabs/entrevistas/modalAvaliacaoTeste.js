@@ -481,132 +481,107 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * Carrega estatísticas rápidas dos testes (Acertos/Erros)
+ * ✅ Carrega e exibe estatísticas de testes do candidato
  */
-async function carregarEstatisticasTestes(listaDeTestes) {
-  const container = document.getElementById("avaliacao-teste-stats");
-  if (!container) return;
-
-  container.innerHTML = '<div class="loading-spinner"></div>';
+async function carregarEstatisticasTestes(candidatoId) {
+  console.log(
+    "📊 [STATS] Carregando estatísticas de testes para:",
+    candidatoId
+  );
 
   try {
-    // Busca o teste respondido mais recente na lista fornecida
-    const testeRespondido = listaDeTestes.find(
-      (t) => t.status === "respondido"
-    );
+    const statsDiv = document.getElementById("avaliacao-teste-stats");
 
-    if (!testeRespondido) {
-      container.innerHTML = `<p class="alert alert-info">Nenhum teste respondido para calcular estatísticas.</p>`;
+    if (!statsDiv) {
+      console.error(
+        "❌ [STATS] Elemento #avaliacao-teste-stats não encontrado"
+      );
       return;
     }
 
-    // ✅ CORREÇÃO: Buscar estatísticas reais do Firebase
-    // Estrutura: testesRealizados/{tokenId}/candidatos/{candidatoId}
-    let estatisticas = null;
+    // Buscar testes respondidos do candidato
+    const testesRef = collection(db, "testesrespondidos");
+    const q = query(testesRef, where("candidatoId", "==", candidatoId));
 
-    if (testeRespondido.tokenId && dadosCandidatoAtual?.id) {
-      try {
-        const candidatoRef = doc(
-          db,
-          `testesRealizados/${testeRespondido.tokenId}/candidatos/${dadosCandidatoAtual.id}`
-        );
-        const candidatoDoc = await getDoc(candidatoRef);
+    console.log("🔍 [STATS] Buscando testes respondidos...");
+    const snapshot = await getDocs(q);
 
-        if (candidatoDoc.exists()) {
-          const dados = candidatoDoc.data();
-          estatisticas = dados.estatisticasAvaliacao;
-          console.log("✅ Estatísticas carregadas do Firebase:", estatisticas);
-        }
-      } catch (error) {
-        console.warn("⚠️ Erro ao buscar estatísticas do Firebase:", error);
-      }
-    }
-
-    // Se encontrou estatísticas reais, usa elas
-    if (estatisticas && estatisticas.totalQuestoes > 0) {
-      const totalRespostas = estatisticas.totalQuestoes;
-      const acertos = estatisticas.acertos || 0;
-      const erros = estatisticas.erros || 0;
-      const taxaAcertoPct = estatisticas.taxaAcerto || 0;
-      const tempoGasto = testeRespondido.tempoGasto || 0;
-
-      const statsHtml = `
-        <div class="stat-card-mini-grid">
-          <div class="stat-card-mini border-success">
-            <strong>${totalRespostas}</strong>
-            <p>Total de Perguntas</p>
-          </div>
-          <div class="stat-card-mini border-success">
-            <strong>${acertos}</strong>
-            <p>Acertos</p>
-          </div>
-          <div class="stat-card-mini border-danger">
-            <strong>${erros}</strong>
-            <p>Erros</p>
-          </div>
-          <div class="stat-card-mini border-info">
-            <strong>${taxaAcertoPct}%</strong>
-            <p>Taxa de Acerto</p>
-          </div>
-        </div>
-        <p class="text-muted small mt-2">
-          <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
-            tempoGasto / 60
-          )}m ${tempoGasto % 60}s.
-          <br>
-          <i class="fas fa-check-circle me-1"></i> Pontuação calculada com base na avaliação do RH.
+    if (snapshot.empty) {
+      console.warn("⚠️ [STATS] Nenhum teste respondido encontrado");
+      statsDiv.innerHTML = `
+        <p class="text-muted">
+          <i class="fas fa-info-circle me-2"></i>
+          Nenhum teste respondido ainda para este candidato.
         </p>
       `;
-
-      container.innerHTML = statsHtml;
-    } else {
-      // Fallback: Usa simulação apenas se não houver estatísticas
-      const totalRespostas = Object.keys(
-        testeRespondido.respostasCompletas?.respostas || {}
-      ).length;
-      const tempoGasto = testeRespondido.tempoGasto || 0;
-
-      const acertosSimulados = Math.round(totalRespostas * 0.7);
-      const errosSimulados = totalRespostas - acertosSimulados;
-      const taxaAcertoPct =
-        totalRespostas > 0
-          ? Math.round((acertosSimulados / totalRespostas) * 100)
-          : 0;
-
-      const statsHtml = `
-        <div class="stat-card-mini-grid">
-          <div class="stat-card-mini border-success">
-            <strong>${totalRespostas}</strong>
-            <p>Total de Perguntas</p>
-          </div>
-          <div class="stat-card-mini border-success">
-            <strong>${acertosSimulados}</strong>
-            <p>Acertos (Simulado)</p>
-          </div>
-          <div class="stat-card-mini border-danger">
-            <strong>${errosSimulados}</strong>
-            <p>Erros (Simulado)</p>
-          </div>
-          <div class="stat-card-mini border-info">
-            <strong>${taxaAcertoPct}%</strong>
-            <p>Taxa de Acerto</p>
-          </div>
-        </div>
-        <p class="text-muted small mt-2">
-          <i class="fas fa-hourglass-end me-1"></i> Tempo Gasto: ${Math.floor(
-            tempoGasto / 60
-          )}m ${tempoGasto % 60}s.
-          <br>
-          <i class="fas fa-exclamation-triangle me-1"></i> A pontuação é uma simulação, clique em "Ver Respostas" para a avaliação detalhada.
-        </p>
-      `;
-
-      container.innerHTML = statsHtml;
+      return;
     }
+
+    console.log(`✅ [STATS] ${snapshot.docs.length} teste(s) encontrado(s)`);
+
+    // Calcular estatísticas
+    let totalTestes = snapshot.docs.length;
+    let totalPerguntas = 0;
+    let totalAcertos = 0;
+    let totalErros = 0;
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+
+      // Dados individuais do teste
+      const acertos = data.acertos || 0;
+      const erros = data.erros || 0;
+      const total = data.totalPerguntas || acertos + erros || 0;
+
+      totalPerguntas += total;
+      totalAcertos += acertos;
+      totalErros += erros;
+
+      console.log(`  📋 Teste: ${data.nomeTeste || "Sem nome"}`);
+      console.log(`     Acertos: ${acertos}, Erros: ${erros}, Total: ${total}`);
+    });
+
+    // Calcular taxa média
+    const taxaMedia =
+      totalPerguntas > 0
+        ? ((totalAcertos / totalPerguntas) * 100).toFixed(1)
+        : 0;
+
+    console.log(
+      `📊 [STATS] Resumo: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% média`
+    );
+
+    // Renderizar HTML
+    statsDiv.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: bold; color: #6c757d;">${totalTestes}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">📝 Testes Enviados</div>
+        </div>
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalAcertos}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">✅ Acertos</div>
+        </div>
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${totalErros}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">❌ Erros</div>
+        </div>
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: bold; color: #007bff;">${taxaMedia}%</div>
+          <div style="font-size: 12px; color: #666; margin-top: 5px;">📈 Taxa Média</div>
+        </div>
+      </div>
+    `;
+
+    console.log("✅ [STATS] Estatísticas carregadas com sucesso");
   } catch (error) {
-    console.error("Erro ao carregar estatísticas:", error);
-    container.innerHTML =
-      '<p class="alert alert-error">Erro ao carregar stats.</p>';
+    console.error("❌ [STATS] Erro ao carregar estatísticas:", error);
+    document.getElementById("avaliacao-teste-stats").innerHTML = `
+      <p class="text-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Erro ao carregar estatísticas: ${error.message}
+      </p>
+    `;
   }
 }
 
@@ -698,16 +673,10 @@ async function carregarEPopularGestores() {
  * ✅ CORREÇÃO CRÍTICA: Chama carregarEPopularGestores() ao abrir o modal
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
-  console.log("\n");
-  console.log(
-    "╔════════════════════════════════════════════════════════════════╗"
-  );
   console.log(
     "║       🚀 ABRINDO MODAL AVALIAÇÃO TESTE (MÓDULO)              ║"
   );
-  console.log(
-    "╚════════════════════════════════════════════════════════════════╝"
-  );
+
   console.log("📋 [MAIN] candidatoId:", candidatoId);
   console.log("📋 [MAIN] dadosCandidato:", dadosCandidato);
   console.log("");
