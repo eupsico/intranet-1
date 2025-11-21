@@ -14,8 +14,8 @@ import {
   getDocs,
   query,
   where,
-  orderBy, // Adicionado para a função carregarEstatisticasTestes
-  limit, // Adicionado para a função carregarEstatisticasTestes
+  orderBy,
+  limit,
 } from "../../../../../assets/js/firebase-init.js";
 
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
@@ -481,105 +481,97 @@ async function carregarRespostasDoTeste(
 }
 
 /**
- * ✅ Carrega e exibe estatísticas de testes do candidato
- * (Versão corrigida para ler estatisticasAvaliacao gerado pelo detalhes_teste.js)
+ * ✅ Carrega e exibe estatísticas somando dados da coleção 'testesRealizados'
+ * Estrutura: testesRealizados/{tokenId}/candidatos/{candidatoId}/estatisticasAvaliacao
  */
-async function carregarEstatisticasTestes(listaTestes) {
-  console.log(
-    "📊 [STATS] Calculando estatísticas a partir da lista fornecida..."
-  );
+async function carregarEstatisticasTestes(candidatoId) {
+  console.log("📊 [STATS] Iniciando cálculo detalhado para ID:", candidatoId);
 
   const statsDiv = document.getElementById("avaliacao-teste-stats");
-
-  if (!statsDiv) {
-    console.error("❌ [STATS] Elemento #avaliacao-teste-stats não encontrado");
-    return;
-  }
-
-  // Verifica se a lista é válida e tem itens
-  if (!listaTestes || !Array.isArray(listaTestes) || listaTestes.length === 0) {
-    console.warn("⚠️ [STATS] Lista de testes vazia ou inválida");
-    statsDiv.innerHTML = `
-        <div class="text-center p-3">
-          <p class="text-muted mb-0">
-            <i class="fas fa-info-circle me-2"></i>
-            Nenhum dado de teste disponível para estatísticas.
-          </p>
-        </div>
-      `;
-    return;
-  }
+  if (!statsDiv) return;
 
   try {
-    console.log(`✅ [STATS] Processando ${listaTestes.length} teste(s)...`);
+    // 1. Primeiro, descobrimos QUAIS testes o candidato respondeu
+    const testesRef = collection(db, "testesrespondidos");
+    const q = query(testesRef, where("candidatoId", "==", candidatoId));
 
-    // Variáveis acumuladoras
-    let totalTestes = listaTestes.length;
-    let totalPerguntas = 0;
+    console.log("🔍 [STATS] Buscando lista de testes respondidos...");
+    const snapshot = await getDocs(q);
+
+    let totalTestes = snapshot.size;
     let totalAcertos = 0;
     let totalErros = 0;
-    let testesComNotas = 0;
+    let totalQuestoesGeral = 0; // Para calcular a média ponderada correta
 
-    listaTestes.forEach((teste, index) => {
-      console.log(`🔍 [STATS] Analisando teste #${index + 1}:`, teste);
-
-      // Lógica de Extração Robusta: Tenta encontrar os dados em diferentes locais
-      let dadosStats = {};
-
-      // 1. Tenta pegar direto do objeto (estrutura legada)
-      if (teste.acertos !== undefined) {
-        dadosStats = teste;
-      }
-      // 2. Tenta pegar de 'estatisticasAvaliacao' (estrutura nova do detalhes_teste.js)
-      else if (teste.estatisticasAvaliacao) {
-        dadosStats = teste.estatisticasAvaliacao;
-      }
-      // 3. Tenta pegar de respostasCompletas (se veio do Firestore query)
-      else if (teste.respostasCompletas) {
-        if (teste.respostasCompletas.estatisticasAvaliacao) {
-          dadosStats = teste.respostasCompletas.estatisticasAvaliacao;
-        } else {
-          dadosStats = teste.respostasCompletas;
-        }
-      }
-
-      // Extrai os valores garantindo que sejam números
-      const acertos = parseInt(dadosStats.acertos) || 0;
-      const erros = parseInt(dadosStats.erros) || 0;
-
-      // Tenta pegar o total. Se não existir, soma acertos + erros
-      const totalQ =
-        parseInt(dadosStats.totalPerguntas) ||
-        parseInt(dadosStats.totalQuestoes) ||
-        acertos + erros ||
-        0;
-
-      // Log para debug (ajuda a ver se pegou certo)
+    if (snapshot.empty) {
+      console.warn("⚠️ [STATS] Nenhum teste encontrado em testesrespondidos.");
+    } else {
       console.log(
-        `   > Dados extraídos: Acertos=${acertos}, Erros=${erros}, Total=${totalQ}`
+        `✅ [STATS] Encontrados ${totalTestes} registros de testes. Buscando notas em 'testesRealizados'...`
       );
 
-      // Só soma nas estatísticas gerais se houver algum dado válido
-      if (acertos > 0 || erros > 0 || totalQ > 0) {
-        totalPerguntas += totalQ;
-        totalAcertos += acertos;
-        totalErros += erros;
-        testesComNotas++;
-      }
-    });
+      // 2. Para cada teste respondido, buscamos a avaliação detalhada na outra coleção
+      // Usamos map + Promise.all para fazer as buscas em paralelo
+      const promessasDeBusca = snapshot.docs.map(async (docResposta) => {
+        const dataResp = docResposta.data();
 
-    // Calcular taxa média
-    // Evita divisão por zero se nenhum teste tiver perguntas contabilizadas
+        // O ID do documento em 'testesrespondidos' geralmente é o Token, ou existe um campo tokenId.
+        // Vamos tentar garantir que temos o ID correto da coleção 'testesRealizados'.
+        const tokenId = dataResp.tokenId || docResposta.id;
+
+        if (!tokenId) return null;
+
+        try {
+          // Caminho exato conforme suas imagens:
+          // testesRealizados / {tokenId} / candidatos / {candidatoId}
+          const path = `testesRealizados/${tokenId}/candidatos/${candidatoId}`;
+          const avaliacaoRef = doc(db, path);
+          const avaliacaoSnap = await getDoc(avaliacaoRef);
+
+          if (avaliacaoSnap.exists()) {
+            const dadosDetalhados = avaliacaoSnap.data();
+            // Retorna apenas o objeto de estatísticas se existir
+            return dadosDetalhados.estatisticasAvaliacao || null;
+          }
+        } catch (err) {
+          console.error(`❌ Erro ao buscar detalhe do token ${tokenId}:`, err);
+        }
+        return null;
+      });
+
+      // Aguarda todas as buscas terminarem
+      const resultadosDetalhados = await Promise.all(promessasDeBusca);
+
+      // 3. Soma os resultados encontrados
+      resultadosDetalhados.forEach((stats) => {
+        if (stats) {
+          // Converte para número para garantir a soma
+          const acertos = parseInt(stats.acertos) || 0;
+          const erros = parseInt(stats.erros) || 0;
+          const totalQ = parseInt(stats.totalQuestoes) || acertos + erros || 0;
+
+          totalAcertos += acertos;
+          totalErros += erros;
+          totalQuestoesGeral += totalQ;
+
+          console.log(
+            `   > Somando: +${acertos} acertos, +${erros} erros (Total Q: ${totalQ})`
+          );
+        }
+      });
+    }
+
+    // 4. Cálculo da taxa de aproveitamento
     const taxaMedia =
-      totalPerguntas > 0
-        ? ((totalAcertos / totalPerguntas) * 100).toFixed(1)
+      totalQuestoesGeral > 0
+        ? ((totalAcertos / totalQuestoesGeral) * 100).toFixed(1)
         : "0.0";
 
     console.log(
-      `📊 [STATS] Resumo Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% aproveitamento`
+      `📊 [STATS] Final: ${totalAcertos} acertos, ${totalErros} erros, ${taxaMedia}% aproveitamento`
     );
 
-    // Renderizar HTML
+    // 5. Renderização HTML
     statsDiv.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
         
@@ -613,16 +605,9 @@ async function carregarEstatisticasTestes(listaTestes) {
 
       </div>
     `;
-
-    console.log("✅ [STATS] Estatísticas renderizadas com sucesso");
   } catch (error) {
-    console.error("❌ [STATS] Erro ao calcular estatísticas:", error);
-    statsDiv.innerHTML = `
-      <div class="alert alert-danger small">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        Erro ao calcular estatísticas: ${error.message}
-      </div>
-    `;
+    console.error("❌ [STATS] Erro fatal ao buscar estatísticas:", error);
+    statsDiv.innerHTML = `<p class="text-danger">Erro ao carregar dados: ${error.message}</p>`;
   }
 }
 /**
