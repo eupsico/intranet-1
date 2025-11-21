@@ -87,6 +87,81 @@ export async function initdashboard(user, userData) {
   let respostasCache = []; // ✅ Cache unificado para testes respondidos (testesrespondidos)
 
   // ============================================
+  // FUNÇÃO: Popular Filtros de Vagas e Status
+  // ============================================
+
+  function popularFiltros() {
+    console.log("🔹 Popular filtros de vagas e status...");
+
+    // ✅ Popular filtro de vagas
+    const relFiltroVaga = document.getElementById("rel-filtro-vaga");
+    if (relFiltroVaga && vagasCache.length > 0) {
+      relFiltroVaga.innerHTML = '<option value="">Todas as Vagas</option>';
+
+      vagasCache.forEach((vaga) => {
+        const option = document.createElement("option");
+        option.value = vaga.id;
+        option.textContent =
+          vaga.titulo ||
+          vaga.tituloVaga ||
+          vaga.nome ||
+          `Vaga ${vaga.id.substring(0, 8)}`;
+        relFiltroVaga.appendChild(option);
+      });
+
+      console.log(
+        `✅ Filtro de vagas populado com ${vagasCache.length} opções`
+      );
+    }
+
+    // ✅ Popular filtro de status
+    const relFiltroStatus = document.getElementById("rel-filtro-status");
+    if (relFiltroStatus) {
+      relFiltroStatus.innerHTML = `
+      <option value="">Todos os Status</option>
+      <option value="Candidatura Recebida">Candidatura Recebida</option>
+      <option value="Em Triagem">Em Triagem</option>
+      <option value="Aprovada">Aprovada</option>
+      <option value="Entrevista Pendente">Entrevista Pendente</option>
+      <option value="Rejeitado">Rejeitado</option>
+      <option value="Contratado">Contratado</option>
+    `;
+
+      console.log("✅ Filtro de status populado com opções padrão");
+    }
+
+    // ✅ Popular filtro de testes (se existir)
+    const relFiltroTeste = document.getElementById("rel-filtro-teste");
+    if (relFiltroTeste && estudosCache.length > 0) {
+      relFiltroTeste.innerHTML = '<option value="">Todos os Testes</option>';
+
+      estudosCache.forEach((teste) => {
+        const option = document.createElement("option");
+        option.value = teste.id;
+        option.textContent =
+          teste.titulo || teste.nome || `Teste ${teste.id.substring(0, 8)}`;
+        relFiltroTeste.appendChild(option);
+      });
+
+      console.log(
+        `✅ Filtro de testes populado com ${estudosCache.length} opções`
+      );
+    }
+
+    // ✅ Adicionar event listeners aos filtros para recarregar dados
+    [relFiltroVaga, relFiltroStatus, relFiltroTeste].forEach((filtro) => {
+      if (filtro) {
+        filtro.addEventListener("change", () => {
+          console.log("🔄 Filtro alterado, recarregando relatórios...");
+          renderizarListaCandidatos();
+          renderizarInscricoesPorVaga();
+          renderizarRespostasAosTestes();
+        });
+      }
+    });
+  }
+
+  // ============================================
   // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
   // ============================================
 
