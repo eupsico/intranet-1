@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.6.0 (PDF + Rodapé + Excel UTF-8 com BOM + Dados Completos)
+// Versão: 3.7.0 (CORREÇÃO DE ESTRUTURA: Alinhamento com testesrespondidos e nomes de campos)
 
 import {
   collection,
@@ -34,8 +34,11 @@ export async function initdashboard(user, userData) {
   const comunicadosCollection = collection(db, "comunicados");
   const desligamentosCollection = collection(db, "desligamentos");
   const candidatosCollection = collection(db, "candidaturas");
-  const tokensAcessoCollection = collection(db, "tokens_acesso");
+  const tokensAcessoCollection = collection(db, "tokensacesso"); // Ajustado para "tokensacesso"
   const estudosDeCasoCollection = collection(db, "estudos_de_caso");
+
+  // ✅ CORREÇÃO: Coleção correta para testes respondidos
+  const testesRespondidosCollection = collection(db, "testesrespondidos");
 
   // ============================================
   // MAPEAMENTO DOS ELEMENTOS DO DOM - DASHBOARD
@@ -81,6 +84,330 @@ export async function initdashboard(user, userData) {
   let tokensCache = [];
   let vagasCache = [];
   let estudosCache = [];
+  let respostasCache = []; // ✅ Cache unificado para testes respondidos (testesrespondidos)
+
+  // ... (Funções de Exportação omitidas)
+
+  // ============================================
+  // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
+  // ============================================
+
+  const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
+  const relRelatóriosTabs = document.getElementById("rel-relatorios-tabs");
+
+  if (relDashboardTabs) {
+    relDashboardTabs.querySelectorAll(".tab-link").forEach((tab) => {
+      tab.addEventListener("click", (e) => {
+        const tabName = e.target.getAttribute("data-tab");
+
+        relDashboardTabs
+          .querySelectorAll(".tab-link")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll('[id^="tab-"]')
+          .forEach((t) => (t.style.display = "none"));
+
+        e.target.classList.add("active");
+        document.getElementById(`tab-${tabName}`).style.display = "block";
+
+        if (tabName === "relatorios") {
+          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
+          carregarRelatorios();
+        }
+      });
+    });
+  }
+
+  if (relRelatóriosTabs) {
+    relRelatóriosTabs.querySelectorAll(".tab-link").forEach((tab) => {
+      tab.addEventListener("click", (e) => {
+        const tabName = e.target.getAttribute("data-rel-tab");
+
+        relRelatóriosTabs
+          .querySelectorAll(".tab-link")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content-rel")
+          .forEach((t) => (t.style.display = "none"));
+
+        e.target.classList.add("active");
+        document.getElementById(`rel-tab-${tabName}`).style.display = "block";
+      });
+    });
+  }
+
+  if (btnAtualizarRelatorios) {
+    btnAtualizarRelatorios.addEventListener("click", carregarRelatorios);
+  }
+
+  if (relBuscaCandidato) {
+    relBuscaCandidato.addEventListener("input", filtrarCandidatos);
+  }
+
+  // ============================================
+  // FUNÇÃO: Carregar Relatórios
+  // ============================================
+
+  async function carregarRelatorios() {
+    console.log("🔹 Carregando relatórios de recrutamento...");
+
+    try {
+      console.log("📊 Buscando dados do Firestore...");
+
+      if (!db) {
+        console.error("❌ ERRO: db não está definido!");
+        throw new Error("Firestore não foi inicializado");
+      }
+
+      const candidatosRef = collection(db, "candidaturas");
+      const tokensRef = collection(db, "tokensacesso");
+      const vagasRef = collection(db, "vagas");
+      const estudosRef = collection(db, "estudos_de_caso");
+
+      // ✅ CORREÇÃO: Usar a coleção correta
+      const testesRespondidosRef = collection(db, "testesrespondidos");
+
+      const [
+        candidatosSnap,
+        tokensSnap,
+        vagasSnap,
+        estudosSnap,
+        testesRespondidosSnap, // ✅ NOVO: Buscar testesRespondidos
+      ] = await Promise.all([
+        getDocs(candidatosRef),
+        getDocs(tokensRef),
+        getDocs(vagasRef),
+        getDocs(estudosRef),
+        getDocs(testesRespondidosCollection), // ✅ Chamada correta para testesrespondidos
+      ]);
+
+      candidatosCache = [];
+      candidatosSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        candidatosCache.push({
+          id: doc.id,
+          ...data,
+        });
+      });
+
+      tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      // ✅ CORREÇÃO: Cache de respostas simples da coleção testesrespondidos
+      respostasCache = testesRespondidosSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
+      console.log(`📊 ✅ Tokens (enviados): ${tokensCache.length}`);
+      console.log(
+        `📊 ✅ Respostas (testesrespondidos): ${respostasCache.length}`
+      );
+      console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
+      console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
+
+      // ✅ CORRIGIDO: Usar respostasCache para contar respondidos
+      const totalInscritos = candidatosCache.length;
+      const testesRespondidos = respostasCache.length;
+      const testesPendentes = tokensCache.filter((t) => {
+        // Um teste é pendente se há um token, mas NENHUMA resposta na coleção testesrespondidos
+        return !respostasCache.some((r) => r.tokenId === t.id);
+      }).length;
+      const taxaResposta =
+        totalInscritos > 0
+          ? Math.round((testesRespondidos / totalInscritos) * 100)
+          : 0;
+
+      if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
+      if (relTestesRespondidos)
+        relTestesRespondidos.textContent = testesRespondidos;
+      if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
+      if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
+
+      // ✅ Salvar respostasCache globalmente
+      window.respostasCache = respostasCache;
+
+      popularFiltros();
+      renderizarInscricoesPorVaga();
+      renderizarListaCandidatos();
+      renderizarRespostasAosTestes();
+
+      console.log("✅ Relatórios carregados com sucesso");
+    } catch (error) {
+      console.error("❌ Erro ao carregar relatórios:", error);
+      window.showToast?.(
+        "Erro ao carregar relatórios: " + error.message,
+        "error"
+      );
+    }
+  }
+
+  // ============================================
+  // FUNÇÃO: Renderizar Lista de Candidatos (CORRIGIDA)
+  // ============================================
+
+  async function renderizarListaCandidatos() {
+    console.log("🔹 Renderizando lista de candidatos...");
+    const tabelaBody = document.getElementById("rel-tbody-candidatos");
+    if (!tabelaBody) return;
+
+    tabelaBody.innerHTML = "";
+
+    const filtroVaga = relFiltroVaga?.value;
+    const filtroStatus = relFiltroStatus?.value;
+    const buscaNome = relBuscaCandidato?.value.toLowerCase() || "";
+
+    const respostasCache = window.respostasCache || [];
+
+    let candidatosFiltrados = candidatosCache;
+
+    if (filtroVaga) {
+      candidatosFiltrados = candidatosFiltrados.filter(
+        (c) => c.vaga_id === filtroVaga
+      );
+    }
+
+    if (filtroStatus) {
+      candidatosFiltrados = candidatosFiltrados.filter(
+        (c) => c.status_recrutamento === filtroStatus
+      );
+    }
+
+    if (buscaNome) {
+      candidatosFiltrados = candidatosFiltrados.filter(
+        (c) =>
+          (c.nome_completo || c.nome_candidato || "")
+            .toLowerCase()
+            .includes(buscaNome) // ✅ CORRIGIDO: Busca em nome_completo e nome_candidato
+      );
+    }
+
+    candidatosFiltrados.forEach((candidato) => {
+      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
+
+      // ✅ CORRIGIDO: Priorizar titulo_vaga_original do candidato
+      const vagaNome =
+        candidato.titulo_vaga_original ||
+        vaga?.titulo ||
+        vaga?.tituloVaga ||
+        "-";
+
+      // ✅ CORRIGIDO: Priorizar nome_completo ou nome_candidato
+      const nomeCandidato =
+        candidato.nome_completo || candidato.nome_candidato || "-";
+
+      // ✅ CORRIGIDO: Status do Teste
+      const testeEnviado = tokensCache.some(
+        (t) => t.candidatoId === candidato.id
+      );
+
+      const testeRespondido = respostasCache.some(
+        (r) => r.candidatoId === candidato.id
+      );
+
+      let statusTeste = "Não enviado";
+      if (testeRespondido) {
+        statusTeste = "Respondido";
+      } else if (testeEnviado) {
+        statusTeste = "Enviado";
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+   <td><strong>${nomeCandidato}</strong></td>
+   <td>${candidato.email_candidato || "-"}</td>
+   <td>${candidato.telefone_contato || "-"}</td>
+   <td>${vagaNome}</td>
+   <td><span class="badge bg-info">${
+     candidato.status_recrutamento || "-"
+   }</span></td>
+   <td><span class="badge ${
+     statusTeste === "Respondido"
+       ? "bg-success"
+       : statusTeste === "Enviado"
+       ? "bg-warning"
+       : "bg-secondary"
+   }">${statusTeste}</span></td>
+  `;
+      tabelaBody.appendChild(tr);
+    });
+
+    if (candidatosFiltrados.length === 0) {
+      tabelaBody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
+    }
+  }
+
+  // Função auxiliar para atualizar e filtrar
+  function atualizarTabelaCandidatos(candidatos, tabelaBody) {
+    console.log(`🔹 Atualizando tabela com ${candidatos.length} candidatos`);
+
+    tabelaBody.innerHTML = "";
+
+    if (candidatos.length === 0) {
+      tabelaBody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
+      return;
+    }
+
+    candidatos.forEach((cand) => {
+      // ✅ CORRIGIDO: Busca melhorada da vaga
+      const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
+      const vagaNome =
+        cand.titulo_vaga_original || // ✅ Prioridade
+        vaga?.titulo ||
+        vaga?.tituloVaga ||
+        "Sem vaga";
+
+      const nomeCandidato = cand.nome_completo || cand.nome_candidato || "-";
+
+      console.log(
+        `📋 Candidato: ${nomeCandidato}, Vaga ID: ${cand.vaga_id}, Vaga Nome: ${vagaNome}`
+      );
+
+      const testeEnviado = tokensCache.some((t) => t.candidatoId === cand.id);
+      const testeRespondido = window.respostasCache.some(
+        // ✅ Usar window.respostasCache
+        (r) => r.candidatoId === cand.id
+      );
+
+      let statusTeste = '<span class="badge bg-secondary">Não enviado</span>';
+      if (testeEnviado && testeRespondido) {
+        statusTeste = '<span class="badge bg-success">✅ Respondido</span>';
+      } else if (testeEnviado) {
+        statusTeste =
+          '<span class="badge bg-warning text-dark">⏳ Enviado</span>';
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+   <td><strong>${nomeCandidato}</strong></td>
+   <td>${cand.email_candidato || "-"}</td>
+   <td>${cand.telefone_contato || "-"}</td>
+   <td><strong>${vagaNome}</strong></td>
+   <td><span class="badge bg-info">${
+     cand.status_recrutamento || "Pendente"
+   }</span></td>
+   <td>${statusTeste}</td>
+  `;
+      tabelaBody.appendChild(tr);
+    });
+  }
+
+  function filtrarCandidatos(e) {
+    const termo = e.target.value.toLowerCase();
+    const candidatosFiltrados = candidatosCache.filter(
+      (c) =>
+        (c.nome_completo || c.nome_candidato || "")
+          .toLowerCase()
+          .includes(termo) // ✅ CORRIGIDO: Busca em nome_completo e nome_candidato
+    );
+
+    const tabelaBody = document.getElementById("rel-tbody-candidatos");
+    atualizarTabelaCandidatos(candidatosFiltrados, tabelaBody);
+  }
 
   // ============================================
   // FUNÇÕES DE EXPORTAÇÃO - EXCEL (CSV com BOM UTF-8)
@@ -365,7 +692,7 @@ export async function initdashboard(user, userData) {
       window.showToast?.(`✅ Arquivo ${nomeArquivo} baixado!`, "success");
     } catch (error) {
       console.error("❌ Erro ao gerar PDF:", error);
-      window.showToast?.("❌ Erro ao gerar PDF. Tente novamente.", "error");
+      window.showToast?.("❌ Erro ao exportar arquivo", "error");
     }
   }
 
@@ -418,24 +745,29 @@ export async function initdashboard(user, userData) {
 
     candidatosCache.forEach((candidato) => {
       const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
+      const vagaNome =
+        candidato.titulo_vaga_original ||
+        vaga?.titulo ||
+        vaga?.tituloVaga ||
+        "-";
 
       const testeEnviado = tokensCache.some(
         (t) => t.candidatoId === candidato.id
       );
-      const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === candidato.id && t.usado
+      const testeRespondido = respostasCache.some(
+        (r) => r.candidatoId === candidato.id
       );
 
       let statusTeste = "Não enviado";
-      if (testeEnviado && testeRespondido) {
+      if (testeRespondido) {
         statusTeste = "Respondido";
       } else if (testeEnviado) {
         statusTeste = "Enviado";
       }
 
       dados.push({
-        "Nome Completo": candidato.nome_candidato || "-",
+        "Nome Completo":
+          candidato.nome_completo || candidato.nome_candidato || "-", // ✅ CORRIGIDO: nome_completo ou nome_candidato
         Email: candidato.email_candidato || "-",
         Telefone: candidato.telefone_contato || "-",
         WhatsApp: candidato.telefone_contato || "-",
@@ -447,7 +779,7 @@ export async function initdashboard(user, userData) {
         "Data de Nascimento": candidato.data_nascimento || "-",
         Gênero: candidato.genero || "-",
         Nacionalidade: candidato.nacionalidade || "-",
-        Vaga: titulo_vaga_original,
+        Vaga: vagaNome, // ✅ CORRIGIDO: Usando nome da vaga resolvido
         "Formação Profissional": candidato.formacao_profissional || "-",
         "Conselho Profissional": candidato.conselho_profissional || "-",
         "Número do Conselho": candidato.numero_conselho || "-",
@@ -526,509 +858,6 @@ export async function initdashboard(user, userData) {
     exportarParaPDF("rel-tabela-respostas", "respostas_testes.pdf");
   };
 
-  // ============================================
-  // LISTENERS DE ABAS - ✅ CARREGAMENTO AUTOMÁTICO
-  // ============================================
-
-  const relDashboardTabs = document.getElementById("rh-dashboard-tabs");
-  const relRelatóriosTabs = document.getElementById("rel-relatorios-tabs");
-
-  if (relDashboardTabs) {
-    relDashboardTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-tab");
-
-        relDashboardTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll('[id^="tab-"]')
-          .forEach((t) => (t.style.display = "none"));
-
-        e.target.classList.add("active");
-        document.getElementById(`tab-${tabName}`).style.display = "block";
-
-        if (tabName === "relatorios") {
-          console.log("🔹 Aba de Relatórios aberta - Carregando dados...");
-          carregarRelatorios();
-        }
-      });
-    });
-  }
-
-  if (relRelatóriosTabs) {
-    relRelatóriosTabs.querySelectorAll(".tab-link").forEach((tab) => {
-      tab.addEventListener("click", (e) => {
-        const tabName = e.target.getAttribute("data-rel-tab");
-
-        relRelatóriosTabs
-          .querySelectorAll(".tab-link")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-content-rel")
-          .forEach((t) => (t.style.display = "none"));
-
-        e.target.classList.add("active");
-        document.getElementById(`rel-tab-${tabName}`).style.display = "block";
-      });
-    });
-  }
-
-  if (btnAtualizarRelatorios) {
-    btnAtualizarRelatorios.addEventListener("click", carregarRelatorios);
-  }
-
-  if (relBuscaCandidato) {
-    relBuscaCandidato.addEventListener("input", filtrarCandidatos);
-  }
-
-  // ============================================
-  // FUNÇÃO: Carregar Relatórios
-  // ============================================
-
-  async function carregarRelatorios() {
-    console.log("🔹 Carregando relatórios de recrutamento...");
-
-    try {
-      console.log("📊 Buscando dados do Firestore...");
-
-      if (!db) {
-        console.error("❌ ERRO: db não está definido!");
-        throw new Error("Firestore não foi inicializado");
-      }
-
-      const candidatosRef = collection(db, "candidaturas");
-      const tokensRef = collection(db, "tokens_acesso");
-      const vagasRef = collection(db, "vagas");
-      const estudosRef = collection(db, "estudos_de_caso");
-
-      // ✅ NOVO: Buscar testesRealizados
-      const testesRealizadosRef = collection(db, "testesRealizados");
-
-      const [
-        candidatosSnap,
-        tokensSnap,
-        vagasSnap,
-        estudosSnap,
-        testesRealizadosSnap,
-      ] = await Promise.all([
-        getDocs(candidatosRef),
-        getDocs(tokensRef),
-        getDocs(vagasRef),
-        getDocs(estudosRef),
-        getDocs(testesRealizadosRef),
-      ]);
-
-      candidatosCache = [];
-      candidatosSnap.docs.forEach((doc) => {
-        const data = doc.data();
-        candidatosCache.push({
-          id: doc.id,
-          ...data,
-        });
-      });
-
-      tokensCache = tokensSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-      // ✅ NOVO: Processar testesRealizados para criar cache de respostas
-      const respostasCache = [];
-      for (const testeDoc of testesRealizadosSnap.docs) {
-        const tokenId = testeDoc.id;
-
-        // Buscar subcoleção candidatos
-        const candidatosSubRef = collection(
-          db,
-          `testesRealizados/${tokenId}/candidatos`
-        );
-        const candidatosSubSnap = await getDocs(candidatosSubRef);
-
-        candidatosSubSnap.docs.forEach((candidatoDoc) => {
-          const dados = candidatoDoc.data();
-          respostasCache.push({
-            tokenId: tokenId,
-            candidatoId: candidatoDoc.id,
-            ...dados,
-          });
-        });
-      }
-
-      console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
-      console.log(`📊 ✅ Tokens: ${tokensCache.length}`);
-      console.log(`📊 ✅ Respostas: ${respostasCache.length}`);
-      console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
-      console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
-
-      // ✅ CORRIGIDO: Usar respostasCache em vez de tokensCache para contar respondidos
-      const totalInscritos = candidatosCache.length;
-      const testesRespondidos = respostasCache.length;
-      const testesPendentes = tokensCache.filter((t) => {
-        // Verifica se o token NÃO tem resposta no respostasCache
-        return !respostasCache.some((r) => r.tokenId === t.id);
-      }).length;
-      const taxaResposta =
-        totalInscritos > 0
-          ? Math.round((testesRespondidos / totalInscritos) * 100)
-          : 0;
-
-      if (relTotalInscricoes) relTotalInscricoes.textContent = totalInscritos;
-      if (relTestesRespondidos)
-        relTestesRespondidos.textContent = testesRespondidos;
-      if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
-      if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
-
-      // ✅ Salvar respostasCache globalmente
-      window.respostasCache = respostasCache;
-
-      popularFiltros();
-      renderizarInscricoesPorVaga();
-      renderizarListaCandidatos();
-      renderizarRespostasAosTestes();
-
-      console.log("✅ Relatórios carregados com sucesso");
-    } catch (error) {
-      console.error("❌ Erro ao carregar relatórios:", error);
-      window.showToast?.(
-        "Erro ao carregar relatórios: " + error.message,
-        "error"
-      );
-    }
-  }
-
-  // ============================================
-  // FUNÇÃO: Popular Filtros
-  // ============================================
-
-  async function popularFiltros() {
-    console.log("🔹 Populando filtros...");
-
-    if (relFiltroVaga) {
-      relFiltroVaga.innerHTML = '<option value="">Todas as vagas</option>';
-      vagasCache.forEach((vaga) => {
-        const option = document.createElement("option");
-        option.value = vaga.id;
-        const nomeDaVaga =
-          vaga.titulo ||
-          vaga.tituloVaga ||
-          vaga.nome ||
-          `Vaga ${vaga.id.substring(0, 8)}`;
-        option.textContent = nomeDaVaga;
-        relFiltroVaga.appendChild(option);
-      });
-    }
-
-    if (relFiltroTeste) {
-      relFiltroTeste.innerHTML = '<option value="">Todos os testes</option>';
-      estudosCache.forEach((teste) => {
-        const option = document.createElement("option");
-        option.value = teste.id;
-        option.textContent =
-          teste.titulo || teste.nome || `Teste ${teste.id.substring(0, 8)}`;
-        relFiltroTeste.appendChild(option);
-      });
-    }
-  }
-
-  // ============================================
-  // FUNÇÃO: Criar Gráfico de Inscrições
-  // ============================================
-
-  async function criarGraficoInscricoes() {
-    const ctx = document.getElementById("rel-chart-inscricoes");
-    if (!ctx) {
-      console.error("❌ Canvas rel-chart-inscricoes não encontrado");
-      return;
-    }
-
-    if (typeof Chart === "undefined") {
-      console.error("❌ Chart.js não foi importado!");
-      return;
-    }
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-      inscricoesPorVaga[vagaId] = (inscricoesPorVaga[vagaId] || 0) + 1;
-    });
-
-    const vagasNomes = Object.keys(inscricoesPorVaga).map((vagaId) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      return vaga?.titulo || vaga?.nome || vagaId.substring(0, 8);
-    });
-
-    const dados = Object.values(inscricoesPorVaga);
-
-    console.log("📊 Criando gráfico com dados:", vagasNomes, dados);
-
-    if (window.graficoInscricoes) {
-      window.graficoInscricoes.destroy();
-    }
-
-    window.graficoInscricoes = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: vagasNomes,
-        datasets: [
-          {
-            label: "Total de Inscrições",
-            data: dados,
-            backgroundColor: "#667eea",
-            borderColor: "#5568d3",
-            borderWidth: 1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1,
-            },
-          },
-        },
-        plugins: {
-          legend: {
-            display: true,
-          },
-        },
-      },
-    });
-  }
-
-  // ============================================
-  // FUNÇÃO: Renderizar Inscrições por Vaga
-  // ============================================
-
-  async function renderizarInscricoesPorVaga() {
-    console.log("🔹 Renderizando inscrições por vaga...");
-
-    const tabelaBody = document.getElementById("rel-tbody-inscricoes");
-    if (!tabelaBody) {
-      console.error("❌ Elemento rel-tbody-inscricoes não encontrado");
-      return;
-    }
-
-    tabelaBody.innerHTML = "";
-
-    const inscricoesPorVaga = {};
-
-    candidatosCache.forEach((cand) => {
-      const vagaId = cand.vaga_id || "Sem vaga";
-
-      if (!inscricoesPorVaga[vagaId]) {
-        inscricoesPorVaga[vagaId] = {
-          total: 0,
-          triagem: 0,
-          aprovados: 0,
-          rejeitados: 0,
-          contratados: 0,
-        };
-      }
-
-      inscricoesPorVaga[vagaId].total++;
-
-      const status = cand.status_recrutamento || "Candidatura Recebida";
-
-      if (
-        status.includes("Triagem") ||
-        status === "Candidatura Recebida" ||
-        status.includes("recebida")
-      ) {
-        inscricoesPorVaga[vagaId].triagem++;
-      } else if (
-        status.includes("Aprovada") ||
-        status.includes("Entrevista Pendente")
-      ) {
-        inscricoesPorVaga[vagaId].aprovados++;
-      } else if (status.includes("Rejeitado") || status.includes("rejeicao")) {
-        inscricoesPorVaga[vagaId].rejeitados++;
-      } else if (status.includes("Contratado")) {
-        inscricoesPorVaga[vagaId].contratados++;
-      }
-    });
-
-    console.log("📊 Inscrições por vaga:", inscricoesPorVaga);
-
-    Object.entries(inscricoesPorVaga).forEach(([vagaId, dados]) => {
-      const vaga = vagasCache.find((v) => v.id === vagaId);
-      const vagaNome =
-        vaga?.titulo ||
-        vaga?.tituloVaga ||
-        vaga?.nome ||
-        `Vaga ${vagaId.substring(0, 8)}`;
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${vagaNome}</strong></td>
-        <td class="text-center"><span class="badge bg-primary">${dados.total}</span></td>
-        <td class="text-center"><span class="badge bg-info">${dados.triagem}</span></td>
-        <td class="text-center"><span class="badge bg-success">${dados.aprovados}</span></td>
-        <td class="text-center"><span class="badge bg-danger">${dados.rejeitados}</span></td>
-        <td class="text-center"><span class="badge bg-warning text-dark">${dados.contratados}</span></td>
-      `;
-      tabelaBody.appendChild(tr);
-    });
-
-    if (Object.keys(inscricoesPorVaga).length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhuma inscrição encontrada</td></tr>';
-    }
-
-    await criarGraficoInscricoes();
-  }
-
-  // ============================================
-  // FUNÇÃO: Renderizar Lista de Candidatos (CORRIGIDA)
-  // ============================================
-
-  async function renderizarListaCandidatos() {
-    console.log("🔹 Renderizando lista de candidatos...");
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    if (!tabelaBody) return;
-
-    tabelaBody.innerHTML = "";
-
-    const filtroVaga = relFiltroVaga?.value;
-    const filtroStatus = relFiltroStatus?.value;
-    const buscaNome = relBuscaCandidato?.value.toLowerCase() || "";
-
-    const respostasCache = window.respostasCache || [];
-
-    let candidatosFiltrados = candidatosCache;
-
-    if (filtroVaga) {
-      candidatosFiltrados = candidatosFiltrados.filter(
-        (c) => c.vaga_id === filtroVaga
-      );
-    }
-
-    if (filtroStatus) {
-      candidatosFiltrados = candidatosFiltrados.filter(
-        (c) => c.status_recrutamento === filtroStatus
-      );
-    }
-
-    if (buscaNome) {
-      candidatosFiltrados = candidatosFiltrados.filter((c) =>
-        (c.nome_completo || "").toLowerCase().includes(buscaNome)
-      );
-    }
-
-    candidatosFiltrados.forEach((candidato) => {
-      const vaga = vagasCache.find((v) => v.id === candidato.vaga_id);
-      const vagaNome = vaga?.titulo || vaga?.tituloVaga || "-";
-
-      // ✅ CORRIGIDO: Verificar teste enviado e respondido na nova estrutura
-      const testeEnviado = tokensCache.some(
-        (t) => t.candidatoId === candidato.id
-      );
-
-      const testeRespondido = respostasCache.some(
-        (r) => r.candidatoId === candidato.id
-      );
-
-      let statusTeste = "Não enviado";
-      if (testeRespondido) {
-        statusTeste = "Respondido";
-      } else if (testeEnviado) {
-        statusTeste = "Enviado";
-      }
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-      <td><strong>${candidato.nome_completo || "-"}</strong></td>
-      <td>${candidato.email_candidato || "-"}</td>
-      <td>${candidato.telefone_contato || "-"}</td>
-      <td>${vagaNome}</td>
-      <td><span class="badge bg-info">${
-        candidato.status_recrutamento || "-"
-      }</span></td>
-      <td><span class="badge ${
-        statusTeste === "Respondido"
-          ? "bg-success"
-          : statusTeste === "Enviado"
-          ? "bg-warning"
-          : "bg-secondary"
-      }">${statusTeste}</span></td>
-    `;
-      tabelaBody.appendChild(tr);
-    });
-
-    if (candidatosFiltrados.length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
-    }
-  }
-
-  function atualizarTabelaCandidatos(candidatos, tabelaBody) {
-    console.log(`🔹 Atualizando tabela com ${candidatos.length} candidatos`);
-
-    tabelaBody.innerHTML = "";
-
-    if (candidatos.length === 0) {
-      tabelaBody.innerHTML =
-        '<tr><td colspan="6" class="text-center text-muted">Nenhum candidato encontrado</td></tr>';
-      return;
-    }
-
-    candidatos.forEach((cand) => {
-      // ✅ CORRIGIDO: Busca melhorada da vaga
-      const vaga = vagasCache.find((v) => v.id === cand.vaga_id);
-      const vagaNome =
-        vaga?.titulo ||
-        vaga?.tituloVaga ||
-        vaga?.nome ||
-        cand.vaga_id ||
-        "Sem vaga";
-
-      console.log(
-        `📋 Candidato: ${cand.nome_completo}, Vaga ID: ${cand.vaga_id}, Vaga Nome: ${vagaNome}`
-      );
-
-      const testeEnviado = tokensCache.some((t) => t.candidatoId === cand.id);
-      const testeRespondido = tokensCache.some(
-        (t) => t.candidatoId === cand.id && t.usado
-      );
-
-      let statusTeste = '<span class="badge bg-secondary">Não enviado</span>';
-      if (testeEnviado && testeRespondido) {
-        statusTeste = '<span class="badge bg-success">✅ Respondido</span>';
-      } else if (testeEnviado) {
-        statusTeste =
-          '<span class="badge bg-warning text-dark">⏳ Enviado</span>';
-      }
-
-      const tr = document.createElement("tr");
-      // ✅ REMOVIDA COLUNA "AÇÕES" (colspan ajustado de 7 para 6)
-      tr.innerHTML = `
-      <td><strong>${cand.nome_completo || "-"}</strong></td>
-      <td>${cand.email_candidato || "-"}</td>
-      <td>${cand.telefone_contato || "-"}</td>
-      <td><strong>${vagaNome}</strong></td>
-      <td><span class="badge bg-info">${
-        cand.status_recrutamento || "Pendente"
-      }</span></td>
-      <td>${statusTeste}</td>
-    `;
-      tabelaBody.appendChild(tr);
-    });
-  }
-
-  function filtrarCandidatos(e) {
-    const termo = e.target.value.toLowerCase();
-    const candidatosFiltrados = candidatosCache.filter((c) =>
-      (c.nome_completo || "").toLowerCase().includes(termo)
-    );
-
-    const tabelaBody = document.getElementById("rel-tbody-candidatos");
-    atualizarTabelaCandidatos(candidatosFiltrados, tabelaBody);
-  }
-
   async function renderizarRespostasAosTestes() {
     console.log("🔹 Renderizando respostas aos testes...");
     const tabelaBody = document.getElementById("rel-tbody-respostas");
@@ -1048,9 +877,8 @@ export async function initdashboard(user, userData) {
       // Buscar informações do candidato
       const candidato = candidatosCache.find(
         (c) => c.id === resposta.candidatoId
-      );
+      ); // Buscar informações do teste (do token original)
 
-      // Buscar informações do teste (do token original)
       const tokenOriginal = tokensCache.find((t) => t.id === resposta.tokenId);
       let teste = null;
       if (tokenOriginal) {
@@ -1058,13 +886,14 @@ export async function initdashboard(user, userData) {
       }
 
       const candidatoNome =
-        candidato?.nome_completo || candidato?.nome_candidato || "-";
+        candidato?.nome_completo || candidato?.nome_candidato || "-"; // ✅ CORRIGIDO: Nome do profissional/candidato
       const testeNome =
-        teste?.titulo || teste?.nome || resposta.nomeTeste || "-";
+        teste?.titulo || teste?.nome || resposta.nomeTeste || "-"; // ✅ CORRIGIDO: Formatação robusta de dataResposta
 
       const dataResposta = resposta.dataResposta
         ? new Date(
-            resposta.dataResposta.toDate?.() || resposta.dataResposta
+            resposta.dataResposta.toDate?.() ||
+              resposta.dataResposta.seconds * 1000 // Suporta Timestamp do Firestore
           ).toLocaleDateString("pt-BR", {
             weekday: "short",
             year: "numeric",
@@ -1080,56 +909,41 @@ export async function initdashboard(user, userData) {
       const tempoFormatado =
         tempoMinutos > 0
           ? `${tempoMinutos}min ${tempoSegundos % 60}s`
-          : `${tempoSegundos}s`;
+          : `${tempoSegundos}s`; // ✅ USAR AVALIAÇÃO DO CANDIDATO
 
-      // ✅ USAR ESTATÍSTICAS SALVAS PELO AVALIADOR
       let notaHTML =
         '<span class="badge bg-secondary">Aguardando Avaliação</span>';
 
-      if (
-        resposta.estatisticasAvaliacao &&
-        resposta.estatisticasAvaliacao.totalQuestoes > 0
-      ) {
-        const stats = resposta.estatisticasAvaliacao;
-        const acertos = stats.acertos || 0;
-        const totalQuestoes = stats.totalQuestoes;
-        const porcentagem = stats.taxaAcerto || 0;
-
-        let corBadge = "bg-danger";
-        if (porcentagem >= 70) {
-          corBadge = "bg-success";
-        } else if (porcentagem >= 50) {
-          corBadge = "bg-warning text-dark";
+      if (candidato?.avaliacaoTeste?.resultado) {
+        const resultadoRH = candidato.avaliacaoTeste.resultado;
+        if (resultadoRH === "Aprovado") {
+          notaHTML = '<span class="badge bg-success">Avaliado: Aprovado</span>';
+        } else if (resultadoRH === "Reprovado") {
+          notaHTML = '<span class="badge bg-danger">Avaliado: Reprovado</span>';
         }
-
-        notaHTML = `<span class="badge ${corBadge}">${acertos}/${totalQuestoes} (${porcentagem}%)</span>`;
       }
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-      <td><strong>${candidatoNome}</strong></td>
-      <td>${testeNome}</td>
-      <td>${dataResposta}</td>
-      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
-      <td class="text-center">${notaHTML}</td>
-      <td><span class="badge bg-success">✅ Respondido</span></td>
-      <td class="text-center">
-        <button 
-          class="btn btn-sm btn-primary" 
-          title="Ver Respostas" 
-          onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
-        >
-          <i class="fas fa-eye me-1"></i> Ver Respostas
-        </button>
-      </td>
-    `;
+      <td><strong>${candidatoNome}</strong></td>
+      <td>${testeNome}</td>
+      <td>${dataResposta}</td>
+      <td class="text-center"><span class="badge bg-info">${tempoFormatado}</span></td>
+      <td class="text-center">${notaHTML}</td>
+      <td><span class="badge bg-success">✅ Respondido</span></td>
+      <td class="text-center">
+        <button 
+          class="btn btn-sm btn-primary" 
+          title="Ver Respostas" 
+          onclick="window.location.hash='#rh/detalhes_teste?token=${resposta.tokenId}&candidato=${resposta.candidatoId}'"
+        >
+          <i class="fas fa-eye me-1"></i> Ver Respostas
+        </button>
+      </td>
+    `;
       tabelaBody.appendChild(tr);
     });
-  }
-
-  // ============================================
-  // FUNÇÃO ORIGINAL: Busca de dados do Dashboard
-  // ============================================
+  } // ============================================ // FUNÇÃO ORIGINAL: Busca de dados do Dashboard // ============================================
 
   async function fetchRHDashboardData() {
     const ativosQuery = query(
@@ -1209,12 +1023,6 @@ export async function initdashboard(user, userData) {
       profissaoMap[displayProfissao] =
         (profissaoMap[displayProfissao] || 0) + 1;
     });
-
-    const funcoesLabels = Object.keys(funcoesMap);
-    const funcoesData = funcoesLabels.map((label) => funcoesMap[label]);
-
-    const profissaoLabels = Object.keys(profissaoMap);
-    const profissaoData = profissaoLabels.map((label) => profissaoMap[label]);
 
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -1299,23 +1107,18 @@ export async function initdashboard(user, userData) {
         data: desligamentoData,
       },
     };
-  }
-  // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste (COM CARREGAMENTO DINÂMICO DE SWEETALERT2)
-  // ============================================
+  } // ============================================ // FUNÇÃO: Visualizar Respostas do Teste (COM CARREGAMENTO DINÂMICO DE SWEETALERT2) // ============================================
 
   window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
-    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`);
+    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`); // ✅ VERIFICA SE SWEETALERT2 ESTÁ CARREGADO
 
-    // ✅ VERIFICA SE SWEETALERT2 ESTÁ CARREGADO
     if (typeof Swal === "undefined") {
       console.log("⚠️ Carregando SweetAlert2...");
 
       const script = document.createElement("script");
       script.src = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
       script.onload = () => {
-        console.log("✅ SweetAlert2 carregado");
-        // Tenta novamente após carregar
+        console.log("✅ SweetAlert2 carregado"); // Tenta novamente após carregar
         abrirModalVerRespostasInterno(tokenId, candidatoNome);
       };
       script.onerror = () => {
@@ -1328,15 +1131,10 @@ export async function initdashboard(user, userData) {
       };
       document.head.appendChild(script);
       return;
-    }
+    } // Se já está carregado, executa direto
 
-    // Se já está carregado, executa direto
     abrirModalVerRespostasInterno(tokenId, candidatoNome);
-  };
-
-  // ============================================
-  // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO (CORRIGIDO)
-  // ============================================
+  }; // ============================================ // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO (CORRIGIDO) // ============================================
 
   async function abrirModalVerRespostasInterno(tokenId, candidatoNome) {
     try {
@@ -1344,10 +1142,9 @@ export async function initdashboard(user, userData) {
         console.error("❌ ERRO: Firestore não inicializado!");
         window.showToast?.("Erro: Firestore não está pronto", "error");
         return;
-      }
+      } // ✅ Busca o token
 
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenId);
+      const tokenDocRef = doc(db, "tokensacesso", tokenId);
       const tokenSnap = await getDoc(tokenDocRef);
 
       if (!tokenSnap.exists()) {
@@ -1367,21 +1164,18 @@ export async function initdashboard(user, userData) {
           "warning"
         );
         return;
-      }
+      } // ✅ Busca o teste
 
-      // ✅ Busca o teste
       const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
       const testeSnap = await getDoc(testeRef);
       const testeDados = testeSnap.exists() ? testeSnap.data() : {};
 
-      console.log("✅ Teste carregado:", testeDados);
+      console.log("✅ Teste carregado:", testeDados); // ✅ NOVA LÓGICA: Calcula acertos e erros
 
-      // ✅ NOVA LÓGICA: Calcula acertos e erros
       let totalPerguntas = 0;
       let acertos = 0;
-      let erros = 0;
+      let erros = 0; // ✅ Cria HTML do modal com correção
 
-      // ✅ Cria HTML do modal com correção
       let perguntasHTML = "";
 
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
@@ -1389,9 +1183,8 @@ export async function initdashboard(user, userData) {
 
         testeDados.perguntas.forEach((pergunta, index) => {
           // ✅ CORRIGIDO: Trata resposta do candidato
-          let respostaCandidato = tokenData.respostas[`resposta-${index}`];
+          let respostaCandidato = tokenData.respostas[`resposta-${index}`]; // Se for objeto, extrai o texto da resposta
 
-          // Se for objeto, extrai o texto da resposta
           if (
             typeof respostaCandidato === "object" &&
             respostaCandidato !== null
@@ -1402,13 +1195,11 @@ export async function initdashboard(user, userData) {
               JSON.stringify(respostaCandidato);
           }
 
-          respostaCandidato = respostaCandidato || "-";
+          respostaCandidato = respostaCandidato || "-"; // ✅ CORRIGIDO: Trata resposta correta
 
-          // ✅ CORRIGIDO: Trata resposta correta
           let respostaCorreta =
-            pergunta.respostaCorreta || pergunta.gabarito || null;
+            pergunta.respostaCorreta || pergunta.gabarito || null; // Se for objeto, extrai o texto
 
-          // Se for objeto, extrai o texto
           if (typeof respostaCorreta === "object" && respostaCorreta !== null) {
             respostaCorreta =
               respostaCorreta.texto ||
@@ -1420,9 +1211,8 @@ export async function initdashboard(user, userData) {
             respostaCandidato,
             respostaCorreta,
             pergunta,
-          });
+          }); // ✅ Verifica se há resposta correta definida
 
-          // ✅ Verifica se há resposta correta definida
           let statusResposta = "";
           let corResposta = "#555"; // cinza padrão
           let iconeResposta = "";
@@ -1451,9 +1241,8 @@ export async function initdashboard(user, userData) {
             statusResposta = "ℹ️ Sem gabarito definido";
             corResposta = "#6c757d"; // cinza
             iconeResposta = "ℹ️";
-          }
+          } // ✅ CORRIGIDO: Trata as opções
 
-          // ✅ CORRIGIDO: Trata as opções
           let opcoesHTML = "";
 
           if (
@@ -1475,45 +1264,45 @@ export async function initdashboard(user, userData) {
             });
 
             opcoesHTML = `
-          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
-            <strong>Opções:</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
-            </ul>
-          </div>
-          `;
+          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+            <strong>Opções:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+            </ul>
+          </div>
+          `;
           }
 
           perguntasHTML += `
-        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
-          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
-            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
-          </p>
-          
-          ${opcoesHTML}
-          
-          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
-            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
-          </div>
-          
-          ${
+        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+          </p>
+          
+          ${opcoesHTML}
+          
+          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+          </div>
+          
+          ${
             respostaCorreta
               ? `
-          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
-            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
-          </div>
-          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
-            ${statusResposta}
-          </div>
-          `
+          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+          </div>
+          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+            ${statusResposta}
+          </div>
+          `
               : `
-          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
-            ${statusResposta}
-          </div>
-          `
+          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+            ${statusResposta}
+          </div>
+          `
           }
-        </div>
-      `;
+        </div>
+      `;
         });
       } else {
         perguntasHTML =
@@ -1537,13 +1326,11 @@ export async function initdashboard(user, userData) {
         ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
             tokenData.tempoRespostaSegundos % 60
           }s`
-        : "-";
+        : "-"; // ✅ Calcula porcentagem de acerto
 
-      // ✅ Calcula porcentagem de acerto
       const porcentagemAcerto =
-        totalPerguntas > 0 ? ((acertos / totalPerguntas) * 100).toFixed(1) : 0;
+        totalPerguntas > 0 ? ((acertos / totalPerguntas) * 100).toFixed(1) : 0; // ✅ Define cor do resultado baseado na porcentagem
 
-      // ✅ Define cor do resultado baseado na porcentagem
       let corResultado = "#6c757d"; // cinza padrão
       if (porcentagemAcerto >= 70) {
         corResultado = "#28a745"; // verde (aprovado)
@@ -1551,48 +1338,46 @@ export async function initdashboard(user, userData) {
         corResultado = "#ffc107"; // amarelo (médio)
       } else {
         corResultado = "#dc3545"; // vermelho (reprovado)
-      }
+      } // ✅ Abre com SweetAlert2
 
-      // ✅ Abre com SweetAlert2
       await Swal.fire({
         title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
         html: `
-      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
-        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
-          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
-            testeDados.titulo || "Teste"
-          }</p>
-          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
-          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
-        </div>
-        
-        <!-- ✅ RESULTADO DA CORREÇÃO -->
-        <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
-          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
-              <div style="font-size: 14px;">✅ Acertos</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
-              <div style="font-size: 14px;">❌ Erros</div>
-            </div>
-            <div>
-              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
-              <div style="font-size: 14px;">📈 Aproveitamento</div>
-            </div>
-          </div>
-        </div>
-        
-        <hr style="margin: 20px 0;">
-        
-        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
-        
-        ${perguntasHTML}
-      </div>
-    `,
+      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+          testeDados.titulo || "Teste"
+        }</p>
+          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+        </div>
+        
+                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+              <div style="font-size: 14px;">✅ Acertos</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+              <div style="font-size: 14px;">❌ Erros</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+              <div style="font-size: 14px;">📈 Aproveitamento</div>
+            </div>
+          </div>
+        </div>
+        
+        <hr style="margin: 20px 0;">
+        
+        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+        
+        ${perguntasHTML}
+      </div>
+    `,
         width: "900px",
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
@@ -1610,11 +1395,7 @@ export async function initdashboard(user, userData) {
       console.error("❌ Erro ao abrir respostas:", error);
       window.showToast?.(`Erro: ${error.message}`, "error");
     }
-  }
-
-  // ============================================
-  // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS)
-  // ============================================
+  } // ============================================ // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS) // ============================================
 
   window.exportarRespostaIndividual = async function (
     tokenDocId,
@@ -1626,10 +1407,9 @@ export async function initdashboard(user, userData) {
       if (!db) {
         console.error("❌ ERRO: Firestore não inicializado!");
         return;
-      }
+      } // ✅ Busca o token
 
-      // ✅ Busca o token
-      const tokenDocRef = doc(db, "tokens_acesso", tokenDocId);
+      const tokenDocRef = doc(db, "tokensacesso", tokenDocId);
       const tokenSnap = await getDoc(tokenDocRef);
 
       if (!tokenSnap.exists()) {
@@ -1638,16 +1418,14 @@ export async function initdashboard(user, userData) {
       }
 
       const tokenData = tokenSnap.data();
-      console.log("✅ Token encontrado:", tokenData);
+      console.log("✅ Token encontrado:", tokenData); // ✅ Busca o teste
 
-      // ✅ Busca o teste
       const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
       const testeSnap = await getDoc(testeRef);
       const testeDados = testeSnap.exists() ? testeSnap.data() : {};
 
-      console.log("✅ Teste encontrado:", testeDados);
+      console.log("✅ Teste encontrado:", testeDados); // ✅ Formata data e tempo
 
-      // ✅ Formata data e tempo
       const dataResposta = tokenData.respondidoEm
         ? new Date(
             tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
@@ -1664,28 +1442,27 @@ export async function initdashboard(user, userData) {
         ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
             tokenData.tempoRespostaSegundos % 60
           }s`
-        : "-";
+        : "-"; // ✅ Cria linha única para Excel com TODAS as colunas
 
-      // ✅ Cria linha única para Excel com TODAS as colunas
       const linhaExcel = {
         Candidato: candidatoNome,
         Teste: testeDados.titulo || "Teste",
         "Data da Resposta": dataResposta,
         "Tempo Gasto": tempoGasto,
         Status: "Respondido",
-      };
+      }; // ✅ Adiciona cada RESPOSTA como coluna no Excel
 
-      // ✅ Adiciona cada RESPOSTA como coluna no Excel
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
-          linhaExcel[`P${index + 1}: ${pergunta.enunciado}`] = resposta;
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // Usa o enunciado do Firestore
+          const enunciado =
+            pergunta.enunciado || pergunta.texto || `P${index + 1}`;
+          linhaExcel[`P${index + 1}: ${enunciado}`] = resposta;
         });
       }
 
-      console.log("📊 Dados para exportação:", linhaExcel);
+      console.log("📊 Dados para exportação:", linhaExcel); // ✅ Pergunta qual formato exportar
 
-      // ✅ Pergunta qual formato exportar
       const { isConfirmed, isDenied } = await Swal.fire({
         title: "Exportar Respostas",
         text: "Escolha o formato para exportação:",
@@ -1718,10 +1495,10 @@ export async function initdashboard(user, userData) {
       window.showToast?.(`Erro: ${error.message}`, "error");
     }
   };
-
   /**
-   * ✅ Exporta resposta individual para PDF
+   * ✅ Exporta uma resposta individual para PDF
    */
+
   function exportarRespostaPDFIndividual(
     candidatoNome,
     testeDados,
@@ -1784,9 +1561,8 @@ export async function initdashboard(user, userData) {
         format: "a4",
       });
 
-      let yPosition = 15;
+      let yPosition = 15; // ✅ CABEÇALHO
 
-      // ✅ CABEÇALHO
       doc.setFontSize(18);
       doc.setTextColor(102, 126, 234);
       doc.text("EuPsico", 105, yPosition, { align: "center" });
@@ -1802,15 +1578,13 @@ export async function initdashboard(user, userData) {
       doc.setFontSize(12);
       doc.setTextColor(51, 51, 51);
       doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
+      yPosition += 10; // Linha separadora
 
-      // Linha separadora
       doc.setDrawColor(102, 126, 234);
       doc.setLineWidth(0.5);
       doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
+      yPosition += 5; // ✅ INFORMAÇÕES DO CANDIDATO
 
-      // ✅ INFORMAÇÕES DO CANDIDATO
       doc.setFontSize(10);
       doc.setTextColor(51, 51, 51);
 
@@ -1824,9 +1598,8 @@ export async function initdashboard(user, userData) {
       yPosition += 6;
 
       doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
+      yPosition += 10; // ✅ PERGUNTAS E RESPOSTAS
 
-      // ✅ PERGUNTAS E RESPOSTAS
       doc.setFontSize(11);
       doc.setTextColor(102, 126, 234);
       doc.text("Respostas Fornecidas:", 14, yPosition);
@@ -1837,9 +1610,8 @@ export async function initdashboard(user, userData) {
 
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // ✅ PERGUNTA
 
-          // ✅ PERGUNTA
           doc.setFont(undefined, "bold");
           const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
           const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
@@ -1851,9 +1623,8 @@ export async function initdashboard(user, userData) {
             }
             doc.text(line, 14, yPosition);
             yPosition += 5;
-          });
+          }); // ✅ RESPOSTA
 
-          // ✅ RESPOSTA
           doc.setFont(undefined, "normal");
           doc.setFillColor(240, 240, 240);
           const respostaWrapped = doc.splitTextToSize(
@@ -1876,17 +1647,15 @@ export async function initdashboard(user, userData) {
         doc.text("Nenhuma resposta encontrada.", 14, yPosition);
       }
 
-      yPosition += 5;
+      yPosition += 5; // ✅ RODAPÉ
 
-      // ✅ RODAPÉ
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
 
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(150, 150, 150); // Linha separadora
 
-        // Linha separadora
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
         doc.line(14, 280, 196, 280);
@@ -1904,9 +1673,8 @@ export async function initdashboard(user, userData) {
           293,
           { align: "center" }
         );
-      }
+      } // ✅ SALVA O PDF
 
-      // ✅ SALVA O PDF
       doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
       window.showToast?.("✅ PDF exportado com sucesso!", "success");
 
@@ -1915,12 +1683,569 @@ export async function initdashboard(user, userData) {
       console.error("❌ Erro ao gerar PDF:", error);
       window.showToast?.("❌ Erro ao exportar PDF", "error");
     }
-  }
+  } // ============================================ // FUNÇÃO ORIGINAL: Busca de dados do Dashboard // ============================================
 
+  async function fetchRHDashboardData() {
+    const ativosQuery = query(
+      usuariosCollection,
+      where("inativo", "==", false)
+    );
+
+    const vagasQuery = query(
+      vagasCollection,
+      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
+    );
+
+    const onboardingQuery = query(
+      onboardingCollection,
+      where("faseAtual", "in", [
+        "pendente-docs",
+        "em-integracao",
+        "acompanhamento",
+      ])
+    );
+
+    const comunicadosQuery = query(comunicadosCollection);
+    const todosUsuariosQuery = query(
+      usuariosCollection,
+      where("inativo", "==", false)
+    );
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const desligamentosQuery = query(
+      desligamentosCollection,
+      where("dataEfetiva", ">=", oneYearAgo)
+    );
+
+    const [
+      ativosSnap,
+      vagasSnap,
+      onboardingSnap,
+      comunicadosSnap,
+      todosUsuariosSnap,
+      desligamentosSnap,
+    ] = await Promise.all([
+      getDocs(ativosQuery),
+      getDocs(vagasQuery),
+      getDocs(onboardingQuery),
+      getDocs(comunicadosQuery),
+      getDocs(todosUsuariosQuery),
+      getDocs(desligamentosQuery),
+    ]);
+
+    const funcoesMap = {};
+    const profissaoMap = {};
+
+    todosUsuariosSnap.forEach((doc) => {
+      const user = doc.data();
+      const funcoes = user.funcoes || [];
+      const profissao = user.profissao || "Não Informado";
+
+      funcoes.forEach((role) => {
+        const displayRole =
+          {
+            psicologo_voluntario: "Psicólogo Voluntário",
+            psicologo_plantonista: "Psicólogo Plantonista",
+            supervisor: "Supervisor",
+            admin: "Admin",
+            rh: "RH",
+            gestor: "Gestor",
+          }[role] ||
+          role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
+
+        funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+      });
+
+      const displayProfissao =
+        profissao.charAt(0).toUpperCase() + profissao.slice(1);
+      profissaoMap[displayProfissao] =
+        (profissaoMap[displayProfissao] || 0) + 1;
+    });
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const monthNames = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
+
+    const monthlyDataMap = {};
+    const labels = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const yearMonthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      monthlyDataMap[yearMonthKey] = 0;
+      labels.push(
+        `${monthNames[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`
+      );
+    }
+
+    desligamentosSnap.forEach((doc) => {
+      const desligamento = doc.data();
+      let effectiveDate;
+
+      if (
+        desligamento.dataEfetiva &&
+        typeof desligamento.dataEfetiva.toDate === "function"
+      ) {
+        effectiveDate = desligamento.dataEfetiva.toDate();
+      } else if (desligamento.dataEfetiva instanceof Date) {
+        effectiveDate = desligamento.dataEfetiva;
+      } else {
+        return;
+      }
+
+      const yearMonthKey = `${effectiveDate.getFullYear()}-${
+        effectiveDate.getMonth() + 1
+      }`;
+
+      if (monthlyDataMap.hasOwnProperty(yearMonthKey)) {
+        monthlyDataMap[yearMonthKey]++;
+      }
+    });
+
+    const desligamentoData = labels.map((label) => {
+      const [monthName, yearShort] = label.split("/");
+      const monthIndex = monthNames.findIndex((name) => name === monthName);
+      const year = parseInt(
+        yearShort.length === 2 ? `20${yearShort}` : yearShort
+      );
+      const yearMonthKey = `${year}-${monthIndex + 1}`;
+      return monthlyDataMap[yearMonthKey] || 0;
+    });
+
+    return {
+      ativos: ativosSnap.size,
+      vagas: vagasSnap.size,
+      onboarding: onboardingSnap.size,
+      comunicados: comunicadosSnap.size,
+
+      funcoesData: {
+        labels: funcoesLabels,
+        data: funcoesData,
+      },
+      profissaoData: {
+        labels: profissaoLabels,
+        data: profissaoData,
+      },
+      desligamentoData: {
+        labels: labels,
+        data: desligamentoData,
+      },
+    };
+  } // ============================================ // FUNÇÃO: Visualizar Respostas do Teste (COM CARREGAMENTO DINÂMICO DE SWEETALERT2) // ============================================
+
+  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
+    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`); // ✅ VERIFICA SE SWEETALERT2 ESTÁ CARREGADO
+
+    if (typeof Swal === "undefined") {
+      console.log("⚠️ Carregando SweetAlert2...");
+
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
+      script.onload = () => {
+        console.log("✅ SweetAlert2 carregado"); // Tenta novamente após carregar
+        abrirModalVerRespostasInterno(tokenId, candidatoNome);
+      };
+      script.onerror = () => {
+        console.error("❌ Erro ao carregar SweetAlert2");
+        if (window.showToast) {
+          window.showToast("Erro ao carregar componente de modal", "error");
+        } else {
+          alert("Erro ao carregar componente de modal");
+        }
+      };
+      document.head.appendChild(script);
+      return;
+    } // Se já está carregado, executa direto
+
+    abrirModalVerRespostasInterno(tokenId, candidatoNome);
+  }; // ============================================ // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO (CORRIGIDO) // ============================================
+
+  async function abrirModalVerRespostasInterno(tokenId, candidatoNome) {
+    try {
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        window.showToast?.("Erro: Firestore não está pronto", "error");
+        return;
+      } // ✅ Busca o token
+
+      const tokenDocRef = doc(db, "tokensacesso", tokenId);
+      const tokenSnap = await getDoc(tokenDocRef);
+
+      if (!tokenSnap.exists()) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+      console.log("✅ Token encontrado:", tokenData);
+
+      if (
+        !tokenData.respostas ||
+        Object.keys(tokenData.respostas).length === 0
+      ) {
+        window.showToast?.(
+          "Nenhuma resposta encontrada para este teste",
+          "warning"
+        );
+        return;
+      } // ✅ Busca o teste
+
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste carregado:", testeDados); // ✅ NOVA LÓGICA: Calcula acertos e erros
+
+      let totalPerguntas = 0;
+      let acertos = 0;
+      let erros = 0; // ✅ Cria HTML do modal com correção
+
+      let perguntasHTML = "";
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        totalPerguntas = testeDados.perguntas.length;
+
+        testeDados.perguntas.forEach((pergunta, index) => {
+          // ✅ CORRIGIDO: Trata resposta do candidato
+          let respostaCandidato = tokenData.respostas[`resposta-${index}`]; // Se for objeto, extrai o texto da resposta
+
+          if (
+            typeof respostaCandidato === "object" &&
+            respostaCandidato !== null
+          ) {
+            respostaCandidato =
+              respostaCandidato.texto ||
+              respostaCandidato.resposta ||
+              JSON.stringify(respostaCandidato);
+          }
+
+          respostaCandidato = respostaCandidato || "-"; // ✅ CORRIGIDO: Trata resposta correta
+
+          let respostaCorreta =
+            pergunta.respostaCorreta || pergunta.gabarito || null; // Se for objeto, extrai o texto
+
+          if (typeof respostaCorreta === "object" && respostaCorreta !== null) {
+            respostaCorreta =
+              respostaCorreta.texto ||
+              respostaCorreta.resposta ||
+              JSON.stringify(respostaCorreta);
+          }
+
+          console.log(`📝 Pergunta ${index + 1}:`, {
+            respostaCandidato,
+            respostaCorreta,
+            pergunta,
+          }); // ✅ Verifica se há resposta correta definida
+
+          let statusResposta = "";
+          let corResposta = "#555"; // cinza padrão
+          let iconeResposta = "";
+
+          if (respostaCorreta) {
+            // Normaliza strings para comparação (case-insensitive e remove espaços extras)
+            const respostaCandidatoNorm = String(respostaCandidato)
+              .trim()
+              .toLowerCase();
+            const respostaCorretaNorm = String(respostaCorreta)
+              .trim()
+              .toLowerCase();
+
+            if (respostaCandidatoNorm === respostaCorretaNorm) {
+              acertos++;
+              statusResposta = "✅ CORRETO";
+              corResposta = "#28a745"; // verde
+              iconeResposta = "✅";
+            } else {
+              erros++;
+              statusResposta = "❌ INCORRETO";
+              corResposta = "#dc3545"; // vermelho
+              iconeResposta = "❌";
+            }
+          } else {
+            statusResposta = "ℹ️ Sem gabarito definido";
+            corResposta = "#6c757d"; // cinza
+            iconeResposta = "ℹ️";
+          } // ✅ CORRIGIDO: Trata as opções
+
+          let opcoesHTML = "";
+
+          if (
+            pergunta.opcoes &&
+            Array.isArray(pergunta.opcoes) &&
+            pergunta.opcoes.length > 0
+          ) {
+            const opcoesTexto = pergunta.opcoes.map((opcao) => {
+              // Se for objeto, extrai o texto
+              if (typeof opcao === "object" && opcao !== null) {
+                return (
+                  opcao.texto ||
+                  opcao.resposta ||
+                  opcao.label ||
+                  JSON.stringify(opcao)
+                );
+              }
+              return String(opcao);
+            });
+
+            opcoesHTML = `
+          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+            <strong>Opções:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+            </ul>
+          </div>
+          `;
+          }
+
+          perguntasHTML += `
+        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+          </p>
+          
+          ${opcoesHTML}
+          
+          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+          </div>
+          
+          ${
+            respostaCorreta
+              ? `
+          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+          </div>
+          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+            ${statusResposta}
+          </div>
+          `
+              : `
+          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+            ${statusResposta}
+          </div>
+          `
+          }
+        </div>
+      `;
+        });
+      } else {
+        perguntasHTML =
+          '<p style="color: #999; text-align: center;">Nenhuma pergunta encontrada.</p>';
+      }
+
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-"; // ✅ Calcula porcentagem de acerto
+
+      const porcentagemAcerto =
+        totalPerguntas > 0 ? ((acertos / totalPerguntas) * 100).toFixed(1) : 0; // ✅ Define cor do resultado baseado na porcentagem
+
+      let corResultado = "#6c757d"; // cinza padrão
+      if (porcentagemAcerto >= 70) {
+        corResultado = "#28a745"; // verde (aprovado)
+      } else if (porcentagemAcerto >= 50) {
+        corResultado = "#ffc107"; // amarelo (médio)
+      } else {
+        corResultado = "#dc3545"; // vermelho (reprovado)
+      } // ✅ Abre com SweetAlert2
+
+      await Swal.fire({
+        title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
+        html: `
+      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+          testeDados.titulo || "Teste"
+        }</p>
+          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+        </div>
+        
+                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+              <div style="font-size: 14px;">✅ Acertos</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+              <div style="font-size: 14px;">❌ Erros</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+              <div style="font-size: 14px;">📈 Aproveitamento</div>
+            </div>
+          </div>
+        </div>
+        
+        <hr style="margin: 20px 0;">
+        
+        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+        
+        ${perguntasHTML}
+      </div>
+    `,
+        width: "900px",
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
+        cancelButtonText: "Fechar",
+        confirmButtonColor: "#667eea",
+        cancelButtonColor: "#6c757d",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.exportarRespostaIndividual?.(tokenId, candidatoNome);
+        }
+      });
+
+      console.log("✅ Modal de respostas aberto com correção");
+    } catch (error) {
+      console.error("❌ Erro ao abrir respostas:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  } // ============================================ // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS) // ============================================
+
+  window.exportarRespostaIndividual = async function (
+    tokenDocId,
+    candidatoNome
+  ) {
+    console.log(`🔹 Exportando resposta individual: ${tokenDocId}`);
+
+    try {
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        return;
+      } // ✅ Busca o token
+
+      const tokenDocRef = doc(db, "tokensacesso", tokenDocId);
+      const tokenSnap = await getDoc(tokenDocRef);
+
+      if (!tokenSnap.exists()) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+      console.log("✅ Token encontrado:", tokenData); // ✅ Busca o teste
+
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste encontrado:", testeDados); // ✅ Formata data e tempo
+
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-"; // ✅ Cria linha única para Excel com TODAS as colunas
+
+      const linhaExcel = {
+        Candidato: candidatoNome,
+        Teste: testeDados.titulo || "Teste",
+        "Data da Resposta": dataResposta,
+        "Tempo Gasto": tempoGasto,
+        Status: "Respondido",
+      }; // ✅ Adiciona cada RESPOSTA como coluna no Excel
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // Usa o enunciado do Firestore
+          const enunciado =
+            pergunta.enunciado || pergunta.texto || `P${index + 1}`;
+          linhaExcel[`P${index + 1}: ${enunciado}`] = resposta;
+        });
+      }
+
+      console.log("📊 Dados para exportação:", linhaExcel); // ✅ Pergunta qual formato exportar
+
+      const { isConfirmed, isDenied } = await Swal.fire({
+        title: "Exportar Respostas",
+        text: "Escolha o formato para exportação:",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "📊 Excel (CSV)",
+        denyButtonText: "📄 PDF",
+        cancelButtonText: "Cancelar",
+        showDenyButton: true,
+      });
+
+      if (isConfirmed) {
+        console.log("📊 Exportando para Excel...");
+        exportarParaExcel(
+          [linhaExcel],
+          `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
+        );
+      } else if (isDenied) {
+        console.log("📄 Exportando para PDF...");
+        exportarRespostaPDFIndividual(
+          candidatoNome,
+          testeDados,
+          tokenData,
+          dataResposta,
+          tempoGasto
+        );
+      }
+    } catch (error) {
+      console.error("❌ Erro ao exportar:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  };
   /**
    * ✅ Exporta uma resposta individual para PDF
    */
-  function exportarRespostaPDF(candidatoNome, testeDados, tokenData) {
+
+  function exportarRespostaPDFIndividual(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
     console.log("📄 Exportando resposta individual para PDF...");
 
     if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
@@ -1937,7 +2262,13 @@ export async function initdashboard(user, userData) {
       scriptJsPDF.onload = () => {
         scriptAutoTable.onload = () => {
           setTimeout(() => {
-            gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
+            gerarPDFRespostasIndividualCorrigido(
+              candidatoNome,
+              testeDados,
+              tokenData,
+              dataResposta,
+              tempoGasto
+            );
           }, 500);
         };
         document.head.appendChild(scriptAutoTable);
@@ -1945,11 +2276,23 @@ export async function initdashboard(user, userData) {
 
       document.head.appendChild(scriptJsPDF);
     } else {
-      gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData);
+      gerarPDFRespostasIndividualCorrigido(
+        candidatoNome,
+        testeDados,
+        tokenData,
+        dataResposta,
+        tempoGasto
+      );
     }
   }
 
-  function gerarPDFRespostasIndividual(candidatoNome, testeDados, tokenData) {
+  function gerarPDFRespostasIndividualCorrigido(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
     try {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({
@@ -1958,9 +2301,8 @@ export async function initdashboard(user, userData) {
         format: "a4",
       });
 
-      let yPosition = 15;
+      let yPosition = 15; // ✅ CABEÇALHO
 
-      // ✅ CABEÇALHO
       doc.setFontSize(18);
       doc.setTextColor(102, 126, 234);
       doc.text("EuPsico", 105, yPosition, { align: "center" });
@@ -1976,15 +2318,13 @@ export async function initdashboard(user, userData) {
       doc.setFontSize(12);
       doc.setTextColor(51, 51, 51);
       doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
-      yPosition += 10;
+      yPosition += 10; // Linha separadora
 
-      // Linha separadora
       doc.setDrawColor(102, 126, 234);
       doc.setLineWidth(0.5);
       doc.line(14, yPosition - 2, 196, yPosition - 2);
-      yPosition += 5;
+      yPosition += 5; // ✅ INFORMAÇÕES DO CANDIDATO
 
-      // ✅ INFORMAÇÕES DO CANDIDATO
       doc.setFontSize(10);
       doc.setTextColor(51, 51, 51);
 
@@ -1994,25 +2334,12 @@ export async function initdashboard(user, userData) {
       doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
       yPosition += 6;
 
-      const dataResposta = tokenData.respondidoEm
-        ? new Date(
-            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
-          ).toLocaleDateString("pt-BR")
-        : "-";
-
       doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
       yPosition += 6;
 
-      const tempoGasto = tokenData.tempoRespostaSegundos
-        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
-            tokenData.tempoRespostaSegundos % 60
-          }s`
-        : "-";
-
       doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
-      yPosition += 10;
+      yPosition += 10; // ✅ PERGUNTAS E RESPOSTAS
 
-      // ✅ PERGUNTAS E RESPOSTAS
       doc.setFontSize(11);
       doc.setTextColor(102, 126, 234);
       doc.text("Respostas Fornecidas:", 14, yPosition);
@@ -2023,9 +2350,8 @@ export async function initdashboard(user, userData) {
 
       if (testeDados.perguntas && testeDados.perguntas.length > 0) {
         testeDados.perguntas.forEach((pergunta, index) => {
-          const resposta = tokenData.respostas[`resposta-${index}`] || "-";
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // ✅ PERGUNTA
 
-          // ✅ PERGUNTA
           doc.setFont(undefined, "bold");
           const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
           const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
@@ -2037,9 +2363,748 @@ export async function initdashboard(user, userData) {
             }
             doc.text(line, 14, yPosition);
             yPosition += 5;
+          }); // ✅ RESPOSTA
+
+          doc.setFont(undefined, "normal");
+          doc.setFillColor(240, 240, 240);
+          const respostaWrapped = doc.splitTextToSize(
+            `Resposta: ${resposta}`,
+            180
+          );
+
+          respostaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
           });
 
-          // ✅ RESPOSTA
+          yPosition += 3;
+        });
+      } else {
+        doc.text("Nenhuma resposta encontrada.", 14, yPosition);
+      }
+
+      yPosition += 5; // ✅ RODAPÉ
+
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150); // Linha separadora
+
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(14, 280, 196, 280);
+
+        doc.text(
+          "Avenida Inocêncio Seráfico, 141 - Centro de Carapicuíba - SP, 06320-290",
+          105,
+          285,
+          { align: "center" }
+        );
+        doc.text("WhatsApp: 11 99794-9071", 105, 289, { align: "center" });
+        doc.text(
+          `Página ${i} de ${pageCount} | Relatório gerado automaticamente © 2025`,
+          105,
+          293,
+          { align: "center" }
+        );
+      } // ✅ SALVA O PDF
+
+      doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
+      window.showToast?.("✅ PDF exportado com sucesso!", "success");
+
+      console.log("✅ PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao gerar PDF:", error);
+      window.showToast?.("❌ Erro ao exportar PDF", "error");
+    }
+  } // ============================================ // FUNÇÃO ORIGINAL: Busca de dados do Dashboard // ============================================
+
+  async function fetchRHDashboardData() {
+    const ativosQuery = query(
+      usuariosCollection,
+      where("inativo", "==", false)
+    );
+
+    const vagasQuery = query(
+      vagasCollection,
+      where("status", "in", ["aguardando-aprovacao", "em-divulgacao"])
+    );
+
+    const onboardingQuery = query(
+      onboardingCollection,
+      where("faseAtual", "in", [
+        "pendente-docs",
+        "em-integracao",
+        "acompanhamento",
+      ])
+    );
+
+    const comunicadosQuery = query(comunicadosCollection);
+    const todosUsuariosQuery = query(
+      usuariosCollection,
+      where("inativo", "==", false)
+    );
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const desligamentosQuery = query(
+      desligamentosCollection,
+      where("dataEfetiva", ">=", oneYearAgo)
+    );
+
+    const [
+      ativosSnap,
+      vagasSnap,
+      onboardingSnap,
+      comunicadosSnap,
+      todosUsuariosSnap,
+      desligamentosSnap,
+    ] = await Promise.all([
+      getDocs(ativosQuery),
+      getDocs(vagasQuery),
+      getDocs(onboardingQuery),
+      getDocs(comunicadosQuery),
+      getDocs(todosUsuariosQuery),
+      getDocs(desligamentosQuery),
+    ]);
+
+    const funcoesMap = {};
+    const profissaoMap = {};
+
+    todosUsuariosSnap.forEach((doc) => {
+      const user = doc.data();
+      const funcoes = user.funcoes || [];
+      const profissao = user.profissao || "Não Informado";
+
+      funcoes.forEach((role) => {
+        const displayRole =
+          {
+            psicologo_voluntario: "Psicólogo Voluntário",
+            psicologo_plantonista: "Psicólogo Plantonista",
+            supervisor: "Supervisor",
+            admin: "Admin",
+            rh: "RH",
+            gestor: "Gestor",
+          }[role] ||
+          role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
+
+        funcoesMap[displayRole] = (funcoesMap[displayRole] || 0) + 1;
+      });
+
+      const displayProfissao =
+        profissao.charAt(0).toUpperCase() + profissao.slice(1);
+      profissaoMap[displayProfissao] =
+        (profissaoMap[displayProfissao] || 0) + 1;
+    });
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const monthNames = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
+
+    const monthlyDataMap = {};
+    const labels = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const yearMonthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      monthlyDataMap[yearMonthKey] = 0;
+      labels.push(
+        `${monthNames[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`
+      );
+    }
+
+    desligamentosSnap.forEach((doc) => {
+      const desligamento = doc.data();
+      let effectiveDate;
+
+      if (
+        desligamento.dataEfetiva &&
+        typeof desligamento.dataEfetiva.toDate === "function"
+      ) {
+        effectiveDate = desligamento.dataEfetiva.toDate();
+      } else if (desligamento.dataEfetiva instanceof Date) {
+        effectiveDate = desligamento.dataEfetiva;
+      } else {
+        return;
+      }
+
+      const yearMonthKey = `${effectiveDate.getFullYear()}-${
+        effectiveDate.getMonth() + 1
+      }`;
+
+      if (monthlyDataMap.hasOwnProperty(yearMonthKey)) {
+        monthlyDataMap[yearMonthKey]++;
+      }
+    });
+
+    const desligamentoData = labels.map((label) => {
+      const [monthName, yearShort] = label.split("/");
+      const monthIndex = monthNames.findIndex((name) => name === monthName);
+      const year = parseInt(
+        yearShort.length === 2 ? `20${yearShort}` : yearShort
+      );
+      const yearMonthKey = `${year}-${monthIndex + 1}`;
+      return monthlyDataMap[yearMonthKey] || 0;
+    });
+
+    return {
+      ativos: ativosSnap.size,
+      vagas: vagasSnap.size,
+      onboarding: onboardingSnap.size,
+      comunicados: comunicadosSnap.size,
+
+      funcoesData: {
+        labels: funcoesLabels,
+        data: funcoesData,
+      },
+      profissaoData: {
+        labels: profissaoLabels,
+        data: profissaoData,
+      },
+      desligamentoData: {
+        labels: labels,
+        data: desligamentoData,
+      },
+    };
+  } // ============================================ // FUNÇÃO: Visualizar Respostas do Teste (COM CARREGAMENTO DINÂMICO DE SWEETALERT2) // ============================================
+
+  window.abrirModalVerRespostas = async function (tokenId, candidatoNome) {
+    console.log(`🔹 Abrindo respostas do teste: ${tokenId}`); // ✅ VERIFICA SE SWEETALERT2 ESTÁ CARREGADO
+
+    if (typeof Swal === "undefined") {
+      console.log("⚠️ Carregando SweetAlert2...");
+
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/sweetalert2@11";
+      script.onload = () => {
+        console.log("✅ SweetAlert2 carregado"); // Tenta novamente após carregar
+        abrirModalVerRespostasInterno(tokenId, candidatoNome);
+      };
+      script.onerror = () => {
+        console.error("❌ Erro ao carregar SweetAlert2");
+        if (window.showToast) {
+          window.showToast("Erro ao carregar componente de modal", "error");
+        } else {
+          alert("Erro ao carregar componente de modal");
+        }
+      };
+      document.head.appendChild(script);
+      return;
+    } // Se já está carregado, executa direto
+
+    abrirModalVerRespostasInterno(tokenId, candidatoNome);
+  }; // ============================================ // FUNÇÃO: Visualizar Respostas do Teste COM CORREÇÃO (CORRIGIDO) // ============================================
+
+  async function abrirModalVerRespostasInterno(tokenId, candidatoNome) {
+    try {
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        window.showToast?.("Erro: Firestore não está pronto", "error");
+        return;
+      } // ✅ Busca o token
+
+      const tokenDocRef = doc(db, "tokensacesso", tokenId);
+      const tokenSnap = await getDoc(tokenDocRef);
+
+      if (!tokenSnap.exists()) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+      console.log("✅ Token encontrado:", tokenData);
+
+      if (
+        !tokenData.respostas ||
+        Object.keys(tokenData.respostas).length === 0
+      ) {
+        window.showToast?.(
+          "Nenhuma resposta encontrada para este teste",
+          "warning"
+        );
+        return;
+      } // ✅ Busca o teste
+
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste carregado:", testeDados); // ✅ NOVA LÓGICA: Calcula acertos e erros
+
+      let totalPerguntas = 0;
+      let acertos = 0;
+      let erros = 0; // ✅ Cria HTML do modal com correção
+
+      let perguntasHTML = "";
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        totalPerguntas = testeDados.perguntas.length;
+
+        testeDados.perguntas.forEach((pergunta, index) => {
+          // ✅ CORRIGIDO: Trata resposta do candidato
+          let respostaCandidato = tokenData.respostas[`resposta-${index}`]; // Se for objeto, extrai o texto da resposta
+
+          if (
+            typeof respostaCandidato === "object" &&
+            respostaCandidato !== null
+          ) {
+            respostaCandidato =
+              respostaCandidato.texto ||
+              respostaCandidato.resposta ||
+              JSON.stringify(respostaCandidato);
+          }
+
+          respostaCandidato = respostaCandidato || "-"; // ✅ CORRIGIDO: Trata resposta correta
+
+          let respostaCorreta =
+            pergunta.respostaCorreta || pergunta.gabarito || null; // Se for objeto, extrai o texto
+
+          if (typeof respostaCorreta === "object" && respostaCorreta !== null) {
+            respostaCorreta =
+              respostaCorreta.texto ||
+              respostaCorreta.resposta ||
+              JSON.stringify(respostaCorreta);
+          }
+
+          console.log(`📝 Pergunta ${index + 1}:`, {
+            respostaCandidato,
+            respostaCorreta,
+            pergunta,
+          }); // ✅ Verifica se há resposta correta definida
+
+          let statusResposta = "";
+          let corResposta = "#555"; // cinza padrão
+          let iconeResposta = "";
+
+          if (respostaCorreta) {
+            // Normaliza strings para comparação (case-insensitive e remove espaços extras)
+            const respostaCandidatoNorm = String(respostaCandidato)
+              .trim()
+              .toLowerCase();
+            const respostaCorretaNorm = String(respostaCorreta)
+              .trim()
+              .toLowerCase();
+
+            if (respostaCandidatoNorm === respostaCorretaNorm) {
+              acertos++;
+              statusResposta = "✅ CORRETO";
+              corResposta = "#28a745"; // verde
+              iconeResposta = "✅";
+            } else {
+              erros++;
+              statusResposta = "❌ INCORRETO";
+              corResposta = "#dc3545"; // vermelho
+              iconeResposta = "❌";
+            }
+          } else {
+            statusResposta = "ℹ️ Sem gabarito definido";
+            corResposta = "#6c757d"; // cinza
+            iconeResposta = "ℹ️";
+          } // ✅ CORRIGIDO: Trata as opções
+
+          let opcoesHTML = "";
+
+          if (
+            pergunta.opcoes &&
+            Array.isArray(pergunta.opcoes) &&
+            pergunta.opcoes.length > 0
+          ) {
+            const opcoesTexto = pergunta.opcoes.map((opcao) => {
+              // Se for objeto, extrai o texto
+              if (typeof opcao === "object" && opcao !== null) {
+                return (
+                  opcao.texto ||
+                  opcao.resposta ||
+                  opcao.label ||
+                  JSON.stringify(opcao)
+                );
+              }
+              return String(opcao);
+            });
+
+            opcoesHTML = `
+          <div style="background: #f9f9f9; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 13px;">
+            <strong>Opções:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${opcoesTexto.map((opcao) => `<li>${opcao}</li>`).join("")}
+            </ul>
+          </div>
+          `;
+          }
+
+          perguntasHTML += `
+        <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid ${corResposta}; text-align: left;">
+          <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">
+            <strong>Pergunta ${index + 1}:</strong> ${pergunta.enunciado}
+          </p>
+          
+          ${opcoesHTML}
+          
+          <div style="background: white; padding: 10px; border-radius: 4px; color: ${corResposta}; border: 2px solid ${corResposta}; margin-top: 8px;">
+            <strong>${iconeResposta} Resposta do Candidato:</strong> ${respostaCandidato}
+          </div>
+          
+          ${
+            respostaCorreta
+              ? `
+          <div style="background: #e8f8f0; padding: 8px; border-radius: 4px; margin-top: 8px; color: #28a745; border: 1px solid #28a745;">
+            <strong>✓ Resposta Correta:</strong> ${respostaCorreta}
+          </div>
+          <div style="text-align: right; margin-top: 5px; font-weight: bold; color: ${corResposta}; font-size: 14px;">
+            ${statusResposta}
+          </div>
+          `
+              : `
+          <div style="text-align: right; margin-top: 5px; font-style: italic; color: #6c757d; font-size: 12px;">
+            ${statusResposta}
+          </div>
+          `
+          }
+        </div>
+      `;
+        });
+      } else {
+        perguntasHTML =
+          '<p style="color: #999; text-align: center;">Nenhuma pergunta encontrada.</p>';
+      }
+
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-"; // ✅ Calcula porcentagem de acerto
+
+      const porcentagemAcerto =
+        totalPerguntas > 0 ? ((acertos / totalPerguntas) * 100).toFixed(1) : 0; // ✅ Define cor do resultado baseado na porcentagem
+
+      let corResultado = "#6c757d"; // cinza padrão
+      if (porcentagemAcerto >= 70) {
+        corResultado = "#28a745"; // verde (aprovado)
+      } else if (porcentagemAcerto >= 50) {
+        corResultado = "#ffc107"; // amarelo (médio)
+      } else {
+        corResultado = "#dc3545"; // vermelho (reprovado)
+      } // ✅ Abre com SweetAlert2
+
+      await Swal.fire({
+        title: `<i class="fas fa-eye me-2"></i> Respostas do Teste`,
+        html: `
+      <div style="text-align: left; max-height: 500px; overflow-y: auto;">
+        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <p style="margin: 5px 0;"><strong>📋 Candidato:</strong> ${candidatoNome}</p>
+          <p style="margin: 5px 0;"><strong>📝 Teste:</strong> ${
+          testeDados.titulo || "Teste"
+        }</p>
+          <p style="margin: 5px 0;"><strong>⏱️ Tempo gasto:</strong> ${tempoGasto}</p>
+          <p style="margin: 5px 0;"><strong>📅 Data da resposta:</strong> ${dataResposta}</p>
+        </div>
+        
+                <div style="background: ${corResultado}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+          <h4 style="margin: 0 0 10px 0; font-size: 18px;">📊 Resultado da Correção</h4>
+          <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${acertos}</div>
+              <div style="font-size: 14px;">✅ Acertos</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${erros}</div>
+              <div style="font-size: 14px;">❌ Erros</div>
+            </div>
+            <div>
+              <div style="font-size: 32px; font-weight: bold;">${porcentagemAcerto}%</div>
+              <div style="font-size: 14px;">📈 Aproveitamento</div>
+            </div>
+          </div>
+        </div>
+        
+        <hr style="margin: 20px 0;">
+        
+        <h6 style="color: #667eea; margin-bottom: 15px; text-align: left;"><strong>Respostas Fornecidas:</strong></h6>
+        
+        ${perguntasHTML}
+      </div>
+    `,
+        width: "900px",
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-download me-1"></i> Exportar',
+        cancelButtonText: "Fechar",
+        confirmButtonColor: "#667eea",
+        cancelButtonColor: "#6c757d",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.exportarRespostaIndividual?.(tokenId, candidatoNome);
+        }
+      });
+
+      console.log("✅ Modal de respostas aberto com correção");
+    } catch (error) {
+      console.error("❌ Erro ao abrir respostas:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  } // ============================================ // FUNÇÃO: Exportar Resposta Individual (COM RESPOSTAS) // ============================================
+
+  window.exportarRespostaIndividual = async function (
+    tokenDocId,
+    candidatoNome
+  ) {
+    console.log(`🔹 Exportando resposta individual: ${tokenDocId}`);
+
+    try {
+      if (!db) {
+        console.error("❌ ERRO: Firestore não inicializado!");
+        return;
+      } // ✅ Busca o token
+
+      const tokenDocRef = doc(db, "tokensacesso", tokenDocId);
+      const tokenSnap = await getDoc(tokenDocRef);
+
+      if (!tokenSnap.exists()) {
+        window.showToast?.("Token não encontrado", "error");
+        return;
+      }
+
+      const tokenData = tokenSnap.data();
+      console.log("✅ Token encontrado:", tokenData); // ✅ Busca o teste
+
+      const testeRef = doc(db, "estudos_de_caso", tokenData.testeId);
+      const testeSnap = await getDoc(testeRef);
+      const testeDados = testeSnap.exists() ? testeSnap.data() : {};
+
+      console.log("✅ Teste encontrado:", testeDados); // ✅ Formata data e tempo
+
+      const dataResposta = tokenData.respondidoEm
+        ? new Date(
+            tokenData.respondidoEm.toDate?.() || tokenData.respondidoEm
+          ).toLocaleDateString("pt-BR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      const tempoGasto = tokenData.tempoRespostaSegundos
+        ? `${Math.floor(tokenData.tempoRespostaSegundos / 60)}min ${
+            tokenData.tempoRespostaSegundos % 60
+          }s`
+        : "-"; // ✅ Cria linha única para Excel com TODAS as colunas
+
+      const linhaExcel = {
+        Candidato: candidatoNome,
+        Teste: testeDados.titulo || "Teste",
+        "Data da Resposta": dataResposta,
+        "Tempo Gasto": tempoGasto,
+        Status: "Respondido",
+      }; // ✅ Adiciona cada RESPOSTA como coluna no Excel
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // Usa o enunciado do Firestore
+          const enunciado =
+            pergunta.enunciado || pergunta.texto || `P${index + 1}`;
+          linhaExcel[`P${index + 1}: ${enunciado}`] = resposta;
+        });
+      }
+
+      console.log("📊 Dados para exportação:", linhaExcel); // ✅ Pergunta qual formato exportar
+
+      const { isConfirmed, isDenied } = await Swal.fire({
+        title: "Exportar Respostas",
+        text: "Escolha o formato para exportação:",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "📊 Excel (CSV)",
+        denyButtonText: "📄 PDF",
+        cancelButtonText: "Cancelar",
+        showDenyButton: true,
+      });
+
+      if (isConfirmed) {
+        console.log("📊 Exportando para Excel...");
+        exportarParaExcel(
+          [linhaExcel],
+          `resposta_${candidatoNome.replace(/\s+/g, "_")}.csv`
+        );
+      } else if (isDenied) {
+        console.log("📄 Exportando para PDF...");
+        exportarRespostaPDFIndividual(
+          candidatoNome,
+          testeDados,
+          tokenData,
+          dataResposta,
+          tempoGasto
+        );
+      }
+    } catch (error) {
+      console.error("❌ Erro ao exportar:", error);
+      window.showToast?.(`Erro: ${error.message}`, "error");
+    }
+  };
+  /**
+   * ✅ Exporta uma resposta individual para PDF
+   */
+
+  function exportarRespostaPDFIndividual(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
+    console.log("📄 Exportando resposta individual para PDF...");
+
+    if (typeof jspdf === "undefined" || typeof jspdf.jsPDF === "undefined") {
+      console.log("⚠️ Carregando jsPDF...");
+
+      const scriptJsPDF = document.createElement("script");
+      scriptJsPDF.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+
+      const scriptAutoTable = document.createElement("script");
+      scriptAutoTable.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js";
+
+      scriptJsPDF.onload = () => {
+        scriptAutoTable.onload = () => {
+          setTimeout(() => {
+            gerarPDFRespostasIndividualCorrigido(
+              candidatoNome,
+              testeDados,
+              tokenData,
+              dataResposta,
+              tempoGasto
+            );
+          }, 500);
+        };
+        document.head.appendChild(scriptAutoTable);
+      };
+
+      document.head.appendChild(scriptJsPDF);
+    } else {
+      gerarPDFRespostasIndividualCorrigido(
+        candidatoNome,
+        testeDados,
+        tokenData,
+        dataResposta,
+        tempoGasto
+      );
+    }
+  }
+
+  function gerarPDFRespostasIndividualCorrigido(
+    candidatoNome,
+    testeDados,
+    tokenData,
+    dataResposta,
+    tempoGasto
+  ) {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let yPosition = 15; // ✅ CABEÇALHO
+
+      doc.setFontSize(18);
+      doc.setTextColor(102, 126, 234);
+      doc.text("EuPsico", 105, yPosition, { align: "center" });
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Grupo de atendimento multidisciplinar", 105, yPosition, {
+        align: "center",
+      });
+      yPosition += 8;
+
+      doc.setFontSize(12);
+      doc.setTextColor(51, 51, 51);
+      doc.text("RESPOSTAS DO TESTE", 105, yPosition, { align: "center" });
+      yPosition += 10; // Linha separadora
+
+      doc.setDrawColor(102, 126, 234);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPosition - 2, 196, yPosition - 2);
+      yPosition += 5; // ✅ INFORMAÇÕES DO CANDIDATO
+
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+
+      doc.text(`Candidato(a): ${candidatoNome}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Teste: ${testeDados.titulo || "Teste"}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Data da resposta: ${dataResposta}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Tempo gasto: ${tempoGasto}`, 14, yPosition);
+      yPosition += 10; // ✅ PERGUNTAS E RESPOSTAS
+
+      doc.setFontSize(11);
+      doc.setTextColor(102, 126, 234);
+      doc.text("Respostas Fornecidas:", 14, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(9);
+      doc.setTextColor(51, 51, 51);
+
+      if (testeDados.perguntas && testeDados.perguntas.length > 0) {
+        testeDados.perguntas.forEach((pergunta, index) => {
+          const resposta = tokenData.respostas[`resposta-${index}`] || "-"; // ✅ PERGUNTA
+
+          doc.setFont(undefined, "bold");
+          const perguntaText = `P${index + 1}: ${pergunta.enunciado}`;
+          const perguntaWrapped = doc.splitTextToSize(perguntaText, 180);
+
+          perguntaWrapped.forEach((line) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 15;
+            }
+            doc.text(line, 14, yPosition);
+            yPosition += 5;
+          }); // ✅ RESPOSTA
+
           doc.setFont(undefined, "normal");
           doc.setFillColor(240, 240, 240);
           const respostaWrapped = doc.splitTextToSize(
@@ -2060,17 +3125,15 @@ export async function initdashboard(user, userData) {
         });
       }
 
-      yPosition += 5;
+      yPosition += 5; // ✅ RODAPÉ
 
-      // ✅ RODAPÉ
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
 
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(150, 150, 150); // Linha separadora
 
-        // Linha separadora
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
         doc.line(14, 280, 196, 280);
@@ -2088,20 +3151,17 @@ export async function initdashboard(user, userData) {
           293,
           { align: "center" }
         );
-      }
+      } // ✅ SALVA O PDF
 
-      // ✅ SALVA O PDF
       doc.save(`resposta_${candidatoNome.replace(/\s+/g, "_")}.pdf`);
       window.showToast?.("✅ PDF exportado com sucesso!", "success");
+
+      console.log("✅ PDF gerado com sucesso!");
     } catch (error) {
       console.error("❌ Erro ao gerar PDF:", error);
       window.showToast?.("❌ Erro ao exportar PDF", "error");
     }
-  }
-
-  // ============================================
-  // INICIALIZAÇÃO
-  // ============================================
+  } // ============================================ // INICIALIZAÇÃO // ============================================
 
   try {
     const data = await fetchRHDashboardData();
