@@ -610,11 +610,92 @@ async function carregarEstatisticasTestes(listaDeTestes) {
   }
 }
 
-/* ==================== FUNÇÃO PRINCIPAL (Exportada) ==================== */
+/**
+ * ✅ CORREÇÃO: Carrega gestores para o select ao abrir o modal
+ */
+async function carregarEPopularGestores() {
+  console.log(
+    "👥 [GESTORES] Iniciando carregamento e população de gestores..."
+  );
+
+  try {
+    const selectGestor = document.getElementById("avaliacao-teste-gestor");
+
+    if (!selectGestor) {
+      console.error(
+        "❌ [GESTORES] Select não encontrado: avaliacao-teste-gestor"
+      );
+      return;
+    }
+
+    // Limpar opções existentes mantendo a default
+    selectGestor.innerHTML = '<option value="">Selecione um gestor...</option>';
+
+    // Buscar gestores
+    const usuariosRef = collection(db, "usuarios");
+    const q = query(usuariosRef, where("funcoes", "array-contains", "gestor"));
+
+    console.log("🔍 [GESTORES] Executando query no Firestore...");
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.warn(
+        "⚠️ [GESTORES] Nenhum gestor encontrado na coleção usuarios"
+      );
+      selectGestor.innerHTML +=
+        '<option value="">Nenhum gestor disponível</option>';
+      return;
+    }
+
+    console.log(`✅ [GESTORES] ${snapshot.docs.length} gestores encontrados`);
+
+    // Popular select com gestores
+    snapshot.forEach((docSnap) => {
+      const gestor = docSnap.data();
+      const option = document.createElement("option");
+
+      option.value = docSnap.id;
+      option.textContent = gestor.nome || `${gestor.email} (Gestor)`;
+      option.setAttribute("data-nome", gestor.nome || gestor.email);
+      option.setAttribute(
+        "data-telefone",
+        gestor.telefone || gestor.celular || ""
+      );
+
+      selectGestor.appendChild(option);
+
+      console.log(
+        `✅ [GESTORES] Adicionado: ${gestor.nome} (${
+          gestor.telefone || gestor.celular
+        })`
+      );
+    });
+
+    console.log("✅ [GESTORES] Select populado com sucesso");
+
+    // ✅ NOVO: Habilitar/desabilitar botão Notificar ao alterar select
+    const btnNotificar = document.getElementById(
+      "btn-whatsapp-gestor-avaliacao"
+    );
+    if (btnNotificar) {
+      selectGestor.addEventListener("change", () => {
+        const temGestorSelecionado = selectGestor.value !== "";
+        btnNotificar.disabled = !temGestorSelecionado;
+        console.log(
+          `🔄 [SELECT] Botão Notificar ${
+            temGestorSelecionado ? "habilitado" : "desabilitado"
+          }`
+        );
+      });
+    }
+  } catch (error) {
+    console.error("❌ [GESTORES] Erro ao carregar gestores:", error);
+    window.showToast?.("Erro ao carregar gestores", "error");
+  }
+}
 
 /**
- * Abre o modal de avaliação do teste
- * VERSÃO DEBUG v1.7.6 - Correções aplicadas.
+ * ✅ CORREÇÃO CRÍTICA: Chama carregarEPopularGestores() ao abrir o modal
  */
 export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   console.log("\n");
@@ -647,7 +728,7 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
     );
     return;
   }
-
+  await carregarEPopularGestores();
   console.log("✅ [MAIN] Elementos principais encontrados");
 
   // ✅ CORREÇÃO: Usar nome correto das chaves (nome_candidato)
