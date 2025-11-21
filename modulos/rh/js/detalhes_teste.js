@@ -192,9 +192,7 @@ function renderizarComparacaoDetalhada(
         </button>
         <button class="btn btn-danger btn-sm" onclick="window.marcarResposta(${index}, false)">
           <i class="fas fa-times me-1"></i> Incorreta
-        </button>
-        <span class="badge bg-secondary ms-2" id="status-questao-${index}">Não avaliada</span>
-      </div>
+              </div>
     `;
 
     html += `
@@ -209,7 +207,8 @@ function renderizarComparacaoDetalhada(
               <div class="p-3 border rounded bg-light">${respostaCandidato}</div>
             </div>
             <div class="col-md-6 mb-3">
-              <label class="d-block mb-2"><strong>Resposta Correta / Gabarito:</strong></label>
+              <label class="d-block mb-2"><strong>Resposta Correta / Gabarito: </strong></button>
+        <span class="badge bg-secondary ms-2" id="status-questao-${index}">Não avaliada</span></label>
               <div class="p-3 border rounded border-primary bg-light">${gabaritoTexto}</div>
             </div>
           </div>
