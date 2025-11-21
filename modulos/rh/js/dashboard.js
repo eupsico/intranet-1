@@ -435,7 +435,7 @@ export async function initdashboard(user, userData) {
       }
 
       dados.push({
-        "Nome Completo": candidato.nome_completo || "-",
+        "Nome Completo": candidato.nome_candidato || "-",
         Email: candidato.email_candidato || "-",
         Telefone: candidato.telefone_contato || "-",
         WhatsApp: candidato.telefone_contato || "-",
@@ -447,7 +447,7 @@ export async function initdashboard(user, userData) {
         "Data de Nascimento": candidato.data_nascimento || "-",
         Gênero: candidato.genero || "-",
         Nacionalidade: candidato.nacionalidade || "-",
-        Vaga: vagaNome,
+        Vaga: titulo_vaga_original,
         "Formação Profissional": candidato.formacao_profissional || "-",
         "Conselho Profissional": candidato.conselho_profissional || "-",
         "Número do Conselho": candidato.numero_conselho || "-",
