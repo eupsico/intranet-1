@@ -602,13 +602,22 @@ export async function initdashboard(user, userData) {
       const vagasRef = collection(db, "vagas");
       const estudosRef = collection(db, "estudos_de_caso");
 
-      const [candidatosSnap, tokensSnap, vagasSnap, estudosSnap] =
-        await Promise.all([
-          getDocs(candidatosRef),
-          getDocs(tokensRef),
-          getDocs(vagasRef),
-          getDocs(estudosRef),
-        ]);
+      // ✅ NOVO: Buscar testesRealizados
+      const testesRealizadosRef = collection(db, "testesRealizados");
+
+      const [
+        candidatosSnap,
+        tokensSnap,
+        vagasSnap,
+        estudosSnap,
+        testesRealizadosSnap,
+      ] = await Promise.all([
+        getDocs(candidatosRef),
+        getDocs(tokensRef),
+        getDocs(vagasRef),
+        getDocs(estudosRef),
+        getDocs(testesRealizadosRef),
+      ]);
 
       candidatosCache = [];
       candidatosSnap.docs.forEach((doc) => {
@@ -623,14 +632,41 @@ export async function initdashboard(user, userData) {
       vagasCache = vagasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       estudosCache = estudosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
+      // ✅ NOVO: Processar testesRealizados para criar cache de respostas
+      const respostasCache = [];
+      for (const testeDoc of testesRealizadosSnap.docs) {
+        const tokenId = testeDoc.id;
+
+        // Buscar subcoleção candidatos
+        const candidatosSubRef = collection(
+          db,
+          `testesRealizados/${tokenId}/candidatos`
+        );
+        const candidatosSubSnap = await getDocs(candidatosSubRef);
+
+        candidatosSubSnap.docs.forEach((candidatoDoc) => {
+          const dados = candidatoDoc.data();
+          respostasCache.push({
+            tokenId: tokenId,
+            candidatoId: candidatoDoc.id,
+            ...dados,
+          });
+        });
+      }
+
       console.log(`📊 ✅ Candidatos total: ${candidatosCache.length}`);
       console.log(`📊 ✅ Tokens: ${tokensCache.length}`);
+      console.log(`📊 ✅ Respostas: ${respostasCache.length}`);
       console.log(`📊 ✅ Vagas: ${vagasCache.length}`);
       console.log(`📊 ✅ Estudos: ${estudosCache.length}`);
 
+      // ✅ CORRIGIDO: Usar respostasCache em vez de tokensCache para contar respondidos
       const totalInscritos = candidatosCache.length;
-      const testesRespondidos = tokensCache.filter((t) => t.usado).length;
-      const testesPendentes = tokensCache.filter((t) => !t.usado).length;
+      const testesRespondidos = respostasCache.length;
+      const testesPendentes = tokensCache.filter((t) => {
+        // Verifica se o token NÃO tem resposta no respostasCache
+        return !respostasCache.some((r) => r.tokenId === t.id);
+      }).length;
       const taxaResposta =
         totalInscritos > 0
           ? Math.round((testesRespondidos / totalInscritos) * 100)
@@ -641,6 +677,9 @@ export async function initdashboard(user, userData) {
         relTestesRespondidos.textContent = testesRespondidos;
       if (relTestesPendentes) relTestesPendentes.textContent = testesPendentes;
       if (relTaxaResposta) relTaxaResposta.textContent = `${taxaResposta}%`;
+
+      // ✅ Salvar respostasCache globalmente
+      window.respostasCache = respostasCache;
 
       popularFiltros();
       renderizarInscricoesPorVaga();
