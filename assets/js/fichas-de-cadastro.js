@@ -1,6 +1,6 @@
 /**
  * Arquivo: assets/js/fichas-de-cadastro.js
- * Versão 2.0 - Com autenticação via e-mail corporativo (sem token)
+ * Versão 2.1 - Correção de Null References
  * Descrição: Controla a página pública de cadastro de novo colaborador.
  */
 
@@ -20,24 +20,53 @@ import {
   doc,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// Elementos do DOM
-const loadingOverlay = document.getElementById("loading-overlay");
-const loginContainer = document.getElementById("login-container");
-const formContainer = document.getElementById("form-container");
-const form = document.getElementById("ficha-inscricao-form");
-const messageContainer = document.getElementById("message-container");
+// ============================================
+// FUNÇÃO AUXILIAR PARA SEGURANÇA
+// ============================================
+function getElementSafe(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.warn(`⚠️ Elemento não encontrado no DOM: ${id}`);
+  }
+  return el;
+}
 
-// Elementos de login
-const loginForm = document.getElementById("login-form");
-const loginEmail = document.getElementById("login-email");
-const loginPassword = document.getElementById("login-password");
-const btnLogin = document.getElementById("btn-login");
+// ============================================
+// INICIALIZAR ELEMENTOS DO DOM
+// ============================================
+// Usar getElementSafe para evitar null references
+let loadingOverlay = null;
+let loginContainer = null;
+let formContainer = null;
+let form = null;
+let messageContainer = null;
+let loginForm = null;
+let loginEmail = null;
+let loginPassword = null;
+let btnLogin = null;
+let nomeInput = null;
+let emailInput = null;
+let profissaoSelect = null;
+let btnSubmit = null;
 
-// Elementos do formulário
-const nomeInput = document.getElementById("prof-nome");
-const emailInput = document.getElementById("prof-email");
-const profissaoSelect = document.getElementById("prof-profissao");
-const btnSubmit = document.getElementById("btn-submit-ficha");
+// Função para inicializar referências DOM após o carregamento
+function initializarElementosDOM() {
+  loadingOverlay = getElementSafe("loading-overlay");
+  loginContainer = getElementSafe("login-container");
+  formContainer = getElementSafe("form-container");
+  form = getElementSafe("ficha-inscricao-form");
+  messageContainer = getElementSafe("message-container");
+  loginForm = getElementSafe("login-form");
+  loginEmail = getElementSafe("login-email");
+  loginPassword = getElementSafe("login-password");
+  btnLogin = getElementSafe("btn-login");
+  nomeInput = getElementSafe("prof-nome");
+  emailInput = getElementSafe("prof-email");
+  profissaoSelect = getElementSafe("prof-profissao");
+  btnSubmit = getElementSafe("btn-submit-ficha");
+
+  console.log("✅ Elementos do DOM inicializados com sucesso");
+}
 
 // Cloud Functions
 const submeterFichaInscricao = httpsCallable(
@@ -45,22 +74,46 @@ const submeterFichaInscricao = httpsCallable(
   "submeterFichaInscricao"
 );
 
-/**
- * Função principal - Verificar se usuário está logado
- */
-window.addEventListener("load", async () => {
+// ============================================
+// PONTO DE ENTRADA - AGUARDAR DOM PRONTO
+// ============================================
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 DOM carregado, iniciando aplicação...");
+  initializarElementosDOM();
+  setupEventListeners();
+  verificarAutenticacao();
+});
+
+// ============================================
+// CONFIGURAR EVENT LISTENERS
+// ============================================
+function setupEventListeners() {
+  // Login form
+  if (loginForm) {
+    loginForm.addEventListener("submit", handleLogin);
+  }
+
+  // Formulário de inscrição
+  if (form) {
+    form.addEventListener("submit", handleFormSubmit);
+  }
+}
+
+// ============================================
+// VERIFICAR AUTENTICAÇÃO NA INICIALIZAÇÃO
+// ============================================
+function verificarAutenticacao() {
   setLoading(true, "Carregando...");
 
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // Usuário está logado
       console.log("✅ Usuário logado:", user.email);
 
       // Verificar se é e-mail corporativo
       if (!user.email.endsWith("@eupsico.org.br")) {
         setLoading(false);
         return showError(
-          "Acesso negado. Use seu e-mail corporativo @eupsico.org.br"
+          "❌ Acesso negado. Use seu e-mail corporativo @eupsico.org.br"
         );
       }
 
@@ -72,22 +125,27 @@ window.addEventListener("load", async () => {
       mostrarTelaLogin();
     }
   });
-});
-
-/**
- * Mostrar tela de login
- */
-function mostrarTelaLogin() {
-  loginContainer.style.display = "block";
-  formContainer.style.display = "none";
-  messageContainer.style.display = "none";
 }
 
-/**
- * Processar login
- */
-loginForm.addEventListener("submit", async (e) => {
+// ============================================
+// TELA DE LOGIN
+// ============================================
+function mostrarTelaLogin() {
+  if (loginContainer) loginContainer.style.display = "block";
+  if (formContainer) formContainer.style.display = "none";
+  if (messageContainer) messageContainer.style.display = "none";
+}
+
+// ============================================
+// PROCESSAR LOGIN
+// ============================================
+async function handleLogin(e) {
   e.preventDefault();
+
+  if (!loginEmail || !loginPassword) {
+    console.error("❌ Campos de login não encontrados");
+    return;
+  }
 
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
@@ -97,7 +155,7 @@ loginForm.addEventListener("submit", async (e) => {
   }
 
   setLoading(true, "Fazendo login...");
-  btnLogin.disabled = true;
+  if (btnLogin) btnLogin.disabled = true;
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
@@ -106,7 +164,7 @@ loginForm.addEventListener("submit", async (e) => {
   } catch (error) {
     console.error("❌ Erro no login:", error);
     setLoading(false);
-    btnLogin.disabled = false;
+    if (btnLogin) btnLogin.disabled = false;
 
     let mensagem = "Erro ao fazer login. Verifique suas credenciais.";
 
@@ -121,26 +179,36 @@ loginForm.addEventListener("submit", async (e) => {
 
     showMessage(mensagem, "error");
   }
-});
+}
 
-/**
- * Carregar formulário para usuário logado
- */
+// ============================================
+// CARREGAR FORMULÁRIO PARA USUÁRIO LOGADO
+// ============================================
 async function carregarFormulario(user) {
   try {
     setLoading(true, "Carregando seus dados...");
 
     // Preencher dados básicos
-    if (nomeInput) nomeInput.value = user.displayName || "";
-    if (emailInput) emailInput.value = user.email;
+    if (nomeInput) {
+      nomeInput.value = user.displayName || "";
+    } else {
+      console.warn("⚠️ Campo nomeInput não encontrado");
+    }
+
+    if (emailInput) {
+      emailInput.value = user.email;
+    } else {
+      console.warn("⚠️ Campo emailInput não encontrado");
+    }
 
     // Carregar lista de profissões
     await carregarListaDeProfissoes();
 
     // Mostrar formulário
-    loginContainer.style.display = "none";
-    formContainer.style.display = "block";
-    messageContainer.style.display = "none";
+    if (loginContainer) loginContainer.style.display = "none";
+    if (formContainer) formContainer.style.display = "block";
+    if (messageContainer) messageContainer.style.display = "none";
+
     setLoading(false);
   } catch (error) {
     console.error("❌ Erro ao carregar formulário:", error);
@@ -149,11 +217,14 @@ async function carregarFormulario(user) {
   }
 }
 
-/**
- * Carrega a lista de profissões das configurações do sistema
- */
+// ============================================
+// CARREGAR LISTA DE PROFISSÕES
+// ============================================
 async function carregarListaDeProfissoes(profissaoDefault = "") {
-  if (!profissaoSelect) return;
+  if (!profissaoSelect) {
+    console.warn("⚠️ profissaoSelect não encontrado");
+    return;
+  }
 
   try {
     const configRef = doc(db, "configuracoesSistema", "geral");
@@ -170,19 +241,21 @@ async function carregarListaDeProfissoes(profissaoDefault = "") {
 
       profissaoSelect.innerHTML = optionsHtml;
     } else {
-      console.warn("Lista de profissões não encontrada.");
+      console.warn(
+        "⚠️ Lista de profissões não encontrada em configuracoesSistema"
+      );
       profissaoSelect.innerHTML =
         '<option value="">Lista não disponível</option>';
     }
   } catch (error) {
-    console.error("Erro ao carregar lista de profissões:", error);
+    console.error("❌ Erro ao carregar lista de profissões:", error);
   }
 }
 
-/**
- * Trata a submissão do formulário
- */
-form.addEventListener("submit", async (e) => {
+// ============================================
+// SUBMETER FORMULÁRIO
+// ============================================
+async function handleFormSubmit(e) {
   e.preventDefault();
 
   const user = auth.currentUser;
@@ -193,35 +266,45 @@ form.addEventListener("submit", async (e) => {
     );
   }
 
-  console.log("Submetendo formulário...");
+  console.log("📝 Submetendo formulário...");
 
   setLoading(true, "Enviando cadastro...");
 
   try {
-    // 1. Upload dos arquivos para o Storage
-    const fileIdentidade = document.getElementById("doc-identidade").files[0];
-    const fileDiploma = document.getElementById("doc-diploma").files[0];
+    // 1. Validar arquivos
+    const fileIdentidade = document.getElementById("doc-identidade");
+    const fileDiploma = document.getElementById("doc-diploma");
 
-    if (!fileIdentidade || !fileDiploma) {
-      throw new Error("Por favor, anexe os documentos obrigatórios.");
+    if (!fileIdentidade || !fileIdentidade.files[0]) {
+      throw new Error("Por favor, anexe o documento de identidade.");
     }
 
+    if (!fileDiploma || !fileDiploma.files[0]) {
+      throw new Error("Por favor, anexe o diploma/certificado.");
+    }
+
+    // 2. Upload dos arquivos
     setLoading(true, "Enviando documentos (1/2)...");
     const identidadeURL = await uploadArquivo(
       user.uid,
       "identidade",
-      fileIdentidade
+      fileIdentidade.files[0]
     );
 
     setLoading(true, "Enviando documentos (2/2)...");
-    const diplomaURL = await uploadArquivo(user.uid, "diploma", fileDiploma);
+    const diplomaURL = await uploadArquivo(
+      user.uid,
+      "diploma",
+      fileDiploma.files[0]
+    );
 
-    // 2. Coletar dados do formulário
+    // 3. Coletar dados do formulário
+    const contatoInput = document.getElementById("prof-contato");
     const formData = {
-      nome: nomeInput.value,
-      email: emailInput.value,
-      contato: document.getElementById("prof-contato").value,
-      profissao: profissaoSelect.value,
+      nome: nomeInput?.value || "",
+      email: emailInput?.value || "",
+      contato: contatoInput?.value || "",
+      profissao: profissaoSelect?.value || "",
       userId: user.uid,
       documentos: {
         identidade: identidadeURL,
@@ -229,50 +312,64 @@ form.addEventListener("submit", async (e) => {
       },
     };
 
-    // 3. Enviar para a Cloud Function
+    // 4. Enviar para Cloud Function
     setLoading(true, "Salvando dados...");
-    const result = await submeterFichaInscricao({ formData: formData });
+    const result = await submeterFichaInscricao({ formData });
 
     if (!result.data.sucesso) {
       throw new Error(result.data.erro || "Erro ao salvar cadastro.");
     }
 
-    // 4. Sucesso
+    // 5. Sucesso
     setLoading(false);
-    formContainer.style.display = "none";
+    if (formContainer) formContainer.style.display = "none";
     showMessage(
-      "Cadastro realizado com sucesso!",
+      "✅ Cadastro realizado com sucesso!",
       "success",
       "Seu cadastro foi enviado. O RH entrará em contato para os próximos passos. Você já pode fechar esta página."
     );
   } catch (error) {
-    console.error("Erro ao submeter:", error);
+    console.error("❌ Erro ao submeter:", error);
     setLoading(false);
     showMessage("Erro ao submeter cadastro", "error", error.message);
   }
-});
-
-/**
- * Função auxiliar para upload de arquivos
- */
-async function uploadArquivo(userId, tipoDocumento, file) {
-  if (!file) throw new Error(`Arquivo ${tipoDocumento} não encontrado.`);
-
-  const storageRef = ref(
-    storage,
-    `admissoes/${userId}/${tipoDocumento}_${file.name}`
-  );
-
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(snapshot.ref);
-
-  console.log(`Arquivo ${tipoDocumento} enviado: ${downloadURL}`);
-  return downloadURL;
 }
 
-// === Funções de UI ===
+// ============================================
+// UPLOAD DE ARQUIVOS
+// ============================================
+async function uploadArquivo(userId, tipoDocumento, file) {
+  if (!file) {
+    throw new Error(`Arquivo ${tipoDocumento} não encontrado.`);
+  }
+
+  try {
+    const storageRef = ref(
+      storage,
+      `admissoes/${userId}/${tipoDocumento}_${Date.now()}_${file.name}`
+    );
+
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    console.log(`✅ Arquivo ${tipoDocumento} enviado com sucesso`);
+    return downloadURL;
+  } catch (error) {
+    console.error(`❌ Erro ao fazer upload de ${tipoDocumento}:`, error);
+    throw error;
+  }
+}
+
+// ============================================
+// FUNÇÕES DE UI
+// ============================================
 
 function setLoading(isLoading, message = "") {
+  if (!loadingOverlay) {
+    console.warn("⚠️ loadingOverlay não encontrado");
+    return;
+  }
+
   if (isLoading) {
     loadingOverlay.innerHTML = `
       <div class="spinner"></div>
@@ -289,19 +386,33 @@ function setLoading(isLoading, message = "") {
 }
 
 function showError(message) {
-  loadingOverlay.classList.remove("is-visible");
-  loginContainer.style.display = "none";
-  formContainer.style.display = "none";
-  messageContainer.style.display = "block";
-  messageContainer.innerHTML = `
-    <div class="alert error">
-      <i class="fas fa-exclamation-circle"></i>
-      ${message}
-    </div>
-  `;
+  if (loadingOverlay) {
+    loadingOverlay.classList.remove("is-visible");
+  }
+
+  if (loginContainer) loginContainer.style.display = "none";
+  if (formContainer) formContainer.style.display = "none";
+
+  if (messageContainer) {
+    messageContainer.style.display = "block";
+    messageContainer.innerHTML = `
+      <div class="alert error">
+        <i class="fas fa-exclamation-circle"></i>
+        <strong>${message}</strong>
+      </div>
+    `;
+  } else {
+    console.error("❌", message);
+  }
 }
 
 function showMessage(title, type, description = "") {
+  if (!messageContainer) {
+    console.warn("⚠️ messageContainer não encontrado");
+    alert(title);
+    return;
+  }
+
   messageContainer.style.display = "block";
   messageContainer.innerHTML = `
     <div class="alert ${type}">
@@ -313,3 +424,7 @@ function showMessage(title, type, description = "") {
     </div>
   `;
 }
+
+// ============================================
+// FIM DO ARQUIVO
+// ============================================
