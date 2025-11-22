@@ -77,8 +77,8 @@ export async function renderizarCadastroDocumentos(state) {
         id: candidatoId,
         nome_completo: cand.nome_completo,
         email_pessoal: cand.email_candidato, // E-mail pessoal
-        email_novo: cand.admissao_info?.email_solicitado || "Não solicitado", // E-mail novo
-        senha_temporaria: cand.admissao_info?.senha_temporaria || "N/A", // <<< SENHA BUSCADA AQUI
+        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado", // E-mail novo
+        senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A", // <<< SENHA BUSCADA AQUI
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
       };
@@ -99,7 +99,7 @@ export async function renderizarCadastroDocumentos(state) {
       </p>
       <p class="small-info" style="color: var(--cor-primaria);">
        <i class="fas fa-envelope"></i> Novo E-mail: ${
-         cand.admissao_info?.email_solicitado || "Aguardando..."
+         cand.admissaoinfo?.email_solicitado || "Aguardando..."
        }
       </p>
      </div>
@@ -623,8 +623,8 @@ Equipe EuPsico 💙`;
 
     await updateDoc(candidatoRef, {
       status_recrutamento: "FORM_ENVIADO",
-      "admissao_info.link_formulario": linkFormulario,
-      "admissao_info.data_envio_formulario": new Date(),
+      "admissaoinfo.link_formulario": linkFormulario,
+      "admissaoinfo.data_envio_formulario": new Date(),
       historico: arrayUnion({
         data: new Date(),
         acao: `✅ Boas-vindas enviadas (WhatsApp + E-mail) e usuário criado no Firebase Auth. Credenciais: ${email_novo}`,
@@ -843,8 +843,8 @@ async function executarResetSenha(candidatoId, email) {
       const candidatoRef = doc(candidatosCollection, candidatoId);
 
       await updateDoc(candidatoRef, {
-        "admissao_info.senha_temporaria": resultado.data.novaSenha,
-        "admissao_info.data_reset_senha": new Date(),
+        "admissaoinfo.senha_temporaria": resultado.data.novaSenha,
+        "admissaoinfo.data_reset_senha": new Date(),
         historico: arrayUnion({
           data: new Date(),
           acao: `🔑 Senha temporária resetada. Nova senha: ${resultado.data.novaSenha}`,
