@@ -134,6 +134,63 @@
    background: #ccc;
    cursor: not-allowed;
   }
+
+  /* Botão Google Login */
+  #btn-google-login {
+   width: 100%;
+   padding: 14px;
+   background: #fff;
+   color: #333;
+   border: 2px solid #4285F4;
+   border-radius: 6px;
+   font-size: 16px;
+   font-weight: 600;
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 8px;
+   margin-top: 15px;
+   transition: all 0.3s ease;
+  }
+  #btn-google-login:hover {
+   background: #f8f8f8;
+   box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+  }
+  #btn-google-login:disabled {
+   background: #ccc;
+   border-color: #999;
+   color: #666;
+   cursor: not-allowed;
+  }
+
+  /* Separador */
+  .login-divider {
+   text-align: center;
+   margin: 25px 0;
+   color: #999;
+   font-size: 13px;
+   position: relative;
+  }
+  .login-divider::before {
+   content: "";
+   position: absolute;
+   left: 0;
+   top: 50%;
+   width: 40%;
+   height: 1px;
+   background: #ddd;
+  }
+  .login-divider::after {
+   content: "";
+   position: absolute;
+   right: 0;
+   top: 50%;
+   width: 40%;
+   height: 1px;
+   background: #ddd;
+  }
+
   .login-footer-text {
    margin-top: 20px;
    text-align: center;
@@ -163,6 +220,11 @@
    color: #155724;
    border: 1px solid #c3e6cb;
   }
+  .alert.info {
+   background: #d1ecf1;
+   color: #0c5460;
+   border: 1px solid #bee5eb;
+  }
  </style>
  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -184,15 +246,23 @@
   <!-- Tela de Login -->
   <div id="login-container" style="display: none;">
    <h2>🔐 Acesso ao Formulário</h2>
-   <p>Use seu e-mail corporativo e a senha temporária enviada pelo RH.</p>
+   <p>Faça login com sua conta corporativa Google @eupsico.org.br</p>
    
+   <!-- Login Google (Recomendado) -->
+   <button type="button" id="btn-google-login">
+    <i class="fab fa-google"></i> Entrar com Google
+   </button>
+
+   <!-- Separador -->
+   <div class="login-divider">ou</div>
+
+   <!-- Login Email/Senha (Opcional) -->
    <form id="login-form">
     <div class="form-group">
      <label for="login-email">E-mail Corporativo</label>
      <input 
       type="email" 
       id="login-email" 
-      required 
       placeholder="seu.nome@eupsico.org.br"
       autocomplete="email"
      />
@@ -203,14 +273,13 @@
      <input 
       type="password" 
       id="login-password" 
-      required 
       placeholder="Digite a senha enviada pelo RH"
       autocomplete="current-password"
      />
     </div>
     
     <button type="submit" id="btn-login">
-     <i class="fas fa-sign-in-alt"></i> Acessar Formulário
+     <i class="fas fa-sign-in-alt"></i> Acessar com E-mail
     </button>
    </form>
    
