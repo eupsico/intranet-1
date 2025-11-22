@@ -43,7 +43,7 @@ export function init(db, user, userData) {
     <div id="module-content-area" class="module-content" style="height: 100%;">
         <div class="loading-spinner"></div>
     </div>
-  `;
+ `;
 
   console.log("[LOG] Passo 3: Configurando os listeners do submenu.");
   setupSubmenuListeners(sidebarMenu);
@@ -67,7 +67,7 @@ function buildSubmenu(sidebarMenu) {
     <li><a href="#pb" data-view="pb">PB</a></li>
     <li><a href="#outros" data-view="outros">Outros</a></li>
     <li><a href="#encerramento" data-view="encerramento">Encerramento</a></li>
-  `;
+ `;
 }
 
 function setupSubmenuListeners(sidebarMenu) {

@@ -1,13 +1,13 @@
 /**
  * Arquivo: assets/js/fichas-de-cadastro.js
- * Versão 2.2 - Autenticação via Google OAuth
- * Descrição: Controla a página pública de cadastro de novo colaborador com login Google.
+ * Versão 3.0 - Autenticação simplificada (mesma estratégia do app.js)
+ * Descrição: Formulário de cadastro com login Google
  */
 
 import { db, auth, functions, storage } from "./firebase-init.js";
 import {
-  signInWithPopup,
   GoogleAuthProvider,
+  signInWithPopup,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
@@ -23,54 +23,17 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // ============================================
-// FUNÇÃO AUXILIAR PARA SEGURANÇA
+// ELEMENTOS DO DOM
 // ============================================
-function getElementSafe(id) {
-  const el = document.getElementById(id);
-  if (!el) {
-    console.warn(`⚠️ Elemento não encontrado no DOM: ${id}`);
-  }
-  return el;
-}
-
-// ============================================
-// INICIALIZAR ELEMENTOS DO DOM
-// ============================================
-// Usar getElementSafe para evitar null references
 let loadingOverlay = null;
-let loginContainer = null;
+let loginView = null;
 let formContainer = null;
 let form = null;
 let messageContainer = null;
-let loginForm = null;
-let loginEmail = null;
-let loginPassword = null;
-let btnLogin = null;
-let btnGoogleLogin = null;
 let nomeInput = null;
 let emailInput = null;
 let profissaoSelect = null;
 let btnSubmit = null;
-
-// Função para inicializar referências DOM após o carregamento
-function initializarElementosDOM() {
-  loadingOverlay = getElementSafe("loading-overlay");
-  loginContainer = getElementSafe("login-container");
-  formContainer = getElementSafe("form-container");
-  form = getElementSafe("ficha-inscricao-form");
-  messageContainer = getElementSafe("message-container");
-  loginForm = getElementSafe("login-form");
-  loginEmail = getElementSafe("login-email");
-  loginPassword = getElementSafe("login-password");
-  btnLogin = getElementSafe("btn-login");
-  btnGoogleLogin = getElementSafe("btn-google-login");
-  nomeInput = getElementSafe("prof-nome");
-  emailInput = getElementSafe("prof-email");
-  profissaoSelect = getElementSafe("prof-profissao");
-  btnSubmit = getElementSafe("btn-submit-ficha");
-
-  console.log("✅ Elementos do DOM inicializados com sucesso");
-}
 
 // Cloud Functions
 const submeterFichaInscricao = httpsCallable(
@@ -79,59 +42,60 @@ const submeterFichaInscricao = httpsCallable(
 );
 
 // ============================================
-// PONTO DE ENTRADA - AGUARDAR DOM PRONTO
+// INICIALIZAÇÃO
 // ============================================
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 DOM carregado, iniciando aplicação...");
-  initializarElementosDOM();
-  setupEventListeners();
+document.addEventListener("DOMContentLoaded", function () {
+  console.log("🚀 Inicializando página de cadastro...");
+
+  // Atribuir referências aos elementos
+  loadingOverlay = document.getElementById("loading-overlay");
+  loginView = document.getElementById("login-view");
+  formContainer = document.getElementById("form-container");
+  form = document.getElementById("ficha-inscricao-form");
+  messageContainer = document.getElementById("message-container");
+  nomeInput = document.getElementById("prof-nome");
+  emailInput = document.getElementById("prof-email");
+  profissaoSelect = document.getElementById("prof-profissao");
+  btnSubmit = document.getElementById("btn-submit-ficha");
+
+  // Verificar autenticação
   verificarAutenticacao();
-});
 
-// ============================================
-// CONFIGURAR EVENT LISTENERS
-// ============================================
-function setupEventListeners() {
-  // Login form tradicional
-  if (loginForm) {
-    loginForm.addEventListener("submit", handleLogin);
-  }
-
-  // Botão Google Login
-  if (btnGoogleLogin) {
-    btnGoogleLogin.addEventListener("click", handleGoogleLogin);
-  }
-
-  // Formulário de inscrição
+  // Setup form submission
   if (form) {
     form.addEventListener("submit", handleFormSubmit);
   }
-}
+});
 
 // ============================================
-// VERIFICAR AUTENTICAÇÃO NA INICIALIZAÇÃO
+// VERIFICAR AUTENTICAÇÃO
 // ============================================
 function verificarAutenticacao() {
-  setLoading(true, "Carregando...");
-
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      console.log("✅ Usuário logado:", user.email);
+    try {
+      if (user) {
+        console.log("✅ Usuário logado:", user.email);
 
-      // Verificar se é e-mail corporativo
-      if (!user.email.endsWith("@eupsico.org.br")) {
+        // Verificar se é e-mail corporativo
+        if (!user.email.endsWith("@eupsico.org.br")) {
+          setLoading(false);
+          mostrarErro(
+            "❌ Acesso negado. Use sua conta corporativa @eupsico.org.br"
+          );
+          await signOut(auth);
+          mostrarTelaLogin();
+          return;
+        }
+
+        // Carregar formulário
+        await carregarFormulario(user);
+      } else {
+        // Mostrar tela de login
         setLoading(false);
-        showError(
-          "❌ Acesso negado. Use sua conta Google corporativa @eupsico.org.br"
-        );
-        await signOut(auth);
-        return;
+        mostrarTelaLogin();
       }
-
-      // Mostrar formulário
-      await carregarFormulario(user);
-    } else {
-      // Mostrar tela de login
+    } catch (error) {
+      console.error("❌ Erro na verificação:", error);
       setLoading(false);
       mostrarTelaLogin();
     }
@@ -139,130 +103,106 @@ function verificarAutenticacao() {
 }
 
 // ============================================
-// TELA DE LOGIN
+// MOSTRAR TELA DE LOGIN
 // ============================================
 function mostrarTelaLogin() {
-  if (loginContainer) loginContainer.style.display = "block";
-  if (formContainer) formContainer.style.display = "none";
-  if (messageContainer) messageContainer.style.display = "none";
+  if (!loginView || !formContainer || !messageContainer) return;
+
+  formContainer.style.display = "none";
+  messageContainer.style.display = "none";
+  loginView.style.display = "block";
+
+  // Renderizar HTML de login
+  const isSubPage = window.location.pathname.includes("/modulos/");
+  const pathPrefix = isSubPage ? "../../../" : "./";
+
+  loginView.innerHTML = `
+    <div style="text-align: center; padding: 40px 20px;">
+      <img src="${pathPrefix}assets/img/logo-branca.png" alt="Logo EuPsico" style="height: 60px; margin-bottom: 20px;">
+      <h2>🔐 Ficha de Admissão</h2>
+      <p style="color: #666; margin-bottom: 30px;">
+        Por favor, faça login para continuar.<br>
+        Utilize sua conta corporativa @eupsico.org.br para acessar.
+      </p>
+      <button id="btn-login-google" style="
+        padding: 14px 24px;
+        background: #fff;
+        color: #333;
+        border: 2px solid #4285F4;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+      ">
+        <i class="fab fa-google"></i> Entrar com Google
+      </button>
+    </div>
+  `;
+
+  // Adicionar event listener
+  const btnLoginGoogle = document.getElementById("btn-login-google");
+  if (btnLoginGoogle) {
+    btnLoginGoogle.addEventListener("click", handleGoogleLogin);
+  }
 }
 
 // ============================================
-// PROCESSAR LOGIN COM EMAIL/SENHA (OPCIONAL)
-// ============================================
-async function handleLogin(e) {
-  e.preventDefault();
-
-  if (!loginEmail || !loginPassword) {
-    console.error("❌ Campos de login não encontrados");
-    return;
-  }
-
-  const email = loginEmail.value.trim();
-  const password = loginPassword.value;
-
-  if (!email.endsWith("@eupsico.org.br")) {
-    return showMessage("Use seu e-mail corporativo @eupsico.org.br", "error");
-  }
-
-  setLoading(true, "Fazendo login...");
-  if (btnLogin) btnLogin.disabled = true;
-
-  try {
-    // Este fluxo seria com signInWithEmailAndPassword
-    // Mas vamos redirecionar para Google Login
-    showMessage(
-      "Por favor, use o botão 'Entrar com Google' para acessar o formulário.",
-      "info"
-    );
-    if (btnLogin) btnLogin.disabled = false;
-    setLoading(false);
-  } catch (error) {
-    console.error("❌ Erro no login:", error);
-    setLoading(false);
-    if (btnLogin) btnLogin.disabled = false;
-    showMessage("Erro ao fazer login", "error", error.message);
-  }
-}
-
-// ============================================
-// PROCESSAR LOGIN COM GOOGLE
+// LOGIN COM GOOGLE
 // ============================================
 async function handleGoogleLogin() {
   setLoading(true, "Redirecionando para Google...");
-  if (btnGoogleLogin) btnGoogleLogin.disabled = true;
 
   try {
     const provider = new GoogleAuthProvider();
-
-    // Forçar conta corporativa @eupsico.org.br
-    provider.setCustomParameters({
-      hd: "eupsico.org.br", // Domínio corporativo
-      prompt: "select_account", // Permitir seleção de conta
-    });
-
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
     console.log("✅ Login Google bem-sucedido:", user.email);
 
-    // Verificar se é e-mail corporativo
-    if (!user.email.endsWith("@eupsico.org.br")) {
-      await signOut(auth);
-      setLoading(false);
-      showError(
-        "❌ Acesso negado. Você precisa usar sua conta corporativa @eupsico.org.br"
-      );
-      if (btnGoogleLogin) btnGoogleLogin.disabled = false;
-      return;
-    }
-
-    // O onAuthStateChanged vai carregar o formulário automaticamente
+    // onAuthStateChanged vai carregar o formulário automaticamente
   } catch (error) {
     console.error("❌ Erro no login Google:", error);
     setLoading(false);
-    if (btnGoogleLogin) btnGoogleLogin.disabled = false;
 
     let mensagem = "Erro ao fazer login com Google. Tente novamente.";
 
     if (error.code === "auth/popup-closed-by-user") {
       mensagem = "Você fechou a janela de login. Por favor, tente novamente.";
     } else if (error.code === "auth/popup-blocked") {
-      mensagem =
-        "Pop-up foi bloqueado. Por favor, permita pop-ups e tente novamente.";
+      mensagem = "Pop-up foi bloqueado. Permita pop-ups e tente novamente.";
     } else if (error.code === "auth/cancelled-popup-request") {
       mensagem = "Login cancelado.";
     }
 
-    showMessage(mensagem, "error");
+    mostrarMensagem(mensagem, "error");
   }
 }
 
 // ============================================
-// CARREGAR FORMULÁRIO PARA USUÁRIO LOGADO
+// CARREGAR FORMULÁRIO
 // ============================================
 async function carregarFormulario(user) {
   try {
-    setLoading(true, "Carregando seus dados...");
+    setLoading(true, "Carregando formulário...");
 
     // Preencher dados básicos
     if (nomeInput) {
       nomeInput.value = user.displayName || "";
-    } else {
-      console.warn("⚠️ Campo nomeInput não encontrado");
     }
 
     if (emailInput) {
       emailInput.value = user.email;
-    } else {
-      console.warn("⚠️ Campo emailInput não encontrado");
     }
 
     // Carregar lista de profissões
     await carregarListaDeProfissoes();
 
     // Mostrar formulário
-    if (loginContainer) loginContainer.style.display = "none";
+    if (loginView) loginView.style.display = "none";
     if (formContainer) formContainer.style.display = "block";
     if (messageContainer) messageContainer.style.display = "none";
 
@@ -270,18 +210,15 @@ async function carregarFormulario(user) {
   } catch (error) {
     console.error("❌ Erro ao carregar formulário:", error);
     setLoading(false);
-    showError("Erro ao carregar formulário. Tente novamente.");
+    mostrarErro("Erro ao carregar formulário. Tente novamente.");
   }
 }
 
 // ============================================
 // CARREGAR LISTA DE PROFISSÕES
 // ============================================
-async function carregarListaDeProfissoes(profissaoDefault = "") {
-  if (!profissaoSelect) {
-    console.warn("⚠️ profissaoSelect não encontrado");
-    return;
-  }
+async function carregarListaDeProfissoes() {
+  if (!profissaoSelect) return;
 
   try {
     const configRef = doc(db, "configuracoesSistema", "geral");
@@ -292,20 +229,17 @@ async function carregarListaDeProfissoes(profissaoDefault = "") {
 
       let optionsHtml = '<option value="">Selecione sua profissão</option>';
       profissoes.forEach((p) => {
-        const selected = p === profissaoDefault ? "selected" : "";
-        optionsHtml += `<option value="${p}" ${selected}>${p}</option>`;
+        optionsHtml += `<option value="${p}">${p}</option>`;
       });
 
       profissaoSelect.innerHTML = optionsHtml;
     } else {
-      console.warn(
-        "⚠️ Lista de profissões não encontrada em configuracoesSistema"
-      );
+      console.warn("⚠️ Lista de profissões não encontrada");
       profissaoSelect.innerHTML =
         '<option value="">Lista não disponível</option>';
     }
   } catch (error) {
-    console.error("❌ Erro ao carregar lista de profissões:", error);
+    console.error("❌ Erro ao carregar profissões:", error);
   }
 }
 
@@ -317,14 +251,14 @@ async function handleFormSubmit(e) {
 
   const user = auth.currentUser;
   if (!user) {
-    return showMessage(
+    mostrarMensagem(
       "Você precisa estar logado para enviar o formulário.",
       "error"
     );
+    return;
   }
 
   console.log("📝 Submetendo formulário...");
-
   setLoading(true, "Enviando cadastro...");
 
   try {
@@ -332,11 +266,11 @@ async function handleFormSubmit(e) {
     const fileIdentidade = document.getElementById("doc-identidade");
     const fileDiploma = document.getElementById("doc-diploma");
 
-    if (!fileIdentidade || !fileIdentidade.files[0]) {
+    if (!fileIdentidade?.files[0]) {
       throw new Error("Por favor, anexe o documento de identidade.");
     }
 
-    if (!fileDiploma || !fileDiploma.files[0]) {
+    if (!fileDiploma?.files[0]) {
       throw new Error("Por favor, anexe o diploma/certificado.");
     }
 
@@ -380,15 +314,14 @@ async function handleFormSubmit(e) {
     // 5. Sucesso
     setLoading(false);
     if (formContainer) formContainer.style.display = "none";
-    showMessage(
+    mostrarSucesso(
       "✅ Cadastro realizado com sucesso!",
-      "success",
-      "Seu cadastro foi enviado. O RH entrará em contato para os próximos passos. Você já pode fechar esta página."
+      "Seu cadastro foi enviado. O RH entrará em contato para os próximos passos."
     );
   } catch (error) {
     console.error("❌ Erro ao submeter:", error);
     setLoading(false);
-    showMessage("Erro ao submeter cadastro", "error", error.message);
+    mostrarMensagem(`Erro ao submeter cadastro: ${error.message}`, "error");
   }
 }
 
@@ -412,7 +345,7 @@ async function uploadArquivo(userId, tipoDocumento, file) {
     console.log(`✅ Arquivo ${tipoDocumento} enviado com sucesso`);
     return downloadURL;
   } catch (error) {
-    console.error(`❌ Erro ao fazer upload de ${tipoDocumento}:`, error);
+    console.error(`❌ Erro ao fazer upload:`, error);
     throw error;
   }
 }
@@ -422,10 +355,7 @@ async function uploadArquivo(userId, tipoDocumento, file) {
 // ============================================
 
 function setLoading(isLoading, message = "") {
-  if (!loadingOverlay) {
-    console.warn("⚠️ loadingOverlay não encontrado");
-    return;
-  }
+  if (!loadingOverlay) return;
 
   if (isLoading) {
     loadingOverlay.innerHTML = `
@@ -434,58 +364,52 @@ function setLoading(isLoading, message = "") {
     `;
     loadingOverlay.classList.add("is-visible");
     if (btnSubmit) btnSubmit.disabled = true;
-    if (btnLogin) btnLogin.disabled = true;
-    if (btnGoogleLogin) btnGoogleLogin.disabled = true;
   } else {
     loadingOverlay.classList.remove("is-visible");
     if (btnSubmit) btnSubmit.disabled = false;
-    if (btnLogin) btnLogin.disabled = false;
-    if (btnGoogleLogin) btnGoogleLogin.disabled = false;
   }
 }
 
-function showError(message) {
-  if (loadingOverlay) {
-    loadingOverlay.classList.remove("is-visible");
+function mostrarErro(mensagem) {
+  if (!messageContainer) {
+    console.error("❌", mensagem);
+    alert(mensagem);
+    return;
   }
 
-  if (loginContainer) loginContainer.style.display = "none";
+  if (loadingOverlay) loadingOverlay.classList.remove("is-visible");
+  if (loginView) loginView.style.display = "none";
   if (formContainer) formContainer.style.display = "none";
 
-  if (messageContainer) {
-    messageContainer.style.display = "block";
-    messageContainer.innerHTML = `
-      <div class="alert error">
-        <i class="fas fa-exclamation-circle"></i>
-        <strong>${message}</strong>
-      </div>
-    `;
-  } else {
-    console.error("❌", message);
-  }
+  messageContainer.style.display = "block";
+  messageContainer.innerHTML = `
+    <div class="alert error">
+      <i class="fas fa-exclamation-circle"></i>
+      <strong>${mensagem}</strong>
+    </div>
+  `;
 }
 
-function showMessage(title, type, description = "") {
+function mostrarMensagem(titulo, tipo, descricao = "") {
   if (!messageContainer) {
-    console.warn("⚠️ messageContainer não encontrado");
-    alert(title);
+    alert(titulo);
     return;
   }
 
   messageContainer.style.display = "block";
   messageContainer.innerHTML = `
-    <div class="alert ${type}">
+    <div class="alert ${tipo}">
       <i class="fas fa-${
-        type === "success"
-          ? "check-circle"
-          : type === "info"
-          ? "info-circle"
-          : "exclamation-circle"
+        tipo === "success" ? "check-circle" : "exclamation-circle"
       }"></i>
-      <strong>${title}</strong>
-      ${description ? `<p>${description}</p>` : ""}
+      <strong>${titulo}</strong>
+      ${descricao ? `<p>${descricao}</p>` : ""}
     </div>
   `;
+}
+
+function mostrarSucesso(titulo, descricao = "") {
+  mostrarMensagem(titulo, "success", descricao);
 }
 
 // ============================================
