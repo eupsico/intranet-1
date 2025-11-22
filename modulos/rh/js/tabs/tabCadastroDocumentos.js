@@ -69,7 +69,7 @@ export async function renderizarCadastroDocumentos(state) {
         nomecompleto: cand.nomecompleto,
         emailpessoal: cand.emailcandidato, // E-mail pessoal
         emailnovo: cand.admissaoinfo?.email_solicitado || "Não solicitado", // ← CORRIGIDO
-        senhatemporaria: cand.admissaoinfo?.senha_temporaria || "N/A", // ← CORRIGIDO - SENHA BUSCADA AQUI
+        senhatemporaria: cand.admissaoinfo?.senha_temporaria || "N/A", // ← CORRIGIDO
         telefonecontato: cand.telefonecontato,
         vagatitulo: vagaTitulo,
       };
@@ -389,17 +389,14 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
       "btn-enviar-mensagem-boas-vindas"
     );
 
-    // --- CORREÇÃO AQUI: ADICIONANDO O LISTENER ---
-    // Adicionamos o listener de clique aqui, usando o candidatoId que está no escopo desta função.
     btnEnviar.addEventListener("click", () =>
       salvarEEnviarMensagens(candidatoId)
     );
-    // --- FIM DA CORREÇÃO ---
 
     try {
       linkInput.value = linkFormularioBase;
       btnCopiar.disabled = false;
-      btnEnviar.disabled = false; // Habilita o botão
+      btnEnviar.disabled = false;
     } catch (error) {
       console.error("Erro ao definir link:", error);
       linkInput.value = "Erro ao gerar link. Tente novamente.";
@@ -418,7 +415,7 @@ async function salvarEEnviarMensagens(candidatoId) {
   console.log("Iniciando envio de boas-vindas...");
 
   const modal = document.getElementById("modal-enviar-formulario");
-  const btnEnviar = modal?.querySelector(".btn-enviar-mensagem-boas-vindas");
+  const btnEnviar = modal?.querySelector("#btn-enviar-mensagem-boas-vindas");
   const linkInput = modal?.querySelector("#link-formulario-cadastro");
 
   // Validar dados do candidato
@@ -671,11 +668,9 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
 
   const modal = document.createElement("div");
   modal.id = "modal-reset-senha";
-  // A classe "modal-overlay is-visible" é removida e controlada pelo CSS interno
 
   modal.innerHTML = `
     <style>
-        /* Estilos do modal-enviar-formulario adaptados para modal-reset-senha */
         #modal-reset-senha {
             all: initial !important;
             display: block !important;
@@ -704,7 +699,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
             from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
             to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
-        /* Header de Aviso (Amarelo) */
         #modal-reset-senha .modal-header {
             background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
             color: #212529 !important;
@@ -742,7 +736,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
             background: #f8f9fa !important;
             font-family: inherit !important;
         }
-        /* Estilo .info-card (reutilizado) */
         #modal-reset-senha .info-card {
             background: white !important;
             padding: 15px !important;
@@ -752,7 +745,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
         }
         #modal-reset-senha .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
         #modal-reset-senha .info-card strong { color: #333; }
-        /* Estilo para .alert-warning baseado no seu .alert.warning */
         #modal-reset-senha .alert-warning {
             background: #fff3cd !important;
             border: 1px solid #ffeeba !important;
@@ -770,7 +762,7 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
             background: white !important;
             border-top: 1px solid #e9ecef !important;
             display: flex !important;
-            justify-content: flex-end !important; /* Alinha botões à direita */
+            justify-content: flex-end !important;
             gap: 12px !important;
         }
         #modal-reset-senha .btn {
@@ -782,7 +774,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
             display: inline-flex; gap: 8px; align-items: center;
         }
         #modal-reset-senha .btn-cancelar { background: #6c757d !important; color: white !important; }
-        /* Botão Primário (Amarelo) */
         #modal-reset-senha .btn-primary { background: #ffc107 !important; color: #212529 !important; font-weight: 600 !important; }
         #modal-reset-senha .btn-primary:disabled { background: #ccc !important; color: #666 !important; }
     </style>
@@ -827,7 +818,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
-  // Event listener para o botão de confirmar
   document
     .getElementById("btn-confirmar-reset-senha")
     .addEventListener("click", async (e) => {
@@ -852,7 +842,6 @@ async function executarResetSenha(candidatoId, email) {
   try {
     console.log("Chamando Cloud Function para resetar senha:", email);
 
-    // USAR CLOUD FUNCTION (igual criarEmailGoogleWorkspace)
     const resetarSenha = httpsCallable(
       functions,
       "resetarSenhaGoogleWorkspace"
@@ -862,7 +851,6 @@ async function executarResetSenha(candidatoId, email) {
     if (resultado.data && resultado.data.sucesso === true) {
       console.log("Senha resetada com sucesso:", resultado.data.novaSenha);
 
-      // Salvar a nova senha no Firestore
       const state = getGlobalState();
       const { candidatosCollection, currentUserData } = state;
       const candidatoRef = doc(candidatosCollection, candidatoId);
@@ -879,10 +867,8 @@ async function executarResetSenha(candidatoId, email) {
 
       console.log("Senha salva no Firestore");
 
-      // Fechar modal de reset
       fecharModalResetSenha();
 
-      // Mostrar sucesso e instruções
       window.showToast?.(
         "✅ Senha resetada com sucesso! Agora você pode enviar o formulário.",
         "success"
@@ -891,7 +877,6 @@ async function executarResetSenha(candidatoId, email) {
         `Senha resetada com sucesso!\n\nNova senha: ${resultado.data.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
       );
 
-      // Recarregar a listagem para pegar a nova senha
       renderizarCadastroDocumentos(state);
     } else {
       throw new Error(resultado.data?.mensagem || "Erro ao resetar senha");
@@ -917,5 +902,4 @@ function fecharModalResetSenha() {
   document.body.style.overflow = "auto";
 }
 
-// Expor funções globalmente
 window.fecharModalResetSenha = fecharModalResetSenha;
