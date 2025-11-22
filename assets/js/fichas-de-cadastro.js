@@ -1,13 +1,15 @@
 /**
  * Arquivo: assets/js/fichas-de-cadastro.js
- * Versão 2.1 - Correção de Null References
- * Descrição: Controla a página pública de cadastro de novo colaborador.
+ * Versão 2.2 - Autenticação via Google OAuth
+ * Descrição: Controla a página pública de cadastro de novo colaborador com login Google.
  */
 
 import { db, auth, functions, storage } from "./firebase-init.js";
 import {
-  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   onAuthStateChanged,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 import {
@@ -44,6 +46,7 @@ let loginForm = null;
 let loginEmail = null;
 let loginPassword = null;
 let btnLogin = null;
+let btnGoogleLogin = null;
 let nomeInput = null;
 let emailInput = null;
 let profissaoSelect = null;
@@ -60,6 +63,7 @@ function initializarElementosDOM() {
   loginEmail = getElementSafe("login-email");
   loginPassword = getElementSafe("login-password");
   btnLogin = getElementSafe("btn-login");
+  btnGoogleLogin = getElementSafe("btn-google-login");
   nomeInput = getElementSafe("prof-nome");
   emailInput = getElementSafe("prof-email");
   profissaoSelect = getElementSafe("prof-profissao");
@@ -88,9 +92,14 @@ document.addEventListener("DOMContentLoaded", () => {
 // CONFIGURAR EVENT LISTENERS
 // ============================================
 function setupEventListeners() {
-  // Login form
+  // Login form tradicional
   if (loginForm) {
     loginForm.addEventListener("submit", handleLogin);
+  }
+
+  // Botão Google Login
+  if (btnGoogleLogin) {
+    btnGoogleLogin.addEventListener("click", handleGoogleLogin);
   }
 
   // Formulário de inscrição
@@ -112,9 +121,11 @@ function verificarAutenticacao() {
       // Verificar se é e-mail corporativo
       if (!user.email.endsWith("@eupsico.org.br")) {
         setLoading(false);
-        return showError(
-          "❌ Acesso negado. Use seu e-mail corporativo @eupsico.org.br"
+        showError(
+          "❌ Acesso negado. Use sua conta Google corporativa @eupsico.org.br"
         );
+        await signOut(auth);
+        return;
       }
 
       // Mostrar formulário
@@ -137,7 +148,7 @@ function mostrarTelaLogin() {
 }
 
 // ============================================
-// PROCESSAR LOGIN
+// PROCESSAR LOGIN COM EMAIL/SENHA (OPCIONAL)
 // ============================================
 async function handleLogin(e) {
   e.preventDefault();
@@ -158,23 +169,69 @@ async function handleLogin(e) {
   if (btnLogin) btnLogin.disabled = true;
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-    console.log("✅ Login realizado com sucesso");
-    // O onAuthStateChanged vai carregar o formulário automaticamente
+    // Este fluxo seria com signInWithEmailAndPassword
+    // Mas vamos redirecionar para Google Login
+    showMessage(
+      "Por favor, use o botão 'Entrar com Google' para acessar o formulário.",
+      "info"
+    );
+    if (btnLogin) btnLogin.disabled = false;
+    setLoading(false);
   } catch (error) {
     console.error("❌ Erro no login:", error);
     setLoading(false);
     if (btnLogin) btnLogin.disabled = false;
+    showMessage("Erro ao fazer login", "error", error.message);
+  }
+}
 
-    let mensagem = "Erro ao fazer login. Verifique suas credenciais.";
+// ============================================
+// PROCESSAR LOGIN COM GOOGLE
+// ============================================
+async function handleGoogleLogin() {
+  setLoading(true, "Redirecionando para Google...");
+  if (btnGoogleLogin) btnGoogleLogin.disabled = true;
 
-    if (error.code === "auth/wrong-password") {
+  try {
+    const provider = new GoogleAuthProvider();
+
+    // Forçar conta corporativa @eupsico.org.br
+    provider.setCustomParameters({
+      hd: "eupsico.org.br", // Domínio corporativo
+      prompt: "select_account", // Permitir seleção de conta
+    });
+
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    console.log("✅ Login Google bem-sucedido:", user.email);
+
+    // Verificar se é e-mail corporativo
+    if (!user.email.endsWith("@eupsico.org.br")) {
+      await signOut(auth);
+      setLoading(false);
+      showError(
+        "❌ Acesso negado. Você precisa usar sua conta corporativa @eupsico.org.br"
+      );
+      if (btnGoogleLogin) btnGoogleLogin.disabled = false;
+      return;
+    }
+
+    // O onAuthStateChanged vai carregar o formulário automaticamente
+  } catch (error) {
+    console.error("❌ Erro no login Google:", error);
+    setLoading(false);
+    if (btnGoogleLogin) btnGoogleLogin.disabled = false;
+
+    let mensagem = "Erro ao fazer login com Google. Tente novamente.";
+
+    if (error.code === "auth/popup-closed-by-user") {
+      mensagem = "Você fechou a janela de login. Por favor, tente novamente.";
+    } else if (error.code === "auth/popup-blocked") {
       mensagem =
-        "Senha incorreta. Verifique a senha temporária enviada pelo RH.";
-    } else if (error.code === "auth/user-not-found") {
-      mensagem = "E-mail não encontrado. Verifique o e-mail corporativo.";
-    } else if (error.code === "auth/invalid-email") {
-      mensagem = "E-mail inválido.";
+        "Pop-up foi bloqueado. Por favor, permita pop-ups e tente novamente.";
+    } else if (error.code === "auth/cancelled-popup-request") {
+      mensagem = "Login cancelado.";
     }
 
     showMessage(mensagem, "error");
@@ -378,10 +435,12 @@ function setLoading(isLoading, message = "") {
     loadingOverlay.classList.add("is-visible");
     if (btnSubmit) btnSubmit.disabled = true;
     if (btnLogin) btnLogin.disabled = true;
+    if (btnGoogleLogin) btnGoogleLogin.disabled = true;
   } else {
     loadingOverlay.classList.remove("is-visible");
     if (btnSubmit) btnSubmit.disabled = false;
     if (btnLogin) btnLogin.disabled = false;
+    if (btnGoogleLogin) btnGoogleLogin.disabled = false;
   }
 }
 
@@ -417,7 +476,11 @@ function showMessage(title, type, description = "") {
   messageContainer.innerHTML = `
     <div class="alert ${type}">
       <i class="fas fa-${
-        type === "success" ? "check-circle" : "exclamation-circle"
+        type === "success"
+          ? "check-circle"
+          : type === "info"
+          ? "info-circle"
+          : "exclamation-circle"
       }"></i>
       <strong>${title}</strong>
       ${description ? `<p>${description}</p>` : ""}
