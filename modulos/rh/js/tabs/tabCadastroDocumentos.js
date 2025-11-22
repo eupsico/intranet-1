@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabCadastroDocumentos.js
- * Versão: 1.3.0 (Botão envia WhatsApp e E-mail automático via Cloud Function)
+ * Versão: 1.3.2 (Correção: nome_completo -> nome_candidato)
  * Descrição: Gerencia a etapa de envio do formulário de cadastro/documentos ao candidato.
  */
 
@@ -73,12 +73,13 @@ export async function renderizarCadastroDocumentos(state) {
 
       const statusClass = "status-warning";
 
+      // CORREÇÃO: Usando nome_candidato
       const dadosCandidato = {
         id: candidatoId,
-        nome_completo: cand.nome_completo,
-        email_pessoal: cand.email_candidato, // E-mail pessoal
-        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado", // E-mail novo
-        senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A", // <<< SENHA BUSCADA AQUI
+        nome_candidato: cand.nome_candidato || "Candidato", // <--- CORRIGIDO AQUI
+        email_pessoal: cand.email_candidato,
+        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
+        senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A",
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
       };
@@ -89,7 +90,7 @@ export async function renderizarCadastroDocumentos(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_completo || "Candidato Sem Nome"}
+       ${cand.nome_candidato || "Candidato Sem Nome"} 
        <span class="status-badge ${statusClass}">
         <i class="fas fa-tag"></i> ${statusAtual}
        </span>
@@ -125,16 +126,18 @@ export async function renderizarCadastroDocumentos(state) {
     });
 
     listaHtml += "</div>";
-    conteudoAdmissao.innerHTML = listaHtml; // Listeners dinâmicos para "Enviar Formulário"
+    conteudoAdmissao.innerHTML = listaHtml;
 
+    // Listeners dinâmicos para "Enviar Formulário"
     document.querySelectorAll(".btn-enviar-formulario").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
         const dados = e.currentTarget.getAttribute("data-dados");
         abrirModalEnviarFormulario(candidatoId, dados);
       });
-    }); // Listeners dinâmicos para "Detalhes"
+    });
 
+    // Listeners dinâmicos para "Detalhes"
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -186,7 +189,6 @@ window.copiarLinkFormulario = function () {
 
 /**
  * Abre o modal para Enviar o Link do Formulário de Cadastro
- * VERSÃO ATUALIZADA (1.3.1 - Corrigido listener de clique)
  */
 function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
   console.log("🎯 Abrindo modal de envio de formulário (WhatsApp + E-mail)");
@@ -205,6 +207,7 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     const modal = document.createElement("div");
     modal.id = "modal-enviar-formulario";
     modal.dataset.candidaturaId = candidatoId;
+    // CORREÇÃO: Usando dadosCandidato.nome_candidato no HTML abaixo
     modal.innerHTML = `
    <style>
     #modal-enviar-formulario {
@@ -298,7 +301,7 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     
     <div class="modal-body">
      <div class="info-card">
-       <p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+       <p><strong>Candidato:</strong> ${dadosCandidato.nome_candidato}</p>
        <p><strong>E-mail Pessoal:</strong> ${dadosCandidato.email_pessoal}</p>
        <p><strong>Novo E-mail (Solicitado):</strong> ${dadosCandidato.email_novo}</p>
        <p><strong>Senha:</strong> ${dadosCandidato.senha_temporaria} (Necessária para E-mail)</p>
@@ -309,7 +312,7 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
                <i class="fas fa-envelope"></i> Conteúdo (Será enviado por E-mail)
            </label>
            <div class="welcome-message-box">
-               Olá, ${dadosCandidato.nome_completo},<br><br>
+               Olá, ${dadosCandidato.nome_candidato},<br><br>
                Seja bem-vindo(a) à equipe!<br><br>
                Seu novo e-mail de acesso é: <strong>${dadosCandidato.email_novo}</strong><br>
                Sua senha temporária é: <strong>${dadosCandidato.senha_temporaria}</strong><br><br>
@@ -361,13 +364,9 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
       "btn-enviar-mensagem-boas-vindas"
     );
 
-    // --- ⚠️ CORREÇÃO AQUI: ADICIONANDO O LISTENER ---
-    // Adicionamos o listener de clique aqui, usando o 'candidatoId'
-    // que está no escopo desta função.
     btnEnviar.addEventListener("click", () => {
       salvarEEnviarMensagens(candidatoId);
     });
-    // --- ⚠️ FIM DA CORREÇÃO ---
 
     try {
       linkInput.value = linkFormularioBase;
@@ -383,6 +382,7 @@ function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     alert("Erro ao abrir modal.");
   }
 }
+
 async function salvarEEnviarMensagens(candidatoId) {
   console.log("💾 Iniciando envio de boas-vindas...");
 
@@ -397,8 +397,9 @@ async function salvarEEnviarMensagens(candidatoId) {
     return;
   }
 
+  // CORREÇÃO: Destructuring usando nome_candidato
   const {
-    nome_completo,
+    nome_candidato, // <--- AQUI
     email_pessoal,
     email_novo,
     senha_temporaria,
@@ -418,13 +419,13 @@ async function salvarEEnviarMensagens(candidatoId) {
       candidatoId
     );
     window.fecharModalEnviarFormulario();
-    abrirModalResetSenha(candidatoId, email_novo, nome_completo);
+    abrirModalResetSenha(candidatoId, email_novo, nome_candidato);
     return;
   }
 
-  // Validação completa
+  // Validação completa (usando nome_candidato)
   if (
-    !nome_completo ||
+    !nome_candidato ||
     !email_pessoal ||
     !email_novo ||
     !telefone_contato ||
@@ -441,29 +442,28 @@ async function salvarEEnviarMensagens(candidatoId) {
   }
 
   try {
-    // ⭐ CRIAR USUÁRIO NO FIREBASE AUTH (igual gestao_profissionais.js)
+    // ⭐ CRIAR USUÁRIO NO FIREBASE AUTH
     console.log("🔄 Criando usuário no Firebase Auth...");
 
     const criarProfissional = httpsCallable(functions, "criarNovoProfissional");
 
     try {
       const resultado = await criarProfissional({
-        nome: nome_completo,
+        nome: nome_candidato, // Envia como 'nome' para a function, mas lê de nome_candidato
         email: email_novo,
         contato: telefone_contato,
-        profissao: "", // Será preenchido no formulário
-        funcoes: ["todos"], // Permissão básica
+        profissao: "",
+        funcoes: ["todos"],
       });
 
       if (resultado.data && resultado.data.sucesso) {
         console.log("✅ Usuário criado no Firebase Auth:", resultado.data.uid);
       }
     } catch (authError) {
-      // Se já existir, apenas loga e continua
       console.warn("⚠️ Erro ao criar usuário (pode já existir):", authError);
     }
 
-    const primeiroNome = nome_completo.split(" ")[0];
+    const primeiroNome = nome_candidato.split(" ")[0];
 
     // === MENSAGEM WHATSAPP ===
     const mensagemWhatsApp = `Olá, ${primeiroNome}! 👋
@@ -508,6 +508,7 @@ Equipe EuPsico 💙`;
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
     const assuntoEmail = `Boas-vindas à EuPsico - Seus dados de acesso`;
 
+    // Usando nome_candidato no HTML do e-mail
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -542,7 +543,7 @@ Equipe EuPsico 💙`;
     
     <div class="content">
       <div class="greeting">
-        <p>Olá, <strong>${nome_completo}</strong>!</p>
+        <p>Olá, <strong>${nome_candidato}</strong>!</p>
         <p>É com grande alegria que recebemos você na equipe EuPsico. Estamos ansiosos para contar com sua contribuição e talento.</p>
       </div>
       
@@ -651,7 +652,6 @@ Equipe EuPsico 💙`;
 
 /**
  * Abre modal para resetar senha quando não encontrada
- * NOVO - Versão 1.0 (Estilizado)
  */
 function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   console.log("🔑 Abrindo modal de reset de senha");
@@ -662,10 +662,9 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   }
 
   const modal = document.createElement("div");
-  modal.id = "modal-reset-senha"; // A classe "modal-overlay is-visible" é removida e controlada pelo CSS interno
+  modal.id = "modal-reset-senha";
   modal.innerHTML = `
     <style>
-      /* Estilos do modal-enviar-formulario adaptados para modal-reset-senha */
       #modal-reset-senha {
        all: initial !important; display: block !important; position: fixed !important;
        top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
@@ -684,7 +683,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
       }
       
-      /* Header de Aviso (Amarelo) */
       #modal-reset-senha .modal-header {
        background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
        color: #212529 !important;
@@ -708,7 +706,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
         background: #f8f9fa !important; font-family: inherit !important;
       }
       
-      /* Estilo .info-card (reutilizado) */
       #modal-reset-senha .info-card {
         background: white !important; padding: 15px !important; border-radius: 8px !important;
         margin-bottom: 20px !important; border-left: 4px solid #17a2b8 !important;
@@ -716,7 +713,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
       #modal-reset-senha .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
       #modal-reset-senha .info-card strong { color: #333; }
 
-      /* Estilo para .alert-warning (baseado no seu .alert.warning) */
       #modal-reset-senha .alert-warning {
           background: #fff3cd !important;
           border: 1px solid #ffeeba !important;
@@ -743,7 +739,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
       }
       #modal-reset-senha .btn-cancelar { background: #6c757d !important; color: white !important; }
       
-      /* Botão Primário (Amarelo) */
       #modal-reset-senha .btn-primary { 
           background: #ffc107 !important; 
           color: #212529 !important; 
@@ -799,7 +794,7 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
  `;
 
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden"; // Event listener para o botão de confirmar
+  document.body.style.overflow = "hidden";
 
   document
     .getElementById("btn-confirmar-reset-senha")
@@ -813,7 +808,6 @@ function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
 
 /**
  * Executa o reset de senha via Cloud Function
- * VERSÃO 2.0 - Usando Cloud Function (evita CORS)
  */
 async function executarResetSenha(candidatoId, email) {
   const btn = document.getElementById("btn-confirmar-reset-senha");
@@ -826,7 +820,6 @@ async function executarResetSenha(candidatoId, email) {
   try {
     console.log("🔄 Chamando Cloud Function para resetar senha:", email);
 
-    // ⭐ USAR CLOUD FUNCTION (igual criarEmailGoogleWorkspace)
     const resetarSenha = httpsCallable(
       functions,
       "resetarSenhaGoogleWorkspace"
@@ -854,10 +847,8 @@ async function executarResetSenha(candidatoId, email) {
 
       console.log("✅ Senha salva no Firestore");
 
-      // Fechar modal de reset
       fecharModalResetSenha();
 
-      // Mostrar sucesso e instruções
       window.showToast?.(
         "✅ Senha resetada com sucesso! Agora você pode enviar o formulário.",
         "success"
@@ -867,7 +858,6 @@ async function executarResetSenha(candidatoId, email) {
         `✅ Senha resetada com sucesso!\n\nNova senha: ${resultado.data.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
       );
 
-      // Recarregar a listagem para pegar a nova senha
       renderizarCadastroDocumentos(state);
     } else {
       throw new Error(resultado.data?.mensagem || "Erro ao resetar senha");
