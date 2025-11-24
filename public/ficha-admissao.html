@@ -18,6 +18,22 @@
         .hidden { display: none; }
         .btn-primary { background-color: #0078d4; border: none; padding: 12px 30px; font-size: 1.1em; }
         .btn-primary:hover { background-color: #005a9e; }
+        
+        /* Estilos Específicos para Horários */
+        .horario-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .grid-horarios {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .form-check-label-sm { font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -54,7 +70,8 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">E-mail Principal</label>
-                    <input type="email" class="form-control" id="email" readonly> </div>
+                    <input type="email" class="form-control" id="email" readonly>
+                </div>
             </div>
 
             <h4 class="section-title"><i class="fas fa-map-marker-alt me-2"></i>Endereço Completo</h4>
@@ -117,11 +134,52 @@
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Disponibilidade de Horário (Resumo)</label>
-                <input type="text" class="form-control" id="disponibilidade" required placeholder="Ex: Seg a Sex, período noturno">
-            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold mb-3">Disponibilidade de Horário:</label>
+                <p class="text-muted small">Selecione os períodos e horários que você tem disponibilidade para atender.</p>
+                
+                <div id="container-horarios">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input check-periodo" type="checkbox" value="manha-semana" id="check-manha-semana" onchange="toggleHorarios('manha-semana')">
+                            <label class="form-check-label fw-bold" for="check-manha-semana">Manhã (Durante a semana)</label>
+                        </div>
+                        <div id="detalhe-manha-semana" class="horario-box hidden">
+                            <div class="grid-horarios" id="grid-manha-semana"></div>
+                        </div>
+                    </div>
 
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input check-periodo" type="checkbox" value="tarde-semana" id="check-tarde-semana" onchange="toggleHorarios('tarde-semana')">
+                            <label class="form-check-label fw-bold" for="check-tarde-semana">Tarde (Durante a semana)</label>
+                        </div>
+                        <div id="detalhe-tarde-semana" class="horario-box hidden">
+                            <div class="grid-horarios" id="grid-tarde-semana"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input check-periodo" type="checkbox" value="noite-semana" id="check-noite-semana" onchange="toggleHorarios('noite-semana')">
+                            <label class="form-check-label fw-bold" for="check-noite-semana">Noite (Durante a semana)</label>
+                        </div>
+                        <div id="detalhe-noite-semana" class="horario-box hidden">
+                            <div class="grid-horarios" id="grid-noite-semana"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input check-periodo" type="checkbox" value="manha-sabado" id="check-manha-sabado" onchange="toggleHorarios('manha-sabado')">
+                            <label class="form-check-label fw-bold" for="check-manha-sabado">Manhã (Sábado)</label>
+                        </div>
+                        <div id="detalhe-manha-sabado" class="horario-box hidden">
+                            <div class="grid-horarios" id="grid-manha-sabado"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" id="crpAtivo">
                 <label class="form-check-label" for="crpAtivo">
@@ -151,14 +209,11 @@
 </div>
 
 <script>
-    // URL da API Cloud Functions (Baseada no seu index.js)
-    // Ajuste para o seu domínio real do Firebase
     const API_BASE = "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net"; 
     
     let token = new URLSearchParams(window.location.search).get("token");
     let candidatoId = null;
 
-    // Configuração dos Uploads
     const docsConfig = [
         { id: "rg", label: "RG (Frente e Verso)", required: true },
         { id: "cpf", label: "CPF", required: true },
@@ -168,13 +223,18 @@
         { id: "certificados", label: "Certificados de Especialização (Opcional)", required: false }
     ];
 
-    // Inicialização
-// Inicialização
+    // Configuração dos Slots de Horários
+    const slotsConfig = {
+        "manha-semana": ["08:00", "09:00", "10:00", "11:00"],
+        "tarde-semana": ["13:00", "14:00", "15:00", "16:00", "17:00"],
+        "noite-semana": ["18:00", "19:00", "20:00", "21:00"],
+        "manha-sabado": ["08:00", "09:00", "10:00", "11:00"]
+    };
+
     document.addEventListener("DOMContentLoaded", async () => {
         if(!token) return showScreen('error', "Link inválido (Token ausente).");
         
         try {
-            // 1. Validar Token
             const response = await fetch(`${API_BASE}/validarTokenAdmissao`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -185,19 +245,16 @@
             if(!response.ok) throw new Error(data.erro || "Erro ao validar");
 
             candidatoId = data.candidatoId;
-
-            // 2. Preencher dados iniciais (E-mail Corporativo Travado)
             document.getElementById("nome-candidato-display").textContent = data.nomeCandidato;
             document.getElementById("nomeCompleto").value = data.nomeCandidato;
             
-            // AQUI ESTÁ A MUDANÇA: Usa o emailCorporativo retornado pelo backend
             const campoEmail = document.getElementById("email");
             campoEmail.value = data.emailCorporativo; 
-            campoEmail.readOnly = true; // Garante que não pode editar
-            campoEmail.style.backgroundColor = "#e9ecef"; // Visual de desabilitado
+            campoEmail.readOnly = true;
+            campoEmail.style.backgroundColor = "#e9ecef";
 
-            // Renderizar Uploads
             renderUploadFields();
+            renderHorarios(); // Renderiza os checkboxes de horário
             
             showScreen('form');
 
@@ -205,7 +262,72 @@
             showScreen('error', err.message);
         }
     });
-    // Renderiza campos de upload dinamicamente
+
+    // --- LÓGICA DE HORÁRIOS ---
+    function renderHorarios() {
+        for (const [periodo, horarios] of Object.entries(slotsConfig)) {
+            const container = document.getElementById(`grid-${periodo}`);
+            if (!container) continue;
+
+            let html = '';
+            horarios.forEach(hora => {
+                html += `
+                    <div class="form-check">
+                        <input class="form-check-input check-horario" type="checkbox" value="${hora}" id="${periodo}-${hora.replace(':','')}" data-periodo="${periodo}">
+                        <label class="form-check-label form-check-label-sm" for="${periodo}-${hora.replace(':','')}">${hora}</label>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+    }
+
+    function toggleHorarios(periodo) {
+        const checkPeriodo = document.getElementById(`check-${periodo}`);
+        const boxDetalhe = document.getElementById(`detalhe-${periodo}`);
+        
+        if (checkPeriodo.checked) {
+            boxDetalhe.classList.remove("hidden");
+        } else {
+            boxDetalhe.classList.add("hidden");
+            // Desmarcar filhos se desmarcar o pai
+            const childChecks = boxDetalhe.querySelectorAll('.check-horario');
+            childChecks.forEach(ck => ck.checked = false);
+        }
+    }
+    // Expor função para o HTML
+    window.toggleHorarios = toggleHorarios;
+
+    function coletarDisponibilidade() {
+        let resumo = [];
+        
+        const periodos = Object.keys(slotsConfig);
+        
+        periodos.forEach(periodo => {
+            const checkPai = document.getElementById(`check-${periodo}`);
+            if (checkPai && checkPai.checked) {
+                // Pega os horários marcados
+                const container = document.getElementById(`grid-${periodo}`);
+                const marcados = Array.from(container.querySelectorAll('.check-horario:checked')).map(el => el.value);
+                
+                let nomePeriodo = "";
+                if(periodo === "manha-semana") nomePeriodo = "Manhã (Semana)";
+                if(periodo === "tarde-semana") nomePeriodo = "Tarde (Semana)";
+                if(periodo === "noite-semana") nomePeriodo = "Noite (Semana)";
+                if(periodo === "manha-sabado") nomePeriodo = "Manhã (Sábado)";
+
+                if (marcados.length > 0) {
+                    resumo.push(`${nomePeriodo}: [${marcados.join(", ")}]`);
+                } else {
+                    resumo.push(`${nomePeriodo}: (Disponibilidade Total)`);
+                }
+            }
+        });
+
+        return resumo.join("; ");
+    }
+    // --------------------------
+
     function renderUploadFields() {
         const container = document.getElementById("uploads-container");
         let html = '';
@@ -224,13 +346,11 @@
         });
         container.innerHTML = html;
         
-        // Listener para toggle do CRP
         document.getElementById("crpAtivo").addEventListener('change', (e) => {
             const wrap = document.getElementById("wrap-declaracaoCrp");
             if(e.target.checked) wrap.style.display = "block";
             else wrap.style.display = "none";
         });
-        // Inicialmente esconde CRP se não checado
         if(!document.getElementById("crpAtivo").checked) {
              document.getElementById("wrap-declaracaoCrp").style.display = "none";
         }
@@ -243,8 +363,8 @@
             statusDiv.innerHTML = `<i class="fas fa-check me-1"></i> ${input.files[0].name}`;
         }
     }
+    window.handleFileSelect = handleFileSelect;
 
-    // Helper CEP
     async function buscarCep(cep) {
         cep = cep.replace(/\D/g, '');
         if(cep.length !== 8) return;
@@ -259,8 +379,8 @@
             }
         } catch(e) { console.log("Erro CEP", e); }
     }
+    window.buscarCep = buscarCep;
 
-    // SUBMIT FORM
     document.getElementById("cadastro-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("btn-submit");
@@ -270,9 +390,7 @@
         try {
             const uploadedUrls = {};
 
-            // 1. Upload Arquivos um por um
             for(const doc of docsConfig) {
-                // Pula CRP se não for psicólogo
                 if(doc.id === 'declaracaoCrp' && !document.getElementById("crpAtivo").checked) continue;
 
                 const input = document.getElementById(`file-${doc.id}`);
@@ -284,7 +402,6 @@
                     const file = input.files[0];
                     const base64 = await toBase64(file);
                     
-                    // Chama API de Upload
                     const resUpload = await fetch(`${API_BASE}/uploadDocumentoAdmissao`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -304,12 +421,18 @@
                 }
             }
 
-            // 2. Monta Objeto de Dados
             const publico = [];
             if(document.getElementById("publico-crianca").checked) publico.push("Criança");
             if(document.getElementById("publico-adolescente").checked) publico.push("Adolescente");
             if(document.getElementById("publico-adulto").checked) publico.push("Adulto");
             if(document.getElementById("publico-idoso").checked) publico.push("Idoso");
+
+            // Captura a disponibilidade formatada
+            const disponibilidadeFormatada = coletarDisponibilidade();
+
+            if(!disponibilidadeFormatada) {
+                throw new Error("Selecione pelo menos um horário de disponibilidade.");
+            }
 
             const dadosFormulario = {
                 nomeCompleto: document.getElementById("nomeCompleto").value,
@@ -322,13 +445,12 @@
                 estado: document.getElementById("estado").value,
                 graduacao: document.getElementById("graduacao").value,
                 especializacoes: document.getElementById("especializacoes").value,
-                disponibilidade: document.getElementById("disponibilidade").value,
+                disponibilidade: disponibilidadeFormatada, // Envia a string formatada
                 publicoAtendido: publico,
                 crpAtivo: document.getElementById("crpAtivo").checked,
                 ...uploadedUrls
             };
 
-            // 3. Envia Tudo
             const resFinal = await fetch(`${API_BASE}/salvarDadosAdmissao`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -343,11 +465,10 @@
         } catch (err) {
             alert("Erro: " + err.message);
             btn.disabled = false;
-            btn.innerHTML = 'Tentar Novamente';
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Enviar Cadastro';
         }
     });
 
-    // Helpers
     function showScreen(screenId, msg) {
         document.getElementById("loading-screen").classList.add("hidden");
         document.getElementById("error-screen").classList.add("hidden");
