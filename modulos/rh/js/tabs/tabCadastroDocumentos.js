@@ -23,7 +23,6 @@ let dadosCandidatoAtual = null;
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
-
 export async function renderizarCadastroDocumentos(state) {
   const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
 
@@ -31,10 +30,16 @@ export async function renderizarCadastroDocumentos(state) {
     '<div class="loading-spinner">Carregando candidatos aguardando cadastro...</div>';
 
   try {
+    // Query para pegar quem está nesta etapa
     const q = query(
       candidatosCollection,
-      where("status_recrutamento", "==", "AGUARDANDO_CADASTRO")
+      where("status_recrutamento", "in", [
+        "AGUARDANDO_CADASTRO",
+        "FORM_ENVIADO",
+      ])
     );
+    // Nota: Adicionei 'FORM_ENVIADO' caso queira manter o card aqui até o preenchimento
+
     const snapshot = await getDocs(q);
 
     const tab = statusAdmissaoTabs.querySelector(
@@ -46,13 +51,13 @@ export async function renderizarCadastroDocumentos(state) {
 
     if (snapshot.empty) {
       conteudoAdmissao.innerHTML =
-        '<p class="alert alert-info">Nenhum candidato aguardando o envio do formulário de cadastro.</p>';
+        '<p class="alert alert-info">Nenhum candidato aguardando nesta etapa.</p>';
       return;
     }
 
     let listaHtml = `
     <div class="description-box" style="margin-top: 15px;">
-    <p>Envie o link do formulário de cadastro para os candidatos abaixo.</p>
+    <p>Envie o link do formulário de cadastro. O card moverá para "Assinatura" assim que o candidato preencher.</p>
     </div>
    <div class="candidatos-container candidatos-grid">
   `;
@@ -61,9 +66,13 @@ export async function renderizarCadastroDocumentos(state) {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
-      const statusAtual = cand.status_recrutamento || "N/A";
+      const statusAtual = cand.status_recrutamento || "Status Pendente"; // Fallback visual
+
       const statusClass = "status-warning";
 
+      // ============================================================
+      // ✅ CORREÇÃO DO OBJETO PARA O MODAL DE DETALHES
+      // ============================================================
       const dadosCandidato = {
         id: candidatoId,
         nome_candidato: cand.nome_candidato || "Candidato",
@@ -72,7 +81,10 @@ export async function renderizarCadastroDocumentos(state) {
         senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A",
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
+        // 👇 ESTA LINHA GARANTE QUE O STATUS APAREÇA NO MODAL 👇
+        status_recrutamento: statusAtual,
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
@@ -80,7 +92,7 @@ export async function renderizarCadastroDocumentos(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_candidato || "Candidato Sem Nome"} 
+       ${cand.nome_candidato || "Candidato"} 
        <span class="status-badge ${statusClass}">
         <i class="fas fa-tag"></i> ${statusAtual}
        </span>
@@ -118,6 +130,7 @@ export async function renderizarCadastroDocumentos(state) {
     listaHtml += "</div>";
     conteudoAdmissao.innerHTML = listaHtml;
 
+    // Re-anexa listeners (igual ao código anterior)
     document.querySelectorAll(".btn-enviar-formulario").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -137,16 +150,14 @@ export async function renderizarCadastroDocumentos(state) {
             );
             window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
           } catch (error) {
-            console.error("❌ Erro ao abrir modal de detalhes:", error);
+            console.error("❌ Erro ao abrir modal:", error);
           }
-        } else {
-          alert("Erro ao carregar detalhes. Função não encontrada.");
         }
       });
     });
   } catch (error) {
-    console.error("Erro ao renderizar aba de Cadastro:", error);
-    conteudoAdmissao.innerHTML = `<p class="alert alert-danger">Erro ao carregar: ${error.message}</p>`;
+    console.error("Erro ao renderizar:", error);
+    conteudoAdmissao.innerHTML = `<p class="alert alert-danger">${error.message}</p>`;
   }
 }
 
