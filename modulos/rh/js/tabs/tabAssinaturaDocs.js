@@ -47,7 +47,6 @@ export async function renderizarAssinaturaDocs(state) {
       where("status_recrutamento", "in", [
         "AGUARDANDO_PREENCHIMENTO_FORM", // Para monitorar quem não preencheu
         "AGUARDANDO_ASSINATURA", // Pronto para enviar docs
-        "FORM_ENVIADO",
       ])
     );
     const snapshot = await getDocs(q); // Atualiza contagem na aba
@@ -87,7 +86,7 @@ export async function renderizarAssinaturaDocs(state) {
 
       const dadosCandidato = {
         id: candidatoId,
-        nome_completo: cand.nome_completo,
+        nome_candidato: cand.nome_candidato,
         email_pessoal: cand.email_candidato,
         email_novo: cand.admissao_info?.email_solicitado || "Não solicitado",
         telefone_contato: cand.telefone_contato,
@@ -100,14 +99,14 @@ export async function renderizarAssinaturaDocs(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_completo || "Candidato Sem Nome"}
+       ${cand.nome_candidato || "Candidato Sem Nome"}
       	<span class="status-badge ${statusClass}">
        	<i class="fas fa-tag"></i> ${statusAtual}
       	</span>
       </h4>
      	<p class="small-info" style="color: var(--cor-primaria);">
        <i class="fas fa-envelope"></i> Novo E-mail: ${
-         cand.admissao_info?.email_solicitado || "Aguardando..."
+         cand.admissaoinfo?.email_solicitado || "Aguardando..."
        }
       </p>
      </div>
@@ -293,7 +292,7 @@ async function abrirModalEnviarDocumentos(
     
     <div class="modal-body">
      <div class="info-card">
-     	<p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+     	<p><strong>Candidato:</strong> ${dadosCandidato.nome_candidato}</p>
      	<p><strong>Telefone:</strong> ${dadosCandidato.telefone_contato}</p>
      	<p><strong>Novo E-mail:</strong> ${dadosCandidato.email_novo}</p>
      </div>
@@ -500,7 +499,7 @@ window.enviarDocumentosWhatsApp = async function () {
       "documentos-mensagem"
     )?.value;
     const mensagemPadrao = `
-✒️ *Olá ${dadosCandidatoAtual.nome_completo}!*
+✒️ *Olá ${dadosCandidatoAtual.nome_candidato}!*
 
 Estamos na etapa final da sua admissão. Por favor, revise e assine os seguintes documentos:
 
@@ -644,7 +643,7 @@ window.abrirModalReenviarFormulario = function (candidatoId, dadosCodificados) {
   		</div>
   		<div class="modal-body">
   			<div class="info-card">
-  				<p><strong>Candidato:</strong> ${dadosCandidato.nome_completo}</p>
+  				<p><strong>Candidato:</strong> ${dadosCandidato.nome_candidato}</p>
   			</div>
   			<form id="form-enviar-link-${candidatoId}">
   				<div class="form-group">
