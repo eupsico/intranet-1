@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 2.2.0 (Correção de Imports e Logs de Debug)
+ * Versão: 3.1.0 (Correção de Exportação Global + Suporte a Fases)
  */
 
 import { getGlobalState } from "../admissao.js";
@@ -13,19 +13,17 @@ import {
   doc,
   updateDoc,
   arrayUnion,
-  addDoc, // <--- ESTE IMPORT É ESSENCIAL PARA CRIAR A COLEÇÃO
+  addDoc,
 } from "../../../../assets/js/firebase-init.js";
 
 // ============================================
 // CONSTANTES
 // ============================================
 let dadosCandidatoAtual = null;
-
-// URL da Intranet (Login)
 const URL_INTRANET = "https://intranet.eupsico.org.br";
 
 // ============================================
-// RENDERIZAÇÃO DA LISTAGEM
+// RENDERIZAÇÃO DA LISTAGEM (FASE 1)
 // ============================================
 
 export async function renderizarAssinaturaDocs(state) {
@@ -60,7 +58,7 @@ export async function renderizarAssinaturaDocs(state) {
 
     let listaHtml = `
     <div class="description-box" style="margin-top: 15px;">
-      <p>Libere os documentos (Contrato, Termos) para que o colaborador assine acessando a Intranet com seu login e senha.</p>
+      <p><strong>Fase 1 (Admissão):</strong> Libere os documentos iniciais (Contrato, Código de Conduta) para assinatura.</p>
     </div>
     <div class="candidatos-container candidatos-grid">
     `;
@@ -68,13 +66,11 @@ export async function renderizarAssinaturaDocs(state) {
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
-      const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
 
       let statusClass = "status-info";
       let botaoAcao = "";
 
-      // Lógica dos Botões
       if (statusAtual === "AGUARDANDO_ASSINATURA") {
         statusClass = "status-success";
         botaoAcao = `
@@ -112,7 +108,7 @@ export async function renderizarAssinaturaDocs(state) {
         <h4 class="nome-candidato">
          ${cand.nome_candidato || "Candidato"}
           <span class="status-badge ${statusClass}">
-            <i class="fas fa-tag"></i> ${statusAtual}
+            ${statusAtual.replace(/_/g, " ")}
           </span>
         </h4>
         <p class="small-info" style="color: var(--cor-primaria);">
@@ -144,7 +140,8 @@ export async function renderizarAssinaturaDocs(state) {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
         const dados = e.currentTarget.getAttribute("data-dados");
-        abrirModalEnviarDocumentos(candidatoId, dados, state);
+        // Chama a função global passando fase 1
+        abrirModalEnviarDocumentos(candidatoId, dados, state, 1);
       });
     });
 
@@ -167,13 +164,18 @@ export async function renderizarAssinaturaDocs(state) {
 }
 
 // ============================================
-// MODAL - ENVIAR DOCUMENTOS
+// MODAL - ENVIAR DOCUMENTOS (GLOBAL)
 // ============================================
 
+/**
+ * Abre o modal de envio.
+ * Parâmetro 'fase' define se é Admissão (1) ou Pós-3 Meses (2).
+ */
 async function abrirModalEnviarDocumentos(
   candidatoId,
   dadosCodificados,
-  state
+  state,
+  fase = 1
 ) {
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
@@ -185,6 +187,12 @@ async function abrirModalEnviarDocumentos(
     const modal = document.createElement("div");
     modal.id = "modal-enviar-documentos";
     modal.dataset.candidaturaId = candidatoId;
+    modal.dataset.fase = fase; // ✅ Salva a fase no dataset do modal
+
+    const tituloFase =
+      fase === 1 ? "Fase 1: Admissão" : "Fase 2: Pós-Experiência";
+
+    // Filtra modelos por fase se necessário (implementado na query abaixo ou visualmente)
 
     modal.innerHTML = `
      <style>
@@ -202,7 +210,7 @@ async function abrirModalEnviarDocumentos(
      
      <div class="modal-container">
       <div class="modal-header">
-       <h3><i class="fas fa-file-signature"></i> Liberar Documentos</h3>
+       <h3><i class="fas fa-file-signature"></i> Liberar Documentos - ${tituloFase}</h3>
        <button onclick="fecharModalEnviarDocumentos()" style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">&times;</button>
       </div>
       
@@ -224,13 +232,13 @@ async function abrirModalEnviarDocumentos(
         <textarea id="documentos-mensagem" class="form-textarea" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
 Olá ${dadosCandidato.nome_candidato.split(" ")[0]}!
 
-Seus documentos de admissão já estão disponíveis na Intranet.
+Novos documentos (${tituloFase}) estão disponíveis na Intranet.
 
 1. Acesse: ${URL_INTRANET}
-2. Faça login com seu e-mail corporativo e senha.
-3. Vá em *Portal do Voluntário* > *Assinaturas e Termos* para assinar.
+2. Faça login.
+3. Vá em *Portal do Voluntário* > *Assinaturas e Termos*.
 
-Qualquer dúvida, estamos à disposição!
+Aguardamos seu aceite digital!
         </textarea>
        </div>
       </div>
@@ -257,27 +265,25 @@ async function carregarDocumentosDisponiveis() {
   if (!container) return;
 
   try {
-    // Tenta buscar na coleção de modelos principal
     const documentosRef = collection(db, "rh_documentos_modelos");
     let snapshot = await getDocs(
       query(documentosRef, where("ativo", "==", true))
     );
 
     if (snapshot.empty) {
-      // Tenta outras coleções caso o nome tenha mudado
       snapshot = await getDocs(collection(db, "modelos_documentos"));
     }
 
     if (snapshot.empty) {
       container.innerHTML =
-        '<p class="text-danger">Nenhum modelo de documento encontrado. Cadastre em "Gerenciar Documentos".</p>';
+        '<p class="text-danger">Nenhum modelo encontrado. Cadastre em "Gerenciar Documentos".</p>';
       return;
     }
 
     let html = "";
     snapshot.forEach((docSnap) => {
       const docData = docSnap.data();
-      const titulo = docData.titulo || docData.nome || "Documento sem título";
+      const titulo = docData.titulo || docData.nome || "Sem título";
       html += `
       <div style="margin-bottom:8px;">
         <input type="checkbox" value="${docSnap.id}" id="doc-${docSnap.id}" data-titulo="${titulo}">
@@ -286,23 +292,23 @@ async function carregarDocumentosDisponiveis() {
     });
     container.innerHTML = html;
   } catch (error) {
-    console.error("Erro ao carregar docs:", error);
-    container.innerHTML = '<p class="text-danger">Erro ao carregar lista.</p>';
+    console.error("Erro docs:", error);
+    container.innerHTML = '<p class="text-danger">Erro ao carregar.</p>';
   }
 }
 
 // ============================================
-// AÇÃO DE LIBERAÇÃO E CRIAÇÃO DE ASSINATURA
+// AÇÃO DE LIBERAÇÃO
 // ============================================
 
 window.confirmarLiberacaoDocs = async function () {
-  console.log("💾 Iniciando liberação de documentos...");
+  console.log("💾 Liberando documentos...");
   const modal = document.getElementById("modal-enviar-documentos");
   const btn = document.getElementById("btn-confirmar-liberacao");
   const candidatoId = modal.dataset.candidaturaId;
+  const fase = parseInt(modal.dataset.fase) || 1; // Pega a fase
   const msgWhatsapp = document.getElementById("documentos-mensagem").value;
 
-  // 1. Coleta documentos
   const docsSelecionados = [];
   modal.querySelectorAll("input[type=checkbox]:checked").forEach((cb) => {
     docsSelecionados.push({
@@ -323,18 +329,11 @@ window.confirmarLiberacaoDocs = async function () {
   try {
     const { candidatosCollection, currentUserData } = getGlobalState();
 
-    // 2. Busca o UID do Usuário Real
-    // (Este passo é crucial para o vínculo funcionar na tela do voluntário)
-    console.log(
-      `🔍 Buscando usuário com e-mail: ${dadosCandidatoAtual.email_novo}`
-    );
-
     if (!dadosCandidatoAtual.email_novo) {
-      throw new Error(
-        "O candidato não possui e-mail corporativo registrado na admissão."
-      );
+      throw new Error("E-mail corporativo não encontrado.");
     }
 
+    // Busca UID
     const usuariosRef = collection(db, "usuarios");
     const qUser = query(
       usuariosRef,
@@ -344,18 +343,17 @@ window.confirmarLiberacaoDocs = async function () {
 
     if (snapshotUser.empty) {
       throw new Error(
-        `ERRO: O usuário com e-mail ${dadosCandidatoAtual.email_novo} não foi encontrado na coleção 'usuarios'.\n\nVerifique se a Ficha de Cadastro foi preenchida corretamente e se o usuário foi criado na etapa anterior.`
+        `Usuário ${dadosCandidatoAtual.email_novo} não encontrado.`
       );
     }
 
-    const usuarioReal = snapshotUser.docs[0];
-    const usuarioUid = usuarioReal.id;
-    console.log(`✅ Usuário encontrado! UID: ${usuarioUid}`);
+    const usuarioUid = snapshotUser.docs[0].id;
 
-    // 3. Cria a solicitação na nova coleção
+    // ✅ Cria solicitação com a FASE CORRETA
     const solicitacaoData = {
-      tipo: "fase_1",
-      usuarioUid: usuarioUid, // Vínculo para o 'where' do lado do voluntário
+      tipo: `fase_${fase}`,
+      fase: fase, // 1 ou 2
+      usuarioUid: usuarioUid,
       candidatoId_ref: candidatoId,
       emailUsuario: dadosCandidatoAtual.email_novo,
       nomeUsuario: dadosCandidatoAtual.nome_candidato,
@@ -364,39 +362,45 @@ window.confirmarLiberacaoDocs = async function () {
       dataEnvio: new Date(),
       enviadoPor: currentUserData.nome || "RH",
       metodoAssinatura: "interno_de_acordo",
-      fase: 1,
     };
 
-    // Cria a coleção se não existir
     await addDoc(collection(db, "solicitacoes_assinatura"), solicitacaoData);
-    console.log("✅ Solicitação salva na coleção 'solicitacoes_assinatura'");
 
-    // 4. Atualiza o card na Admissão
+    // Define o novo status do candidato baseado na fase
+    const statusRecrutamento =
+      fase === 2 ? "DOCS_POS_3MESES_LIBERADOS" : "DOCS_LIBERADOS";
+
+    // Atualiza Candidatura
     const candidatoRef = doc(candidatosCollection, candidatoId);
     await updateDoc(candidatoRef, {
-      status_recrutamento: "DOCS_LIBERADOS",
+      status_recrutamento: statusRecrutamento,
       historico: arrayUnion({
         data: new Date(),
-        acao: `Documentos liberados para assinatura interna.`,
+        acao: `Documentos (Fase ${fase}) liberados.`,
         usuario: currentUserData.id || "rh_admin",
       }),
     });
 
-    // 5. Abre WhatsApp
     const telefone = dadosCandidatoAtual.telefone_contato.replace(/\D/g, "");
     const linkZap = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
       msgWhatsapp
     )}`;
     window.open(linkZap, "_blank");
 
-    window.showToast?.("Documentos liberados com sucesso!", "success");
+    window.showToast?.("Documentos liberados!", "success");
     fecharModalEnviarDocumentos();
 
-    const state = getGlobalState();
-    renderizarAssinaturaDocs(state);
+    // Recarrega aba ativa
+    const activeTab = document.querySelector(
+      "#status-admissao-tabs .tab-link.active"
+    );
+    if (activeTab) {
+      const globalState = getGlobalState();
+      globalState.handleTabClick({ currentTarget: activeTab });
+    }
   } catch (error) {
-    console.error("❌ Erro ao liberar:", error);
-    alert(`Erro ao liberar documentos: ${error.message}`);
+    console.error("❌ Erro:", error);
+    alert(`Erro ao liberar: ${error.message}`);
     btn.disabled = false;
     btn.innerHTML = '<i class="fab fa-whatsapp"></i> Liberar e Avisar';
   }
@@ -407,3 +411,6 @@ window.fecharModalEnviarDocumentos = function () {
   if (modal) modal.remove();
   document.body.style.overflow = "";
 };
+
+// ✅ EXPÕE A FUNÇÃO PARA SER USADA EM OUTROS ARQUIVOS (tabDocsPos3Meses.js)
+window.abrirModalEnviarDocumentos = abrirModalEnviarDocumentos;
