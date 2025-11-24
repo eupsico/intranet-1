@@ -66,11 +66,11 @@ export async function renderizarIntegracao(state) {
     }
 
     let listaHtml = `
-    	<div class="description-box" style="margin-top: 15px;">
-      	<p>Agende a reunião de integração (Onboarding) e envie os links dos treinamentos iniciais para os novos colaboradores.</p>
-    	</div>
-    	<div class="candidatos-container candidatos-grid">
-    `;
+  	<div class="description-box" style="margin-top: 15px;">
+   	<p>Agende a reunião de integração (Onboarding) e envie os links dos treinamentos iniciais para os novos colaboradores.</p>
+  	</div>
+  	<div class="candidatos-container candidatos-grid">
+  `;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -91,45 +91,43 @@ export async function renderizarIntegracao(state) {
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
       listaHtml += `
-        <div class="card card-candidato-gestor" data-id="${candidatoId}">
-          <div class="info-primaria">
-            <h4 class="nome-candidato">
-              ${cand.nome_completo || "Candidato Sem Nome"}
-            	<span class="status-badge ${statusClass}">
-              	<i class="fas fa-tag"></i> ${statusAtual}
-            	</span>
-            </h4>
-          	<p class="small-info" style="color: var(--cor-primaria);">
-              <i class="fas fa-envelope"></i> Novo E-mail: ${
-        dadosCandidato.email_novo
-      }
-            </p>
-          </div>
-          
-          <div class="acoes-candidato">
-          	<button 
-            	class="action-button primary btn-agendar-integracao" 
-            	data-id="${candidatoId}"
-            	data-dados="${dadosCodificados}"
-          		style="background: var(--cor-primaria);">
-            	<i class="fas fa-calendar-alt me-1"></i> Agendar Integração
-          	</button>
-          	<button 
-            	class="action-button success btn-enviar-treinamento" 
-            	data-id="${candidatoId}"
-            	data-dados="${dadosCodificados}"
-          		style="background: var(--cor-sucesso);">
-            	<i class="fas fa-video me-1"></i> Enviar Treinamentos
-          	</button>
-          	<button 
-            	class="action-button secondary btn-ver-detalhes-admissao" 
-            	data-id="${candidatoId}"
-            	data-dados="${dadosCodificados}">
-            	<i class="fas fa-eye me-1"></i> Detalhes
-          	</button>
-          </div>
-        </div>
-      `;
+    <div class="card card-candidato-gestor" data-id="${candidatoId}">
+     <div class="info-primaria">
+      <h4 class="nome-candidato">
+       ${cand.nome_completo || "Candidato Sem Nome"}
+      	<span class="status-badge ${statusClass}">
+       	<i class="fas fa-tag"></i> ${statusAtual}
+      	</span>
+      </h4>
+     	<p class="small-info" style="color: var(--cor-primaria);">
+       <i class="fas fa-envelope"></i> Novo E-mail: ${dadosCandidato.email_novo}
+      </p>
+     </div>
+     
+     <div class="acoes-candidato">
+     	<button 
+      	class="action-button primary btn-agendar-integracao" 
+      	data-id="${candidatoId}"
+      	data-dados="${dadosCodificados}"
+     		style="background: var(--cor-primaria);">
+      	<i class="fas fa-calendar-alt me-1"></i> Agendar Integração
+     	</button>
+     	<button 
+      	class="action-button success btn-enviar-treinamento" 
+      	data-id="${candidatoId}"
+      	data-dados="${dadosCodificados}"
+     		style="background: var(--cor-sucesso);">
+      	<i class="fas fa-video me-1"></i> Enviar Treinamentos
+     	</button>
+     	<button 
+      	class="action-button secondary btn-ver-detalhes-admissao" 
+      	data-id="${candidatoId}"
+      	data-dados="${dadosCodificados}">
+      	<i class="fas fa-eye me-1"></i> Detalhes
+     	</button>
+     </div>
+    </div>
+   `;
     });
 
     listaHtml += "</div>";
@@ -366,7 +364,7 @@ Qualquer dúvida, fale conosco.
 
 *Abraços,*
 *Equipe de Recursos Humanos - EuPsico* 💙
-  `.trim();
+ `.trim();
 
   return mensagem;
 }
@@ -502,12 +500,12 @@ async function carregarTreinamentosDisponiveis() {
       const treino = docSnap.data(); // Assumindo que a coleção 'treinamentos' tem 'titulo' e 'link'
       const prazoDias = treino.prazo_dias || "14";
       htmlOptions += `<option value="${docSnap.id}" 
-        data-link="${treino.link || ""}" 
-        data-tipo="${treino.tipo || "Geral"}"
-        data-prazo="${prazoDias}"
-    	  data-titulo="${treino.titulo}">
-        ${treino.titulo} (${treino.tipo || "Geral"}) - Prazo: ${prazoDias}d
-      </option>`;
+    data-link="${treino.link || ""}" 
+    data-tipo="${treino.tipo || "Geral"}"
+    data-prazo="${prazoDias}"
+  	  data-titulo="${treino.titulo}">
+    ${treino.titulo} (${treino.tipo || "Geral"}) - Prazo: ${prazoDias}d
+   </option>`;
     });
 
     selectTreinamento.innerHTML = htmlOptions;
@@ -585,7 +583,7 @@ Qualquer dúvida, fale com o RH.
 
 *Bons estudos!*
 *Equipe EuPsico* 💙
-    `.trim();
+  `.trim();
 
     const mensagemFinal = mensagemPersonalizada || mensagemPadrao;
     const telefoneLimpo = telefone.replace(/\D/g, "");
