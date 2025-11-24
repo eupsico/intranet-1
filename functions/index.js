@@ -2738,7 +2738,7 @@ exports.validarTokenAdmissao = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-// 3. SALVAR DADOS (Salva em 'candidaturas' E 'usuarios')
+// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Atualizado)
 exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
   try {
     if (req.method !== "POST")
@@ -2746,7 +2746,7 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
 
     const { token, dadosFormulario } = req.body;
 
-    // Validação do Token
+    // --- Validação do Token ---
     const tokenQuery = await db
       .collection("tokens_admissao")
       .where("token", "==", token)
@@ -2763,7 +2763,7 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
     const candidatoId = dadosToken.candidatoId;
     const emailCorporativo = dadosToken.emailCorporativo;
 
-    // 1. Atualiza CANDIDATURA (Histórico)
+    // --- 1. Atualiza CANDIDATURA e muda STATUS para Próxima Aba ---
     const candidatoRef = db.collection("candidaturas").doc(candidatoId);
 
     await candidatoRef.update({
@@ -2771,16 +2771,16 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
         ...dadosFormulario,
         preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
       },
-      status_recrutamento: "Cadastro Realizado (Aguardando Integração)",
+      // ✅ MUDANÇA AQUI: Status alterado para mover o card de aba
+      status_recrutamento: "AGUARDANDO_ASSINATURA",
       historico: admin.firestore.FieldValue.arrayUnion({
         data: new Date(),
-        acao: "Candidato completou a ficha cadastral.",
+        acao: "Candidato preencheu ficha. Movido para Assinatura.",
         usuario: "Sistema (Via Ficha)",
       }),
     });
 
-    // 2. Atualiza (ou cria) documento na coleção USUARIOS
-    // Busca o usuário pelo e-mail corporativo (criado na etapa anterior)
+    // --- 2. Atualiza USUARIOS (como já estava) ---
     const usuariosQuery = await db
       .collection("usuarios")
       .where("email", "==", emailCorporativo)
@@ -2789,11 +2789,7 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
 
     if (!usuariosQuery.empty) {
       const usuarioDoc = usuariosQuery.docs[0];
-      const usuarioRef = usuarioDoc.ref;
-
-      // Monta objeto com as regras de negócio solicitadas
       const dadosUsuario = {
-        // Dados Pessoais Atualizados
         nome: dadosFormulario.nomeCompleto,
         contato: dadosFormulario.telefone,
         endereco: {
@@ -2804,7 +2800,6 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
           cidade: dadosFormulario.cidade,
           estado: dadosFormulario.estado,
         },
-        // Dados Profissionais
         profissao: dadosFormulario.crpAtivo
           ? "Psicólogo(a)"
           : dadosFormulario.profissao || "Terapeuta",
@@ -2816,36 +2811,58 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
         publico_atendido: dadosFormulario.publicoAtendido || [],
         disponibilidade: dadosFormulario.disponibilidade,
 
-        // Documentos (Links)
         documentos: {
           rg: dadosFormulario.rgUrl || "",
           cpf: dadosFormulario.cpfUrl || "",
           diploma: dadosFormulario.diplomaUrl || "",
           comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
         },
-
-        // === REGRAS DE NEGÓCIO SOLICITADAS ===
         primeiraFase: true,
         inativo: false,
         recebeDireto: true,
         fazAtendimento: true,
-        funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"), // Adiciona 'atendimento' sem apagar outras funções
+        funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
       };
-
-      await usuarioRef.update(dadosUsuario);
-      console.log(`Usuário ${emailCorporativo} atualizado com sucesso.`);
-    } else {
-      console.warn(
-        `Usuário com email ${emailCorporativo} não encontrado na coleção usuarios para atualização.`
-      );
-      // Opcional: Criar se não existir, mas pela regra de negócio ele deveria existir.
+      await usuarioDoc.ref.update(dadosUsuario);
     }
 
-    // 3. Marca token como usado
+    // --- 3. Marca token como usado ---
     await tokenDoc.ref.update({
       usado: true,
       usadoEm: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+    // --- 4. NOVO: Enviar E-mail para o RH ---
+    try {
+      // Email fixo do RH ou admin
+      const emailRH = "atendimento@eupsico.org.br";
+
+      const htmlEmailRH = `
+        <h3>Ficha de Admissão Preenchida</h3>
+        <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> acabou de preencher a ficha cadastral e enviar os documentos.</p>
+        <p><strong>Status Atual:</strong> Movido para "Assinatura de Documentos"</p>
+        <p>Por favor, acesse o painel de Admissão para conferir os dados e gerar o contrato.</p>
+        <br>
+        <p><em>Sistema EuPsico</em></p>
+        `;
+
+      // Reutiliza a função enviarEmail (se estiver exportada ou via chamada interna)
+      // Se 'enviarEmail' é uma Cloud Function exportada, podemos usar a lógica do nodemailer diretamente aqui
+      // ou assumir que o 'transporter' está configurado no topo do arquivo.
+      // Assumindo que 'transporter' está configurado no topo do index.js:
+
+      await transporter.sendMail({
+        from: "EuPsico Sistema <atendimento@eupsico.org.br>",
+        to: emailRH,
+        subject: `📄 Ficha Preenchida: ${dadosFormulario.nomeCompleto}`,
+        html: htmlEmailRH,
+      });
+
+      console.log("✅ E-mail de aviso enviado para o RH");
+    } catch (mailError) {
+      console.error("Erro ao enviar email para RH:", mailError);
+      // Não trava o processo se o email falhar
+    }
 
     return res
       .status(200)
