@@ -307,7 +307,8 @@ async function submeterAvaliacao3Meses(e) {
       },
       // Se aprovado, confirma efetivação. Se não, marca inativo (ou mantém ativo até desligamento formal)
       efetivado: isAprovado,
-      status: isAprovado ? "ativo" : "em_desligamento",
+      inativo: !isAprovado, // Marca como inativo se reprovado
+      status: isAprovado ? "ativo" : "desligado",
       // Adicione outros campos se necessário para "segunda fase"
     };
 
@@ -315,8 +316,12 @@ async function submeterAvaliacao3Meses(e) {
     console.log("✅ Avaliação salva no perfil do usuário.");
 
     // 3. Atualizar CANDIDATURA (para tirar da lista de pendências)
-    const novoStatusCandidatura = "PROCESSO_CONCLUIDO"; // Finaliza o card na admissão
-    const acaoHistorico = `Avaliação de 3 Meses: ${resultado}. Salvo no perfil do usuário.`;
+    const novoStatusCandidatura = isAprovado
+      ? "PROCESSO_CONCLUIDO"
+      : "REPROVADO_EXPERIENCIA";
+    const acaoHistorico = `Avaliação de 3 Meses: ${resultado}. ${
+      isAprovado ? "Efetivado." : "Desligado."
+    }`;
 
     await updateDoc(doc(candidatosCollection, candidatoId), {
       status_recrutamento: novoStatusCandidatura,
