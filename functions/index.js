@@ -2963,3 +2963,61 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
     }
   });
 });
+// ====================================================================
+// GATILHO: Verifica se todos os documentos foram assinados
+// ====================================================================
+exports.verificarAssinaturaCompleta = onDocumentUpdated(
+  "solicitacoes_assinatura/{solicitacaoId}",
+  async (event) => {
+    const dadosAntes = event.data.before.data();
+    const dadosDepois = event.data.after.data();
+
+    // Se não houve mudança no status geral ou nos documentos, ignora
+    if (
+      dadosBefore.status === dadosAfter.status &&
+      JSON.stringify(dadosBefore.documentos) ===
+        JSON.stringify(dadosAfter.documentos)
+    ) {
+      return null;
+    }
+
+    const documentos = dadosDepois.documentos || [];
+    const todosAssinados = documentos.every((doc) => doc.status === "assinado");
+
+    // Se todos foram assinados, atualiza o status da solicitação E da candidatura
+    if (todosAssinados && dadosDepois.status !== "concluido") {
+      logger.info(
+        `📝 Todos os documentos da solicitação ${event.params.solicitacaoId} foram assinados.`
+      );
+
+      // 1. Atualiza a própria solicitação para 'concluido'
+      await event.data.after.ref.update({
+        status: "concluido",
+        dataConclusao: FieldValue.serverTimestamp(),
+      });
+
+      // 2. Atualiza a candidatura vinculada
+      const candidatoId = dadosDepois.candidatoId_ref;
+      if (candidatoId) {
+        const candidatoRef = db.collection("candidaturas").doc(candidatoId);
+
+        // Define o novo status para mover o card para a próxima aba (Integração)
+        // Ajuste este status conforme o nome que você usa na aba de Integração
+        const novoStatusCandidatura = "AGUARDANDO_INTEGRACAO";
+
+        await candidatoRef.update({
+          status_recrutamento: novoStatusCandidatura,
+          historico: FieldValue.arrayUnion({
+            data: new Date(),
+            acao: "Todos os documentos foram assinados pelo voluntário. Movido para Integração.",
+            usuario: "Sistema (Automático)",
+          }),
+        });
+
+        logger.info(
+          `✅ Candidatura ${candidatoId} movida para ${novoStatusCandidatura}`
+        );
+      }
+    }
+  }
+);
