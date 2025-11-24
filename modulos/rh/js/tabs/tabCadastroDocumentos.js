@@ -1,10 +1,9 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabCadastroDocumentos.js
- * Versão: 1.3.2 (Correção: nome_completo -> nome_candidato)
+ * Versão: 1.5.0 (Correção: Botão só habilita após link gerado + Correção de parâmetros)
  * Descrição: Gerencia a etapa de envio do formulário de cadastro/documentos ao candidato.
  */
 
-// Importa do módulo de ADMISSÃO
 import { getGlobalState } from "../admissao.js";
 import {
   updateDoc,
@@ -14,24 +13,17 @@ import {
   where,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
-// Importa a referência à Cloud Function
 import {
   httpsCallable,
   functions,
 } from "../../../../assets/js/firebase-init.js";
 
-// ============================================
-// CONSTANTES
-// ============================================
 let dadosCandidatoAtual = null;
 
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
 
-/**
- * Renderiza a listagem de candidatos para envio do formulário de cadastro
- */
 export async function renderizarCadastroDocumentos(state) {
   const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
 
@@ -43,7 +35,7 @@ export async function renderizarCadastroDocumentos(state) {
       candidatosCollection,
       where("status_recrutamento", "==", "AGUARDANDO_CADASTRO")
     );
-    const snapshot = await getDocs(q); // Atualiza contagem na aba
+    const snapshot = await getDocs(q);
 
     const tab = statusAdmissaoTabs.querySelector(
       '.tab-link[data-status="cadastro-documentos"]'
@@ -70,13 +62,11 @@ export async function renderizarCadastroDocumentos(state) {
       const candidatoId = docSnap.id;
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
-
       const statusClass = "status-warning";
 
-      // CORREÇÃO: Usando nome_candidato
       const dadosCandidato = {
         id: candidatoId,
-        nome_candidato: cand.nome_candidato || "Candidato", // <--- CORRIGIDO AQUI
+        nome_candidato: cand.nome_candidato || "Candidato",
         email_pessoal: cand.email_candidato,
         email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
         senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A",
@@ -128,7 +118,6 @@ export async function renderizarCadastroDocumentos(state) {
     listaHtml += "</div>";
     conteudoAdmissao.innerHTML = listaHtml;
 
-    // Listeners dinâmicos para "Enviar Formulário"
     document.querySelectorAll(".btn-enviar-formulario").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -137,7 +126,6 @@ export async function renderizarCadastroDocumentos(state) {
       });
     });
 
-    // Listeners dinâmicos para "Detalhes"
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -152,7 +140,6 @@ export async function renderizarCadastroDocumentos(state) {
             console.error("❌ Erro ao abrir modal de detalhes:", error);
           }
         } else {
-          console.warn("⚠️ Função window.abrirModalCandidato não encontrada");
           alert("Erro ao carregar detalhes. Função não encontrada.");
         }
       });
@@ -163,23 +150,14 @@ export async function renderizarCadastroDocumentos(state) {
   }
 }
 
-/**
- * Fecha o modal de envio de formulário
- */
 window.fecharModalEnviarFormulario = function () {
-  console.log("❌ Fechando modal de envio de formulário");
   const modal = document.getElementById("modal-enviar-formulario");
-  if (modal) {
-    modal.remove();
-  }
+  if (modal) modal.remove();
   document.body.style.overflow = "";
 };
 
-/**
- * Copia o link do formulário
- */
 window.copiarLinkFormulario = function () {
-  const input = document.getElementById("link-formulario-cadastro");
+  const input = document.getElementById("link-formulario-token");
   if (input) {
     input.select();
     document.execCommand("copy");
@@ -188,28 +166,24 @@ window.copiarLinkFormulario = function () {
 };
 
 /**
- * Abre o modal para Enviar o Link do Formulário de Cadastro (AGORA COM TOKEN)
+ * Abre o modal, gera o token e SÓ DEPOIS habilita o botão de envio
  */
 async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
-  console.log("🎯 Abrindo modal de envio de formulário com Token");
+  console.log("🎯 Abrindo modal e gerando token...");
 
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
     dadosCandidatoAtual = dadosCandidato;
 
-    // Remove modal antigo se existir
     const modalExistente = document.getElementById("modal-enviar-formulario");
     if (modalExistente) modalExistente.remove();
 
-    // 1. Cria a estrutura do modal
     const modal = document.createElement("div");
     modal.id = "modal-enviar-formulario";
     modal.dataset.candidaturaId = candidatoId;
 
-    // HTML do Modal (Mantive o estilo, alterei o corpo para loading inicial)
     modal.innerHTML = `
       <style>
-        /* (MANTENHA OS ESTILOS CSS QUE VOCÊ JÁ TINHA NO ARQUIVO ORIGINAL) */
         #modal-enviar-formulario { all: initial !important; display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important; font-family: inherit !important; }
         #modal-enviar-formulario .modal-container { position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; max-width: 650px !important; background: #ffffff !important; border-radius: 12px !important; box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important; overflow: hidden !important; }
         #modal-enviar-formulario .modal-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important; color: white !important; padding: 20px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
@@ -218,6 +192,7 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
         #modal-enviar-formulario .btn { padding: 10px 20px !important; border-radius: 6px !important; border: none !important; cursor: pointer !important; color: white !important; font-weight: bold !important; margin-left: 10px !important; }
         .btn-cancelar { background: #6c757d !important; }
         .btn-enviar { background: #28a745 !important; }
+        .btn-enviar:disabled { background: #a5d6a7 !important; cursor: not-allowed !important; } 
         .loading-area { text-align: center; padding: 20px; }
       </style>
    
@@ -230,7 +205,7 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
         <div class="modal-body">
            <div id="loading-token" class="loading-area">
               <i class="fas fa-spinner fa-spin fa-2x"></i>
-              <p style="margin-top:10px;">Gerando link seguro e único...</p>
+              <p style="margin-top:10px;">Gerando link seguro...</p>
            </div>
 
            <div id="content-token" style="display:none;">
@@ -238,18 +213,22 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
               <p><strong>E-mail Corporativo:</strong> ${dadosCandidato.email_novo}</p>
               
               <label style="display:block; font-weight:bold; margin-top:15px;">Link Gerado (Token Único):</label>
-              <input type="text" id="link-formulario-token" class="form-input" readonly>
+              <div style="display:flex; gap:10px;">
+                  <input type="text" id="link-formulario-token" class="form-input" style="margin-bottom:0;" readonly>
+                  <button class="btn btn-cancelar" onclick="copiarLinkFormulario()" style="background:#007bff;"><i class="fas fa-copy"></i></button>
+              </div>
               
               <div style="background: #e7f3ff; padding: 10px; border-radius: 4px; font-size: 13px; color: #0056b3; margin-top: 10px;">
-                <i class="fas fa-info-circle"></i> O candidato deverá acessar este link, logar com o e-mail corporativo (se solicitado) e preencher os dados.
+                <i class="fas fa-info-circle"></i> O candidato deverá acessar este link e logar com o e-mail corporativo.
               </div>
            </div>
         </div>
         
         <div class="modal-footer" style="padding: 20px; text-align: right; border-top: 1px solid #eee;">
            <button class="btn btn-cancelar" onclick="fecharModalEnviarFormulario()">Cancelar</button>
-           <button class="btn btn-enviar" id="btn-enviar-whatsapp" disabled>
-             <i class="fab fa-whatsapp"></i> Enviar WhatsApp
+           
+           <button class="btn btn-enviar" id="btn-enviar-mensagem-boas-vindas" disabled>
+             <i class="fab fa-whatsapp"></i> Enviar WhatsApp e E-mail
            </button>
         </div>
       </div>
@@ -258,33 +237,37 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
 
-    // 2. Chama a Cloud Function para gerar o token
+    // Chama a Cloud Function
     try {
       const gerarTokenFunc = httpsCallable(functions, "gerarTokenAdmissao");
       const result = await gerarTokenFunc({
         candidatoId: candidatoId,
-        prazoDias: 5, // Prazo padrão
+        prazoDias: 5,
       });
 
       const { url } = result.data;
 
-      // 3. Atualiza a UI com o link gerado
+      // Atualiza a UI
       document.getElementById("loading-token").style.display = "none";
       document.getElementById("content-token").style.display = "block";
 
       const inputLink = document.getElementById("link-formulario-token");
       inputLink.value = url;
 
-      const btnEnviar = document.getElementById("btn-enviar-whatsapp");
+      const btnEnviar = document.getElementById(
+        "btn-enviar-mensagem-boas-vindas"
+      );
+
+      // ✅ AGORA HABILITA O BOTÃO
       btnEnviar.disabled = false;
 
-      // Configura o botão de envio
+      // ✅ CORREÇÃO: Passa 'candidatoId' (string) e não 'dadosCandidato' (objeto)
       btnEnviar.onclick = () => salvarEEnviarMensagens(candidatoId, url);
     } catch (error) {
       console.error("Erro ao gerar token:", error);
       document.getElementById(
         "loading-token"
-      ).innerHTML = `<p class="text-danger">Erro ao gerar link: ${error.message}</p>`;
+      ).innerHTML = `<p class="text-danger" style="color:red;">Erro ao gerar link: ${error.message}</p>`;
     }
   } catch (error) {
     console.error("Erro modal:", error);
@@ -292,47 +275,49 @@ async function abrirModalEnviarFormulario(candidatoId, dadosCodificados) {
   }
 }
 
-async function salvarEEnviarMensagens(candidatoId) {
+/**
+ * Salva e Envia as Mensagens
+ */
+async function salvarEEnviarMensagens(candidatoId, urlFormularioLink) {
   console.log("💾 Iniciando envio de boas-vindas...");
 
   const modal = document.getElementById("modal-enviar-formulario");
   const btnEnviar = modal?.querySelector("#btn-enviar-mensagem-boas-vindas");
-  const linkInput = modal?.querySelector("#link-formulario-cadastro");
 
-  // Validar dados do candidato
+  // Garante que temos o link
+  const linkInput = modal?.querySelector("#link-formulario-token");
+  const linkFormulario =
+    urlFormularioLink || (linkInput ? linkInput.value : "");
+
   if (!dadosCandidatoAtual || dadosCandidatoAtual.id !== candidatoId) {
-    console.error("❌ Dados do candidato não encontrados");
-    window.showToast?.("Erro: Dados do candidato não carregados.", "error");
+    console.error("❌ Dados do candidato não conferem com o ID");
     return;
   }
 
-  // CORREÇÃO: Destructuring usando nome_candidato
   const {
-    nome_candidato, // <--- AQUI
+    nome_candidato,
     email_pessoal,
     email_novo,
     senha_temporaria,
     telefone_contato,
   } = dadosCandidatoAtual;
 
-  const linkFormulario = linkInput ? linkInput.value : "";
-
-  // ⭐ VALIDAÇÃO: Se não houver senha, abrir modal de reset
+  // Validação de Senha
   if (
     !senha_temporaria ||
     senha_temporaria === "N/A" ||
     senha_temporaria === ""
   ) {
-    console.log(
-      "⚠️ Senha temporária não encontrada para o candidato:",
-      candidatoId
-    );
     window.fecharModalEnviarFormulario();
-    abrirModalResetSenha(candidatoId, email_novo, nome_candidato);
+    if (typeof abrirModalResetSenha === "function") {
+      abrirModalResetSenha(candidatoId, email_novo, nome_candidato);
+    } else {
+      alert("Senha temporária não encontrada e função de reset indisponível.");
+    }
     return;
   }
 
-  // Validação completa (usando nome_candidato)
+  // Validação de Campos
   if (
     !nome_candidato ||
     !email_pessoal ||
@@ -341,7 +326,13 @@ async function salvarEEnviarMensagens(candidatoId) {
     !linkFormulario
   ) {
     window.showToast?.("Erro: Dados do candidato incompletos.", "error");
-    console.error("❌ Dados incompletos:", dadosCandidatoAtual);
+    console.error("❌ Dados incompletos:", {
+      nome_candidato,
+      email_pessoal,
+      email_novo,
+      telefone_contato,
+      linkFormulario,
+    });
     return;
   }
 
@@ -351,30 +342,31 @@ async function salvarEEnviarMensagens(candidatoId) {
   }
 
   try {
-    // ⭐ CRIAR USUÁRIO NO FIREBASE AUTH
+    // 1. Criar no Firebase Auth
     console.log("🔄 Criando usuário no Firebase Auth...");
-
     const criarProfissional = httpsCallable(functions, "criarNovoProfissional");
 
     try {
       const resultado = await criarProfissional({
-        nome: nome_candidato, // Envia como 'nome' para a function, mas lê de nome_candidato
+        nome: nome_candidato,
         email: email_novo,
         contato: telefone_contato,
         profissao: "",
         funcoes: ["todos"],
       });
-
       if (resultado.data && resultado.data.sucesso) {
-        console.log("✅ Usuário criado no Firebase Auth:", resultado.data.uid);
+        console.log("✅ Usuário criado no Auth:", resultado.data.uid);
       }
     } catch (authError) {
-      console.warn("⚠️ Erro ao criar usuário (pode já existir):", authError);
+      console.warn(
+        "⚠️ Erro ao criar usuário (provavelmente já existe):",
+        authError
+      );
     }
 
     const primeiroNome = nome_candidato.split(" ")[0];
 
-    // === MENSAGEM WHATSAPP ===
+    // 2. Enviar WhatsApp
     const mensagemWhatsApp = `Olá, ${primeiroNome}! 👋
 
 Seja bem-vindo(a) à equipe EuPsico! Estamos muito felizes em tê-lo(a) conosco.
@@ -405,19 +397,17 @@ Qualquer dúvida, estamos à disposição pelo RH.
 
 Equipe EuPsico 💙`;
 
-    // Abrir WhatsApp
     console.log("📱 Abrindo WhatsApp...");
     const telefoneLimpo = telefone_contato.replace(/\D/g, "");
     const mensagemCodificada = encodeURIComponent(mensagemWhatsApp);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
     window.open(linkWhatsApp, "_blank");
 
-    // === E-MAIL ===
-    console.log("📨 Enviando e-mails de boas-vindas...");
+    // 3. Enviar E-mail
+    console.log("📨 Enviando e-mails...");
     const enviarEmailFunc = httpsCallable(functions, "enviarEmail");
     const assuntoEmail = `Boas-vindas à EuPsico - Seus dados de acesso`;
 
-    // Usando nome_candidato no HTML do e-mail
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -506,8 +496,7 @@ Equipe EuPsico 💙`;
     </div>
   </div>
 </body>
-</html>
-    `;
+</html>`;
 
     try {
       await enviarEmailFunc({
@@ -515,19 +504,17 @@ Equipe EuPsico 💙`;
         assunto: assuntoEmail,
         html: emailHtml,
       });
-
       await enviarEmailFunc({
         destinatario: email_novo,
         assunto: assuntoEmail,
         html: emailHtml,
       });
-
       console.log("✅ E-mails enviados");
     } catch (emailError) {
       console.error("❌ Falha ao enviar e-mail:", emailError);
     }
 
-    // Atualizar Firestore
+    // 4. Atualizar Firestore
     const { candidatosCollection, currentUserData } = getGlobalState();
     const candidatoRef = doc(candidatosCollection, candidatoId);
 
@@ -550,198 +537,67 @@ Equipe EuPsico 💙`;
   } catch (error) {
     console.error("❌ Erro:", error);
     alert(`Erro: ${error.message}`);
-
     if (btnEnviar) {
       btnEnviar.disabled = false;
       btnEnviar.innerHTML =
-        '<i class="fas fa-paper-plane"></i> Enviar WhatsApp e E-mail';
+        '<i class="fab fa-whatsapp"></i> Enviar WhatsApp e E-mail';
     }
   }
 }
 
-/**
- * Abre modal para resetar senha quando não encontrada
- */
 function abrirModalResetSenha(candidatoId, emailCorporativo, nomeCandidato) {
   console.log("🔑 Abrindo modal de reset de senha");
-
   const modalExistente = document.getElementById("modal-reset-senha");
-  if (modalExistente) {
-    modalExistente.remove();
-  }
+  if (modalExistente) modalExistente.remove();
 
   const modal = document.createElement("div");
   modal.id = "modal-reset-senha";
   modal.innerHTML = `
     <style>
-      #modal-reset-senha {
-       all: initial !important; display: block !important; position: fixed !important;
-       top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
-       z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important;
-        font-family: inherit !important;
-      }
-      #modal-reset-senha .modal-container {
-       position: fixed !important; top: 50% !important; left: 50% !important;
-       transform: translate(-50%, -50%) !important; max-width: 700px !important;
-       background: #ffffff !important; border-radius: 12px !important;
-       box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important;
-       overflow: hidden !important; animation: modalPopupOpen 0.3s ease-out !important;
-      }
-      @keyframes modalPopupOpen {
-       from { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
-       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-      }
-      
-      #modal-reset-senha .modal-header {
-       background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
-       color: #212529 !important;
-       padding: 20px !important; display: flex !important;
-       justify-content: space-between !important; align-items: center !important;
-      }
-      #modal-reset-senha .modal-title {
-        display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important;
-      }
-      #modal-reset-senha .modal-title i { font-size: 24px !important; }
-      #modal-reset-senha .modal-title h3 { margin: 0 !important; font-size: 20px !important; font-weight: 600 !important; }
-      #modal-reset-senha .modal-close {
-        background: rgba(0,0,0,0.1) !important; border: none !important; color: #212529 !important;
-        width: 36px !important; height: 36px !important; border-radius: 50% !important; cursor: pointer !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        font-size: 18px !important; transition: all 0.2s !important;
-      }
-      
-      #modal-reset-senha .modal-body {
-        padding: 25px !important; max-height: 500px !important; overflow-y: auto !important;
-        background: #f8f9fa !important; font-family: inherit !important;
-      }
-      
-      #modal-reset-senha .info-card {
-        background: white !important; padding: 15px !important; border-radius: 8px !important;
-        margin-bottom: 20px !important; border-left: 4px solid #17a2b8 !important;
-      }
-      #modal-reset-senha .info-card p { margin: 0 !important; line-height: 1.6 !important; font-size: 14px; }
-      #modal-reset-senha .info-card strong { color: #333; }
-
-      #modal-reset-senha .alert-warning {
-          background: #fff3cd !important;
-          border: 1px solid #ffeeba !important;
-          border-left: 5px solid #ffc107 !important;
-          color: #856404 !important;
-          padding: 15px !important;
-          border-radius: 8px !important;
-          margin-bottom: 20px !important;
-          display: flex;
-          gap: 12px;
-          align-items: center;
-      }
-       #modal-reset-senha .alert-warning i { font-size: 20px; }
-       #modal-reset-senha .alert-warning p { margin: 0 !important; }
-
-      #modal-reset-senha .modal-footer {
-        padding: 20px 25px !important; background: white !important; border-top: 1px solid #e9ecef !important;
-        display: flex !important; justify-content: flex-end !important; /* Alinha botões à direita */
-        gap: 12px !important;
-      }
-      #modal-reset-senha .btn {
-        padding: 12px 24px !important; border-radius: 6px !important; cursor: pointer !important;
-        font-weight: 500 !important; border: none !important; display: inline-flex; gap: 8px; align-items: center;
-      }
-      #modal-reset-senha .btn-cancelar { background: #6c757d !important; color: white !important; }
-      
-      #modal-reset-senha .btn-primary { 
-          background: #ffc107 !important; 
-          color: #212529 !important; 
-          font-weight: 600 !important; 
-      }
-      #modal-reset-senha .btn-primary:disabled { background: #ccc !important; color: #666 !important; }
+      #modal-reset-senha { all: initial !important; display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: rgba(0, 0, 0, 0.7) !important; font-family: inherit !important; }
+      #modal-reset-senha .modal-container { position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; max-width: 700px !important; background: #ffffff !important; border-radius: 12px !important; box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.3) !important; overflow: hidden !important; }
+      #modal-reset-senha .modal-header { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important; color: #212529 !important; padding: 20px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
+      #modal-reset-senha .modal-body { padding: 25px !important; background: #f8f9fa !important; }
+      #modal-reset-senha .btn-primary { background: #ffc107 !important; color: #212529 !important; font-weight: 600 !important; padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; }
+      #modal-reset-senha .btn-cancelar { background: #6c757d !important; color: white !important; padding: 12px 24px; border-radius: 6px; cursor: pointer; border: none; margin-right: 10px; }
     </style>
-
     <div class="modal-container">
-      
-      <div class="modal-header">
-         <div class="modal-title">
-           <i class="fas fa-key"></i>
-           <h3>Resetar Senha Temporária</h3>
-         </div>
-         <button class="modal-close" onclick="fecharModalResetSenha()">
-           <i class="fas fa-times"></i>
-         </button>
-       </div>
-       
-       <div class="modal-body">
-          
-          <div class="alert-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            <div>
-              <strong>Senha não encontrada!</strong>
-              <p>Não foi possível localizar a senha temporária para este candidato.</p>
-            </div>
-          </div>
-          
-          <div class="info-card"> <p><strong>Candidato:</strong> ${nomeCandidato}</p>
-            <p><strong>E-mail Corporativo:</strong> ${emailCorporativo}</p>
-          </div>
-          
-          <p>Clique no botão abaixo para gerar uma nova senha temporária no Google Workspace:</p>
-       </div>
-       
-       <div class="modal-footer">
-         <button type="button" class="btn btn-cancelar" onclick="fecharModalResetSenha()">
-           Cancelar
-         </button>
-         <button 
-           id="btn-confirmar-reset-senha" 
-           class="btn btn-primary"
-           data-candidato-id="${candidatoId}"
-           data-email="${emailCorporativo}"
-         >
-           <i class="fas fa-key"></i> Gerar Nova Senha
-         </button>
-       </div>
-
+      <div class="modal-header"><h3>Resetar Senha</h3><button onclick="fecharModalResetSenha()" style="background:none;border:none;font-size:20px;">&times;</button></div>
+      <div class="modal-body">
+          <p>Senha não encontrada. Gerar nova senha para <strong>${emailCorporativo}</strong>?</p>
+      </div>
+      <div class="modal-footer" style="padding:20px;text-align:right;">
+         <button class="btn-cancelar" onclick="fecharModalResetSenha()">Cancelar</button>
+         <button id="btn-confirmar-reset-senha" class="btn-primary" data-candidato-id="${candidatoId}" data-email="${emailCorporativo}">Gerar Nova Senha</button>
+      </div>
     </div>
  `;
-
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
 
   document
     .getElementById("btn-confirmar-reset-senha")
     .addEventListener("click", async (e) => {
       const btn = e.currentTarget;
-      const candidatoId = btn.dataset.candidatoId;
-      const email = btn.dataset.email;
-      await executarResetSenha(candidatoId, email);
+      await executarResetSenha(btn.dataset.candidatoId, btn.dataset.email);
     });
 }
 
-/**
- * Executa o reset de senha via Cloud Function
- */
 async function executarResetSenha(candidatoId, email) {
   const btn = document.getElementById("btn-confirmar-reset-senha");
-
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetando...';
+    btn.innerHTML = "Resetando...";
   }
 
   try {
-    console.log("🔄 Chamando Cloud Function para resetar senha:", email);
-
     const resetarSenha = httpsCallable(
       functions,
       "resetarSenhaGoogleWorkspace"
     );
-
     const resultado = await resetarSenha({ email: email });
 
-    if (resultado.data && resultado.data.sucesso === true) {
-      console.log("✅ Senha resetada com sucesso:", resultado.data.novaSenha);
-
-      // Salvar a nova senha no Firestore
-      const state = getGlobalState();
-      const { candidatosCollection, currentUserData } = state;
+    if (resultado.data && resultado.data.sucesso) {
+      const { candidatosCollection, currentUserData } = getGlobalState();
       const candidatoRef = doc(candidatosCollection, candidatoId);
 
       await updateDoc(candidatoRef, {
@@ -749,50 +605,30 @@ async function executarResetSenha(candidatoId, email) {
         "admissaoinfo.data_reset_senha": new Date(),
         historico: arrayUnion({
           data: new Date(),
-          acao: `🔑 Senha temporária resetada. Nova senha: ${resultado.data.novaSenha}`,
+          acao: `🔑 Senha resetada. Nova: ${resultado.data.novaSenha}`,
           usuario: currentUserData?.uid || "rh_admin",
         }),
       });
 
-      console.log("✅ Senha salva no Firestore");
-
       fecharModalResetSenha();
-
-      window.showToast?.(
-        "✅ Senha resetada com sucesso! Agora você pode enviar o formulário.",
-        "success"
-      );
-
-      alert(
-        `✅ Senha resetada com sucesso!\n\nNova senha: ${resultado.data.novaSenha}\n\nAgora você pode enviar o formulário ao candidato.`
-      );
-
-      renderizarCadastroDocumentos(state);
+      alert(`Nova senha gerada: ${resultado.data.novaSenha}`);
+      renderizarCadastroDocumentos(getGlobalState());
     } else {
-      throw new Error(resultado.data?.mensagem || "Erro ao resetar senha");
+      throw new Error(resultado.data?.mensagem || "Erro desconhecido");
     }
   } catch (error) {
-    console.error("❌ Erro ao resetar senha:", error);
-    window.showToast?.("❌ Erro ao resetar senha", "error");
-    alert(`Erro: ${error.message}`);
-
+    alert(`Erro ao resetar: ${error.message}`);
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-key"></i> Gerar Nova Senha';
+      btn.innerHTML = "Gerar Nova Senha";
     }
   }
 }
 
-/**
- * Fecha o modal de reset de senha
- */
 function fecharModalResetSenha() {
   const modal = document.getElementById("modal-reset-senha");
-  if (modal) {
-    modal.remove();
-    document.body.style.overflow = "auto";
-  }
+  if (modal) modal.remove();
+  document.body.style.overflow = "auto";
 }
 
-// Expor funções globalmente
 window.fecharModalResetSenha = fecharModalResetSenha;
