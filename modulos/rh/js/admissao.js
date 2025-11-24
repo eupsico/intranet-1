@@ -132,33 +132,40 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
     }`;
   }
 
-  // Estilo inline para reduzir o tamanho dos títulos
+  // ✅ CORREÇÃO 3: Estilo dos Títulos (Negrito e tamanho maior)
   const styleTitulo =
-    "font-size: 0.9em; color: #666; margin-bottom: 4px; display: block;";
-  const styleValor = "font-size: 1.1em; font-weight: 600; color: #333;";
+    "font-size: 1em; font-weight: bold; color: #333; margin-bottom: 4px; display: block;";
+  const styleValor =
+    "font-size: 1em; color: #555; margin-bottom: 15px; display: block;";
 
-  // Monta o conteúdo
+  // Garante leitura das propriedades (aceita snake_case do banco ou camelCase do objeto mapeado)
+  const nome = candidato.nome_candidato || candidato.nome_completo || "N/A";
+  const email = candidato.email_pessoal || candidato.email_candidato || "N/A";
+  const telefone = candidato.telefone_contato || "N/A";
+  const vaga = candidato.titulo_vaga_original || candidato.vaga_titulo || "N/A";
+  const status = candidato.status_recrutamento || "N/A";
+  const novoEmail =
+    candidato.email_novo ||
+    candidato.admissaoinfo?.email_solicitado ||
+    "Não solicitado";
+
   const contentHtml = `
   <div class="row">
    <div class="col-lg-6">
     <fieldset>
      <legend><i class="fas fa-user me-2"></i>Informações Pessoais</legend>
      <div class="details-grid">
-      <div class="mb-3">
+      <div>
        <span style="${styleTitulo}">Nome Completo:</span>
-       <span style="${styleValor} color: var(--cor-primaria);">${
-    candidato.nome_candidato || "N/A"
-  }</span>
+       <span style="${styleValor} color: var(--cor-primaria); font-weight: 600;">${nome}</span>
       </div>
-      <div class="mb-3">
+      <div>
        <span style="${styleTitulo}">Email Pessoal:</span>
-       <span style="${styleValor}">${
-    candidato.email_pessoal || candidato.email_candidato || "N/A"
-  }</span>
+       <span style="${styleValor}">${email}</span>
       </div>
-      <div class="mb-3">
+      <div>
        <span style="${styleTitulo}">Telefone (WhatsApp):</span>
-       <span style="${styleValor}">${candidato.telefone_contato || "N/A"}</span>
+       <span style="${styleValor}">${telefone}</span>
       </div>
      </div>
     </fieldset>
@@ -167,27 +174,21 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
     <fieldset>
      <legend><i class="fas fa-briefcase me-2"></i>Informações da Vaga</legend>
      <div class="details-grid">
-     	<div class="mb-3">
+     	<div>
       	<span style="${styleTitulo}">Vaga Aprovada:</span>
-      	<span style="${styleValor}">${
-    candidato.titulo_vaga_original || candidato.vaga_titulo || "N/A"
-  }</span>
+      	<span style="${styleValor}">${vaga}</span>
      	</div>
-     	<div class="mb-3">
+     	<div>
       	<span style="${styleTitulo}">Status Admissão:</span>
       	<span class="status-badge ${getStatusBadgeClass(
-          candidato.status_recrutamento || ""
-        )}">
-      		${candidato.status_recrutamento || "N/A"}
+          status
+        )}" style="display: inline-block; margin-bottom: 15px;">
+      		${status}
       	</span>
      	</div>
-     	<div class="mb-3">
+     	<div>
       	<span style="${styleTitulo}">Novo E-mail (Solicitado):</span>
-      	<span style="${styleValor}">${
-    candidato.email_novo ||
-    candidato.admissaoinfo?.email_solicitado ||
-    "Não solicitado"
-  }</span>
+      	<span style="${styleValor}">${novoEmail}</span>
      	</div>
      </div>
     </fieldset>
@@ -202,18 +203,26 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   </button>
  `;
 
-  modalCandidatoFooter
-    .querySelector(".fechar-modal-candidato")
-    .addEventListener("click", () => {
-      modalCandidato.classList.remove("is-visible");
-    });
+  // Reanexa listeners
+  const btnFooter = modalCandidatoFooter.querySelector(
+    ".fechar-modal-candidato"
+  );
+  if (btnFooter) {
+    // Clone para limpar listeners antigos
+    const newBtn = btnFooter.cloneNode(true);
+    btnFooter.parentNode.replaceChild(newBtn, btnFooter);
+    newBtn.addEventListener("click", () =>
+      modalCandidato.classList.remove("is-visible")
+    );
+  }
 
   const closeBtnHeader = modalCandidato.querySelector(
     ".close-modal-btn.fechar-modal-candidato"
   );
   if (closeBtnHeader) {
-    closeBtnHeader.onclick = () =>
-      modalCandidato.classList.remove("is-visible");
+    const newHeaderBtn = closeBtnHeader.cloneNode(true);
+    closeBtnHeader.parentNode.replaceChild(newHeaderBtn, closeBtnHeader);
+    newHeaderBtn.onclick = () => modalCandidato.classList.remove("is-visible");
   }
 
   modalCandidato.classList.add("is-visible");
