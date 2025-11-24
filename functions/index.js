@@ -2654,7 +2654,6 @@ exports.gerarTokenAdmissao = onCall({ cors: true }, async (request) => {
     }
     const dadosCandidato = candSnap.data();
 
-    // BUSCA O E-MAIL CORPORATIVO JÁ CRIADO
     const emailCorporativo = dadosCandidato.admissaoinfo?.email_solicitado;
 
     if (!emailCorporativo) {
@@ -2664,6 +2663,10 @@ exports.gerarTokenAdmissao = onCall({ cors: true }, async (request) => {
       );
     }
 
+    // ✅ CAPTURA O E-MAIL DE QUEM ESTÁ GERANDO O LINK
+    const emailGerador =
+      request.auth.token.email || "atendimento@eupsico.org.br";
+
     const token = generateRandomToken();
     const dataExpiracao = new Date();
     dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
@@ -2672,7 +2675,8 @@ exports.gerarTokenAdmissao = onCall({ cors: true }, async (request) => {
       token: token,
       candidatoId: candidatoId,
       nomeCandidato: dadosCandidato.nome_candidato || "Candidato",
-      emailCorporativo: emailCorporativo, // Salva o e-mail corporativo no token
+      emailCorporativo: emailCorporativo,
+      geradoPorEmail: emailGerador, // <--- SALVA AQUI
       criadoEm: admin.firestore.FieldValue.serverTimestamp(),
       expiraEm: dataExpiracao,
       usado: false,
@@ -2738,7 +2742,7 @@ exports.validarTokenAdmissao = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Atualizado)
+// 4. SALVAR DADOS DA FICHA (Atualizado para enviar e-mail a quem gerou)
 exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
   try {
     if (req.method !== "POST")
@@ -2763,7 +2767,11 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
     const candidatoId = dadosToken.candidatoId;
     const emailCorporativo = dadosToken.emailCorporativo;
 
-    // --- 1. Atualiza CANDIDATURA e muda STATUS para Próxima Aba ---
+    // ✅ RECUPERA O E-MAIL DE QUEM GEROU O LINK (com fallback)
+    const emailDestino =
+      dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
+
+    // --- 1. Atualiza CANDIDATURA e muda STATUS ---
     const candidatoRef = db.collection("candidaturas").doc(candidatoId);
 
     await candidatoRef.update({
@@ -2771,7 +2779,6 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
         ...dadosFormulario,
         preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
       },
-      // ✅ MUDANÇA AQUI: Status alterado para mover o card de aba
       status_recrutamento: "AGUARDANDO_ASSINATURA",
       historico: admin.firestore.FieldValue.arrayUnion({
         data: new Date(),
@@ -2780,7 +2787,7 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
       }),
     });
 
-    // --- 2. Atualiza USUARIOS (como já estava) ---
+    // --- 2. Atualiza USUARIOS ---
     const usuariosQuery = await db
       .collection("usuarios")
       .where("email", "==", emailCorporativo)
@@ -2832,36 +2839,27 @@ exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
       usadoEm: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // --- 4. NOVO: Enviar E-mail para o RH ---
+    // --- 4. Enviar E-mail para quem gerou o link ---
     try {
-      // Email fixo do RH ou admin
-      const emailRH = "atendimento@eupsico.org.br";
-
-      const htmlEmailRH = `
+      const htmlEmailAviso = `
         <h3>Ficha de Admissão Preenchida</h3>
         <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> acabou de preencher a ficha cadastral e enviar os documentos.</p>
         <p><strong>Status Atual:</strong> Movido para "Assinatura de Documentos"</p>
-        <p>Por favor, acesse o painel de Admissão para conferir os dados e gerar o contrato.</p>
+        <p>Você pode acessar o painel de Admissão para conferir os dados e gerar o contrato.</p>
         <br>
         <p><em>Sistema EuPsico</em></p>
         `;
 
-      // Reutiliza a função enviarEmail (se estiver exportada ou via chamada interna)
-      // Se 'enviarEmail' é uma Cloud Function exportada, podemos usar a lógica do nodemailer diretamente aqui
-      // ou assumir que o 'transporter' está configurado no topo do arquivo.
-      // Assumindo que 'transporter' está configurado no topo do index.js:
-
       await transporter.sendMail({
         from: "EuPsico Sistema <atendimento@eupsico.org.br>",
-        to: emailRH,
+        to: emailDestino, // <--- USA O E-MAIL RECUPERADO
         subject: `📄 Ficha Preenchida: ${dadosFormulario.nomeCompleto}`,
-        html: htmlEmailRH,
+        html: htmlEmailAviso,
       });
 
-      console.log("✅ E-mail de aviso enviado para o RH");
+      console.log(`✅ E-mail de aviso enviado para ${emailDestino}`);
     } catch (mailError) {
-      console.error("Erro ao enviar email para RH:", mailError);
-      // Não trava o processo se o email falhar
+      console.error("Erro ao enviar email de aviso:", mailError);
     }
 
     return res
