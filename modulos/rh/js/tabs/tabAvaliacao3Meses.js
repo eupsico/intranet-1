@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAvaliacao3Meses.js
- * Versão: 3.0.0 (Correção ReferenceError + UID Correto + Dados Modal)
+ * Versão: 2.4.0 (Correção Crítica: UID Undefined)
  * Descrição: Gerencia a etapa de Avaliação de Experiência (3 Meses).
  */
 
@@ -9,14 +9,16 @@ import {
   updateDoc,
   doc,
   getDocs,
+  getDoc,
   query,
   where,
   arrayUnion,
   collection,
   db,
+  auth, // ✅ IMPORTANTE: Importando auth para garantir acesso ao UID
 } from "../../../../assets/js/firebase-init.js";
 
-// ✅ VARIÁVEL GLOBAL DO MÓDULO (Corrige o ReferenceError)
+// Variável global do módulo
 let dadosCandidatoAtual = null;
 
 // ============================================
@@ -64,18 +66,17 @@ export async function renderizarAvaliacao3Meses(state) {
 
       const statusClass = "status-success";
 
-      // ✅ CORREÇÃO: Objeto de dados completo para o modal de detalhes
       const dadosCandidato = {
         id: candidatoId,
         nome_candidato: cand.nome_candidato || cand.nome_completo,
-        email_pessoal: cand.email_candidato || cand.email_pessoal, // Garante email pessoal
+        email_pessoal: cand.email_candidato || cand.email_pessoal,
         email_novo:
           cand.admissaoinfo?.email_solicitado ||
           cand.email_novo ||
           "Não solicitado",
         telefone_contato: cand.telefone_contato,
-        vaga_titulo: vagaTitulo,
-        status_recrutamento: statusAtual, // Garante status
+        titulo_vaga_original: cand.titulo_vaga_original,
+        status_recrutamento: statusAtual,
         data_integracao: cand.integracao?.conclusao?.concluido_em
           ? new Date(
               cand.integracao.conclusao.concluido_em.seconds * 1000
@@ -210,6 +211,7 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
 
   form.reset();
 
+  // Preenche dados anteriores se existirem
   const avaliacaoAnterior = dadosCandidato.avaliacao_3meses || {};
   const feedbackPositivoEl = document.getElementById(
     "avaliacao-3meses-positivo"
@@ -232,6 +234,7 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
   form.removeEventListener("submit", submeterAvaliacao3Meses);
   form.addEventListener("submit", submeterAvaliacao3Meses);
 
+  // Listeners de fechar
   modal
     .querySelectorAll(".close-modal-btn, .action-button.secondary")
     .forEach((btn) => {
@@ -247,11 +250,13 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
 
 async function submeterAvaliacao3Meses(e) {
   e.preventDefault();
+
+  // Obtém estado global
   const { candidatosCollection, currentUserData } = getGlobalState();
+
   const modal = document.getElementById("modal-avaliacao-3meses");
   const btnSalvar = modal.querySelector('button[type="submit"]');
   const form = document.getElementById("form-avaliacao-3meses");
-
   const candidatoId = modal.dataset.candidaturaId;
 
   if (!candidatoId || !dadosCandidatoAtual) {
@@ -282,7 +287,39 @@ async function submeterAvaliacao3Meses(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
-    // 1. Identificar o USUÁRIO (UID) com base no email
+    // --- 1. DEFINIR UID E NOME DO AVALIADOR (LÓGICA DE SEGURANÇA) ---
+    let uidAvaliador = null;
+    let nomeAvaliador = "RH";
+
+    // Tentativa 1: Do estado global
+    if (currentUserData && (currentUserData.uid || currentUserData.id)) {
+      uidAvaliador = currentUserData.uid || currentUserData.id;
+      if (currentUserData.nome) nomeAvaliador = currentUserData.nome;
+    }
+
+    // Tentativa 2: Do Auth direto (se o estado falhou)
+    if (!uidAvaliador && auth && auth.currentUser) {
+      uidAvaliador = auth.currentUser.uid;
+      // Tenta buscar o nome no banco rapidinho se não tiver
+      try {
+        const snap = await getDoc(doc(db, "usuarios", uidAvaliador));
+        if (snap.exists()) nomeAvaliador = snap.data().nome;
+      } catch (e) {
+        console.warn("Nome não recuperado");
+      }
+    }
+
+    // Tentativa 3: Fallback de Emergência (Evita crash undefined)
+    if (!uidAvaliador) {
+      console.warn("⚠️ UID do avaliador indefinido. Usando fallback seguro.");
+      uidAvaliador = "rh_system_fallback";
+    }
+
+    console.log(
+      `✅ Avaliador Definido -> UID: ${uidAvaliador}, Nome: ${nomeAvaliador}`
+    );
+
+    // --- 2. Identificar o USUÁRIO COLABORADOR (UID) ---
     const emailBusca =
       dadosCandidatoAtual.email_novo &&
       dadosCandidatoAtual.email_novo !== "Não solicitado"
@@ -294,7 +331,6 @@ async function submeterAvaliacao3Meses(e) {
         "E-mail do colaborador não encontrado para vincular a avaliação."
       );
 
-    console.log(`🔍 Buscando usuário com email: ${emailBusca}`);
     const usuariosQuery = query(
       collection(db, "usuarios"),
       where("email", "==", emailBusca)
@@ -309,22 +345,18 @@ async function submeterAvaliacao3Meses(e) {
 
     const usuarioDoc = usuariosSnap.docs[0];
     const usuarioUid = usuarioDoc.id;
-    console.log(`✅ Usuário encontrado: ${usuarioUid}`);
 
     const isAprovado = resultado === "Aprovado";
 
-    // ✅ CORREÇÃO: Usar currentUserData.uid direto para o avaliador_uid
-    const avaliadorUid = currentUserData.uid; // Garante que existe se o usuário está logado
-    const avaliadorNome = currentUserData.nome || "RH";
-
+    // --- 3. Atualizar a coleção USUARIOS ---
     const dadosAvaliacaoUsuario = {
       avaliacao_experiencia: {
         data: new Date(),
         resultado: resultado,
         feedback_positivo: feedbackPositivo,
         feedback_desenvolver: feedbackDesenvolver,
-        avaliador: avaliadorNome,
-        avaliador_uid: avaliadorUid, // Usa o UID direto do estado global
+        avaliador: nomeAvaliador,
+        avaliador_uid: uidAvaliador, // Agora garantido como string
       },
       efetivado: isAprovado,
       inativo: !isAprovado,
@@ -334,7 +366,7 @@ async function submeterAvaliacao3Meses(e) {
     await updateDoc(doc(db, "usuarios", usuarioUid), dadosAvaliacaoUsuario);
     console.log("✅ Avaliação salva no perfil do usuário.");
 
-    // 3. Atualizar CANDIDATURA
+    // --- 4. Atualizar CANDIDATURA ---
     const novoStatusCandidatura = isAprovado
       ? "PROCESSO_CONCLUIDO"
       : "REPROVADO_EXPERIENCIA";
@@ -347,7 +379,7 @@ async function submeterAvaliacao3Meses(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: acaoHistorico,
-        usuario: avaliadorNome,
+        usuario: nomeAvaliador,
       }),
     });
 
