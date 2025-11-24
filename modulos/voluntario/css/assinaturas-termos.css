@@ -2,117 +2,192 @@
 
 .documents-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
     padding: 10px 0;
 }
 
-/* Card do Documento */
+/* --- CARD DO DOCUMENTO --- */
 .document-card {
     background-color: var(--cor-surface);
     border: 1px solid var(--cor-borda);
     border-radius: var(--borda-radius);
-    padding: 20px;
+    padding: 25px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     box-shadow: var(--sombra-suave);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-left: 5px solid var(--cor-primaria);
+    transition: all 0.3s ease;
+    border-top: 4px solid var(--cor-primaria); /* Destaque no topo */
     position: relative;
-    overflow: hidden;
 }
 
 .document-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-5px);
     box-shadow: var(--sombra-padrao);
 }
 
 /* Cores por Status */
-.document-card.status-pendente { border-left-color: var(--cor-alerta); }
-.document-card.status-assinado { border-left-color: var(--cor-sucesso); opacity: 0.8; }
+.document-card.status-pendente { border-top-color: var(--cor-alerta); }
+.document-card.status-assinado { border-top-color: var(--cor-sucesso); opacity: 0.9; }
 
 .doc-header {
     display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    margin-bottom: 15px;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.doc-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    background-color: var(--cor-fundo);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 5px;
 }
 
 .doc-icon {
-    font-size: 1.8em;
-    color: var(--cor-texto-secundario);
-    background: var(--cor-fundo);
-    padding: 10px;
-    border-radius: 50%;
+    font-size: 1.6em;
+    color: var(--cor-primaria);
 }
 
 .doc-info h3 {
-    margin: 0 0 5px 0;
-    font-size: 1.1em;
+    margin: 0 0 8px 0;
+    font-size: 1.2em;
     color: var(--cor-texto-principal);
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1.4;
 }
 
 .doc-info p {
     margin: 0;
-    font-size: 0.85em;
+    font-size: 0.9em;
     color: var(--cor-texto-secundario);
-    line-height: 1.4;
 }
 
 .doc-meta {
+    display: inline-block;
     font-size: 0.8em;
     color: #666;
-    margin-top: 5px;
-    display: block;
+    background-color: #f0f0f0;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-top: 8px;
+    font-weight: 500;
 }
 
 .doc-actions {
-    margin-top: 15px;
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--cor-borda-leve);
     text-align: right;
 }
 
 .btn-assinar {
-    background-color: var(--cor-sucesso); /* Verde para ação principal */
+    background-color: var(--cor-primaria);
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 12px 20px;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
     text-decoration: none;
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 10px;
     font-size: 0.95em;
     transition: background 0.2s;
+    width: 100%;
 }
 
 .btn-assinar:hover {
-    background-color: #218838;
-    color: white;
+    background-color: var(--cor-primaria-dark);
 }
 
-/* Lista Histórico */
+/* --- ESTILIZAÇÃO DO TEXTO DENTRO DO MODAL (Novo) --- */
+.document-paper {
+    background-color: #ffffff;
+    padding: 40px 50px;
+    max-width: 800px;
+    margin: 0 auto;
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+    font-family: 'Georgia', 'Times New Roman', serif; /* Fonte serifada para parecer documento */
+    color: #333;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    text-align: justify; /* Justificado para parecer contrato */
+}
+
+.document-paper h2, 
+.document-paper h3, 
+.document-paper h4 {
+    color: #000;
+    font-family: 'Arial', sans-serif; /* Títulos em Sans-Serif */
+    margin-top: 30px;
+    margin-bottom: 15px;
+    text-align: left;
+    font-weight: 700;
+}
+
+.document-paper h1.doc-title {
+    text-align: center;
+    font-size: 1.8em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 20px;
+}
+
+.document-paper p {
+    margin-bottom: 15px;
+}
+
+.document-paper ul, .document-paper ol {
+    margin-bottom: 15px;
+    padding-left: 40px;
+}
+
+.document-paper li {
+    margin-bottom: 8px;
+}
+
+/* Histórico */
 .documents-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .doc-item-list {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
+    padding: 15px 20px;
     background-color: var(--cor-fundo);
     border-radius: var(--borda-radius);
     border: 1px solid var(--cor-borda-leve);
 }
 
-.text-muted {
-    color: var(--cor-texto-secundario);
-    font-style: italic;
-    padding: 10px;
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+    .document-paper {
+        padding: 20px;
+        font-size: 1rem;
+    }
+    .documents-grid {
+        grid-template-columns: 1fr;
+    }
 }
