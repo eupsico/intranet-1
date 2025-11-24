@@ -14,6 +14,7 @@ import {
   doc,
   updateDoc,
   arrayUnion,
+  addDoc,
 } from "../../../../assets/js/firebase-init.js";
 
 // ============================================
@@ -297,19 +298,20 @@ async function carregarDocumentosDisponiveis() {
 // ============================================
 
 window.confirmarLiberacaoDocs = async function () {
-  console.log("💾 Liberando documentos...");
+  console.log("💾 Liberando documentos (Vínculo UID + De Acordo)...");
   const modal = document.getElementById("modal-enviar-documentos");
   const btn = document.getElementById("btn-confirmar-liberacao");
   const candidatoId = modal.dataset.candidaturaId;
   const msgWhatsapp = document.getElementById("documentos-mensagem").value;
 
+  // Coleta os documentos selecionados
   const docsSelecionados = [];
   modal.querySelectorAll("input[type=checkbox]:checked").forEach((cb) => {
     docsSelecionados.push({
       modeloId: cb.value,
       titulo: cb.dataset.titulo,
-      status: "pendente", // Pendente de assinatura
-      liberadoEm: new Date(),
+      // Se o modelo tiver um link de arquivo (PDF) no Firestore, você deve recuperá-lo aqui
+      // Por enquanto, assume-se que o texto/conteúdo é o próprio título ou um link interno
     });
   });
 
@@ -323,27 +325,62 @@ window.confirmarLiberacaoDocs = async function () {
 
   try {
     const { candidatosCollection, currentUserData } = getGlobalState();
-    const candidatoRef = doc(candidatosCollection, candidatoId);
 
-    // 1. Atualiza Firestore: Muda status e salva lista de documentos
+    // 1. Busca o UID do Usuário Real (Baseado no e-mail novo da candidatura)
+    if (!dadosCandidatoAtual.email_novo) {
+      throw new Error(
+        "E-mail corporativo não encontrado para vincular ao usuário."
+      );
+    }
+
+    const usuariosRef = collection(db, "usuarios");
+    const qUser = query(
+      usuariosRef,
+      where("email", "==", dadosCandidatoAtual.email_novo)
+    );
+    const snapshotUser = await getDocs(qUser);
+
+    if (snapshotUser.empty) {
+      throw new Error(
+        `Usuário com e-mail ${dadosCandidatoAtual.email_novo} não encontrado na coleção 'usuarios'.`
+      );
+    }
+
+    const usuarioReal = snapshotUser.docs[0];
+    const usuarioUid = usuarioReal.id;
+
+    // 2. Cria o registro na coleção dedicada 'solicitacoes_assinatura'
+    const solicitacaoData = {
+      tipo: "fase_1", // Admissão
+      usuarioUid: usuarioUid, // ✅ Vínculo forte com o usuário
+      candidatoId_ref: candidatoId, // Apenas para referência histórica
+      emailUsuario: dadosCandidatoAtual.email_novo,
+      nomeUsuario: dadosCandidatoAtual.nome_candidato,
+
+      documentos: docsSelecionados,
+
+      status: "pendente", // pendente -> assinado
+      dataEnvio: new Date(),
+      enviadoPor: currentUserData.nome || "RH",
+
+      metodoAssinatura: "interno_de_acordo", // Indica o tipo de fluxo
+      fase: 1,
+    };
+
+    await addDoc(collection(db, "solicitacoes_assinatura"), solicitacaoData);
+
+    // 3. Atualiza o status na candidatura (Visual do RH)
+    const candidatoRef = doc(candidatosCollection, candidatoId);
     await updateDoc(candidatoRef, {
       status_recrutamento: "DOCS_LIBERADOS",
-      // Usa arrayUnion para ADICIONAR aos existentes (histórico) ou substituir se preferir
-      // Aqui vamos substituir a lista "ativa" para a página do voluntário ler
-      documentos_enviados: arrayUnion({
-        data_envio: new Date(),
-        status: "enviado",
-        documentos: docsSelecionados,
-        tipo: "fase_1", // Marca como fase 1 (admissão)
-      }),
       historico: arrayUnion({
         data: new Date(),
-        acao: `Documentos liberados para assinatura na Intranet (${docsSelecionados.length} docs).`,
+        acao: `Termos liberados para aceite interno (UID: ${usuarioUid}).`,
         usuario: currentUserData.id || "rh_admin",
       }),
     });
 
-    // 2. Abre WhatsApp
+    // 4. Abre WhatsApp
     const telefone = dadosCandidatoAtual.telefone_contato.replace(/\D/g, "");
     const linkZap = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
       msgWhatsapp
@@ -353,7 +390,6 @@ window.confirmarLiberacaoDocs = async function () {
     window.showToast?.("Documentos liberados com sucesso!", "success");
     fecharModalEnviarDocumentos();
 
-    // Recarrega aba
     const state = getGlobalState();
     renderizarAssinaturaDocs(state);
   } catch (error) {
