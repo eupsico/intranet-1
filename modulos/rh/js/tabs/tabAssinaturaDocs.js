@@ -91,6 +91,7 @@ export async function renderizarAssinaturaDocs(state) {
         email_novo: cand.admissao_info?.email_solicitado || "Não solicitado",
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
+        status_recrutamento: statusAtual,
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
