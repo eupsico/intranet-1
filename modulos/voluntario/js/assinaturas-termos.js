@@ -272,23 +272,28 @@ async function buscarConteudoModelo(modeloId) {
   if (!modeloId) return "<p><em>Conteúdo não vinculado.</em></p>";
 
   try {
-    // Tenta coleção principal
+    // Tenta coleção principal de modelos
     let docRef = doc(db, "rh_documentos_modelos", modeloId);
     let docSnap = await getDoc(docRef);
 
-    // Fallback para outros nomes de coleção se não achar
+    // Fallback se mudou o nome da coleção
     if (!docSnap.exists()) {
       docRef = doc(db, "modelos_documentos", modeloId);
       docSnap = await getDoc(docRef);
     }
 
     if (docSnap.exists()) {
-      // Retorna o campo 'conteudo' (HTML) ou 'descricao'
-      return (
-        docSnap.data().conteudo ||
-        docSnap.data().descricao ||
-        "<p>Documento sem conteúdo de texto.</p>"
-      );
+      const data = docSnap.data();
+      // ✅ CORREÇÃO: Adicionado 'texto_conteudo' à lista de campos buscados
+      // Prioriza 'texto_conteudo' (usado na sua coleção atual), depois 'conteudo', depois 'descricao'
+      let texto = data.texto_conteudo || data.conteudo || data.descricao;
+
+      if (texto) {
+        // Formata quebras de linha se for texto puro
+        return texto.replace(/\n/g, "<br>");
+      } else {
+        return "<p>Documento sem conteúdo de texto.</p>";
+      }
     } else {
       return "<p><em>Erro: Modelo de documento original não encontrado no sistema.</em></p>";
     }
