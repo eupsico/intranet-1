@@ -139,7 +139,7 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   const tituloModalEl = document.getElementById("candidato-nome-titulo");
   if (tituloModalEl) {
     tituloModalEl.textContent = `Detalhes: ${
-      candidato.nome_completo || "Candidato(a)"
+      candidato.nome_candidato || "Candidato(a)"
     }`;
   }
 
@@ -153,7 +153,7 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
       <p class="card-text">
        <strong>Nome Completo:</strong><br>
        <span style="color: var(--cor-primaria); font-weight: 600;">${
-         candidato.nome_completo || "N/A"
+         candidato.nome_candidato || "N/A"
        }</span>
       </p>
       <p class="card-text">
