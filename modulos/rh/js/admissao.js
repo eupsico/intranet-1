@@ -175,7 +175,7 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
      <div class="details-grid">
      	<p class="card-text">
       	<strong>Vaga Aprovada:</strong><br>
-      	<span>${candidato.vaga_titulo || "N/A"}</span>
+      	<span>${candidato.titulo_vaga_original || "N/A"}</span>
      	</p>
      	<p class="card-text">
       	<strong>Status Admissão:</strong><br>
