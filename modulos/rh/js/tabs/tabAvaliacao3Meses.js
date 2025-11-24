@@ -368,7 +368,7 @@ async function submeterAvaliacao3Meses(e) {
 
     // --- 4. Atualizar CANDIDATURA ---
     const novoStatusCandidatura = isAprovado
-      ? "PROCESSO_CONCLUIDO"
+      ? "AGUARDANDO_DOCS_POS_3MESES"
       : "REPROVADO_EXPERIENCIA";
     const acaoHistorico = `Avaliação de 3 Meses: ${resultado}. ${
       isAprovado ? "Efetivado." : "Desligado."
