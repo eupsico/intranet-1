@@ -206,7 +206,33 @@
       </div>
     </div>
   </div>
-  <div id="modal-avaliacao-integracao" class="modal-overlay">
+<div id="modal-avaliacao-integracao" class="modal-overlay">
+    <style>
+      /* Correção específica para este modal */
+      #modal-avaliacao-integracao .status-badge {
+        background-color: #6f42c1 !important; /* Roxo para destaque */
+        color: white !important; /* Texto branco legível */
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 0.85em;
+      }
+      
+      #modal-avaliacao-integracao .modal-footer {
+        display: flex !important;
+        justify-content: flex-end !important; /* Alinha à direita */
+        gap: 15px !important; /* Espaço entre os botões */
+        padding: 20px !important;
+        background-color: #f8f9fa; /* Cor de fundo leve */
+        border-top: 1px solid #dee2e6;
+      }
+
+      #modal-avaliacao-integracao .action-button {
+        margin: 0 !important; /* Remove margens externas que podem causar sobreposição */
+        min-width: 120px; /* Tamanho mínimo para ficar bonito */
+      }
+    </style>
+
     <div class="modal-content">
       <div class="modal-header">
         <h3><i class="fas fa-check-double me-2"></i>Concluir Integração</h3>
@@ -215,8 +241,8 @@
       <form id="form-avaliacao-integracao">
         <div class="modal-body">
           <div class="info-card mb-4">
-            <h4 style="margin-top: 0;"><i class="fas fa-user me-2"></i> Candidato: <span id="avaliacao-int-nome-candidato">-</span></h4>
-            <p><strong>Status Atual:</strong> <span id="avaliacao-int-status-atual" class="status-badge">-</span></p>
+            <h4 style="margin-top: 0;"><i class="fas fa-user me-2"></i> Candidato: <span id="avaliacao-int-nome-candidato" style="font-weight:bold; color:#333;">-</span></h4>
+            <p style="margin-top: 5px;"><strong>Status Atual:</strong> <span id="avaliacao-int-status-atual" class="status-badge">-</span></p>
           </div>
 
           <div class="description-box">
@@ -239,6 +265,7 @@
             </div>
           </fieldset>
         </div>
+        
         <div class="modal-footer">
           <button type="button" class="action-button secondary close-modal-btn">Cancelar</button>
           <button type="submit" class="action-button success">
