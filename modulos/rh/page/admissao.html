@@ -206,6 +206,48 @@
       </div>
     </div>
   </div>
+  <div id="modal-avaliacao-integracao" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-check-double me-2"></i>Concluir Integração</h3>
+        <button type="button" class="close-modal-btn">&times;</button>
+      </div>
+      <form id="form-avaliacao-integracao">
+        <div class="modal-body">
+          <div class="info-card mb-4">
+            <h4 style="margin-top: 0;"><i class="fas fa-user me-2"></i> Candidato: <span id="avaliacao-int-nome-candidato">-</span></h4>
+            <p><strong>Status Atual:</strong> <span id="avaliacao-int-status-atual" class="status-badge">-</span></p>
+          </div>
+
+          <div class="description-box">
+            <p>Confirme que a integração (Onboarding) foi realizada. Ao concluir, o colaborador avançará para a etapa de "Avaliação de Experiência (3 Meses)".</p>
+          </div>
+
+          <fieldset>
+            <legend>Registro de Conclusão</legend>
+            <div class="form-group">
+              <label for="integracao-realizada">A Integração foi realizada?</label>
+              <select id="integracao-realizada" class="form-control" required>
+                <option value="">Selecione...</option>
+                <option value="sim">Sim, realizada com sucesso</option>
+                <option value="nao">Não (Não avançar)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="integracao-observacoes">Observações / Feedback Inicial:</label>
+              <textarea id="integracao-observacoes" class="form-control" rows="3" placeholder="Pontos importantes observados durante a integração..."></textarea>
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary close-modal-btn">Cancelar</button>
+          <button type="submit" class="action-button success">
+            <i class="fas fa-check-circle me-2"></i> Concluir Integração
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
    <script type="module" src="../js/admissao.js"></script>
 </body>
 </html>
