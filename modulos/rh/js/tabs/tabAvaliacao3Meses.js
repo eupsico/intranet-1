@@ -1,10 +1,9 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAvaliacao3Meses.js
- * Versão: 1.0.0 (Baseado em tabTriagem.js)
+ * Versão: 1.1.0 (Correção de ReferenceError e Dados do Modal)
  * Descrição: Gerencia a etapa de Avaliação de Experiência (3 Meses).
  */
 
-// Importa do módulo de ADMISSÃO
 import { getGlobalState } from "../admissao.js";
 import {
   updateDoc,
@@ -14,6 +13,9 @@ import {
   where,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
+
+// ✅ CORREÇÃO 1: Declaração da variável no escopo do módulo
+let dadosCandidatoAtual = null;
 
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
@@ -26,12 +28,11 @@ export async function renderizarAvaliacao3Meses(state) {
     '<div class="loading-spinner">Carregando colaboradores em período de experiência...</div>';
 
   try {
-    // Busca candidatos que estão aguardando a avaliação de 3 meses
     const q = query(
       candidatosCollection,
       where("status_recrutamento", "==", "AGUARDANDO_AVALIACAO_3MESES")
     );
-    const snapshot = await getDocs(q); // Atualiza contagem na aba
+    const snapshot = await getDocs(q);
 
     const tab = statusAdmissaoTabs.querySelector(
       '.tab-link[data-status="avaliacao-3-meses"]'
@@ -59,16 +60,26 @@ export async function renderizarAvaliacao3Meses(state) {
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      const statusClass = "status-success"; // Sempre pendente
+      const statusClass = "status-success";
 
+      // ✅ CORREÇÃO 2: Mapeamento correto dos dados para o modal
       const dadosCandidato = {
         id: candidatoId,
-        nome_candidato: cand.nome_candidato,
+        nome_candidato: cand.nome_candidato || cand.nome_completo,
+        // Mapeia o email corretamente (pode estar como email_candidato ou email_pessoal)
+        email_pessoal: cand.email_candidato || cand.email_pessoal,
         email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
         telefone_contato: cand.telefone_contato,
         titulo_vaga_original: cand.titulo_vaga_original,
-        data_integracao: cand.integracao?.agendamento?.data || "N/A",
+        status_recrutamento: statusAtual, // Importante para aparecer no modal
+        data_integracao: cand.integracao?.conclusao?.concluido_em
+          ? new Date(
+              cand.integracao.conclusao.concluido_em.seconds * 1000
+            ).toLocaleDateString("pt-BR")
+          : "N/A",
+        avaliacao_3meses: cand.avaliacao_3meses, // Passa dados anteriores se houver
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
@@ -76,7 +87,7 @@ export async function renderizarAvaliacao3Meses(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_candidato || "Colaborador Sem Nome"}
+       ${dadosCandidato.nome_candidato || "Colaborador Sem Nome"}
       	<span class="status-badge ${statusClass}">
        	<i class="fas fa-tag"></i> Em Experiência
       	</span>
@@ -113,8 +124,9 @@ export async function renderizarAvaliacao3Meses(state) {
     });
 
     listaHtml += "</div>";
-    conteudoAdmissao.innerHTML = listaHtml; // Listeners de Avaliar
+    conteudoAdmissao.innerHTML = listaHtml;
 
+    // Listeners de Avaliar
     document.querySelectorAll(".btn-avaliar-3meses").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -124,7 +136,9 @@ export async function renderizarAvaliacao3Meses(state) {
           JSON.parse(decodeURIComponent(dados))
         );
       });
-    }); // Listeners de Detalhes
+    });
+
+    // Listeners de Detalhes
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -147,13 +161,10 @@ export async function renderizarAvaliacao3Meses(state) {
 // LÓGICA DO MODAL DE AVALIAÇÃO (3 MESES)
 // ============================================
 
-/**
- * Abre o modal de avaliação de 3 meses
- */
 function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
   console.log(
     `🔹 Admissão: Abrindo modal de avaliação 3 meses para ${candidatoId}`
-  ); // ID esperado no admissao.html (copie o modal-avaliacao-triagem e renomeie)
+  );
   const modal = document.getElementById("modal-avaliacao-3meses");
   const form = document.getElementById("form-avaliacao-3meses");
 
@@ -162,19 +173,19 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
       "Erro: Modal de Avaliação 3 Meses não encontrado no HTML.",
       "error"
     );
-    console.error(
-      "❌ Admissão: Elemento #modal-avaliacao-3meses não encontrado"
-    );
     return;
   }
 
+  // Atualiza a variável global do módulo
   dadosCandidatoAtual = dadosCandidato;
-  modal.dataset.candidaturaId = candidatoId; // Preenche o modal
+  modal.dataset.candidaturaId = candidatoId;
 
   const nomeEl = document.getElementById("avaliacao-3meses-nome");
-  if (nomeEl) nomeEl.textContent = dadosCandidato.nome_candidato; // Limpa o formulário e preenche dados anteriores (se houver)
+  if (nomeEl) nomeEl.textContent = dadosCandidato.nome_candidato;
 
   form.reset();
+
+  // Preenche dados anteriores se existirem
   const avaliacaoAnterior = dadosCandidato.avaliacao_3meses || {};
   const feedbackPositivoEl = document.getElementById(
     "avaliacao-3meses-positivo"
@@ -192,36 +203,36 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
   if (radioAprovado)
     radioAprovado.checked = avaliacaoAnterior.resultado === "Aprovado";
   if (radioReprovado)
-    radioReprovado.checked = avaliacaoAnterior.resultado === "Reprovado"; // Listeners
+    radioReprovado.checked = avaliacaoAnterior.resultado === "Reprovado";
 
   form.removeEventListener("submit", submeterAvaliacao3Meses);
   form.addEventListener("submit", submeterAvaliacao3Meses);
 
-  document
-    .querySelectorAll(`[data-modal-id='modal-avaliacao-3meses']`)
+  // Listeners de fechar
+  modal
+    .querySelectorAll(".close-modal-btn, .action-button.secondary")
     .forEach((btn) => {
-      btn.removeEventListener("click", () =>
+      // Clone para remover listeners antigos
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener("click", () =>
         modal.classList.remove("is-visible")
       );
-      btn.addEventListener("click", () => modal.classList.remove("is-visible"));
     });
 
   modal.classList.add("is-visible");
 }
 
-/**
- * Submete a avaliação de 3 meses
- */
 async function submeterAvaliacao3Meses(e) {
   e.preventDefault();
   const { candidatosCollection, currentUserData } = getGlobalState();
   const modal = document.getElementById("modal-avaliacao-3meses");
   const btnSalvar = modal.querySelector('button[type="submit"]');
-  const candidaturaId = modal.dataset.candidaturaId;
-
-  if (!candidaturaId) return;
-
   const form = document.getElementById("form-avaliacao-3meses");
+  const candidatoId = modal.dataset.candidaturaId;
+
+  if (!candidatoId) return;
+
   const resultado = form.querySelector(
     'input[name="resultado_3meses"]:checked'
   )?.value;
@@ -244,7 +255,7 @@ async function submeterAvaliacao3Meses(e) {
   btnSalvar.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
-  const isAprovado = resultado === "Aprovado"; // Se aprovado, vai para docs finais. Se reprovado, vai para reprovados.
+  const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado
     ? "AGUARDANDO_DOCS_POS_3MESES"
     : "Reprovado (Admissão)";
@@ -273,7 +284,7 @@ async function submeterAvaliacao3Meses(e) {
       "success"
     );
     modal.classList.remove("is-visible");
-    renderizarAvaliacao3Meses(getGlobalState()); // Recarrega a aba
+    renderizarAvaliacao3Meses(getGlobalState());
   } catch (error) {
     console.error("Erro ao salvar avaliação de 3 meses:", error);
     window.showToast?.(`Erro ao registrar: ${error.message}`, "error");
