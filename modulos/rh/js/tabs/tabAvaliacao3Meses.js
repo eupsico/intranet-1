@@ -59,14 +59,14 @@ export async function renderizarAvaliacao3Meses(state) {
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      const statusClass = "status-warning"; // Sempre pendente
+      const statusClass = "status-success"; // Sempre pendente
 
       const dadosCandidato = {
         id: candidatoId,
-        nome_completo: cand.nome_completo,
-        email_novo: cand.admissao_info?.email_solicitado || "Não solicitado",
+        nome_candidato: cand.nome_candidato,
+        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
         telefone_contato: cand.telefone_contato,
-        vaga_titulo: vagaTitulo,
+        titulo_vaga_original: cand.titulo_vaga_original,
         data_integracao: cand.integracao?.agendamento?.data || "N/A",
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
@@ -76,7 +76,7 @@ export async function renderizarAvaliacao3Meses(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_completo || "Colaborador Sem Nome"}
+       ${cand.nome_candidato || "Colaborador Sem Nome"}
       	<span class="status-badge ${statusClass}">
        	<i class="fas fa-tag"></i> Em Experiência
       	</span>
@@ -172,7 +172,7 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
   modal.dataset.candidaturaId = candidatoId; // Preenche o modal
 
   const nomeEl = document.getElementById("avaliacao-3meses-nome");
-  if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo; // Limpa o formulário e preenche dados anteriores (se houver)
+  if (nomeEl) nomeEl.textContent = dadosCandidato.nome_candidato; // Limpa o formulário e preenche dados anteriores (se houver)
 
   form.reset();
   const avaliacaoAnterior = dadosCandidato.avaliacao_3meses || {};
