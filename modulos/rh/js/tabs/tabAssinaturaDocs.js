@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 1.1.0 (Atualizado: Fluxo via Login/Senha - Sem Token)
+ * Versão: 1.2.0 (Atualizado: Mensagem de WhatsApp com caminho específico)
  * Descrição: Gerencia a liberação de documentos para assinatura via Intranet.
  */
 
@@ -222,14 +222,14 @@ async function abrirModalEnviarDocumentos(
        
        <div class="form-group">
         <label class="form-label" style="font-weight:bold;">Mensagem para WhatsApp:</label>
-        <textarea id="documentos-mensagem" class="form-textarea" rows="4" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+        <textarea id="documentos-mensagem" class="form-textarea" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
 Olá ${dadosCandidato.nome_candidato.split(" ")[0]}!
 
 Seus documentos de admissão já estão disponíveis na Intranet.
 
 1. Acesse: ${URL_INTRANET}
 2. Faça login com seu e-mail corporativo e senha.
-3. Vá em "Meus Documentos" para assinar.
+3. Vá em *Portal do Voluntário* > *Assinaturas e Termos* para assinar.
 
 Qualquer dúvida, estamos à disposição!
         </textarea>
@@ -259,13 +259,13 @@ async function carregarDocumentosDisponiveis() {
 
   try {
     // Busca na coleção de modelos
-    const documentosRef = collection(db, "modelos_documentos"); // Ou 'gestao_documentos' dependendo do seu banco
-    // Se não achar, tenta a outra coleção comum
+    const documentosRef = collection(db, "modelos_documentos");
     let snapshot = await getDocs(
       query(documentosRef, where("ativo", "==", true))
     );
 
     if (snapshot.empty) {
+      // Fallback para nome antigo se necessário
       snapshot = await getDocs(collection(db, "rh_documentos_modelos"));
     }
 
@@ -328,7 +328,14 @@ window.confirmarLiberacaoDocs = async function () {
     // 1. Atualiza Firestore: Muda status e salva lista de documentos
     await updateDoc(candidatoRef, {
       status_recrutamento: "DOCS_LIBERADOS",
-      "admissaoinfo.documentos_assinatura": docsSelecionados,
+      // Usa arrayUnion para ADICIONAR aos existentes (histórico) ou substituir se preferir
+      // Aqui vamos substituir a lista "ativa" para a página do voluntário ler
+      documentos_enviados: arrayUnion({
+        data_envio: new Date(),
+        status: "enviado",
+        documentos: docsSelecionados,
+        tipo: "fase_1", // Marca como fase 1 (admissão)
+      }),
       historico: arrayUnion({
         data: new Date(),
         acao: `Documentos liberados para assinatura na Intranet (${docsSelecionados.length} docs).`,
