@@ -77,6 +77,55 @@
    </button>
   </div>
  </div>
+
+ <div id="modal-solicitar-dados" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-contract me-2"></i>Solicitar Dados Cadastrais</h3>
+        <button type="button" class="close-modal-btn fechar-modal-solicitacao">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="info-card mb-4">
+          <h4><i class="fas fa-user me-2"></i>Candidato: <span id="solicitacao-nome-candidato">...</span></h4>
+          <p>Esta ação gerará um link único para que o candidato preencha sua ficha cadastral e anexe os documentos necessários (RG, CPF, Diploma, CRP, etc).</p>
+        </div>
+
+        <form id="form-solicitar-dados">
+          <div class="form-group">
+            <label>Prazo para preenchimento:</label>
+            <select id="solicitacao-prazo" class="form-control">
+              <option value="3">3 dias</option>
+              <option value="5" selected>5 dias</option>
+              <option value="7">7 dias</option>
+            </select>
+          </div>
+
+          <div id="container-link-gerado" class="hidden mt-4">
+            <label>Link Gerado:</label>
+            <div class="input-group">
+              <input type="text" id="link-ficha-admissao" readonly class="form-control" style="background: #f0f0f0;">
+              <button type="button" id="btn-copiar-link-ficha" class="action-button secondary">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+            <div class="mt-3">
+               <button type="button" id="btn-enviar-ficha-whatsapp" class="action-button whatsapp w-100">
+                <i class="fab fa-whatsapp me-2"></i> Enviar Link pelo WhatsApp
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-button secondary fechar-modal-solicitacao">Cancelar</button>
+        <button type="button" id="btn-gerar-link-ficha" class="action-button primary">
+          <i class="fas fa-link me-2"></i> Gerar Link
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
    <script type="module" src="../js/admissao.js"></script>
 </body>

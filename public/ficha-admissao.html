@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Admissão - EuPsico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; color: #333; }
+        .container { max-width: 800px; margin-top: 40px; margin-bottom: 40px; }
+        .card { border: none; shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 12px; }
+        .header-logo { text-align: center; margin-bottom: 30px; }
+        .section-title { color: #0078d4; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-top: 30px; margin-bottom: 20px; font-weight: 600; }
+        .upload-area { border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .upload-area:hover { background-color: #f9f9f9; border-color: #0078d4; }
+        .file-status { font-size: 0.85em; margin-top: 5px; color: #28a745; font-weight: bold; }
+        .hidden { display: none; }
+        .btn-primary { background-color: #0078d4; border: none; padding: 12px 30px; font-size: 1.1em; }
+        .btn-primary:hover { background-color: #005a9e; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-logo">
+        <h2><i class="fas fa-id-card me-2" style="color:#0078d4;"></i> Ficha Cadastral</h2>
+        <p class="text-muted">Admissão de Novos Colaboradores</p>
+    </div>
+
+    <div id="loading-screen" class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-3">Validando acesso...</p>
+    </div>
+
+    <div id="error-screen" class="alert alert-danger hidden text-center"></div>
+
+    <div id="form-content" class="card p-4 hidden">
+        <form id="cadastro-form">
+            
+            <div class="alert alert-info">
+                Olá, <strong><span id="nome-candidato-display"></span></strong>. Por favor, preencha seus dados completos e anexe os documentos solicitados.
+            </div>
+
+            <h4 class="section-title"><i class="fas fa-user me-2"></i>Dados Pessoais & Contato</h4>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Nome Completo (Sem abreviações)</label>
+                    <input type="text" class="form-control" id="nomeCompleto" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Telefone (WhatsApp)</label>
+                    <input type="tel" class="form-control" id="telefone" placeholder="(00) 00000-0000" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">E-mail Principal</label>
+                    <input type="email" class="form-control" id="email" readonly> </div>
+            </div>
+
+            <h4 class="section-title"><i class="fas fa-map-marker-alt me-2"></i>Endereço Completo</h4>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">CEP</label>
+                    <input type="text" class="form-control" id="cep" required onblur="buscarCep(this.value)">
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label">Endereço (Rua/Av)</label>
+                    <input type="text" class="form-control" id="endereco" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Número</label>
+                    <input type="text" class="form-control" id="numero" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bairro</label>
+                    <input type="text" class="form-control" id="bairro" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Cidade</label>
+                    <input type="text" class="form-control" id="cidade" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Estado</label>
+                    <input type="text" class="form-control" id="estado" required>
+                </div>
+            </div>
+
+            <h4 class="section-title"><i class="fas fa-graduation-cap me-2"></i>Formação Acadêmica</h4>
+            <div class="mb-3">
+                <label class="form-label">Graduação Completa (Curso/Instituição/Ano)</label>
+                <input type="text" class="form-control" id="graduacao" required placeholder="Ex: Psicologia - USP - 2018">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Especializações (Liste as principais)</label>
+                <textarea class="form-control" id="especializacoes" rows="3" placeholder="Ex: Pós-graduação em TCC..."></textarea>
+            </div>
+
+            <h4 class="section-title"><i class="fas fa-briefcase me-2"></i>Atuação</h4>
+            
+            <div class="mb-3">
+                <label class="form-label d-block fw-bold">Público que atende:</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="Criança" id="publico-crianca">
+                    <label class="form-check-label" for="publico-crianca">Criança</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="Adolescente" id="publico-adolescente">
+                    <label class="form-check-label" for="publico-adolescente">Adolescente</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="Adulto" id="publico-adulto">
+                    <label class="form-check-label" for="publico-adulto">Adulto</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="Idoso" id="publico-idoso">
+                    <label class="form-check-label" for="publico-idoso">Idoso</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Disponibilidade de Horário (Resumo)</label>
+                <input type="text" class="form-control" id="disponibilidade" required placeholder="Ex: Seg a Sex, período noturno">
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="crpAtivo">
+                <label class="form-check-label" for="crpAtivo">
+                    Sou Psicólogo(a) e possuo CRP ativo e regular.
+                </label>
+            </div>
+
+            <h4 class="section-title"><i class="fas fa-cloud-upload-alt me-2"></i>Documentos Obrigatórios</h4>
+            <p class="small text-muted mb-4">Formatos aceitos: PDF, JPG, PNG (Max 5MB por arquivo)</p>
+
+            <div id="uploads-container"></div>
+
+            <div class="mt-5 text-center">
+                <button type="submit" id="btn-submit" class="btn btn-primary w-100">
+                    <i class="fas fa-paper-plane me-2"></i> Enviar Cadastro
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="success-screen" class="card p-5 hidden text-center">
+        <div style="font-size: 4rem; color: #28a745;" class="mb-3"><i class="fas fa-check-circle"></i></div>
+        <h3>Cadastro Recebido!</h3>
+        <p>Seus dados e documentos foram enviados com sucesso para o nosso RH.</p>
+        <p>Em breve entraremos em contato.</p>
+    </div>
+</div>
+
+<script>
+    // URL da API Cloud Functions (Baseada no seu index.js)
+    // Ajuste para o seu domínio real do Firebase
+    const API_BASE = "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net"; 
+    
+    let token = new URLSearchParams(window.location.search).get("token");
+    let candidatoId = null;
+
+    // Configuração dos Uploads
+    const docsConfig = [
+        { id: "rg", label: "RG (Frente e Verso)", required: true },
+        { id: "cpf", label: "CPF", required: true },
+        { id: "compEndereco", label: "Comprovante de Endereço", required: true },
+        { id: "diploma", label: "Diploma de Graduação", required: true },
+        { id: "declaracaoCrp", label: "Declaração de Regularidade CRP", required: false, condition: "crpAtivo" },
+        { id: "certificados", label: "Certificados de Especialização (Opcional)", required: false }
+    ];
+
+    // Inicialização
+// Inicialização
+    document.addEventListener("DOMContentLoaded", async () => {
+        if(!token) return showScreen('error', "Link inválido (Token ausente).");
+        
+        try {
+            // 1. Validar Token
+            const response = await fetch(`${API_BASE}/validarTokenAdmissao`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token })
+            });
+            
+            const data = await response.json();
+            if(!response.ok) throw new Error(data.erro || "Erro ao validar");
+
+            candidatoId = data.candidatoId;
+
+            // 2. Preencher dados iniciais (E-mail Corporativo Travado)
+            document.getElementById("nome-candidato-display").textContent = data.nomeCandidato;
+            document.getElementById("nomeCompleto").value = data.nomeCandidato;
+            
+            // AQUI ESTÁ A MUDANÇA: Usa o emailCorporativo retornado pelo backend
+            const campoEmail = document.getElementById("email");
+            campoEmail.value = data.emailCorporativo; 
+            campoEmail.readOnly = true; // Garante que não pode editar
+            campoEmail.style.backgroundColor = "#e9ecef"; // Visual de desabilitado
+
+            // Renderizar Uploads
+            renderUploadFields();
+            
+            showScreen('form');
+
+        } catch (err) {
+            showScreen('error', err.message);
+        }
+    });
+    // Renderiza campos de upload dinamicamente
+    function renderUploadFields() {
+        const container = document.getElementById("uploads-container");
+        let html = '';
+        
+        docsConfig.forEach(doc => {
+            html += `
+            <div class="mb-4 upload-wrapper" id="wrap-${doc.id}">
+                <label class="form-label fw-bold">${doc.label} ${doc.required ? '<span class="text-danger">*</span>' : ''}</label>
+                <div class="upload-area" onclick="document.getElementById('file-${doc.id}').click()">
+                    <i class="fas fa-cloud-upload-alt fa-2x text-muted"></i>
+                    <p class="mb-0">Clique para selecionar o arquivo</p>
+                    <div id="status-${doc.id}" class="file-status"></div>
+                </div>
+                <input type="file" id="file-${doc.id}" class="hidden" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect('${doc.id}')">
+            </div>`;
+        });
+        container.innerHTML = html;
+        
+        // Listener para toggle do CRP
+        document.getElementById("crpAtivo").addEventListener('change', (e) => {
+            const wrap = document.getElementById("wrap-declaracaoCrp");
+            if(e.target.checked) wrap.style.display = "block";
+            else wrap.style.display = "none";
+        });
+        // Inicialmente esconde CRP se não checado
+        if(!document.getElementById("crpAtivo").checked) {
+             document.getElementById("wrap-declaracaoCrp").style.display = "none";
+        }
+    }
+
+    function handleFileSelect(docId) {
+        const input = document.getElementById(`file-${docId}`);
+        const statusDiv = document.getElementById(`status-${docId}`);
+        if(input.files && input.files[0]) {
+            statusDiv.innerHTML = `<i class="fas fa-check me-1"></i> ${input.files[0].name}`;
+        }
+    }
+
+    // Helper CEP
+    async function buscarCep(cep) {
+        cep = cep.replace(/\D/g, '');
+        if(cep.length !== 8) return;
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if(!data.erro) {
+                document.getElementById('endereco').value = data.logradouro;
+                document.getElementById('bairro').value = data.bairro;
+                document.getElementById('cidade').value = data.localidade;
+                document.getElementById('estado').value = data.uf;
+            }
+        } catch(e) { console.log("Erro CEP", e); }
+    }
+
+    // SUBMIT FORM
+    document.getElementById("cadastro-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("btn-submit");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        try {
+            const uploadedUrls = {};
+
+            // 1. Upload Arquivos um por um
+            for(const doc of docsConfig) {
+                // Pula CRP se não for psicólogo
+                if(doc.id === 'declaracaoCrp' && !document.getElementById("crpAtivo").checked) continue;
+
+                const input = document.getElementById(`file-${doc.id}`);
+                if(doc.required && (!input.files || !input.files[0])) {
+                    throw new Error(`O documento ${doc.label} é obrigatório.`);
+                }
+
+                if(input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const base64 = await toBase64(file);
+                    
+                    // Chama API de Upload
+                    const resUpload = await fetch(`${API_BASE}/uploadDocumentoAdmissao`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            fileData: base64,
+                            mimeType: file.type,
+                            fileName: file.name,
+                            candidatoId: candidatoId,
+                            tipoDocumento: doc.id
+                        })
+                    });
+                    
+                    const dataUpload = await resUpload.json();
+                    if(!resUpload.ok) throw new Error("Erro upload " + doc.label);
+                    
+                    uploadedUrls[`${doc.id}Url`] = dataUpload.url;
+                }
+            }
+
+            // 2. Monta Objeto de Dados
+            const publico = [];
+            if(document.getElementById("publico-crianca").checked) publico.push("Criança");
+            if(document.getElementById("publico-adolescente").checked) publico.push("Adolescente");
+            if(document.getElementById("publico-adulto").checked) publico.push("Adulto");
+            if(document.getElementById("publico-idoso").checked) publico.push("Idoso");
+
+            const dadosFormulario = {
+                nomeCompleto: document.getElementById("nomeCompleto").value,
+                telefone: document.getElementById("telefone").value,
+                cep: document.getElementById("cep").value,
+                endereco: document.getElementById("endereco").value,
+                numero: document.getElementById("numero").value,
+                bairro: document.getElementById("bairro").value,
+                cidade: document.getElementById("cidade").value,
+                estado: document.getElementById("estado").value,
+                graduacao: document.getElementById("graduacao").value,
+                especializacoes: document.getElementById("especializacoes").value,
+                disponibilidade: document.getElementById("disponibilidade").value,
+                publicoAtendido: publico,
+                crpAtivo: document.getElementById("crpAtivo").checked,
+                ...uploadedUrls
+            };
+
+            // 3. Envia Tudo
+            const resFinal = await fetch(`${API_BASE}/salvarDadosAdmissao`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token, dadosFormulario })
+            });
+
+            const dataFinal = await resFinal.json();
+            if(!resFinal.ok) throw new Error(dataFinal.erro || "Erro ao salvar cadastro.");
+
+            showScreen('success');
+
+        } catch (err) {
+            alert("Erro: " + err.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Tentar Novamente';
+        }
+    });
+
+    // Helpers
+    function showScreen(screenId, msg) {
+        document.getElementById("loading-screen").classList.add("hidden");
+        document.getElementById("error-screen").classList.add("hidden");
+        document.getElementById("form-content").classList.add("hidden");
+        document.getElementById("success-screen").classList.add("hidden");
+
+        const el = document.getElementById(screenId === 'form' ? 'form-content' : screenId === 'success' ? 'success-screen' : 'error-screen');
+        el.classList.remove("hidden");
+        if(msg) el.textContent = msg;
+    }
+
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+</script>
+
+</body>
+</html>

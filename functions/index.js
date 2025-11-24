@@ -2631,3 +2631,227 @@ exports.resetarSenhaGoogleWorkspace = onCall(
     }
   }
 );
+// ====================================================================
+// FUNÇÕES DE ADMISSÃO (Ficha de Cadastro) - ATUALIZADO
+// ====================================================================
+
+// 1. GERAR TOKEN (Atualizado para buscar e-mail corporativo)
+exports.gerarTokenAdmissao = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Usuário não autenticado.");
+  }
+
+  const { candidatoId, prazoDias = 7 } = request.data;
+
+  if (!candidatoId) {
+    throw new HttpsError("invalid-argument", "ID do candidato é obrigatório.");
+  }
+
+  try {
+    const candSnap = await db.collection("candidaturas").doc(candidatoId).get();
+    if (!candSnap.exists) {
+      throw new HttpsError("not-found", "Candidato não encontrado.");
+    }
+    const dadosCandidato = candSnap.data();
+
+    // BUSCA O E-MAIL CORPORATIVO JÁ CRIADO
+    const emailCorporativo = dadosCandidato.admissaoinfo?.email_solicitado;
+
+    if (!emailCorporativo) {
+      throw new HttpsError(
+        "failed-precondition",
+        "O e-mail corporativo ainda não foi gerado para este candidato."
+      );
+    }
+
+    const token = generateRandomToken();
+    const dataExpiracao = new Date();
+    dataExpiracao.setDate(dataExpiracao.getDate() + prazoDias);
+
+    await db.collection("tokens_admissao").add({
+      token: token,
+      candidatoId: candidatoId,
+      nomeCandidato: dadosCandidato.nome_candidato || "Candidato",
+      emailCorporativo: emailCorporativo, // Salva o e-mail corporativo no token
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+      expiraEm: dataExpiracao,
+      usado: false,
+      tipo: "ficha_cadastral",
+    });
+
+    const urlFicha = `https://intranet.eupsico.org.br/public/ficha-admissao.html?token=${token}`;
+
+    return {
+      sucesso: true,
+      token: token,
+      url: urlFicha,
+      expiraEm: dataExpiracao.toISOString(),
+    };
+  } catch (error) {
+    logger.error("Erro ao gerar token admissão:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "Erro ao gerar link de cadastro.");
+  }
+});
+
+// 2. VALIDAR TOKEN (Retorna o e-mail corporativo para o front)
+exports.validarTokenAdmissao = onRequest({ cors: true }, async (req, res) => {
+  try {
+    if (req.method !== "POST")
+      return res.status(405).send("Method Not Allowed");
+
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ erro: "Token não informado" });
+
+    const snapshot = await db
+      .collection("tokens_admissao")
+      .where("token", "==", token)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return res.status(404).json({ erro: "Link inválido." });
+
+    const docToken = snapshot.docs[0];
+    const dadosToken = docToken.data();
+
+    if (dadosToken.usado)
+      return res.status(403).json({ erro: "Este link já foi utilizado." });
+
+    const agora = new Date();
+    const expiraEm = dadosToken.expiraEm.toDate
+      ? dadosToken.expiraEm.toDate()
+      : new Date(dadosToken.expiraEm);
+
+    if (agora > expiraEm)
+      return res.status(403).json({ erro: "Link expirado." });
+
+    // Retorna o emailCorporativo para preencher o campo travado no formulário
+    return res.status(200).json({
+      sucesso: true,
+      candidatoId: dadosToken.candidatoId,
+      nomeCandidato: dadosToken.nomeCandidato,
+      emailCorporativo: dadosToken.emailCorporativo,
+    });
+  } catch (error) {
+    console.error("Erro validarTokenAdmissao:", error);
+    return res.status(500).json({ erro: "Erro interno no servidor." });
+  }
+});
+
+// 3. SALVAR DADOS (Salva em 'candidaturas' E 'usuarios')
+exports.salvarDadosAdmissao = onRequest({ cors: true }, async (req, res) => {
+  try {
+    if (req.method !== "POST")
+      return res.status(405).send("Method Not Allowed");
+
+    const { token, dadosFormulario } = req.body;
+
+    // Validação do Token
+    const tokenQuery = await db
+      .collection("tokens_admissao")
+      .where("token", "==", token)
+      .limit(1)
+      .get();
+    if (tokenQuery.empty)
+      return res.status(404).json({ erro: "Token inválido" });
+
+    const tokenDoc = tokenQuery.docs[0];
+    const dadosToken = tokenDoc.data();
+    if (dadosToken.usado)
+      return res.status(403).json({ erro: "Token já utilizado" });
+
+    const candidatoId = dadosToken.candidatoId;
+    const emailCorporativo = dadosToken.emailCorporativo;
+
+    // 1. Atualiza CANDIDATURA (Histórico)
+    const candidatoRef = db.collection("candidaturas").doc(candidatoId);
+
+    await candidatoRef.update({
+      dados_admissao: {
+        ...dadosFormulario,
+        preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      status_recrutamento: "Cadastro Realizado (Aguardando Integração)",
+      historico: admin.firestore.FieldValue.arrayUnion({
+        data: new Date(),
+        acao: "Candidato completou a ficha cadastral.",
+        usuario: "Sistema (Via Ficha)",
+      }),
+    });
+
+    // 2. Atualiza (ou cria) documento na coleção USUARIOS
+    // Busca o usuário pelo e-mail corporativo (criado na etapa anterior)
+    const usuariosQuery = await db
+      .collection("usuarios")
+      .where("email", "==", emailCorporativo)
+      .limit(1)
+      .get();
+
+    if (!usuariosQuery.empty) {
+      const usuarioDoc = usuariosQuery.docs[0];
+      const usuarioRef = usuarioDoc.ref;
+
+      // Monta objeto com as regras de negócio solicitadas
+      const dadosUsuario = {
+        // Dados Pessoais Atualizados
+        nome: dadosFormulario.nomeCompleto,
+        contato: dadosFormulario.telefone,
+        endereco: {
+          cep: dadosFormulario.cep,
+          logradouro: dadosFormulario.endereco,
+          numero: dadosFormulario.numero,
+          bairro: dadosFormulario.bairro,
+          cidade: dadosFormulario.cidade,
+          estado: dadosFormulario.estado,
+        },
+        // Dados Profissionais
+        profissao: dadosFormulario.crpAtivo
+          ? "Psicólogo(a)"
+          : dadosFormulario.profissao || "Terapeuta",
+        crp: dadosFormulario.crpAtivo ? "Ativo" : "",
+        formacao: {
+          graduacao: dadosFormulario.graduacao,
+          especializacoes: dadosFormulario.especializacoes,
+        },
+        publico_atendido: dadosFormulario.publicoAtendido || [],
+        disponibilidade: dadosFormulario.disponibilidade,
+
+        // Documentos (Links)
+        documentos: {
+          rg: dadosFormulario.rgUrl || "",
+          cpf: dadosFormulario.cpfUrl || "",
+          diploma: dadosFormulario.diplomaUrl || "",
+          comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
+        },
+
+        // === REGRAS DE NEGÓCIO SOLICITADAS ===
+        primeiraFase: true,
+        inativo: false,
+        recebeDireto: true,
+        fazAtendimento: true,
+        funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"), // Adiciona 'atendimento' sem apagar outras funções
+      };
+
+      await usuarioRef.update(dadosUsuario);
+      console.log(`Usuário ${emailCorporativo} atualizado com sucesso.`);
+    } else {
+      console.warn(
+        `Usuário com email ${emailCorporativo} não encontrado na coleção usuarios para atualização.`
+      );
+      // Opcional: Criar se não existir, mas pela regra de negócio ele deveria existir.
+    }
+
+    // 3. Marca token como usado
+    await tokenDoc.ref.update({
+      usado: true,
+      usadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Cadastro finalizado!" });
+  } catch (error) {
+    console.error("Erro salvarDadosAdmissao:", error);
+    return res.status(500).json({ erro: "Erro ao processar cadastro." });
+  }
+});
