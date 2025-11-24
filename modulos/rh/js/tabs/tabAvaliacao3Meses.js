@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAvaliacao3Meses.js
- * Versão: 2.0.0 (Salva em Usuários + Correção Visual)
+ * Versão: 2.2.0 (Busca Forçada do Nome do Avaliador)
  * Descrição: Gerencia a etapa de Avaliação de Experiência (3 Meses).
  */
 
@@ -9,11 +9,12 @@ import {
   updateDoc,
   doc,
   getDocs,
+  getDoc, // Garanta que getDoc está importado
   query,
   where,
   arrayUnion,
-  collection, // Necessário para buscar usuarios
-  db, // Necessário para acessar o banco
+  collection,
+  db,
 } from "../../../../assets/js/firebase-init.js";
 
 // Variável global do módulo
@@ -50,11 +51,11 @@ export async function renderizarAvaliacao3Meses(state) {
     }
 
     let listaHtml = `
-  	<div class="description-box" style="margin-top: 15px;">
-   	<p>Colaboradores que completaram a integração e estão no período de experiência. Registre a avaliação de 3 meses para efetivá-los.</p>
-  	</div>
-  	<div class="candidatos-container candidatos-grid">
-  `;
+    <div class="description-box" style="margin-top: 15px;">
+      <p>Colaboradores que completaram a integração e estão no período de experiência. Registre a avaliação de 3 meses para efetivá-los.</p>
+    </div>
+    <div class="candidatos-container candidatos-grid">
+    `;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -91,16 +92,16 @@ export async function renderizarAvaliacao3Meses(state) {
      <div class="info-primaria">
       <h4 class="nome-candidato">
        ${dadosCandidato.nome_candidato || "Colaborador Sem Nome"}
-      	<span class="status-badge ${statusClass}">
-       	<i class="fas fa-tag"></i> Em Experiência
-      	</span>
+        <span class="status-badge ${statusClass}">
+          <i class="fas fa-tag"></i> Em Experiência
+        </span>
       </h4>
-     	<p class="small-info">
+      <p class="small-info">
        <i class="fas fa-briefcase"></i> Cargo: ${
          cand.admissao_info?.cargo_final || vagaTitulo
        }
       </p>
-     	<p class="small-info">
+      <p class="small-info">
        <i class="fas fa-calendar-alt"></i> Integração: ${
          dadosCandidato.data_integracao
        }
@@ -108,19 +109,19 @@ export async function renderizarAvaliacao3Meses(state) {
      </div>
      
      <div class="acoes-candidato">
-     	<button 
-      	class="action-button primary btn-avaliar-3meses" 
-      	data-id="${candidatoId}"
-      	data-dados="${dadosCodificados}"
-     		style="background: var(--cor-primaria);">
-      	<i class="fas fa-clipboard-check me-1"></i> Registrar Avaliação
-     	</button>
-     	<button 
-      	class="action-button secondary btn-ver-detalhes-admissao" 
-      	data-id="${candidatoId}"
-      	data-dados="${dadosCodificados}">
-      	<i class="fas fa-eye me-1"></i> Detalhes
-     	</button>
+      <button 
+        class="action-button primary btn-avaliar-3meses" 
+        data-id="${candidatoId}"
+        data-dados="${dadosCodificados}"
+        style="background: var(--cor-primaria);">
+        <i class="fas fa-clipboard-check me-1"></i> Registrar Avaliação
+      </button>
+      <button 
+        class="action-button secondary btn-ver-detalhes-admissao" 
+        data-id="${candidatoId}"
+        data-dados="${dadosCodificados}">
+        <i class="fas fa-eye me-1"></i> Detalhes
+      </button>
      </div>
     </div>
    `;
@@ -178,7 +179,7 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
     return;
   }
 
-  // Injeta CSS para corrigir visual do status e botões (conforme solicitado)
+  // Injeta CSS para corrigir visual do status e botões
   const styleId = "style-fix-avaliacao-3meses";
   if (!document.getElementById(styleId)) {
     const style = document.createElement("style");
@@ -210,6 +211,26 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
 
   form.reset();
 
+  // Preenche dados anteriores se existirem
+  const avaliacaoAnterior = dadosCandidato.avaliacao_3meses || {};
+  const feedbackPositivoEl = document.getElementById(
+    "avaliacao-3meses-positivo"
+  );
+  const feedbackDesenvolverEl = document.getElementById(
+    "avaliacao-3meses-desenvolver"
+  );
+  const radioAprovado = document.getElementById("avaliacao-3meses-aprovado");
+  const radioReprovado = document.getElementById("avaliacao-3meses-reprovado");
+
+  if (feedbackPositivoEl)
+    feedbackPositivoEl.value = avaliacaoAnterior.feedback_positivo || "";
+  if (feedbackDesenvolverEl)
+    feedbackDesenvolverEl.value = avaliacaoAnterior.feedback_desenvolver || "";
+  if (radioAprovado)
+    radioAprovado.checked = avaliacaoAnterior.resultado === "Aprovado";
+  if (radioReprovado)
+    radioReprovado.checked = avaliacaoAnterior.resultado === "Reprovado";
+
   form.removeEventListener("submit", submeterAvaliacao3Meses);
   form.addEventListener("submit", submeterAvaliacao3Meses);
 
@@ -217,7 +238,6 @@ function abrirModalAvaliacao3Meses(candidatoId, dadosCandidato) {
   modal
     .querySelectorAll(".close-modal-btn, .action-button.secondary")
     .forEach((btn) => {
-      // Remove listeners antigos clonando
       const newBtn = btn.cloneNode(true);
       btn.parentNode.replaceChild(newBtn, btn);
       newBtn.addEventListener("click", () =>
@@ -235,7 +255,7 @@ async function submeterAvaliacao3Meses(e) {
   const btnSalvar = modal.querySelector('button[type="submit"]');
   const form = document.getElementById("form-avaliacao-3meses");
 
-  const candidatoId = modal.dataset.candidaturaId; // ID da candidatura
+  const candidatoId = modal.dataset.candidaturaId;
 
   if (!candidatoId || !dadosCandidatoAtual) {
     console.error("Dados do candidato não encontrados.");
@@ -265,7 +285,23 @@ async function submeterAvaliacao3Meses(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
-    // 1. Identificar o USUÁRIO (UID) com base no email
+    // --- 1. BUSCAR O USUÁRIO LOGADO (AVALIADOR) ---
+    // Busca "na hora" para garantir que temos o nome correto, mesmo que currentUserData esteja desatualizado
+    let nomeAvaliador = "RH (Admin)";
+    let uidAvaliador = currentUserData.id || currentUserData.uid;
+
+    if (uidAvaliador) {
+      console.log(
+        `🔍 Buscando nome atualizado do avaliador (${uidAvaliador})...`
+      );
+      const avaliadorSnap = await getDoc(doc(db, "usuarios", uidAvaliador));
+      if (avaliadorSnap.exists()) {
+        nomeAvaliador = avaliadorSnap.data().nome || "RH";
+      }
+    }
+    console.log("✅ Avaliador identificado:", nomeAvaliador);
+
+    // --- 2. Identificar o COLABORADOR (UID) com base no email ---
     const emailBusca =
       dadosCandidatoAtual.email_novo &&
       dadosCandidatoAtual.email_novo !== "Não solicitado"
@@ -277,7 +313,7 @@ async function submeterAvaliacao3Meses(e) {
         "E-mail do colaborador não encontrado para vincular a avaliação."
       );
 
-    console.log(`🔍 Buscando usuário com email: ${emailBusca}`);
+    console.log(`🔍 Buscando colaborador com email: ${emailBusca}`);
     const usuariosQuery = query(
       collection(db, "usuarios"),
       where("email", "==", emailBusca)
@@ -292,34 +328,33 @@ async function submeterAvaliacao3Meses(e) {
 
     const usuarioDoc = usuariosSnap.docs[0];
     const usuarioUid = usuarioDoc.id;
-    console.log(`✅ Usuário encontrado: ${usuarioUid}`);
+    console.log(`✅ Colaborador encontrado: ${usuarioUid}`);
 
     const isAprovado = resultado === "Aprovado";
 
-    // 2. Atualizar a coleção USUARIOS
+    // --- 3. Atualizar a coleção USUARIOS (do Colaborador) ---
     const dadosAvaliacaoUsuario = {
       avaliacao_experiencia: {
         data: new Date(),
         resultado: resultado,
         feedback_positivo: feedbackPositivo,
         feedback_desenvolver: feedbackDesenvolver,
-        avaliador: currentUserData.nome || "RH",
+        avaliador: nomeAvaliador,
+        avaliador_uid: uidAvaliador,
       },
-      // Se aprovado, confirma efetivação. Se não, marca inativo (ou mantém ativo até desligamento formal)
       efetivado: isAprovado,
-      inativo: !isAprovado, // Marca como inativo se reprovado
+      inativo: !isAprovado,
       status: isAprovado ? "ativo" : "desligado",
-      // Adicione outros campos se necessário para "segunda fase"
     };
 
     await updateDoc(doc(db, "usuarios", usuarioUid), dadosAvaliacaoUsuario);
     console.log("✅ Avaliação salva no perfil do usuário.");
 
-    // 3. Atualizar CANDIDATURA (para tirar da lista de pendências)
+    // --- 4. Atualizar CANDIDATURA ---
     const novoStatusCandidatura = isAprovado
       ? "PROCESSO_CONCLUIDO"
       : "REPROVADO_EXPERIENCIA";
-    const acaoHistorico = `Avaliação de 3 Meses: ${resultado}. ${
+    const acaoHistorico = `Avaliação de 3 Meses: ${resultado} (Por: ${nomeAvaliador}). ${
       isAprovado ? "Efetivado." : "Desligado."
     }`;
 
@@ -328,7 +363,7 @@ async function submeterAvaliacao3Meses(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: acaoHistorico,
-        usuario: currentUserData.id || "rh_system_user",
+        usuario: nomeAvaliador,
       }),
     });
 
