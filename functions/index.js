@@ -2963,8 +2963,9 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
     }
   });
 });
+
 // ====================================================================
-// GATILHO: Verifica se todos os documentos foram assinados
+// GATILHO: Verifica se todos os documentos foram assinados (CORRIGIDO V2)
 // ====================================================================
 exports.verificarAssinaturaCompleta = onDocumentUpdated(
   "solicitacoes_assinatura/{solicitacaoId}",
@@ -2972,44 +2973,49 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
     const dadosAntes = event.data.before.data();
     const dadosDepois = event.data.after.data();
 
-    // Se não houve mudança no status geral ou nos documentos, ignora
+    // ✅ CORREÇÃO: Usando as variáveis corretas (dadosAntes/dadosDepois)
     if (
-      dadosBefore.status === dadosAfter.status &&
-      JSON.stringify(dadosBefore.documentos) ===
-        JSON.stringify(dadosAfter.documentos)
+      dadosAntes.status === dadosDepois.status &&
+      JSON.stringify(dadosAntes.documentos) ===
+        JSON.stringify(dadosDepois.documentos)
     ) {
-      return null;
+      return null; // Nenhuma mudança relevante
     }
 
     const documentos = dadosDepois.documentos || [];
-    const todosAssinados = documentos.every((doc) => doc.status === "assinado");
+    // Verifica se TODOS os itens dentro do array têm status 'assinado'
+    const todosAssinados =
+      documentos.length > 0 &&
+      documentos.every((doc) => doc.status === "assinado");
 
     // Se todos foram assinados, atualiza o status da solicitação E da candidatura
-    if (todosAssinados && dadosDepois.status !== "concluido") {
+    if (todosAssinados) {
       logger.info(
-        `📝 Todos os documentos da solicitação ${event.params.solicitacaoId} foram assinados.`
+        `📝 Solicitação ${event.params.solicitacaoId}: Todos assinados. Atualizando candidatura...`
       );
 
-      // 1. Atualiza a própria solicitação para 'concluido'
-      await event.data.after.ref.update({
-        status: "concluido",
-        dataConclusao: FieldValue.serverTimestamp(),
-      });
+      // 1. Garante que o status da solicitação seja 'concluido'
+      if (dadosDepois.status !== "concluido") {
+        await event.data.after.ref.update({
+          status: "concluido",
+          dataConclusao: FieldValue.serverTimestamp(),
+        });
+      }
 
-      // 2. Atualiza a candidatura vinculada
+      // 2. Atualiza a candidatura vinculada para mover o card
       const candidatoId = dadosDepois.candidatoId_ref;
+
       if (candidatoId) {
         const candidatoRef = db.collection("candidaturas").doc(candidatoId);
 
-        // Define o novo status para mover o card para a próxima aba (Integração)
-        // Ajuste este status conforme o nome que você usa na aba de Integração
+        // Status exato que move para a próxima aba no seu sistema
         const novoStatusCandidatura = "AGUARDANDO_INTEGRACAO";
 
         await candidatoRef.update({
           status_recrutamento: novoStatusCandidatura,
           historico: FieldValue.arrayUnion({
             data: new Date(),
-            acao: "Todos os documentos foram assinados pelo voluntário. Movido para Integração.",
+            acao: "Processo de assinatura finalizado. Movido para Integração.",
             usuario: "Sistema (Automático)",
           }),
         });
@@ -3017,6 +3023,8 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
         logger.info(
           `✅ Candidatura ${candidatoId} movida para ${novoStatusCandidatura}`
         );
+      } else {
+        logger.warn("⚠️ candidatoId_ref não encontrado na solicitação.");
       }
     }
   }
