@@ -2801,7 +2801,7 @@ exports.uploadDocumentoAdmissao = onRequest(
   }
 );
 
-// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Corrigido: Cria usuário se não existir)
+// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Corrigido: Gera Username e Salva UID)
 exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
   cors(req, res, async () => {
     try {
@@ -2826,11 +2826,9 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         return res.status(403).json({ erro: "Token já utilizado" });
 
       const candidatoId = dadosToken.candidatoId;
-      // Normaliza o email para minúsculo para evitar erros de busca
       const emailCorporativo = (dadosToken.emailCorporativo || "")
         .trim()
         .toLowerCase();
-
       const emailDestino =
         dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
 
@@ -2849,8 +2847,9 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         }),
       });
 
-      // --- 2. Atualiza ou Cria em USUARIOS (Lógica Robusta) ---
+      // --- 2. Localiza ou Cria Referência do USUÁRIO ---
       let usuarioRef;
+      let usuarioDataExistente = null;
 
       // A. Tenta buscar pelo e-mail no Firestore
       const usuariosQuery = await db
@@ -2860,33 +2859,45 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         .get();
 
       if (!usuariosQuery.empty) {
-        // Achou no Firestore
         usuarioRef = usuariosQuery.docs[0].ref;
-        console.log(`Usuário encontrado no Firestore: ${usuarioRef.id}`);
+        usuarioDataExistente = usuariosQuery.docs[0].data();
       } else {
-        // B. Não achou no Firestore, tenta buscar no Authentication para pegar o UID correto
-        console.warn(
-          `Usuário ${emailCorporativo} não encontrado no Firestore. Buscando no Auth...`
-        );
+        // B. Tenta buscar no Auth para pegar o UID correto
         try {
           const userRecord = await admin
             .auth()
             .getUserByEmail(emailCorporativo);
           usuarioRef = db.collection("usuarios").doc(userRecord.uid);
-          console.log(`Usuário recuperado do Auth. UID: ${userRecord.uid}`);
+
+          // Verifica se o doc existe pelo ID (caso tenha sido criado mas sem email indexado ainda)
+          const docSnap = await usuarioRef.get();
+          if (docSnap.exists) {
+            usuarioDataExistente = docSnap.data();
+          }
         } catch (authError) {
-          // C. Não achou nem no Auth, cria um novo documento com ID automático
-          console.error(
-            "Usuário não existe no Auth. Criando novo documento no Firestore."
-          );
-          usuarioRef = db.collection("usuarios").doc(); // Gera ID novo
+          // C. Cria novo ID se não existir nem no Auth
+          usuarioRef = db.collection("usuarios").doc();
         }
       }
 
-      // Objeto de dados (Regras de Negócio)
+      // --- 3. Gera Username (Se necessário) ---
+      let finalUsername;
+      if (usuarioDataExistente && usuarioDataExistente.username) {
+        finalUsername = usuarioDataExistente.username;
+      } else {
+        // Gera um novo username único baseado no nome completo
+        finalUsername = await gerarUsernameUnico(dadosFormulario.nomeCompleto);
+        console.log(
+          `Username gerado para ${dadosFormulario.nomeCompleto}: ${finalUsername}`
+        );
+      }
+
+      // --- 4. Objeto de dados para Salvar ---
       const dadosUsuario = {
+        uid: usuarioRef.id, // Salva o UID explicitamente
+        username: finalUsername, // Salva o username gerado ou existente
         nome: dadosFormulario.nomeCompleto,
-        email: emailCorporativo, // Garante que o email esteja salvo
+        email: emailCorporativo,
         contato: dadosFormulario.telefone,
         endereco: {
           cep: dadosFormulario.cep,
@@ -2919,29 +2930,29 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         inativo: false,
         recebeDireto: true,
         fazAtendimento: true,
-        // Usa arrayUnion para não apagar funções existentes se o doc já existia
         funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
       };
 
-      // 🔥 USA SET COM MERGE (Cria se não existir, Atualiza se existir)
+      // 🔥 USA SET COM MERGE (Atualiza campos existentes, cria se não existir)
       await usuarioRef.set(dadosUsuario, { merge: true });
-      console.log("Dados salvos na coleção usuarios com sucesso.");
+      console.log(
+        `Dados salvos na coleção usuarios (UID: ${usuarioRef.id}, User: ${finalUsername}).`
+      );
 
-      // --- 3. Marca token como usado ---
+      // --- 5. Marca token como usado ---
       await tokenDoc.ref.update({
         usado: true,
         usadoEm: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // --- 4. Enviar E-mail para quem gerou o link ---
+      // --- 6. Enviar E-mail RH ---
       try {
         const htmlEmailAviso = `
           <h3>Ficha de Admissão Preenchida</h3>
-          <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> acabou de preencher a ficha cadastral e enviar os documentos.</p>
-          <p><strong>Status Atual:</strong> Movido para "Assinatura de Documentos"</p>
-          <p>Você pode acessar o painel de Admissão para conferir os dados e gerar o contrato.</p>
-          <br>
-          <p><em>Sistema EuPsico</em></p>
+          <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> preencheu a ficha cadastral.</p>
+          <p><strong>Username:</strong> ${finalUsername}</p>
+          <p><strong>Status:</strong> Movido para "Assinatura de Documentos"</p>
+          <br><p><em>Sistema EuPsico</em></p>
           `;
 
         await transporter.sendMail({
@@ -2951,7 +2962,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           html: htmlEmailAviso,
         });
       } catch (mailError) {
-        logger.error("Erro ao enviar email de aviso:", mailError);
+        logger.error("Erro ao enviar email:", mailError);
       }
 
       return res
