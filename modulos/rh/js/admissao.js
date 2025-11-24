@@ -107,35 +107,24 @@ export const getGlobalState = () => ({
 // MODAL DE DETALHES (CORRIGIDO)
 // ============================================
 
-/**
- * Abre modal com detalhes completos do candidato
- * @param {string} candidatoId - ID do documento do candidato
- * @param {string} modo - Modo de visualização (detalhes, etc.)
- * @param {Object} candidato - Dados do candidato (passados pelo botão)
- */
 function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
-  // Certifique-se que seu 'admissao.html' TEM um modal com id="modal-candidato"
   const modalCandidato = document.getElementById("modal-candidato");
   const modalCandidatoBody = document.getElementById("candidato-modal-body");
   const modalCandidatoFooter = document.getElementById(
     "candidato-modal-footer"
   );
 
-  // Não precisamos do 'getGlobalState' aqui, podemos chamar as funções direto
-  // pois estão no mesmo arquivo.
-
   if (!modalCandidato || !modalCandidatoBody || !modalCandidatoFooter) {
-    console.error(
-      "❌ Admissão: Modal de detalhes 'modal-candidato' (e seus filhos body/footer) não encontrado no admissao.html"
-    );
-    window.showToast?.("Erro: Modal de detalhes não encontrado.", "error");
+    console.error("❌ Admissão: Modal de detalhes não encontrado.");
     return;
   }
 
-  console.log(`🔹 Admissão: Abrindo modal para candidato ${candidatoId}`);
-  dadosCandidatoAtual = candidato; // Salva no estado global do módulo
+  console.log(
+    `🔹 Admissão: Abrindo modal para candidato ${candidatoId}`,
+    candidato
+  );
+  dadosCandidatoAtual = candidato;
 
-  // Atualiza título do modal
   const tituloModalEl = document.getElementById("candidato-nome-titulo");
   if (tituloModalEl) {
     tituloModalEl.textContent = `Detalhes: ${
@@ -143,29 +132,34 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
     }`;
   }
 
-  // Monta o conteúdo com fieldsets
+  // Estilo inline para reduzir o tamanho dos títulos
+  const styleTitulo =
+    "font-size: 0.9em; color: #666; margin-bottom: 4px; display: block;";
+  const styleValor = "font-size: 1.1em; font-weight: 600; color: #333;";
+
+  // Monta o conteúdo
   const contentHtml = `
   <div class="row">
    <div class="col-lg-6">
     <fieldset>
      <legend><i class="fas fa-user me-2"></i>Informações Pessoais</legend>
      <div class="details-grid">
-      <p class="card-text">
-       <strong>Nome Completo:</strong><br>
-       <span style="color: var(--cor-primaria); font-weight: 600;">${
-         candidato.nome_candidato || "N/A"
-       }</span>
-      </p>
-      <p class="card-text">
-       <strong>Email Pessoal:</strong><br>
-       <span>${
-         candidato.email_pessoal || candidato.email_candidato || "N/A"
-       }</span>
-      </p>
-      <p class="card-text">
-       <strong>Telefone (WhatsApp):</strong><br>
-       <span>${candidato.telefone_contato || "N/A"}</span>
-      </p>
+      <div class="mb-3">
+       <span style="${styleTitulo}">Nome Completo:</span>
+       <span style="${styleValor} color: var(--cor-primaria);">${
+    candidato.nome_candidato || "N/A"
+  }</span>
+      </div>
+      <div class="mb-3">
+       <span style="${styleTitulo}">Email Pessoal:</span>
+       <span style="${styleValor}">${
+    candidato.email_pessoal || candidato.email_candidato || "N/A"
+  }</span>
+      </div>
+      <div class="mb-3">
+       <span style="${styleTitulo}">Telefone (WhatsApp):</span>
+       <span style="${styleValor}">${candidato.telefone_contato || "N/A"}</span>
+      </div>
      </div>
     </fieldset>
    </div>
@@ -173,22 +167,28 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
     <fieldset>
      <legend><i class="fas fa-briefcase me-2"></i>Informações da Vaga</legend>
      <div class="details-grid">
-     	<p class="card-text">
-      	<strong>Vaga Aprovada:</strong><br>
-      	<span>${candidato.titulo_vaga_original || "N/A"}</span>
-     	</p>
-     	<p class="card-text">
-      	<strong>Status Admissão:</strong><br>
+     	<div class="mb-3">
+      	<span style="${styleTitulo}">Vaga Aprovada:</span>
+      	<span style="${styleValor}">${
+    candidato.titulo_vaga_original || candidato.vaga_titulo || "N/A"
+  }</span>
+     	</div>
+     	<div class="mb-3">
+      	<span style="${styleTitulo}">Status Admissão:</span>
       	<span class="status-badge ${getStatusBadgeClass(
-          candidato.status_recrutamento
+          candidato.status_recrutamento || ""
         )}">
       		${candidato.status_recrutamento || "N/A"}
       	</span>
-     	</p>
-     	<p class="card-text">
-      	<strong>Novo E-mail (Solicitado):</strong><br>
-      	<span>${candidato.email_novo || "Aguardando"}</span>
-     	</p>
+     	</div>
+     	<div class="mb-3">
+      	<span style="${styleTitulo}">Novo E-mail (Solicitado):</span>
+      	<span style="${styleValor}">${
+    candidato.email_novo ||
+    candidato.admissaoinfo?.email_solicitado ||
+    "Não solicitado"
+  }</span>
+     	</div>
      </div>
     </fieldset>
    </div>
@@ -196,32 +196,27 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
  `;
   modalCandidatoBody.innerHTML = contentHtml;
 
-  // Atualiza o footer
   modalCandidatoFooter.innerHTML = `
   <button type="button" class="action-button secondary fechar-modal-candidato">
    <i class="fas fa-times me-2"></i> Fechar
   </button>
  `;
 
-  // Anexa listener ao botão de fechar no footer
   modalCandidatoFooter
     .querySelector(".fechar-modal-candidato")
     .addEventListener("click", () => {
       modalCandidato.classList.remove("is-visible");
     });
 
-  // Anexa listener ao botão de fechar no header
   const closeBtnHeader = modalCandidato.querySelector(
     ".close-modal-btn.fechar-modal-candidato"
   );
   if (closeBtnHeader) {
-    // Remove listener antigo se houver e adiciona o novo
     closeBtnHeader.onclick = () =>
       modalCandidato.classList.remove("is-visible");
   }
 
   modalCandidato.classList.add("is-visible");
-  console.log("✅ Admissão: Modal de detalhes aberto");
 }
 
 // Exporta a função para a window, para que as abas possam chamá-la
