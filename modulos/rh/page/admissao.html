@@ -127,6 +127,85 @@
     </div>
   </div>
 </div>
+<div id="modal-agendamento-integracao" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-calendar-check me-2"></i>Agendar Integração (Onboarding)</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-agendamento-integracao">&times;</button>
+      </div>
+      <form id="form-agendamento-integracao">
+        <div class="modal-body">
+          <div class="info-card mb-4">
+            <h4 style="margin-top: 0;"><i class="fas fa-user me-2"></i> Candidato: <span id="agendamento-int-nome-candidato">-</span></h4>
+            <p><strong>Status Atual:</strong> <span id="agendamento-int-status-atual" class="status-badge">-</span></p>
+          </div>
+
+          <fieldset>
+            <legend>Dados da Reunião</legend>
+            <div class="form-group">
+              <label for="data-integracao-agendada">Data da Integração:</label>
+              <input type="date" id="data-integracao-agendada" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="hora-integracao-agendada">Horário:</label>
+              <input type="time" id="hora-integracao-agendada" class="form-control" required>
+            </div>
+            <div class="info-note">
+              <i class="fas fa-info-circle"></i> Ao salvar, um convite será enviado para o e-mail corporativo do novo colaborador e uma notificação via WhatsApp.
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-agendamento-integracao">Cancelar</button>
+          <button type="submit" class="action-button primary">
+            <i class="fas fa-calendar-alt me-2"></i> Agendar Integração
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-enviar-treinamento" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-chalkboard-teacher me-2"></i>Enviar Treinamento</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-enviar-treinamento">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="info-card mb-4">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Nome:</strong> <span id="treinamento-nome-candidato">...</span></p>
+              <p><strong>E-mail Corporativo:</strong> <span id="treinamento-email-candidato">...</span></p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>WhatsApp:</strong> <span id="treinamento-whatsapp-candidato">...</span></p>
+            </div>
+          </div>
+        </div>
+
+        <form id="form-enviar-treinamento">
+          <div class="form-group">
+            <label for="treinamento-selecionado">Selecione o Treinamento:</label>
+            <select id="treinamento-selecionado" class="form-control" required>
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="treinamento-mensagem">Mensagem Personalizada (Opcional):</label>
+            <textarea id="treinamento-mensagem" class="form-control" rows="3" placeholder="Deixe em branco para usar a mensagem padrão."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="action-button secondary" data-modal-id="modal-enviar-treinamento">Cancelar</button>
+        <button type="button" id="btn-enviar-treinamento-whatsapp" class="action-button whatsapp">
+          <i class="fab fa-whatsapp me-2"></i> Enviar via WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
    <script type="module" src="../js/admissao.js"></script>
 </body>
 </html>
