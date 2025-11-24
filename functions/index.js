@@ -2801,139 +2801,165 @@ exports.uploadDocumentoAdmissao = onRequest(
   }
 );
 
-// ====================================================================
-// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (CORRIGIDO CORS)
-// ====================================================================
-exports.salvarDadosAdmissao = onRequest(
-  { timeoutSeconds: 60 }, // Removido 'cors: true' para usar o wrapper manual
-  (req, res) => {
-    cors(req, res, async () => {
-      try {
-        if (req.method !== "POST") {
-          return res.status(405).json({ erro: "Método não permitido" });
-        }
-
-        const { token, dadosFormulario } = req.body;
-
-        // --- Validação do Token ---
-        const tokenQuery = await db
-          .collection("tokens_admissao")
-          .where("token", "==", token)
-          .limit(1)
-          .get();
-        if (tokenQuery.empty)
-          return res.status(404).json({ erro: "Token inválido" });
-
-        const tokenDoc = tokenQuery.docs[0];
-        const dadosToken = tokenDoc.data();
-        if (dadosToken.usado)
-          return res.status(403).json({ erro: "Token já utilizado" });
-
-        const candidatoId = dadosToken.candidatoId;
-        const emailCorporativo = dadosToken.emailCorporativo;
-
-        // ✅ RECUPERA O E-MAIL DE QUEM GEROU O LINK (com fallback)
-        const emailDestino =
-          dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
-
-        // --- 1. Atualiza CANDIDATURA e muda STATUS ---
-        const candidatoRef = db.collection("candidaturas").doc(candidatoId);
-
-        await candidatoRef.update({
-          dados_admissao: {
-            ...dadosFormulario,
-            preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          status_recrutamento: "AGUARDANDO_ASSINATURA",
-          historico: admin.firestore.FieldValue.arrayUnion({
-            data: new Date(),
-            acao: "Candidato preencheu ficha. Movido para Assinatura.",
-            usuario: "Sistema (Via Ficha)",
-          }),
-        });
-
-        // --- 2. Atualiza USUARIOS ---
-        const usuariosQuery = await db
-          .collection("usuarios")
-          .where("email", "==", emailCorporativo)
-          .limit(1)
-          .get();
-
-        if (!usuariosQuery.empty) {
-          const usuarioDoc = usuariosQuery.docs[0];
-          const dadosUsuario = {
-            nome: dadosFormulario.nomeCompleto,
-            contato: dadosFormulario.telefone,
-            endereco: {
-              cep: dadosFormulario.cep,
-              logradouro: dadosFormulario.endereco,
-              numero: dadosFormulario.numero,
-              bairro: dadosFormulario.bairro,
-              cidade: dadosFormulario.cidade,
-              estado: dadosFormulario.estado,
-            },
-            profissao: dadosFormulario.crpAtivo
-              ? "Psicólogo(a)"
-              : dadosFormulario.profissao || "Terapeuta",
-            crp: dadosFormulario.crpAtivo ? "Ativo" : "",
-            formacao: {
-              graduacao: dadosFormulario.graduacao,
-              especializacoes: dadosFormulario.especializacoes,
-            },
-            publico_atendido: dadosFormulario.publicoAtendido || [],
-            disponibilidade: dadosFormulario.disponibilidade,
-
-            documentos: {
-              rg: dadosFormulario.rgUrl || "",
-              cpf: dadosFormulario.cpfUrl || "",
-              diploma: dadosFormulario.diplomaUrl || "",
-              comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
-            },
-            primeiraFase: true,
-            inativo: false,
-            recebeDireto: true,
-            fazAtendimento: true,
-            funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
-          };
-          await usuarioDoc.ref.update(dadosUsuario);
-        }
-
-        // --- 3. Marca token como usado ---
-        await tokenDoc.ref.update({
-          usado: true,
-          usadoEm: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        // --- 4. Enviar E-mail para quem gerou o link ---
-        try {
-          const htmlEmailAviso = `
-            <h3>Ficha de Admissão Preenchida</h3>
-            <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> acabou de preencher a ficha cadastral e enviar os documentos.</p>
-            <p><strong>Status Atual:</strong> Movido para "Assinatura de Documentos"</p>
-            <p>Você pode acessar o painel de Admissão para conferir os dados e gerar o contrato.</p>
-            <br>
-            <p><em>Sistema EuPsico</em></p>
-            `;
-
-          await transporter.sendMail({
-            from: "EuPsico Sistema <atendimento@eupsico.org.br>",
-            to: emailDestino,
-            subject: `📄 Ficha Preenchida: ${dadosFormulario.nomeCompleto}`,
-            html: htmlEmailAviso,
-          });
-
-          console.log(`✅ E-mail de aviso enviado para ${emailDestino}`);
-        } catch (mailError) {
-          logger.error("Erro ao enviar email de aviso:", mailError);
-        }
-
-        return res
-          .status(200)
-          .json({ success: true, message: "Cadastro finalizado!" });
-      } catch (error) {
-        logger.error("Erro salvarDadosAdmissao:", error);
-        return res.status(500).json({ erro: "Erro ao processar cadastro." });
+// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Corrigido: Cria usuário se não existir)
+exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({ erro: "Método não permitido" });
       }
-    });
-  }
-);
+
+      const { token, dadosFormulario } = req.body;
+
+      // --- Validação do Token ---
+      const tokenQuery = await db
+        .collection("tokens_admissao")
+        .where("token", "==", token)
+        .limit(1)
+        .get();
+      if (tokenQuery.empty)
+        return res.status(404).json({ erro: "Token inválido" });
+
+      const tokenDoc = tokenQuery.docs[0];
+      const dadosToken = tokenDoc.data();
+      if (dadosToken.usado)
+        return res.status(403).json({ erro: "Token já utilizado" });
+
+      const candidatoId = dadosToken.candidatoId;
+      // Normaliza o email para minúsculo para evitar erros de busca
+      const emailCorporativo = (dadosToken.emailCorporativo || "")
+        .trim()
+        .toLowerCase();
+
+      const emailDestino =
+        dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
+
+      // --- 1. Atualiza CANDIDATURA ---
+      const candidatoRef = db.collection("candidaturas").doc(candidatoId);
+      await candidatoRef.update({
+        dados_admissao: {
+          ...dadosFormulario,
+          preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        status_recrutamento: "AGUARDANDO_ASSINATURA",
+        historico: admin.firestore.FieldValue.arrayUnion({
+          data: new Date(),
+          acao: "Candidato preencheu ficha. Movido para Assinatura.",
+          usuario: "Sistema (Via Ficha)",
+        }),
+      });
+
+      // --- 2. Atualiza ou Cria em USUARIOS (Lógica Robusta) ---
+      let usuarioRef;
+
+      // A. Tenta buscar pelo e-mail no Firestore
+      const usuariosQuery = await db
+        .collection("usuarios")
+        .where("email", "==", emailCorporativo)
+        .limit(1)
+        .get();
+
+      if (!usuariosQuery.empty) {
+        // Achou no Firestore
+        usuarioRef = usuariosQuery.docs[0].ref;
+        console.log(`Usuário encontrado no Firestore: ${usuarioRef.id}`);
+      } else {
+        // B. Não achou no Firestore, tenta buscar no Authentication para pegar o UID correto
+        console.warn(
+          `Usuário ${emailCorporativo} não encontrado no Firestore. Buscando no Auth...`
+        );
+        try {
+          const userRecord = await admin
+            .auth()
+            .getUserByEmail(emailCorporativo);
+          usuarioRef = db.collection("usuarios").doc(userRecord.uid);
+          console.log(`Usuário recuperado do Auth. UID: ${userRecord.uid}`);
+        } catch (authError) {
+          // C. Não achou nem no Auth, cria um novo documento com ID automático
+          console.error(
+            "Usuário não existe no Auth. Criando novo documento no Firestore."
+          );
+          usuarioRef = db.collection("usuarios").doc(); // Gera ID novo
+        }
+      }
+
+      // Objeto de dados (Regras de Negócio)
+      const dadosUsuario = {
+        nome: dadosFormulario.nomeCompleto,
+        email: emailCorporativo, // Garante que o email esteja salvo
+        contato: dadosFormulario.telefone,
+        endereco: {
+          cep: dadosFormulario.cep,
+          logradouro: dadosFormulario.endereco,
+          numero: dadosFormulario.numero,
+          bairro: dadosFormulario.bairro,
+          cidade: dadosFormulario.cidade,
+          estado: dadosFormulario.estado,
+        },
+        profissao: dadosFormulario.crpAtivo
+          ? "Psicólogo(a)"
+          : dadosFormulario.profissao || "Terapeuta",
+        crp: dadosFormulario.crpAtivo ? "Ativo" : "",
+        formacao: {
+          graduacao: dadosFormulario.graduacao,
+          especializacoes: dadosFormulario.especializacoes,
+        },
+        publico_atendido: dadosFormulario.publicoAtendido || [],
+        disponibilidade: dadosFormulario.disponibilidade,
+
+        documentos: {
+          rg: dadosFormulario.rgUrl || "",
+          cpf: dadosFormulario.cpfUrl || "",
+          diploma: dadosFormulario.diplomaUrl || "",
+          comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
+          declaracao_crp: dadosFormulario.declaracaoCrpUrl || "",
+        },
+        // Configurações do Sistema
+        primeiraFase: true,
+        inativo: false,
+        recebeDireto: true,
+        fazAtendimento: true,
+        // Usa arrayUnion para não apagar funções existentes se o doc já existia
+        funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
+      };
+
+      // 🔥 USA SET COM MERGE (Cria se não existir, Atualiza se existir)
+      await usuarioRef.set(dadosUsuario, { merge: true });
+      console.log("Dados salvos na coleção usuarios com sucesso.");
+
+      // --- 3. Marca token como usado ---
+      await tokenDoc.ref.update({
+        usado: true,
+        usadoEm: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // --- 4. Enviar E-mail para quem gerou o link ---
+      try {
+        const htmlEmailAviso = `
+          <h3>Ficha de Admissão Preenchida</h3>
+          <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> acabou de preencher a ficha cadastral e enviar os documentos.</p>
+          <p><strong>Status Atual:</strong> Movido para "Assinatura de Documentos"</p>
+          <p>Você pode acessar o painel de Admissão para conferir os dados e gerar o contrato.</p>
+          <br>
+          <p><em>Sistema EuPsico</em></p>
+          `;
+
+        await transporter.sendMail({
+          from: "EuPsico Sistema <atendimento@eupsico.org.br>",
+          to: emailDestino,
+          subject: `📄 Ficha Preenchida: ${dadosFormulario.nomeCompleto}`,
+          html: htmlEmailAviso,
+        });
+      } catch (mailError) {
+        logger.error("Erro ao enviar email de aviso:", mailError);
+      }
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Cadastro finalizado!" });
+    } catch (error) {
+      logger.error("Erro salvarDadosAdmissao:", error);
+      return res.status(500).json({ erro: "Erro ao processar cadastro." });
+    }
+  });
+});
