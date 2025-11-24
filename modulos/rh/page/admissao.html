@@ -275,6 +275,55 @@
       </form>
     </div>
   </div>
+  <div id="modal-avaliacao-3meses" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-clipboard-check me-2"></i>Avaliação de Experiência</h3>
+        <button type="button" class="close-modal-btn" data-modal-id="modal-avaliacao-3meses">&times;</button>
+      </div>
+      <form id="form-avaliacao-3meses">
+        <div class="modal-body">
+          <div class="info-card mb-4">
+            <h4>Colaborador: <span id="avaliacao-3meses-nome">-</span></h4>
+            <p>Esta avaliação define a efetivação do colaborador após o período de experiência.</p>
+          </div>
+
+          <fieldset>
+            <legend>Feedback</legend>
+            <div class="form-group">
+              <label for="avaliacao-3meses-positivo">Pontos Fortes / Destaques:</label>
+              <textarea id="avaliacao-3meses-positivo" class="form-control" rows="3" placeholder="O que o colaborador fez bem?"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="avaliacao-3meses-desenvolver">Pontos de Desenvolvimento:</label>
+              <textarea id="avaliacao-3meses-desenvolver" class="form-control" rows="3" placeholder="O que precisa melhorar?"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Decisão Final</legend>
+            <div class="form-group">
+              <label>Resultado da Avaliação:</label>
+              <div class="form-check">
+                <input type="radio" name="resultado_3meses" id="avaliacao-3meses-aprovado" value="Aprovado" required>
+                <label for="avaliacao-3meses-aprovado"><strong class="text-success">Aprovado (Efetivar)</strong></label>
+              </div>
+              <div class="form-check">
+                <input type="radio" name="resultado_3meses" id="avaliacao-3meses-reprovado" value="Reprovado" required>
+                <label for="avaliacao-3meses-reprovado"><strong class="text-danger">Reprovado (Desligar)</strong></label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="action-button secondary" data-modal-id="modal-avaliacao-3meses">Cancelar</button>
+          <button type="submit" class="action-button success">
+            <i class="fas fa-check-circle me-2"></i> Registrar Decisão
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
    <script type="module" src="../js/admissao.js"></script>
 </body>
 </html>
