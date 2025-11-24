@@ -47,11 +47,11 @@ export async function renderizarAvaliacao3Meses(state) {
     }
 
     let listaHtml = `
-    	<div class="description-box" style="margin-top: 15px;">
-      	<p>Colaboradores que completaram a integração e estão no período de experiência. Registre a avaliação de 3 meses para movê-los para a etapa final.</p>
-    	</div>
-    	<div class="candidatos-container candidatos-grid">
-    `;
+  	<div class="description-box" style="margin-top: 15px;">
+   	<p>Colaboradores que completaram a integração e estão no período de experiência. Registre a avaliação de 3 meses para movê-los para a etapa final.</p>
+  	</div>
+  	<div class="candidatos-container candidatos-grid">
+  `;
 
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
@@ -73,43 +73,43 @@ export async function renderizarAvaliacao3Meses(state) {
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
       listaHtml += `
-        <div class="card card-candidato-gestor" data-id="${candidatoId}">
-          <div class="info-primaria">
-            <h4 class="nome-candidato">
-              ${cand.nome_completo || "Colaborador Sem Nome"}
-            	<span class="status-badge ${statusClass}">
-              	<i class="fas fa-tag"></i> Em Experiência
-            	</span>
-            </h4>
-          	<p class="small-info">
-              <i class="fas fa-briefcase"></i> Cargo: ${
-        cand.admissao_info?.cargo_final || vagaTitulo
-      }
-            </p>
-          	<p class="small-info">
-              <i class="fas fa-calendar-alt"></i> Integração: ${
-        dadosCandidato.data_integracao
-      }
-            </p>
-          </div>
-          
-          <div class="acoes-candidato">
-          	<button 
-            	class="action-button primary btn-avaliar-3meses" 
-            	data-id="${candidatoId}"
-            	data-dados="${dadosCodificados}"
-          		style="background: var(--cor-primaria);">
-            	<i class="fas fa-clipboard-check me-1"></i> Registrar Avaliação
-          	</button>
-          	<button 
-            	class="action-button secondary btn-ver-detalhes-admissao" 
-            	data-id="${candidatoId}"
-            	data-dados="${dadosCodificados}">
-            	<i class="fas fa-eye me-1"></i> Detalhes
-          	</button>
-          </div>
-        </div>
-      `;
+    <div class="card card-candidato-gestor" data-id="${candidatoId}">
+     <div class="info-primaria">
+      <h4 class="nome-candidato">
+       ${cand.nome_completo || "Colaborador Sem Nome"}
+      	<span class="status-badge ${statusClass}">
+       	<i class="fas fa-tag"></i> Em Experiência
+      	</span>
+      </h4>
+     	<p class="small-info">
+       <i class="fas fa-briefcase"></i> Cargo: ${
+         cand.admissao_info?.cargo_final || vagaTitulo
+       }
+      </p>
+     	<p class="small-info">
+       <i class="fas fa-calendar-alt"></i> Integração: ${
+         dadosCandidato.data_integracao
+       }
+      </p>
+     </div>
+     
+     <div class="acoes-candidato">
+     	<button 
+      	class="action-button primary btn-avaliar-3meses" 
+      	data-id="${candidatoId}"
+      	data-dados="${dadosCodificados}"
+     		style="background: var(--cor-primaria);">
+      	<i class="fas fa-clipboard-check me-1"></i> Registrar Avaliação
+     	</button>
+     	<button 
+      	class="action-button secondary btn-ver-detalhes-admissao" 
+      	data-id="${candidatoId}"
+      	data-dados="${dadosCodificados}">
+      	<i class="fas fa-eye me-1"></i> Detalhes
+     	</button>
+     </div>
+    </div>
+   `;
     });
 
     listaHtml += "</div>";
