@@ -1,0 +1,118 @@
+/* Arquivo: /modulos/voluntario/css/assinaturas-termos.css */
+
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 10px 0;
+}
+
+/* Card do Documento */
+.document-card {
+    background-color: var(--cor-surface);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: var(--sombra-suave);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 5px solid var(--cor-primaria);
+    position: relative;
+    overflow: hidden;
+}
+
+.document-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-padrao);
+}
+
+/* Cores por Status */
+.document-card.status-pendente { border-left-color: var(--cor-alerta); }
+.document-card.status-assinado { border-left-color: var(--cor-sucesso); opacity: 0.8; }
+
+.doc-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.doc-icon {
+    font-size: 1.8em;
+    color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
+    padding: 10px;
+    border-radius: 50%;
+}
+
+.doc-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    color: var(--cor-texto-principal);
+    font-weight: 600;
+}
+
+.doc-info p {
+    margin: 0;
+    font-size: 0.85em;
+    color: var(--cor-texto-secundario);
+    line-height: 1.4;
+}
+
+.doc-meta {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+    display: block;
+}
+
+.doc-actions {
+    margin-top: 15px;
+    text-align: right;
+}
+
+.btn-assinar {
+    background-color: var(--cor-sucesso); /* Verde para ação principal */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+    transition: background 0.2s;
+}
+
+.btn-assinar:hover {
+    background-color: #218838;
+    color: white;
+}
+
+/* Lista Histórico */
+.documents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.doc-item-list {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background-color: var(--cor-fundo);
+    border-radius: var(--borda-radius);
+    border: 1px solid var(--cor-borda-leve);
+}
+
+.text-muted {
+    color: var(--cor-texto-secundario);
+    font-style: italic;
+    padding: 10px;
+}
