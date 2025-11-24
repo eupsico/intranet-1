@@ -43,7 +43,7 @@ export async function renderizarIntegracao(state) {
     '<div class="loading-spinner">Carregando candidatos para integração...</div>';
 
   try {
-    // Busca candidatos que assinaram os documentos
+    // Busca candidatos prontos para integração
     const q = query(
       candidatosCollection,
       where("status_recrutamento", "==", "AGUARDANDO_INTEGRACAO")
@@ -75,18 +75,27 @@ export async function renderizarIntegracao(state) {
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
-      const statusAtual = cand.status_recrutamento || "N/A"; // Usamos o estilo CSS da 'entrevista com gestor'
+      const statusAtual = cand.status_recrutamento || "N/A";
+      const statusClass = "status-warning";
 
-      const statusClass = "status-warning"; // Sempre pendente nesta etapa
-
+      // ==========================================================
+      // ✅ CORREÇÃO DO OBJETO DE DADOS
+      // ==========================================================
       const dadosCandidato = {
         id: candidatoId,
-        nome_completo: cand.nome_completo,
-        email_pessoal: cand.email_candidato,
-        email_novo: cand.admissao_info?.email_solicitado || "Não solicitado",
+        // Usa 'nome_completo' para o modal genérico (admissao.js)
+        nome_completo: cand.nome_candidato || cand.nome_completo || "Candidato",
+        // Mantém 'nome_candidato' para compatibilidade interna desta aba
+        nome_candidato:
+          cand.nome_candidato || cand.nome_completo || "Candidato",
+
+        email_pessoal: cand.email_candidato || cand.email_pessoal,
+        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado", // Corrigido: admissaoinfo (sem underscore)
         telefone_contato: cand.telefone_contato,
         vaga_titulo: cand.titulo_vaga_original || "Vaga não informada",
+        status_recrutamento: statusAtual, // Garante que o status vá para o modal
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
@@ -94,7 +103,7 @@ export async function renderizarIntegracao(state) {
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
      <div class="info-primaria">
       <h4 class="nome-candidato">
-       ${cand.nome_completo || "Candidato Sem Nome"}
+       ${dadosCandidato.nome_completo}
       	<span class="status-badge ${statusClass}">
        	<i class="fas fa-tag"></i> ${statusAtual}
       	</span>
@@ -131,8 +140,11 @@ export async function renderizarIntegracao(state) {
     });
 
     listaHtml += "</div>";
-    conteudoAdmissao.innerHTML = listaHtml; // Listeners de Agendar Integração
+    conteudoAdmissao.innerHTML = listaHtml;
 
+    // --- REANEXAR LISTENERS ---
+
+    // Agendar Integração
     document.querySelectorAll(".btn-agendar-integracao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -142,7 +154,9 @@ export async function renderizarIntegracao(state) {
           JSON.parse(decodeURIComponent(dados))
         );
       });
-    }); // Listeners de Enviar Treinamento
+    });
+
+    // Enviar Treinamento
     document.querySelectorAll(".btn-enviar-treinamento").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -152,8 +166,9 @@ export async function renderizarIntegracao(state) {
           JSON.parse(decodeURIComponent(dados))
         );
       });
-    }); // Listeners de Detalhes
+    });
 
+    // Detalhes (com a função global correta)
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -162,6 +177,7 @@ export async function renderizarIntegracao(state) {
           const dadosCandidato = JSON.parse(
             decodeURIComponent(dadosCodificados)
           );
+          // Passa "detalhes" como modo e o objeto completo
           window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
         }
       });
@@ -171,7 +187,6 @@ export async function renderizarIntegracao(state) {
     conteudoAdmissao.innerHTML = `<p class="alert alert-danger">Erro ao carregar a lista: ${error.message}</p>`;
   }
 }
-
 // ============================================
 // LÓGICA DE AGENDAMENTO DE INTEGRAÇÃO
 // ============================================
