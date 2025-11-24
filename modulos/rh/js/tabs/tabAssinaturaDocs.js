@@ -88,7 +88,7 @@ export async function renderizarAssinaturaDocs(state) {
         id: candidatoId,
         nome_candidato: cand.nome_candidato,
         email_pessoal: cand.email_candidato,
-        email_novo: cand.admissao_info?.email_solicitado || "Não solicitado",
+        email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
         status_recrutamento: statusAtual,
