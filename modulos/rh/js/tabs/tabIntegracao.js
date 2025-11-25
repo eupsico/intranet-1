@@ -97,7 +97,7 @@ export async function renderizarIntegracao(state) {
             <p><strong>E-mail:</strong> ${dadosUsuario.email_novo}</p>
             <p><strong>Status:</strong> ${statusBadge}</p>
             ${
-              dadosUsuario.status_admissao === "INTEGRACAO_AGENDADA"
+              dadosUsuario.status_admissao === "AGUARDANDO_INTEGRACAO"
                 ? `<p><strong>Agendamento:</strong> ${dataAgendada} às ${horaAgendada}</p>`
                 : ""
             }
@@ -322,7 +322,7 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
 }
 
 async function submeterAgendamentoIntegracao(e, btnRegistrar) {
-  console.log("🔹 Admissão: Submetendo agendamento");
+  console.log("🔹 [DEBUG] Admissão: Submetendo agendamento");
 
   const modalAgendamento = document.getElementById(
     "modal-agendamento-integracao"
@@ -339,8 +339,16 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     "hora-integracao-agendada"
   ).value;
 
-  // ✅ CORREÇÃO 1: VALIDAÇÃO MELHORADA
+  console.log("📋 [DEBUG] Dados coletados:", {
+    usuarioId,
+    dataIntegracao,
+    horaIntegracao,
+    uidResponsavel,
+  });
+
+  // ✅ VALIDAÇÃO MELHORADA
   if (!dataIntegracao || !horaIntegracao) {
+    console.warn("⚠️ [DEBUG] Validação falhou: campos vazios");
     window.showToast?.(
       "⚠️ Por favor, preencha a Data e o Horário da Integração.",
       "error"
@@ -348,25 +356,63 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     return;
   }
 
-  // ✅ CORREÇÃO 2: PRÉ-ABERTURA DA JANELA WHATSAPP (síncrono, antes do await)
+  console.log("✅ [DEBUG] Validação passou");
+
+  // ✅ Verifica dadosUsuarioAtual
+  console.log("👤 [DEBUG] dadosUsuarioAtual:", dadosUsuarioAtual);
+  console.log(
+    "📞 [DEBUG] Telefone do usuário:",
+    dadosUsuarioAtual?.telefone_contato
+  );
+
+  if (!dadosUsuarioAtual) {
+    console.error("❌ [DEBUG] ERRO: dadosUsuarioAtual está null/undefined");
+    window.showToast?.("Erro: Dados do usuário não carregados.", "error");
+    return;
+  }
+
+  // ✅ PRÉ-ABERTURA DA JANELA WHATSAPP (síncrono, antes do await)
   let janelaWhatsApp = null;
   if (dadosUsuarioAtual && dadosUsuarioAtual.telefone_contato) {
+    console.log("🔄 [DEBUG] Tentando pré-abrir janela WhatsApp...");
     try {
       // Abre janela em branco IMEDIATAMENTE (antes de qualquer await)
       janelaWhatsApp = window.open("", "_blank");
-      console.log("✅ Janela WhatsApp pré-aberta");
+
+      if (janelaWhatsApp) {
+        console.log("✅ [DEBUG] Janela WhatsApp pré-aberta COM SUCESSO");
+        console.log("🪟 [DEBUG] Objeto da janela:", janelaWhatsApp);
+      } else {
+        console.error(
+          "❌ [DEBUG] window.open retornou NULL - Popup BLOQUEADO pelo navegador"
+        );
+        window.showToast?.(
+          "⚠️ Pop-up bloqueado! Por favor, permita pop-ups para este site.",
+          "warning"
+        );
+      }
     } catch (err) {
-      console.warn("⚠️ Erro ao pré-abrir janela:", err);
+      console.error("❌ [DEBUG] EXCEÇÃO ao tentar abrir janela:", err);
+      console.error("❌ [DEBUG] Stack trace:", err.stack);
     }
+  } else {
+    console.warn("⚠️ [DEBUG] Usuário sem telefone - WhatsApp não será aberto");
+    console.log("📋 [DEBUG] dadosUsuarioAtual:", dadosUsuarioAtual);
+    console.log(
+      "📞 [DEBUG] telefone_contato:",
+      dadosUsuarioAtual?.telefone_contato
+    );
   }
 
   btnRegistrar.disabled = true;
   btnRegistrar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
+  console.log("💾 [DEBUG] Iniciando gravação no Firebase...");
+
   try {
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
-    // 1. Salva no banco primeiro (Fluxo normal)
+    // 1. Salva no banco primeiro
     await updateDoc(usuarioRef, {
       status_admissao: "INTEGRACAO_AGENDADA",
       integracao: {
@@ -384,33 +430,69 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
       }),
     });
 
+    console.log("✅ [DEBUG] Dados salvos no Firebase com sucesso");
+
     window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // ✅ CORREÇÃO 3: USA A JANELA PRÉ-ABERTA PARA NAVEGAR AO WHATSAPP
+    // ✅ USA A JANELA PRÉ-ABERTA PARA NAVEGAR AO WHATSAPP
     if (janelaWhatsApp && dadosUsuarioAtual.telefone_contato) {
+      console.log("🔄 [DEBUG] Gerando link do WhatsApp...");
+
       const linkWhatsApp = gerarLinkWhatsApp(
         dadosUsuarioAtual,
         dataIntegracao,
         horaIntegracao
       );
-      janelaWhatsApp.location.href = linkWhatsApp;
-      console.log("✅ WhatsApp navegado com sucesso");
-    } else if (janelaWhatsApp) {
+
+      console.log("🔗 [DEBUG] Link gerado:", linkWhatsApp);
+      console.log("🔄 [DEBUG] Navegando janela para o WhatsApp...");
+
+      try {
+        janelaWhatsApp.location.href = linkWhatsApp;
+        console.log("✅ [DEBUG] WhatsApp navegado com SUCESSO");
+      } catch (navError) {
+        console.error("❌ [DEBUG] Erro ao navegar para WhatsApp:", navError);
+        console.error("❌ [DEBUG] Stack trace:", navError.stack);
+      }
+    } else {
+      if (!janelaWhatsApp) {
+        console.warn(
+          "⚠️ [DEBUG] Janela não foi aberta (null) - Não pode navegar ao WhatsApp"
+        );
+      }
+      if (!dadosUsuarioAtual.telefone_contato) {
+        console.warn("⚠️ [DEBUG] Sem telefone - Não pode enviar WhatsApp");
+      }
+
       // Fecha se não tem telefone
-      janelaWhatsApp.close();
+      if (janelaWhatsApp) {
+        console.log("🔄 [DEBUG] Fechando janela vazia...");
+        janelaWhatsApp.close();
+      }
     }
 
+    console.log("🔄 [DEBUG] Fechando modal e re-renderizando...");
     modalAgendamento.classList.remove("is-visible");
     renderizarIntegracao(getGlobalState());
+    console.log("✅ [DEBUG] Processo completo finalizado");
   } catch (error) {
-    console.error("❌ Erro ao agendar:", error);
+    console.error("❌ [DEBUG] ERRO ao agendar:", error);
+    console.error("❌ [DEBUG] Stack trace:", error.stack);
+    console.error("❌ [DEBUG] Detalhes do erro:", {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+    });
+
     window.showToast?.(`Erro: ${error.message}`, "error");
 
     // Fecha a janela se deu erro
     if (janelaWhatsApp) {
+      console.log("🔄 [DEBUG] Fechando janela devido ao erro...");
       janelaWhatsApp.close();
     }
   } finally {
+    console.log("🔄 [DEBUG] Finally: Restaurando botão...");
     btnRegistrar.disabled = false;
     btnRegistrar.innerHTML =
       '<i class="fas fa-calendar-check"></i> Agendar Integração';
