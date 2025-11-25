@@ -413,7 +413,7 @@ async function submeterAvaliacao3Meses(e) {
 
     const isAprovado = resultado === "Aprovado";
     const novoStatusAdmissao = isAprovado
-      ? "AGUARDANDO_DOCS_POS_3MESES"
+      ? "ENVIAR_ASSINATURA_FASE2"
       : "REPROVADO_EXPERIENCIA";
 
     const dadosUpdate = {
