@@ -2451,7 +2451,7 @@ function gerarSenhaTemporaria() {
 }
 
 // 📧 CLOUD FUNCTION PARA CRIAR E-MAIL NO GOOGLE WORKSPACE
-// VERSÃO 2.0 - Usando Google Apps Script como proxy
+// VERSÃO 2.1 - Com notificação para admin
 exports.criarEmailGoogleWorkspace = onCall(
   {
     cors: true,
@@ -2477,7 +2477,7 @@ exports.criarEmailGoogleWorkspace = onCall(
     }
 
     try {
-      // 🔗 URL do Google Apps Script (SUBSTITUA PELA SUA URL)
+      // 🔗 URL do Google Apps Script (MANTENHA A SUA URL AQUI)
       const APPS_SCRIPT_URL =
         "https://script.google.com/macros/s/AKfycbz8DGNVG6P0x-Gv5VOEvP5kiyO6Rr2qqWQeA8Xvc6o0Fk9JiuzG6psxb42pSpgrF3d9DA/exec";
 
@@ -2507,6 +2507,38 @@ exports.criarEmailGoogleWorkspace = onCall(
       if (resultado && resultado.sucesso === true) {
         console.log("✅ Usuário criado com sucesso:", resultado.usuarioId);
 
+        // --- 🚀 NOVO: Enviar notificação para Marco Aurélio ---
+        try {
+          const mailOptions = {
+            from: "EuPsico Sistema <atendimento@eupsico.org.br>",
+            to: "marco.aurelio@eupsico.org.br",
+            subject: `🔔 Novo E-mail Corporativo Criado: ${primeiroNome} ${sobrenome}`,
+            html: `
+              <h3>Novo E-mail Corporativo Criado</h3>
+              <p>O sistema de admissão acabou de criar um novo e-mail no Google Workspace.</p>
+              <ul>
+                <li><strong>Nome:</strong> ${primeiroNome} ${sobrenome}</li>
+                <li><strong>E-mail Criado:</strong> ${email}</li>
+                <li><strong>Senha Temporária:</strong> ${
+                  resultado.senhaTemporaria || senhaTemporaria
+                }</li>
+              </ul>
+              <p><em>Esta é uma notificação automática do sistema.</em></p>
+            `,
+          };
+          await transporter.sendMail(mailOptions);
+          console.log(
+            "📧 Notificação enviada para marco.aurelio@eupsico.org.br"
+          );
+        } catch (emailError) {
+          console.error(
+            "❌ Erro ao enviar notificação para admin (o e-mail foi criado, mas o aviso falhou):",
+            emailError
+          );
+          // Não lançamos erro aqui para não falhar a criação do usuário, apenas logamos
+        }
+        // ------------------------------------------------------
+
         return {
           sucesso: true,
           mensagem: `E-mail ${email} criado com sucesso`,
@@ -2533,12 +2565,10 @@ exports.criarEmailGoogleWorkspace = onCall(
     } catch (error) {
       console.error("❌ Erro ao criar e-mail:", error);
 
-      // Se for um HttpsError que já lançamos, repassa
       if (error instanceof HttpsError) {
         throw error;
       }
 
-      // Tratamento de erros de rede ou outros
       if (error.message && error.message.includes("already exists")) {
         throw new HttpsError("already-exists", `O e-mail ${email} já existe`);
       }
