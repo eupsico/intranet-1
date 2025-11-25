@@ -274,6 +274,13 @@ async function submeterAgendamentoIntegracao(e) {
     return;
   }
 
+  // 🔥 CORREÇÃO POPUP: Abre a janela IMEDIATAMENTE antes do await
+  let janelaWhatsApp = null;
+  if (dadosUsuarioAtual.telefone_contato) {
+    // Abre janela em branco imediatamente (síncrono) para contornar bloqueadores
+    janelaWhatsApp = window.open("", "_blank");
+  }
+
   btnRegistrar.disabled = true;
   btnRegistrar.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
@@ -300,12 +307,13 @@ async function submeterAgendamentoIntegracao(e) {
 
     window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // Envia WhatsApp (Removido o setTimeout para evitar bloqueio do navegador)
+    // Envia WhatsApp usando a janela já aberta
     if (dadosUsuarioAtual.telefone_contato) {
       enviarMensagemWhatsAppIntegracao(
         dadosUsuarioAtual,
         dataIntegracao,
-        horaIntegracao
+        horaIntegracao,
+        janelaWhatsApp // Passa a janela aberta como parâmetro
       );
     }
 
@@ -314,6 +322,9 @@ async function submeterAgendamentoIntegracao(e) {
   } catch (error) {
     console.error("❌ Erro ao agendar:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
+
+    // Se deu erro e abriu a janela, fecha ela para não ficar uma aba em branco
+    if (janelaWhatsApp) janelaWhatsApp.close();
   } finally {
     btnRegistrar.disabled = false;
     btnRegistrar.innerHTML =
@@ -361,9 +372,13 @@ Qualquer dúvida, fale conosco.
 function enviarMensagemWhatsAppIntegracao(
   candidato,
   dataIntegracao,
-  horaIntegracao
+  horaIntegracao,
+  janelaPreAberta = null // Parâmetro opcional para receber a janela
 ) {
-  if (!candidato.telefone_contato) return;
+  if (!candidato.telefone_contato) {
+    if (janelaPreAberta) janelaPreAberta.close();
+    return;
+  }
   try {
     const mensagem = formatarMensagemWhatsAppIntegracao(
       candidato,
@@ -373,9 +388,17 @@ function enviarMensagemWhatsAppIntegracao(
     const mensagemCodificada = encodeURIComponent(mensagem);
     const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
-    window.open(linkWhatsApp, "_blank");
+
+    if (janelaPreAberta) {
+      // Se recebeu a janela aberta, apenas navega para o link
+      janelaPreAberta.location.href = linkWhatsApp;
+    } else {
+      // Fallback (caso antigo)
+      window.open(linkWhatsApp, "_blank");
+    }
   } catch (error) {
     console.error("❌ Erro WhatsApp:", error);
+    if (janelaPreAberta) janelaPreAberta.close();
   }
 }
 
