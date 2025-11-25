@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabIntegracao.js
- * Versão: 2.0.0 (Migração para Coleção Usuarios e status_admissao)
+ * Versão: 2.1.0 (Correção Popup WhatsApp + Botão Detalhes)
  * Descrição: Gerencia agendamento, avaliação de integração e envio de treinamentos.
  */
 
@@ -129,10 +129,15 @@ export async function renderizarIntegracao(state) {
         telefone_contato: user.contato || user.telefone || "",
         vaga_titulo: user.profissao || "Cargo não informado",
         status_recrutamento: statusAtual, // Mantém nome da prop para compatibilidade com modal de detalhes
+        // Outros campos úteis para o modal de detalhes
+        cpf: user.cpf || "",
+        rg: user.rg || "",
+        endereco: user.endereco || "",
       };
 
       const dadosCodificados = encodeURIComponent(JSON.stringify(dadosUsuario));
 
+      // ✅ ADICIONADO: Botão Ver Detalhes
       listaHtml += `
     <div class="card card-candidato-gestor" data-id="${userId}">
      <div class="info-primaria">
@@ -148,17 +153,25 @@ export async function renderizarIntegracao(state) {
      </div>
      
      <div class="acoes-candidato">
-     	${actionButtonHtml}
+        ${actionButtonHtml}
      	
-     	<button 
+        <button 
       	class="action-button success btn-enviar-treinamento" 
       	data-id="${userId}"
       	data-dados="${dadosCodificados}"
      		style="background: var(--cor-sucesso);">
       	<i class="fas fa-video me-1"></i> Treinamentos
      	</button>
+
+        <button 
+      	class="action-button secondary btn-ver-detalhes" 
+      	data-id="${userId}"
+      	data-dados="${dadosCodificados}"
+     		style="background: #6c757d;">
+      	<i class="fas fa-eye me-1"></i> Detalhes
+     	</button>
      	
-        </div>
+      </div>
     </div>
    `;
     });
@@ -201,6 +214,25 @@ export async function renderizarIntegracao(state) {
           userId,
           JSON.parse(decodeURIComponent(dados))
         );
+      });
+    });
+
+    // 4. ✅ Ver Detalhes (Novo Listener)
+    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const dados = JSON.parse(
+          decodeURIComponent(e.currentTarget.getAttribute("data-dados"))
+        );
+        // Tenta usar a função global de modal de detalhes se existir
+        if (typeof window.abrirModalDetalhesCandidato === "function") {
+          window.abrirModalDetalhesCandidato(dados);
+        } else {
+          console.log("Detalhes:", dados);
+          // Fallback caso a função global não esteja definida
+          alert(
+            "Visualização de detalhes não configurada globalmente. Verifique o console."
+          );
+        }
       });
     });
   } catch (error) {
