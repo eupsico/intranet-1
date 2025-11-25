@@ -396,11 +396,10 @@ Seja bem-vindo(a) à equipe EuPsico! Estamos muito felizes em tê-lo(a) conosco.
 
 *3.* *Troque sua senha* (o sistema solicitará automaticamente no primeiro acesso)
 
-*4.* Após trocar a senha, acesse o formulário de cadastro:
+*4.* Acesse o formulário de cadastro, e preencha com suas informações e anexe os arquivos solicitados:
 🔗 ${linkFormulario}
 
 *📝 Importante saber:*
-• O acesso ao formulário só é liberado pelo e-mail corporativo @eupsico.org.br
 • A senha temporária expira em 24 horas
 • Após trocar a senha, você terá acesso completo aos sistemas
 
