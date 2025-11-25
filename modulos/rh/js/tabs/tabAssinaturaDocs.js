@@ -36,8 +36,8 @@ export async function renderizarAssinaturaDocs(state) {
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
+        "ENVIAR_ASSINATURA_FASE1",
         "AGUARDANDO_ASSINATURA_FASE1",
-        "DOCS_LIBERADOS_FASE1",
       ])
     );
     const snapshot = await getDocs(q);
@@ -71,7 +71,7 @@ export async function renderizarAssinaturaDocs(state) {
       let botaoAcao = "";
 
       // ✅ LÓGICA DO BOTÃO ATUALIZADA
-      if (statusAtual === "DOCS_LIBERADOS_FASE1") {
+      if (statusAtual === "AGUARDANDO_ASSINATURA_FASE1") {
         statusClass = "status-warning";
         // Botão de Lembrete por WhatsApp
         botaoAcao = `
@@ -87,7 +87,7 @@ export async function renderizarAssinaturaDocs(state) {
                style="padding: 10px 16px; background: #ffc107; color: #212529; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
                <i class="fab fa-whatsapp me-1"></i> Lembrar Assinatura
             </button>`;
-      } else if (statusAtual === "AGUARDANDO_ASSINATURA_FASE1") {
+      } else if (statusAtual === "ENVIAR_ASSINATURA_FASE1") {
         statusClass = "status-success";
         botaoAcao = `
           <button 
@@ -367,7 +367,9 @@ window.confirmarLiberacaoDocs = async function () {
 
     // Atualiza STATUS_ADMISSAO no USUÁRIO
     const novoStatus =
-      fase === 1 ? "DOCS_LIBERADOS_FASE1" : "DOCS_LIBERADOS_FASE2";
+      fase === 1
+        ? "AGUARDANDO_ASSINATURA_FASE1"
+        : "AGUARDANDO_ASSINATURA_FASE2";
 
     await updateDoc(doc(db, "usuarios", usuarioUid), {
       status_admissao: novoStatus,
