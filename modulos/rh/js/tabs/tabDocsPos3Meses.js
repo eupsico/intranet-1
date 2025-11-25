@@ -1,31 +1,36 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabDocsPos3Meses.js
- * Versão: 2.2.0 (Integrado com Modal Global de Documentos - Fase 2)
+ * Versão: 3.0.0 (Migração Completa para Coleção Usuarios e status_admissao)
  * Descrição: Gerencia a etapa final de envio de documentos pós-experiência.
  */
 
 import { getGlobalState } from "../admissao.js";
-import { getDocs, query, where } from "../../../../assets/js/firebase-init.js";
+import {
+  getDocs,
+  query,
+  where,
+  collection,
+  db,
+} from "../../../../assets/js/firebase-init.js";
 
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
 
 export async function renderizarDocsPos3Meses(state) {
-  const { conteudoAdmissao, candidatosCollection, statusAdmissaoTabs } = state;
+  const { conteudoAdmissao, statusAdmissaoTabs } = state;
 
   conteudoAdmissao.innerHTML =
     '<div class="loading-spinner">Carregando colaboradores aprovados...</div>';
 
   try {
-    // Busca colaboradores que já passaram pela avaliação de 3 meses (aprovados)
-    // Status: AGUARDANDO_DOCS_POS_3MESES (Pendente de envio)
-    // Status: DOCS_POS_3MESES_LIBERADOS (Já enviado, aguardando assinatura)
+    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
+    const usuariosCollection = collection(db, "usuarios");
     const q = query(
-      candidatosCollection,
-      where("status_recrutamento", "in", [
+      usuariosCollection,
+      where("status_admissao", "in", [
         "AGUARDANDO_DOCS_POS_3MESES",
-        "DOCS_POS_3MESES_LIBERADOS",
+        "DOCS_LIBERADOS_FASE2",
       ])
     );
     const snapshot = await getDocs(q);
@@ -52,84 +57,75 @@ export async function renderizarDocsPos3Meses(state) {
     `;
 
     snapshot.docs.forEach((docSnap) => {
-      const cand = docSnap.data();
-      const candidatoId = docSnap.id;
-      const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
-      const statusAtual = cand.status_recrutamento || "N/A";
+      const user = docSnap.data();
+      const userId = docSnap.id; // UID do usuário
+      const statusAtual = user.status_admissao || "N/A";
 
       let statusClass = "status-success";
       let botaoAcao = "";
 
-      // Configuração do objeto de dados para passar aos modais
-      const dadosCandidato = {
-        id: candidatoId,
-        nome_candidato: cand.nome_candidato || cand.nome_completo,
-        // Garante que pegamos o email correto (novo ou pessoal)
-        email_novo:
-          cand.admissaoinfo?.email_solicitado ||
-          cand.email_novo ||
-          cand.email_candidato,
-        telefone_contato: cand.telefone_contato,
-        vaga_titulo: vagaTitulo,
-        status_recrutamento: statusAtual,
-      };
-
-      // Codifica para passar no dataset
-      const dadosCodificados = encodeURIComponent(
-        JSON.stringify(dadosCandidato)
-      );
-
-      // Lógica do Botão Principal
+      // ✅ LÓGICA DO BOTÃO PRINCIPAL (Baseada em status_admissao)
       if (statusAtual === "AGUARDANDO_DOCS_POS_3MESES") {
-        // Botão para abrir o modal de envio (reusa o modal da Fase 1, mas com flag Fase 2)
+        // Botão para abrir o modal de envio (Fase 2)
         botaoAcao = `
             <button 
                 class="action-button primary btn-enviar-docs-finais" 
-                data-id="${candidatoId}"
-                data-dados="${dadosCodificados}"
+                data-id="${userId}"
+                data-dados="${encodeURIComponent(
+                  JSON.stringify({
+                    id: userId,
+                    nome: user.nome,
+                    email: user.email,
+                    telefone: user.contato,
+                  })
+                )}"
                 style="background: var(--cor-sucesso);">
                 <i class="fas fa-file-signature me-1"></i> Enviar Docs Finais
             </button>`;
-      } else if (statusAtual === "DOCS_POS_3MESES_LIBERADOS") {
+      } else if (statusAtual === "DOCS_LIBERADOS_FASE2") {
         // Botão informativo
         statusClass = "status-warning";
         botaoAcao = `
-            <button class="action-button secondary" disabled style="opacity:0.7; cursor: default;">
-                <i class="fas fa-clock me-1"></i> Aguardando Assinatura
+            <button class="action-button secondary" disabled style="opacity:0.7; cursor: default; width: 100%;">
+                <i class="fas fa-clock me-2"></i> Aguardando Assinatura
             </button>`;
       } else {
         // Fallback
         botaoAcao = `<span class="text-muted">Status: ${statusAtual}</span>`;
       }
 
+      // Objeto de dados para os modais
+      const dadosUsuario = {
+        id: userId,
+        nome_completo: user.nome || "Usuário Sem Nome",
+        email_novo: user.email || "Sem e-mail",
+        telefone_contato: user.contato || user.telefone || "",
+        vaga_titulo: user.profissao || "Cargo não informado",
+        status_recrutamento: statusAtual,
+      };
+
+      const dadosCodificados = encodeURIComponent(JSON.stringify(dadosUsuario));
+
       listaHtml += `
-        <div class="card card-candidato-gestor" data-id="${candidatoId}">
+        <div class="card card-candidato-gestor" data-id="${userId}">
          <div class="info-primaria">
           <h4 class="nome-candidato">
-           ${dadosCandidato.nome_candidato || "Colaborador Sem Nome"}
+           ${dadosUsuario.nome_completo}
             <span class="status-badge ${statusClass}">
               ${statusAtual.replace(/_/g, " ")}
             </span>
           </h4>
           <p class="small-info">
-           <i class="fas fa-briefcase"></i> Cargo: ${
-             cand.admissao_info?.cargo_final || vagaTitulo
-           }
+           <i class="fas fa-briefcase"></i> Cargo: ${dadosUsuario.vaga_titulo}
           </p>
           <p class="small-info" style="color: var(--cor-primaria);">
-           <i class="fas fa-envelope"></i> Email: ${dadosCandidato.email_novo}
+           <i class="fas fa-envelope"></i> Email: ${dadosUsuario.email_novo}
           </p>
          </div>
          
          <div class="acoes-candidato">
            ${botaoAcao}
-           <button 
-             class="action-button secondary btn-ver-detalhes-admissao" 
-             data-id="${candidatoId}"
-             data-dados="${dadosCodificados}">
-             <i class="fas fa-eye me-1"></i> Detalhes
-           </button>
-         </div>
+           </div>
         </div>
        `;
     });
@@ -142,34 +138,20 @@ export async function renderizarDocsPos3Meses(state) {
     // 1. Botão Enviar Docs Finais
     document.querySelectorAll(".btn-enviar-docs-finais").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const candidatoId = e.currentTarget.getAttribute("data-id");
+        const userId = e.currentTarget.getAttribute("data-id");
         const dados = e.currentTarget.getAttribute("data-dados");
 
         // Chama a função global definida em tabAssinaturaDocs.js
         // Parâmetro 2 indica FASE 2
         if (typeof window.abrirModalEnviarDocumentos === "function") {
-          window.abrirModalEnviarDocumentos(candidatoId, dados, state, 2);
+          window.abrirModalEnviarDocumentos(userId, dados, state, 2);
         } else {
           console.error(
             "Função window.abrirModalEnviarDocumentos não encontrada."
           );
           alert(
-            "Erro: O módulo de assinatura de documentos (tabAssinaturaDocs.js) não foi carregado corretamente."
+            "Erro: O módulo de assinatura de documentos não foi carregado corretamente."
           );
-        }
-      });
-    });
-
-    // 2. Botão Detalhes
-    document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const candidatoId = e.currentTarget.getAttribute("data-id");
-        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
-        if (typeof window.abrirModalCandidato === "function") {
-          const dadosCandidato = JSON.parse(
-            decodeURIComponent(dadosCodificados)
-          );
-          window.abrirModalCandidato(candidatoId, "detalhes", dadosCandidato);
         }
       });
     });
