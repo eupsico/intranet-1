@@ -1,6 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 4.0.0 (Migração para Coleção Usuarios e status_admissao)
+ * Versão: 4.0.0 (Migração Completa para Coleção Usuarios)
+ * Descrição: Gerencia a liberação de documentos para assinatura (Fase 1).
  */
 
 import { getGlobalState } from "../admissao.js";
@@ -15,7 +16,8 @@ import {
   addDoc,
 } from "../../../../assets/js/firebase-init.js";
 
-let dadosUsuarioAtual = null; // Mudou nome da variável para refletir a entidade correta
+// Variável global do módulo
+let dadosUsuarioAtual = null;
 const URL_INTRANET = "https://intranet.eupsico.org.br";
 
 // ============================================
@@ -24,14 +26,13 @@ const URL_INTRANET = "https://intranet.eupsico.org.br";
 
 export async function renderizarAssinaturaDocs(state) {
   const { conteudoAdmissao, statusAdmissaoTabs } = state;
-  // Nota: Agora usamos a coleção de USUÁRIOS, não mais a de candidatos para esta etapa
-  const usuariosCollection = collection(db, "usuarios");
 
   conteudoAdmissao.innerHTML =
     '<div class="loading-spinner">Carregando usuários para assinatura...</div>';
 
   try {
-    // ✅ BUSCA EM USUARIOS PELO NOVO STATUS
+    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
+    const usuariosCollection = collection(db, "usuarios");
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
@@ -95,23 +96,30 @@ export async function renderizarAssinaturaDocs(state) {
           </button>`;
       }
 
+      // Objeto de visualização
+      const dadosExibicao = {
+        nome: user.nome || "Usuário Sem Nome",
+        email: user.email || "...",
+        status: statusAtual,
+      };
+
       listaHtml += `
       <div class="card card-candidato-gestor" data-id="${userId}">
        <div class="info-primaria">
         <h4 class="nome-candidato">
-         ${user.nome || "Usuário Sem Nome"}
+         ${dadosExibicao.nome}
           <span class="status-badge ${statusClass}">
-            ${statusAtual.replace(/_/g, " ")}
+            ${dadosExibicao.status.replace(/_/g, " ")}
           </span>
         </h4>
         <p class="small-info" style="color: var(--cor-primaria);">
-         <i class="fas fa-envelope"></i> E-mail: ${user.email || "..."}
+         <i class="fas fa-envelope"></i> E-mail: ${dadosExibicao.email}
         </p>
        </div>
        
        <div class="acoes-candidato">
          ${botaoAcao}
-         </div>
+       </div>
       </div>
      `;
     });
@@ -124,7 +132,7 @@ export async function renderizarAssinaturaDocs(state) {
       btn.addEventListener("click", (e) => {
         const userId = e.currentTarget.getAttribute("data-id");
         const dados = e.currentTarget.getAttribute("data-dados");
-        abrirModalEnviarDocumentos(userId, dados, state, 1);
+        abrirModalEnviarDocumentos(userId, dados, state, 1); // Fase 1
       });
     });
   } catch (error) {
@@ -322,4 +330,5 @@ window.fecharModalEnviarDocumentos = function () {
   document.body.style.overflow = "";
 };
 
+// Expõe função para uso global
 window.abrirModalEnviarDocumentos = abrirModalEnviarDocumentos;
