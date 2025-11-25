@@ -300,15 +300,13 @@ async function submeterAgendamentoIntegracao(e) {
 
     window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // Envia WhatsApp
+    // Envia WhatsApp (Removido o setTimeout para evitar bloqueio do navegador)
     if (dadosUsuarioAtual.telefone_contato) {
-      setTimeout(() => {
-        enviarMensagemWhatsAppIntegracao(
-          dadosUsuarioAtual,
-          dataIntegracao,
-          horaIntegracao
-        );
-      }, 500);
+      enviarMensagemWhatsAppIntegracao(
+        dadosUsuarioAtual,
+        dataIntegracao,
+        horaIntegracao
+      );
     }
 
     modalAgendamento.classList.remove("is-visible");
