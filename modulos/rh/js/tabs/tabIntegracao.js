@@ -290,7 +290,7 @@ async function submeterAgendamentoIntegracao(e) {
         agendamento: {
           data: dataIntegracao,
           hora: horaIntegracao,
-          agendado_por_uid: currentUserData.id || "rh_system_user",
+          agendado_por_uid: currentUserData.uid || "rh_system_user",
           data_agendamento: new Date(),
         },
       },
@@ -445,7 +445,7 @@ async function submeterAvaliacaoIntegracao(e) {
         realizada: true,
         observacoes: observacoes,
         concluido_em: new Date(),
-        responsavel_uid: currentUserData.id || "rh_user",
+        responsavel_uid: currentUserData.uid || "rh_user",
       },
     });
 
@@ -640,7 +640,7 @@ async function salvarEnvioTreinamento(
       tokenId: tokenId,
       link: link,
       data_envio: new Date(),
-      enviado_por_uid: currentUserData.id || "rh_system_user",
+      enviado_por_uid: currentUserData.uid || "rh_system_user",
       status: "enviado",
     }),
   });
