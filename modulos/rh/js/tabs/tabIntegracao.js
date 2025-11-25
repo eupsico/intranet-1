@@ -1,13 +1,13 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabIntegracao.js
- * Versão: 2.7.0 (Correção WhatsApp + Validação Campos)
+ * Versão: 2.6.0 (Correção Final: Status Visível, Modal Detalhes e Fluxo WhatsApp Original)
  * Descrição: Gerencia agendamento, avaliação de integração e envio de treinamentos.
  */
 
 import { getGlobalState } from "../admissao.js";
 import {
   db,
-  auth,
+  auth, // ✅ Auth para pegar o usuário logado
   collection,
   getDocs,
   query,
@@ -136,6 +136,15 @@ export async function renderizarIntegracao(state) {
         abrirModalEnviarTreinamento(userId, dadosUsuario);
       };
     });
+
+    // ✅ MANTÉM O BOTÃO DE DETALHES ORIGINAL
+    document.querySelectorAll(".btn-detalhes-integracao").forEach((btn) => {
+      btn.onclick = () => {
+        const userId = btn.dataset.userId;
+        const dadosUsuario = JSON.parse(btn.dataset.usuario);
+        abrirModalDetalhesIntegracao(userId, dadosUsuario);
+      };
+    });
   } catch (error) {
     console.error("❌ Erro ao renderizar integração:", error);
     conteudoAdmissao.innerHTML = `
@@ -193,7 +202,68 @@ function gerarBotoesIntegracao(userId, dadosUsuario) {
     </button>
   `;
 
+  // ✅ MANTÉM O BOTÃO DE DETALHES ORIGINAL
+  botoes += `
+    <button class="btn btn-info btn-sm btn-detalhes-integracao" 
+            data-user-id="${userId}" 
+            data-usuario='${dadosJson}'>
+      <i class="fas fa-info-circle"></i> Detalhes
+    </button>
+  `;
+
   return botoes;
+}
+
+// ✅ MANTÉM A FUNÇÃO ORIGINAL DE DETALHES
+function abrirModalDetalhesIntegracao(userId, dadosUsuario) {
+  const modal = document.getElementById("modal-detalhes-integracao");
+  if (!modal) {
+    console.warn("Modal de detalhes não encontrado no HTML");
+    return;
+  }
+
+  // Preenche informações do colaborador
+  document.getElementById("detalhes-int-nome").textContent =
+    dadosUsuario.nome_completo || "N/A";
+  document.getElementById("detalhes-int-email").textContent =
+    dadosUsuario.email_novo || "N/A";
+  document.getElementById("detalhes-int-telefone").textContent =
+    dadosUsuario.telefone_contato || "N/A";
+  document.getElementById("detalhes-int-cargo").textContent =
+    dadosUsuario.cargo || "N/A";
+  document.getElementById("detalhes-int-status").textContent =
+    dadosUsuario.status_admissao || "N/A";
+
+  // Informações de agendamento
+  const agendamento = dadosUsuario.integracao?.agendamento;
+  if (agendamento) {
+    document.getElementById("detalhes-int-data-agendada").textContent =
+      agendamento.data || "N/A";
+    document.getElementById("detalhes-int-hora-agendada").textContent =
+      agendamento.hora || "N/A";
+  } else {
+    document.getElementById("detalhes-int-data-agendada").textContent =
+      "Não agendado";
+    document.getElementById("detalhes-int-hora-agendada").textContent = "-";
+  }
+
+  // Informações de conclusão
+  const conclusao = dadosUsuario.integracao?.conclusao;
+  if (conclusao && conclusao.realizada) {
+    document.getElementById("detalhes-int-concluida").textContent = "Sim";
+    document.getElementById("detalhes-int-observacoes").textContent =
+      conclusao.observacoes || "Nenhuma observação";
+  } else {
+    document.getElementById("detalhes-int-concluida").textContent = "Não";
+    document.getElementById("detalhes-int-observacoes").textContent = "-";
+  }
+
+  // Botão de fechar
+  modal.querySelectorAll(".close-modal-btn").forEach((btn) => {
+    btn.onclick = () => modal.classList.remove("is-visible");
+  });
+
+  modal.classList.add("is-visible");
 }
 
 // ============================================
@@ -201,7 +271,6 @@ function gerarBotoesIntegracao(userId, dadosUsuario) {
 // ============================================
 function abrirModalAgendarIntegracao(userId, dadosUsuario) {
   console.log(`🔹 Admissão: Abrindo modal de agendamento para ${userId}`);
-  console.log("📋 Dados do usuário:", dadosUsuario);
 
   const modalAgendamento = document.getElementById(
     "modal-agendamento-integracao"
@@ -212,27 +281,26 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
     return;
   }
 
-  // ✅ Armazena dados globalmente
-  dadosUsuarioAtual = dadosUsuario;
+  dadosUsuarioAtual = dadosUsuario; // Armazena na variável global do módulo
   modalAgendamento.dataset.usuarioId = userId;
 
-  // Preenche informações no modal
   const nomeEl = document.getElementById("agendamento-int-nome-candidato");
   const statusEl = document.getElementById("agendamento-int-status-atual");
 
   if (nomeEl) nomeEl.textContent = dadosUsuario.nome_completo;
+
+  // ✅ CORREÇÃO VISUAL: Força cor preta (#000) para o status ficar visível
   if (statusEl) {
     statusEl.textContent =
       dadosUsuario.status_admissao || dadosUsuario.status_recrutamento;
-    statusEl.style.color = "#000000";
+    statusEl.style.color = "#000000"; // Preto
     statusEl.style.fontWeight = "bold";
   }
 
-  // Limpa campos
   document.getElementById("data-integracao-agendada").value = "";
   document.getElementById("hora-integracao-agendada").value = "";
 
-  // ✅ Recria o botão para remover listeners antigos
+  // Reset do botão e listener limpo
   const btnRegistrar = modalAgendamento.querySelector('button[type="submit"]');
   if (btnRegistrar) {
     const novoBtn = btnRegistrar.cloneNode(true);
@@ -244,7 +312,6 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
     });
   }
 
-  // Botões de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-agendamento-integracao']`)
     .forEach((btn) => {
@@ -272,7 +339,7 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     "hora-integracao-agendada"
   ).value;
 
-  // ✅ VALIDAÇÃO MELHORADA
+  // ✅ CORREÇÃO 1: VALIDAÇÃO MELHORADA
   if (!dataIntegracao || !horaIntegracao) {
     window.showToast?.(
       "⚠️ Por favor, preencha a Data e o Horário da Integração.",
@@ -281,27 +348,16 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     return;
   }
 
-  // ✅ Verifica se tem telefone para enviar WhatsApp
-  if (!dadosUsuarioAtual) {
-    console.error("❌ Erro: dadosUsuarioAtual está null");
-    window.showToast?.("Erro: Dados do usuário não carregados.", "error");
-    return;
-  }
-
-  console.log("📞 Telefone do usuário:", dadosUsuarioAtual.telefone_contato);
-
-  // 🔥 CORREÇÃO CRÍTICA: Abre a janela IMEDIATAMENTE (síncrono)
-  // Isso DEVE ser feito ANTES de qualquer await/async
+  // ✅ CORREÇÃO 2: PRÉ-ABERTURA DA JANELA WHATSAPP (síncrono, antes do await)
   let janelaWhatsApp = null;
-  if (dadosUsuarioAtual.telefone_contato) {
+  if (dadosUsuarioAtual && dadosUsuarioAtual.telefone_contato) {
     try {
+      // Abre janela em branco IMEDIATAMENTE (antes de qualquer await)
       janelaWhatsApp = window.open("", "_blank");
       console.log("✅ Janela WhatsApp pré-aberta");
     } catch (err) {
-      console.warn("⚠️ Não foi possível pré-abrir janela:", err);
+      console.warn("⚠️ Erro ao pré-abrir janela:", err);
     }
-  } else {
-    console.warn("⚠️ Usuário sem telefone cadastrado");
   }
 
   btnRegistrar.disabled = true;
@@ -310,7 +366,7 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
   try {
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
-    // Salva no Firebase
+    // 1. Salva no banco primeiro (Fluxo normal)
     await updateDoc(usuarioRef, {
       status_admissao: "INTEGRACAO_AGENDADA",
       integracao: {
@@ -323,14 +379,14 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
       },
       historico: arrayUnion({
         data: new Date(),
-        acao: `Integração agendada para ${dataIntegracao} às ${horaIntegracao}.`,
+        acao: `Integração agendada para ${dataIntegracao}.`,
         usuario: uidResponsavel,
       }),
     });
 
-    window.showToast?.(`✅ Agendamento realizado com sucesso!`, "success");
+    window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // 🔥 Usa a janela pré-aberta para navegar ao WhatsApp
+    // ✅ CORREÇÃO 3: USA A JANELA PRÉ-ABERTA PARA NAVEGAR AO WHATSAPP
     if (janelaWhatsApp && dadosUsuarioAtual.telefone_contato) {
       const linkWhatsApp = gerarLinkWhatsApp(
         dadosUsuarioAtual,
@@ -338,9 +394,9 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
         horaIntegracao
       );
       janelaWhatsApp.location.href = linkWhatsApp;
-      console.log("✅ WhatsApp aberto com sucesso");
+      console.log("✅ WhatsApp navegado com sucesso");
     } else if (janelaWhatsApp) {
-      // Fecha a janela se não tem telefone
+      // Fecha se não tem telefone
       janelaWhatsApp.close();
     }
 
@@ -348,7 +404,7 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     renderizarIntegracao(getGlobalState());
   } catch (error) {
     console.error("❌ Erro ao agendar:", error);
-    window.showToast?.(`Erro ao agendar: ${error.message}`, "error");
+    window.showToast?.(`Erro: ${error.message}`, "error");
 
     // Fecha a janela se deu erro
     if (janelaWhatsApp) {
