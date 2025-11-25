@@ -24,7 +24,7 @@ const URL_INTRANET = "https://intranet.eupsico.org.br";
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
 
-export async function renderizarAssinaturaDocs(state) {
+export async function renderizarDocsPos3Meses(state) {
   const { conteudoAdmissao, statusAdmissaoTabs } = state;
 
   conteudoAdmissao.innerHTML =
@@ -434,7 +434,7 @@ window.confirmarLiberacaoDocs = async function () {
     }
 
     // Recarrega a aba para mostrar o botão de lembrete
-    renderizarAssinaturaDocs(state);
+    renderizarDocsPos3Meses(state);
   } catch (error) {
     console.error("Erro:", error);
     alert(`Erro: ${error.message}`);
