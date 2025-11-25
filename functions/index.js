@@ -2801,7 +2801,9 @@ exports.uploadDocumentoAdmissao = onRequest(
   }
 );
 
-// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Corrigido: Gera Username e Salva UID)
+// ====================================================================
+// 4. SALVAR DADOS DA FICHA DE ADMISSÃO (Versão Final Completa)
+// ====================================================================
 exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
   cors(req, res, async () => {
     try {
@@ -2832,11 +2834,11 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
       const emailDestino =
         dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
 
-      // --- 1. Atualiza CANDIDATURA ---
+      // --- 1. Atualiza CANDIDATURA (Salva TUDO aqui como histórico) ---
       const candidatoRef = db.collection("candidaturas").doc(candidatoId);
       await candidatoRef.update({
         dados_admissao: {
-          ...dadosFormulario,
+          ...dadosFormulario, // <--- AQUI SALVA TODOS OS DADOS DO FORMULÁRIO
           preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
         },
         status_recrutamento: "AGUARDANDO_ASSINATURA",
@@ -2851,7 +2853,6 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
       let usuarioRef;
       let usuarioDataExistente = null;
 
-      // A. Tenta buscar pelo e-mail no Firestore
       const usuariosQuery = await db
         .collection("usuarios")
         .where("email", "==", emailCorporativo)
@@ -2862,20 +2863,14 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         usuarioRef = usuariosQuery.docs[0].ref;
         usuarioDataExistente = usuariosQuery.docs[0].data();
       } else {
-        // B. Tenta buscar no Auth para pegar o UID correto
         try {
           const userRecord = await admin
             .auth()
             .getUserByEmail(emailCorporativo);
           usuarioRef = db.collection("usuarios").doc(userRecord.uid);
-
-          // Verifica se o doc existe pelo ID (caso tenha sido criado mas sem email indexado ainda)
           const docSnap = await usuarioRef.get();
-          if (docSnap.exists) {
-            usuarioDataExistente = docSnap.data();
-          }
+          if (docSnap.exists) usuarioDataExistente = docSnap.data();
         } catch (authError) {
-          // C. Cria novo ID se não existir nem no Auth
           usuarioRef = db.collection("usuarios").doc();
         }
       }
@@ -2885,20 +2880,25 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
       if (usuarioDataExistente && usuarioDataExistente.username) {
         finalUsername = usuarioDataExistente.username;
       } else {
-        // Gera um novo username único baseado no nome completo
-        finalUsername = await gerarUsernameUnico(dadosFormulario.nomeCompleto);
-        console.log(
-          `Username gerado para ${dadosFormulario.nomeCompleto}: ${finalUsername}`
-        );
+        try {
+          finalUsername = await gerarUsernameUnico(
+            dadosFormulario.nomeCompleto
+          );
+        } catch (e) {
+          finalUsername =
+            dadosFormulario.nomeCompleto.toLowerCase().replace(/\s+/g, ".") +
+            Math.floor(Math.random() * 1000);
+        }
       }
 
-      // --- 4. Objeto de dados para Salvar ---
+      // --- 4. Objeto de dados para Salvar em USUARIOS ---
       const dadosUsuario = {
-        uid: usuarioRef.id, // Salva o UID explicitamente
-        username: finalUsername, // Salva o username gerado ou existente
+        uid: usuarioRef.id, // ✅ Salva o UID
+        username: finalUsername, // ✅ Salva o Username
         nome: dadosFormulario.nomeCompleto,
         email: emailCorporativo,
         contato: dadosFormulario.telefone,
+
         endereco: {
           cep: dadosFormulario.cep,
           logradouro: dadosFormulario.endereco,
@@ -2907,14 +2907,17 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           cidade: dadosFormulario.cidade,
           estado: dadosFormulario.estado,
         },
+
         profissao: dadosFormulario.crpAtivo
           ? "Psicólogo(a)"
           : dadosFormulario.profissao || "Terapeuta",
         crp: dadosFormulario.crpAtivo ? "Ativo" : "",
+
         formacao: {
           graduacao: dadosFormulario.graduacao,
           especializacoes: dadosFormulario.especializacoes,
         },
+
         publico_atendido: dadosFormulario.publicoAtendido || [],
         disponibilidade: dadosFormulario.disponibilidade,
 
@@ -2924,8 +2927,11 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           diploma: dadosFormulario.diplomaUrl || "",
           comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
           declaracao_crp: dadosFormulario.declaracaoCrpUrl || "",
+          certificados: dadosFormulario.certificadosUrls || [], // ✅ Adicionado para garantir completude
         },
+
         // Configurações do Sistema
+        status: "em_experiencia",
         primeiraFase: true,
         inativo: false,
         recebeDireto: true,
@@ -2933,7 +2939,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
       };
 
-      // 🔥 USA SET COM MERGE (Atualiza campos existentes, cria se não existir)
+      // 🔥 Salva no Firestore
       await usuarioRef.set(dadosUsuario, { merge: true });
       console.log(
         `Dados salvos na coleção usuarios (UID: ${usuarioRef.id}, User: ${finalUsername}).`
@@ -2974,7 +2980,6 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
     }
   });
 });
-
 // ====================================================================
 // GATILHO: Verifica Assinaturas (Atualiza USUÁRIOS)
 // ====================================================================
