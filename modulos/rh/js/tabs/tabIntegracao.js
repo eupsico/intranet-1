@@ -1,13 +1,13 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabIntegracao.js
- * Versão: 2.4.0 (Migração: status_admissao + auth.currentUser + Fix Popup)
+ * Versão: 2.6.0 (Correção Final: Status Visível, Modal Detalhes e Fluxo WhatsApp Original)
  * Descrição: Gerencia agendamento, avaliação de integração e envio de treinamentos.
  */
 
 import { getGlobalState } from "../admissao.js";
 import {
   db,
-  auth, // ✅ ADICIONADO: Importação direta do Auth
+  auth, // ✅ Auth para pegar o usuário logado
   collection,
   getDocs,
   query,
@@ -45,7 +45,6 @@ export async function renderizarIntegracao(state) {
     '<div class="loading-spinner">Carregando colaboradores para integração...</div>';
 
   try {
-    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
     const usuariosCollection = collection(db, "usuarios");
     const q = query(
       usuariosCollection,
@@ -80,16 +79,14 @@ export async function renderizarIntegracao(state) {
     snapshot.docs.forEach((docSnap) => {
       const user = docSnap.data();
       const userId = docSnap.id;
-      // ✅ ALTERADO: Usa status_admissao
       const statusAtual = user.status_admissao || "N/A";
 
       let statusClass = "status-warning";
       let actionButtonHtml = "";
 
-      // ✅ LÓGICA DO BOTÃO PRINCIPAL (Baseada em status_admissao)
+      // --- BOTÃO PRINCIPAL ---
       if (statusAtual === "INTEGRACAO_AGENDADA") {
         statusClass = "status-info";
-        // Botão de AVALIAR (Concluir)
         actionButtonHtml = `
         <button 
           class="action-button primary btn-avaliar-integracao" 
@@ -97,7 +94,7 @@ export async function renderizarIntegracao(state) {
           data-dados="${encodeURIComponent(
             JSON.stringify({
               id: userId,
-              nome: user.nome, // Padrao usuarios
+              nome: user.nome,
               status_admissao: statusAtual,
             })
           )}"
@@ -115,7 +112,7 @@ export async function renderizarIntegracao(state) {
               id: userId,
               nome: user.nome,
               status_admissao: statusAtual,
-              telefone: user.contato || user.telefone, // Garante telefone
+              telefone: user.contato || user.telefone,
             })
           )}"
           style="background: var(--cor-primaria);">
@@ -123,7 +120,7 @@ export async function renderizarIntegracao(state) {
         </button>`;
       }
 
-      // Mapeamento de dados do Usuário
+      // Dados para os modais
       const dadosUsuario = {
         id: userId,
         nome_completo: user.nome || "Usuário Sem Nome",
@@ -164,7 +161,7 @@ export async function renderizarIntegracao(state) {
      	</button>
 
         <button 
-      	class="action-button secondary btn-ver-detalhes" 
+      	class="action-button secondary btn-ver-detalhes-admissao" 
       	data-id="${userId}"
       	data-dados="${dadosCodificados}"
      		style="background: #6c757d;">
@@ -214,16 +211,20 @@ export async function renderizarIntegracao(state) {
       });
     });
 
-    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+    // ✅ LISTENER DETALHES (Função global restaurada)
+    document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const dados = JSON.parse(
-          decodeURIComponent(e.currentTarget.getAttribute("data-dados"))
-        );
-        if (typeof window.abrirModalDetalhesCandidato === "function") {
-          window.abrirModalDetalhesCandidato(dados);
+        const userId = e.currentTarget.getAttribute("data-id");
+        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
+
+        if (typeof window.abrirModalCandidato === "function") {
+          const dadosCandidato = JSON.parse(
+            decodeURIComponent(dadosCodificados)
+          );
+          window.abrirModalCandidato(userId, "detalhes", dadosCandidato);
         } else {
-          console.log("Detalhes:", dados);
-          alert("Visualização de detalhes não configurada globalmente.");
+          console.error("Função window.abrirModalCandidato não encontrada.");
+          alert("Erro: Função de detalhes não carregada no sistema.");
         }
       });
     });
@@ -249,19 +250,26 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
     return;
   }
 
-  dadosUsuarioAtual = dadosUsuario;
+  dadosUsuarioAtual = dadosUsuario; // Armazena na variável global do módulo
   modalAgendamento.dataset.usuarioId = userId;
 
   const nomeEl = document.getElementById("agendamento-int-nome-candidato");
   const statusEl = document.getElementById("agendamento-int-status-atual");
 
   if (nomeEl) nomeEl.textContent = dadosUsuario.nome_completo;
-  if (statusEl) statusEl.textContent = dadosUsuario.status_admissao;
+
+  // ✅ CORREÇÃO VISUAL: Força cor preta (#000) para o status ficar visível
+  if (statusEl) {
+    statusEl.textContent =
+      dadosUsuario.status_admissao || dadosUsuario.status_recrutamento;
+    statusEl.style.color = "#000000"; // Preto
+    statusEl.style.fontWeight = "bold";
+  }
 
   document.getElementById("data-integracao-agendada").value = "";
   document.getElementById("hora-integracao-agendada").value = "";
 
-  // Correção de evento: substitui listener para garantir clique limpo
+  // Reset do botão e listener limpo
   const btnRegistrar = modalAgendamento.querySelector('button[type="submit"]');
   if (btnRegistrar) {
     const novoBtn = btnRegistrar.cloneNode(true);
@@ -283,7 +291,7 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
 }
 
 async function submeterAgendamentoIntegracao(e, btnRegistrar) {
-  console.log("🔹 Admissão: Submetendo agendamento (Usuário)");
+  console.log("🔹 Admissão: Submetendo agendamento");
 
   const modalAgendamento = document.getElementById(
     "modal-agendamento-integracao"
@@ -291,10 +299,8 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
   const usuarioId = modalAgendamento?.dataset.usuarioId;
   const { currentUserData } = getGlobalState();
 
-  // ✅ AUTH: Prioriza auth.currentUser
   const uidResponsavel =
     auth.currentUser?.uid || currentUserData?.uid || "rh_system_user";
-
   const dataIntegracao = document.getElementById(
     "data-integracao-agendada"
   ).value;
@@ -307,35 +313,16 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     return;
   }
 
-  // Lógica de Janela WhatsApp (Tentativa Automática)
-  let janelaWhatsApp = null;
-  let linkWhatsApp = null;
-
-  if (dadosUsuarioAtual.telefone_contato) {
-    linkWhatsApp = gerarLinkWhatsApp(
-      dadosUsuarioAtual,
-      dataIntegracao,
-      horaIntegracao
-    );
-    try {
-      janelaWhatsApp = window.open("", "_blank");
-    } catch (err) {
-      console.warn("Popup bloqueado inicialmente:", err);
-    }
-  }
-
   btnRegistrar.disabled = true;
   btnRegistrar.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
-  // ✅ UPDATE: Campo status_admissao
-  const novoStatus = "INTEGRACAO_AGENDADA";
-
   try {
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
+    // 1. Salva no banco primeiro (Fluxo normal)
     await updateDoc(usuarioRef, {
-      status_admissao: novoStatus,
+      status_admissao: "INTEGRACAO_AGENDADA",
       integracao: {
         agendamento: {
           data: dataIntegracao,
@@ -344,7 +331,6 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
           data_agendamento: new Date(),
         },
       },
-      // Histórico opcional
       historico: arrayUnion({
         data: new Date(),
         acao: `Integração agendada para ${dataIntegracao}.`,
@@ -354,42 +340,25 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
 
     window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // Lógica WhatsApp (Redirecionamento ou Fallback Manual)
-    if (linkWhatsApp) {
-      if (janelaWhatsApp && !janelaWhatsApp.closed) {
-        janelaWhatsApp.location.href = linkWhatsApp;
-        modalAgendamento.classList.remove("is-visible");
-        renderizarIntegracao(getGlobalState());
-      } else {
-        // Se bloqueado: Botão verde manual
-        btnRegistrar.disabled = false;
-        btnRegistrar.className = "action-button success";
-        btnRegistrar.style.background = "#25D366";
-        btnRegistrar.style.borderColor = "#25D366";
-        btnRegistrar.innerHTML =
-          '<i class="fab fa-whatsapp me-2"></i> Abrir WhatsApp Agora';
-
-        btnRegistrar.onclick = () => {
-          window.open(linkWhatsApp, "_blank");
-          modalAgendamento.classList.remove("is-visible");
-          renderizarIntegracao(getGlobalState());
-        };
-
-        window.showToast?.(
-          "Clique no botão verde para abrir o WhatsApp.",
-          "warning"
+    // 2. Abre o WhatsApp APÓS salvar
+    // Usamos setTimeout para tentar garantir que o navegador processe o clique
+    // e para dar tempo da UI atualizar (fechar modal)
+    if (dadosUsuarioAtual && dadosUsuarioAtual.telefone_contato) {
+      setTimeout(() => {
+        enviarMensagemWhatsAppIntegracao(
+          dadosUsuarioAtual,
+          dataIntegracao,
+          horaIntegracao
         );
-        return;
-      }
-    } else {
-      modalAgendamento.classList.remove("is-visible");
-      renderizarIntegracao(getGlobalState());
+      }, 500);
     }
+
+    modalAgendamento.classList.remove("is-visible");
+    renderizarIntegracao(getGlobalState());
   } catch (error) {
     console.error("❌ Erro ao agendar:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
-    if (janelaWhatsApp) janelaWhatsApp.close();
-
+  } finally {
     btnRegistrar.disabled = false;
     btnRegistrar.innerHTML =
       '<i class="fas fa-calendar-alt me-2"></i> Agendar Integração';
@@ -432,6 +401,26 @@ Qualquer dúvida, fale conosco.
   )}`;
 }
 
+function enviarMensagemWhatsAppIntegracao(
+  candidato,
+  dataIntegracao,
+  horaIntegracao
+) {
+  try {
+    const linkWhatsApp = gerarLinkWhatsApp(
+      candidato,
+      dataIntegracao,
+      horaIntegracao
+    );
+    window.open(linkWhatsApp, "_blank");
+  } catch (error) {
+    console.error("Erro ao abrir WhatsApp:", error);
+    alert(
+      "Ocorreu um erro ao abrir o WhatsApp. Verifique se os popups estão permitidos."
+    );
+  }
+}
+
 // ============================================
 // ✅ AVALIAÇÃO DA INTEGRAÇÃO
 // ============================================
@@ -471,7 +460,6 @@ async function submeterAvaliacaoIntegracao(e) {
   const usuarioId = modal.dataset.usuarioId;
   const { currentUserData } = getGlobalState();
 
-  // ✅ AUTH: Prioriza auth.currentUser
   const uidResponsavel =
     auth.currentUser?.uid || currentUserData?.uid || "rh_user";
 
@@ -486,7 +474,6 @@ async function submeterAvaliacaoIntegracao(e) {
   btnSalvar.disabled = true;
   btnSalvar.innerHTML = "Salvando...";
 
-  // ✅ UPDATE: Campo status_admissao
   const novoStatus = "AGUARDANDO_AVALIACAO_3MESES";
 
   try {
@@ -687,11 +674,8 @@ async function salvarEnvioTreinamento(
   tokenId
 ) {
   const { currentUserData } = getGlobalState();
-
-  // ✅ AUTH: Prioriza auth.currentUser
   const uidResponsavel =
     auth.currentUser?.uid || currentUserData?.uid || "rh_system_user";
-
   const usuarioRef = doc(db, "usuarios", userId);
 
   await updateDoc(usuarioRef, {
