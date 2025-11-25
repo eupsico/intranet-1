@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAvaliacao3Meses.js
- * Versão: 4.0.0 (Fluxo Completo: Agendamento + WhatsApp Empático + Detalhes)
+ * Versão: 4.2.0 (Fluxo Completo: Agendamento + WhatsApp Empático + Correção Detalhes)
  * Descrição: Gerencia o agendamento e a avaliação de experiência (3 Meses).
  */
 
@@ -9,7 +9,6 @@ import {
   updateDoc,
   doc,
   getDocs,
-  getDoc,
   query,
   where,
   collection,
@@ -74,12 +73,20 @@ export async function renderizarAvaliacao3Meses(state) {
       let statusClass = "status-warning";
       let actionButtonHtml = "";
 
-      // Dados para os modais
+      // ✅ CORREÇÃO DE DADOS: Objeto híbrido para atender todos os modais
       const dadosUsuario = {
         id: userId,
+        // Chaves para o Modal Global de Detalhes (window.abrirModalCandidato)
+        nome_candidato: user.nome || "Usuário Sem Nome",
+        email_candidato: user.email || "Sem e-mail",
+        telefone_contato: user.contato || user.telefone || "",
+        titulo_vaga_original: cargo,
+        status_recrutamento: statusAtual,
+
+        // Chaves para as Funções Locais (Agendar/Avaliar)
         nome: user.nome || "Usuário Sem Nome",
         email: user.email || "Sem e-mail",
-        telefone: user.contato || user.telefone || "Sem telefone",
+        telefone: user.contato || user.telefone || "",
         cargo: cargo,
         status_admissao: statusAtual,
         avaliacao_experiencia: user.avaliacao_experiencia,
@@ -172,16 +179,20 @@ export async function renderizarAvaliacao3Meses(state) {
       });
     });
 
-    // 3. Detalhes (Informações)
+    // 3. Detalhes (Informações) - Agora com mapeamento correto
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const userId = e.currentTarget.getAttribute("data-id");
         const dadosCodificados = e.currentTarget.getAttribute("data-dados");
         if (typeof window.abrirModalCandidato === "function") {
-          const dadosCandidato = JSON.parse(
-            decodeURIComponent(dadosCodificados)
-          );
-          window.abrirModalCandidato(userId, "detalhes", dadosCandidato);
+          try {
+            const dadosCandidato = JSON.parse(
+              decodeURIComponent(dadosCodificados)
+            );
+            window.abrirModalCandidato(userId, "detalhes", dadosCandidato);
+          } catch (err) {
+            console.error("Erro ao abrir detalhes:", err);
+          }
         }
       });
     });
@@ -192,7 +203,7 @@ export async function renderizarAvaliacao3Meses(state) {
 }
 
 // ============================================
-// LÓGICA DE AGENDAMENTO (NOVO)
+// LÓGICA DE AGENDAMENTO
 // ============================================
 
 function abrirModalAgendarAvaliacao3Meses(userId, dadosUsuario) {
@@ -398,7 +409,7 @@ async function submeterAvaliacao3Meses(e) {
 
   try {
     let nomeAvaliador = currentUserData?.nome || "RH";
-    let uidAvaliador = auth.currentUser?.uid || "rh_user";
+    // let uidAvaliador = auth.currentUser?.uid || "rh_user";
 
     const isAprovado = resultado === "Aprovado";
     const novoStatusAdmissao = isAprovado
