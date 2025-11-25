@@ -2976,7 +2976,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
 });
 
 // ====================================================================
-// GATILHO: Verifica se todos os documentos foram assinados (CORRIGIDO V2)
+// GATILHO: Verifica Assinaturas (Atualiza USUÁRIOS)
 // ====================================================================
 exports.verificarAssinaturaCompleta = onDocumentUpdated(
   "solicitacoes_assinatura/{solicitacaoId}",
@@ -2984,28 +2984,26 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
     const dadosAntes = event.data.before.data();
     const dadosDepois = event.data.after.data();
 
-    // ✅ CORREÇÃO: Usando as variáveis corretas (dadosAntes/dadosDepois)
+    // Evita loop se não houve mudança relevante
     if (
       dadosAntes.status === dadosDepois.status &&
       JSON.stringify(dadosAntes.documentos) ===
         JSON.stringify(dadosDepois.documentos)
     ) {
-      return null; // Nenhuma mudança relevante
+      return null;
     }
 
     const documentos = dadosDepois.documentos || [];
-    // Verifica se TODOS os itens dentro do array têm status 'assinado'
     const todosAssinados =
       documentos.length > 0 &&
       documentos.every((doc) => doc.status === "assinado");
 
-    // Se todos foram assinados, atualiza o status da solicitação E da candidatura
     if (todosAssinados) {
       logger.info(
-        `📝 Solicitação ${event.params.solicitacaoId}: Todos assinados. Atualizando candidatura...`
+        `📝 Solicitação ${event.params.solicitacaoId}: Todos assinados.`
       );
 
-      // 1. Garante que o status da solicitação seja 'concluido'
+      // 1. Atualiza a solicitação para 'concluido'
       if (dadosDepois.status !== "concluido") {
         await event.data.after.ref.update({
           status: "concluido",
@@ -3013,29 +3011,45 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
         });
       }
 
-      // 2. Atualiza a candidatura vinculada para mover o card
-      const candidatoId = dadosDepois.candidatoId_ref;
+      // 2. ATUALIZA A COLEÇÃO USUARIOS (Não mexe mais em candidaturas)
+      const usuarioUid = dadosDepois.usuarioUid;
+      const fase = dadosDepois.fase || 1;
 
-      if (candidatoId) {
-        const candidatoRef = db.collection("candidaturas").doc(candidatoId);
+      if (usuarioUid) {
+        const usuarioRef = db.collection("usuarios").doc(usuarioUid);
 
-        // Status exato que move para a próxima aba no seu sistema
-        const novoStatusCandidatura = "AGUARDANDO_INTEGRACAO";
+        // Define novos status para o usuário
+        const updates = {
+          [`status_assinatura_fase${fase}`]: "concluido",
+          data_ultima_assinatura: new Date(),
+          // Salva os documentos assinados no perfil do usuário
+          documentos_assinados: FieldValue.arrayUnion(
+            ...documentos.map((d) => ({
+              ...d,
+              data_assinatura: new Date(),
+              fase: fase,
+              origem_solicitacao: event.params.solicitacaoId,
+            }))
+          ),
+        };
 
-        await candidatoRef.update({
-          status_recrutamento: novoStatusCandidatura,
-          historico: FieldValue.arrayUnion({
-            data: new Date(),
-            acao: "Processo de assinatura finalizado. Movido para Integração.",
-            usuario: "Sistema (Automático)",
-          }),
-        });
+        // Lógica de mudança de fase do usuário
+        if (fase === 1) {
+          updates.status_integracao = "aguardando_agendamento"; // Move para próxima etapa (Integração)
+          updates.status_geral = "em_admissao";
+        } else if (fase === 2) {
+          updates.status_contrato = "efetivado";
+          updates.status_geral = "ativo";
+        }
 
+        await usuarioRef.update(updates);
         logger.info(
-          `✅ Candidatura ${candidatoId} movida para ${novoStatusCandidatura}`
+          `✅ Usuário ${usuarioUid} atualizado com sucesso (Fase ${fase}).`
         );
       } else {
-        logger.warn("⚠️ candidatoId_ref não encontrado na solicitação.");
+        logger.warn(
+          "⚠️ usuarioUid não encontrado na solicitação de assinatura."
+        );
       }
     }
   }
