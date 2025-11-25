@@ -36,7 +36,7 @@ export async function renderizarDocsPos3Meses(state) {
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
-        "ENVIAR_ASSINATURA_FASE1",
+        "ENVIAR_ASSINATURA_FASE2",
         "AGUARDANDO_ASSINATURA_FASE2",
       ])
     );
