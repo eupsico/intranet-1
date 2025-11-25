@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 4.1.0 (Melhoria na Msg WhatsApp e Botão de Lembrete)
+ * Versão: 4.2.0 (Correção: Mapeamento de Dados para Modal Detalhes)
  * Descrição: Gerencia a liberação de documentos para assinatura (Fase 1).
  */
 
@@ -31,7 +31,7 @@ export async function renderizarAssinaturaDocs(state) {
     '<div class="loading-spinner">Carregando usuários para assinatura...</div>';
 
   try {
-    // ✅ Busca na coleção 'usuarios' pelo 'status_admissao'
+    // Busca na coleção 'usuarios' pelo 'status_admissao'
     const usuariosCollection = collection(db, "usuarios");
     const q = query(
       usuariosCollection,
@@ -70,7 +70,7 @@ export async function renderizarAssinaturaDocs(state) {
       let statusClass = "status-info";
       let botaoAcao = "";
 
-      // ✅ LÓGICA DO BOTÃO ATUALIZADA
+      // LÓGICA DO BOTÃO
       if (statusAtual === "AGUARDANDO_ASSINATURA_FASE1") {
         statusClass = "status-warning";
         // Botão de Lembrete por WhatsApp
@@ -106,15 +106,31 @@ export async function renderizarAssinaturaDocs(state) {
           </button>`;
       }
 
-      // Objeto de visualização
+      // ✅ CORREÇÃO AQUI: Mapeamento correto para o Modal de Detalhes
+      // O modal espera chaves como 'nome_candidato', mas o usuário tem 'nome'
+      const dadosParaModal = {
+        id: userId,
+        // Chaves esperadas pelo modal 'abrirModalCandidato':
+        nome_candidato: user.nome || "Usuário Sem Nome",
+        email_candidato: user.email || "Sem e-mail",
+        telefone_contato: user.contato || user.telefone || "",
+        titulo_vaga_original: user.profissao || "Cargo não informado",
+        status_recrutamento: statusAtual,
+        // Campos extras úteis
+        email_novo: user.email,
+      };
+
+      const dadosCodificados = encodeURIComponent(
+        JSON.stringify(dadosParaModal)
+      );
+
+      // Objeto simples apenas para exibição no Card
       const dadosExibicao = {
         nome: user.nome || "Usuário Sem Nome",
         email: user.email || "...",
         status: statusAtual,
       };
 
-      // Nota: Botão detalhes estava usando variáveis indefinidas no código original (candidatoId, cand).
-      // Ajustei para usar userId e user.
       listaHtml += `
       <div class="card card-candidato-gestor" data-id="${userId}">
        <div class="info-primaria">
@@ -134,7 +150,7 @@ export async function renderizarAssinaturaDocs(state) {
          <button 
            class="btn btn-sm btn-secondary btn-ver-detalhes-admissao" 
            data-id="${userId}"
-           data-dados="${encodeURIComponent(JSON.stringify(user))}"
+           data-dados="${dadosCodificados}"
            style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
            <i class="fas fa-eye me-1"></i> Detalhes
          </button>
@@ -155,7 +171,7 @@ export async function renderizarAssinaturaDocs(state) {
       });
     });
 
-    // Listeners - Lembrar Assinatura (NOVO)
+    // Listeners - Lembrar Assinatura
     document.querySelectorAll(".btn-lembrar-assinatura").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -165,13 +181,12 @@ export async function renderizarAssinaturaDocs(state) {
       });
     });
 
-    // Listeners - Detalhes
+    // Listeners - Detalhes (Agora com dados mapeados corretamente)
     document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const userId = e.currentTarget.getAttribute("data-id");
         const dadosCodificados = e.currentTarget.getAttribute("data-dados");
         if (typeof window.abrirModalCandidato === "function") {
-          // Decodifica e passa para o modal global
           try {
             const dadosUser = JSON.parse(decodeURIComponent(dadosCodificados));
             window.abrirModalCandidato(userId, "detalhes", dadosUser);
@@ -188,7 +203,7 @@ export async function renderizarAssinaturaDocs(state) {
 }
 
 // ============================================
-// FUNÇÃO DE LEMBRETE (NOVA)
+// FUNÇÃO DE LEMBRETE
 // ============================================
 function enviarLembreteAssinatura(dados) {
   const nome = dados.nome ? dados.nome.split(" ")[0] : "Colaborador";
@@ -208,7 +223,7 @@ function enviarLembreteAssinatura(dados) {
 }
 
 // ============================================
-// MODAL E AÇÃO (ATUALIZADOS PARA USUÁRIOS)
+// MODAL DE ENVIO DE DOCUMENTOS
 // ============================================
 
 async function abrirModalEnviarDocumentos(
@@ -218,7 +233,18 @@ async function abrirModalEnviarDocumentos(
   fase = 1
 ) {
   try {
-    const dadosUsuario = JSON.parse(decodeURIComponent(dadosCodificados));
+    // Aqui usamos dadosCodificados. Como mapeamos para o modal, precisamos ajustar se formos usar chaves específicas
+    // Mas para o envio de docs, usamos chaves genéricas que criamos (nome_candidato vs nome)
+    // O ideal é parsear e adaptar caso falte
+    const dadosObj = JSON.parse(decodeURIComponent(dadosCodificados));
+
+    // Normaliza para uso interno desta função
+    const dadosUsuario = {
+      nome: dadosObj.nome_candidato || dadosObj.nome,
+      email: dadosObj.email_candidato || dadosObj.email_novo,
+      telefone: dadosObj.telefone_contato,
+    };
+
     dadosUsuarioAtual = dadosUsuario;
 
     const modalExistente = document.getElementById("modal-enviar-documentos");
@@ -232,7 +258,6 @@ async function abrirModalEnviarDocumentos(
     const tituloFase =
       fase === 1 ? "Fase 1: Admissão" : "Fase 2: Pós-Experiência";
 
-    // ✅ Mensagem de WhatsApp Melhorada no textarea
     const msgPadrao = `Olá ${dadosUsuario.nome.split(" ")[0]}, tudo bem? 👋
 
 Seus documentos de admissão (${tituloFase}) já estão disponíveis para assinatura na Intranet! 📄✍️
