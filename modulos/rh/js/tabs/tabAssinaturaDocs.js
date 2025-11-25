@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 4.0.0 (Migração Completa para Coleção Usuarios)
+ * Versão: 4.1.0 (Melhoria na Msg WhatsApp e Botão de Lembrete)
  * Descrição: Gerencia a liberação de documentos para assinatura (Fase 1).
  */
 
@@ -31,7 +31,7 @@ export async function renderizarAssinaturaDocs(state) {
     '<div class="loading-spinner">Carregando usuários para assinatura...</div>';
 
   try {
-    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
+    // ✅ Busca na coleção 'usuarios' pelo 'status_admissao'
     const usuariosCollection = collection(db, "usuarios");
     const q = query(
       usuariosCollection,
@@ -70,12 +70,22 @@ export async function renderizarAssinaturaDocs(state) {
       let statusClass = "status-info";
       let botaoAcao = "";
 
-      // ✅ LÓGICA DO BOTÃO (Baseada em status_admissao)
+      // ✅ LÓGICA DO BOTÃO ATUALIZADA
       if (statusAtual === "DOCS_LIBERADOS_FASE1") {
         statusClass = "status-warning";
+        // Botão de Lembrete por WhatsApp
         botaoAcao = `
-            <button class="action-button secondary" disabled style="opacity: 0.7; cursor: default; width: 100%;">
-               <i class="fas fa-clock me-2"></i> Aguardando Assinatura
+            <button class="btn btn-sm btn-warning btn-lembrar-assinatura" 
+               data-id="${userId}"
+               data-dados="${encodeURIComponent(
+                 JSON.stringify({
+                   id: userId,
+                   nome: user.nome,
+                   telefone: user.contato || user.telefone || "",
+                 })
+               )}"
+               style="padding: 10px 16px; background: #ffc107; color: #212529; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
+               <i class="fab fa-whatsapp me-1"></i> Lembrar Assinatura
             </button>`;
       } else if (statusAtual === "AGUARDANDO_ASSINATURA_FASE1") {
         statusClass = "status-success";
@@ -103,6 +113,8 @@ export async function renderizarAssinaturaDocs(state) {
         status: statusAtual,
       };
 
+      // Nota: Botão detalhes estava usando variáveis indefinidas no código original (candidatoId, cand).
+      // Ajustei para usar userId e user.
       listaHtml += `
       <div class="card card-candidato-gestor" data-id="${userId}">
        <div class="info-primaria">
@@ -117,12 +129,12 @@ export async function renderizarAssinaturaDocs(state) {
         </p>
        </div>
        
-       div class="acoes-candidato">
+       <div class="acoes-candidato">
          ${botaoAcao}
          <button 
            class="btn btn-sm btn-secondary btn-ver-detalhes-admissao" 
-           data-id="${candidatoId}"
-           data-dados="${encodeURIComponent(JSON.stringify(cand))}"
+           data-id="${userId}"
+           data-dados="${encodeURIComponent(JSON.stringify(user))}"
            style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
            <i class="fas fa-eye me-1"></i> Detalhes
          </button>
@@ -134,7 +146,7 @@ export async function renderizarAssinaturaDocs(state) {
     listaHtml += "</div>";
     conteudoAdmissao.innerHTML = listaHtml;
 
-    // Listeners
+    // Listeners - Liberar Documentos
     document.querySelectorAll(".btn-enviar-documentos").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const userId = e.currentTarget.getAttribute("data-id");
@@ -142,10 +154,57 @@ export async function renderizarAssinaturaDocs(state) {
         abrirModalEnviarDocumentos(userId, dados, state, 1); // Fase 1
       });
     });
+
+    // Listeners - Lembrar Assinatura (NOVO)
+    document.querySelectorAll(".btn-lembrar-assinatura").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const dados = JSON.parse(
+          decodeURIComponent(e.currentTarget.getAttribute("data-dados"))
+        );
+        enviarLembreteAssinatura(dados);
+      });
+    });
+
+    // Listeners - Detalhes
+    document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const userId = e.currentTarget.getAttribute("data-id");
+        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
+        if (typeof window.abrirModalCandidato === "function") {
+          // Decodifica e passa para o modal global
+          try {
+            const dadosUser = JSON.parse(decodeURIComponent(dadosCodificados));
+            window.abrirModalCandidato(userId, "detalhes", dadosUser);
+          } catch (err) {
+            console.error("Erro ao abrir detalhes", err);
+          }
+        }
+      });
+    });
   } catch (error) {
     console.error("Erro ao renderizar aba de Assinatura:", error);
     conteudoAdmissao.innerHTML = `<p class="alert alert-danger">Erro ao carregar: ${error.message}</p>`;
   }
+}
+
+// ============================================
+// FUNÇÃO DE LEMBRETE (NOVA)
+// ============================================
+function enviarLembreteAssinatura(dados) {
+  const nome = dados.nome ? dados.nome.split(" ")[0] : "Colaborador";
+  const telefone = dados.telefone ? dados.telefone.replace(/\D/g, "") : "";
+
+  if (!telefone) {
+    alert("Telefone não encontrado para este usuário.");
+    return;
+  }
+
+  const msg = `Olá ${nome}, tudo bem? 👋\n\nPassando para lembrar que os *documentos da sua admissão* já estão disponíveis e aguardando sua assinatura na Intranet! 📄✍️\n\nPara assinar:\n1️⃣ Acesse: ${URL_INTRANET}\n2️⃣ Vá no menu *Portal do Voluntário > Assinaturas e Termos*\n3️⃣ Leia e assine digitalmente.\n\nContamos com você! Qualquer dúvida, nos chame.`;
+
+  const link = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
+    msg
+  )}`;
+  window.open(link, "_blank");
 }
 
 // ============================================
@@ -172,6 +231,18 @@ async function abrirModalEnviarDocumentos(
 
     const tituloFase =
       fase === 1 ? "Fase 1: Admissão" : "Fase 2: Pós-Experiência";
+
+    // ✅ Mensagem de WhatsApp Melhorada no textarea
+    const msgPadrao = `Olá ${dadosUsuario.nome.split(" ")[0]}, tudo bem? 👋
+
+Seus documentos de admissão (${tituloFase}) já estão disponíveis para assinatura na Intranet! 📄✍️
+
+É bem simples:
+1️⃣ Acesse: ${URL_INTRANET}
+2️⃣ Vá no menu *Portal do Voluntário > Assinaturas e Termos*
+3️⃣ Clique em "Assinar" nos documentos pendentes.
+
+Ficamos no aguardo!`;
 
     modal.innerHTML = `
      <style>
@@ -204,12 +275,7 @@ async function abrirModalEnviarDocumentos(
        </div>
        <div class="form-group">
         <label class="form-label" style="font-weight:bold;">Mensagem para WhatsApp:</label>
-        <textarea id="documentos-mensagem" class="form-textarea" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
-Olá ${dadosUsuario.nome.split(" ")[0]}!
-Novos documentos (${tituloFase}) disponíveis na Intranet.
-1. Acesse: ${URL_INTRANET}
-2. Vá em Portal do Voluntário > Assinaturas e Termos.
-        </textarea>
+        <textarea id="documentos-mensagem" class="form-textarea" rows="8" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">${msgPadrao}</textarea>
        </div>
       </div>
       <div class="modal-footer">
@@ -245,7 +311,7 @@ async function carregarDocumentosDisponiveis() {
         docSnap.id
       }" id="doc-${docSnap.id}" data-titulo="${
         docData.titulo || "Sem título"
-      }"><label for="doc-${docSnap.id}">${
+      }"><label for="doc-${docSnap.id}" style="margin-left: 8px;">${
         docData.titulo || "Sem título"
       }</label></div>`;
     });
@@ -307,11 +373,16 @@ window.confirmarLiberacaoDocs = async function () {
       status_admissao: novoStatus,
     });
 
-    const telefone = dadosUsuarioAtual.telefone.replace(/\D/g, "");
-    const linkZap = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
-      msgWhatsapp
-    )}`;
-    window.open(linkZap, "_blank");
+    const telefone = dadosUsuarioAtual.telefone
+      ? dadosUsuarioAtual.telefone.replace(/\D/g, "")
+      : "";
+
+    if (telefone) {
+      const linkZap = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
+        msgWhatsapp
+      )}`;
+      window.open(linkZap, "_blank");
+    }
 
     window.showToast?.("Documentos liberados!", "success");
     fecharModalEnviarDocumentos();
@@ -323,6 +394,9 @@ window.confirmarLiberacaoDocs = async function () {
       );
       if (activeTab) state.handleTabClick({ currentTarget: activeTab });
     }
+
+    // Recarrega a aba para mostrar o botão de lembrete
+    renderizarAssinaturaDocs(state);
   } catch (error) {
     console.error("Erro:", error);
     alert(`Erro: ${error.message}`);
