@@ -199,7 +199,7 @@ async function abrirModalEnviarDocumentos(
         <label class="form-label" style="font-weight:bold;">Mensagem para WhatsApp:</label>
         <textarea id="documentos-mensagem" class="form-textarea" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
 Olá ${dadosUsuario.nome.split(" ")[0]}!
-Novos documentos (${tituloFase}) disponíveis na Intranet.
+Novos documentos disponíveis na Intranet para você assinar.
 1. Acesse: ${URL_INTRANET}
 2. Vá em Portal do Voluntário > Assinaturas e Termos.
         </textarea>
