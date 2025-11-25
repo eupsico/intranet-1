@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabDocsPos3Meses.js
- * Versão: 3.0.0 (Migração Completa para Coleção Usuarios e status_admissao)
+ * Versão: 4.0.0 (Refatorado: Botão Detalhes + Lembrete WhatsApp Fase 2)
  * Descrição: Gerencia a etapa final de envio de documentos pós-experiência.
  */
 
@@ -13,6 +13,8 @@ import {
   db,
 } from "../../../../assets/js/firebase-init.js";
 
+const URL_INTRANET = "https://intranet.eupsico.org.br";
+
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
 // ============================================
@@ -24,7 +26,7 @@ export async function renderizarDocsPos3Meses(state) {
     '<div class="loading-spinner">Carregando colaboradores aprovados...</div>';
 
   try {
-    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
+    // Busca na coleção 'usuarios' pelo 'status_admissao'
     const usuariosCollection = collection(db, "usuarios");
     const q = query(
       usuariosCollection,
@@ -58,18 +60,34 @@ export async function renderizarDocsPos3Meses(state) {
 
     snapshot.docs.forEach((docSnap) => {
       const user = docSnap.data();
-      const userId = docSnap.id; // UID do usuário
+      const userId = docSnap.id;
       const statusAtual = user.status_admissao || "N/A";
 
       let statusClass = "status-success";
       let botaoAcao = "";
 
-      // ✅ LÓGICA DO BOTÃO PRINCIPAL (Baseada em status_admissao)
-      if (statusAtual === "AGUARDANDO_DOCS_POS_3MESES") {
+      // ✅ LÓGICA DO BOTÃO PRINCIPAL
+      if (statusAtual === "DOCS_LIBERADOS_FASE2") {
+        // Botão de Lembrete (WhatsApp)
+        statusClass = "status-warning";
+        botaoAcao = `
+            <button class="btn btn-sm btn-warning btn-lembrar-assinatura" 
+               data-id="${userId}"
+               data-dados="${encodeURIComponent(
+                 JSON.stringify({
+                   id: userId,
+                   nome: user.nome,
+                   telefone: user.contato || user.telefone || "",
+                 })
+               )}"
+               style="padding: 10px 16px; background: #ffc107; color: #212529; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
+               <i class="fab fa-whatsapp me-1"></i> Lembrar Assinatura
+            </button>`;
+      } else if (statusAtual === "AGUARDANDO_DOCS_POS_3MESES") {
         // Botão para abrir o modal de envio (Fase 2)
         botaoAcao = `
             <button 
-                class="action-button primary btn-enviar-docs-finais" 
+                class="btn btn-sm btn-primary btn-enviar-docs-finais" 
                 data-id="${userId}"
                 data-dados="${encodeURIComponent(
                   JSON.stringify({
@@ -79,53 +97,66 @@ export async function renderizarDocsPos3Meses(state) {
                     telefone: user.contato,
                   })
                 )}"
-                style="background: var(--cor-sucesso);">
+                style="padding: 10px 16px; background: var(--cor-sucesso); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
                 <i class="fas fa-file-signature me-1"></i> Enviar Docs Finais
             </button>`;
-      } else if (statusAtual === "DOCS_LIBERADOS_FASE2") {
-        // Botão informativo
-        statusClass = "status-warning";
-        botaoAcao = `
-            <button class="action-button secondary" disabled style="opacity:0.7; cursor: default; width: 100%;">
-                <i class="fas fa-clock me-2"></i> Aguardando Assinatura
-            </button>`;
       } else {
-        // Fallback
         botaoAcao = `<span class="text-muted">Status: ${statusAtual}</span>`;
       }
 
-      // Objeto de dados para os modais
-      const dadosUsuario = {
+      // ✅ MAPEAMENTO DE DADOS PARA O MODAL DE DETALHES (GLOBAL)
+      const dadosParaModal = {
         id: userId,
-        nome_completo: user.nome || "Usuário Sem Nome",
-        email_novo: user.email || "Sem e-mail",
+        nome_candidato: user.nome || "Usuário Sem Nome",
+        email_candidato: user.email || "Sem e-mail",
         telefone_contato: user.contato || user.telefone || "",
-        vaga_titulo: user.profissao || "Cargo não informado",
+        titulo_vaga_original: user.profissao || "Cargo não informado",
         status_recrutamento: statusAtual,
+
+        // Campos extras
+        email_novo: user.email,
       };
 
-      const dadosCodificados = encodeURIComponent(JSON.stringify(dadosUsuario));
+      const dadosCodificados = encodeURIComponent(
+        JSON.stringify(dadosParaModal)
+      );
+
+      // Objeto para exibição no card
+      const dadosExibicao = {
+        nome: user.nome || "Usuário Sem Nome",
+        email: user.email || "...",
+        cargo: user.profissao || "Não informado",
+        status: statusAtual,
+      };
 
       listaHtml += `
         <div class="card card-candidato-gestor" data-id="${userId}">
          <div class="info-primaria">
           <h4 class="nome-candidato">
-           ${dadosUsuario.nome_completo}
+           ${dadosExibicao.nome}
             <span class="status-badge ${statusClass}">
-              ${statusAtual.replace(/_/g, " ")}
+              ${dadosExibicao.status.replace(/_/g, " ")}
             </span>
           </h4>
           <p class="small-info">
-           <i class="fas fa-briefcase"></i> Cargo: ${dadosUsuario.vaga_titulo}
+           <i class="fas fa-briefcase"></i> Cargo: ${dadosExibicao.cargo}
           </p>
           <p class="small-info" style="color: var(--cor-primaria);">
-           <i class="fas fa-envelope"></i> Email: ${dadosUsuario.email_novo}
+           <i class="fas fa-envelope"></i> Email: ${dadosExibicao.email}
           </p>
          </div>
          
          <div class="acoes-candidato">
            ${botaoAcao}
-           </div>
+           
+           <button 
+             class="btn btn-sm btn-secondary btn-ver-detalhes-pos3meses" 
+             data-id="${userId}"
+             data-dados="${dadosCodificados}"
+             style="padding: 10px 16px; border: 1px solid var(--cor-secundaria); background: transparent; color: var(--cor-secundaria); border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 100px;">
+             <i class="fas fa-eye me-1"></i> Detalhes
+           </button>
+         </div>
         </div>
        `;
     });
@@ -155,8 +186,56 @@ export async function renderizarDocsPos3Meses(state) {
         }
       });
     });
+
+    // 2. Botão Lembrar Assinatura (Novo)
+    document.querySelectorAll(".btn-lembrar-assinatura").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const dados = JSON.parse(
+          decodeURIComponent(e.currentTarget.getAttribute("data-dados"))
+        );
+        enviarLembreteAssinaturaFase2(dados);
+      });
+    });
+
+    // 3. Botão Detalhes
+    document.querySelectorAll(".btn-ver-detalhes-pos3meses").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const userId = e.currentTarget.getAttribute("data-id");
+        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
+        if (typeof window.abrirModalCandidato === "function") {
+          try {
+            const dadosCandidato = JSON.parse(
+              decodeURIComponent(dadosCodificados)
+            );
+            window.abrirModalCandidato(userId, "detalhes", dadosCandidato);
+          } catch (err) {
+            console.error("Erro ao abrir detalhes:", err);
+          }
+        }
+      });
+    });
   } catch (error) {
     console.error("Erro ao renderizar aba Docs Pós 3 Meses:", error);
     conteudoAdmissao.innerHTML = `<p class="alert alert-danger">Erro ao carregar: ${error.message}</p>`;
   }
+}
+
+// ============================================
+// FUNÇÃO DE LEMBRETE (Fase 2)
+// ============================================
+function enviarLembreteAssinaturaFase2(dados) {
+  const nome = dados.nome ? dados.nome.split(" ")[0] : "Colaborador";
+  const telefone = dados.telefone ? dados.telefone.replace(/\D/g, "") : "";
+
+  if (!telefone) {
+    alert("Telefone não encontrado para este usuário.");
+    return;
+  }
+
+  const msg = `Olá ${nome}, tudo bem? 👋\n\nPassando para lembrar que os documentos da sua *Efetivação* já estão disponíveis na Intranet! 📄✍️\n\nPara assinar:\n1️⃣ Acesse: ${URL_INTRANET}\n2️⃣ Vá no menu *Portal do Voluntário > Assinaturas e Termos*\n3️⃣ Leia e assine digitalmente.\n\nContamos com você!`;
+
+  const link = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
+    msg
+  )}`;
+  window.open(link, "_blank");
 }
