@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabIntegracao.js
- * Versão: 2.1.0 (Correção Popup WhatsApp + Botão Detalhes)
+ * Versão: 1.2.0 (Completo: Agendamento + Mensagem WhatsApp + Avaliação)
  * Descrição: Gerencia agendamento, avaliação de integração e envio de treinamentos.
  */
 
@@ -20,14 +20,14 @@ import {
 // ============================================
 // VARIÁVEIS DE ESTADO
 // ============================================
-let dadosUsuarioAtual = null; // Nome alterado para refletir que é um usuário
+let dadosUsuarioAtual = null; // Para modais
 
 // ============================================
-// CLOUD FUNCTIONS
+// CLOUD FUNCTIONS (Reutilizadas)
 // ============================================
 const CLOUD_FUNCTIONS_BASE =
   "https://us-central1-eupsico-agendamentos-d2048.cloudfunctions.net";
-const CF_GERAR_TOKEN = `${CLOUD_FUNCTIONS_BASE}/gerarTokenTeste`;
+const CF_GERAR_TOKEN = `${CLOUD_FUNCTIONS_BASE}/gerarTokenTeste`; // Reutilizada para treinamentos
 
 // ============================================
 // RENDERIZAÇÃO DA LISTAGEM
@@ -44,8 +44,8 @@ export async function renderizarIntegracao(state) {
     '<div class="loading-spinner">Carregando colaboradores para integração...</div>';
 
   try {
-    // ✅ MUDANÇA: Busca na coleção 'usuarios' pelo 'status_admissao'
     const usuariosCollection = collection(db, "usuarios");
+    // Busca candidatos que precisam agendar OU que já agendaram e precisam ser avaliados
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
@@ -66,27 +66,28 @@ export async function renderizarIntegracao(state) {
     if (snapshot.empty) {
       conteudoAdmissao.innerHTML =
         '<p class="alert alert-info">Nenhum colaborador aguardando integração.</p>';
+      console.log("ℹ️ Admissão(Integração): Nenhum candidato encontrado");
       return;
     }
 
     let listaHtml = `
   	<div class="description-box" style="margin-top: 15px;">
-   	<p>Gerencie o processo de Onboarding. Agende a integração, envie os links dos treinamentos e avalie a conclusão.</p>
+   	<p>Agende a reunião de integração (Onboarding), envie os links dos treinamentos e avalie a conclusão da integração.</p>
   	</div>
   	<div class="candidatos-container candidatos-grid">
   `;
 
     snapshot.docs.forEach((docSnap) => {
       const user = docSnap.data();
-      const userId = docSnap.id; // Este é o UID do usuário
+      const userId = docSnap.uid; // Este é o UID do usuário
       const statusAtual = user.status_admissao || "N/A";
 
       let statusClass = "status-warning";
       let actionButtonHtml = "";
 
-      // ✅ LÓGICA DO BOTÃO PRINCIPAL (Baseada em status_admissao)
+      // --- LÓGICA DO BOTÃO PRINCIPAL ---
       if (statusAtual === "INTEGRACAO_AGENDADA") {
-        statusClass = "status-info";
+        statusClass = "status-info"; // Azul para indicar agendado
         // Botão de AVALIAR (Concluir)
         actionButtonHtml = `
         <button 
@@ -103,7 +104,8 @@ export async function renderizarIntegracao(state) {
           <i class="fas fa-check-double me-1"></i> Avaliar Integração
         </button>`;
       } else {
-        // Botão de AGENDAR (AGUARDANDO_INTEGRACAO)
+        // Botão de AGENDAR
+        // Passamos telefone_contato no JSON para usar no envio do WhatsApp
         actionButtonHtml = `
         <button 
           class="action-button primary btn-agendar-integracao" 
@@ -121,7 +123,6 @@ export async function renderizarIntegracao(state) {
         </button>`;
       }
 
-      // Objeto de dados para os modais (Mapeado do Usuário)
       const dadosUsuario = {
         id: userId,
         nome_completo: user.nome || "Usuário Sem Nome",
@@ -137,7 +138,6 @@ export async function renderizarIntegracao(state) {
 
       const dadosCodificados = encodeURIComponent(JSON.stringify(dadosUsuario));
 
-      // ✅ ADICIONADO: Botão Ver Detalhes
       listaHtml += `
     <div class="card card-candidato-gestor" data-id="${userId}">
      <div class="info-primaria">
@@ -153,25 +153,23 @@ export async function renderizarIntegracao(state) {
      </div>
      
      <div class="acoes-candidato">
-        ${actionButtonHtml}
+     	${actionButtonHtml}
      	
-        <button 
+     	<button 
       	class="action-button success btn-enviar-treinamento" 
       	data-id="${userId}"
       	data-dados="${dadosCodificados}"
      		style="background: var(--cor-sucesso);">
-      	<i class="fas fa-video me-1"></i> Treinamentos
-     	</button>
-
-        <button 
-      	class="action-button secondary btn-ver-detalhes" 
-      	data-id="${userId}"
-      	data-dados="${dadosCodificados}"
-     		style="background: #6c757d;">
-      	<i class="fas fa-eye me-1"></i> Detalhes
+      	<i class="fas fa-video me-1"></i> Enviar Treinamentos
      	</button>
      	
-      </div>
+     	<button 
+      	class="action-button secondary btn-ver-detalhes-admissao" 
+      	data-id="${userId}"
+      	data-dados="${dadosCodificados}">
+      	<i class="fas fa-eye me-1"></i> Detalhes
+     	</button>
+     </div>
     </div>
    `;
     });
@@ -193,7 +191,7 @@ export async function renderizarIntegracao(state) {
       });
     });
 
-    // 2. Avaliar Integração
+    // 2. Avaliar Integração (Novo)
     document.querySelectorAll(".btn-avaliar-integracao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const userId = e.currentTarget.getAttribute("data-id");
@@ -217,21 +215,14 @@ export async function renderizarIntegracao(state) {
       });
     });
 
-    // 4. ✅ Ver Detalhes (Novo Listener)
-    document.querySelectorAll(".btn-ver-detalhes").forEach((btn) => {
+    // 4. Detalhes
+    document.querySelectorAll(".btn-ver-detalhes-admissao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        const dados = JSON.parse(
-          decodeURIComponent(e.currentTarget.getAttribute("data-dados"))
-        );
-        // Tenta usar a função global de modal de detalhes se existir
-        if (typeof window.abrirModalDetalhesCandidato === "function") {
-          window.abrirModalDetalhesCandidato(dados);
-        } else {
-          console.log("Detalhes:", dados);
-          // Fallback caso a função global não esteja definida
-          alert(
-            "Visualização de detalhes não configurada globalmente. Verifique o console."
-          );
+        const userId = e.currentTarget.getAttribute("data-id");
+        const dadosCodificados = e.currentTarget.getAttribute("data-dados");
+        if (typeof window.abrirModalCandidato === "function") {
+          const dadosUsuario = JSON.parse(decodeURIComponent(dadosCodificados));
+          window.abrirModalCandidato(userId, "detalhes", dadosUsuario);
         }
       });
     });
@@ -259,39 +250,50 @@ function abrirModalAgendarIntegracao(userId, dadosUsuario) {
   }
 
   dadosUsuarioAtual = dadosUsuario;
-  modalAgendamento.dataset.usuarioId = userId; // Salva UID
+  modalAgendamento.dataset.usuarioId = userId;
 
   const nomeEl = document.getElementById("agendamento-int-nome-candidato");
   const statusEl = document.getElementById("agendamento-int-status-atual");
 
   if (nomeEl) nomeEl.textContent = dadosUsuario.nome_completo;
-  if (statusEl) statusEl.textContent = dadosUsuario.status_recrutamento; // (status_admissao)
+  if (statusEl) statusEl.textContent = dadosUsuario.status_recrutamento;
 
   // Limpa campos
-  document.getElementById("data-integracao-agendada").value = "";
-  document.getElementById("hora-integracao-agendada").value = "";
+  const dataEl = document.getElementById("data-integracao-agendada");
+  const horaEl = document.getElementById("hora-integracao-agendada");
+  if (dataEl) dataEl.value = "";
+  if (horaEl) horaEl.value = "";
 
   form.removeEventListener("submit", submeterAgendamentoIntegracao);
   form.addEventListener("submit", submeterAgendamentoIntegracao);
 
+  // Listeners de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-agendamento-integracao']`)
     .forEach((btn) => {
-      btn.onclick = () => modalAgendamento.classList.remove("is-visible");
+      btn.removeEventListener("click", fecharModalAgendarIntegracao);
+      btn.addEventListener("click", fecharModalAgendarIntegracao);
     });
 
   modalAgendamento.classList.add("is-visible");
 }
 
+function fecharModalAgendarIntegracao() {
+  const modalOverlay = document.getElementById("modal-agendamento-integracao");
+  if (modalOverlay) {
+    modalOverlay.classList.remove("is-visible");
+  }
+}
+
 async function submeterAgendamentoIntegracao(e) {
   e.preventDefault();
-  console.log("🔹 Admissão: Submetendo agendamento (Usuário)");
+  console.log("🔹 Admissão: Submetendo agendamento");
 
   const modalAgendamento = document.getElementById(
     "modal-agendamento-integracao"
   );
   const btnRegistrar = modalAgendamento.querySelector('button[type="submit"]');
-  const usuarioId = modalAgendamento?.dataset.usuarioId; // UID
+  const usuarioId = modalAgendamento?.dataset.usuarioId;
   const { currentUserData } = getGlobalState();
 
   const dataIntegracao = document.getElementById(
@@ -306,18 +308,11 @@ async function submeterAgendamentoIntegracao(e) {
     return;
   }
 
-  // 🔥 CORREÇÃO POPUP: Abre a janela IMEDIATAMENTE antes do await
-  let janelaWhatsApp = null;
-  if (dadosUsuarioAtual.telefone_contato) {
-    // Abre janela em branco imediatamente (síncrono) para contornar bloqueadores
-    janelaWhatsApp = window.open("", "_blank");
-  }
-
   btnRegistrar.disabled = true;
   btnRegistrar.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
-  // ✅ NOVO STATUS EM USUARIOS
+  // ✅ Status intermediário: INTEGRACAO_AGENDADA (para mudar o botão)
   const novoStatus = "INTEGRACAO_AGENDADA";
 
   try {
@@ -325,38 +320,37 @@ async function submeterAgendamentoIntegracao(e) {
 
     await updateDoc(usuarioRef, {
       status_admissao: novoStatus,
-      integracao: {
-        agendamento: {
-          data: dataIntegracao,
-          hora: horaIntegracao,
-          agendado_por_uid: currentUserData.uid || "rh_system_user",
-          data_agendamento: new Date(),
-        },
+      "integracao.agendamento": {
+        data: dataIntegracao,
+        hora: horaIntegracao,
+        agendado_por_uid: currentUserData.uid || "rh_system_user",
+        data_agendamento: new Date(),
       },
-      // Opcional: Histórico no usuário
-      // historico: arrayUnion(...)
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Integração agendada para ${dataIntegracao} às ${horaIntegracao}. Status: ${novoStatusCandidato}`,
+        usuario: currentUserData.id || "rh_system_user",
+      }),
     });
 
     window.showToast?.(`Agendado com sucesso!`, "success");
 
-    // Envia WhatsApp usando a janela já aberta
+    // Envia WhatsApp se houver telefone
     if (dadosUsuarioAtual.telefone_contato) {
-      enviarMensagemWhatsAppIntegracao(
-        dadosUsuarioAtual,
-        dataIntegracao,
-        horaIntegracao,
-        janelaWhatsApp // Passa a janela aberta como parâmetro
-      );
+      setTimeout(() => {
+        enviarMensagemWhatsAppIntegracao(
+          dadosUsuarioAtual,
+          dataIntegracao,
+          horaIntegracao
+        );
+      }, 500);
     }
 
-    modalAgendamento.classList.remove("is-visible");
+    fecharModalAgendarIntegracao();
     renderizarIntegracao(getGlobalState());
   } catch (error) {
     console.error("❌ Erro ao agendar:", error);
     window.showToast?.(`Erro: ${error.message}`, "error");
-
-    // Se deu erro e abriu a janela, fecha ela para não ficar uma aba em branco
-    if (janelaWhatsApp) janelaWhatsApp.close();
   } finally {
     btnRegistrar.disabled = false;
     btnRegistrar.innerHTML =
@@ -364,6 +358,9 @@ async function submeterAgendamentoIntegracao(e) {
   }
 }
 
+/**
+ * Formata mensagem de WhatsApp para Integração
+ */
 function formatarMensagemWhatsAppIntegracao(
   candidato,
   dataIntegracao,
@@ -390,7 +387,7 @@ Seu *Onboarding (Reunião de Integração)* está agendado:
 ✅ Alinhamento de cultura e valores
 ✅ Próximos passos e treinamentos
 
-O link para a reunião (Google Meet/Zoom) será enviado para o seu e-mail corporativo.
+O link para a reunião (Google Meet/Zoom) será enviado para o seu novo e-mail corporativo.
 
 Qualquer dúvida, fale conosco.
 
@@ -401,14 +398,16 @@ Qualquer dúvida, fale conosco.
   return mensagem;
 }
 
+/**
+ * Envia mensagem de WhatsApp com agendamento de integração
+ */
 function enviarMensagemWhatsAppIntegracao(
   candidato,
   dataIntegracao,
-  horaIntegracao,
-  janelaPreAberta = null // Parâmetro opcional para receber a janela
+  horaIntegracao
 ) {
   if (!candidato.telefone_contato) {
-    if (janelaPreAberta) janelaPreAberta.close();
+    console.warn("⚠️ Sem telefone para WhatsApp");
     return;
   }
   try {
@@ -420,45 +419,39 @@ function enviarMensagemWhatsAppIntegracao(
     const mensagemCodificada = encodeURIComponent(mensagem);
     const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
-
-    if (janelaPreAberta) {
-      // Se recebeu a janela aberta, apenas navega para o link
-      janelaPreAberta.location.href = linkWhatsApp;
-    } else {
-      // Fallback (caso antigo)
-      window.open(linkWhatsApp, "_blank");
-    }
+    window.open(linkWhatsApp, "_blank");
   } catch (error) {
-    console.error("❌ Erro WhatsApp:", error);
-    if (janelaPreAberta) janelaPreAberta.close();
+    console.error("❌ Erro ao gerar WhatsApp:", error);
   }
 }
 
 // ============================================
-// ✅ AVALIAÇÃO DA INTEGRAÇÃO
+// ✅ NOVA LÓGICA: AVALIAÇÃO DA INTEGRAÇÃO
 // ============================================
 
-function abrirModalAvaliarIntegracao(userId, dadosUsuario) {
+function abrirModalAvaliarIntegracao(usuarioId, dadosCandidato) {
   const modal = document.getElementById("modal-avaliacao-integracao");
   const form = document.getElementById("form-avaliacao-integracao");
 
   if (!modal || !form) {
-    alert("Erro: Modal de avaliação não encontrado.");
+    alert("Erro: Modal de avaliação não encontrado no HTML (admissao.html).");
     return;
   }
 
-  dadosUsuarioAtual = dadosUsuario;
-  modal.dataset.usuarioId = userId; // UID
+  dadosUsuarioAtual = dadosCandidato;
+  modal.dataset.usuarioId = userId;
 
-  document.getElementById("avaliacao-int-nome-candidato").textContent =
-    dadosUsuario.nome_completo;
-  document.getElementById("avaliacao-int-status-atual").textContent =
-    dadosUsuario.status_recrutamento; // status_admissao
+  const nomeEl = document.getElementById("avaliacao-int-nome-candidato");
+  const statusEl = document.getElementById("avaliacao-int-status-atual");
+
+  if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo || "Candidato";
+  if (statusEl) statusEl.textContent = dadosCandidato.status_recrutamento;
 
   form.reset();
   form.removeEventListener("submit", submeterAvaliacaoIntegracao);
   form.addEventListener("submit", submeterAvaliacaoIntegracao);
 
+  // Listeners de fechar (importante)
   modal.querySelectorAll(".close-modal-btn").forEach((btn) => {
     btn.onclick = () => modal.classList.remove("is-visible");
   });
@@ -470,8 +463,8 @@ async function submeterAvaliacaoIntegracao(e) {
   e.preventDefault();
   const modal = document.getElementById("modal-avaliacao-integracao");
   const btnSalvar = modal.querySelector('button[type="submit"]');
-  const usuarioId = modal.dataset.usuarioId; // UID
-  const { currentUserData } = getGlobalState();
+  const candidaturaId = modal.dataset.candidaturaId;
+  const { candidatosCollection, currentUserData } = getGlobalState();
 
   const realizou = document.getElementById("integracao-realizada").value;
   const observacoes = document.getElementById("integracao-observacoes").value;
@@ -484,22 +477,25 @@ async function submeterAvaliacaoIntegracao(e) {
   btnSalvar.disabled = true;
   btnSalvar.innerHTML = "Salvando...";
 
-  // ✅ NOVO STATUS: Move para Avaliação 3 Meses
+  // ✅ AQUI SIM: Muda o status para mover para a próxima aba
   const novoStatus = "AGUARDANDO_AVALIACAO_3MESES";
 
   try {
-    const usuarioRef = doc(db, "usuarios", usuarioId);
+    const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // Atualiza o objeto 'integracao' existente com os dados de conclusão
-    // e muda o status principal
-    await updateDoc(usuarioRef, {
-      status_admissao: novoStatus,
+    await updateDoc(candidaturaRef, {
+      status_recrutamento: novoStatus,
       "integracao.conclusao": {
         realizada: true,
         observacoes: observacoes,
         concluido_em: new Date(),
-        responsavel_uid: currentUserData.uid || "rh_user",
+        responsavel_uid: currentUserData.id || "rh_user",
       },
+      historico: arrayUnion({
+        data: new Date(),
+        acao: `Integração concluída e avaliada. Movido para Avaliação 3 Meses.`,
+        usuario: currentUserData.id || "rh_user",
+      }),
     });
 
     window.showToast?.("Integração concluída com sucesso!", "success");
@@ -517,33 +513,37 @@ async function submeterAvaliacaoIntegracao(e) {
 }
 
 // ============================================
-// ENVIO DE TREINAMENTOS (Atualizado para Usuários)
+// LÓGICA DE ENVIO DE TREINAMENTOS (Mantida)
 // ============================================
 
-async function abrirModalEnviarTreinamento(userId, dadosUsuario) {
+async function abrirModalEnviarTreinamento(usuarioId, dadosCandidato) {
   const modalEnviarTreinamento = document.getElementById(
     "modal-enviar-treinamento"
   );
   if (!modalEnviarTreinamento) return;
 
   try {
-    dadosUsuarioAtual = dadosUsuario;
-    modalEnviarTreinamento.dataset.usuarioId = userId; // UID
+    dadosUsuarioAtual = dadosCandidato;
+    modalEnviarTreinamento.dataset.candidaturaId = usuarioId;
 
-    document.getElementById("treinamento-nome-candidato").textContent =
-      dadosUsuario.nome_completo;
-    document.getElementById("treinamento-email-candidato").textContent =
-      dadosUsuario.email_novo;
-    document.getElementById("treinamento-whatsapp-candidato").textContent =
-      dadosUsuario.telefone_contato;
+    const nomeEl = document.getElementById("treinamento-nome-candidato");
+    const emailEl = document.getElementById("treinamento-email-candidato");
+    const whatsappEl = document.getElementById(
+      "treinamento-whatsapp-candidato"
+    );
+
+    if (nomeEl) nomeEl.textContent = dadosCandidato.nome_completo || "N/A";
+    if (emailEl) emailEl.textContent = dadosCandidato.email_novo || "N/A";
+    if (whatsappEl)
+      whatsappEl.textContent = dadosCandidato.telefone_contato || "N/A";
 
     await carregarTreinamentosDisponiveis();
 
     document
       .querySelectorAll(`[data-modal-id='modal-enviar-treinamento']`)
       .forEach((btn) => {
-        btn.onclick = () =>
-          modalEnviarTreinamento.classList.remove("is-visible");
+        btn.removeEventListener("click", fecharModalEnviarTreinamento);
+        btn.addEventListener("click", fecharModalEnviarTreinamento);
       });
 
     modalEnviarTreinamento.classList.add("is-visible");
@@ -579,8 +579,9 @@ async function carregarTreinamentosDisponiveis() {
       const prazoDias = treino.prazo_dias || "14";
       htmlOptions += `<option value="${docSnap.id}" 
         data-link="${treino.link || ""}" 
-        data-titulo="${treino.titulo}" 
-        data-prazo="${prazoDias}">
+        data-tipo="${treino.tipo || "Geral"}"
+        data-prazo="${prazoDias}"
+        data-titulo="${treino.titulo}">
         ${treino.titulo} - Prazo: ${prazoDias}d
        </option>`;
     });
@@ -593,7 +594,7 @@ async function carregarTreinamentosDisponiveis() {
 
 async function enviarTreinamentoWhatsApp() {
   const modal = document.getElementById("modal-enviar-treinamento");
-  const usuarioId = modal?.dataset.usuarioId; // UID
+  const usuarioId = modal?.dataset.candidaturaId;
   const selectTreinamento = document.getElementById("treinamento-selecionado");
   const option = selectTreinamento?.selectedOptions[0];
   const treinamentoId = option?.value;
@@ -615,12 +616,11 @@ async function enviarTreinamentoWhatsApp() {
     '<i class="fas fa-spinner fa-spin me-2"></i> Gerando...';
 
   try {
-    // Gera Token usando CF (funciona com UID também se adaptar ou apenas gera token c/ ID)
     const responseGerarToken = await fetch(CF_GERAR_TOKEN, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        candidatoId: usuarioId, // Passa UID do usuário como 'candidatoId' para a CF
+        usuarioId: usuarioId,
         testeId: treinamentoId,
         tipo: "treinamento",
         prazoDias: parseInt(prazoDias),
@@ -676,25 +676,28 @@ Bons estudos!
 }
 
 async function salvarEnvioTreinamento(
-  userId,
+  usuarioId,
   treinamentoId,
   titulo,
   link,
   tokenId
 ) {
-  const { currentUserData } = getGlobalState();
-  const usuarioRef = doc(db, "usuarios", userId);
-
-  // Salva no array de treinamentos do usuário
-  await updateDoc(usuarioRef, {
+  const { candidatosCollection, currentUserData } = getGlobalState();
+  const candidatoRef = doc(candidatosCollection, usuarioId);
+  await updateDoc(candidatoRef, {
     treinamentos_enviados: arrayUnion({
       id: treinamentoId,
       titulo: titulo,
       tokenId: tokenId,
       link: link,
       data_envio: new Date(),
-      enviado_por_uid: currentUserData.uid || "rh_system_user",
+      enviado_por_uid: currentUserData.id || "rh_system_user",
       status: "enviado",
+    }),
+    historico: arrayUnion({
+      data: new Date(),
+      acao: `Treinamento '${titulo}' enviado.`,
+      usuario: currentUserData.id || "rh_system_user",
     }),
   });
 }
@@ -703,4 +706,6 @@ async function salvarEnvioTreinamento(
 document.addEventListener("click", (e) => {
   if (e.target.id === "btn-enviar-treinamento-whatsapp")
     enviarTreinamentoWhatsApp();
+  if (e.target.matches("[data-modal-id='modal-enviar-treinamento']"))
+    fecharModalEnviarTreinamento();
 });
