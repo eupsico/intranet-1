@@ -2813,7 +2813,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
 
       const { token, dadosFormulario } = req.body;
 
-      // --- Validação do Token ---
+      // Validação do Token
       const tokenQuery = await db
         .collection("tokens_admissao")
         .where("token", "==", token)
@@ -2834,22 +2834,22 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
       const emailDestino =
         dadosToken.geradoPorEmail || "atendimento@eupsico.org.br";
 
-      // --- 1. Atualiza CANDIDATURA (Salva TUDO aqui como histórico) ---
+      // 1. Atualiza CANDIDATURA (Apenas histórico e marca como concluído o recrutamento)
       const candidatoRef = db.collection("candidaturas").doc(candidatoId);
       await candidatoRef.update({
         dados_admissao: {
-          ...dadosFormulario, // <--- AQUI SALVA TODOS OS DADOS DO FORMULÁRIO
+          ...dadosFormulario,
           preenchido_em: admin.firestore.FieldValue.serverTimestamp(),
         },
-        status_recrutamento: "AGUARDANDO_ASSINATURA",
+        status_recrutamento: "ADMISSAO_INICIADA", // Status final na coleção candidaturas
         historico: admin.firestore.FieldValue.arrayUnion({
           data: new Date(),
-          acao: "Candidato preencheu ficha. Movido para Assinatura.",
-          usuario: "Sistema (Via Ficha)",
+          acao: "Ficha preenchida. Migrado para fluxo de Usuários (status_admissao).",
+          usuario: "Sistema",
         }),
       });
 
-      // --- 2. Localiza ou Cria Referência do USUÁRIO ---
+      // 2. Localiza ou Cria Referência do USUÁRIO
       let usuarioRef;
       let usuarioDataExistente = null;
 
@@ -2875,7 +2875,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         }
       }
 
-      // --- 3. Gera Username (Se necessário) ---
+      // 3. Gera Username
       let finalUsername;
       if (usuarioDataExistente && usuarioDataExistente.username) {
         finalUsername = usuarioDataExistente.username;
@@ -2891,14 +2891,13 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         }
       }
 
-      // --- 4. Objeto de dados para Salvar em USUARIOS ---
+      // 4. Salva em USUARIOS com o novo STATUS_ADMISSAO
       const dadosUsuario = {
-        uid: usuarioRef.id, // ✅ Salva o UID
-        username: finalUsername, // ✅ Salva o Username
+        uid: usuarioRef.id,
+        username: finalUsername,
         nome: dadosFormulario.nomeCompleto,
         email: emailCorporativo,
         contato: dadosFormulario.telefone,
-
         endereco: {
           cep: dadosFormulario.cep,
           logradouro: dadosFormulario.endereco,
@@ -2907,31 +2906,26 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           cidade: dadosFormulario.cidade,
           estado: dadosFormulario.estado,
         },
-
         profissao: dadosFormulario.crpAtivo
           ? "Psicólogo(a)"
           : dadosFormulario.profissao || "Terapeuta",
         crp: dadosFormulario.crpAtivo ? "Ativo" : "",
-
         formacao: {
           graduacao: dadosFormulario.graduacao,
           especializacoes: dadosFormulario.especializacoes,
         },
-
         publico_atendido: dadosFormulario.publicoAtendido || [],
         disponibilidade: dadosFormulario.disponibilidade,
-
         documentos: {
           rg: dadosFormulario.rgUrl || "",
           cpf: dadosFormulario.cpfUrl || "",
           diploma: dadosFormulario.diplomaUrl || "",
           comprovante_residencia: dadosFormulario.compEnderecoUrl || "",
           declaracao_crp: dadosFormulario.declaracaoCrpUrl || "",
-          certificados: dadosFormulario.certificadosUrls || [], // ✅ Adicionado para garantir completude
+          certificados: dadosFormulario.certificadosUrls || [],
         },
-
-        // Configurações do Sistema
-        status: "em_experiencia",
+        // ✅ NOVOS CAMPOS DE CONTROLE
+        status_admissao: "AGUARDANDO_ASSINATURA_FASE1", // <--- AQUI COMEÇA O FLUXO NOVO
         primeiraFase: true,
         inativo: false,
         recebeDireto: true,
@@ -2939,36 +2933,25 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
         funcoes: admin.firestore.FieldValue.arrayUnion("atendimento"),
       };
 
-      // 🔥 Salva no Firestore
       await usuarioRef.set(dadosUsuario, { merge: true });
-      console.log(
-        `Dados salvos na coleção usuarios (UID: ${usuarioRef.id}, User: ${finalUsername}).`
-      );
+      console.log(`Usuário salvo/atualizado: ${usuarioRef.id}`);
 
-      // --- 5. Marca token como usado ---
+      // 5. Finaliza Token
       await tokenDoc.ref.update({
         usado: true,
         usadoEm: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // --- 6. Enviar E-mail RH ---
+      // 6. Notifica RH
       try {
-        const htmlEmailAviso = `
-          <h3>Ficha de Admissão Preenchida</h3>
-          <p>O colaborador <strong>${dadosFormulario.nomeCompleto}</strong> preencheu a ficha cadastral.</p>
-          <p><strong>Username:</strong> ${finalUsername}</p>
-          <p><strong>Status:</strong> Movido para "Assinatura de Documentos"</p>
-          <br><p><em>Sistema EuPsico</em></p>
-          `;
-
         await transporter.sendMail({
           from: "EuPsico Sistema <atendimento@eupsico.org.br>",
           to: emailDestino,
           subject: `📄 Ficha Preenchida: ${dadosFormulario.nomeCompleto}`,
-          html: htmlEmailAviso,
+          html: `<p>O colaborador preencheu a ficha. Acesse a aba <strong>Assinatura de Documentos</strong> para prosseguir.</p>`,
         });
       } catch (mailError) {
-        logger.error("Erro ao enviar email:", mailError);
+        logger.error("Erro email:", mailError);
       }
 
       return res
@@ -2989,7 +2972,6 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
     const dadosAntes = event.data.before.data();
     const dadosDepois = event.data.after.data();
 
-    // Evita loop se não houve mudança relevante
     if (
       dadosAntes.status === dadosDepois.status &&
       JSON.stringify(dadosAntes.documentos) ===
@@ -3008,7 +2990,6 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
         `📝 Solicitação ${event.params.solicitacaoId}: Todos assinados.`
       );
 
-      // 1. Atualiza a solicitação para 'concluido'
       if (dadosDepois.status !== "concluido") {
         await event.data.after.ref.update({
           status: "concluido",
@@ -3016,18 +2997,27 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
         });
       }
 
-      // 2. ATUALIZA A COLEÇÃO USUARIOS (Não mexe mais em candidaturas)
+      // ATUALIZA O USUÁRIO (status_admissao)
       const usuarioUid = dadosDepois.usuarioUid;
       const fase = dadosDepois.fase || 1;
 
       if (usuarioUid) {
         const usuarioRef = db.collection("usuarios").doc(usuarioUid);
 
-        // Define novos status para o usuário
-        const updates = {
+        let novoStatusAdmissao = "";
+
+        if (fase === 1) {
+          // Fase 1 concluída -> Vai para Integração
+          novoStatusAdmissao = "AGUARDANDO_INTEGRACAO";
+        } else if (fase === 2) {
+          // Fase 2 concluída -> Processo finalizado
+          novoStatusAdmissao = "CONCLUIDO";
+        }
+
+        await usuarioRef.update({
+          status_admissao: novoStatusAdmissao,
           [`status_assinatura_fase${fase}`]: "concluido",
           data_ultima_assinatura: new Date(),
-          // Salva os documentos assinados no perfil do usuário
           documentos_assinados: FieldValue.arrayUnion(
             ...documentos.map((d) => ({
               ...d,
@@ -3036,24 +3026,9 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
               origem_solicitacao: event.params.solicitacaoId,
             }))
           ),
-        };
-
-        // Lógica de mudança de fase do usuário
-        if (fase === 1) {
-          updates.status_integracao = "aguardando_agendamento"; // Move para próxima etapa (Integração)
-          updates.status_geral = "em_admissao";
-        } else if (fase === 2) {
-          updates.status_contrato = "efetivado";
-          updates.status_geral = "ativo";
-        }
-
-        await usuarioRef.update(updates);
+        });
         logger.info(
-          `✅ Usuário ${usuarioUid} atualizado com sucesso (Fase ${fase}).`
-        );
-      } else {
-        logger.warn(
-          "⚠️ usuarioUid não encontrado na solicitação de assinatura."
+          `✅ Usuário ${usuarioUid} movido para status_admissao: ${novoStatusAdmissao}`
         );
       }
     }
