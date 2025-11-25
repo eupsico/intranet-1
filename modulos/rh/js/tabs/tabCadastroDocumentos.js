@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabCadastroDocumentos.js
- * Versão: 1.5.0 (Correção: Botão só habilita após link gerado + Correção de parâmetros)
+ * Versão: 2.0.0 (Botão Inativo por 24h após envio)
  * Descrição: Gerencia a etapa de envio do formulário de cadastro/documentos ao candidato.
  */
 
@@ -38,7 +38,6 @@ export async function renderizarCadastroDocumentos(state) {
         "FORM_ENVIADO",
       ])
     );
-    // Nota: Adicionei 'FORM_ENVIADO' caso queira manter o card aqui até o preenchimento
 
     const snapshot = await getDocs(q);
 
@@ -66,13 +65,10 @@ export async function renderizarCadastroDocumentos(state) {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
       const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
-      const statusAtual = cand.status_recrutamento || "Status Pendente"; // Fallback visual
+      const statusAtual = cand.status_recrutamento || "Status Pendente";
 
       const statusClass = "status-warning";
 
-      // ============================================================
-      // ✅ CORREÇÃO DO OBJETO PARA O MODAL DE DETALHES
-      // ============================================================
       const dadosCandidato = {
         id: candidatoId,
         nome_candidato: cand.nome_candidato || "Candidato",
@@ -81,12 +77,61 @@ export async function renderizarCadastroDocumentos(state) {
         senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A",
         telefone_contato: cand.telefone_contato,
         vaga_titulo: vagaTitulo,
-        // 👇 ESTA LINHA GARANTE QUE O STATUS APAREÇA NO MODAL 👇
         status_recrutamento: statusAtual,
       };
 
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
+
+      // --- LÓGICA DO BOTÃO (24h) ---
+      let botaoAcaoHtml = "";
+
+      // Verifica se já foi enviado e quando
+      const dataEnvioTimestamp = cand.admissaoinfo?.data_envio_formulario;
+      let aguardando = false;
+
+      if (statusAtual === "FORM_ENVIADO" && dataEnvioTimestamp) {
+        const dataEnvio = dataEnvioTimestamp.toDate
+          ? dataEnvioTimestamp.toDate()
+          : new Date(dataEnvioTimestamp);
+        const agora = new Date();
+        const diffMs = agora - dataEnvio;
+        const diffHoras = diffMs / (1000 * 60 * 60);
+
+        // Se faz menos de 24h que enviou, bloqueia
+        if (diffHoras < 24) {
+          aguardando = true;
+        }
+      }
+
+      if (aguardando) {
+        // Botão Inativo (Aguardando)
+        botaoAcaoHtml = `
+            <button 
+                class="btn btn-sm btn-secondary" 
+                disabled 
+                style="padding: 10px 16px; background-color: #6c757d; color: white; border: none; border-radius: 6px; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px; min-width: 140px; opacity: 0.8;">
+                <i class="fas fa-clock me-1"></i> Aguardando Cadastro
+            </button>
+          `;
+      } else {
+        // Botão Ativo (Enviar ou Reenviar)
+        const labelBotao =
+          statusAtual === "FORM_ENVIADO"
+            ? "Reenviar Formulário"
+            : "Enviar Formulário";
+
+        botaoAcaoHtml = `
+            <button 
+                class="btn btn-sm btn-primary btn-enviar-formulario" 
+                data-id="${candidatoId}"
+                data-dados="${dadosCodificados}"
+                style="padding: 10px 16px; background: var(--cor-primaria); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
+                <i class="fas fa-paper-plane me-1"></i> ${labelBotao}
+            </button>
+          `;
+      }
+      // --------------------------------
 
       listaHtml += `
     <div class="card card-candidato-gestor" data-id="${candidatoId}">
@@ -108,13 +153,7 @@ export async function renderizarCadastroDocumentos(state) {
      </div>
      
      <div class="acoes-candidato">
-      <button 
-       class="btn btn-sm btn-primary btn-enviar-formulario" 
-       data-id="${candidatoId}"
-       data-dados="${dadosCodificados}"
-        style="padding: 10px 16px; background: var(--cor-primaria); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 140px;">
-       <i class="fas fa-paper-plane me-1"></i> Enviar Formulário
-      </button>
+      ${botaoAcaoHtml}
       <button 
        class="btn btn-sm btn-secondary btn-ver-detalhes-admissao" 
         data-id="${candidatoId}"
@@ -130,7 +169,7 @@ export async function renderizarCadastroDocumentos(state) {
     listaHtml += "</div>";
     conteudoAdmissao.innerHTML = listaHtml;
 
-    // Re-anexa listeners (igual ao código anterior)
+    // Listeners
     document.querySelectorAll(".btn-enviar-formulario").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -396,12 +435,12 @@ Seja bem-vindo(a) à equipe EuPsico! Estamos muito felizes em tê-lo(a) conosco.
 
 *3.* *Troque sua senha* (o sistema solicitará automaticamente no primeiro acesso)
 
-*4.* Acesse o formulário de cadastro, e preencha com suas informações e anexe os arquivos solicitados:
+*4.* Acesse o formulário de cadastro pelo link abaixo, tenha os documentos em PDF para anexar ao formulário:
 🔗 ${linkFormulario}
 
 *📝 Importante saber:*
 • A senha temporária expira em 24 horas
-• Após trocar a senha, você terá acesso completo aos sistemas
+• Após trocar a senha, você terá acesso completo aos sistemas: https://intranet.eupsico.org.br/
 
 Qualquer dúvida, estamos à disposição pelo RH.
 
