@@ -1,7 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAssinaturaDocs.js
- * Versão: 1.2.0 (Atualizado: Mensagem de WhatsApp com caminho específico)
- * Descrição: Gerencia a liberação de documentos para assinatura via Intranet.
+ * Versão: 3.1.0 (Correção de Exportação Global + Suporte a Fases)
  */
 
 import { getGlobalState } from "../admissao.js";
@@ -21,12 +20,10 @@ import {
 // CONSTANTES
 // ============================================
 let dadosCandidatoAtual = null;
-
-// URL da Intranet (Login)
 const URL_INTRANET = "https://intranet.eupsico.org.br";
 
 // ============================================
-// RENDERIZAÇÃO DA LISTAGEM
+// RENDERIZAÇÃO DA LISTAGEM (FASE 1)
 // ============================================
 
 export async function renderizarAssinaturaDocs(state) {
@@ -39,9 +36,9 @@ export async function renderizarAssinaturaDocs(state) {
     const q = query(
       candidatosCollection,
       where("status_recrutamento", "in", [
-        "AGUARDANDO_PREENCHIMENTO_FORM", // Ainda não preencheu a ficha
-        "AGUARDANDO_ASSINATURA", // Ficha preenchida, pronto para liberar docs
-        "DOCS_LIBERADOS", // Docs já liberados, aguardando assinatura
+        "AGUARDANDO_PREENCHIMENTO_FORM",
+        "AGUARDANDO_ASSINATURA",
+        "DOCS_LIBERADOS",
       ])
     );
     const snapshot = await getDocs(q);
@@ -61,7 +58,7 @@ export async function renderizarAssinaturaDocs(state) {
 
     let listaHtml = `
     <div class="description-box" style="margin-top: 15px;">
-      <p>Libere os documentos (Contrato, Termos) para que o colaborador assine acessando a Intranet com seu login e senha.</p>
+      <p><strong>Fase 1 (Admissão):</strong> Libere os documentos iniciais (Contrato, Código de Conduta) para assinatura.</p>
     </div>
     <div class="candidatos-container candidatos-grid">
     `;
@@ -69,15 +66,13 @@ export async function renderizarAssinaturaDocs(state) {
     snapshot.docs.forEach((docSnap) => {
       const cand = docSnap.data();
       const candidatoId = docSnap.id;
-      const vagaTitulo = cand.titulo_vaga_original || "Vaga não informada";
       const statusAtual = cand.status_recrutamento || "N/A";
 
       let statusClass = "status-info";
       let botaoAcao = "";
 
-      // Lógica dos Botões baseada no Status
       if (statusAtual === "AGUARDANDO_ASSINATURA") {
-        statusClass = "status-success"; // Pronto para liberar docs
+        statusClass = "status-success";
         botaoAcao = `
           <button 
             class="btn btn-sm btn-primary btn-enviar-documentos" 
@@ -94,13 +89,12 @@ export async function renderizarAssinaturaDocs(state) {
             <i class="fas fa-file-signature me-1"></i> Liberar Documentos
           </button>`;
       } else if (statusAtual === "DOCS_LIBERADOS") {
-        statusClass = "status-warning"; // Já liberou, esperando ele assinar
+        statusClass = "status-warning";
         botaoAcao = `
           <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.7; cursor: default;">
              <i class="fas fa-clock me-1"></i> Aguardando Assinatura
           </button>`;
       } else {
-        // Aguardando preenchimento da ficha anterior
         statusClass = "status-warning";
         botaoAcao = `
           <button class="btn btn-sm btn-warning" disabled style="opacity: 0.7;">
@@ -114,7 +108,7 @@ export async function renderizarAssinaturaDocs(state) {
         <h4 class="nome-candidato">
          ${cand.nome_candidato || "Candidato"}
           <span class="status-badge ${statusClass}">
-            <i class="fas fa-tag"></i> ${statusAtual}
+            ${statusAtual.replace(/_/g, " ")}
           </span>
         </h4>
         <p class="small-info" style="color: var(--cor-primaria);">
@@ -146,7 +140,8 @@ export async function renderizarAssinaturaDocs(state) {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
         const dados = e.currentTarget.getAttribute("data-dados");
-        abrirModalEnviarDocumentos(candidatoId, dados, state);
+        // Chama a função global passando fase 1
+        abrirModalEnviarDocumentos(candidatoId, dados, state, 1);
       });
     });
 
@@ -169,24 +164,28 @@ export async function renderizarAssinaturaDocs(state) {
 }
 
 // ============================================
-// MODAL - ENVIAR DOCUMENTOS (Sem Token)
+// MODAL - ENVIAR DOCUMENTOS (GLOBAL)
 // ============================================
 
 async function abrirModalEnviarDocumentos(
   candidatoId,
   dadosCodificados,
-  state
+  state,
+  fase = 1
 ) {
   try {
     const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
     dadosCandidatoAtual = dadosCandidato;
-
     const modalExistente = document.getElementById("modal-enviar-documentos");
     if (modalExistente) modalExistente.remove();
 
     const modal = document.createElement("div");
     modal.id = "modal-enviar-documentos";
     modal.dataset.candidaturaId = candidatoId;
+    modal.dataset.fase = fase;
+
+    const tituloFase =
+      fase === 1 ? "Fase 1: Admissão" : "Fase 2: Pós-Experiência";
 
     modal.innerHTML = `
      <style>
@@ -201,42 +200,32 @@ async function abrirModalEnviarDocumentos(
       .btn-cancelar { background: #6c757d !important; color: white !important; }
       .btn-salvar { background: #667eea !important; color: white !important; }
      </style>
-     
      <div class="modal-container">
       <div class="modal-header">
-       <h3><i class="fas fa-file-signature"></i> Liberar Documentos</h3>
+       <h3><i class="fas fa-file-signature"></i> Liberar Documentos (${tituloFase})</h3>
        <button onclick="fecharModalEnviarDocumentos()" style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">&times;</button>
       </div>
-      
       <div class="modal-body">
        <div class="info-card">
         <p><strong>Colaborador:</strong> ${dadosCandidato.nome_candidato}</p>
         <p><strong>E-mail:</strong> ${dadosCandidato.email_novo}</p>
        </div>
-      
        <div class="form-group">
-         <label class="form-label" style="font-weight:bold; display:block; margin-bottom:10px;">Selecione os documentos para liberar:</label>
+         <label class="form-label" style="font-weight:bold; display:block; margin-bottom:10px;">Selecione os documentos:</label>
          <div id="documentos-checklist-container" style="background:white;padding:15px;border:1px solid #ddd;border-radius:6px;max-height:200px;overflow-y:auto;">
             <p>Carregando modelos...</p>
          </div>
        </div>
-       
        <div class="form-group">
         <label class="form-label" style="font-weight:bold;">Mensagem para WhatsApp:</label>
         <textarea id="documentos-mensagem" class="form-textarea" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
 Olá ${dadosCandidato.nome_candidato.split(" ")[0]}!
-
-Seus documentos de admissão já estão disponíveis na Intranet.
-
+Documentos (${tituloFase}) disponíveis na Intranet.
 1. Acesse: ${URL_INTRANET}
-2. Faça login com seu e-mail corporativo e senha.
-3. Vá em *Portal do Voluntário* > *Assinaturas e Termos* para assinar.
-
-Qualquer dúvida, estamos à disposição!
+2. Vá em Portal do Voluntário > Assinaturas e Termos.
         </textarea>
        </div>
       </div>
-      
       <div class="modal-footer">
        <button class="btn btn-cancelar" onclick="fecharModalEnviarDocumentos()">Cancelar</button>
        <button class="btn btn-salvar" id="btn-confirmar-liberacao" onclick="confirmarLiberacaoDocs()">
@@ -245,73 +234,59 @@ Qualquer dúvida, estamos à disposição!
       </div>
      </div>
     `;
-
     document.body.appendChild(modal);
     carregarDocumentosDisponiveis();
   } catch (error) {
     console.error("Erro modal:", error);
-    alert("Erro ao abrir modal.");
   }
 }
 
 async function carregarDocumentosDisponiveis() {
   const container = document.getElementById("documentos-checklist-container");
   if (!container) return;
-
   try {
-    // Busca na coleção de modelos
-    const documentosRef = collection(db, "modelos_documentos");
+    const documentosRef = collection(db, "rh_documentos_modelos");
     let snapshot = await getDocs(
       query(documentosRef, where("ativo", "==", true))
     );
-
-    if (snapshot.empty) {
-      // Fallback para nome antigo se necessário
-      snapshot = await getDocs(collection(db, "rh_documentos_modelos"));
-    }
-
-    if (snapshot.empty) {
-      container.innerHTML =
-        '<p class="text-danger">Nenhum modelo de documento encontrado.</p>';
-      return;
-    }
+    if (snapshot.empty)
+      snapshot = await getDocs(collection(db, "modelos_documentos"));
 
     let html = "";
     snapshot.forEach((docSnap) => {
       const docData = docSnap.data();
-      const titulo = docData.titulo || docData.nome || "Documento sem título";
-      html += `
-      <div style="margin-bottom:8px;">
-        <input type="checkbox" value="${docSnap.id}" id="doc-${docSnap.id}" data-titulo="${titulo}">
-        <label for="doc-${docSnap.id}">${titulo}</label>
-      </div>`;
+      html += `<div style="margin-bottom:8px;"><input type="checkbox" value="${
+        docSnap.id
+      }" id="doc-${docSnap.id}" data-titulo="${
+        docData.titulo || "Sem título"
+      }"><label for="doc-${docSnap.id}">${
+        docData.titulo || "Sem título"
+      }</label></div>`;
     });
-    container.innerHTML = html;
+    container.innerHTML = html || "<p>Nenhum modelo encontrado.</p>";
   } catch (error) {
-    console.error("Erro ao carregar docs:", error);
-    container.innerHTML = '<p class="text-danger">Erro ao carregar lista.</p>';
+    container.innerHTML = "<p>Erro ao carregar.</p>";
   }
 }
 
 // ============================================
-// AÇÃO DE LIBERAÇÃO (Direto no Firestore)
+// AÇÃO DE LIBERAÇÃO
 // ============================================
 
 window.confirmarLiberacaoDocs = async function () {
-  console.log("💾 Liberando documentos (Vínculo UID + De Acordo)...");
+  console.log("💾 Liberando documentos (Foco em Usuários)...");
   const modal = document.getElementById("modal-enviar-documentos");
   const btn = document.getElementById("btn-confirmar-liberacao");
   const candidatoId = modal.dataset.candidaturaId;
+  const fase = parseInt(modal.dataset.fase) || 1;
   const msgWhatsapp = document.getElementById("documentos-mensagem").value;
 
-  // Coleta os documentos selecionados
   const docsSelecionados = [];
   modal.querySelectorAll("input[type=checkbox]:checked").forEach((cb) => {
     docsSelecionados.push({
       modeloId: cb.value,
       titulo: cb.dataset.titulo,
-      // Se o modelo tiver um link de arquivo (PDF) no Firestore, você deve recuperá-lo aqui
-      // Por enquanto, assume-se que o texto/conteúdo é o próprio título ou um link interno
+      status: "pendente",
     });
   });
 
@@ -324,14 +299,11 @@ window.confirmarLiberacaoDocs = async function () {
   btn.innerHTML = "Processando...";
 
   try {
-    const { candidatosCollection, currentUserData } = getGlobalState();
+    const { currentUserData } = getGlobalState();
 
-    // 1. Busca o UID do Usuário Real (Baseado no e-mail novo da candidatura)
-    if (!dadosCandidatoAtual.email_novo) {
-      throw new Error(
-        "E-mail corporativo não encontrado para vincular ao usuário."
-      );
-    }
+    // 1. Busca UID do Usuário
+    if (!dadosCandidatoAtual.email_novo)
+      throw new Error("E-mail corporativo não encontrado.");
 
     const usuariosRef = collection(db, "usuarios");
     const qUser = query(
@@ -340,65 +312,80 @@ window.confirmarLiberacaoDocs = async function () {
     );
     const snapshotUser = await getDocs(qUser);
 
-    if (snapshotUser.empty) {
+    if (snapshotUser.empty)
       throw new Error(
-        `Usuário com e-mail ${dadosCandidatoAtual.email_novo} não encontrado na coleção 'usuarios'.`
+        `Usuário ${dadosCandidatoAtual.email_novo} não encontrado.`
       );
-    }
 
-    const usuarioReal = snapshotUser.docs[0];
-    const usuarioUid = usuarioReal.id;
+    const usuarioDoc = snapshotUser.docs[0];
+    const usuarioUid = usuarioDoc.id;
 
-    // 2. Cria o registro na coleção dedicada 'solicitacoes_assinatura'
+    // 2. Cria Solicitação na Coleção Dedicada
     const solicitacaoData = {
-      tipo: "fase_1", // Admissão
-      usuarioUid: usuarioUid, // ✅ Vínculo forte com o usuário
-      candidatoId_ref: candidatoId, // Apenas para referência histórica
+      tipo: `fase_${fase}`,
+      fase: fase,
+      usuarioUid: usuarioUid, // Vínculo Principal
+      candidatoId_ref: candidatoId, // Apenas referência
       emailUsuario: dadosCandidatoAtual.email_novo,
       nomeUsuario: dadosCandidatoAtual.nome_candidato,
-
       documentos: docsSelecionados,
-
-      status: "pendente", // pendente -> assinado
+      status: "pendente",
       dataEnvio: new Date(),
       enviadoPor: currentUserData.nome || "RH",
-
-      metodoAssinatura: "interno_de_acordo", // Indica o tipo de fluxo
-      fase: 1,
+      metodoAssinatura: "interno_de_acordo",
     };
 
     await addDoc(collection(db, "solicitacoes_assinatura"), solicitacaoData);
 
-    // 3. Atualiza o status na candidatura (Visual do RH)
-    const candidatoRef = doc(candidatosCollection, candidatoId);
-    await updateDoc(candidatoRef, {
-      status_recrutamento: "DOCS_LIBERADOS",
-      historico: arrayUnion({
-        data: new Date(),
-        acao: `Termos liberados para aceite interno (UID: ${usuarioUid}).`,
-        usuario: currentUserData.id || "rh_admin",
-      }),
+    // 3. ATUALIZA O USUÁRIO (Não a candidatura)
+    // Define que este usuário tem documentos pendentes
+    await updateDoc(doc(db, "usuarios", usuarioUid), {
+      [`status_assinatura_fase${fase}`]: "aguardando_assinatura",
+      // Se quiser salvar o histórico no usuário também:
+      // historico: arrayUnion({ data: new Date(), acao: "Documentos liberados para assinatura." })
     });
 
-    // 4. Abre WhatsApp
+    console.log("✅ Usuário atualizado com status de assinatura.");
+
+    // 4. WhatsApp
     const telefone = dadosCandidatoAtual.telefone_contato.replace(/\D/g, "");
     const linkZap = `https://api.whatsapp.com/send?phone=55${telefone}&text=${encodeURIComponent(
       msgWhatsapp
     )}`;
     window.open(linkZap, "_blank");
 
-    window.showToast?.("Documentos liberados com sucesso!", "success");
+    window.showToast?.("Documentos liberados!", "success");
     fecharModalEnviarDocumentos();
 
+    // Recarrega a aba
     const state = getGlobalState();
-    renderizarAssinaturaDocs(state);
+    // Nota: Se o renderizarAssinaturaDocs ainda ler de 'candidaturas', o card não vai mudar visualmente
+    // até que você altere a função de leitura também ou atualize a candidatura APENAS para mover o card.
+    // Se quiser mover o card na visualização antiga, descomente a linha abaixo:
+
+    // await updateDoc(doc(db, "candidaturas", candidatoId), { status_recrutamento: "DOCS_LIBERADOS" });
+
+    if (state.handleTabClick) {
+      const activeTab = document.querySelector(
+        "#status-admissao-tabs .tab-link.active"
+      );
+      if (activeTab) state.handleTabClick({ currentTarget: activeTab });
+    }
   } catch (error) {
-    console.error("Erro ao liberar:", error);
-    alert("Erro ao liberar documentos: " + error.message);
+    console.error("Erro:", error);
+    alert(`Erro: ${error.message}`);
     btn.disabled = false;
     btn.innerHTML = '<i class="fab fa-whatsapp"></i> Liberar e Avisar';
   }
 };
+
+window.fecharModalEnviarDocumentos = function () {
+  const modal = document.getElementById("modal-enviar-documentos");
+  if (modal) modal.remove();
+  document.body.style.overflow = "";
+};
+
+window.abrirModalEnviarDocumentos = abrirModalEnviarDocumentos;
 
 window.fecharModalEnviarDocumentos = function () {
   const modal = document.getElementById("modal-enviar-documentos");
