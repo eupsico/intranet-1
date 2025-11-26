@@ -116,47 +116,6 @@ function setupColumns() {
   // Configura os eventos dos checkboxes "Selecionar Todos"
   setupBulkSelectionListeners();
 }
-// Substitua a função setupColumns existente por esta:
-function setupColumns() {
-  const kanbanBoard = document.getElementById("kanban-board");
-  if (!kanbanBoard) return;
-
-  kanbanBoard.innerHTML = currentColumnFilter
-    .map((statusKey) => {
-      // Verifica se a coluna permite seleção em massa (apenas Grupos e Parcerias)
-      const allowBulkActions = BULK_ACTION_COLUMNS.includes(statusKey);
-
-      let bulkActionsHtml = "";
-      if (allowBulkActions) {
-        bulkActionsHtml = `
-            <div class="column-actions-header">
-                <label class="select-all-container" title="Selecionar todos desta fila">
-                    <input type="checkbox" class="column-select-all" data-column="${statusKey}">
-                    Todos
-                </label>
-                <button class="bulk-move-btn" id="btn-bulk-move-${statusKey}" onclick="window.initBulkMove('${statusKey}')">
-                    Mover Selecionados
-                </button>
-            </div>
-        `;
-      }
-
-      return `
-        <div class="kanban-column" id="column-${statusKey}" data-status="${statusKey}">
-            <div class="kanban-column-header">
-                <h3 class="kanban-column-title">
-                    ${COLUMNS_CONFIG[statusKey] || statusKey}
-                    <span class="kanban-column-count" id="count-${statusKey}">0</span>
-                </h3>
-                ${bulkActionsHtml} </div>
-            <div class="kanban-cards-container" id="cards-${statusKey}"></div>
-        </div>`;
-    })
-    .join("");
-
-  // Configura os eventos dos checkboxes "Selecionar Todos"
-  setupBulkSelectionListeners();
-}
 
 // Substitua a função createCardElement existente por esta:
 function createCardElement(cardData) {
