@@ -43,14 +43,14 @@ function calcularIdade(dataNascimento) {
 export function init(user, userData) {
   console.log("🚀 Módulo de Gestão de Pacientes iniciado.");
 
-  // Referências do DOM da página principal
+  // Elementos do DOM
   const searchInput = document.getElementById("search-input");
   const statusFilter = document.getElementById("status-filter");
   const listContainer = document.getElementById("pacientes-list-container");
 
-  // Referências do Modal (Cabeçalho e Rodapé já devem existir no HTML)
+  // Elementos do Modal (Baseados no HTML fixo)
   const modal = document.getElementById("edit-paciente-modal");
-  const modalBody = document.getElementById("modal-body-content"); // O formulário será injetado AQUI
+  const modalBody = document.getElementById("modal-body-content");
   const modalTitle = document.getElementById("modal-title");
 
   // Botões fixos do Modal
@@ -63,7 +63,12 @@ export function init(user, userData) {
   let currentEditingId = null;
   let currentUserData = userData;
 
-  // --- Função: Carregar Lista de Profissionais Ativos (para o Select) ---
+  // --- Função Auxiliar: Gerar ID Único ---
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
+
+  // --- Carregar Lista de Profissionais Ativos ---
   async function carregarProfissionais() {
     try {
       const q = query(
@@ -76,18 +81,14 @@ export function init(user, userData) {
         id: doc.id,
         nome: doc.data().nome,
       }));
-      console.log(
-        `✅ ${allProfissionais.length} profissionais carregados para a lista.`
-      );
+      console.log(`✅ ${allProfissionais.length} profissionais carregados.`);
     } catch (error) {
       console.error("Erro ao carregar profissionais:", error);
     }
   }
 
-  // --- Função: Carregar Pacientes ---
+  // --- Carregar Pacientes ---
   async function carregarPacientes() {
-    listContainer.innerHTML = ""; // Limpa a lista antes de recarregar
-    // Mostra spinner enquanto carrega
     listContainer.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
@@ -109,7 +110,7 @@ export function init(user, userData) {
     }
   }
 
-  // --- Função: Renderizar Lista de Cards na Tela Principal ---
+  // --- Renderizar Lista de Cards ---
   function renderizarLista() {
     const searchTerm = searchInput.value.toLowerCase();
     const status = statusFilter.value;
@@ -161,7 +162,6 @@ export function init(user, userData) {
 
     listContainer.innerHTML = html;
 
-    // Adiciona listeners aos botões dos cards
     document.querySelectorAll(".edit-btn").forEach((btn) => {
       btn.addEventListener("click", () => abrirModalEdicao(btn.dataset.id));
     });
@@ -237,31 +237,34 @@ export function init(user, userData) {
     });
   }
 
-  // --- Helper para Extrair Nomes dos Arrays de Atendimento ---
+  // --- Helper para Extrair Nomes ---
   function extrairNomesProfissionais(paciente, tipo) {
     // tipo: 'atendimentosPB' ou 'atendimentosPlantao'
-    const arrayAtendimentos = paciente[tipo];
+    if (tipo === "atendimentosPB") {
+      const arrayAtendimentos = paciente.atendimentosPB;
+      if (Array.isArray(arrayAtendimentos) && arrayAtendimentos.length > 0) {
+        // Filtra apenas os ativos para mostrar no input
+        const nomes = arrayAtendimentos
+          .filter((at) => at.statusAtendimento === "ativo")
+          .map((item) => item.profissionalNome)
+          .filter((nome) => nome && nome.trim() !== "");
 
-    // 1. Tenta buscar no array (estrutura nova)
-    if (Array.isArray(arrayAtendimentos) && arrayAtendimentos.length > 0) {
-      // Mapeia os nomes e filtra vazios
-      const nomes = arrayAtendimentos
-        .map((item) => item.profissionalNome)
-        .filter((nome) => nome && nome.trim() !== "");
-
-      if (nomes.length > 0) {
-        return nomes.join(", ");
+        if (nomes.length > 0) return nomes.join(", ");
       }
+      return paciente.profissionalPB || ""; // Fallback
     }
 
-    // 2. Fallback: Se não achou no array, tenta buscar na string raiz (estrutura antiga)
-    // Mapeamento de campos raiz
-    const campoRaiz =
-      tipo === "atendimentosPB" ? "profissionalPB" : "profissionalPlantao";
-    return paciente[campoRaiz] || "";
+    if (tipo === "atendimentosPlantao") {
+      // Para plantão, geralmente olhamos o objeto plantaoInfo
+      if (paciente.plantaoInfo && paciente.plantaoInfo.profissionalNome) {
+        return paciente.plantaoInfo.profissionalNome;
+      }
+      return paciente.profissionalPlantao || ""; // Fallback
+    }
+    return "";
   }
 
-  // --- Gerar Formulário HTML (INJETADO NO MEIO DO MODAL) ---
+  // --- Gerar Formulário HTML ---
   function gerarFormularioEdicao(paciente) {
     const p = (path, defaultValue = "") =>
       path.split(".").reduce((acc, part) => acc && acc[part], paciente) ||
@@ -311,14 +314,12 @@ export function init(user, userData) {
       "manha-sabado": disponibilidadeGeral.includes("Manhã (Sábado)"),
     };
 
-    // Prepara opções para o Select de Profissionais (Acesso Rápido)
     let optionsProfissionais =
       '<option value="">+ Selecionar Profissional...</option>';
     allProfissionais.forEach((prof) => {
       optionsProfissionais += `<option value="${prof.nome}">${prof.nome}</option>`;
     });
 
-    // --- LÓGICA DE RECUPERAÇÃO DOS NOMES ---
     const nomesProfissionaisPB = extrairNomesProfissionais(
       paciente,
       "atendimentosPB"
@@ -326,8 +327,7 @@ export function init(user, userData) {
     const nomesProfissionaisPlantao = extrairNomesProfissionais(
       paciente,
       "atendimentosPlantao"
-    ); // Assume que existe array similar ou usa fallback
-    // ----------------------------------------
+    );
 
     const htmlDisponibilidade = `
       <fieldset>
@@ -374,7 +374,6 @@ export function init(user, userData) {
       </fieldset>
     `;
 
-    // Formulário (SEM BOTÕES, pois usaremos o rodapé do modal)
     const form = `
       <form id="edit-paciente-form">
         <fieldset>
@@ -602,7 +601,7 @@ export function init(user, userData) {
         <fieldset>
           <legend>Profissionais Responsáveis</legend>
           <p style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
-            Os campos abaixo mostram os profissionais cadastrados (buscados nos registros de atendimento). Selecione na lista para adicionar mais nomes.
+            Os campos abaixo refletem os profissionais cadastrados nos arrays de atendimento. Ao adicionar nomes aqui, a estrutura correta será atualizada.
           </p>
           
           <label for="assistenteSocial" style="display:block; margin-top:10px;">Assistente Social:</label>
@@ -648,17 +647,15 @@ export function init(user, userData) {
       return;
     }
 
-    // Define Título
     modalTitle.textContent = `✏️ Editar: ${paciente.nomeCompleto}`;
 
-    // Injeta APENAS o corpo, mantendo Header e Footer do HTML
+    // Injeta APENAS o corpo
     const formulario = gerarFormularioEdicao(paciente);
     modalBody.innerHTML = formulario;
 
-    // Reconecta listeners de disponibilidade (pois o HTML foi reinjetado)
+    // Listeners internos
     setupDisponibilidadeListeners(modalBody);
 
-    // Listener para o Select de Adição Rápida
     const quickAddSelects = modalBody.querySelectorAll(".quick-add-prof");
     quickAddSelects.forEach((select) => {
       select.addEventListener("change", (e) => {
@@ -679,14 +676,14 @@ export function init(user, userData) {
             }
           }
         }
-        e.target.value = ""; // Reseta o select
+        e.target.value = "";
       });
     });
 
     modal.style.display = "flex";
   }
 
-  // --- Salvar Edição ---
+  // --- LÓGICA DE SALVAMENTO ATUALIZADA ---
   async function salvarEdicao() {
     try {
       const pacientesRef = doc(db, "trilhaPaciente", currentEditingId);
@@ -696,19 +693,17 @@ export function init(user, userData) {
       let disponibilidadeEspecifica = [];
       let disponibilidadeGeral = [];
 
-      // Lógica de horários (checkboxes)
+      // ... Lógica dos Checkboxes de Horário (mantida) ...
       const periodos = [
         { id: "manha-semana", label: "Manhã (Durante a semana)" },
         { id: "tarde-semana", label: "Tarde (Durante a semana)" },
         { id: "noite-semana", label: "Noite (Durante a semana)" },
         { id: "manha-sabado", label: "Manhã (Sábado)" },
       ];
-
       periodos.forEach((periodo) => {
         const checkbox = document.querySelector(
           `.horario-option[value="${periodo.id}"]`
         );
-
         if (checkbox && checkbox.checked) {
           disponibilidadeGeral.push(periodo.label);
           const horarios = document.querySelectorAll(
@@ -719,8 +714,6 @@ export function init(user, userData) {
           });
         }
       });
-
-      // Se não mexeu, mantém o anterior
       if (
         disponibilidadeEspecifica.length === 0 &&
         pacienteAtual.disponibilidadeEspecifica
@@ -734,7 +727,87 @@ export function init(user, userData) {
         disponibilidadeGeral = pacienteAtual.disponibilidadeGeral;
       }
 
-      // Constrói objeto de atualização
+      // --- TRATAMENTO DOS PROFISSIONAIS PB (ARRAY) ---
+      const inputPB = document.getElementById("profissionalPB")?.value || "";
+      const nomesNoInputPB = inputPB
+        .split(",")
+        .map((n) => n.trim())
+        .filter((n) => n);
+
+      // Recupera o array atual de atendimentos PB
+      const atendimentosPBAtuais = pacienteAtual.atendimentosPB || [];
+
+      // 1. Cria um novo array preservando o histórico
+      const novosAtendimentosPB = [...atendimentosPBAtuais];
+
+      // 2. Identifica quais profissionais já têm atendimento ATIVO
+      const ativosAtuais = novosAtendimentosPB.filter(
+        (at) => at.statusAtendimento === "ativo"
+      );
+
+      // 3. Verifica REMOÇÕES: Se estava ativo mas não está mais no input -> Encerrar
+      ativosAtuais.forEach((at) => {
+        if (!nomesNoInputPB.includes(at.profissionalNome)) {
+          // Encontra o índice no array original e atualiza
+          const index = novosAtendimentosPB.findIndex(
+            (x) => x.atendimentoId === at.atendimentoId
+          );
+          if (index !== -1) {
+            novosAtendimentosPB[index].statusAtendimento = "encerrado";
+            novosAtendimentosPB[index].motivoDesistencia =
+              "Removido via Gestão de Pacientes";
+          }
+        }
+      });
+
+      // 4. Verifica ADIÇÕES: Se está no input mas não tinha ativo -> Criar novo
+      nomesNoInputPB.forEach((nome) => {
+        const jaTemAtivo = ativosAtuais.some(
+          (at) => at.profissionalNome === nome
+        );
+        if (!jaTemAtivo) {
+          // Tenta achar o ID do profissional na lista carregada
+          const profEncontrado = allProfissionais.find(
+            (p) => p.nome.toLowerCase() === nome.toLowerCase()
+          );
+          const profId = profEncontrado ? profEncontrado.id : "";
+
+          novosAtendimentosPB.push({
+            atendimentoId: generateId(),
+            profissionalNome: nome,
+            profissionalId: profId,
+            statusAtendimento: "ativo",
+            tipoProfissional: "Voluntária(o)", // Valor padrão
+            dataEncaminhamento: new Date().toISOString().split("T")[0],
+            dataPrimeiraSessao: "",
+            horaPrimeiraSessao: "",
+            tipoAtendimento: "",
+            observacoes: "",
+          });
+        }
+      });
+
+      // --- TRATAMENTO DO PROFISSIONAL PLANTÃO (OBJETO) ---
+      const inputPlantao =
+        document.getElementById("profissionalPlantao")?.value || "";
+      const plantaoInfo = pacienteAtual.plantaoInfo || {};
+
+      // Atualiza o nome. Se mudou o nome, tentamos atualizar o ID também.
+      if (plantaoInfo.profissionalNome !== inputPlantao) {
+        plantaoInfo.profissionalNome = inputPlantao;
+
+        // Se o input contém múltiplos nomes, pegamos o primeiro para tentar achar o ID,
+        // ou deixamos vazio se for muito complexo.
+        const primeiroNome = inputPlantao.split(",")[0].trim();
+        const profEncontrado = allProfissionais.find(
+          (p) => p.nome.toLowerCase() === primeiroNome.toLowerCase()
+        );
+        plantaoInfo.profissionalId = profEncontrado
+          ? profEncontrado.id
+          : plantaoInfo.profissionalId || "";
+      }
+
+      // --- Objeto Final de Atualização ---
       const dadosAtualizados = {
         nomeCompleto: document.getElementById("nomeCompleto")?.value || "",
         cpf: document.getElementById("cpf")?.value || "",
@@ -792,10 +865,15 @@ export function init(user, userData) {
           document.getElementById("preferenciaGenero")?.value || "",
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
-        // Salva os campos de texto simples (root) para compatibilidade e busca rápida
-        profissionalPB: document.getElementById("profissionalPB")?.value || "",
-        profissionalPlantao:
-          document.getElementById("profissionalPlantao")?.value || "",
+
+        // --- NOVOS CAMPOS ESTRUTURADOS ---
+        atendimentosPB: novosAtendimentosPB,
+        plantaoInfo: plantaoInfo,
+
+        // Mantém as strings na raiz para compatibilidade visual na tabela
+        profissionalPB: inputPB,
+        profissionalPlantao: inputPlantao,
+
         status: document.getElementById("status")?.value || "",
         lastUpdate: serverTimestamp(),
         lastUpdatedBy: currentUserData.nome,
@@ -835,7 +913,7 @@ export function init(user, userData) {
     }
   }
 
-  // --- Listeners Globais do Modal (Vinculados aos botões FIXOS do HTML) ---
+  // --- Listeners Globais ---
   closeModalBtn.addEventListener("click", () => {
     modal.style.display = "none";
   });
@@ -850,11 +928,9 @@ export function init(user, userData) {
     }
   });
 
-  // Filtros da lista
   searchInput.addEventListener("input", renderizarLista);
   statusFilter.addEventListener("change", renderizarLista);
 
-  // Inicialização
   carregarPacientes();
   carregarProfissionais();
 }
