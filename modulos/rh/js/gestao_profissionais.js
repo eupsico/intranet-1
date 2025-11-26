@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/gestao_profissionais.js
-// Versão: 2.0 (Integrado com as Configurações do Sistema)
+// Versão: 2.1 (Correção de Modal e Assinatura Init)
 
 import { functions, db } from "../../../assets/js/firebase-init.js";
 import { httpsCallable } from "../../../assets/js/firebase-init.js";
@@ -11,10 +11,11 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  getDoc, // Adicionado
+  getDoc,
 } from "../../../assets/js/firebase-init.js";
 
-export function init(db_ignored, user, userData) {
+// Ajuste na assinatura: removido db_ignored para alinhar com rh-painel.js
+export function init(user, userData) {
   const usuariosCollectionRef = collection(db, "usuarios");
   let localUsuariosList = [];
 
@@ -27,7 +28,6 @@ export function init(db_ignored, user, userData) {
   const deleteBtn = document.getElementById("modal-delete-btn");
   const form = document.getElementById("profissional-form");
 
-  // --- INÍCIO DA ALTERAÇÃO ---
   /**
    * Carrega a lista de profissões do Firestore e popula o select.
    */
@@ -48,13 +48,11 @@ export function init(db_ignored, user, userData) {
         selectProfissao.innerHTML = optionsHtml;
       } else {
         console.warn("Lista de profissões não encontrada nas configurações.");
-        // Mantém as opções hardcoded do HTML como fallback
       }
     } catch (error) {
       console.error("Erro ao carregar lista de profissões:", error);
     }
   }
-  // --- FIM DA ALTERAÇÃO ---
 
   const formatarTelefone = (value) => {
     if (!value) return "";
@@ -81,6 +79,7 @@ export function init(db_ignored, user, userData) {
     return isValid;
   };
 
+  // Lógica de Abertura do Modal Corrigida (Display + ClassList)
   const openModal = (profissional = null) => {
     form.reset();
     document.getElementById("profissional-id").value = profissional
@@ -112,11 +111,21 @@ export function init(db_ignored, user, userData) {
         cb.checked = (profissional.funcoes || []).includes(cb.value);
       });
     }
+
+    // Garante que o modal seja exibido e anime a opacidade
     modal.style.display = "flex";
+    setTimeout(() => {
+      modal.classList.add("is-visible");
+    }, 10);
   };
 
+  // Lógica de Fechamento do Modal Corrigida
   const closeModal = () => {
-    modal.style.display = "none";
+    modal.classList.remove("is-visible");
+    // Aguarda a transição do CSS antes de esconder
+    setTimeout(() => {
+      modal.style.display = "none";
+    }, 300);
   };
 
   const renderTable = (profissionais) => {
@@ -163,6 +172,8 @@ export function init(db_ignored, user, userData) {
   addBtn.addEventListener("click", () => openModal(null));
   closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
+
+  // Fecha ao clicar fora do modal
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
   });
@@ -248,8 +259,6 @@ export function init(db_ignored, user, userData) {
     }
   });
 
-  // --- INÍCIO DA ALTERAÇÃO ---
-  // Chama a função para carregar as profissões ao inicializar o módulo
+  // Inicializa lista de profissões
   carregarListaDeProfissoes();
-  // --- FIM DA ALTERAÇÃO ---
 }
