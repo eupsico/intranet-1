@@ -70,19 +70,19 @@ export function initrhPanel(user, db, userData) {
     {
       id: "desligamento",
       name: "Desligamento",
-      roles: ["admin", "rh"],
+      roles: ["admin"],
       icon: icons.desligamento,
     },
     {
       id: "comunicados",
       name: "Comunicação",
-      roles: ["admin", "rh"],
+      roles: ["admin"],
       icon: icons.comunicados,
     },
     {
       id: "gestao_profissionais",
       name: "Profissionais",
-      roles: ["admin", "rh"],
+      roles: ["admin"],
       icon: icons.gestao_profissionais,
     },
     {
