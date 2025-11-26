@@ -43,14 +43,17 @@ function calcularIdade(dataNascimento) {
 export function init(user, userData) {
   console.log("🚀 Módulo de Gestão de Pacientes iniciado.");
 
+  // Referências do DOM da página principal
   const searchInput = document.getElementById("search-input");
   const statusFilter = document.getElementById("status-filter");
   const listContainer = document.getElementById("pacientes-list-container");
 
-  // Elementos do Modal (Baseados no HTML fixo)
+  // Referências do Modal (Cabeçalho e Rodapé já devem existir no HTML)
   const modal = document.getElementById("edit-paciente-modal");
-  const modalBody = document.getElementById("modal-body-content");
+  const modalBody = document.getElementById("modal-body-content"); // O formulário será injetado AQUI
   const modalTitle = document.getElementById("modal-title");
+
+  // Botões fixos do Modal
   const closeModalBtn = document.querySelector(".close-modal-btn");
   const cancelModalBtn = document.getElementById("modal-cancel-btn");
   const saveModalBtn = document.getElementById("modal-save-btn");
@@ -60,7 +63,7 @@ export function init(user, userData) {
   let currentEditingId = null;
   let currentUserData = userData;
 
-  // --- Carregar Lista de Profissionais Ativos ---
+  // --- Função: Carregar Lista de Profissionais Ativos (para o Select) ---
   async function carregarProfissionais() {
     try {
       const q = query(
@@ -73,15 +76,19 @@ export function init(user, userData) {
         id: doc.id,
         nome: doc.data().nome,
       }));
-      console.log(`✅ ${allProfissionais.length} profissionais carregados.`);
+      console.log(
+        `✅ ${allProfissionais.length} profissionais carregados para a lista.`
+      );
     } catch (error) {
       console.error("Erro ao carregar profissionais:", error);
     }
   }
 
-  // --- Carregar Pacientes ---
+  // --- Função: Carregar Pacientes ---
   async function carregarPacientes() {
     listContainer.innerHTML = ""; // Limpa a lista antes de recarregar
+    // Mostra spinner enquanto carrega
+    listContainer.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
       const q = query(
@@ -102,7 +109,7 @@ export function init(user, userData) {
     }
   }
 
-  // --- Renderizar Lista de Cards ---
+  // --- Função: Renderizar Lista de Cards na Tela Principal ---
   function renderizarLista() {
     const searchTerm = searchInput.value.toLowerCase();
     const status = statusFilter.value;
@@ -230,7 +237,31 @@ export function init(user, userData) {
     });
   }
 
-  // --- Gerar Formulário HTML (SEM BOTÕES DE AÇÃO) ---
+  // --- Helper para Extrair Nomes dos Arrays de Atendimento ---
+  function extrairNomesProfissionais(paciente, tipo) {
+    // tipo: 'atendimentosPB' ou 'atendimentosPlantao'
+    const arrayAtendimentos = paciente[tipo];
+
+    // 1. Tenta buscar no array (estrutura nova)
+    if (Array.isArray(arrayAtendimentos) && arrayAtendimentos.length > 0) {
+      // Mapeia os nomes e filtra vazios
+      const nomes = arrayAtendimentos
+        .map((item) => item.profissionalNome)
+        .filter((nome) => nome && nome.trim() !== "");
+
+      if (nomes.length > 0) {
+        return nomes.join(", ");
+      }
+    }
+
+    // 2. Fallback: Se não achou no array, tenta buscar na string raiz (estrutura antiga)
+    // Mapeamento de campos raiz
+    const campoRaiz =
+      tipo === "atendimentosPB" ? "profissionalPB" : "profissionalPlantao";
+    return paciente[campoRaiz] || "";
+  }
+
+  // --- Gerar Formulário HTML (INJETADO NO MEIO DO MODAL) ---
   function gerarFormularioEdicao(paciente) {
     const p = (path, defaultValue = "") =>
       path.split(".").reduce((acc, part) => acc && acc[part], paciente) ||
@@ -280,12 +311,23 @@ export function init(user, userData) {
       "manha-sabado": disponibilidadeGeral.includes("Manhã (Sábado)"),
     };
 
-    // Prepara opções para o Select de Profissionais
+    // Prepara opções para o Select de Profissionais (Acesso Rápido)
     let optionsProfissionais =
       '<option value="">+ Selecionar Profissional...</option>';
     allProfissionais.forEach((prof) => {
       optionsProfissionais += `<option value="${prof.nome}">${prof.nome}</option>`;
     });
+
+    // --- LÓGICA DE RECUPERAÇÃO DOS NOMES ---
+    const nomesProfissionaisPB = extrairNomesProfissionais(
+      paciente,
+      "atendimentosPB"
+    );
+    const nomesProfissionaisPlantao = extrairNomesProfissionais(
+      paciente,
+      "atendimentosPlantao"
+    ); // Assume que existe array similar ou usa fallback
+    // ----------------------------------------
 
     const htmlDisponibilidade = `
       <fieldset>
@@ -332,7 +374,7 @@ export function init(user, userData) {
       </fieldset>
     `;
 
-    // Formulário sem botões (eles estão no rodapé do modal HTML)
+    // Formulário (SEM BOTÕES, pois usaremos o rodapé do modal)
     const form = `
       <form id="edit-paciente-form">
         <fieldset>
@@ -560,7 +602,7 @@ export function init(user, userData) {
         <fieldset>
           <legend>Profissionais Responsáveis</legend>
           <p style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
-            Os campos abaixo mostram os profissionais cadastrados. Selecione na lista para adicionar mais nomes.
+            Os campos abaixo mostram os profissionais cadastrados (buscados nos registros de atendimento). Selecione na lista para adicionar mais nomes.
           </p>
           
           <label for="assistenteSocial" style="display:block; margin-top:10px;">Assistente Social:</label>
@@ -571,10 +613,7 @@ export function init(user, userData) {
 
           <label for="profissionalPB" style="display:block; margin-top:10px;">Profissional PB:</label>
           <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="profissionalPB" value="${p(
-              "profissionalPB",
-              ""
-            )}" placeholder="Ex: Dr. João, Dra. Ana" style="flex: 1;" />
+            <input type="text" id="profissionalPB" value="${nomesProfissionaisPB}" placeholder="Ex: Dr. João, Dra. Ana" style="flex: 1;" />
             <select class="quick-add-prof" data-target="profissionalPB" style="width: 180px;">
                 ${optionsProfissionais}
             </select>
@@ -582,10 +621,7 @@ export function init(user, userData) {
 
           <label for="profissionalPlantao" style="display:block; margin-top:10px;">Profissional Plantão:</label>
           <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="profissionalPlantao" value="${p(
-              "profissionalPlantao",
-              ""
-            )}" placeholder="Ex: Psicólogo Pedro" style="flex: 1;" />
+            <input type="text" id="profissionalPlantao" value="${nomesProfissionaisPlantao}" placeholder="Ex: Psicólogo Pedro" style="flex: 1;" />
             <select class="quick-add-prof" data-target="profissionalPlantao" style="width: 180px;">
                 ${optionsProfissionais}
             </select>
@@ -602,6 +638,7 @@ export function init(user, userData) {
     return form;
   }
 
+  // --- Abrir Modal ---
   async function abrirModalEdicao(pacienteId) {
     currentEditingId = pacienteId;
     const paciente = allPacientes.find((p) => p.id === pacienteId);
@@ -611,10 +648,14 @@ export function init(user, userData) {
       return;
     }
 
+    // Define Título
     modalTitle.textContent = `✏️ Editar: ${paciente.nomeCompleto}`;
+
+    // Injeta APENAS o corpo, mantendo Header e Footer do HTML
     const formulario = gerarFormularioEdicao(paciente);
     modalBody.innerHTML = formulario;
 
+    // Reconecta listeners de disponibilidade (pois o HTML foi reinjetado)
     setupDisponibilidadeListeners(modalBody);
 
     // Listener para o Select de Adição Rápida
@@ -645,6 +686,7 @@ export function init(user, userData) {
     modal.style.display = "flex";
   }
 
+  // --- Salvar Edição ---
   async function salvarEdicao() {
     try {
       const pacientesRef = doc(db, "trilhaPaciente", currentEditingId);
@@ -654,6 +696,7 @@ export function init(user, userData) {
       let disponibilidadeEspecifica = [];
       let disponibilidadeGeral = [];
 
+      // Lógica de horários (checkboxes)
       const periodos = [
         { id: "manha-semana", label: "Manhã (Durante a semana)" },
         { id: "tarde-semana", label: "Tarde (Durante a semana)" },
@@ -668,7 +711,6 @@ export function init(user, userData) {
 
         if (checkbox && checkbox.checked) {
           disponibilidadeGeral.push(periodo.label);
-
           const horarios = document.querySelectorAll(
             `.horario-${periodo.id}:checked`
           );
@@ -678,13 +720,13 @@ export function init(user, userData) {
         }
       });
 
+      // Se não mexeu, mantém o anterior
       if (
         disponibilidadeEspecifica.length === 0 &&
         pacienteAtual.disponibilidadeEspecifica
       ) {
         disponibilidadeEspecifica = pacienteAtual.disponibilidadeEspecifica;
       }
-
       if (
         disponibilidadeGeral.length === 0 &&
         pacienteAtual.disponibilidadeGeral
@@ -692,6 +734,7 @@ export function init(user, userData) {
         disponibilidadeGeral = pacienteAtual.disponibilidadeGeral;
       }
 
+      // Constrói objeto de atualização
       const dadosAtualizados = {
         nomeCompleto: document.getElementById("nomeCompleto")?.value || "",
         cpf: document.getElementById("cpf")?.value || "",
@@ -749,6 +792,7 @@ export function init(user, userData) {
           document.getElementById("preferenciaGenero")?.value || "",
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
+        // Salva os campos de texto simples (root) para compatibilidade e busca rápida
         profissionalPB: document.getElementById("profissionalPB")?.value || "",
         profissionalPlantao:
           document.getElementById("profissionalPlantao")?.value || "",
@@ -791,8 +835,7 @@ export function init(user, userData) {
     }
   }
 
-  // --- Listeners Globais do Modal ---
-  // Apenas vinculamos os eventos aos botões fixos do HTML
+  // --- Listeners Globais do Modal (Vinculados aos botões FIXOS do HTML) ---
   closeModalBtn.addEventListener("click", () => {
     modal.style.display = "none";
   });
