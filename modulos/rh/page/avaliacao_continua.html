@@ -192,44 +192,58 @@
     </div>
   </div>
 
-  <div id="tab-pesquisa-paciente" class="tab-content" style="display: none;">
+<div id="tab-pesquisa-paciente" class="tab-content" style="display: none;">
     <div class="row">
-      <div class="col-md-6">
-        <div class="card p-4">
-          <h4><i class="fab fa-whatsapp me-2 text-success"></i> Enviar Pesquisa de Satisfação</h4>
-          <p class="small text-muted">Gere um link personalizado para o paciente avaliar o atendimento recebido.</p>
+      <div class="col-md-4">
+        <div class="card p-3 h-100">
+          <h4><i class="fas fa-search me-2"></i> Seleção de Pacientes</h4>
+          <p class="text-muted small">Selecione o profissional e o status para listar os pacientes.</p>
           
           <div class="form-group mb-3">
-            <label>Selecione o Profissional:</label>
-            <select id="select-prof-nps" class="form-control">
+            <label class="fw-bold">1. Profissional:</label>
+            <select id="nps-select-profissional" class="form-control">
               <option value="">Carregando...</option>
             </select>
           </div>
 
           <div class="form-group mb-3">
-            <label>Nome do Paciente (Opcional):</label>
-            <input type="text" id="nome-paciente-nps" class="form-control" placeholder="Para personalizar a mensagem">
-          </div>
-          
-          <div class="form-group mb-3">
-             <label>Link da Pesquisa (Google Forms):</label>
-             <input type="text" id="link-nps" class="form-control" value="https://forms.gle/SEU_ID_DO_GOOGLE_FORM" readonly style="background-color: #f0f0f0;">
-             <small>Este é o link fixo da pesquisa de satisfação.</small>
+            <label class="fw-bold">2. Status do Paciente:</label>
+            <select id="nps-select-status" class="form-control" disabled>
+              <option value="ativo">Ativos (Em Atendimento)</option>
+              <option value="inativo">Inativos (Alta/Desistência)</option>
+            </select>
           </div>
 
-          <button id="btn-gerar-msg-nps" class="action-button success w-100">
-            <i class="fab fa-whatsapp"></i> Gerar Mensagem WhatsApp
+          <button id="nps-btn-buscar" class="action-button primary w-100" disabled>
+            <i class="fas fa-list"></i> Listar Pacientes
           </button>
         </div>
       </div>
 
-      <div class="col-md-6">
-        <div class="card p-4">
-          <h4>Visualização da Mensagem</h4>
-          <textarea id="preview-msg-nps" class="form-control mt-3" rows="8" readonly></textarea>
-          <button id="btn-copiar-nps" class="action-button secondary mt-3 w-100" style="display: none;">
-            <i class="fas fa-copy"></i> Copiar Texto
-          </button>
+      <div class="col-md-8">
+        <div class="card p-0">
+          <div class="card-header bg-light p-3 border-bottom">
+            <h5 class="mb-0 m-0">Lista de Pacientes para Envio</h5>
+          </div>
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-hover mb-0" id="tabela-nps-pacientes">
+              <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                <tr>
+                  <th>Paciente</th>
+                  <th>Telefone</th>
+                  <th>Status</th>
+                  <th class="text-end">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-nps-pacientes">
+                <tr>
+                  <td colspan="4" class="text-center py-5 text-muted">
+                    Selecione um profissional e clique em "Listar Pacientes"
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

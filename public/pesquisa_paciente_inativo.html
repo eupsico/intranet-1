@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesquisa de Encerramento - EuPsico</title>
+    <link rel="stylesheet" href="../assets/css/design-system.css">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        .container { max-width: 600px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header img { height: 50px; margin-bottom: 10px; }
+        .header h2 { color: var(--cor-texto-inverso); margin: 0; }
+        .nps-scale { display: flex; justify-content: space-between; margin-top: 10px; gap: 2px; }
+        .nps-btn { flex: 1; padding: 10px 0; background: #f8f9fa; border: 1px solid #dee2e6; cursor: pointer; border-radius: 4px; text-align: center; transition: all 0.2s; }
+        .nps-btn:hover { background: #e2e6ea; }
+        input[type="radio"]:checked + .nps-btn { background: var(--cor-primaria); color: white; border-color: var(--cor-primaria); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <img src="../assets/img/logo-branca.png" alt="EuPsico">
+        <h2>Pesquisa de Encerramento</h2>
+        <p class="text-muted">Gostaríamos de entender melhor sua experiência.</p>
+    </div>
+
+    <form id="form-pesquisa-inativo">
+        <input type="hidden" id="profissional_nome" name="profissional_nome">
+        <input type="hidden" id="paciente_id" name="paciente_id">
+
+        <div class="form-group mb-4">
+            <label class="fw-bold">1. Qual o principal motivo para o encerramento do atendimento?</label>
+            <select class="form-control" name="motivo_saida" required>
+                <option value="">Selecione...</option>
+                <option value="Alta Terapeutica">Recebi Alta (Objetivos alcançados)</option>
+                <option value="Financeiro">Questões Financeiras</option>
+                <option value="Horario">Incompatibilidade de Horários</option>
+                <option value="Insatisfacao">Não me adaptei ao profissional/método</option>
+                <option value="Pessoal">Questões Pessoais/Outros</option>
+            </select>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="fw-bold">2. Como você avalia a experiência geral que teve conosco?</label>
+            <div class="nps-scale">
+                <label><input type="radio" name="nps" value="0" hidden><div class="nps-btn">0</div></label>
+                <label><input type="radio" name="nps" value="1" hidden><div class="nps-btn">1</div></label>
+                <label><input type="radio" name="nps" value="2" hidden><div class="nps-btn">2</div></label>
+                <label><input type="radio" name="nps" value="3" hidden><div class="nps-btn">3</div></label>
+                <label><input type="radio" name="nps" value="4" hidden><div class="nps-btn">4</div></label>
+                <label><input type="radio" name="nps" value="5" hidden><div class="nps-btn">5</div></label>
+                <label><input type="radio" name="nps" value="6" hidden><div class="nps-btn">6</div></label>
+                <label><input type="radio" name="nps" value="7" hidden><div class="nps-btn">7</div></label>
+                <label><input type="radio" name="nps" value="8" hidden><div class="nps-btn">8</div></label>
+                <label><input type="radio" name="nps" value="9" hidden><div class="nps-btn">9</div></label>
+                <label><input type="radio" name="nps" value="10" hidden><div class="nps-btn">10</div></label>
+            </div>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="fw-bold">3. Comentários adicionais ou sugestões:</label>
+            <textarea class="form-control" name="comentario" rows="4"></textarea>
+        </div>
+
+        <button type="submit" class="action-button primary w-100">Enviar Respostas</button>
+    </form>
+</div>
+
+<script type="module">
+    import { db, collection, addDoc, serverTimestamp } from '../assets/js/firebase-init.js';
+
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('profissional_nome').value = params.get('prof') || 'Não informado';
+    document.getElementById('paciente_id').value = params.get('pac') || 'anonimo';
+
+    document.getElementById('form-pesquisa-inativo').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.innerText = 'Enviando...';
+
+        const formData = new FormData(e.target);
+        const data = {
+            tipo: 'paciente_inativo',
+            profissionalNome: formData.get('profissional_nome'),
+            pacienteId: formData.get('paciente_id'),
+            motivoSaida: formData.get('motivo_saida'),
+            nps: parseInt(formData.get('nps')),
+            comentario: formData.get('comentario'),
+            dataEnvio: serverTimestamp()
+        };
+
+        try {
+            await addDoc(collection(db, "feedbacks_pacientes_inativos"), data);
+            document.querySelector('.container').innerHTML = `
+                <div class="text-center" style="padding: 40px;">
+                    <h2 style="color: var(--cor-sucesso);">Obrigado!</h2>
+                    <p>Agradecemos por compartilhar sua experiência conosco.</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao enviar. Tente novamente.');
+            btn.disabled = false;
+            btn.innerText = 'Enviar Respostas';
+        }
+    });
+</script>
+</body>
+</html>

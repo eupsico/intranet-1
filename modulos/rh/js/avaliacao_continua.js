@@ -435,21 +435,189 @@ async function carregarFeedbacksVoluntarios() {
 }
 
 // ============================================
-// ABA 4: PESQUISA PACIENTE (NPS)
+// ABA 4: PESQUISA PACIENTE (NPS) - LÓGICA COMPLETA
 // ============================================
-function popularSelectNPS() {
-  const select = document.getElementById("select-prof-nps");
-  if (!select || select.options.length > 1) return;
 
-  select.innerHTML = '<option value="">Selecione...</option>';
+// Preenche o select de profissionais
+function popularSelectNPS() {
+  const select = document.getElementById("nps-select-profissional");
+  const statusSelect = document.getElementById("nps-select-status");
+  const btnBuscar = document.getElementById("nps-btn-buscar");
+
+  if (!select) return;
+
+  // Evita repopular se já tiver dados
+  if (select.options.length > 1) return;
+
+  select.innerHTML = '<option value="">Selecione um profissional...</option>';
+
   listaProfissionais.forEach((prof) => {
     const opt = document.createElement("option");
-    opt.value = prof.nome;
+    opt.value = prof.id; // ID do profissional
     opt.textContent = prof.nome;
+    opt.dataset.nome = prof.nome;
     select.appendChild(opt);
   });
+
+  // Habilita os outros campos quando um profissional é escolhido
+  select.addEventListener("change", () => {
+    const disabled = select.value === "";
+    statusSelect.disabled = disabled;
+    btnBuscar.disabled = disabled;
+    // Limpa a tabela se mudar o profissional
+    document.getElementById("tbody-nps-pacientes").innerHTML =
+      '<tr><td colspan="4" class="text-center py-4 text-muted">Clique em "Listar Pacientes" para atualizar.</td></tr>';
+  });
+
+  // Listener do botão buscar
+  btnBuscar.addEventListener("click", listarPacientesParaNPS);
 }
 
+// Busca pacientes na trilha
+async function listarPacientesParaNPS() {
+  const profId = document.getElementById("nps-select-profissional").value;
+  const profNome = document.getElementById("nps-select-profissional").options[
+    document.getElementById("nps-select-profissional").selectedIndex
+  ].dataset.nome;
+  const statusTipo = document.getElementById("nps-select-status").value; // 'ativo' ou 'inativo'
+  const tbody = document.getElementById("tbody-nps-pacientes");
+
+  if (!profId) return;
+
+  tbody.innerHTML =
+    '<tr><td colspan="4" class="text-center py-4"><div class="loading-spinner"></div> Buscando pacientes...</td></tr>';
+
+  try {
+    // Define os status do Firestore baseados na seleção
+    let statusFiltro = [];
+    if (statusTipo === "ativo") {
+      statusFiltro = [
+        "em_atendimento_pb",
+        "em_atendimento_plantao",
+        "aguardando_info_horarios",
+      ];
+    } else {
+      statusFiltro = [
+        "alta",
+        "desistencia",
+        "encaminhado_grupo",
+        "encaminhado_parceiro",
+        "encaminhado_outro",
+      ];
+    }
+
+    // Query: Pacientes onde este profissional está envolvido
+    // Nota: Buscamos na trilha geral e filtramos, pois a query complexa OR não é direta.
+    // Uma query mais eficiente seria ter um campo 'profissionalAtualId' na trilha, mas vamos usar o que temos.
+
+    // Query 1: Plantão
+    const qPlantao = query(
+      collection(db, "trilhaPaciente"),
+      where("plantaoInfo.profissionalId", "==", profId),
+      where("status", "in", statusFiltro)
+    );
+
+    // Query 2: PB
+    const qPB = query(
+      collection(db, "trilhaPaciente"),
+      where("profissionaisPB_ids", "array-contains", profId),
+      where("status", "in", statusFiltro)
+    );
+
+    const [snapPlantao, snapPB] = await Promise.all([
+      getDocs(qPlantao),
+      getDocs(qPB),
+    ]);
+
+    // Map para remover duplicatas
+    const pacientesMap = new Map();
+
+    const processarDoc = (doc) => {
+      const data = doc.data();
+      pacientesMap.set(doc.id, {
+        id: doc.id,
+        nome: data.nomeCompleto,
+        telefone: data.telefoneCelular || "",
+        status: data.status,
+      });
+    };
+
+    snapPlantao.forEach(processarDoc);
+    snapPB.forEach(processarDoc);
+
+    const listaPacientes = Array.from(pacientesMap.values());
+
+    if (listaPacientes.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhum paciente encontrado com este status para este profissional.</td></tr>';
+      return;
+    }
+
+    // Renderiza Tabela
+    let html = "";
+
+    // Determina qual link usar
+    // URL Base (ajustar se estiver em subpasta ou local)
+    const baseUrl =
+      window.location.origin.includes("localhost") ||
+      window.location.origin.includes("127.0.0.1")
+        ? window.location.origin
+        : "https://intranet.eupsico.org.br";
+
+    const pagina =
+      statusTipo === "ativo"
+        ? "pesquisa_paciente_ativo.html"
+        : "pesquisa_paciente_inativo.html";
+
+    listaPacientes.forEach((p) => {
+      // Link personalizado
+      const linkPesquisa = `${baseUrl}/public/${pagina}?prof=${encodeURIComponent(
+        profNome
+      )}&pac=${p.id}`;
+
+      // Mensagem WhatsApp
+      const primeiroNome = p.nome.split(" ")[0];
+      let msg = "";
+
+      if (statusTipo === "ativo") {
+        msg = `Olá ${primeiroNome}, tudo bem? 👋 Aqui é da EuPsico.\n\nGostaríamos de saber como está sendo seu atendimento. É rapidinho!\n\n🔗 ${linkPesquisa}`;
+      } else {
+        msg = `Olá ${primeiroNome}, tudo bem? 👋\n\nVimos que seu atendimento foi encerrado. Poderia nos contar como foi sua experiência?\n\n🔗 ${linkPesquisa}`;
+      }
+
+      const linkZap = p.telefone
+        ? `https://wa.me/55${p.telefone.replace(
+            /\D/g,
+            ""
+          )}?text=${encodeURIComponent(msg)}`
+        : null;
+
+      const btnWhatsapp = linkZap
+        ? `<a href="${linkZap}" target="_blank" class="action-button success small"><i class="fab fa-whatsapp"></i> Enviar</a>`
+        : `<button disabled class="action-button secondary small" title="Sem telefone">Sem Tel</button>`;
+
+      // Badge de status
+      let badgeClass = "bg-secondary";
+      if (p.status.includes("atendimento")) badgeClass = "bg-success";
+      if (p.status === "alta") badgeClass = "bg-primary";
+      if (p.status === "desistencia") badgeClass = "bg-danger";
+
+      html += `
+        <tr>
+          <td>${p.nome}</td>
+          <td>${p.telefone || "-"}</td>
+          <td><span class="badge ${badgeClass}">${p.status}</span></td>
+          <td class="text-end">${btnWhatsapp}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = html;
+  } catch (error) {
+    console.error("Erro ao listar pacientes:", error);
+    tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">Erro ao buscar dados: ${error.message}</td></tr>`;
+  }
+}
 function gerarMensagemNPS() {
   const nomeProf = document.getElementById("select-prof-nps").value;
   const nomePac =
