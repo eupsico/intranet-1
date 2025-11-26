@@ -1,5 +1,5 @@
 // Arquivo: modulos/rh/js/avaliacao_continua.js
-// Versão: 1.0.0
+// Versão: 1.1.0
 // Descrição: Gerencia o monitoramento de conformidade, avaliação 360 e feedback.
 
 import {
@@ -14,6 +14,7 @@ import {
   getDoc,
   updateDoc,
   limit,
+  orderBy,
 } from "../../../assets/js/firebase-init.js";
 
 let currentUserData = null;
@@ -24,12 +25,16 @@ export async function init(user, userData) {
   currentUserData = userData;
 
   configurarAbas();
-  await carregarListaProfissionais(); // Carrega lista base para os selects e monitoramento
+  await carregarListaProfissionais();
 
   // Carrega aba inicial
   carregarMonitoramento();
 
-  // Configurar busca na aba 360
+  // Configurações de eventos
+  setupEventListeners();
+}
+
+function setupEventListeners() {
   const inputBusca = document.getElementById("busca-profissional-360");
   if (inputBusca) {
     inputBusca.addEventListener("input", (e) =>
@@ -37,13 +42,11 @@ export async function init(user, userData) {
     );
   }
 
-  // Configurar submit form 360
   const form360 = document.getElementById("form-avaliacao-360");
   if (form360) {
     form360.addEventListener("submit", handleSalvarAvaliacao360);
   }
 
-  // Configurar gerador NPS
   const btnNps = document.getElementById("btn-gerar-msg-nps");
   if (btnNps) {
     btnNps.addEventListener("click", gerarMensagemNPS);
@@ -58,40 +61,55 @@ export async function init(user, userData) {
       window.showToast("Texto copiado!", "success");
     });
   }
+
+  // Novo: Copiar link do formulário de feedback
+  const btnCopiarLinkFeedback = document.getElementById(
+    "btn-copiar-link-feedback"
+  );
+  if (btnCopiarLinkFeedback) {
+    btnCopiarLinkFeedback.addEventListener("click", () => {
+      // Ajustar URL conforme ambiente (local vs produção)
+      const urlBase =
+        window.location.origin.includes("localhost") ||
+        window.location.origin.includes("127.0.0.1")
+          ? window.location.origin
+          : "https://intranet.eupsico.org.br";
+
+      // Assume que o arquivo público está em /public/feedback_voluntario.html
+      const url = `${urlBase}/public/feedback_voluntario.html`;
+
+      navigator.clipboard.writeText(url).then(() => {
+        window.showToast("Link copiado: " + url, "success");
+      });
+    });
+  }
 }
 
-// ============================================
-// GESTÃO DE ABAS
-// ============================================
 function configurarAbas() {
   const tabs = document.querySelectorAll("#tabs-avaliacao .tab-link");
   const contents = document.querySelectorAll(".tab-content");
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      // Remove active
       tabs.forEach((t) => t.classList.remove("active"));
       contents.forEach((c) => (c.style.display = "none"));
 
-      // Add active
       tab.classList.add("active");
       const targetId = `tab-${tab.dataset.tab}`;
       document.getElementById(targetId).style.display = "block";
 
-      // Carregar dados específicos da aba se necessário
+      // Carregamento sob demanda
       if (tab.dataset.tab === "monitoramento") carregarMonitoramento();
       if (tab.dataset.tab === "avaliacao-rh") renderizarListaProfissionais360();
+      if (tab.dataset.tab === "feedback-profissional")
+        carregarFeedbacksVoluntarios();
       if (tab.dataset.tab === "pesquisa-paciente") popularSelectNPS();
     });
   });
 }
 
-// ============================================
-// CARREGAMENTO DE DADOS BÁSICOS
-// ============================================
 async function carregarListaProfissionais() {
   try {
-    // Busca usuários com flag 'fazAtendimento' ou função 'atendimento'
     const q = query(
       collection(db, "usuarios"),
       where("fazAtendimento", "==", true)
@@ -102,7 +120,6 @@ async function carregarListaProfissionais() {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Filtra apenas ativos
       if (!data.inativo) {
         listaProfissionais.push({
           id: doc.id,
@@ -121,41 +138,29 @@ async function carregarListaProfissionais() {
 }
 
 // ============================================
-// ABA 1: MONITORAMENTO DE CONFORMIDADE (TRILHA)
+// ABA 1: MONITORAMENTO
 // ============================================
 async function carregarMonitoramento() {
   const tbody = document.getElementById("tbody-monitoramento");
   if (!tbody) return;
 
   tbody.innerHTML =
-    '<tr><td colspan="7" class="text-center"><div class="loading-spinner"></div> Analisando trilhas... (Isso pode levar alguns segundos)</td></tr>';
+    '<tr><td colspan="7" class="text-center"><div class="loading-spinner"></div> Analisando trilhas...</td></tr>';
 
-  // Define período de análise (últimos 30 dias)
   const dataLimite = new Date();
   dataLimite.setDate(dataLimite.getDate() - 30);
 
   let html = "";
 
-  // Para cada profissional, vamos buscar seus pacientes ativos e verificar sessões
-  // NOTA: Isso é uma operação pesada. Em produção com muitos dados, idealmente seria uma Cloud Function agendada que gera um relatório diário.
-  // Aqui faremos no front-end mas com cuidado.
-
+  // Nota: Processamento pesado no front-end. Idealmente seria via backend.
   for (const prof of listaProfissionais) {
     try {
-      // Busca pacientes vinculados ao profissional (Plantão ou PB)
-      // Devido a limitações de queries compostas "OR" no Firestore v9 client-side simples, faremos duas queries ou uma busca mais ampla se possível.
-      // Vamos buscar pacientes onde este profissional está no array 'profissionaisPB_ids' OU é o 'plantaoInfo.profissionalId'
-
-      // Estratégia otimizada: Buscar pacientes ativos na trilha e filtrar em memória (se a base não for gigante)
-      // Ou fazer queries específicas. Vamos tentar queries específicas.
-
       const qPB = query(
         collection(db, "trilhaPaciente"),
         where("profissionaisPB_ids", "array-contains", prof.id),
         where("status", "in", ["em_atendimento_pb", "aguardando_info_horarios"])
       );
 
-      // Query Plantão
       const qPlantao = query(
         collection(db, "trilhaPaciente"),
         where("plantaoInfo.profissionalId", "==", prof.id),
@@ -167,27 +172,20 @@ async function carregarMonitoramento() {
         getDocs(qPlantao),
       ]);
 
-      // Unir resultados sem duplicatas
       const pacientesIds = new Set();
       snapPB.forEach((d) => pacientesIds.add(d.id));
       snapPlantao.forEach((d) => pacientesIds.add(d.id));
 
       const totalPacientes = pacientesIds.size;
 
-      if (totalPacientes === 0) {
-        // Se não tem pacientes, pula (ou mostra zerado)
-        continue;
-      }
+      if (totalPacientes === 0) continue;
 
       let totalSessoes = 0;
       let sessoesSemStatus = 0;
       let sessoesSemEvolucao = 0;
 
-      // Verificar sessões de cada paciente (Subcoleção)
-      // Limitamos a verificação para não estourar leitura
       const promessasSessoes = Array.from(pacientesIds).map(async (pid) => {
         const sessoesRef = collection(db, "trilhaPaciente", pid, "sessoes");
-        // Pega sessões recentes
         const qSessao = query(sessoesRef, where("dataHora", ">=", dataLimite));
         const snapSessao = await getDocs(qSessao);
 
@@ -195,11 +193,8 @@ async function carregarMonitoramento() {
           const sData = sDoc.data();
           totalSessoes++;
 
-          if (sData.status === "pendente") {
-            sessoesSemStatus++;
-          }
+          if (sData.status === "pendente") sessoesSemStatus++;
 
-          // Verifica evolução (assumindo que se o status não é pendente, deveria ter evolução)
           if (sData.status !== "pendente") {
             if (
               !sData.anotacoes ||
@@ -214,21 +209,19 @@ async function carregarMonitoramento() {
 
       await Promise.all(promessasSessoes);
 
-      // Calcular conformidade
       let statusConformidade = '<span class="badge bg-success">OK</span>';
       let classeLinha = "";
 
       if (sessoesSemStatus > 0) {
         statusConformidade =
           '<span class="badge bg-danger">Presença Pendente</span>';
-        classeLinha = 'style="background-color: #fff5f5"'; // Leve vermelho
+        classeLinha = 'style="background-color: #fff5f5"';
       } else if (sessoesSemEvolucao > 0) {
         statusConformidade =
           '<span class="badge bg-warning text-dark">Evolução Pendente</span>';
       }
 
       if (totalSessoes === 0 && totalPacientes > 0) {
-        // Pode ser um alerta se tem paciente mas não tem sessão agendada/registrada no mês
         statusConformidade =
           '<span class="badge bg-secondary">Sem Atividade Recente</span>';
       }
@@ -255,7 +248,7 @@ async function carregarMonitoramento() {
       }</td>
           <td class="text-center">${statusConformidade}</td>
           <td>
-            <button class="action-button small secondary btn-detalhe-monitor" onclick="alert('Redirecionar para detalhes do profissional ${
+            <button class="action-button small secondary btn-detalhe-monitor" onclick="alert('Acessar detalhes do profissional ID: ${
               prof.id
             }')">
               <i class="fas fa-search"></i>
@@ -277,14 +270,12 @@ async function carregarMonitoramento() {
 }
 
 // ============================================
-// ABA 2: AVALIAÇÃO 360
+// ABA 2: AVALIAÇÃO 360 (Lógica mantida)
 // ============================================
 function renderizarListaProfissionais360() {
   const lista = document.getElementById("lista-profissionais-360");
   if (!lista) return;
-
   lista.innerHTML = "";
-
   listaProfissionais.forEach((prof) => {
     const li = document.createElement("li");
     li.className =
@@ -302,7 +293,6 @@ function renderizarListaProfissionais360() {
 function filtrarListaProfissionais360(termo) {
   const termoLower = termo.toLowerCase();
   const itens = document.querySelectorAll("#lista-profissionais-360 li");
-
   itens.forEach((li) => {
     const texto = li.textContent.toLowerCase();
     li.style.display = texto.includes(termoLower) ? "flex" : "none";
@@ -312,11 +302,8 @@ function filtrarListaProfissionais360(termo) {
 function selecionarProfissional360(prof) {
   document.getElementById("form-container-360").style.display = "block";
   document.getElementById("placeholder-360").style.display = "none";
-
   document.getElementById("nome-profissional-360").textContent = prof.nome;
   document.getElementById("uid-profissional-360").value = prof.id;
-
-  // Reset form
   document.getElementById("form-avaliacao-360").reset();
 }
 
@@ -343,21 +330,11 @@ async function handleSalvarAvaliacao360(e) {
   };
 
   try {
-    // Salvar na coleção de avaliações (nova coleção sugerida)
     await addDoc(collection(db, "avaliacoes_internas"), avaliacao);
-
     window.showToast("Avaliação registrada com sucesso!", "success");
-
-    // Reset UI
     document.getElementById("form-avaliacao-360").reset();
     document.getElementById("form-container-360").style.display = "none";
     document.getElementById("placeholder-360").style.display = "block";
-
-    // Se marcou enviar email, chamar Cloud Function de email (lógica implícita aqui)
-    if (avaliacao.enviarEmail) {
-      // Exemplo de chamada futura: enviarEmailFeedback(avaliacao);
-      console.log("Solicitação de envio de email registrada.");
-    }
   } catch (error) {
     console.error("Erro ao salvar avaliação:", error);
     window.showToast("Erro ao salvar avaliação.", "error");
@@ -368,16 +345,106 @@ async function handleSalvarAvaliacao360(e) {
 }
 
 // ============================================
+// ABA 3: FEEDBACK DO VOLUNTÁRIO (NOVA LÓGICA)
+// ============================================
+async function carregarFeedbacksVoluntarios() {
+  const tbody = document.getElementById("tbody-feedbacks");
+  if (!tbody) return;
+
+  tbody.innerHTML =
+    '<tr><td colspan="6" class="text-center">Carregando feedbacks...</td></tr>';
+
+  try {
+    const q = query(
+      collection(db, "feedbacks_voluntarios"),
+      orderBy("dataEnvio", "desc"),
+      limit(50)
+    );
+
+    const snapshot = await getDocs(q);
+
+    let promotores = 0;
+    let neutros = 0;
+    let detratores = 0;
+    let total = 0;
+    let html = "";
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      total++;
+
+      // Cálculo NPS
+      const nota = parseInt(data.nps);
+      if (nota >= 9) promotores++;
+      else if (nota >= 7) neutros++;
+      else detratores++;
+
+      // Formatação Data
+      const dataEnvio = data.dataEnvio
+        ? new Date(data.dataEnvio.seconds * 1000).toLocaleDateString("pt-BR")
+        : "N/A";
+
+      // Cor da nota
+      let corNota = "bg-secondary";
+      if (nota >= 9) corNota = "bg-success";
+      else if (nota <= 6) corNota = "bg-danger";
+      else corNota = "bg-warning text-dark";
+
+      html += `
+        <tr>
+          <td>${dataEnvio}</td>
+          <td>${data.nomeVoluntario || "Anônimo"}</td>
+          <td><span class="badge ${corNota}">${nota}</span></td>
+          <td>${data.avaliacaoSuporte}</td>
+          <td>${data.avaliacaoProcessos}</td>
+          <td title="${data.sugestoes || ""}">${
+        data.sugestoes
+          ? data.sugestoes.substring(0, 50) +
+            (data.sugestoes.length > 50 ? "..." : "")
+          : "-"
+      }</td>
+        </tr>
+      `;
+    });
+
+    // Atualizar métricas
+    if (total > 0) {
+      const nps = Math.round(((promotores - detratores) / total) * 100);
+      document.getElementById("metric-nps").textContent = nps;
+
+      // Define cor do NPS
+      const elNps = document.getElementById("metric-nps");
+      if (nps >= 75) elNps.className = "display-4 fw-bold text-success";
+      else if (nps >= 50) elNps.className = "display-4 fw-bold text-warning";
+      else elNps.className = "display-4 fw-bold text-danger";
+
+      document.getElementById("metric-promotores").textContent = promotores;
+      document.getElementById("metric-neutros").textContent = neutros;
+      document.getElementById("metric-detratores").textContent = detratores;
+
+      tbody.innerHTML = html;
+    } else {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted">Nenhum feedback recebido ainda.</td></tr>';
+      document.getElementById("metric-nps").textContent = "N/A";
+    }
+  } catch (error) {
+    console.error("Erro ao carregar feedbacks:", error);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-danger">Erro ao carregar dados: ${error.message}</td></tr>`;
+  }
+}
+
+// ============================================
 // ABA 4: PESQUISA PACIENTE (NPS)
 // ============================================
 function popularSelectNPS() {
   const select = document.getElementById("select-prof-nps");
-  if (!select || select.options.length > 1) return; // Já populado
+  if (!select || select.options.length > 1) return;
 
   select.innerHTML = '<option value="">Selecione...</option>';
   listaProfissionais.forEach((prof) => {
     const opt = document.createElement("option");
-    opt.value = prof.nome; // Usamos o nome para a mensagem
+    opt.value = prof.nome;
     opt.textContent = prof.nome;
     select.appendChild(opt);
   });

@@ -128,19 +128,67 @@
   </div>
 
   <div id="tab-feedback-profissional" class="tab-content" style="display: none;">
-    <div class="description-box">
-      <p>
-        Resultados das pesquisas de satisfação interna respondidas pelos voluntários sobre a EuPsico.
-      </p>
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <div class="description-box">
+          <p>Resultados da pesquisa de satisfação interna (eNPS) respondida pelos voluntários.</p>
+        </div>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="action-button primary" id="btn-copiar-link-feedback">
+          <i class="fas fa-link me-2"></i> Copiar Link do Formulário
+        </button>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card p-3 text-center border-primary">
+          <h2 class="display-4 fw-bold text-primary" id="metric-nps">-</h2>
+          <p class="text-muted mb-0">NPS (Net Promoter Score)</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <h3 id="metric-promotores" class="text-success">-</h3>
+          <p class="text-muted mb-0">Promotores (9-10)</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <h3 id="metric-neutros" class="text-warning">-</h3>
+          <p class="text-muted mb-0">Neutros (7-8)</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <h3 id="metric-detratores" class="text-danger">-</h3>
+          <p class="text-muted mb-0">Detratores (0-6)</p>
+        </div>
+      </div>
     </div>
     
-    <div class="card p-4 text-center">
-      <i class="fas fa-tools fa-3x text-muted mb-3"></i>
-      <h4>Funcionalidade em Desenvolvimento</h4>
-      <p>Em breve, aqui você verá gráficos e relatórios sobre como os voluntários avaliam a ONG.</p>
-      <button class="action-button secondary mt-3" onclick="alert('Link para formulário de pesquisa interna seria gerado aqui.')">
-        <i class="fas fa-link"></i> Gerar Link de Pesquisa Interna
-      </button>
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i> Feedbacks Recentes</h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Voluntário</th>
+              <th>Nota (0-10)</th>
+              <th>Suporte</th>
+              <th>Processos</th>
+              <th>Sugestão/Comentário</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-feedbacks">
+            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 

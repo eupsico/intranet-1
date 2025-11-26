@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesquisa de Satisfação do Voluntário - EuPsico</title>
+    <link rel="stylesheet" href="../assets/css/design-system.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { max-width: 800px; margin: 40px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { color: var(--cor-primaria); margin-bottom: 10px; }
+        .nps-container { display: flex; justify-content: space-between; gap: 5px; margin: 20px 0; flex-wrap: wrap; }
+        .nps-radio { display: none; }
+        .nps-label { 
+            flex: 1; text-align: center; padding: 15px 10px; background: #f8f9fa; 
+            border: 1px solid #dee2e6; cursor: pointer; border-radius: 8px; transition: all 0.2s;
+            min-width: 40px;
+        }
+        .nps-label:hover { background: #e9ecef; }
+        .nps-radio:checked + .nps-label { background: var(--cor-primaria); color: white; border-color: var(--cor-primaria); transform: scale(1.05); }
+        .rating-scale { display: flex; justify-content: space-between; font-size: 0.85em; color: #666; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <img src="../assets/img/logo.png" alt="EuPsico" style="height: 60px; margin-bottom: 15px;">
+        <h1>Feedback do Voluntário</h1>
+        <p class="text-muted">Sua opinião é fundamental para construirmos uma organização melhor.</p>
+    </div>
+
+    <form id="form-feedback-voluntario">
+        <div class="form-group mb-4">
+            <label class="form-label fw-bold">1. Em uma escala de 0 a 10, o quanto você recomendaria a EuPsico para um colega atuar como voluntário?</label>
+            <div class="nps-container">
+                <input type="radio" name="nps" id="nps-0" value="0" class="nps-radio" required><label for="nps-0" class="nps-label">0</label>
+                <input type="radio" name="nps" id="nps-1" value="1" class="nps-radio"><label for="nps-1" class="nps-label">1</label>
+                <input type="radio" name="nps" id="nps-2" value="2" class="nps-radio"><label for="nps-2" class="nps-label">2</label>
+                <input type="radio" name="nps" id="nps-3" value="3" class="nps-radio"><label for="nps-3" class="nps-label">3</label>
+                <input type="radio" name="nps" id="nps-4" value="4" class="nps-radio"><label for="nps-4" class="nps-label">4</label>
+                <input type="radio" name="nps" id="nps-5" value="5" class="nps-radio"><label for="nps-5" class="nps-label">5</label>
+                <input type="radio" name="nps" id="nps-6" value="6" class="nps-radio"><label for="nps-6" class="nps-label">6</label>
+                <input type="radio" name="nps" id="nps-7" value="7" class="nps-radio"><label for="nps-7" class="nps-label">7</label>
+                <input type="radio" name="nps" id="nps-8" value="8" class="nps-radio"><label for="nps-8" class="nps-label">8</label>
+                <input type="radio" name="nps" id="nps-9" value="9" class="nps-radio"><label for="nps-9" class="nps-label">9</label>
+                <input type="radio" name="nps" id="nps-10" value="10" class="nps-radio"><label for="nps-10" class="nps-label">10</label>
+            </div>
+            <div class="rating-scale">
+                <span>Jamais recomendaria</span>
+                <span>Recomendaria fortemente</span>
+            </div>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="form-label fw-bold">2. Como você avalia o suporte oferecido pela coordenação/supervisão?</label>
+            <select class="form-control" name="avaliacao_suporte" required>
+                <option value="">Selecione...</option>
+                <option value="Excelente">Excelente - Sempre disponíveis e assertivos</option>
+                <option value="Bom">Bom - Atendem às necessidades na maioria das vezes</option>
+                <option value="Regular">Regular - Às vezes sinto falta de apoio</option>
+                <option value="Ruim">Ruim - Difícil acesso ou respostas insuficientes</option>
+            </select>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="form-label fw-bold">3. Como você avalia as ferramentas e processos (Sistemas, Fluxos)?</label>
+            <select class="form-control" name="avaliacao_processos" required>
+                <option value="">Selecione...</option>
+                <option value="Excelente">Excelente - Tudo funciona perfeitamente</option>
+                <option value="Bom">Bom - Funcionais, com poucos problemas</option>
+                <option value="Regular">Regular - Burocráticos ou confusos às vezes</option>
+                <option value="Ruim">Ruim - Atrapalham o atendimento</option>
+            </select>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="form-label fw-bold">4. O que a EuPsico poderia fazer para melhorar sua experiência?</label>
+            <textarea class="form-control" name="sugestoes" rows="4" placeholder="Sua sugestão é muito valiosa..."></textarea>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="form-label">Seu Nome (Opcional):</label>
+            <input type="text" name="nome_voluntario" class="form-control" placeholder="Deixe em branco se preferir anonimato">
+        </div>
+
+        <button type="submit" class="action-button primary w-100" style="padding: 15px; font-size: 1.1em;">Enviar Feedback</button>
+    </form>
+</div>
+
+<script type="module">
+    import { db, collection, addDoc, serverTimestamp } from '../assets/js/firebase-init.js';
+
+    document.getElementById('form-feedback-voluntario').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Enviando...';
+
+        const formData = new FormData(e.target);
+        const data = {
+            nps: parseInt(formData.get('nps')),
+            avaliacaoSuporte: formData.get('avaliacao_suporte'),
+            avaliacaoProcessos: formData.get('avaliacao_processos'),
+            sugestoes: formData.get('sugestoes'),
+            nomeVoluntario: formData.get('nome_voluntario') || 'Anônimo',
+            dataEnvio: serverTimestamp()
+        };
+
+        try {
+            await addDoc(collection(db, "feedbacks_voluntarios"), data);
+            alert('Obrigado pelo seu feedback! Juntos construímos uma EuPsico melhor.');
+            window.location.reload();
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao enviar. Tente novamente.');
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    });
+</script>
+
+</body>
+</html>
