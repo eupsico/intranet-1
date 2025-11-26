@@ -1,0 +1,192 @@
+<div class="dashboard-section">
+  <div class="section-header">
+    <h2>Avaliação Contínua e Monitoramento</h2>
+    <p class="text-muted">
+      Acompanhe o desempenho, conformidade com a trilha e feedbacks dos voluntários e pacientes.
+    </p>
+  </div>
+
+  <div class="tabs-container status-tabs" id="tabs-avaliacao">
+    <button class="tab-link active" data-tab="monitoramento">
+      <i class="fas fa-eye me-2"></i> Monitoramento da Trilha
+    </button>
+    <button class="tab-link" data-tab="avaliacao-rh">
+      <i class="fas fa-user-check me-2"></i> Avaliação RH / 360º
+    </button>
+    <button class="tab-link" data-tab="feedback-profissional">
+      <i class="fas fa-comment-alt me-2"></i> Feedback do Voluntário
+    </button>
+    <button class="tab-link" data-tab="pesquisa-paciente">
+      <i class="fas fa-smile me-2"></i> Pesquisa de Satisfação (Pacientes)
+    </button>
+  </div>
+
+  <div id="tab-monitoramento" class="tab-content active">
+    <div class="description-box">
+      <p>
+        Verifique se os voluntários estão preenchendo corretamente as presenças e as fichas de evolução na Trilha do Paciente (últimos 30 dias).
+      </p>
+    </div>
+    
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Profissional</th>
+            <th>Pacientes Ativos</th>
+            <th>Sessões (30d)</th>
+            <th>Presenças Preenchidas</th>
+            <th>Evoluções Preenchidas</th>
+            <th>Status Conformidade</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-monitoramento">
+          <tr>
+            <td colspan="7" class="text-center"><div class="loading-spinner"></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-avaliacao-rh" class="tab-content" style="display: none;">
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h4>Selecionar Profissional</h4>
+          <div class="form-group">
+            <input type="text" id="busca-profissional-360" class="form-control" placeholder="Buscar por nome...">
+          </div>
+          <ul id="lista-profissionais-360" class="list-group mt-3" style="max-height: 400px; overflow-y: auto;">
+            <li class="list-group-item text-muted">Carregando...</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-8">
+        <div id="form-container-360" class="card p-4" style="display: none;">
+          <h4 class="mb-3">Avaliação de Desempenho: <span id="nome-profissional-360" class="text-primary"></span></h4>
+          <form id="form-avaliacao-360">
+            <input type="hidden" id="uid-profissional-360">
+            
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Assiduidade e Pontualidade</label>
+              <select class="form-control" id="nota-assiduidade" required>
+                <option value="">Selecione...</option>
+                <option value="5">Excelente - Sempre pontual e presente</option>
+                <option value="4">Bom - Raramente falta ou atrasa</option>
+                <option value="3">Regular - Algumas faltas/atrasos justificados</option>
+                <option value="2">Ruim - Faltas/atrasos frequentes</option>
+                <option value="1">Crítico - Não cumpre horários</option>
+              </select>
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Adesão aos Processos (Trilha/Sistemas)</label>
+              <select class="form-control" id="nota-processos" required>
+                <option value="">Selecione...</option>
+                <option value="5">Excelente - Preenche tudo corretamente e no prazo</option>
+                <option value="4">Bom - Preenche a maioria, raros esquecimentos</option>
+                <option value="3">Regular - Precisa de cobrança ocasional</option>
+                <option value="2">Ruim - Frequentemente esquece registros</option>
+                <option value="1">Crítico - Não utiliza os sistemas</option>
+              </select>
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Relacionamento Interpessoal e Comunicação</label>
+              <select class="form-control" id="nota-relacionamento" required>
+                <option value="">Selecione...</option>
+                <option value="5">Excelente</option>
+                <option value="4">Bom</option>
+                <option value="3">Regular</option>
+                <option value="2">Ruim</option>
+                <option value="1">Crítico</option>
+              </select>
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label fw-bold">Feedback Qualitativo (Pontos Fortes e a Desenvolver)</label>
+              <textarea class="form-control" id="texto-feedback" rows="5" required></textarea>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="enviar-email-feedback">
+              <label class="form-check-label" for="enviar-email-feedback">
+                Enviar cópia deste feedback por e-mail ao voluntário
+              </label>
+            </div>
+
+            <button type="submit" class="action-button primary">Salvar Avaliação</button>
+          </form>
+        </div>
+        <div id="placeholder-360" class="alert alert-info mt-3">
+          Selecione um profissional na lista ao lado para iniciar a avaliação.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-feedback-profissional" class="tab-content" style="display: none;">
+    <div class="description-box">
+      <p>
+        Resultados das pesquisas de satisfação interna respondidas pelos voluntários sobre a EuPsico.
+      </p>
+    </div>
+    
+    <div class="card p-4 text-center">
+      <i class="fas fa-tools fa-3x text-muted mb-3"></i>
+      <h4>Funcionalidade em Desenvolvimento</h4>
+      <p>Em breve, aqui você verá gráficos e relatórios sobre como os voluntários avaliam a ONG.</p>
+      <button class="action-button secondary mt-3" onclick="alert('Link para formulário de pesquisa interna seria gerado aqui.')">
+        <i class="fas fa-link"></i> Gerar Link de Pesquisa Interna
+      </button>
+    </div>
+  </div>
+
+  <div id="tab-pesquisa-paciente" class="tab-content" style="display: none;">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h4><i class="fab fa-whatsapp me-2 text-success"></i> Enviar Pesquisa de Satisfação</h4>
+          <p class="small text-muted">Gere um link personalizado para o paciente avaliar o atendimento recebido.</p>
+          
+          <div class="form-group mb-3">
+            <label>Selecione o Profissional:</label>
+            <select id="select-prof-nps" class="form-control">
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-3">
+            <label>Nome do Paciente (Opcional):</label>
+            <input type="text" id="nome-paciente-nps" class="form-control" placeholder="Para personalizar a mensagem">
+          </div>
+          
+          <div class="form-group mb-3">
+             <label>Link da Pesquisa (Google Forms):</label>
+             <input type="text" id="link-nps" class="form-control" value="https://forms.gle/SEU_ID_DO_GOOGLE_FORM" readonly style="background-color: #f0f0f0;">
+             <small>Este é o link fixo da pesquisa de satisfação.</small>
+          </div>
+
+          <button id="btn-gerar-msg-nps" class="action-button success w-100">
+            <i class="fab fa-whatsapp"></i> Gerar Mensagem WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h4>Visualização da Mensagem</h4>
+          <textarea id="preview-msg-nps" class="form-control mt-3" rows="8" readonly></textarea>
+          <button id="btn-copiar-nps" class="action-button secondary mt-3 w-100" style="display: none;">
+            <i class="fas fa-copy"></i> Copiar Texto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="../js/avaliacao_continua.js"></script>
