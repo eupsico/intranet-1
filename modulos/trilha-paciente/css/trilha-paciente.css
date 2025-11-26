@@ -230,3 +230,60 @@
         border-bottom: 1px solid var(--cor-borda);
     }
 }
+/* --- ADIÇÃO: Estilos para Seleção em Massa --- */
+
+/* Cabeçalho da coluna com as ações */
+.column-actions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #d1d9e4;
+    font-size: 0.85rem;
+}
+
+/* Container do "Selecionar Todos" */
+.select-all-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #4a5568;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* Botão de Mover em Massa */
+.bulk-move-btn {
+    background-color: var(--cor-primaria, #007bff);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    opacity: 0.5; /* Desabilitado visualmente por padrão */
+    pointer-events: none; /* Não clicável por padrão */
+    transition: all 0.2s;
+}
+
+.bulk-move-btn.active {
+    opacity: 1;
+    pointer-events: auto;
+    background-color: #218838; /* Verde para indicar ação disponível */
+}
+
+/* Checkbox individual dentro do Card */
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.card-selector {
+    transform: scale(1.3); /* Aumenta um pouco o checkbox */
+    margin-right: 10px;
+    cursor: pointer;
+    accent-color: var(--cor-primaria, #007bff);
+}
