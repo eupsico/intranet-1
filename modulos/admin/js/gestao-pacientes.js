@@ -48,7 +48,7 @@ export function init(user, userData) {
   const statusFilter = document.getElementById("status-filter");
   const listContainer = document.getElementById("pacientes-list-container");
 
-  // Elementos do Modal (Baseados no HTML fixo)
+  // Elementos do Modal
   const modal = document.getElementById("edit-paciente-modal");
   const modalBody = document.getElementById("modal-body-content");
   const modalTitle = document.getElementById("modal-title");
@@ -239,11 +239,9 @@ export function init(user, userData) {
 
   // --- Helper para Extrair Nomes ---
   function extrairNomesProfissionais(paciente, tipo) {
-    // tipo: 'atendimentosPB' ou 'atendimentosPlantao'
     if (tipo === "atendimentosPB") {
       const arrayAtendimentos = paciente.atendimentosPB;
       if (Array.isArray(arrayAtendimentos) && arrayAtendimentos.length > 0) {
-        // Filtra apenas os ativos para mostrar no input
         const nomes = arrayAtendimentos
           .filter((at) => at.statusAtendimento === "ativo")
           .map((item) => item.profissionalNome)
@@ -251,15 +249,14 @@ export function init(user, userData) {
 
         if (nomes.length > 0) return nomes.join(", ");
       }
-      return paciente.profissionalPB || ""; // Fallback
+      return paciente.profissionalPB || "";
     }
 
     if (tipo === "atendimentosPlantao") {
-      // Para plantão, geralmente olhamos o objeto plantaoInfo
       if (paciente.plantaoInfo && paciente.plantaoInfo.profissionalNome) {
         return paciente.plantaoInfo.profissionalNome;
       }
-      return paciente.profissionalPlantao || ""; // Fallback
+      return paciente.profissionalPlantao || "";
     }
     return "";
   }
@@ -693,7 +690,6 @@ export function init(user, userData) {
       let disponibilidadeEspecifica = [];
       let disponibilidadeGeral = [];
 
-      // ... Lógica dos Checkboxes de Horário (mantida) ...
       const periodos = [
         { id: "manha-semana", label: "Manhã (Durante a semana)" },
         { id: "tarde-semana", label: "Tarde (Durante a semana)" },
@@ -734,21 +730,14 @@ export function init(user, userData) {
         .map((n) => n.trim())
         .filter((n) => n);
 
-      // Recupera o array atual de atendimentos PB
       const atendimentosPBAtuais = pacienteAtual.atendimentosPB || [];
-
-      // 1. Cria um novo array preservando o histórico
       const novosAtendimentosPB = [...atendimentosPBAtuais];
-
-      // 2. Identifica quais profissionais já têm atendimento ATIVO
       const ativosAtuais = novosAtendimentosPB.filter(
         (at) => at.statusAtendimento === "ativo"
       );
 
-      // 3. Verifica REMOÇÕES: Se estava ativo mas não está mais no input -> Encerrar
       ativosAtuais.forEach((at) => {
         if (!nomesNoInputPB.includes(at.profissionalNome)) {
-          // Encontra o índice no array original e atualiza
           const index = novosAtendimentosPB.findIndex(
             (x) => x.atendimentoId === at.atendimentoId
           );
@@ -760,13 +749,11 @@ export function init(user, userData) {
         }
       });
 
-      // 4. Verifica ADIÇÕES: Se está no input mas não tinha ativo -> Criar novo
       nomesNoInputPB.forEach((nome) => {
         const jaTemAtivo = ativosAtuais.some(
           (at) => at.profissionalNome === nome
         );
         if (!jaTemAtivo) {
-          // Tenta achar o ID do profissional na lista carregada
           const profEncontrado = allProfissionais.find(
             (p) => p.nome.toLowerCase() === nome.toLowerCase()
           );
@@ -777,7 +764,7 @@ export function init(user, userData) {
             profissionalNome: nome,
             profissionalId: profId,
             statusAtendimento: "ativo",
-            tipoProfissional: "Voluntária(o)", // Valor padrão
+            tipoProfissional: "Voluntária(o)",
             dataEncaminhamento: new Date().toISOString().split("T")[0],
             dataPrimeiraSessao: "",
             horaPrimeiraSessao: "",
@@ -792,12 +779,8 @@ export function init(user, userData) {
         document.getElementById("profissionalPlantao")?.value || "";
       const plantaoInfo = pacienteAtual.plantaoInfo || {};
 
-      // Atualiza o nome. Se mudou o nome, tentamos atualizar o ID também.
       if (plantaoInfo.profissionalNome !== inputPlantao) {
         plantaoInfo.profissionalNome = inputPlantao;
-
-        // Se o input contém múltiplos nomes, pegamos o primeiro para tentar achar o ID,
-        // ou deixamos vazio se for muito complexo.
         const primeiroNome = inputPlantao.split(",")[0].trim();
         const profEncontrado = allProfissionais.find(
           (p) => p.nome.toLowerCase() === primeiroNome.toLowerCase()
@@ -807,7 +790,6 @@ export function init(user, userData) {
           : plantaoInfo.profissionalId || "";
       }
 
-      // --- Objeto Final de Atualização ---
       const dadosAtualizados = {
         nomeCompleto: document.getElementById("nomeCompleto")?.value || "",
         cpf: document.getElementById("cpf")?.value || "",
@@ -866,11 +848,9 @@ export function init(user, userData) {
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
 
-        // --- NOVOS CAMPOS ESTRUTURADOS ---
         atendimentosPB: novosAtendimentosPB,
         plantaoInfo: plantaoInfo,
 
-        // Mantém as strings na raiz para compatibilidade visual na tabela
         profissionalPB: inputPB,
         profissionalPlantao: inputPlantao,
 

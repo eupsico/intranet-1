@@ -1,5 +1,6 @@
-/* Estilos para a página de Gestão de Pacientes */
-
+/* =========================================
+   ESTILOS GERAIS E LISTAGEM
+   ========================================= */
 .pacientes-container {
     display: flex;
     flex-direction: column;
@@ -25,7 +26,7 @@
     min-width: 200px;
 }
 
-/* Estilos para a lista de pacientes */
+/* Lista de Pacientes */
 .pacientes-list {
     display: flex;
     flex-direction: column;
@@ -62,16 +63,16 @@
     margin-left: 10px;
 }
 
+/* Status Badges */
 .status-badge {
     padding: 3px 8px;
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 600;
     color: #fff;
-    background-color: #6c757d; /* Cor padrão */
+    background-color: #6c757d;
 }
 
-/* Cores específicas por status */
 .status-inscricao_documentos { background-color: #007bff; }
 .status-triagem_agendada { background-color: #17a2b8; }
 .status-encaminhar_para_plantao, .status-encaminhar_para_pb { background-color: #ffc107; color: #333; }
@@ -80,88 +81,160 @@
 .status-alta { background-color: #6c757d; }
 .status-desistencia { background-color: #dc3545; }
 
+/* =========================================
+   MODAL DE EDIÇÃO (CORRIGIDO)
+   ========================================= */
 
-/* --- ESTILOS ATUALIZADOS PARA O MODAL DE EDIÇÃO --- */
-.modal-lg {
-    max-width: 800px;
-}
-
-.modal-body {
-    max-height: 70vh;
-    overflow-y: auto;
-    padding: 20px;
-}
-
-.edit-form .form-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding-bottom: 20px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.edit-form .form-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.edit-form .form-section h3 {
-    grid-column: 1 / -1; /* Ocupa todas as colunas */
-    margin-top: 0;
-    margin-bottom: 10px;
-    font-size: 1.2rem;
-    color: var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 5px;
-}
-
-.edit-form .form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Permite que um campo ocupe a largura total */
-.edit-form .form-group-full {
-    grid-column: 1 / -1;
-}
-
-.edit-form label {
-    margin-bottom: 5px;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-/* Usa a classe .form-control para consistência */
-.edit-form input[type="text"],
-.edit-form input[type="date"],
-.edit-form input[type="time"],
-.edit-form input[type="email"],
-.edit-form input[type="tel"],
-.edit-form select,
-.edit-form textarea {
+/* Fundo escuro (Overlay) */
+.modal {
+    display: none; /* Controlado via JS */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
     width: 100%;
-    padding: 8px;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+/* Container do Modal */
+.modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 800px;
+    height: 90vh; /* Ocupa 90% da altura da tela */
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column; /* Organiza Header, Body, Footer em coluna */
+    padding: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    overflow: hidden; /* Impede rolagem no container pai */
+}
+
+/* Cabeçalho Fixo */
+.modal-header-fixed {
+    padding: 15px 25px;
+    border-bottom: 1px solid #eee;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* Não encolhe */
+}
+
+.modal-header-fixed h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #333;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+}
+.close-modal-btn:hover { color: #333; }
+
+/* Corpo com Rolagem */
+.modal-body-scroll {
+    padding: 25px;
+    overflow-y: auto; /* Barra de rolagem aparece AQUI */
+    flex-grow: 1;     /* Ocupa todo o espaço disponível no meio */
+    background-color: #f9f9f9;
+}
+
+/* Rodapé Fixo */
+.modal-footer-fixed {
+    padding: 15px 25px;
+    border-top: 1px solid #eee;
+    background-color: #fff;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0; /* Não encolhe */
+}
+
+/* =========================================
+   FORMULÁRIO DENTRO DO MODAL
+   ========================================= */
+
+/* Estilização dos Fieldsets gerados pelo JS */
+#edit-paciente-form fieldset {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+#edit-paciente-form legend {
+    font-weight: bold;
+    color: #0056b3; /* Var primary-color */
+    padding: 0 5px;
+    font-size: 1rem;
+}
+
+/* Inputs e Selects */
+#edit-paciente-form input[type="text"],
+#edit-paciente-form input[type="date"],
+#edit-paciente-form input[type="time"],
+#edit-paciente-form input[type="email"],
+#edit-paciente-form input[type="tel"],
+#edit-paciente-form input[type="number"],
+#edit-paciente-form select,
+#edit-paciente-form textarea {
+    width: 100%;
+    padding: 8px 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: #fff;
     font-family: inherit;
     font-size: 1rem;
+    margin-bottom: 10px; /* Espaçamento entre inputs */
+    box-sizing: border-box;
 }
 
-.edit-form textarea {
+#edit-paciente-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+#edit-paciente-form textarea {
     min-height: 80px;
+    resize: vertical;
 }
 
-/* Estilo específico para o JSON de edição avançada */
-.edit-form textarea#edit-atendimentosPB {
-    font-family: monospace;
-    font-size: 0.85rem;
-    background-color: #f8f9fa;
+/* Botões de Ação */
+.action-button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    border: none;
+    transition: opacity 0.2s;
+}
+.action-button:hover { opacity: 0.9; }
+
+.action-button.secondary {
+    background-color: #6c757d;
+    color: white;
 }
 
-.edit-form small {
-    font-size: 0.8rem;
-    color: #6c757d;
-    margin-top: 5px;
+.action-button.primary {
+    background-color: #28a745;
+    color: white;
+}
+
+.action-button.danger {
+    background-color: #dc3545;
+    color: white;
 }

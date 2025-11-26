@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Pacientes - Painel Administrativo</title>
+    
     <link rel="stylesheet" href="../../../assets/css/design-system.css">
     <link rel="stylesheet" href="../css/gestao-pacientes.css">
 </head>
@@ -38,55 +39,24 @@
         </main>
     </div>
 
-<div id="edit-paciente-modal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2 id="modal-title">Editar Paciente</h2>
-      <button type="button" class="close-modal-btn" style="background: none; border: none; font-size: 24px; cursor: pointer;">✕</button>
+    <div id="edit-paciente-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        
+        <div class="modal-header-fixed">
+          <h2 id="modal-title">Editar Paciente</h2>
+          <button type="button" class="close-modal-btn" title="Fechar">✕</button>
+        </div>
+
+        <div id="modal-body-content" class="modal-body-scroll">
+            </div>
+
+        <div class="modal-footer-fixed">
+          <button type="button" id="modal-cancel-btn" class="action-button secondary">Cancelar</button>
+          <button type="button" id="modal-save-btn" class="action-button primary">💾 Salvar Alterações</button>
+        </div>
+
+      </div>
     </div>
-    <div id="modal-body-content"></div>
-    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-      <button type="button" id="modal-cancel-btn" style="padding: 10px 20px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
-      <button type="button" id="modal-save-btn" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">💾 Salvar</button>
-    </div>
-  </div>
-</div>
-
-<style>
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-content {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  max-width: 700px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.close-modal-btn {
-  color: #7f8c8d;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.close-modal-btn:hover {
-  color: #2c3e50;
-}
-</style>
 
     <script type="module" src="../js/gestao-pacientes.js"></script>
 </body>
