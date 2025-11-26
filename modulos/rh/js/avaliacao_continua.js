@@ -1,5 +1,5 @@
 // Arquivo: modulos/rh/js/avaliacao_continua.js
-// Versão: 1.2.0 (Correção: Campo telefoneCelular na busca de pacientes NPS)
+// Versão: 1.3.0 (Correção Definitiva: Conversão de Tipo Telefone Paciente)
 // Descrição: Gerencia o monitoramento de conformidade, avaliação 360 e feedback.
 
 import {
@@ -511,11 +511,13 @@ async function listarPacientesParaNPS() {
 
     const processarDoc = (doc) => {
       const data = doc.data();
+      // ✅ CORREÇÃO: Garantir que telefoneCelular seja String para evitar erro no .replace()
+      const telefone = data.telefoneCelular ? String(data.telefoneCelular) : "";
+
       pacientesMap.set(doc.id, {
         id: doc.id,
         nome: data.nomeCompleto,
-        // ✅ CORREÇÃO: Usando telefoneCelular ao invés de telefone
-        telefoneCelular: data.telefoneCelular || "",
+        telefoneCelular: telefone,
         status: data.status,
       });
     };
@@ -557,7 +559,7 @@ async function listarPacientesParaNPS() {
         msg = `Olá ${primeiroNome}, tudo bem? 👋\n\nVimos que seu atendimento foi encerrado. Poderia nos contar como foi sua experiência?\n\n🔗 ${linkPesquisa}`;
       }
 
-      // ✅ CORREÇÃO: Usando p.telefoneCelular
+      // ✅ CORREÇÃO: Usando variável já convertida para String
       const linkZap = p.telefoneCelular
         ? `https://wa.me/55${p.telefoneCelular.replace(
             /\D/g,
