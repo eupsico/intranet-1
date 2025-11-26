@@ -46,6 +46,8 @@ export function init(user, userData) {
   const searchInput = document.getElementById("search-input");
   const statusFilter = document.getElementById("status-filter");
   const listContainer = document.getElementById("pacientes-list-container");
+
+  // Elementos do Modal (Baseados no HTML fixo)
   const modal = document.getElementById("edit-paciente-modal");
   const modalBody = document.getElementById("modal-body-content");
   const modalTitle = document.getElementById("modal-title");
@@ -58,6 +60,7 @@ export function init(user, userData) {
   let currentEditingId = null;
   let currentUserData = userData;
 
+  // --- Carregar Lista de Profissionais Ativos ---
   async function carregarProfissionais() {
     try {
       const q = query(
@@ -76,8 +79,9 @@ export function init(user, userData) {
     }
   }
 
+  // --- Carregar Pacientes ---
   async function carregarPacientes() {
-    listContainer.innerHTML = "";
+    listContainer.innerHTML = ""; // Limpa a lista antes de recarregar
 
     try {
       const q = query(
@@ -98,6 +102,7 @@ export function init(user, userData) {
     }
   }
 
+  // --- Renderizar Lista de Cards ---
   function renderizarLista() {
     const searchTerm = searchInput.value.toLowerCase();
     const status = statusFilter.value;
@@ -149,6 +154,7 @@ export function init(user, userData) {
 
     listContainer.innerHTML = html;
 
+    // Adiciona listeners aos botões dos cards
     document.querySelectorAll(".edit-btn").forEach((btn) => {
       btn.addEventListener("click", () => abrirModalEdicao(btn.dataset.id));
     });
@@ -224,6 +230,7 @@ export function init(user, userData) {
     });
   }
 
+  // --- Gerar Formulário HTML (SEM BOTÕES DE AÇÃO) ---
   function gerarFormularioEdicao(paciente) {
     const p = (path, defaultValue = "") =>
       path.split(".").reduce((acc, part) => acc && acc[part], paciente) ||
@@ -245,30 +252,22 @@ export function init(user, userData) {
       htmlResponsavel = `
         <fieldset>
           <legend>Responsável Legal</legend>
-          <input
-            type="text"
-            id="responsavelNome"
-            value="${p("responsavelNome", "")}" 
-            placeholder="Nome do responsável"
-          />
-          <input
-            type="text"
-            id="responsavelCpf"
-            value="${p("responsavelCpf", "")}" 
-            placeholder="CPF do responsável"
-          />
-          <input
-            type="text"
-            id="responsavelParentesco"
-            value="${p("responsavelParentesco", "")}" 
-            placeholder="Parentesco"
-          />
-          <input
-            type="tel"
-            id="responsavelContato"
-            value="${p("responsavelContato", "")}" 
-            placeholder="Contato do responsável"
-          />
+          <input type="text" id="responsavelNome" value="${p(
+            "responsavelNome",
+            ""
+          )}" placeholder="Nome do responsável" />
+          <input type="text" id="responsavelCpf" value="${p(
+            "responsavelCpf",
+            ""
+          )}" placeholder="CPF do responsável" />
+          <input type="text" id="responsavelParentesco" value="${p(
+            "responsavelParentesco",
+            ""
+          )}" placeholder="Parentesco" />
+          <input type="tel" id="responsavelContato" value="${p(
+            "responsavelContato",
+            ""
+          )}" placeholder="Contato do responsável" />
         </fieldset>
       `;
     }
@@ -281,8 +280,9 @@ export function init(user, userData) {
       "manha-sabado": disponibilidadeGeral.includes("Manhã (Sábado)"),
     };
 
+    // Prepara opções para o Select de Profissionais
     let optionsProfissionais =
-      '<option value="">+ Adicionar da Lista...</option>';
+      '<option value="">+ Selecionar Profissional...</option>';
     allProfissionais.forEach((prof) => {
       optionsProfissionais += `<option value="${prof.nome}">${prof.nome}</option>`;
     });
@@ -291,106 +291,64 @@ export function init(user, userData) {
       <fieldset>
         <legend>Disponibilidade de Horário</legend>
         <div>
-          <label>
-            <input 
-              type="checkbox" 
-              class="horario-option" 
-              value="manha-semana" 
-              ${disponibilidade["manha-semana"] ? "checked" : ""} 
-            />
-            🌅 Manhã (Durante a semana)
-          </label>
-
-          <label>
-            <input 
-              type="checkbox" 
-              class="horario-option" 
-              value="tarde-semana" 
-              ${disponibilidade["tarde-semana"] ? "checked" : ""} 
-            />
-            🌤️ Tarde (Durante a semana)
-          </label>
-
-          <label>
-            <input 
-              type="checkbox" 
-              class="horario-option" 
-              value="noite-semana" 
-              ${disponibilidade["noite-semana"] ? "checked" : ""} 
-            />
-            🌙 Noite (Durante a semana)
-          </label>
-
-          <label>
-            <input 
-              type="checkbox" 
-              class="horario-option" 
-              value="manha-sabado" 
-              ${disponibilidade["manha-sabado"] ? "checked" : ""} 
-            />
-            📅 Manhã (Sábado)
-          </label>
+          <label><input type="checkbox" class="horario-option" value="manha-semana" ${
+            disponibilidade["manha-semana"] ? "checked" : ""
+          } /> 🌅 Manhã (Durante a semana)</label>
+          <label><input type="checkbox" class="horario-option" value="tarde-semana" ${
+            disponibilidade["tarde-semana"] ? "checked" : ""
+          } /> 🌤️ Tarde (Durante a semana)</label>
+          <label><input type="checkbox" class="horario-option" value="noite-semana" ${
+            disponibilidade["noite-semana"] ? "checked" : ""
+          } /> 🌙 Noite (Durante a semana)</label>
+          <label><input type="checkbox" class="horario-option" value="manha-sabado" ${
+            disponibilidade["manha-sabado"] ? "checked" : ""
+          } /> 📅 Manhã (Sábado)</label>
         </div>
 
         <div id="container-manha-semana" style="display: ${
           disponibilidade["manha-semana"] ? "block" : "none"
         };">
           <h4>🌅 Manhã (Seg-Sex):</h4>
-          <div>
-            ${gerarHorariosHTML("manha-semana", paciente)}
-          </div>
+          <div>${gerarHorariosHTML("manha-semana", paciente)}</div>
         </div>
-
         <div id="container-tarde-semana" style="display: ${
           disponibilidade["tarde-semana"] ? "block" : "none"
         };">
           <h4>🌤️ Tarde (Seg-Sex):</h4>
-          <div>
-            ${gerarHorariosHTML("tarde-semana", paciente)}
-          </div>
+          <div>${gerarHorariosHTML("tarde-semana", paciente)}</div>
         </div>
-
         <div id="container-noite-semana" style="display: ${
           disponibilidade["noite-semana"] ? "block" : "none"
         };">
           <h4>🌙 Noite (Seg-Sex):</h4>
-          <div>
-            ${gerarHorariosHTML("noite-semana", paciente)}
-          </div>
+          <div>${gerarHorariosHTML("noite-semana", paciente)}</div>
         </div>
-
         <div id="container-manha-sabado" style="display: ${
           disponibilidade["manha-sabado"] ? "block" : "none"
         };">
           <h4>📅 Manhã (Sábado):</h4>
-          <div>
-            ${gerarHorariosHTML("manha-sabado", paciente)}
-          </div>
+          <div>${gerarHorariosHTML("manha-sabado", paciente)}</div>
         </div>
       </fieldset>
     `;
 
+    // Formulário sem botões (eles estão no rodapé do modal HTML)
     const form = `
       <form id="edit-paciente-form">
         <fieldset>
           <legend>Informações Pessoais</legend>
-          <input
-            type="text"
-            id="nomeCompleto"
-            value="${p("nomeCompleto", "")}"
-            placeholder="Nome Completo"
-          />
-          <input
-            type="text"
-            id="cpf"
-            value="${p("cpf", "")}"
-            placeholder="CPF"
-          />
-          <input
-            type="date"
-            id="dataNascimento"
-            value="${p("dataNascimento", "")}"
-          />
+          <input type="text" id="nomeCompleto" value="${p(
+            "nomeCompleto",
+            ""
+          )}" placeholder="Nome Completo" />
+          <input type="text" id="cpf" value="${p(
+            "cpf",
+            ""
+          )}" placeholder="CPF" />
+          <input type="date" id="dataNascimento" value="${p(
+            "dataNascimento",
+            ""
+          )}" />
           <select id="genero">
             <option value="">-- Gênero --</option>
             <option value="Masculino" ${
@@ -403,12 +361,7 @@ export function init(user, userData) {
               p("genero") === "Outro" ? "selected" : ""
             }>Outro</option>
           </select>
-          <input
-            type="text"
-            id="rg"
-            value="${p("rg", "")}"
-            placeholder="RG"
-          />
+          <input type="text" id="rg" value="${p("rg", "")}" placeholder="RG" />
           <select id="estadoCivil">
             <option value="">-- Estado Civil --</option>
             <option value="Solteiro" ${
@@ -443,64 +396,46 @@ export function init(user, userData) {
 
         <fieldset>
           <legend>Contato</legend>
-          <input
-            type="tel"
-            id="telefoneCelular"
-            value="${p("telefoneCelular", "")}"
-            placeholder="Telefone Celular"
-          />
-          <input
-            type="tel"
-            id="telefoneFixo"
-            value="${p("telefoneFixo", "")}"
-            placeholder="Telefone Fixo"
-          />
-          <input
-            type="email"
-            id="email"
-            value="${p("email", "")}"
-            placeholder="E-mail"
-          />
+          <input type="tel" id="telefoneCelular" value="${p(
+            "telefoneCelular",
+            ""
+          )}" placeholder="Telefone Celular" />
+          <input type="tel" id="telefoneFixo" value="${p(
+            "telefoneFixo",
+            ""
+          )}" placeholder="Telefone Fixo" />
+          <input type="email" id="email" value="${p(
+            "email",
+            ""
+          )}" placeholder="E-mail" />
         </fieldset>
 
         <fieldset>
           <legend>Endereço</legend>
-          <input
-            type="text"
-            id="cep"
-            value="${p("cep", "")}"
-            placeholder="CEP"
-          />
-          <input
-            type="text"
-            id="cidade"
-            value="${p("cidade", "")}"
-            placeholder="Cidade"
-          />
-          <input
-            type="text"
-            id="rua"
-            value="${p("rua", "")}"
-            placeholder="Rua"
-          />
-          <input
-            type="text"
-            id="numeroCasa"
-            value="${p("numeroCasa", "")}"
-            placeholder="Número"
-          />
-          <input
-            type="text"
-            id="bairro"
-            value="${p("bairro", "")}"
-            placeholder="Bairro"
-          />
-          <input
-            type="text"
-            id="complemento"
-            value="${p("complemento", "")}"
-            placeholder="Complemento"
-          />
+          <input type="text" id="cep" value="${p(
+            "cep",
+            ""
+          )}" placeholder="CEP" />
+          <input type="text" id="cidade" value="${p(
+            "cidade",
+            ""
+          )}" placeholder="Cidade" />
+          <input type="text" id="rua" value="${p(
+            "rua",
+            ""
+          )}" placeholder="Rua" />
+          <input type="text" id="numeroCasa" value="${p(
+            "numeroCasa",
+            ""
+          )}" placeholder="Número" />
+          <input type="text" id="bairro" value="${p(
+            "bairro",
+            ""
+          )}" placeholder="Bairro" />
+          <input type="text" id="complemento" value="${p(
+            "complemento",
+            ""
+          )}" placeholder="Complemento" />
         </fieldset>
 
         <fieldset>
@@ -517,12 +452,10 @@ export function init(user, userData) {
               p("tipoMoradia") === "Outra" ? "selected" : ""
             }>Outra</option>
           </select>
-          <input
-            type="number"
-            id="pessoasMoradia"
-            value="${p("pessoasMoradia", "")}"
-            placeholder="Quantidade de pessoas"
-          />
+          <input type="number" id="pessoasMoradia" value="${p(
+            "pessoasMoradia",
+            ""
+          )}" placeholder="Quantidade de pessoas" />
           <select id="casaPropria">
             <option value="">-- Casa Própria? --</option>
             <option value="Sim" ${
@@ -532,44 +465,30 @@ export function init(user, userData) {
               p("casaPropria") === "Não" ? "selected" : ""
             }>Não</option>
           </select>
-          <input
-            type="number"
-            id="valorAluguel"
-            value="${p("valorAluguel", "")}"
-            placeholder="Valor do aluguel"
-          />
+          <input type="number" id="valorAluguel" value="${p(
+            "valorAluguel",
+            ""
+          )}" placeholder="Valor do aluguel" />
         </fieldset>
 
         <fieldset>
           <legend>Renda</legend>
-          <input
-            type="number"
-            id="rendaMensal"
-            value="${p("rendaMensal", "")}"
-            placeholder="Renda Mensal"
-          />
-          <input
-            type="number"
-            id="rendaFamiliar"
-            value="${p("rendaFamiliar", "")}"
-            placeholder="Renda Familiar"
-          />
+          <input type="number" id="rendaMensal" value="${p(
+            "rendaMensal",
+            ""
+          )}" placeholder="Renda Mensal" />
+          <input type="number" id="rendaFamiliar" value="${p(
+            "rendaFamiliar",
+            ""
+          )}" placeholder="Renda Familiar" />
         </fieldset>
 
         ${htmlResponsavel}
 
         <fieldset>
           <legend>Triagem</legend>
-          <input
-            type="date"
-            id="dataTriagem"
-            value="${p("dataTriagem", "")}"
-          />
-          <input
-            type="time"
-            id="horaTriagem"
-            value="${p("horaTriagem", "")}"
-          />
+          <input type="date" id="dataTriagem" value="${p("dataTriagem", "")}" />
+          <input type="time" id="horaTriagem" value="${p("horaTriagem", "")}" />
           <select id="tipoTriagem">
             <option value="">-- Tipo de Triagem --</option>
             <option value="On-line" ${
@@ -583,24 +502,22 @@ export function init(user, userData) {
 
         <fieldset>
           <legend>Atendimento</legend>
-          <input
-            type="number"
-            id="valorContribuicao"
-            value="${p("valorContribuicao", "")}"
-            placeholder="Valor Contribuição"
-          />
-          <textarea
-            id="queixaPaciente"
-            placeholder="Queixa do Paciente"
-          >${p("queixaPaciente", "")}</textarea>
-          <textarea
-            id="motivoBusca"
-            placeholder="Motivo de Busca"
-          >${p("motivoBusca", "")}</textarea>
-          <textarea
-            id="tratamentoAnterior"
-            placeholder="Tratamento Anterior"
-          >${p("tratamentoAnterior", "")}</textarea>
+          <input type="number" id="valorContribuicao" value="${p(
+            "valorContribuicao",
+            ""
+          )}" placeholder="Valor Contribuição" />
+          <textarea id="queixaPaciente" placeholder="Queixa do Paciente">${p(
+            "queixaPaciente",
+            ""
+          )}</textarea>
+          <textarea id="motivoBusca" placeholder="Motivo de Busca">${p(
+            "motivoBusca",
+            ""
+          )}</textarea>
+          <textarea id="tratamentoAnterior" placeholder="Tratamento Anterior">${p(
+            "tratamentoAnterior",
+            ""
+          )}</textarea>
         </fieldset>
 
         ${htmlDisponibilidade}
@@ -643,7 +560,7 @@ export function init(user, userData) {
         <fieldset>
           <legend>Profissionais Responsáveis</legend>
           <p style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
-            Selecione na lista para adicionar ou digite manualmente (separado por vírgula).
+            Os campos abaixo mostram os profissionais cadastrados. Selecione na lista para adicionar mais nomes.
           </p>
           
           <label for="assistenteSocial" style="display:block; margin-top:10px;">Assistente Social:</label>
@@ -700,6 +617,7 @@ export function init(user, userData) {
 
     setupDisponibilidadeListeners(modalBody);
 
+    // Listener para o Select de Adição Rápida
     const quickAddSelects = modalBody.querySelectorAll(".quick-add-prof");
     quickAddSelects.forEach((select) => {
       select.addEventListener("change", (e) => {
@@ -720,7 +638,7 @@ export function init(user, userData) {
             }
           }
         }
-        e.target.value = "";
+        e.target.value = ""; // Reseta o select
       });
     });
 
@@ -873,6 +791,8 @@ export function init(user, userData) {
     }
   }
 
+  // --- Listeners Globais do Modal ---
+  // Apenas vinculamos os eventos aos botões fixos do HTML
   closeModalBtn.addEventListener("click", () => {
     modal.style.display = "none";
   });
@@ -887,9 +807,11 @@ export function init(user, userData) {
     }
   });
 
+  // Filtros da lista
   searchInput.addEventListener("input", renderizarLista);
   statusFilter.addEventListener("change", renderizarLista);
 
+  // Inicialização
   carregarPacientes();
   carregarProfissionais();
 }
