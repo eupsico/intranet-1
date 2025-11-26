@@ -172,60 +172,6 @@ function createCardElement(cardData) {
   return card;
 }
 
-// Substitua a função createCardElement existente por esta:
-function createCardElement(cardData) {
-  const card = document.createElement("div");
-  card.className = "kanban-card";
-  card.dataset.id = cardData.id;
-
-  // Formatação da data (mantendo sua lógica original)
-  let formattedDate = "Data indisponível";
-  if (cardData.lastUpdate) {
-    if (typeof cardData.lastUpdate.toDate === "function") {
-      formattedDate = cardData.lastUpdate.toDate().toLocaleDateString("pt-BR");
-    } else if (
-      cardData.lastUpdate instanceof Date ||
-      typeof cardData.lastUpdate === "string"
-    ) {
-      formattedDate = new Date(cardData.lastUpdate).toLocaleDateString("pt-BR");
-    }
-  }
-
-  // Verifica se deve adicionar checkbox neste card
-  const allowBulkActions = BULK_ACTION_COLUMNS.includes(cardData.status);
-  let checkboxHtml = "";
-
-  if (allowBulkActions) {
-    // onclick="event.stopPropagation()" impede que o modal do paciente abra ao clicar no checkbox
-    checkboxHtml = `
-        <input type="checkbox" 
-               class="card-selector" 
-               value="${cardData.id}" 
-               onclick="event.stopPropagation(); window.updateBulkButtonState('${cardData.status}')">
-      `;
-  }
-
-  // Layout interno do card ajustado
-  card.innerHTML = `
-    <div class="card-header-row">
-        ${checkboxHtml}
-        <span class="card-patient-name">${
-          cardData.nomeCompleto || "Nome não informado"
-        }</span>
-    </div>
-    <div class="card-details">
-        <p><strong>Status:</strong> ${
-          COLUMNS_CONFIG[cardData.status] || cardData.status
-        }</p>
-        <p><strong>Assistente:</strong> ${
-          cardData.assistenteSocialNome || "Não atribuído"
-        }</p>
-        <p><strong>Última Atualização:</strong> ${formattedDate}</p>
-    </div>
-    `;
-
-  return card;
-}
 function loadAndRenderCards() {
   const trilhaRef = collection(db, "trilhaPaciente");
   const q = query(trilhaRef, where("status", "in", currentColumnFilter));
