@@ -1,5 +1,5 @@
 // Arquivo: modulos/rh/js/avaliacao_continua.js
-// Versão: 1.1.0
+// Versão: 1.2.0 (Correção: Campo telefoneCelular na busca de pacientes NPS)
 // Descrição: Gerencia o monitoramento de conformidade, avaliação 360 e feedback.
 
 import {
@@ -62,20 +62,18 @@ function setupEventListeners() {
     });
   }
 
-  // Novo: Copiar link do formulário de feedback
+  // Botão para copiar o link do formulário de feedback do voluntário
   const btnCopiarLinkFeedback = document.getElementById(
     "btn-copiar-link-feedback"
   );
   if (btnCopiarLinkFeedback) {
     btnCopiarLinkFeedback.addEventListener("click", () => {
-      // Ajustar URL conforme ambiente (local vs produção)
       const urlBase =
         window.location.origin.includes("localhost") ||
         window.location.origin.includes("127.0.0.1")
           ? window.location.origin
           : "https://intranet.eupsico.org.br";
 
-      // Assume que o arquivo público está em /public/feedback_voluntario.html
       const url = `${urlBase}/public/feedback_voluntario.html`;
 
       navigator.clipboard.writeText(url).then(() => {
@@ -98,7 +96,6 @@ function configurarAbas() {
       const targetId = `tab-${tab.dataset.tab}`;
       document.getElementById(targetId).style.display = "block";
 
-      // Carregamento sob demanda
       if (tab.dataset.tab === "monitoramento") carregarMonitoramento();
       if (tab.dataset.tab === "avaliacao-rh") renderizarListaProfissionais360();
       if (tab.dataset.tab === "feedback-profissional")
@@ -152,7 +149,6 @@ async function carregarMonitoramento() {
 
   let html = "";
 
-  // Nota: Processamento pesado no front-end. Idealmente seria via backend.
   for (const prof of listaProfissionais) {
     try {
       const qPB = query(
@@ -270,7 +266,7 @@ async function carregarMonitoramento() {
 }
 
 // ============================================
-// ABA 2: AVALIAÇÃO 360 (Lógica mantida)
+// ABA 2: AVALIAÇÃO 360
 // ============================================
 function renderizarListaProfissionais360() {
   const lista = document.getElementById("lista-profissionais-360");
@@ -345,7 +341,7 @@ async function handleSalvarAvaliacao360(e) {
 }
 
 // ============================================
-// ABA 3: FEEDBACK DO VOLUNTÁRIO (NOVA LÓGICA)
+// ABA 3: FEEDBACK DO VOLUNTÁRIO
 // ============================================
 async function carregarFeedbacksVoluntarios() {
   const tbody = document.getElementById("tbody-feedbacks");
@@ -373,18 +369,15 @@ async function carregarFeedbacksVoluntarios() {
       const data = doc.data();
       total++;
 
-      // Cálculo NPS
       const nota = parseInt(data.nps);
       if (nota >= 9) promotores++;
       else if (nota >= 7) neutros++;
       else detratores++;
 
-      // Formatação Data
       const dataEnvio = data.dataEnvio
         ? new Date(data.dataEnvio.seconds * 1000).toLocaleDateString("pt-BR")
         : "N/A";
 
-      // Cor da nota
       let corNota = "bg-secondary";
       if (nota >= 9) corNota = "bg-success";
       else if (nota <= 6) corNota = "bg-danger";
@@ -407,12 +400,10 @@ async function carregarFeedbacksVoluntarios() {
       `;
     });
 
-    // Atualizar métricas
     if (total > 0) {
       const nps = Math.round(((promotores - detratores) / total) * 100);
       document.getElementById("metric-nps").textContent = nps;
 
-      // Define cor do NPS
       const elNps = document.getElementById("metric-nps");
       if (nps >= 75) elNps.className = "display-4 fw-bold text-success";
       else if (nps >= 50) elNps.className = "display-4 fw-bold text-warning";
@@ -435,10 +426,8 @@ async function carregarFeedbacksVoluntarios() {
 }
 
 // ============================================
-// ABA 4: PESQUISA PACIENTE (NPS) - LÓGICA COMPLETA
+// ABA 4: PESQUISA PACIENTE (NPS)
 // ============================================
-
-// Preenche o select de profissionais
 function popularSelectNPS() {
   const select = document.getElementById("nps-select-profissional");
   const statusSelect = document.getElementById("nps-select-status");
@@ -453,33 +442,29 @@ function popularSelectNPS() {
 
   listaProfissionais.forEach((prof) => {
     const opt = document.createElement("option");
-    opt.value = prof.id; // ID do profissional
+    opt.value = prof.id;
     opt.textContent = prof.nome;
     opt.dataset.nome = prof.nome;
     select.appendChild(opt);
   });
 
-  // Habilita os outros campos quando um profissional é escolhido
   select.addEventListener("change", () => {
     const disabled = select.value === "";
     statusSelect.disabled = disabled;
     btnBuscar.disabled = disabled;
-    // Limpa a tabela se mudar o profissional
     document.getElementById("tbody-nps-pacientes").innerHTML =
       '<tr><td colspan="4" class="text-center py-4 text-muted">Clique em "Listar Pacientes" para atualizar.</td></tr>';
   });
 
-  // Listener do botão buscar
   btnBuscar.addEventListener("click", listarPacientesParaNPS);
 }
 
-// Busca pacientes na trilha
 async function listarPacientesParaNPS() {
   const profId = document.getElementById("nps-select-profissional").value;
   const profNome = document.getElementById("nps-select-profissional").options[
     document.getElementById("nps-select-profissional").selectedIndex
   ].dataset.nome;
-  const statusTipo = document.getElementById("nps-select-status").value; // 'ativo' ou 'inativo'
+  const statusTipo = document.getElementById("nps-select-status").value;
   const tbody = document.getElementById("tbody-nps-pacientes");
 
   if (!profId) return;
@@ -488,7 +473,6 @@ async function listarPacientesParaNPS() {
     '<tr><td colspan="4" class="text-center py-4"><div class="loading-spinner"></div> Buscando pacientes...</td></tr>';
 
   try {
-    // Define os status do Firestore baseados na seleção
     let statusFiltro = [];
     if (statusTipo === "ativo") {
       statusFiltro = [
@@ -506,18 +490,12 @@ async function listarPacientesParaNPS() {
       ];
     }
 
-    // Query: Pacientes onde este profissional está envolvido
-    // Nota: Buscamos na trilha geral e filtramos, pois a query complexa OR não é direta.
-    // Uma query mais eficiente seria ter um campo 'profissionalAtualId' na trilha, mas vamos usar o que temos.
-
-    // Query 1: Plantão
     const qPlantao = query(
       collection(db, "trilhaPaciente"),
       where("plantaoInfo.profissionalId", "==", profId),
       where("status", "in", statusFiltro)
     );
 
-    // Query 2: PB
     const qPB = query(
       collection(db, "trilhaPaciente"),
       where("profissionaisPB_ids", "array-contains", profId),
@@ -529,7 +507,6 @@ async function listarPacientesParaNPS() {
       getDocs(qPB),
     ]);
 
-    // Map para remover duplicatas
     const pacientesMap = new Map();
 
     const processarDoc = (doc) => {
@@ -537,7 +514,8 @@ async function listarPacientesParaNPS() {
       pacientesMap.set(doc.id, {
         id: doc.id,
         nome: data.nomeCompleto,
-        telefone: data.telefoneCelular || "",
+        // ✅ CORREÇÃO: Usando telefoneCelular ao invés de telefone
+        telefoneCelular: data.telefoneCelular || "",
         status: data.status,
       });
     };
@@ -553,11 +531,7 @@ async function listarPacientesParaNPS() {
       return;
     }
 
-    // Renderiza Tabela
     let html = "";
-
-    // Determina qual link usar
-    // URL Base (ajustar se estiver em subpasta ou local)
     const baseUrl =
       window.location.origin.includes("localhost") ||
       window.location.origin.includes("127.0.0.1")
@@ -570,12 +544,10 @@ async function listarPacientesParaNPS() {
         : "pesquisa_paciente_inativo.html";
 
     listaPacientes.forEach((p) => {
-      // Link personalizado
       const linkPesquisa = `${baseUrl}/public/${pagina}?prof=${encodeURIComponent(
         profNome
       )}&pac=${p.id}`;
 
-      // Mensagem WhatsApp
       const primeiroNome = p.nome.split(" ")[0];
       let msg = "";
 
@@ -585,8 +557,9 @@ async function listarPacientesParaNPS() {
         msg = `Olá ${primeiroNome}, tudo bem? 👋\n\nVimos que seu atendimento foi encerrado. Poderia nos contar como foi sua experiência?\n\n🔗 ${linkPesquisa}`;
       }
 
-      const linkZap = p.telefone
-        ? `https://wa.me/55${p.telefone.replace(
+      // ✅ CORREÇÃO: Usando p.telefoneCelular
+      const linkZap = p.telefoneCelular
+        ? `https://wa.me/55${p.telefoneCelular.replace(
             /\D/g,
             ""
           )}?text=${encodeURIComponent(msg)}`
@@ -596,7 +569,6 @@ async function listarPacientesParaNPS() {
         ? `<a href="${linkZap}" target="_blank" class="action-button success small"><i class="fab fa-whatsapp"></i> Enviar</a>`
         : `<button disabled class="action-button secondary small" title="Sem telefone">Sem Tel</button>`;
 
-      // Badge de status
       let badgeClass = "bg-secondary";
       if (p.status.includes("atendimento")) badgeClass = "bg-success";
       if (p.status === "alta") badgeClass = "bg-primary";
@@ -605,7 +577,7 @@ async function listarPacientesParaNPS() {
       html += `
         <tr>
           <td>${p.nome}</td>
-          <td>${p.telefone || "-"}</td>
+          <td>${p.telefoneCelular || "-"}</td>
           <td><span class="badge ${badgeClass}">${p.status}</span></td>
           <td class="text-end">${btnWhatsapp}</td>
         </tr>
@@ -618,13 +590,16 @@ async function listarPacientesParaNPS() {
     tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">Erro ao buscar dados: ${error.message}</td></tr>`;
   }
 }
+
 function gerarMensagemNPS() {
-  const nomeProf = document.getElementById("select-prof-nps").value;
+  const nomeProf = document.getElementById("nps-select-profissional").options[
+    document.getElementById("nps-select-profissional").selectedIndex
+  ].text;
   const nomePac =
     document.getElementById("nome-paciente-nps").value || "Paciente";
   const linkForm = document.getElementById("link-nps").value;
 
-  if (!nomeProf) {
+  if (!document.getElementById("nps-select-profissional").value) {
     alert("Selecione um profissional.");
     return;
   }
