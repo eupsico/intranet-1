@@ -4,6 +4,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
   doc,
   getDoc,
   updateDoc,
@@ -53,8 +54,27 @@ export function init(user, userData) {
   const saveModalBtn = document.getElementById("modal-save-btn");
 
   let allPacientes = [];
+  let allProfissionais = [];
   let currentEditingId = null;
   let currentUserData = userData;
+
+  async function carregarProfissionais() {
+    try {
+      const q = query(
+        collection(db, "usuarios"),
+        where("inativo", "==", false),
+        orderBy("nome")
+      );
+      const querySnapshot = await getDocs(q);
+      allProfissionais = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        nome: doc.data().nome,
+      }));
+      console.log(`✅ ${allProfissionais.length} profissionais carregados.`);
+    } catch (error) {
+      console.error("Erro ao carregar profissionais:", error);
+    }
+  }
 
   async function carregarPacientes() {
     listContainer.innerHTML = "";
@@ -106,16 +126,23 @@ export function init(user, userData) {
 
       html += `
         <div class="paciente-card">
-          <strong>${p.nomeCompleto || "Não informado"}</strong>
-          <br />
-          <strong>CPF:</strong> ${p.cpf || "Não informado"}
-          <br />
-          <strong>Status:</strong> ${statusDisplay}
-          <br />
-          <strong>Idade:</strong> ${idadeDisplay}
-          <br />
-          <button class="edit-btn" data-id="${p.id}">✏️ Editar</button>
-          <button class="delete-btn" data-id="${p.id}">🗑️ Deletar</button>
+          <div class="paciente-info">
+            <strong>${p.nomeCompleto || "Não informado"}</strong>
+            <br />
+            <strong>CPF:</strong> ${p.cpf || "Não informado"}
+            <br />
+            <strong>Status:</strong> ${statusDisplay}
+            <br />
+            <strong>Idade:</strong> ${idadeDisplay}
+          </div>
+          <div class="paciente-actions">
+            <button class="edit-btn action-button secondary" data-id="${
+              p.id
+            }">✏️ Editar</button>
+            <button class="delete-btn action-button danger" data-id="${
+              p.id
+            }">🗑️ Deletar</button>
+          </div>
         </div>
       `;
     }
@@ -202,10 +229,6 @@ export function init(user, userData) {
       path.split(".").reduce((acc, part) => acc && acc[part], paciente) ||
       defaultValue;
 
-    const ativoPB =
-      paciente.atendimentosPB?.find((at) => at.statusAtendimento === "ativo") ||
-      {};
-
     let statusOptions = Object.keys(ALL_STATUS)
       .map(
         (key) =>
@@ -257,6 +280,12 @@ export function init(user, userData) {
       "noite-semana": disponibilidadeGeral.includes("Noite (Durante a semana)"),
       "manha-sabado": disponibilidadeGeral.includes("Manhã (Sábado)"),
     };
+
+    let optionsProfissionais =
+      '<option value="">+ Adicionar da Lista...</option>';
+    allProfissionais.forEach((prof) => {
+      optionsProfissionais += `<option value="${prof.nome}">${prof.nome}</option>`;
+    });
 
     const htmlDisponibilidade = `
       <fieldset>
@@ -612,24 +641,44 @@ export function init(user, userData) {
         </fieldset>
 
         <fieldset>
-          <legend>Assistente Social</legend>
-          <input
-            type="text"
-            id="assistenteSocial"
-            value="${p("assistenteSocial", "")}"
-            placeholder="Assistente Social"
-          />
+          <legend>Profissionais Responsáveis</legend>
+          <p style="font-size: 0.8em; color: #666; margin-bottom: 10px;">
+            Selecione na lista para adicionar ou digite manualmente (separado por vírgula).
+          </p>
+          
+          <label for="assistenteSocial" style="display:block; margin-top:10px;">Assistente Social:</label>
+          <input type="text" id="assistenteSocial" value="${p(
+            "assistenteSocial",
+            ""
+          )}" placeholder="Ex: Maria Silva" />
+
+          <label for="profissionalPB" style="display:block; margin-top:10px;">Profissional PB:</label>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="profissionalPB" value="${p(
+              "profissionalPB",
+              ""
+            )}" placeholder="Ex: Dr. João, Dra. Ana" style="flex: 1;" />
+            <select class="quick-add-prof" data-target="profissionalPB" style="width: 180px;">
+                ${optionsProfissionais}
+            </select>
+          </div>
+
+          <label for="profissionalPlantao" style="display:block; margin-top:10px;">Profissional Plantão:</label>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="profissionalPlantao" value="${p(
+              "profissionalPlantao",
+              ""
+            )}" placeholder="Ex: Psicólogo Pedro" style="flex: 1;" />
+            <select class="quick-add-prof" data-target="profissionalPlantao" style="width: 180px;">
+                ${optionsProfissionais}
+            </select>
+          </div>
         </fieldset>
 
         <fieldset>
           <legend>Status</legend>
           <select id="status">${statusOptions}</select>
         </fieldset>
-
-        <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-          <button type="button" id="form-cancel-btn">Cancelar</button>
-          <button type="submit">💾 Salvar Alterações</button>
-        </div>
       </form>
     `;
 
@@ -651,22 +700,31 @@ export function init(user, userData) {
 
     setupDisponibilidadeListeners(modalBody);
 
+    const quickAddSelects = modalBody.querySelectorAll(".quick-add-prof");
+    quickAddSelects.forEach((select) => {
+      select.addEventListener("change", (e) => {
+        const selectedName = e.target.value;
+        if (!selectedName) return;
+
+        const targetId = e.target.getAttribute("data-target");
+        const inputField = document.getElementById(targetId);
+
+        if (inputField) {
+          const currentValue = inputField.value.trim();
+
+          if (currentValue === "") {
+            inputField.value = selectedName;
+          } else {
+            if (!currentValue.includes(selectedName)) {
+              inputField.value = currentValue + ", " + selectedName;
+            }
+          }
+        }
+        e.target.value = "";
+      });
+    });
+
     modal.style.display = "flex";
-
-    const formCancelBtn = document.getElementById("form-cancel-btn");
-    if (formCancelBtn) {
-      formCancelBtn.addEventListener("click", () => {
-        modal.style.display = "none";
-      });
-    }
-
-    const form = document.getElementById("edit-paciente-form");
-    if (form) {
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        await salvarEdicao();
-      });
-    }
   }
 
   async function salvarEdicao() {
@@ -773,6 +831,9 @@ export function init(user, userData) {
           document.getElementById("preferenciaGenero")?.value || "",
         assistenteSocial:
           document.getElementById("assistenteSocial")?.value || "",
+        profissionalPB: document.getElementById("profissionalPB")?.value || "",
+        profissionalPlantao:
+          document.getElementById("profissionalPlantao")?.value || "",
         status: document.getElementById("status")?.value || "",
         lastUpdate: serverTimestamp(),
         lastUpdatedBy: currentUserData.nome,
@@ -781,7 +842,6 @@ export function init(user, userData) {
       await updateDoc(pacientesRef, dadosAtualizados);
 
       console.log("✅ Paciente atualizado com sucesso!");
-      console.log("✅ disponibilidadeEspecifica:", disponibilidadeEspecifica);
       alert("✅ Dados do paciente atualizados com sucesso!");
 
       modal.style.display = "none";
@@ -821,8 +881,15 @@ export function init(user, userData) {
     modal.style.display = "none";
   });
 
+  saveModalBtn.addEventListener("click", async () => {
+    if (currentEditingId) {
+      await salvarEdicao();
+    }
+  });
+
   searchInput.addEventListener("input", renderizarLista);
   statusFilter.addEventListener("change", renderizarLista);
 
   carregarPacientes();
+  carregarProfissionais();
 }
