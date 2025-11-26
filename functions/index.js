@@ -2085,11 +2085,6 @@ exports.marcarPresenca = onDocumentUpdated(
   }
 );
 
-// ====================================================================
-// FUNÇÃO: importarPacientesBatch
-// ====================================================================
-// ============== FUNÇÃO CORRIGIDA: historicoEtapas sem FieldValue ==============
-
 // Mapeamento status
 const PIPEFY_TO_FIREBASE_STATUS = {
   "encaminhar para plantão": "encaminhar_para_plantao",
@@ -2214,13 +2209,15 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     const resultados = {
       total: pacientes.length,
       sucesso: 0,
+      atualizados: 0, // Novo contador para registros complementados
       erros: 0,
-      duplicatas: 0,
+      duplicatas: 0, // Registros que já existiam e não precisaram de atualização
       mensagensErro: [],
       pacientesCriados: [],
     };
 
-    const pacientesValidos = [];
+    // Lista unificada de operações (Creates e Updates)
+    const operacoesBatch = [];
 
     // Processar cada paciente
     for (const [index, paciente] of pacientes.entries()) {
@@ -2228,7 +2225,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
         const cpfLimpo = String(paciente.cpf || "").replace(/\D/g, "");
         const nomeCompleto = String(paciente.nomeCompleto || "").trim();
 
-        // Validações
+        // Validações Básicas
         if (!nomeCompleto || nomeCompleto.length < 3) {
           resultados.erros++;
           resultados.mensagensErro.push(`Linha ${index + 2}: Nome muito curto`);
@@ -2241,20 +2238,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           continue;
         }
 
-        // Verificar duplicatas
-        const querySnapshot = await db
-          .collection("trilhaPaciente")
-          .where("cpf", "==", cpfLimpo)
-          .limit(1)
-          .get();
-
-        if (!querySnapshot.empty) {
-          resultados.duplicatas++;
-          resultados.mensagensErro.push(
-            `Linha ${index + 2}: CPF ${cpfLimpo} já existe`
-          );
-          continue;
-        }
+        // --- PREPARAÇÃO DOS DADOS (Movido para antes da verificação de duplicata) ---
 
         // Processar data
         const { dataTriagem, horaTriagem } = procesarDataTriagem(
@@ -2264,7 +2248,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
         // Mapear status
         const statusFirebase = mapearStatus(paciente.status, fila);
 
-        // ⭐ HORÁRIOS disponíveis
+        // Horários disponíveis
         const disponibilidade = {
           manha_semana:
             paciente.horarioManhaSemana === "true" ||
@@ -2280,16 +2264,15 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             paciente.horarioManhaSabado === true,
         };
 
-        // ⭐ CORRIGIDO: historicoEtapas usa new Date() em vez de FieldValue.serverTimestamp()
         const historicoEtapas = [
           {
             etapa: statusFirebase,
-            data: new Date(), // ✅ USO DE new Date() EM VEZ DE FieldValue.serverTimestamp()
+            data: new Date(),
             usuario: adminUid,
           },
         ];
 
-        // Montar card completo
+        // Montar objeto completo do card
         const cardData = {
           nomeCompleto,
           cpf: cpfLimpo,
@@ -2327,7 +2310,7 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           rendaMensal: parseFloat(paciente.rendaMensal) || 0,
           rendaFamiliar: parseFloat(paciente.rendaFamiliar) || 0,
 
-          // Responsável (se menor)
+          // Responsável
           responsavelNome: String(paciente.responsavelNome || "").trim(),
           responsavelCpf: String(paciente.responsavelCpf || "").replace(
             /\D/g,
@@ -2344,11 +2327,9 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           tipoTriagem: String(paciente.tipoTriagem || "").trim(),
           valorContribuicao: parseFloat(paciente.valorContribuicao) || 0,
 
-          // Disponibilidade
+          // Disponibilidade e Preferências
           disponibilidadeHorarios: disponibilidade,
           opcoesHorarioTexto: String(paciente.opcoesHorarioTexto || "").trim(),
-
-          // Preferências
           prefereSemModalidade: String(
             paciente.prefereSemModalidade || ""
           ).trim(),
@@ -2388,20 +2369,98 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             adminUserDoc.data().nome ||
             "Não informado",
 
-          // ⭐ TIMESTAMPS CORRETOS (fora de arrays)
+          // Metadados
           timestamp: FieldValue.serverTimestamp(),
           lastUpdate: FieldValue.serverTimestamp(),
           lastUpdatedBy: `Importação em Lote por ${adminUid}`,
-
-          // Status
           importadoEmLote: true,
           statusAtivo: true,
-
-          // ⭐ historicoEtapas com new Date()
           historicoEtapas: historicoEtapas,
         };
 
-        pacientesValidos.push({ cardData, cpf: cpfLimpo, nome: nomeCompleto });
+        // --- VERIFICAÇÃO DE DUPLICATAS E PREENCHIMENTO ---
+
+        const querySnapshot = await db
+          .collection("trilhaPaciente")
+          .where("cpf", "==", cpfLimpo)
+          .limit(1)
+          .get();
+
+        if (!querySnapshot.empty) {
+          // PACIENTE EXISTE: Tentar preencher campos faltantes
+          const docExistente = querySnapshot.docs[0];
+          const dadosExistentes = docExistente.data();
+          const dadosParaAtualizar = {};
+
+          // Lista de campos que NÃO devem ser sobrescritos ou usados na comparação
+          const camposIgnorados = [
+            "timestamp",
+            "lastUpdate",
+            "lastUpdatedBy",
+            "historicoEtapas",
+            "status",
+            "etapaAtual",
+            "importadoEmLote",
+            "statusAtivo",
+          ];
+
+          for (const [chave, novoValor] of Object.entries(cardData)) {
+            if (camposIgnorados.includes(chave)) continue;
+
+            const valorExistente = dadosExistentes[chave];
+
+            // Condição para atualizar: Campo no banco é VAZIO e o novo tem VALOR
+            const bancoVazio =
+              valorExistente === null ||
+              valorExistente === undefined ||
+              valorExistente === "" ||
+              (Array.isArray(valorExistente) && valorExistente.length === 0);
+            const planilhaTemValor =
+              novoValor !== null &&
+              novoValor !== undefined &&
+              novoValor !== "" &&
+              !(Array.isArray(novoValor) && novoValor.length === 0);
+
+            if (bancoVazio && planilhaTemValor) {
+              dadosParaAtualizar[chave] = novoValor;
+            }
+          }
+
+          if (Object.keys(dadosParaAtualizar).length > 0) {
+            // Adiciona metadados da atualização
+            dadosParaAtualizar.lastUpdate = FieldValue.serverTimestamp();
+            dadosParaAtualizar.lastUpdatedBy = `Importação (Complemento) por ${adminUid}`;
+
+            operacoesBatch.push({
+              type: "UPDATE",
+              ref: docExistente.ref,
+              data: dadosParaAtualizar,
+            });
+          } else {
+            // Nenhuma informação nova útil encontrada
+            resultados.duplicatas++;
+            resultados.mensagensErro.push(
+              `Linha ${
+                index + 2
+              }: CPF ${cpfLimpo} já existe e não há novos dados para complementar.`
+            );
+          }
+        } else {
+          // PACIENTE NOVO: Criar
+          const novoCardRef = db.collection("trilhaPaciente").doc();
+          operacoesBatch.push({
+            type: "CREATE",
+            ref: novoCardRef,
+            data: cardData,
+          });
+
+          // Adiciona ao array de retorno para o frontend
+          resultados.pacientesCriados.push({
+            id: novoCardRef.id,
+            nome: cardData.nomeCompleto,
+            status: cardData.status,
+          });
+        }
       } catch (err) {
         logger.error(`Erro linha ${index + 2}: ${err.message}`);
         resultados.erros++;
@@ -2409,33 +2468,33 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
       }
     }
 
-    // Inserir em batches
+    // --- EXECUÇÃO DOS BATCHES ---
+
     const batchSize = 500;
-    for (let i = 0; i < pacientesValidos.length; i += batchSize) {
-      const chunk = pacientesValidos.slice(i, i + batchSize);
+    for (let i = 0; i < operacoesBatch.length; i += batchSize) {
+      const chunk = operacoesBatch.slice(i, i + batchSize);
       const batch = db.batch();
 
-      for (const { cardData } of chunk) {
-        const novoCardRef = db.collection("trilhaPaciente").doc();
-        batch.set(novoCardRef, cardData);
-        resultados.pacientesCriados.push({
-          id: novoCardRef.id,
-          nome: cardData.nomeCompleto,
-          status: cardData.status,
-        });
-      }
+      chunk.forEach((op) => {
+        if (op.type === "CREATE") {
+          batch.set(op.ref, op.data);
+          resultados.sucesso++;
+        } else if (op.type === "UPDATE") {
+          batch.update(op.ref, op.data);
+          resultados.atualizados++;
+        }
+      });
 
       await batch.commit();
-      resultados.sucesso += chunk.length;
     }
 
     logger.info(
-      `[IMPORTAÇÃO] Concluída: ${resultados.sucesso} sucessos, ${resultados.erros} erros, ${resultados.duplicatas} duplicatas`
+      `[IMPORTAÇÃO] Concluída: ${resultados.sucesso} novos, ${resultados.atualizados} atualizados, ${resultados.erros} erros, ${resultados.duplicatas} ignorados`
     );
 
     return {
       ...resultados,
-      mensagem: `✅ ${resultados.sucesso} pacientes importados com sucesso!`,
+      mensagem: `✅ Processamento concluído: ${resultados.sucesso} criados e ${resultados.atualizados} atualizados.`,
     };
   } catch (error) {
     logger.error(`[IMPORTAÇÃO] Erro fatal: ${error.message}`, error);
