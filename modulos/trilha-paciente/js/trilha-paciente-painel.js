@@ -2,6 +2,7 @@
 // Versão: 9.1 (Adiciona Logs de Depuração)
 
 import { init as initKanban } from "./trilha-paciente.js";
+import { gerarRelatorioAuditoria } from "./auditoria.js";
 
 const menuFilters = {
   entrada: ["inscricao_documentos", "triagem_agendada"],
@@ -56,8 +57,7 @@ export function init(db, user, userData) {
 function buildSubmenu(sidebarMenu) {
   sidebarMenu.innerHTML = `
     <li>
-        <a href="../../../index.html" class="back-link">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <a href="../../../index.html" class="back-link"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             <span>Voltar à Intranet</span>
         </a>
     </li>
@@ -67,26 +67,54 @@ function buildSubmenu(sidebarMenu) {
     <li><a href="#pb" data-view="pb">PB</a></li>
     <li><a href="#outros" data-view="outros">Outros</a></li>
     <li><a href="#encerramento" data-view="encerramento">Encerramento</a></li>
+    
+    <li class="menu-separator"></li>
+    <li>
+        <a href="#" id="btn-auditoria" style="color: var(--cor-alerta);">
+            <span>⚠️ Verificar Dados Faltantes</span>
+        </a>
+    </li>
  `;
 }
-
 function setupSubmenuListeners(sidebarMenu) {
   sidebarMenu.addEventListener("click", (e) => {
+    // 1. Lógica de Navegação entre Abas (Views do Kanban)
     const link = e.target.closest("a[data-view]");
+
     if (link && !link.classList.contains("back-link")) {
       e.preventDefault();
       console.log(
         `[LOG] Clique no submenu detectado. Visão selecionada: '${link.dataset.view}'`
       );
 
+      // Remove a classe 'active' de todos os itens e adiciona ao clicado
       sidebarMenu
         .querySelectorAll("a[data-view]")
         .forEach((l) => l.classList.remove("active"));
       link.classList.add("active");
 
+      // Atualiza a URL e carrega a nova visão
       const view = link.getAttribute("data-view");
       window.location.hash = view;
       loadView(view);
+      return; // Interrompe aqui se foi um clique de navegação
+    }
+
+    // 2. Lógica do Botão de Auditoria (NOVO)
+    const btnAuditoria = e.target.closest("#btn-auditoria");
+
+    if (btnAuditoria) {
+      e.preventDefault();
+
+      // Exibe confirmação antes de iniciar a varredura (operação pesada)
+      if (
+        confirm(
+          "Deseja iniciar a varredura completa no banco de dados para encontrar cadastros incompletos?\n\nIsso pode levar alguns segundos dependendo da quantidade de pacientes."
+        )
+      ) {
+        // Chama a função importada de 'auditoria.js'
+        gerarRelatorioAuditoria();
+      }
     }
   });
 }
