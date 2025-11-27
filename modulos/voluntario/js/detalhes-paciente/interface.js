@@ -45,9 +45,10 @@ export function atualizarVisibilidadeBotoesAcao(status) {
 
   switch (status) {
     case "em_atendimento_pb": // (PB Ativo)
+    case "pacientes_parcerias": // <-- ADICIONADO: Mesmo comportamento do PB
       setButtonVisibility("btn-abrir-modal-solicitar-sessoes", true); // Botão legado ainda visível?
       setButtonVisibility("btn-abrir-modal-alterar-horario", true); // Botão legado ainda visível?
-      setButtonVisibility("btn-abrir-modal-desfecho-pb", true); // O botão "Horários PB" poderia ser visível aqui para *alterações*? Depende da regra. // setButtonVisibility("btn-abrir-modal-horarios-pb", true); // Considerar se permite alteração via novo modal
+      setButtonVisibility("btn-abrir-modal-desfecho-pb", true);
       break;
 
     case "aguardando_info_horarios": // (Aguardando Horários)
@@ -261,39 +262,39 @@ export function renderizarSessoes() {
     itemDiv.classList.add(itemClasseStatus); // Adiciona classe ao itemDiv
 
     itemDiv.innerHTML = `
-      <div class="session-info">
-        <div class="info-item">
-          <span class="label">Data</span>
-          <span class="value">${dataFormatada}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Horário</span>
-          <span class="value">${horaFormatada}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Status</span>
-          <span class="value status ${statusClasse}">${statusTexto}</span>
-        </div>
-      </div>
-      <div class="session-actions">
-        ${
-      statusSessao === "pendente"
-        ? `
-          <button type="button" class="btn-presenca" data-action="presente">Presente</button>
-          <button type="button" class="btn-ausencia" data-action="ausente">Ausente</button>
-        `
-        : ""
-    }
-        <button type="button" class="action-button secondary-button btn-anotacoes" data-action="anotacoes">
-          ${
-      sessao.anotacoes &&
-      Object.keys(sessao.anotacoes).some((k) => sessao.anotacoes[k])
-        ? "Ver/Editar"
-        : "Adicionar"
-    } Anotações
-        </button>
-      </div>
-    `; // Verifica se há *alguma* anotação preenchida
+      <div class="session-info">
+        <div class="info-item">
+          <span class="label">Data</span>
+          <span class="value">${dataFormatada}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Horário</span>
+          <span class="value">${horaFormatada}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Status</span>
+          <span class="value status ${statusClasse}">${statusTexto}</span>
+        </div>
+      </div>
+      <div class="session-actions">
+        ${
+          statusSessao === "pendente"
+            ? `
+          <button type="button" class="btn-presenca" data-action="presente">Presente</button>
+          <button type="button" class="btn-ausencia" data-action="ausente">Ausente</button>
+        `
+            : ""
+        }
+        <button type="button" class="action-button secondary-button btn-anotacoes" data-action="anotacoes">
+          ${
+            sessao.anotacoes &&
+            Object.keys(sessao.anotacoes).some((k) => sessao.anotacoes[k])
+              ? "Ver/Editar"
+              : "Adicionar"
+          } Anotações
+        </button>
+      </div>
+    `; // Verifica se há *alguma* anotação preenchida
     container.appendChild(itemDiv);
   });
   console.log("Lista de sessões renderizada.");
@@ -555,7 +556,7 @@ export function handleTabClick(event) {
       .closest(".detalhe-paciente-tabs-container")
       ?.querySelector(".detalhe-paciente-content-column");
   } else {
-    // Tenta encontrar um container de conteúdo genérico associado (pode precisar de ajuste)
+    // Tenta encontrar um container de conteúdo genérico associado (pode variar)
     contentContainer = parentTabsContainer.nextElementSibling; // Suposição comum
   } // Esconde o conteúdo ativo anterior DENTRO do container de conteúdo encontrado
 
@@ -564,11 +565,8 @@ export function handleTabClick(event) {
       .querySelectorAll(".tab-content.active")
       .forEach((content) => content.classList.remove("active"));
   } else {
-    console.warn(
-      "Container de conteúdo não encontrado para as abas:",
-      parentTabsContainer.id
-    );
-    // Fallback: Tenta esconder todos na página (menos ideal)
+    // Fallback: Tenta esconder todos na página (menos ideal, mas funcional)
+    // Para maior precisão, o ideal é que cada grupo de tabs tenha um container pai claro
     document
       .querySelectorAll(".tab-content.active")
       .forEach((content) => content.classList.remove("active"));
