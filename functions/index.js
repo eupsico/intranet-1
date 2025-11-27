@@ -2176,6 +2176,9 @@ function procesarDataTriagem(dataInput) {
   }
 }
 
+// ====================================================================
+// FUNÇÃO: importarPacientesBatch
+// ====================================================================
 exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Autenticação necessária");
@@ -2209,14 +2212,13 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     const resultados = {
       total: pacientes.length,
       sucesso: 0,
-      atualizados: 0, // Novo contador para registros complementados
+      atualizados: 0,
       erros: 0,
-      duplicatas: 0, // Registros que já existiam e não precisaram de atualização
+      duplicatas: 0,
       mensagensErro: [],
       pacientesCriados: [],
     };
 
-    // Lista unificada de operações (Creates e Updates)
     const operacoesBatch = [];
 
     // Processar cada paciente
@@ -2225,7 +2227,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
         const cpfLimpo = String(paciente.cpf || "").replace(/\D/g, "");
         const nomeCompleto = String(paciente.nomeCompleto || "").trim();
 
-        // Validações Básicas
         if (!nomeCompleto || nomeCompleto.length < 3) {
           resultados.erros++;
           resultados.mensagensErro.push(`Linha ${index + 2}: Nome muito curto`);
@@ -2238,17 +2239,13 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           continue;
         }
 
-        // --- PREPARAÇÃO DOS DADOS (Movido para antes da verificação de duplicata) ---
-
         // Processar data
         const { dataTriagem, horaTriagem } = procesarDataTriagem(
           paciente.dataTriagem
         );
 
-        // Mapear status
         const statusFirebase = mapearStatus(paciente.status, fila);
 
-        // Horários disponíveis
         const disponibilidade = {
           manha_semana:
             paciente.horarioManhaSemana === "true" ||
@@ -2271,6 +2268,59 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             usuario: adminUid,
           },
         ];
+
+        // --- NOVA LÓGICA DE PROFISSIONAIS (PB e PLANTÃO) ---
+
+        // 1. Tratamento Profissional PB (String -> Array de Objetos)
+        const rawProfissionalPB = String(paciente.profissionalPB || "").trim();
+        const atendimentosPB = [];
+
+        if (rawProfissionalPB) {
+          const nomes = rawProfissionalPB
+            .split(",")
+            .map((n) => n.trim())
+            .filter((n) => n);
+          const hojeData = new Date().toISOString().split("T")[0];
+
+          nomes.forEach((nome) => {
+            atendimentosPB.push({
+              atendimentoId:
+                Math.random().toString(36).substr(2, 9) +
+                Date.now().toString(36),
+              profissionalNome: nome,
+              profissionalId: "", // Na importação em lote, não buscamos o ID para evitar lentidão
+              statusAtendimento: "ativo",
+              tipoProfissional: "Voluntária(o)", // Valor padrão
+              dataEncaminhamento: paciente.dataEncaminhamentoPB || hojeData,
+              dataPrimeiraSessao: paciente.dataPrimeiraSessaoPB || "",
+              horaPrimeiraSessao: "",
+              tipoAtendimento: String(paciente.atendimentoSeraPB || "").trim(),
+              observacoes: "",
+            });
+          });
+        }
+
+        // 2. Tratamento Profissional Plantão (Campos soltos -> Objeto plantaoInfo)
+        const rawProfissionalPlantao = String(
+          paciente.profissionalPlantao || ""
+        ).trim();
+        let plantaoInfo = null;
+
+        if (rawProfissionalPlantao) {
+          plantaoInfo = {
+            profissionalNome: rawProfissionalPlantao,
+            profissionalId: "", // Sem busca de ID na importação
+            dataPrimeiraSessao: paciente.dataPrimeiraSessaoPlantao || null,
+            tipoAtendimento: String(
+              paciente.atendimentoSeraPlantao || ""
+            ).trim(),
+            encaminhamento: String(paciente.encaminhamentoPlantao || "").trim(),
+            observacoes: "",
+            tipoProfissional: "Voluntária(o)",
+          };
+        }
+
+        // --- FIM DA NOVA LÓGICA ---
 
         // Montar objeto completo do card
         const cardData = {
@@ -2342,23 +2392,21 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           motivoBusca: String(paciente.motivoBusca || "").trim(),
           tratamentoAnterior: String(paciente.tratamentoAnterior || "").trim(),
 
-          // Plantão
-          profissionalPlantao: String(
-            paciente.profissionalPlantao || ""
-          ).trim(),
+          // --- DADOS ESTRUTURADOS (PB e Plantão) ---
+          atendimentosPB: atendimentosPB, // Array gerado acima
+          plantaoInfo: plantaoInfo, // Objeto gerado acima
+
+          // Mantemos as strings na raiz para busca rápida e compatibilidade visual na tabela
+          profissionalPlantao: rawProfissionalPlantao,
+          profissionalPB: rawProfissionalPB,
+
+          // Campos antigos de plantão (mantidos por segurança, mas o ideal é usar plantaoInfo)
           dataPrimeiraSessaoPlantao: paciente.dataPrimeiraSessaoPlantao || null,
           atendimentoSeraPlantao: String(
             paciente.atendimentoSeraPlantao || ""
           ).trim(),
-          encaminhamentoPlantao: String(
-            paciente.encaminhamentoPlantao || ""
-          ).trim(),
-          dataEncerramentoPlantao: paciente.dataEncerramentoPlantao || null,
-          quantidadeSessoesPlantao:
-            parseInt(paciente.quantidadeSessoesPlantao) || 0,
 
-          // PB
-          profissionalPB: String(paciente.profissionalPB || "").trim(),
+          // Campos antigos de PB (mantidos por segurança)
           dataEncaminhamentoPB: paciente.dataEncaminhamentoPB || null,
           dataPrimeiraSessaoPB: paciente.dataPrimeiraSessaoPB || null,
           atendimentoSeraPB: String(paciente.atendimentoSeraPB || "").trim(),
@@ -2392,7 +2440,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           const dadosExistentes = docExistente.data();
           const dadosParaAtualizar = {};
 
-          // Lista de campos que NÃO devem ser sobrescritos ou usados na comparação
           const camposIgnorados = [
             "timestamp",
             "lastUpdate",
@@ -2414,12 +2461,21 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
               valorExistente === null ||
               valorExistente === undefined ||
               valorExistente === "" ||
-              (Array.isArray(valorExistente) && valorExistente.length === 0);
+              (Array.isArray(valorExistente) && valorExistente.length === 0) ||
+              (typeof valorExistente === "object" &&
+                valorExistente !== null &&
+                Object.keys(valorExistente).length === 0); // Verifica objeto vazio também
+
             const planilhaTemValor =
               novoValor !== null &&
               novoValor !== undefined &&
               novoValor !== "" &&
-              !(Array.isArray(novoValor) && novoValor.length === 0);
+              !(Array.isArray(novoValor) && novoValor.length === 0) &&
+              !(
+                typeof novoValor === "object" &&
+                novoValor !== null &&
+                Object.keys(novoValor).length === 0
+              );
 
             if (bancoVazio && planilhaTemValor) {
               dadosParaAtualizar[chave] = novoValor;
@@ -2427,7 +2483,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
           }
 
           if (Object.keys(dadosParaAtualizar).length > 0) {
-            // Adiciona metadados da atualização
             dadosParaAtualizar.lastUpdate = FieldValue.serverTimestamp();
             dadosParaAtualizar.lastUpdatedBy = `Importação (Complemento) por ${adminUid}`;
 
@@ -2437,7 +2492,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
               data: dadosParaAtualizar,
             });
           } else {
-            // Nenhuma informação nova útil encontrada
             resultados.duplicatas++;
             resultados.mensagensErro.push(
               `Linha ${
@@ -2454,7 +2508,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
             data: cardData,
           });
 
-          // Adiciona ao array de retorno para o frontend
           resultados.pacientesCriados.push({
             id: novoCardRef.id,
             nome: cardData.nomeCompleto,
@@ -2469,7 +2522,6 @@ exports.importarPacientesBatch = onCall({ cors: true }, async (request) => {
     }
 
     // --- EXECUÇÃO DOS BATCHES ---
-
     const batchSize = 500;
     for (let i = 0; i < operacoesBatch.length; i += batchSize) {
       const chunk = operacoesBatch.slice(i, i + batchSize);
