@@ -28,6 +28,9 @@ const ALL_STATUS = {
   alta: "Alta",
 };
 
+// Variável para armazenar as listas carregadas do sistema
+let systemLists = { parcerias: [], grupos: [] };
+
 function calcularIdade(dataNascimento) {
   if (!dataNascimento || !dataNascimento.includes("-")) return null;
   const hoje = new Date();
@@ -66,6 +69,22 @@ export function init(user, userData) {
   // --- Função Auxiliar: Gerar ID Único ---
   function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
+
+  // --- Carregar Configurações (Listas) ---
+  async function carregarConfiguracoes() {
+    try {
+      const configRef = doc(db, "configuracoesSistema", "geral");
+      const configSnap = await getDoc(configRef);
+      if (configSnap.exists()) {
+        const data = configSnap.data();
+        systemLists.parcerias = data.listas?.parcerias || [];
+        systemLists.grupos = data.listas?.grupos || [];
+        console.log("✅ Listas do sistema carregadas:", systemLists);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+    }
   }
 
   // --- Carregar Lista de Profissionais Ativos ---
@@ -276,6 +295,14 @@ export function init(user, userData) {
       )
       .join("");
 
+    // Opções de Parceria
+    let parceriaOptions = '<option value="">Selecione...</option>';
+    systemLists.parcerias.forEach((parc) => {
+      parceriaOptions += `<option value="${parc}" ${
+        p("parceria") === parc ? "selected" : ""
+      }>${parc}</option>`;
+    });
+
     const idade = calcularIdade(paciente.dataNascimento);
     let htmlResponsavel = "";
 
@@ -373,6 +400,20 @@ export function init(user, userData) {
 
     const form = `
       <form id="edit-paciente-form">
+        <fieldset>
+          <legend>Status</legend>
+          <select id="status">${statusOptions}</select>
+          
+          <div id="parceria-container" style="display: ${
+            paciente.status === "pacientes_parcerias" ? "block" : "none"
+          }; margin-top: 15px;">
+            <label for="parceria">Selecione a Parceria:</label>
+            <select id="parceria" class="form-control">
+                ${parceriaOptions}
+            </select>
+          </div>
+        </fieldset>
+
         <fieldset>
           <legend>Informações Pessoais</legend>
           <input type="text" id="nomeCompleto" value="${p(
@@ -623,11 +664,6 @@ export function init(user, userData) {
             </select>
           </div>
         </fieldset>
-
-        <fieldset>
-          <legend>Status</legend>
-          <select id="status">${statusOptions}</select>
-        </fieldset>
       </form>
     `;
 
@@ -652,6 +688,20 @@ export function init(user, userData) {
 
     // Listeners internos
     setupDisponibilidadeListeners(modalBody);
+
+    // Listener para troca de status (Exibir Parceria)
+    const statusSelect = document.getElementById("status");
+    const parceriaContainer = document.getElementById("parceria-container");
+    if (statusSelect && parceriaContainer) {
+      statusSelect.addEventListener("change", (e) => {
+        if (e.target.value === "pacientes_parcerias") {
+          parceriaContainer.style.display = "block";
+        } else {
+          parceriaContainer.style.display = "none";
+          document.getElementById("parceria").value = ""; // Limpa se mudar status
+        }
+      });
+    }
 
     const quickAddSelects = modalBody.querySelectorAll(".quick-add-prof");
     quickAddSelects.forEach((select) => {
@@ -855,6 +905,9 @@ export function init(user, userData) {
         profissionalPlantao: inputPlantao,
 
         status: document.getElementById("status")?.value || "",
+        // Salva a parceria
+        parceria: document.getElementById("parceria")?.value || "",
+
         lastUpdate: serverTimestamp(),
         lastUpdatedBy: currentUserData.nome,
       };
@@ -911,6 +964,7 @@ export function init(user, userData) {
   searchInput.addEventListener("input", renderizarLista);
   statusFilter.addEventListener("change", renderizarLista);
 
+  carregarConfiguracoes(); // Carrega as listas de parcerias e grupos
   carregarPacientes();
   carregarProfissionais();
 }
