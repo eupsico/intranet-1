@@ -1,5 +1,5 @@
 // Arquivo: /modulos/trilha-paciente/js/stages/pacientes_parcerias.js
-// Versão: 1.0 (Réplica de em_atendimento_pb.js para manter as mesmas características)
+// Versão: 1.1 (Exibe o campo "Parceria" no topo)
 
 import {
   getFunctions,
@@ -20,6 +20,14 @@ export function render(cardId, cardData) {
   const atendimentosAtivos =
     cardData.atendimentosPB?.filter((at) => at.statusAtendimento === "ativo") ||
     [];
+
+  // --- SEÇÃO DE INFORMAÇÃO DA PARCERIA ---
+  const nomeParceria = cardData.parceria || "Não informada";
+  const parceriaInfoHtml = `
+    <div class="patient-info-box warning" style="margin-bottom: 15px;">
+        <p><strong>Parceria Vinculada:</strong> ${nomeParceria}</p>
+    </div>
+  `;
 
   // --- SEÇÃO PRINCIPAL: RESUMO INFORMATIVO ---
   const resumoAtendimentosHtml = atendimentosAtivos
@@ -117,6 +125,7 @@ export function render(cardId, cardData) {
 
   element.innerHTML = `
     <h4 class="form-section-title">Acompanhamentos em Parceria Ativos</h4>
+    ${parceriaInfoHtml}
     ${
       resumoAtendimentosHtml.length > 0
         ? resumoAtendimentosHtml
