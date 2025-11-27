@@ -17,6 +17,7 @@
             <button class="tab-link" onclick="openTab(event, 'listas')">Listas</button>
             <button class="tab-link" onclick="openTab(event, 'textos')">Modelos de Mensagem</button>
             <button class="tab-link" onclick="openTab(event, 'feedback')">Feedback</button>
+            <button class="tab-link" onclick="openTab(event, 'manutencao')" style="color: #d35400;">Manutenção</button>
         </div>
 
         <form id="config-form">
@@ -159,6 +160,20 @@
                         <tbody id="perguntas-feedback-tbody"></tbody>
                     </table>
                     <button type="button" id="btn-adicionar-pergunta" class="btn-adicionar-faixa">+ Adicionar Pergunta</button>
+                </div>
+            </div>
+
+            <div id="manutencao" class="tab-content">
+                <h3>Manutenção de Dados</h3>
+                <p class="description">Ferramentas para correção e atualização em massa de dados no banco.</p>
+                <hr>
+                <div class="form-group">
+                    <label>Corrigir IDs em Atendimentos PB e Parcerias</label>
+                    <p class="description">Esta ferramenta verifica todos os pacientes na trilha. Se encontrar um item em 'atendimentosPB' onde o <strong>profissionalId</strong> estiver vazio, tentará buscar o ID correto na coleção de Usuários usando o Nome do Profissional.</p>
+                    <button type="button" id="btn-corrigir-ids-pb" class="btn-primary" style="background-color: #d35400;">
+                        🔄 Executar Correção de IDs
+                    </button>
+                    <div id="log-manutencao" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; font-family: monospace; display: none;"></div>
                 </div>
             </div>
 
