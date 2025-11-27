@@ -150,6 +150,32 @@ export function preencherFormularios() {
   setElementValue("dp-status-atual", statusFormatado, true); // Preenche o span (se ainda usado)
   setElementValue("dp-status-atual-input", statusFormatado, true); // Preenche o input readonly
 
+  // --- LÓGICA DO CAMPO PARCERIA ---
+  const parceriaContainer = document.getElementById("dp-parceria-container");
+  const parceriaSelect = document.getElementById("dp-parceria");
+
+  if (parceriaContainer && parceriaSelect) {
+    if (statusPaciente === "pacientes_parcerias") {
+      parceriaContainer.style.display = "block";
+
+      // Popula as opções se ainda não foram (evita repopular desnecessariamente)
+      if (parceriaSelect.options.length <= 1) {
+        // Só tem o default
+        const parceriasList =
+          estado.systemConfigsGlobal?.listas?.parcerias || [];
+        parceriasList.forEach((parc) => {
+          const opt = document.createElement("option");
+          opt.value = parc;
+          opt.textContent = parc;
+          parceriaSelect.appendChild(opt);
+        });
+      }
+      setElementValue("dp-parceria", paciente.parceria);
+    } else {
+      parceriaContainer.style.display = "none";
+    }
+  }
+
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
   setElementValue("dp-idade", idadeCalculada, true); // Span (se ainda usado)
   setElementValue("dp-idade-input", idadeCalculada, true); // Input readonly
