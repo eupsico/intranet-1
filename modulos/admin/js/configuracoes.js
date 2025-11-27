@@ -1,7 +1,15 @@
 // Arquivo: /modulos/admin/js/configuracoes.js
-// Versão: 5.1 (COMPLETO E CORRIGIDO - Com gestão de Feedback)
+// Versão: 6.0 (Inclui ferramenta de Manutenção de IDs)
 
-import { db, doc, getDoc, setDoc } from "../../../assets/js/firebase-init.js";
+import {
+  db,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  updateDoc,
+} from "../../../assets/js/firebase-init.js";
 
 // --- REFERÊNCIAS AOS DOCUMENTOS NO FIRESTORE ---
 const configGeralRef = doc(db, "configuracoesSistema", "geral");
@@ -233,12 +241,134 @@ function createPerguntaRow(pergunta = {}) {
   return tr;
 }
 
+// --- LÓGICA DE MANUTENÇÃO (CORREÇÃO DE IDs) ---
+async function executarCorrecaoIdsPB() {
+  const btn = document.getElementById("btn-corrigir-ids-pb");
+  const logDiv = document.getElementById("log-manutencao");
+
+  if (
+    !confirm(
+      "Isso irá varrer todos os pacientes e tentar corrigir IDs faltantes em 'atendimentosPB' baseando-se no nome do profissional. Deseja continuar?"
+    )
+  ) {
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Processando...";
+  logDiv.style.display = "block";
+  logDiv.innerHTML = "Iniciando varredura...<br>";
+
+  const log = (msg) => {
+    logDiv.innerHTML += `<div>${msg}</div>`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+    console.log(`[Correção IDs] ${msg}`);
+  };
+
+  try {
+    // 1. Carregar mapeamento de Usuários (Nome -> ID)
+    log("Carregando lista de usuários...");
+    const usersSnap = await getDocs(collection(db, "usuarios"));
+    const userMap = {};
+    usersSnap.forEach((doc) => {
+      const data = doc.data();
+      if (data.nome) {
+        // Normaliza para lowercase e trim para facilitar comparação
+        userMap[data.nome.toLowerCase().trim()] = doc.id;
+      }
+    });
+    log(`Mapeados ${Object.keys(userMap).length} usuários.`);
+
+    // 2. Carregar Pacientes
+    log("Carregando pacientes...");
+    const patientsSnap = await getDocs(collection(db, "trilhaPaciente"));
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    // 3. Iterar e Corrigir
+    for (const pDoc of patientsSnap.docs) {
+      const pData = pDoc.data();
+      const atendimentos = pData.atendimentosPB;
+
+      if (
+        !atendimentos ||
+        !Array.isArray(atendimentos) ||
+        atendimentos.length === 0
+      ) {
+        continue;
+      }
+
+      let needsUpdate = false;
+      const newAtendimentos = atendimentos.map((at) => {
+        // Verifica se tem Nome mas NÃO tem ID (ou ID está vazio)
+        if (
+          at.profissionalNome &&
+          (!at.profissionalId || at.profissionalId.trim() === "")
+        ) {
+          const searchName = at.profissionalNome.toLowerCase().trim();
+          const foundId = userMap[searchName];
+
+          if (foundId) {
+            log(
+              `✅ Encontrado ID para "${at.profissionalNome}" no paciente ${
+                pData.nomeCompleto || pDoc.id
+              }`
+            );
+            needsUpdate = true;
+            return { ...at, profissionalId: foundId };
+          } else {
+            log(
+              `⚠️ Profissional "${at.profissionalNome}" não encontrado em Usuarios (Paciente: ${pData.nomeCompleto})`
+            );
+          }
+        }
+        return at;
+      });
+
+      if (needsUpdate) {
+        try {
+          const pacienteRef = doc(db, "trilhaPaciente", pDoc.id);
+          // Atualiza também o profissionaisPB_ids para garantir consistência nas buscas
+          const idsUnicos = [
+            ...new Set(
+              newAtendimentos.map((at) => at.profissionalId).filter(Boolean)
+            ),
+          ];
+
+          await updateDoc(pacienteRef, {
+            atendimentosPB: newAtendimentos,
+            profissionaisPB_ids: idsUnicos, // Atualiza o array auxiliar de busca
+          });
+          updatedCount++;
+        } catch (err) {
+          log(`❌ Erro ao atualizar paciente ${pDoc.id}: ${err.message}`);
+          errorCount++;
+        }
+      }
+    }
+
+    log("--- FIM DA OPERAÇÃO ---");
+    log(`Pacientes atualizados: ${updatedCount}`);
+    log(`Erros de gravação: ${errorCount}`);
+    alert(`Processo concluído! ${updatedCount} pacientes foram corrigidos.`);
+  } catch (error) {
+    console.error("Erro fatal na manutenção:", error);
+    log(`Erro fatal: ${error.message}`);
+    alert("Ocorreu um erro durante o processo. Verifique o log.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔄 Executar Correção de IDs";
+  }
+}
+
 // --- INICIALIZAÇÃO DO MÓDULO ---
 export function init() {
   console.log("⚙️ Módulo de Configurações iniciado.");
   window.openTab = openTab;
   document.querySelector(".tab-link")?.click();
   loadConfig();
+
+  // Listeners existentes
   document.getElementById("save-button")?.addEventListener("click", saveConfig);
   document
     .getElementById("btn-adicionar-faixa")
@@ -254,4 +384,9 @@ export function init() {
         .getElementById("perguntas-feedback-tbody")
         .appendChild(createPerguntaRow());
     });
+
+  // Novo Listener para Manutenção
+  document
+    .getElementById("btn-corrigir-ids-pb")
+    ?.addEventListener("click", executarCorrecaoIdsPB);
 }
