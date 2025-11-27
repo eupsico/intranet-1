@@ -1,5 +1,5 @@
 // Arquivo: /modulos/admin/js/configuracoes.js
-// Versão: 6.0 (Inclui ferramenta de Manutenção de IDs)
+// Versão: 6.1 (Com atualização garantida de profissionaisPB_ids)
 
 import {
   db,
@@ -241,14 +241,14 @@ function createPerguntaRow(pergunta = {}) {
   return tr;
 }
 
-// --- LÓGICA DE MANUTENÇÃO (CORREÇÃO DE IDs) ---
+// --- LÓGICA DE MANUTENÇÃO (CORREÇÃO DE IDs e ARRAY DE BUSCA) ---
 async function executarCorrecaoIdsPB() {
   const btn = document.getElementById("btn-corrigir-ids-pb");
   const logDiv = document.getElementById("log-manutencao");
 
   if (
     !confirm(
-      "Isso irá varrer todos os pacientes e tentar corrigir IDs faltantes em 'atendimentosPB' baseando-se no nome do profissional. Deseja continuar?"
+      "Isso irá varrer TODOS os pacientes para:\n1. Corrigir IDs faltantes em 'atendimentosPB' pelo nome.\n2. Atualizar o array 'profissionaisPB_ids'.\nDeseja continuar?"
     )
   ) {
     return;
@@ -299,6 +299,8 @@ async function executarCorrecaoIdsPB() {
       }
 
       let needsUpdate = false;
+
+      // A. Correção dos IDs dentro dos objetos de atendimento
       const newAtendimentos = atendimentos.map((at) => {
         // Verifica se tem Nome mas NÃO tem ID (ou ID está vazio)
         if (
@@ -310,35 +312,51 @@ async function executarCorrecaoIdsPB() {
 
           if (foundId) {
             log(
-              `✅ Encontrado ID para "${at.profissionalNome}" no paciente ${
+              `✅ ID recuperado para "${at.profissionalNome}" (Paciente: ${
                 pData.nomeCompleto || pDoc.id
-              }`
+              })`
             );
             needsUpdate = true;
             return { ...at, profissionalId: foundId };
           } else {
             log(
-              `⚠️ Profissional "${at.profissionalNome}" não encontrado em Usuarios (Paciente: ${pData.nomeCompleto})`
+              `⚠️ Profissional "${at.profissionalNome}" não encontrado em usuarios (Paciente: ${pData.nomeCompleto})`
             );
           }
         }
         return at;
       });
 
-      if (needsUpdate) {
+      // B. Reconstrução do Array 'profissionaisPB_ids' (Para garantir a busca)
+      // Extrai todos os IDs únicos e válidos dos atendimentos corrigidos
+      const idsUnicos = [
+        ...new Set(
+          newAtendimentos
+            .map((at) => at.profissionalId)
+            .filter((id) => id && id.trim() !== "")
+        ),
+      ];
+
+      // Verifica se o array atual no banco é diferente do calculado (para evitar update desnecessário)
+      const arrayAtual = pData.profissionaisPB_ids || [];
+      const arraysDiferentes =
+        idsUnicos.length !== arrayAtual.length ||
+        !idsUnicos.every((val) => arrayAtual.includes(val));
+
+      if (needsUpdate || arraysDiferentes) {
         try {
           const pacienteRef = doc(db, "trilhaPaciente", pDoc.id);
-          // Atualiza também o profissionaisPB_ids para garantir consistência nas buscas
-          const idsUnicos = [
-            ...new Set(
-              newAtendimentos.map((at) => at.profissionalId).filter(Boolean)
-            ),
-          ];
 
           await updateDoc(pacienteRef, {
             atendimentosPB: newAtendimentos,
-            profissionaisPB_ids: idsUnicos, // Atualiza o array auxiliar de busca
+            profissionaisPB_ids: idsUnicos, // <-- Atualização forçada do array de busca
           });
+
+          log(
+            `💾 Atualizado: ${
+              pData.nomeCompleto || pDoc.id
+            } (IDs Array: [${idsUnicos.join(", ")}])`
+          );
           updatedCount++;
         } catch (err) {
           log(`❌ Erro ao atualizar paciente ${pDoc.id}: ${err.message}`);
