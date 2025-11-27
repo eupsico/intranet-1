@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/ui.js
-// Versão com correção de Roteamento (Hash) e Linha Clicável
+// Versão com correção de Roteamento (Hash) e Linha Clicável (Atualizado para Parcerias)
 
 // Função calcularIdade mantida como antes...
 export function calcularIdade(dataNascimento) {
@@ -73,6 +73,7 @@ export function criarLinhaPacienteTabela(paciente, atendimentoPB = null) {
     desistencia: "Desistência",
     encaminhado_grupo: "Encaminhado p/ Grupo",
     encaminhado_parceiro: "Encaminhado p/ Parceiro",
+    pacientes_parcerias: "Em Atendimento (Parceria)", // <-- ADICIONADO
   };
   displayStatus =
     mapaStatusTexto[displayStatusClass] ||
