@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/meus-pacientes/data.js
-// Versão FINAL com queries corretas e logs para diagnóstico
+// Versão FINAL com queries corretas e logs para diagnóstico (Atualizado para incluir Parcerias)
 
 import {
   db,
@@ -91,7 +91,7 @@ async function carregarMeusPacientes(user, tableBody) {
     );
     console.log("data.js: Query Plantão:", queryPlantao); // Log da query
 
-    // Query PB (FINAL)
+    // Query PB e Parcerias (FINAL - Atualizado)
     const queryPb = query(
       collection(db, "trilhaPaciente"),
       where("profissionaisPB_ids", "array-contains", user.uid),
@@ -99,9 +99,10 @@ async function carregarMeusPacientes(user, tableBody) {
         "em_atendimento_pb",
         "aguardando_info_horarios",
         "cadastrar_horario_psicomanager",
+        "pacientes_parcerias", // <-- ADICIONADO AQUI
       ])
     );
-    console.log("data.js: Query PB:", queryPb); // Log da query
+    console.log("data.js: Query PB/Parcerias:", queryPb); // Log da query
 
     // Executa as queries
     const [plantaoSnapshot, pbSnapshot] = await Promise.all([
@@ -136,11 +137,11 @@ async function carregarMeusPacientes(user, tableBody) {
       });
     });
 
-    // Processa PB
+    // Processa PB e Parcerias
     pbSnapshot.forEach((doc) => {
       const data = doc.data();
       console.log(
-        `[PB FINAL] Verificando paciente (com filtro status): ${doc.id} - ${data.nomeCompleto}, Status: ${data.status}`
+        `[PB/Parceria FINAL] Verificando paciente: ${doc.id} - ${data.nomeCompleto}, Status: ${data.status}`
       );
 
       const meuAtendimentoEncontrado =
@@ -148,7 +149,7 @@ async function carregarMeusPacientes(user, tableBody) {
         null;
 
       console.log(
-        `[PB FINAL] Atendimento específico para ${user.uid} encontrado?`,
+        `[PB/Parceria FINAL] Atendimento específico para ${user.uid} encontrado?`,
         meuAtendimentoEncontrado ? "Sim" : "Não"
       );
 
@@ -167,7 +168,7 @@ async function carregarMeusPacientes(user, tableBody) {
         status: data.status || "desconhecido",
       });
       console.log(
-        `[PB FINAL] Paciente ${doc.id} adicionado/atualizado no Map.`
+        `[PB/Parceria FINAL] Paciente ${doc.id} adicionado/atualizado no Map.`
       );
     });
 
