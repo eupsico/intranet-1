@@ -39,7 +39,9 @@ export async function handleSalvarDadosPessoaisEEndereco(event) {
     // Coleta dados editáveis do formulário usando IDs
     const dataToUpdate = {
       telefoneCelular: form.querySelector("#dp-telefone")?.value.trim() || null,
-      dataNascimento: form.querySelector("#dp-data-nascimento")?.value || null, // Assume formato YYYY-MM-DD // Contatos (usando notação de ponto para subcampos)
+      dataNascimento: form.querySelector("#dp-data-nascimento")?.value || null, // Assume formato YYYY-MM-DD
+      parceria: form.querySelector("#dp-parceria")?.value || null, // <-- ADICIONADO: Salva o campo parceria
+      // Contatos (usando notação de ponto para subcampos)
       "responsavel.nome":
         form.querySelector("#dp-responsavel-nome")?.value.trim() || null,
       "contatoEmergencia.nome":
