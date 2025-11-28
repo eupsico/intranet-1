@@ -1,5 +1,5 @@
 // Arquivo: modulos/rh/js/avaliacao_continua.js
-// Versão: 1.4.0 (Atualização: Layout Pesquisa Paciente e Query Parcerias)
+// Versão: 2.0.0 (Com Whatsapp de Cobrança, Stats e Form 360 Completo)
 // Descrição: Gerencia o monitoramento de conformidade, avaliação 360 e feedback.
 
 import {
@@ -36,10 +36,19 @@ export async function init(user, userData) {
 
 function setupEventListeners() {
   const inputBusca = document.getElementById("busca-profissional-360");
-  if (inputBusca) {
-    inputBusca.addEventListener("input", (e) =>
-      filtrarListaProfissionais360(e.target.value)
-    );
+  // Seletor da aba 360 mudou para dropdown, listener adicionado em renderizar
+  const selectProf360 = document.getElementById("select-profissional-360");
+  if (selectProf360) {
+    selectProf360.addEventListener("change", (e) => {
+      const profId = e.target.value;
+      if (profId) {
+        selecionarProfissional360(profId);
+      } else {
+        document.getElementById("form-container-360").style.display = "none";
+        document.getElementById("stats-container-360").style.display = "none";
+        document.getElementById("placeholder-360").style.display = "block";
+      }
+    });
   }
 
   const form360 = document.getElementById("form-avaliacao-360");
@@ -97,7 +106,7 @@ function configurarAbas() {
       document.getElementById(targetId).style.display = "block";
 
       if (tab.dataset.tab === "monitoramento") carregarMonitoramento();
-      if (tab.dataset.tab === "avaliacao-rh") renderizarListaProfissionais360();
+      if (tab.dataset.tab === "avaliacao-rh") popularSelectProfissionais360();
       if (tab.dataset.tab === "feedback-profissional")
         carregarFeedbacksVoluntarios();
       if (tab.dataset.tab === "pesquisa-paciente") popularSelectNPS();
@@ -123,6 +132,7 @@ async function carregarListaProfissionais() {
           nome: data.nome,
           email: data.email,
           foto: data.fotoUrl || "../../../assets/img/avatar-padrao.png",
+          telefone: data.contato || data.telefone || "",
         });
       }
     });
@@ -135,7 +145,7 @@ async function carregarListaProfissionais() {
 }
 
 // ============================================
-// ABA 1: MONITORAMENTO
+// ABA 1: MONITORAMENTO (ATUALIZADO)
 // ============================================
 async function carregarMonitoramento() {
   const tbody = document.getElementById("tbody-monitoramento");
@@ -158,7 +168,7 @@ async function carregarMonitoramento() {
           "em_atendimento_pb",
           "aguardando_info_horarios",
           "pacientes_parcerias",
-        ]) // ✅ Incluído parcerias
+        ])
       );
 
       const qPlantao = query(
@@ -173,8 +183,24 @@ async function carregarMonitoramento() {
       ]);
 
       const pacientesIds = new Set();
-      snapPB.forEach((d) => pacientesIds.add(d.id));
-      snapPlantao.forEach((d) => pacientesIds.add(d.id));
+      const pacientesInfo = []; // Array para guardar infos para o WhatsApp
+
+      snapPB.forEach((d) => {
+        pacientesIds.add(d.id);
+        pacientesInfo.push({
+          id: d.id,
+          nome: d.data().nomeCompleto,
+          tipo: "PB",
+        });
+      });
+      snapPlantao.forEach((d) => {
+        pacientesIds.add(d.id);
+        pacientesInfo.push({
+          id: d.id,
+          nome: d.data().nomeCompleto,
+          tipo: "Plantão",
+        });
+      });
 
       const totalPacientes = pacientesIds.size;
 
@@ -184,7 +210,13 @@ async function carregarMonitoramento() {
       let sessoesSemStatus = 0;
       let sessoesSemEvolucao = 0;
 
+      // Guarda detalhes das pendências para mensagem
+      const pendenciasPresenca = []; // { paciente: "Nome", data: "10/10" }
+      const pendenciasEvolucao = [];
+
       const promessasSessoes = Array.from(pacientesIds).map(async (pid) => {
+        const pacienteNome =
+          pacientesInfo.find((p) => p.id === pid)?.nome || "Paciente";
         const sessoesRef = collection(db, "trilhaPaciente", pid, "sessoes");
         const qSessao = query(sessoesRef, where("dataHora", ">=", dataLimite));
         const snapSessao = await getDocs(qSessao);
@@ -192,8 +224,19 @@ async function carregarMonitoramento() {
         snapSessao.forEach((sDoc) => {
           const sData = sDoc.data();
           totalSessoes++;
+          const dataSessao = sData.dataHora
+            ? new Date(sData.dataHora.seconds * 1000).toLocaleDateString(
+                "pt-BR"
+              )
+            : "Data N/A";
 
-          if (sData.status === "pendente") sessoesSemStatus++;
+          if (sData.status === "pendente") {
+            sessoesSemStatus++;
+            pendenciasPresenca.push({
+              paciente: pacienteNome,
+              data: dataSessao,
+            });
+          }
 
           if (sData.status !== "pendente") {
             if (
@@ -202,6 +245,10 @@ async function carregarMonitoramento() {
               sData.anotacoes.fichaEvolucao.trim() === ""
             ) {
               sessoesSemEvolucao++;
+              pendenciasEvolucao.push({
+                paciente: pacienteNome,
+                data: dataSessao,
+              });
             }
           }
         });
@@ -209,22 +256,36 @@ async function carregarMonitoramento() {
 
       await Promise.all(promessasSessoes);
 
-      let statusConformidade = '<span class="badge bg-success">OK</span>';
+      let statusConformidade = "OK";
+      let badgeHtml = '<span class="badge bg-success">OK</span>';
       let classeLinha = "";
 
       if (sessoesSemStatus > 0) {
-        statusConformidade =
-          '<span class="badge bg-danger">Presença Pendente</span>';
+        statusConformidade = "Presença Pendente";
+        badgeHtml = '<span class="badge bg-danger">Presença Pendente</span>';
         classeLinha = 'style="background-color: #fff5f5"';
       } else if (sessoesSemEvolucao > 0) {
-        statusConformidade =
+        statusConformidade = "Evolução Pendente";
+        badgeHtml =
           '<span class="badge bg-warning text-dark">Evolução Pendente</span>';
       }
 
       if (totalSessoes === 0 && totalPacientes > 0) {
-        statusConformidade =
+        statusConformidade = "Sem Atividade Recente";
+        badgeHtml =
           '<span class="badge bg-secondary">Sem Atividade Recente</span>';
       }
+
+      // Encode data for button
+      const dadosPendencia = encodeURIComponent(
+        JSON.stringify({
+          nomeProf: prof.nome,
+          telefone: prof.telefone,
+          status: statusConformidade,
+          presencas: pendenciasPresenca,
+          evolucoes: pendenciasEvolucao,
+        })
+      );
 
       html += `
         <tr ${classeLinha}>
@@ -246,12 +307,10 @@ async function carregarMonitoramento() {
           }">${totalSessoes - sessoesSemStatus - sessoesSemEvolucao}/${
         totalSessoes - sessoesSemStatus
       }</td>
-          <td class="text-center">${statusConformidade}</td>
-          <td>
-            <button class="action-button small secondary btn-detalhe-monitor" onclick="alert('Acessar detalhes do profissional ID: ${
-              prof.id
-            }')">
-              <i class="fas fa-search"></i>
+          <td class="text-center">${badgeHtml}</td>
+          <td class="text-end">
+            <button class="action-button small whatsapp btn-cobranca-monitor" onclick="enviarWhatsAppCobranca('${dadosPendencia}')">
+              <i class="fab fa-whatsapp"></i> Cobrar
             </button>
           </td>
         </tr>
@@ -269,42 +328,151 @@ async function carregarMonitoramento() {
   }
 }
 
+// Função Global para o botão de cobrança
+window.enviarWhatsAppCobranca = function (dadosJson) {
+  const dados = JSON.parse(decodeURIComponent(dadosJson));
+
+  if (!dados.telefone) {
+    alert("Profissional sem telefone cadastrado.");
+    return;
+  }
+
+  const primeiroNome = dados.nomeProf.split(" ")[0];
+  let msg = `Olá ${primeiroNome}, tudo bem? 👋\n\nPassando para falar sobre os registros na Intranet (Status: *${dados.status}*).\n\n`;
+
+  if (dados.presencas.length > 0) {
+    msg += `🚨 *Falta registrar Presença/Falta:*\n`;
+    dados.presencas.forEach((p) => {
+      msg += `- ${p.paciente} (${p.data})\n`;
+    });
+    msg += `\n`;
+  }
+
+  if (dados.evolucoes.length > 0) {
+    msg += `📝 *Falta preencher Evolução:*\n`;
+    dados.evolucoes.forEach((e) => {
+      msg += `- ${e.paciente} (${e.data})\n`;
+    });
+    msg += `\n`;
+  }
+
+  msg += `Por favor, regularize assim que possível para mantermos o prontuário em dia. Obrigado! 💙`;
+
+  const link = `https://api.whatsapp.com/send?phone=55${dados.telefone.replace(
+    /\D/g,
+    ""
+  )}&text=${encodeURIComponent(msg)}`;
+  window.open(link, "_blank");
+};
+
 // ============================================
-// ABA 2: AVALIAÇÃO 360
+// ABA 2: AVALIAÇÃO 360 (NOVA LÓGICA)
 // ============================================
-function renderizarListaProfissionais360() {
-  const lista = document.getElementById("lista-profissionais-360");
-  if (!lista) return;
-  lista.innerHTML = "";
+
+function popularSelectProfissionais360() {
+  const select = document.getElementById("select-profissional-360");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Selecione um profissional...</option>';
   listaProfissionais.forEach((prof) => {
-    const li = document.createElement("li");
-    li.className =
-      "list-group-item list-group-item-action d-flex align-items-center";
-    li.style.cursor = "pointer";
-    li.innerHTML = `
-      <img src="${prof.foto}" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover">
-      <span>${prof.nome}</span>
-    `;
-    li.onclick = () => selecionarProfissional360(prof);
-    lista.appendChild(li);
+    const opt = document.createElement("option");
+    opt.value = prof.id;
+    opt.textContent = prof.nome;
+    select.appendChild(opt);
   });
 }
 
-function filtrarListaProfissionais360(termo) {
-  const termoLower = termo.toLowerCase();
-  const itens = document.querySelectorAll("#lista-profissionais-360 li");
-  itens.forEach((li) => {
-    const texto = li.textContent.toLowerCase();
-    li.style.display = texto.includes(termoLower) ? "flex" : "none";
-  });
-}
+async function selecionarProfissional360(profId) {
+  const prof = listaProfissionais.find((p) => p.id === profId);
+  if (!prof) return;
 
-function selecionarProfissional360(prof) {
   document.getElementById("form-container-360").style.display = "block";
+  document.getElementById("stats-container-360").style.display = "block";
   document.getElementById("placeholder-360").style.display = "none";
-  document.getElementById("nome-profissional-360").textContent = prof.nome;
+
   document.getElementById("uid-profissional-360").value = prof.id;
+  document.getElementById("nome-profissional-360-input").value = prof.nome;
   document.getElementById("form-avaliacao-360").reset();
+
+  // Carregar Estatísticas
+  await carregarEstatisticasProfissional(profId);
+}
+
+async function carregarEstatisticasProfissional(profId) {
+  // Zera valores visuais
+  document.getElementById("stat-sessoes-total").textContent = "...";
+  document.getElementById("stat-presencas-pendentes").textContent = "...";
+  document.getElementById("stat-evolucoes-pendentes").textContent = "...";
+  document.getElementById("stat-conformidade").textContent = "...";
+
+  const dataLimite = new Date();
+  dataLimite.setDate(dataLimite.getDate() - 30);
+
+  try {
+    const qPB = query(
+      collection(db, "trilhaPaciente"),
+      where("profissionaisPB_ids", "array-contains", profId),
+      where("status", "in", [
+        "em_atendimento_pb",
+        "aguardando_info_horarios",
+        "pacientes_parcerias",
+      ])
+    );
+
+    const qPlantao = query(
+      collection(db, "trilhaPaciente"),
+      where("plantaoInfo.profissionalId", "==", profId),
+      where("status", "==", "em_atendimento_plantao")
+    );
+
+    const [snapPB, snapPlantao] = await Promise.all([
+      getDocs(qPB),
+      getDocs(qPlantao),
+    ]);
+
+    const pacientesIds = new Set();
+    snapPB.forEach((d) => pacientesIds.add(d.id));
+    snapPlantao.forEach((d) => pacientesIds.add(d.id));
+
+    let totalSessoes = 0;
+    let pendPresenca = 0;
+    let pendEvolucao = 0;
+
+    const promessas = Array.from(pacientesIds).map(async (pid) => {
+      const sessoesRef = collection(db, "trilhaPaciente", pid, "sessoes");
+      const qSessao = query(sessoesRef, where("dataHora", ">=", dataLimite));
+      const snapSessao = await getDocs(qSessao);
+      snapSessao.forEach((doc) => {
+        const data = doc.data();
+        totalSessoes++;
+        if (data.status === "pendente") pendPresenca++;
+        else if (!data.anotacoes?.fichaEvolucao) pendEvolucao++;
+      });
+    });
+
+    await Promise.all(promessas);
+
+    document.getElementById("stat-sessoes-total").textContent = totalSessoes;
+    document.getElementById("stat-presencas-pendentes").textContent =
+      pendPresenca;
+    document.getElementById("stat-evolucoes-pendentes").textContent =
+      pendEvolucao;
+
+    let conformidade = 100;
+    if (totalSessoes > 0) {
+      conformidade = Math.round(
+        ((totalSessoes - pendPresenca - pendEvolucao) / totalSessoes) * 100
+      );
+    }
+    const elConf = document.getElementById("stat-conformidade");
+    elConf.textContent = conformidade + "%";
+
+    if (conformidade < 70) elConf.className = "fw-bold text-danger";
+    else if (conformidade < 90) elConf.className = "fw-bold text-warning";
+    else elConf.className = "fw-bold text-success";
+  } catch (error) {
+    console.error("Erro stats 360:", error);
+  }
 }
 
 async function handleSalvarAvaliacao360(e) {
@@ -313,17 +481,37 @@ async function handleSalvarAvaliacao360(e) {
   btn.disabled = true;
   btn.textContent = "Salvando...";
 
+  // Coleta os dados dos novos campos agrupados
+  const formData = new FormData(e.target);
+
   const avaliacao = {
     avaliadoId: document.getElementById("uid-profissional-360").value,
-    avaliadoNome: document.getElementById("nome-profissional-360").textContent,
+    avaliadoNome: document.getElementById("nome-profissional-360-input").value,
     avaliadorId: currentUserData.uid,
     avaliadorNome: currentUserData.nome,
     dataAvaliacao: serverTimestamp(),
     tipo: "avaliacao_rh_interna",
     notas: {
-      assiduidade: document.getElementById("nota-assiduidade").value,
-      processos: document.getElementById("nota-processos").value,
-      relacionamento: document.getElementById("nota-relacionamento").value,
+      comunicacao_eficacia: formData.get("comunicacao_eficacia"),
+      comunicacao_escuta: formData.get("comunicacao_escuta"),
+      equipe_colaboracao: formData.get("equipe_colaboracao"),
+      equipe_ambiente: formData.get("equipe_ambiente"),
+      lideranca_inspiracao: formData.get("lideranca_inspiracao"),
+      lideranca_feedback: formData.get("lideranca_feedback"),
+      etica_integridade: formData.get("etica_integridade"),
+      etica_prazos: formData.get("etica_prazos"),
+      resultados_metas: formData.get("resultados_metas"),
+      resultados_iniciativa: formData.get("resultados_iniciativa"),
+      proatividade_antecipacao: formData.get("proatividade_antecipacao"),
+      proatividade_responsabilidade: formData.get(
+        "proatividade_responsabilidade"
+      ),
+      inovacao_ideias: formData.get("inovacao_ideias"),
+      inovacao_projetos: formData.get("inovacao_projetos"),
+      inovacao_viabilidade: formData.get("inovacao_viabilidade"),
+      participacao_reunioes: formData.get("participacao_reunioes"),
+      participacao_envolvimento: formData.get("participacao_envolvimento"),
+      participacao_contribuicao: formData.get("participacao_contribuicao"),
     },
     feedbackTexto: document.getElementById("texto-feedback").value,
     enviarEmail: document.getElementById("enviar-email-feedback").checked,
@@ -333,7 +521,11 @@ async function handleSalvarAvaliacao360(e) {
     await addDoc(collection(db, "avaliacoes_internas"), avaliacao);
     window.showToast("Avaliação registrada com sucesso!", "success");
     document.getElementById("form-avaliacao-360").reset();
+
+    // Reseta visualização
+    document.getElementById("select-profissional-360").value = "";
     document.getElementById("form-container-360").style.display = "none";
+    document.getElementById("stats-container-360").style.display = "none";
     document.getElementById("placeholder-360").style.display = "block";
   } catch (error) {
     console.error("Erro ao salvar avaliação:", error);
@@ -430,7 +622,7 @@ async function carregarFeedbacksVoluntarios() {
 }
 
 // ============================================
-// ABA 4: PESQUISA PACIENTE (NPS)
+// ABA 4: PESQUISA PACIENTE (NPS) - ATUALIZADO
 // ============================================
 function popularSelectNPS() {
   const select = document.getElementById("nps-select-profissional");
@@ -457,7 +649,7 @@ function popularSelectNPS() {
     statusSelect.disabled = disabled;
     btnBuscar.disabled = disabled;
     document.getElementById("tbody-nps-pacientes").innerHTML =
-      '<tr><td colspan="4" class="text-center py-4 text-muted">Clique em "Listar Pacientes" para atualizar.</td></tr>';
+      '<tr><td colspan="5" class="text-center py-4 text-muted">Clique em "Listar Pacientes" para atualizar.</td></tr>';
     document.getElementById("contador-pacientes-nps").textContent = "0";
   });
 
@@ -476,7 +668,7 @@ async function listarPacientesParaNPS() {
   if (!profId) return;
 
   tbody.innerHTML =
-    '<tr><td colspan="4" class="text-center py-4"><div class="loading-spinner"></div> Buscando pacientes...</td></tr>';
+    '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div> Buscando pacientes...</td></tr>';
   contadorEl.textContent = "...";
 
   try {
@@ -522,11 +714,19 @@ async function listarPacientesParaNPS() {
       // ✅ CORREÇÃO: Garantir que telefoneCelular seja String para evitar erro no .replace()
       const telefone = data.telefoneCelular ? String(data.telefoneCelular) : "";
 
+      // Mock de data de último envio (pode ser implementado com campo real no futuro)
+      const ultimoEnvio = data.dataUltimoEnvioNPS
+        ? new Date(data.dataUltimoEnvioNPS.seconds * 1000).toLocaleDateString(
+            "pt-BR"
+          )
+        : "-";
+
       pacientesMap.set(doc.id, {
         id: doc.id,
         nome: data.nomeCompleto,
         telefoneCelular: telefone,
         status: data.status,
+        ultimoEnvio: ultimoEnvio,
       });
     };
 
@@ -540,7 +740,7 @@ async function listarPacientesParaNPS() {
 
     if (listaPacientes.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhum paciente encontrado com este status para este profissional.</td></tr>';
+        '<tr><td colspan="5" class="text-center py-4 text-muted">Nenhum paciente encontrado com este status para este profissional.</td></tr>';
       return;
     }
 
@@ -593,7 +793,7 @@ async function listarPacientesParaNPS() {
           <td>${p.nome}</td>
           <td>${p.telefoneCelular || "-"}</td>
           <td><span class="badge ${badgeClass}">${p.status}</span></td>
-          <td class="text-end">${btnWhatsapp}</td>
+          <td>${p.ultimoEnvio}</td> <td class="text-end">${btnWhatsapp}</td>
         </tr>
       `;
     });
