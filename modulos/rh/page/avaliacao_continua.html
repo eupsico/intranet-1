@@ -1,4 +1,7 @@
-<div class="dashboard-section">
+{
+type: "uploaded file",
+fileName: "rh/page/avaliacao_continua.html",
+fullContent: `<div class="dashboard-section">
   <div class="section-header">
     <h2>Avaliação Contínua e Monitoramento</h2>
     <p class="text-muted">
@@ -24,21 +27,21 @@
   <div id="tab-monitoramento" class="tab-content active">
     <div class="description-box">
       <p>
-        Verifique se os voluntários estão preenchendo corretamente as presenças e as fichas de evolução na Trilha do Paciente (últimos 30 dias).
+        Verifique se os voluntários estão preenchendo corretamente as presenças e as fichas de evolução na Trilha do Paciente (últimos 30 dias). O botão de ação envia um relatório de pendências via WhatsApp.
       </p>
     </div>
     
     <div class="table-responsive">
-      <table class="table table-striped">
+      <table class="table table-striped align-middle">
         <thead>
           <tr>
             <th>Profissional</th>
-            <th>Pacientes Ativos</th>
-            <th>Sessões (30d)</th>
-            <th>Presenças Preenchidas</th>
-            <th>Evoluções Preenchidas</th>
-            <th>Status Conformidade</th>
-            <th>Ação</th>
+            <th class="text-center">Pacientes Ativos</th>
+            <th class="text-center">Sessões (30d)</th>
+            <th class="text-center">Presenças Pendentes</th>
+            <th class="text-center">Evoluções Pendentes</th>
+            <th class="text-center">Status Conformidade</th>
+            <th class="text-end">Ação</th>
           </tr>
         </thead>
         <tbody id="tbody-monitoramento">
@@ -51,80 +54,302 @@
   </div>
 
   <div id="tab-avaliacao-rh" class="tab-content" style="display: none;">
-    <div class="row">
-      <div class="col-md-4">
-        <div class="card p-3">
-          <h4>Selecionar Profissional</h4>
-          <div class="form-group">
-            <input type="text" id="busca-profissional-360" class="form-control" placeholder="Buscar por nome...">
-          </div>
-          <ul id="lista-profissionais-360" class="list-group mt-3" style="max-height: 400px; overflow-y: auto;">
-            <li class="list-group-item text-muted">Carregando...</li>
-          </ul>
+    
+    <div class="card p-4 mb-4">
+      <h3 class="mb-3 text-primary"><i class="fas fa-user-tie me-2"></i> Seleção do Profissional</h3>
+      <div class="row">
+        <div class="col-md-6">
+            <label class="fw-bold mb-2">Selecione o Profissional:</label>
+            <select id="select-profissional-360" class="form-control">
+                <option value="">Carregando...</option>
+            </select>
         </div>
       </div>
-      <div class="col-md-8">
-        <div id="form-container-360" class="card p-4" style="display: none;">
-          <h4 class="mb-3">Avaliação de Desempenho: <span id="nome-profissional-360" class="text-primary"></span></h4>
-          <form id="form-avaliacao-360">
-            <input type="hidden" id="uid-profissional-360">
-            
-            <div class="form-group mb-3">
-              <label class="form-label fw-bold">Assiduidade e Pontualidade</label>
-              <select class="form-control" id="nota-assiduidade" required>
-                <option value="">Selecione...</option>
-                <option value="5">Excelente - Sempre pontual e presente</option>
-                <option value="4">Bom - Raramente falta ou atrasa</option>
-                <option value="3">Regular - Algumas faltas/atrasos justificados</option>
-                <option value="2">Ruim - Faltas/atrasos frequentes</option>
-                <option value="1">Crítico - Não cumpre horários</option>
-              </select>
-            </div>
 
-            <div class="form-group mb-3">
-              <label class="form-label fw-bold">Adesão aos Processos (Trilha/Sistemas)</label>
-              <select class="form-control" id="nota-processos" required>
-                <option value="">Selecione...</option>
-                <option value="5">Excelente - Preenche tudo corretamente e no prazo</option>
-                <option value="4">Bom - Preenche a maioria, raros esquecimentos</option>
-                <option value="3">Regular - Precisa de cobrança ocasional</option>
-                <option value="2">Ruim - Frequentemente esquece registros</option>
-                <option value="1">Crítico - Não utiliza os sistemas</option>
-              </select>
+      <div id="stats-container-360" class="mt-4 p-3 bg-light rounded border" style="display: none;">
+        <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i> Estatísticas de Atendimento (Últimos 30 dias)</h5>
+        <div class="row text-center">
+            <div class="col-md-3">
+                <h3 id="stat-sessoes-total" class="fw-bold text-primary">-</h3>
+                <small class="text-muted">Sessões Realizadas</small>
             </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label fw-bold">Relacionamento Interpessoal e Comunicação</label>
-              <select class="form-control" id="nota-relacionamento" required>
-                <option value="">Selecione...</option>
-                <option value="5">Excelente</option>
-                <option value="4">Bom</option>
-                <option value="3">Regular</option>
-                <option value="2">Ruim</option>
-                <option value="1">Crítico</option>
-              </select>
+            <div class="col-md-3">
+                <h3 id="stat-presencas-pendentes" class="fw-bold text-warning">-</h3>
+                <small class="text-muted">Presenças Não Informadas</small>
             </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label fw-bold">Feedback Qualitativo (Pontos Fortes e a Desenvolver)</label>
-              <textarea class="form-control" id="texto-feedback" rows="5" required></textarea>
+            <div class="col-md-3">
+                <h3 id="stat-evolucoes-pendentes" class="fw-bold text-danger">-</h3>
+                <small class="text-muted">Evoluções Não Preenchidas</small>
             </div>
-
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="enviar-email-feedback">
-              <label class="form-check-label" for="enviar-email-feedback">
-                Enviar cópia deste feedback por e-mail ao voluntário
-              </label>
+            <div class="col-md-3">
+                <h3 id="stat-conformidade" class="fw-bold text-success">-</h3>
+                <small class="text-muted">Índice de Conformidade</small>
             </div>
-
-            <button type="submit" class="action-button primary">Salvar Avaliação</button>
-          </form>
-        </div>
-        <div id="placeholder-360" class="alert alert-info mt-3">
-          Selecione um profissional na lista ao lado para iniciar a avaliação.
         </div>
       </div>
     </div>
+
+    <div id="form-container-360" class="card p-4" style="display: none;">
+      <h3 class="mb-4" style="color: var(--cor-primaria);">Formulário de Avaliação de Desempenho</h3>
+      
+      <form id="form-avaliacao-360">
+        <input type="hidden" id="uid-profissional-360">
+        <input type="hidden" id="nome-profissional-360-input">
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">1. Comunicação</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">O colaborador se comunica de forma clara e eficaz?</label>
+                <select class="form-control" name="comunicacao_eficacia" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Quase sempre</option>
+                    <option value="3">Às vezes</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ele escuta atentamente e considera opiniões diferentes?</label>
+                <select class="form-control" name="comunicacao_escuta" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Quase sempre</option>
+                    <option value="3">Às vezes</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">2. Trabalho em Equipe</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">Demonstra colaboração e respeito pelos colegas?</label>
+                <select class="form-control" name="equipe_colaboracao" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Excelente</option>
+                    <option value="4">Bom</option>
+                    <option value="3">Regular</option>
+                    <option value="2">Ruim</option>
+                    <option value="1">Crítico</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contribui para um ambiente positivo e produtivo?</label>
+                <select class="form-control" name="equipe_ambiente" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">3. Liderança (se aplicável)</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">Inspira e motiva a equipe?</label>
+                <select class="form-control" name="lideranca_inspiracao">
+                    <option value="na">Não se aplica</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dá feedback construtivo e orienta o desenvolvimento dos outros?</label>
+                <select class="form-control" name="lideranca_feedback">
+                    <option value="na">Não se aplica</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">4. Ética e Profissionalismo</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">Age com integridade e responsabilidade?</label>
+                <select class="form-control" name="etica_integridade" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Quase sempre</option>
+                    <option value="3">Às vezes</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Cumpre prazos e compromissos assumidos?</label>
+                <select class="form-control" name="etica_prazos" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Maioria das vezes</option>
+                    <option value="3">Às vezes</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">5. Resultados e Desempenho</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">Alcança as metas estabelecidas?</label>
+                <select class="form-control" name="resultados_metas" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Supera expectativas</option>
+                    <option value="4">Atende plenamente</option>
+                    <option value="3">Atende parcialmente</option>
+                    <option value="2">Abaixo do esperado</option>
+                    <option value="1">Não atende</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Demonstra iniciativa e capacidade de resolver problemas?</label>
+                <select class="form-control" name="resultados_iniciativa" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Excelente</option>
+                    <option value="4">Bom</option>
+                    <option value="3">Regular</option>
+                    <option value="2">Ruim</option>
+                    <option value="1">Crítico</option>
+                </select>
+            </div>
+        </fieldset>
+        
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">6. Proatividade</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">O colaborador antecipa problemas e age antes que eles ocorram?</label>
+                <select class="form-control" name="proatividade_antecipacao" required>
+                     <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Demonstra iniciativa ao assumir responsabilidades adicionais sem necessidade de solicitação?</label>
+                <select class="form-control" name="proatividade_responsabilidade" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">7. Inovação e Melhorias</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">O colaborador apresenta ideias inovadoras para melhorar processos ou resultados?</label>
+                <select class="form-control" name="inovacao_ideias" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+             <div class="form-group mb-3">
+                <label class="form-label">Contribui com sugestões relevantes para novos projetos da equipe?</label>
+                <select class="form-control" name="inovacao_projetos" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+             <div class="form-group">
+                <label class="form-label">Suas propostas costumam ser viáveis e alinhadas aos objetivos da organização?</label>
+                <select class="form-control" name="inovacao_viabilidade" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+         <fieldset class="mb-4 border p-3 rounded">
+            <legend class="w-auto px-2 text-primary fw-bold" style="font-size: 1.1rem;">8. Participação Ativa</legend>
+            <div class="form-group mb-3">
+                <label class="form-label">O colaborador participa de forma engajada nas reuniões e atividades da equipe?</label>
+                <select class="form-control" name="participacao_reunioes" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+             <div class="form-group mb-3">
+                <label class="form-label">Se envolve ativamente na execução das tarefas, mesmo quando não são de sua responsabilidade direta?</label>
+                <select class="form-control" name="participacao_envolvimento" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+             <div class="form-group">
+                <label class="form-label">Sua participação contribui para o andamento e sucesso das atividades?</label>
+                <select class="form-control" name="participacao_contribuicao" required>
+                    <option value="">Selecione...</option>
+                    <option value="5">Sempre</option>
+                    <option value="4">Frequentemente</option>
+                    <option value="3">Ocasionalmente</option>
+                    <option value="2">Raramente</option>
+                    <option value="1">Nunca</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <div class="form-group mb-3">
+            <label class="form-label fw-bold">Considerações Finais (Feedback Qualitativo)</label>
+            <textarea class="form-control" id="texto-feedback" rows="4" required placeholder="Pontos fortes, áreas a desenvolver e comentários gerais..."></textarea>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="enviar-email-feedback">
+            <label class="form-check-label" for="enviar-email-feedback">
+            Enviar cópia deste feedback por e-mail ao voluntário
+            </label>
+        </div>
+
+        <button type="submit" class="action-button primary w-100">
+            <i class="fas fa-save me-2"></i> Salvar Avaliação
+        </button>
+      </form>
+    </div>
+    
+    <div id="placeholder-360" class="alert alert-info mt-3 text-center p-5">
+      <i class="fas fa-arrow-up mb-3" style="font-size: 2rem;"></i>
+      <h4>Selecione um profissional acima</h4>
+      <p>Escolha um colaborador na lista suspensa para visualizar estatísticas e iniciar a avaliação.</p>
+    </div>
+
   </div>
 
   <div id="tab-feedback-profissional" class="tab-content" style="display: none;">
@@ -140,7 +365,6 @@
         </button>
       </div>
     </div>
-
     <div class="row mb-4">
       <div class="col-md-3">
         <div class="card p-3 text-center border-primary">
@@ -167,7 +391,6 @@
         </div>
       </div>
     </div>
-    
     <div class="card">
       <div class="card-header bg-light">
         <h5 class="mb-0"><i class="fas fa-list me-2"></i> Feedbacks Recentes</h5>
@@ -198,9 +421,8 @@
       <h3 class="mb-4" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">
         <i class="fas fa-search me-2"></i> Seleção de Pacientes
       </h3>
-      <p class="text-muted small">Selecione o profissional e o status para listar os pacientes.</p>
       
-      <div class="row align-items-end">
+      <div class="row">
         <div class="col-md-4 form-group mb-3">
           <label class="fw-bold mb-2">1. Profissional:</label>
           <select id="nps-select-profissional" class="form-control">
@@ -216,7 +438,7 @@
           </select>
         </div>
 
-        <div class="col-md-4 form-group mb-3">
+        <div class="col-md-4 form-group mb-3 d-flex align-items-end">
           <button id="nps-btn-buscar" class="action-button primary w-100" disabled style="height: 42px;">
             <i class="fas fa-list me-2"></i> Listar Pacientes
           </button>
@@ -227,24 +449,23 @@
     <hr class="my-4" style="border-top: 2px solid #e9ecef;">
 
     <div class="card p-0">
-      <div class="card-header bg-light p-3 border-bottom">
-        <h3 class="mb-0 m-0" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">
-          Lista de Pacientes para Envio <span id="contador-pacientes-nps" class="badge bg-secondary ms-2" style="font-size: 0.9rem;">0</span>
-        </h3>
+      <div class="card-header bg-light p-3 border-bottom d-flex align-items-center gap-2">
+        <h3 class="mb-0 m-0" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">Lista de Pacientes</h3>
+        <span id="contador-pacientes-nps" class="badge bg-secondary" style="font-size: 1rem;">0</span>
       </div>
-      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+      <div class="table-responsive">
         <table class="table table-hover mb-0" id="tabela-nps-pacientes">
           <thead style="position: sticky; top: 0; background: white; z-index: 1;">
             <tr>
               <th>Paciente</th>
               <th>Telefone</th>
               <th>Status</th>
-              <th class="text-end">Ação</th>
+              <th>Último Envio</th> <th class="text-end">Ação</th>
             </tr>
           </thead>
           <tbody id="tbody-nps-pacientes">
             <tr>
-              <td colspan="4" class="text-center py-5 text-muted">
+              <td colspan="5" class="text-center py-5 text-muted">
                 Selecione um profissional e clique em "Listar Pacientes"
               </td>
             </tr>
@@ -257,4 +478,5 @@
 
 </div>
 
-<script type="module" src="../js/avaliacao_continua.js"></script>
+<script type="module" src="../js/avaliacao_continua.js"></script>`
+}
