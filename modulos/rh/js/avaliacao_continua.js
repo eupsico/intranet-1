@@ -1,5 +1,5 @@
 // Arquivo: modulos/rh/js/avaliacao_continua.js
-// Versão: 1.3.0 (Correção Definitiva: Conversão de Tipo Telefone Paciente)
+// Versão: 1.4.0 (Atualização: Layout Pesquisa Paciente e Query Parcerias)
 // Descrição: Gerencia o monitoramento de conformidade, avaliação 360 e feedback.
 
 import {
@@ -154,7 +154,11 @@ async function carregarMonitoramento() {
       const qPB = query(
         collection(db, "trilhaPaciente"),
         where("profissionaisPB_ids", "array-contains", prof.id),
-        where("status", "in", ["em_atendimento_pb", "aguardando_info_horarios"])
+        where("status", "in", [
+          "em_atendimento_pb",
+          "aguardando_info_horarios",
+          "pacientes_parcerias",
+        ]) // ✅ Incluído parcerias
       );
 
       const qPlantao = query(
@@ -454,6 +458,7 @@ function popularSelectNPS() {
     btnBuscar.disabled = disabled;
     document.getElementById("tbody-nps-pacientes").innerHTML =
       '<tr><td colspan="4" class="text-center py-4 text-muted">Clique em "Listar Pacientes" para atualizar.</td></tr>';
+    document.getElementById("contador-pacientes-nps").textContent = "0";
   });
 
   btnBuscar.addEventListener("click", listarPacientesParaNPS);
@@ -466,11 +471,13 @@ async function listarPacientesParaNPS() {
   ].dataset.nome;
   const statusTipo = document.getElementById("nps-select-status").value;
   const tbody = document.getElementById("tbody-nps-pacientes");
+  const contadorEl = document.getElementById("contador-pacientes-nps");
 
   if (!profId) return;
 
   tbody.innerHTML =
     '<tr><td colspan="4" class="text-center py-4"><div class="loading-spinner"></div> Buscando pacientes...</td></tr>';
+  contadorEl.textContent = "...";
 
   try {
     let statusFiltro = [];
@@ -479,6 +486,7 @@ async function listarPacientesParaNPS() {
         "em_atendimento_pb",
         "em_atendimento_plantao",
         "aguardando_info_horarios",
+        "pacientes_parcerias", // ✅ Incluído parcerias também aqui
       ];
     } else {
       statusFiltro = [
@@ -526,6 +534,9 @@ async function listarPacientesParaNPS() {
     snapPB.forEach(processarDoc);
 
     const listaPacientes = Array.from(pacientesMap.values());
+
+    // ✅ Atualiza o contador
+    contadorEl.textContent = listaPacientes.length;
 
     if (listaPacientes.length === 0) {
       tbody.innerHTML =
@@ -575,6 +586,7 @@ async function listarPacientesParaNPS() {
       if (p.status.includes("atendimento")) badgeClass = "bg-success";
       if (p.status === "alta") badgeClass = "bg-primary";
       if (p.status === "desistencia") badgeClass = "bg-danger";
+      if (p.status === "pacientes_parcerias") badgeClass = "bg-info text-dark";
 
       html += `
         <tr>
