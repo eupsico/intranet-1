@@ -1,5 +1,6 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-horarios-pb.js
 // Lógica para o modal refatorado de Horários PB (informar, desistir, alterar).
+// *** CORREÇÃO: Refatorada linha ~67 para evitar erro de parsing do Prettier com '?.' e '=' ***
 
 import {
   db,
@@ -18,137 +19,6 @@ import {
 import * as estado from "../estado.js"; // Shared state
 import * as carregador from "../carregador-dados.js"; // To reload data
 import * as interfaceUI from "../interface.js"; // To update UI
-
-// --- TEMPLATES HTML (Incorporados para evitar erro 404) ---
-
-const HTML_NOVAS_SESSOES = `
-<form id="solicitar-sessoes-form">
-    <div class="form-group">
-      <label for="solicitar-dia-semana">Dia da semana:*</label>
-      <select id="solicitar-dia-semana" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Segunda-feira">Segunda-feira</option>
-        <option value="Terça-feira">Terça-feira</option>
-        <option value="Quarta-feira">Quarta-feira</option>
-        <option value="Quinta-feira">Quinta-feira</option>
-        <option value="Sexta-feira">Sexta-feira</option>
-        <option value="Sábado">Sábado</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="solicitar-horario">Horário:*</label>
-      <select id="solicitar-horario" class="form-control" required>
-        <option value="">Selecione...</option>
-        </select>
-    </div>
-    <div class="form-group">
-      <label for="solicitar-tipo-atendimento">Tipo de atendimento:*</label>
-      <select id="solicitar-tipo-atendimento" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Presencial">Presencial</option>
-        <option value="online">Online</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="solicitar-frequencia">Frequência:*</label>
-      <select id="solicitar-frequencia" class="form-control" required>
-        <option value="">Selecione...</option>
-        <option value="Semanal">Semanal</option>
-        <option value="Quinzenal">Quinzenal</option>
-        <option value="Mensal">Mensal</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="solicitar-sala">Sala:*</label>
-      <select id="solicitar-sala" class="form-control" required>
-        <option value="">Selecione...</option>
-        </select>
-    </div>
-    <div class="form-group">
-      <label for="solicitar-data-inicio">Data de início:*</label>
-      <input type="date" id="solicitar-data-inicio" class="form-control" required>
-    </div>
-</form>
-`;
-
-const HTML_ALTERAR_HORARIO = `
-<form id="alterar-horario-form">
-    <fieldset>
-        <legend>Dados Atuais (Registrados)</legend>
-        <div class="form-grid cols-3">
-             <div class="form-group">
-                <label>Dia Atual</label>
-                <input type="text" id="alterar-dia-atual" class="form-control" readonly>
-            </div>
-            <div class="form-group">
-                <label>Horário Atual</label>
-                <input type="text" id="alterar-horario-atual" class="form-control" readonly>
-            </div>
-            <div class="form-group">
-                <label>Modalidade Atual</label>
-                <input type="text" id="alterar-modalidade-atual" class="form-control" readonly>
-            </div>
-        </div>
-    </fieldset>
-    <fieldset>
-        <legend>Nova Configuração Desejada</legend>
-        <div class="form-group">
-          <label for="alterar-dia-semana">Novo Dia:*</label>
-          <select id="alterar-dia-semana" class="form-control" required>
-            <option value="">Selecione...</option>
-            <option value="Segunda-feira">Segunda-feira</option>
-            <option value="Terça-feira">Terça-feira</option>
-            <option value="Quarta-feira">Quarta-feira</option>
-            <option value="Quinta-feira">Quinta-feira</option>
-            <option value="Sexta-feira">Sexta-feira</option>
-            <option value="Sábado">Sábado</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="alterar-horario">Novo Horário:*</label>
-          <select id="alterar-horario" class="form-control" required>
-            </select>
-        </div>
-        <div class="form-group">
-          <label for="alterar-tipo-atendimento">Nova Modalidade:*</label>
-          <select id="alterar-tipo-atendimento" class="form-control" required>
-            <option value="">Selecione...</option>
-            <option value="Presencial">Presencial</option>
-            <option value="Online">Online</option>
-          </select>
-        </div>
-         <div class="form-group">
-          <label for="alterar-frequencia">Frequência:*</label>
-          <select id="alterar-frequencia" class="form-control" required>
-            <option value="">Selecione...</option>
-            <option value="Semanal">Semanal</option>
-            <option value="Quinzenal">Quinzenal</option>
-            <option value="Mensal">Mensal</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="alterar-sala">Nova Sala:*</label>
-          <select id="alterar-sala" class="form-control" required>
-             </select>
-        </div>
-        <div class="form-group">
-            <label for="alterar-data-inicio">A partir de:*</label>
-            <input type="date" id="alterar-data-inicio" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="alterar-grade">Alterar na Grade?*</label>
-            <select id="alterar-grade" class="form-control" required>
-                <option value="Sim">Sim</option>
-                <option value="Não">Não</option>
-            </select>
-        </div>
-         <div class="form-group">
-            <label for="alterar-justificativa">Justificativa (Opcional):</label>
-            <textarea id="alterar-justificativa" rows="2" class="form-control"></textarea>
-        </div>
-    </fieldset>
-</form>
-`;
 
 // --- Funções Exportadas ---
 
@@ -245,6 +115,7 @@ export async function abrirModalHorariosPb() {
   formContinuacaoContainer.innerHTML = "";
   formAlteracaoContainer.innerHTML = "";
 
+  // *** CORREÇÃO APLICADA AQUI ***
   // Limpa campo de texto de motivo de desistência (se existir) de forma segura
   const motivoDesistenciaInput = motivoDesistenciaContainer.querySelector(
     "#motivo-desistencia-pb"
@@ -252,6 +123,7 @@ export async function abrirModalHorariosPb() {
   if (motivoDesistenciaInput) {
     motivoDesistenciaInput.value = ""; // Limpa campo de texto
   }
+  // *** FIM DA CORREÇÃO ***
 
   // Limpa 'required' de todos os elementos dentro do form principal E dos containers dinâmicos
   form.querySelectorAll("[required]").forEach((el) => (el.required = false));
@@ -336,18 +208,28 @@ async function listenerIniciouPbChange(event) {
 
   if (radio.value === "sim" && radio.checked) {
     formContinuacaoContainer.style.display = "block";
-
-    // --- ALTERAÇÃO: Usa HTML constante em vez de fetch ---
-    formContinuacaoContainer.innerHTML = HTML_NOVAS_SESSOES;
-
-    // Configura a lógica JS específica DESTE formulário carregado
-    const atendimentoId = formPrincipal.querySelector(
-      "#atendimento-id-horarios-modal"
-    )?.value;
-    const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
-      (at) => at.atendimentoId === atendimentoId
-    );
-    setupFormLogicNovasSessoes(formContinuacaoContainer, atendimentoAtual); // Passa o atendimento
+    formContinuacaoContainer.innerHTML =
+      '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
+    try {
+      // ** Verifique o caminho! **
+      const response = await fetch("./modal-content-novas-sessoes.html");
+      if (!response.ok)
+        throw new Error(
+          `Erro ${response.status} ao buscar ./modal-content-novas-sessoes.html`
+        );
+      formContinuacaoContainer.innerHTML = await response.text();
+      // Configura a lógica JS específica DESTE formulário carregado
+      const atendimentoId = formPrincipal.querySelector(
+        "#atendimento-id-horarios-modal"
+      )?.value;
+      const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
+        (at) => at.atendimentoId === atendimentoId
+      );
+      setupFormLogicNovasSessoes(formContinuacaoContainer, atendimentoAtual); // Passa o atendimento
+    } catch (error) {
+      console.error("Erro ao carregar form Novas Sessões:", error);
+      formContinuacaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
+    }
   } else if (radio.value === "nao" && radio.checked) {
     motivoNaoInicioContainer.style.display = "block";
     // Torna a escolha do motivo obrigatória
@@ -394,18 +276,28 @@ async function listenerMotivoNaoInicioChange(event) {
     if (motivoInput) motivoInput.required = true;
   } else if (radio.value === "outra_modalidade" && radio.checked) {
     formAlteracaoContainer.style.display = "block";
-
-    // --- ALTERAÇÃO: Usa HTML constante em vez de fetch ---
-    formAlteracaoContainer.innerHTML = HTML_ALTERAR_HORARIO;
-
-    // Configura a lógica JS específica DESTE formulário carregado
-    const atendimentoId = formPrincipal.querySelector(
-      "#atendimento-id-horarios-modal"
-    )?.value;
-    const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
-      (at) => at.atendimentoId === atendimentoId
-    );
-    setupFormLogicAlterarHorario(formAlteracaoContainer, atendimentoAtual); // Passa o atendimento
+    formAlteracaoContainer.innerHTML =
+      '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
+    try {
+      // ** Verifique o caminho! **
+      const response = await fetch("./modal-content-alterar-horario.html");
+      if (!response.ok)
+        throw new Error(
+          `Erro ${response.status} ao buscar ./modal-content-alterar-horario.html`
+        );
+      formAlteracaoContainer.innerHTML = await response.text();
+      // Configura a lógica JS específica DESTE formulário carregado
+      const atendimentoId = formPrincipal.querySelector(
+        "#atendimento-id-horarios-modal"
+      )?.value;
+      const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
+        (at) => at.atendimentoId === atendimentoId
+      );
+      setupFormLogicAlterarHorario(formAlteracaoContainer, atendimentoAtual); // Passa o atendimento
+    } catch (error) {
+      console.error("Erro ao carregar form Alterar Horário:", error);
+      formAlteracaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
+    }
   }
 }
 
