@@ -192,61 +192,67 @@
     </div>
   </div>
 
-<div id="tab-pesquisa-paciente" class="tab-content" style="display: none;">
-    <div class="row">
-      <div class="col-md-4">
-        <div class="card p-3 h-100">
-          <h4><i class="fas fa-search me-2"></i> Seleção de Pacientes</h4>
-          <p class="text-muted small">Selecione o profissional e o status para listar os pacientes.</p>
-          
-          <div class="form-group mb-3">
-            <label class="fw-bold">1. Profissional:</label>
-            <select id="nps-select-profissional" class="form-control">
-              <option value="">Carregando...</option>
-            </select>
-          </div>
+  <div id="tab-pesquisa-paciente" class="tab-content" style="display: none;">
+    
+    <div class="card p-4 mb-4">
+      <h3 class="mb-4" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">
+        <i class="fas fa-search me-2"></i> Seleção de Pacientes
+      </h3>
+      <p class="text-muted small">Selecione o profissional e o status para listar os pacientes.</p>
+      
+      <div class="row align-items-end">
+        <div class="col-md-4 form-group mb-3">
+          <label class="fw-bold mb-2">1. Profissional:</label>
+          <select id="nps-select-profissional" class="form-control">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
 
-          <div class="form-group mb-3">
-            <label class="fw-bold">2. Status do Paciente:</label>
-            <select id="nps-select-status" class="form-control" disabled>
-              <option value="ativo">Ativos (Em Atendimento)</option>
-              <option value="inativo">Inativos (Alta/Desistência)</option>
-            </select>
-          </div>
+        <div class="col-md-4 form-group mb-3">
+          <label class="fw-bold mb-2">2. Status do Paciente:</label>
+          <select id="nps-select-status" class="form-control" disabled>
+            <option value="ativo">Ativos (Em Atendimento)</option>
+            <option value="inativo">Inativos (Alta/Desistência)</option>
+          </select>
+        </div>
 
-          <button id="nps-btn-buscar" class="action-button primary w-100" disabled>
-            <i class="fas fa-list"></i> Listar Pacientes
+        <div class="col-md-4 form-group mb-3">
+          <button id="nps-btn-buscar" class="action-button primary w-100" disabled style="height: 42px;">
+            <i class="fas fa-list me-2"></i> Listar Pacientes
           </button>
         </div>
       </div>
+    </div>
 
-      <div class="col-md-8">
-        <div class="card p-0">
-          <div class="card-header bg-light p-3 border-bottom">
-            <h5 class="mb-0 m-0">Lista de Pacientes para Envio</h5>
-          </div>
-          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-            <table class="table table-hover mb-0" id="tabela-nps-pacientes">
-              <thead style="position: sticky; top: 0; background: white; z-index: 1;">
-                <tr>
-                  <th>Paciente</th>
-                  <th>Telefone</th>
-                  <th>Status</th>
-                  <th class="text-end">Ação</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-nps-pacientes">
-                <tr>
-                  <td colspan="4" class="text-center py-5 text-muted">
-                    Selecione um profissional e clique em "Listar Pacientes"
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <hr class="my-4" style="border-top: 2px solid #e9ecef;">
+
+    <div class="card p-0">
+      <div class="card-header bg-light p-3 border-bottom">
+        <h3 class="mb-0 m-0" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">
+          Lista de Pacientes para Envio <span id="contador-pacientes-nps" class="badge bg-secondary ms-2" style="font-size: 0.9rem;">0</span>
+        </h3>
+      </div>
+      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-hover mb-0" id="tabela-nps-pacientes">
+          <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+            <tr>
+              <th>Paciente</th>
+              <th>Telefone</th>
+              <th>Status</th>
+              <th class="text-end">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-nps-pacientes">
+            <tr>
+              <td colspan="4" class="text-center py-5 text-muted">
+                Selecione um profissional e clique em "Listar Pacientes"
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
+
   </div>
 
 </div>
