@@ -53,9 +53,12 @@
   <div id="tab-avaliacao-rh" class="tab-content" style="display: none;">
     
     <div class="card p-4 mb-4">
-      <h3 class="mb-3 text-primary"><i class="fas fa-user-tie me-2"></i> Seleção do Profissional</h3>
+      <h3 class="mb-4" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">
+        <i class="fas fa-user-tie me-2"></i> Seleção do Profissional
+      </h3>
+      
       <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-6 form-group mb-3">
             <label class="fw-bold mb-2">Selecione o Profissional:</label>
             <select id="select-profissional-360" class="form-control">
                 <option value="">Carregando...</option>
@@ -419,7 +422,7 @@
         <i class="fas fa-search me-2"></i> Seleção de Pacientes
       </h3>
       
-      <div class="row">
+      <div class="row align-items-end">
         <div class="col-md-4 form-group mb-3">
           <label class="fw-bold mb-2">1. Profissional:</label>
           <select id="nps-select-profissional" class="form-control">
@@ -447,8 +450,7 @@
 
     <div class="card p-0">
       <div class="card-header bg-light p-3 border-bottom d-flex align-items-center gap-2">
-        <h3 class="mb-0 m-0" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">Lista de Pacientes</h3>
-        <span id="contador-pacientes-nps" class="badge bg-secondary" style="font-size: 1rem;">0</span>
+        <h3 class="mb-0 m-0" style="font-size: 1.5rem; color: var(--cor-primaria); font-weight: 600;">Lista de Pacientes <span id="contador-pacientes-nps" class="badge bg-secondary ms-2" style="font-size: 1rem;">0</span></h3>
       </div>
       <div class="table-responsive">
         <table class="table table-hover mb-0" id="tabela-nps-pacientes">
@@ -457,7 +459,8 @@
               <th>Paciente</th>
               <th>Telefone</th>
               <th>Status</th>
-              <th>Último Envio</th> <th class="text-end">Ação</th>
+              <th>Último Envio</th>
+              <th class="text-end">Ação</th>
             </tr>
           </thead>
           <tbody id="tbody-nps-pacientes">
@@ -475,4 +478,4 @@
 
 </div>
 
-<script type="module" src="../js/avaliacao_continua.js"></script>`
+<script type="module" src="../js/avaliacao_continua.js"></script>
