@@ -1,6 +1,5 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/modais/modal-horarios-pb.js
-// Lógica para o modal refatorado de Horários PB (informar, desistir, alterar).
-// *** CORREÇÃO: Refatorada linha ~67 para evitar erro de parsing do Prettier com '?.' e '=' ***
+// Versão: Corrigida (HTML injetado via JS para eliminar erro de fetch)
 
 import {
   db,
@@ -101,6 +100,7 @@ export async function abrirModalHorariosPb() {
   form.reset(); // Limpa todos os campos do form principal
   pacienteIdInput.value = estado.pacienteIdGlobal;
   atendimentoIdInput.value = atendimentoPbDoUsuario.atendimentoId;
+
   // Oculta todos os containers condicionais
   [
     motivoNaoInicioContainer,
@@ -111,11 +111,11 @@ export async function abrirModalHorariosPb() {
   ].forEach((el) => {
     if (el) el.style.display = "none";
   });
-  // Limpa o conteúdo dos containers que carregam forms externos
+
+  // Limpa o conteúdo dos containers dinâmicos
   formContinuacaoContainer.innerHTML = "";
   formAlteracaoContainer.innerHTML = "";
 
-  // *** CORREÇÃO APLICADA AQUI ***
   // Limpa campo de texto de motivo de desistência (se existir) de forma segura
   const motivoDesistenciaInput = motivoDesistenciaContainer.querySelector(
     "#motivo-desistencia-pb"
@@ -123,11 +123,9 @@ export async function abrirModalHorariosPb() {
   if (motivoDesistenciaInput) {
     motivoDesistenciaInput.value = ""; // Limpa campo de texto
   }
-  // *** FIM DA CORREÇÃO ***
 
-  // Limpa 'required' de todos os elementos dentro do form principal E dos containers dinâmicos
+  // Limpa 'required' de todos os elementos
   form.querySelectorAll("[required]").forEach((el) => (el.required = false));
-  // Limpa requireds especificos que podem ter sido adicionados dinamicamente
   motivoNaoInicioContainer
     .querySelectorAll("[required]")
     .forEach((el) => (el.required = false));
@@ -145,15 +143,13 @@ export async function abrirModalHorariosPb() {
   btnSalvarHorarios.textContent = "Salvar";
 
   // --- Remove Listeners Antigos e Adiciona Novos ---
-  // Usar clonagem para garantir remoção de listeners anônimos anteriores
   const radiosIniciouOriginais = form.querySelectorAll(
     'input[name="iniciou-pb"]'
   );
   radiosIniciouOriginais.forEach((radio) => {
     const clone = radio.cloneNode(true);
-    clone.required = true; // Mantém required no clone
+    clone.required = true;
     radio.parentNode.replaceChild(clone, radio);
-    // Adiciona listener AO CLONE
     clone.addEventListener("change", listenerIniciouPbChange);
   });
 
@@ -163,11 +159,10 @@ export async function abrirModalHorariosPb() {
   radiosMotivoOriginais.forEach((radio) => {
     const clone = radio.cloneNode(true);
     radio.parentNode.replaceChild(clone, radio);
-    // Adiciona listener AO CLONE
     clone.addEventListener("change", listenerMotivoNaoInicioChange);
   });
 
-  modal.style.display = "flex"; // Exibe o modal
+  modal.style.display = "flex";
 }
 
 // --- Funções Listener (Internas do Módulo) ---
@@ -175,7 +170,7 @@ export async function abrirModalHorariosPb() {
 /** Listener para mudanças no radio 'iniciou-pb' */
 async function listenerIniciouPbChange(event) {
   const radio = event.target;
-  const formPrincipal = radio.closest("form"); // Encontra o form pai
+  const formPrincipal = radio.closest("form");
   const formContinuacaoContainer = document.getElementById(
     "form-continuacao-pb"
   );
@@ -188,7 +183,7 @@ async function listenerIniciouPbChange(event) {
   const formAlteracaoContainer = document.getElementById("form-alteracao-pb");
   const feedbackGradeDiv = document.getElementById("validacao-grade-feedback");
 
-  // Reset geral das seções condicionais e seus requireds antes de mostrar a correta
+  // Reset geral das seções condicionais
   [
     formContinuacaoContainer,
     motivoNaoInicioContainer,
@@ -198,45 +193,39 @@ async function listenerIniciouPbChange(event) {
   ].forEach((el) => {
     if (el) el.style.display = "none";
   });
-  formContinuacaoContainer.innerHTML = ""; // Limpa conteúdo dinâmico
-  formAlteracaoContainer.innerHTML = ""; // Limpa conteúdo dinâmico
+
+  formContinuacaoContainer.innerHTML = "";
+  formAlteracaoContainer.innerHTML = "";
+
+  // Limpa requireds
   formPrincipal
     .querySelectorAll(
       "#motivo-nao-inicio-pb-container [required], #motivo-desistencia-container [required], #form-continuacao-pb [required], #form-alteracao-pb [required]"
     )
-    .forEach((el) => (el.required = false)); // Limpa requireds de todas as seções
+    .forEach((el) => (el.required = false));
 
   if (radio.value === "sim" && radio.checked) {
+    // CASO SIM: Mostra formulário de Novas Sessões (Construído via JS)
     formContinuacaoContainer.style.display = "block";
-    formContinuacaoContainer.innerHTML =
-      '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
-    try {
-      // ** Verifique o caminho! **
-      const response = await fetch("./modal-content-novas-sessoes.html");
-      if (!response.ok)
-        throw new Error(
-          `Erro ${response.status} ao buscar ./modal-content-novas-sessoes.html`
-        );
-      formContinuacaoContainer.innerHTML = await response.text();
-      // Configura a lógica JS específica DESTE formulário carregado
-      const atendimentoId = formPrincipal.querySelector(
-        "#atendimento-id-horarios-modal"
-      )?.value;
-      const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
-        (at) => at.atendimentoId === atendimentoId
-      );
-      setupFormLogicNovasSessoes(formContinuacaoContainer, atendimentoAtual); // Passa o atendimento
-    } catch (error) {
-      console.error("Erro ao carregar form Novas Sessões:", error);
-      formContinuacaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
-    }
+
+    // Injeta o HTML diretamente
+    formContinuacaoContainer.innerHTML = getHtmlNovasSessoes();
+
+    // Configura a lógica
+    const atendimentoId = formPrincipal.querySelector(
+      "#atendimento-id-horarios-modal"
+    )?.value;
+    const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
+      (at) => at.atendimentoId === atendimentoId
+    );
+    setupFormLogicNovasSessoes(formContinuacaoContainer, atendimentoAtual);
   } else if (radio.value === "nao" && radio.checked) {
+    // CASO NÃO: Mostra opções de motivo
     motivoNaoInicioContainer.style.display = "block";
-    // Torna a escolha do motivo obrigatória
     formPrincipal
       .querySelectorAll('input[name="motivo-nao-inicio"]')
       .forEach((r) => {
-        r.checked = false; // Garante que nenhum esteja pré-selecionado
+        r.checked = false;
         r.required = true;
       });
   }
@@ -252,7 +241,7 @@ async function listenerMotivoNaoInicioChange(event) {
   const formAlteracaoContainer = document.getElementById("form-alteracao-pb");
   const feedbackGradeDiv = document.getElementById("validacao-grade-feedback");
 
-  // Reset das seções específicas do 'Não' e seus requireds
+  // Reset das seções específicas do 'Não'
   [
     motivoDesistenciaContainer,
     formAlteracaoContainer,
@@ -260,7 +249,8 @@ async function listenerMotivoNaoInicioChange(event) {
   ].forEach((el) => {
     if (el) el.style.display = "none";
   });
-  formAlteracaoContainer.innerHTML = ""; // Limpa conteúdo dinâmico
+
+  formAlteracaoContainer.innerHTML = "";
   motivoDesistenciaContainer
     .querySelectorAll("[required]")
     .forEach((el) => (el.required = false));
@@ -276,93 +266,204 @@ async function listenerMotivoNaoInicioChange(event) {
     if (motivoInput) motivoInput.required = true;
   } else if (radio.value === "outra_modalidade" && radio.checked) {
     formAlteracaoContainer.style.display = "block";
-    formAlteracaoContainer.innerHTML =
-      '<div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando formulário...';
-    try {
-      // ** Verifique o caminho! **
-      const response = await fetch("./modal-content-alterar-horario.html");
-      if (!response.ok)
-        throw new Error(
-          `Erro ${response.status} ao buscar ./modal-content-alterar-horario.html`
-        );
-      formAlteracaoContainer.innerHTML = await response.text();
-      // Configura a lógica JS específica DESTE formulário carregado
-      const atendimentoId = formPrincipal.querySelector(
-        "#atendimento-id-horarios-modal"
-      )?.value;
-      const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
-        (at) => at.atendimentoId === atendimentoId
-      );
-      setupFormLogicAlterarHorario(formAlteracaoContainer, atendimentoAtual); // Passa o atendimento
-    } catch (error) {
-      console.error("Erro ao carregar form Alterar Horário:", error);
-      formAlteracaoContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar formulário: ${error.message}</p>`;
-    }
+
+    // Injeta HTML diretamente para Alteração
+    formAlteracaoContainer.innerHTML = getHtmlAlteracaoHorario();
+
+    // Configura a lógica
+    const atendimentoId = formPrincipal.querySelector(
+      "#atendimento-id-horarios-modal"
+    )?.value;
+    const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
+      (at) => at.atendimentoId === atendimentoId
+    );
+    setupFormLogicAlterarHorario(formAlteracaoContainer, atendimentoAtual);
   }
 }
 
-// --- Funções Auxiliares para Configurar Forms Carregados Dinamicamente ---
+// --- Templates HTML (Substituem os arquivos externos) ---
 
-/**
- * Configura a lógica do formulário de Novas Sessões carregado dinamicamente.
- * @param {HTMLElement} container - O elemento onde o HTML do form foi injetado.
- * @param {object | null} atendimentoAtivo - Os dados do atendimento PB atual.
- */
+function getHtmlNovasSessoes() {
+  return `
+        <div id="solicitar-sessoes-form">
+            <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Configuração do Atendimento</h4>
+            <div class="form-grid cols-2"> 
+                <div class="form-group">
+                    <label for="solicitar-dia-semana">Dia da Sessão*</label>
+                    <select id="solicitar-dia-semana" class="form-control" required>
+                        <option value="">Selecione...</option> <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="solicitar-horario">Horário*</label>
+                    <select id="solicitar-horario" class="form-control" required></select>
+                </div>
+            </div>
+            <div class="form-grid cols-2">
+                <div class="form-group">
+                    <label for="solicitar-tipo-atendimento">Tipo de Atendimento*</label>
+                    <select id="solicitar-tipo-atendimento" class="form-control" required>
+                        <option value="">Selecione...</option> <option value="online">Online</option>
+                        <option value="presencial">Presencial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="solicitar-sala">Sala de Atendimento*</label>
+                    <select id="solicitar-sala" class="form-control" required>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid cols-2">
+                <div class="form-group">
+                    <label for="solicitar-frequencia">Frequência*</label>
+                    <select id="solicitar-frequencia" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Quinzenal">Quinzenal</option>
+                        <option value="Mensal">Mensal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="solicitar-data-inicio">Data de Início*</label>
+                    <input type="date" id="solicitar-data-inicio" class="form-control" required>
+                </div>
+            </div>
+            <input type="hidden" id="alterar-grade-pb" value="Sim"> </div>
+    `;
+}
+
+function getHtmlAlteracaoHorario() {
+  return `
+        <div id="alterar-horario-form">
+            <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Nova Preferência de Horário</h4>
+            <div class="form-grid cols-2">
+                <div class="form-group">
+                    <label>Dia Atual</label>
+                    <input type="text" id="alterar-dia-atual" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Horário Atual</label>
+                    <input type="text" id="alterar-horario-atual" class="form-control" readonly>
+                </div>
+            </div>
+
+            <div class="form-grid cols-2"> 
+                <div class="form-group">
+                    <label for="alterar-dia-semana">Novo Dia*</label>
+                    <select id="alterar-dia-semana" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="alterar-horario">Novo Horário*</label>
+                    <select id="alterar-horario" class="form-control" required></select>
+                </div>
+            </div>
+            <div class="form-grid cols-2">
+                <div class="form-group">
+                    <label for="alterar-tipo-atendimento">Novo Tipo*</label>
+                    <select id="alterar-tipo-atendimento" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <option value="Online">Online</option>
+                        <option value="Presencial">Presencial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="alterar-sala">Nova Sala*</label>
+                    <select id="alterar-sala" class="form-control" required>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+            </div>
+             <div class="form-grid cols-2">
+                <div class="form-group">
+                    <label for="alterar-frequencia">Frequência*</label>
+                    <select id="alterar-frequencia" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Quinzenal">Quinzenal</option>
+                        <option value="Mensal">Mensal</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label for="alterar-data-inicio">A partir de*</label>
+                    <input type="date" id="alterar-data-inicio" class="form-control" required>
+                </div>
+            </div>
+             <div class="form-group">
+                <label for="alterar-grade">Alterar na grade?*</label>
+                <select id="alterar-grade" class="form-control" required>
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alterar-justificativa">Justificativa:</label>
+                <textarea id="alterar-justificativa" rows="2" class="form-control"></textarea>
+            </div>
+        </div>
+    `;
+}
+
+// --- Funções Auxiliares para Configurar Forms ---
+
 function setupFormLogicNovasSessoes(container, atendimentoAtivo) {
-  const form = container.querySelector("#solicitar-sessoes-form"); // ID esperado do form carregado
-  if (!form) {
-    console.error(
-      "Formulário #solicitar-sessoes-form não encontrado no HTML carregado em #form-continuacao-pb."
-    );
-    container.innerHTML = `<p class="alert alert-error">Erro interno: Estrutura do formulário Novas Sessões inválida.</p>`;
-    return;
-  }
+  const form = container.querySelector("#solicitar-sessoes-form");
+
+  // Popula Horários
   const horarioSelect = form.querySelector("#solicitar-horario");
   if (horarioSelect) {
     horarioSelect.innerHTML = "<option value=''>Selecione...</option>";
     for (let i = 7; i <= 21; i++) {
-      // Horários de 7h às 21h
       const hora = `${String(i).padStart(2, "0")}:00`;
       horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
       if (i < 21) {
+        // Meia hora
         const hora30 = `${String(i).padStart(2, "0")}:30`;
         horarioSelect.innerHTML += `<option value="${hora30}">${hora30}</option>`;
       }
     }
   }
+
+  // Popula Salas
   const salaSelect = form.querySelector("#solicitar-sala");
   if (salaSelect) {
-    salaSelect.innerHTML = '<option value="">Selecione...</option>';
-    salaSelect.innerHTML += '<option value="Online">Online</option>';
+    salaSelect.innerHTML = '<option value="Online">Online</option>';
     estado.salasPresenciaisGlobal.forEach((sala) => {
       if (sala && sala !== "Online") {
         salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
       }
     });
   }
+
+  // Lógica Tipo -> Sala
   const tipoAtendimentoSelect = form.querySelector(
     "#solicitar-tipo-atendimento"
   );
-  const salaSelectEl = form.querySelector("#solicitar-sala");
-  const ajustarSalaESetarRequiredsNovasSessoes = () => {
+  const ajustarSala = () => {
     const tipo = tipoAtendimentoSelect?.value;
     const isOnline = tipo === "online";
-    if (salaSelectEl) {
-      salaSelectEl.disabled = isOnline;
-      salaSelectEl.required = !isOnline;
-      if (isOnline) {
-        salaSelectEl.value = "Online";
-      } else if (salaSelectEl.value === "Online") {
-        salaSelectEl.value = "";
-      }
+    if (salaSelect) {
+      salaSelect.disabled = isOnline;
+      salaSelect.required = !isOnline;
+      if (isOnline) salaSelect.value = "Online";
+      else if (salaSelect.value === "Online") salaSelect.value = "";
     }
-    form
-      .querySelectorAll(
-        "#solicitar-dia-semana, #solicitar-horario, #solicitar-tipo-atendimento, #solicitar-frequencia, #solicitar-data-inicio"
-      )
-      .forEach((el) => (el.required = true));
     validarHorarioNaGrade(form);
   };
+
   [
     "solicitar-dia-semana",
     "solicitar-horario",
@@ -370,42 +471,23 @@ function setupFormLogicNovasSessoes(container, atendimentoAtivo) {
     "solicitar-sala",
   ].forEach((id) => {
     const element = form.querySelector(`#${id}`);
-    if (element) {
-      const clone = element.cloneNode(true);
-      element.parentNode.replaceChild(clone, element);
-      clone.addEventListener("change", ajustarSalaESetarRequiredsNovasSessoes);
-    }
+    if (element) element.addEventListener("change", ajustarSala);
   });
-  ajustarSalaESetarRequiredsNovasSessoes();
-  console.log("Formulário Novas Sessões (dinâmico) configurado.");
+
+  ajustarSala();
 }
 
-/**
- * Configura a lógica do formulário de Alterar Horário carregado dinamicamente.
- * @param {HTMLElement} container - O elemento onde o HTML do form foi injetado.
- * @param {object | null} atendimentoAtivo - Os dados do atendimento PB atual.
- */
 function setupFormLogicAlterarHorario(container, atendimentoAtivo) {
-  const form = container.querySelector("#alterar-horario-form"); // ID esperado do form
-  if (!form) {
-    console.error(
-      "Formulário #alterar-horario-form não encontrado no HTML carregado em #form-alteracao-pb."
-    );
-    container.innerHTML = `<p class="alert alert-error">Erro interno: Estrutura do formulário Alterar Horário inválida.</p>`;
-    return;
-  }
+  const form = container.querySelector("#alterar-horario-form");
+
+  // Preenche dados atuais
   const horarioAtual = atendimentoAtivo?.horarioSessoes || {};
   const diaAtualEl = form.querySelector("#alterar-dia-atual");
   if (diaAtualEl) diaAtualEl.value = horarioAtual.diaSemana || "N/A";
   const horaAtualEl = form.querySelector("#alterar-horario-atual");
   if (horaAtualEl) horaAtualEl.value = horarioAtual.horario || "N/A";
-  const modAtualEl = form.querySelector("#alterar-modalidade-atual");
-  if (modAtualEl)
-    modAtualEl.value = (horarioAtual.tipoAtendimento || "N/A").replace(
-      /^./,
-      (c) => c.toUpperCase()
-    );
 
+  // Popula Horários
   const horarioSelect = form.querySelector("#alterar-horario");
   if (horarioSelect) {
     horarioSelect.innerHTML = "<option value=''>Selecione...</option>";
@@ -418,87 +500,64 @@ function setupFormLogicAlterarHorario(container, atendimentoAtivo) {
       }
     }
   }
+
+  // Popula Salas
   const salaSelect = form.querySelector("#alterar-sala");
   if (salaSelect) {
-    salaSelect.innerHTML = '<option value="">Selecione...</option>';
-    salaSelect.innerHTML += '<option value="Online">Online</option>';
+    salaSelect.innerHTML = '<option value="Online">Online</option>';
     estado.salasPresenciaisGlobal.forEach((sala) => {
       if (sala && sala !== "Online") {
         salaSelect.innerHTML += `<option value="${sala}">${sala}</option>`;
       }
     });
   }
+
+  // Lógica Tipo -> Sala
   const tipoAtendimentoSelect = form.querySelector("#alterar-tipo-atendimento");
-  const salaSelectEl = form.querySelector("#alterar-sala");
-  const ajustarSalaESetarRequiredsAlteracao = () => {
+  const ajustarSala = () => {
     const tipo = tipoAtendimentoSelect?.value;
     const isOnline = tipo === "Online";
-    if (salaSelectEl) {
-      salaSelectEl.disabled = isOnline;
-      salaSelectEl.required = !isOnline;
-      if (isOnline) {
-        salaSelectEl.value = "Online";
-      } else if (salaSelectEl.value === "Online") {
-        salaSelectEl.value = "";
-      }
+    if (salaSelect) {
+      salaSelect.disabled = isOnline;
+      salaSelect.required = !isOnline;
+      if (isOnline) salaSelect.value = "Online";
+      else if (salaSelect.value === "Online") salaSelect.value = "";
     }
-    form
-      .querySelectorAll(
-        "#alterar-dia-semana, #alterar-horario, #alterar-tipo-atendimento, #alterar-frequencia, #alterar-data-inicio, #alterar-grade"
-      )
-      .forEach((el) => (el.required = true));
   };
+
   if (tipoAtendimentoSelect) {
-    const clone = tipoAtendimentoSelect.cloneNode(true);
-    tipoAtendimentoSelect.parentNode.replaceChild(clone, tipoAtendimentoSelect);
-    clone.addEventListener("change", ajustarSalaESetarRequiredsAlteracao);
+    tipoAtendimentoSelect.addEventListener("change", ajustarSala);
   }
-  ajustarSalaESetarRequiredsAlteracao();
-  console.log("Formulário Alterar Horário (dinâmico) configurado.");
+  ajustarSala();
 }
 
-// --- Função para validar horário na grade (Usada pelo form Novas Sessões) ---
+// --- Função para validar horário na grade ---
 
-/**
- * Valida se o horário selecionado em um formulário está ocupado na grade global.
- * Exibe feedback na div '#validacao-grade-feedback'.
- * @param {HTMLFormElement} formContext - O elemento <form> sendo validado.
- */
 function validarHorarioNaGrade(formContext) {
   const feedbackDiv = document.getElementById("validacao-grade-feedback");
-  if (!feedbackDiv) {
-    console.warn(
-      "Elemento de feedback #validacao-grade-feedback não encontrado."
-    );
-    return;
-  }
+  if (!feedbackDiv) return;
+
   feedbackDiv.style.display = "none";
   feedbackDiv.className = "info-note";
   feedbackDiv.innerHTML = "";
-  if (
-    !formContext ||
-    !formContext.contains(document.getElementById("solicitar-dia-semana"))
-  ) {
-    return;
-  }
+
+  if (!formContext) return;
+
   const diaEl = formContext.querySelector("#solicitar-dia-semana");
   const horarioEl = formContext.querySelector("#solicitar-horario");
   const tipoEl = formContext.querySelector("#solicitar-tipo-atendimento");
   const salaEl = formContext.querySelector("#solicitar-sala");
-  if (!diaEl || !horarioEl || !tipoEl || !salaEl) {
-    console.warn(
-      "Elementos para validação de grade não encontrados no contexto do form."
-    );
-    return;
-  }
+
+  if (!diaEl || !horarioEl || !tipoEl || !salaEl) return;
+
   const dia = diaEl.value;
   const horarioCompleto = horarioEl.value;
   const tipo = tipoEl.value;
   const sala = salaEl.value;
   const horaKey = horarioCompleto ? horarioCompleto.replace(":", "-") : null;
-  if (!dia || !horaKey || !tipo || (tipo === "presencial" && !sala)) {
-    return;
-  }
+
+  if (!dia || !horaKey || !tipo || (tipo === "presencial" && !sala)) return;
+
   const diasMapGrade = {
     "Segunda-feira": "segunda",
     "Terça-feira": "terca",
@@ -510,6 +569,7 @@ function validarHorarioNaGrade(formContext) {
   const diaChave = diasMapGrade[dia] || dia.toLowerCase();
   let isOcupado = false;
   const grade = estado.dadosDaGradeGlobal;
+
   if (tipo === "online") {
     const colunasOnline = grade?.online?.[diaChave]?.[horaKey];
     if (colunasOnline) {
@@ -526,13 +586,9 @@ function validarHorarioNaGrade(formContext) {
       if (grade?.presencial?.[diaChave]?.[horaKey]?.[`col${salaIndex}`]) {
         isOcupado = true;
       }
-    } else if (sala) {
-      console.warn(
-        `Sala presencial "${sala}" selecionada não encontrada na lista global.`
-      );
-      isOcupado = true;
     }
   }
+
   feedbackDiv.style.display = "block";
   if (isOcupado) {
     feedbackDiv.className = "info-note exists alert alert-warning";
@@ -549,23 +605,13 @@ function validarHorarioNaGrade(formContext) {
 
 // --- Handler de Submit Principal do Modal ---
 
-/**
- * Handler para o submit do formulário principal do modal Horários PB (#horarios-pb-form).
- * Direciona o fluxo com base nas seleções do usuário.
- * @param {Event} evento - O evento de submit.
- * @param {string} userUid - UID do usuário logado.
- * @param {object} userData - Dados do usuário logado.
- */
 export async function handleHorariosPbSubmit(evento, userUid, userData) {
   evento.preventDefault();
-  const formularioPrincipal = evento.target; // É o #horarios-pb-form
+  const formularioPrincipal = evento.target;
   const modal = formularioPrincipal.closest(".modal-overlay");
   const botaoSalvar = modal?.querySelector('button[type="submit"]');
 
   if (!formularioPrincipal || !modal || !botaoSalvar || !userUid || !userData) {
-    console.error(
-      "Elementos do modal ou dados do usuário ausentes no submit de Horários PB."
-    );
     alert("Erro interno ao salvar. Recarregue a página.");
     return;
   }
@@ -582,7 +628,7 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
   )?.value;
 
   if (!pacienteId || !atendimentoId || pacienteId !== estado.pacienteIdGlobal) {
-    alert("Erro: Inconsistência nos IDs do formulário. Recarregue a página.");
+    alert("Erro: Inconsistência nos IDs do formulário.");
     botaoSalvar.disabled = false;
     botaoSalvar.textContent = "Salvar";
     return;
@@ -594,73 +640,73 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
     const iniciouRadio = formularioPrincipal.querySelector(
       'input[name="iniciou-pb"]:checked'
     );
-    const motivoNaoInicioRadio = formularioPrincipal.querySelector(
-      'input[name="motivo-nao-inicio"]:checked'
-    ); // Pode ser null
-
-    if (!iniciouRadio) {
-      formularioPrincipal.reportValidity();
+    if (!iniciouRadio)
       throw new Error("Selecione se o paciente iniciou o atendimento ou não.");
-    }
+
     const iniciou = iniciouRadio.value;
 
-    // --- FLUXO: SIM (Iniciou Atendimento - Equivalente a Novas Sessões) ---
+    // --- FLUXO SIM (Iniciou) ---
     if (iniciou === "sim") {
       const formContinuacao = document
         .getElementById("form-continuacao-pb")
-        ?.querySelector("#solicitar-sessoes-form");
+        ?.querySelector("#solicitar-sessoes-form"); // Form injetado
       if (!formContinuacao)
         throw new Error(
-          "Erro interno: Formulário de agendamento (Novas Sessões) não encontrado."
+          "Erro interno: Formulário de agendamento não encontrado."
         );
-      if (!formContinuacao.checkValidity()) {
-        formContinuacao.reportValidity();
+
+      // Validação manual pois o form é uma div wrapper
+      const dia = formContinuacao.querySelector("#solicitar-dia-semana").value;
+      const hora = formContinuacao.querySelector("#solicitar-horario").value;
+      const tipo = formContinuacao.querySelector(
+        "#solicitar-tipo-atendimento"
+      ).value;
+      const freq = formContinuacao.querySelector("#solicitar-frequencia").value;
+      const sala = formContinuacao.querySelector("#solicitar-sala").value;
+      const inicio = formContinuacao.querySelector(
+        "#solicitar-data-inicio"
+      ).value;
+
+      if (!dia || !hora || !tipo || !freq || !sala || !inicio) {
         throw new Error(
-          "Preencha todos os campos obrigatórios (*) do agendamento."
+          "Preencha todos os campos obrigatórios do agendamento."
         );
       }
+
       const horarioSessaoData = {
         responsavelId: userUid,
         responsavelNome: userData.nome,
-        diaSemana:
-          formContinuacao.querySelector("#solicitar-dia-semana")?.value || null,
-        horario:
-          formContinuacao.querySelector("#solicitar-horario")?.value || null,
-        tipoAtendimento:
-          formContinuacao.querySelector("#solicitar-tipo-atendimento")?.value ||
-          null,
-        frequencia:
-          formContinuacao.querySelector("#solicitar-frequencia")?.value || null,
-        salaAtendimento:
-          formContinuacao.querySelector("#solicitar-sala")?.value || null,
-        dataInicio:
-          formContinuacao.querySelector("#solicitar-data-inicio")?.value ||
-          null,
+        diaSemana: dia,
+        horario: hora,
+        tipoAtendimento: tipo,
+        frequencia: freq,
+        salaAtendimento: sala,
+        dataInicio: inicio,
         alterarGrade: "Sim",
         observacoes: "",
         definidoEm: Timestamp.now(),
       };
+
       const docSnap = await getDoc(docRefPaciente);
-      if (!docSnap.exists())
-        throw new Error("Paciente não encontrado no banco de dados!");
+      if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
       const dadosDoPaciente = docSnap.data();
       const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
-      const indiceDoAtendimento = atendimentos.findIndex(
+      const idx = atendimentos.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
-      if (indiceDoAtendimento === -1)
-        throw new Error(
-          "Atendimento PB específico não encontrado para este paciente!"
-        );
-      atendimentos[indiceDoAtendimento].horarioSessoes = horarioSessaoData;
-      atendimentos[indiceDoAtendimento].statusAtendimento =
-        "horarios_informados";
-      const dadosParaAtualizarTrilha = {
+
+      if (idx === -1)
+        throw new Error("Atendimento PB específico não encontrado!");
+
+      atendimentos[idx].horarioSessoes = horarioSessaoData;
+      atendimentos[idx].statusAtendimento = "horarios_informados";
+
+      await updateDoc(docRefPaciente, {
         atendimentosPB: atendimentos,
         status: "cadastrar_horario_psicomanager",
         lastUpdate: serverTimestamp(),
-      };
-      await updateDoc(docRefPaciente, dadosParaAtualizarTrilha);
+      });
+
       const solicitacaoData = {
         tipo: "novas_sessoes",
         status: "Pendente",
@@ -684,127 +730,104 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
         adminFeedback: null,
       };
       await addDoc(collection(db, "solicitacoes"), solicitacaoData);
-      console.log(
-        "Solicitação 'novas_sessoes' (para cadastro) criada via Horários PB.",
-        solicitacaoData.detalhes
-      );
 
-      // --- FLUXO: NÃO (Não iniciou atendimento) ---
+      // --- FLUXO NÃO (Não Iniciou) ---
     } else if (iniciou === "nao") {
-      if (!motivoNaoInicioRadio) {
-        formularioPrincipal
-          .querySelector('input[name="motivo-nao-inicio"]')
-          ?.focus();
+      const motivoRadio = formularioPrincipal.querySelector(
+        'input[name="motivo-nao-inicio"]:checked'
+      );
+      if (!motivoRadio)
         throw new Error(
           "Selecione o motivo pelo qual o atendimento não foi iniciado."
         );
-      }
-      const motivoNaoInicio = motivoNaoInicioRadio.value;
+      const motivo = motivoRadio.value;
 
-      // --- Sub-fluxo: NÃO -> DESISTIU ---
-      if (motivoNaoInicio === "desistiu") {
-        const motivoDescricaoInput = formularioPrincipal.querySelector(
-          "#motivo-desistencia-pb"
-        );
-        const motivoDescricao = motivoDescricaoInput?.value.trim() || "";
-        if (!motivoDescricao) {
-          motivoDescricaoInput?.focus();
-          motivoDescricaoInput?.reportValidity();
-          throw new Error("Descreva o motivo da desistência antes do início.");
-        }
-        const dataDesistencia = new Date();
-        const docSnap = await getDoc(docRefPaciente);
-        if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
-        const dadosDoPaciente = docSnap.data();
-        const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
-        const indiceDoAtendimento = atendimentos.findIndex(
-          (at) => at.atendimentoId === atendimentoId
-        );
-        if (indiceDoAtendimento === -1)
-          throw new Error("Atendimento PB específico não encontrado!");
-        atendimentos[indiceDoAtendimento].statusAtendimento =
-          "desistencia_antes_inicio";
-        atendimentos[indiceDoAtendimento].motivoNaoInicio = motivoDescricao;
-        atendimentos[indiceDoAtendimento].naoIniciouEm =
-          Timestamp.fromDate(dataDesistencia);
-        const dadosParaAtualizarTrilha = {
+      const docSnap = await getDoc(docRefPaciente);
+      if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
+      const dadosDoPaciente = docSnap.data();
+      const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
+      const idx = atendimentos.findIndex(
+        (at) => at.atendimentoId === atendimentoId
+      );
+      if (idx === -1) throw new Error("Atendimento PB não encontrado!");
+
+      if (motivo === "desistiu") {
+        const desc = formularioPrincipal
+          .querySelector("#motivo-desistencia-pb")
+          .value.trim();
+        if (!desc) throw new Error("Descreva o motivo da desistência.");
+
+        atendimentos[idx].statusAtendimento = "desistencia_antes_inicio";
+        atendimentos[idx].motivoNaoInicio = desc;
+        atendimentos[idx].naoIniciouEm = Timestamp.now();
+
+        await updateDoc(docRefPaciente, {
           atendimentosPB: atendimentos,
           status: "desistencia",
           lastUpdate: serverTimestamp(),
-        };
-        await updateDoc(docRefPaciente, dadosParaAtualizarTrilha);
-        console.log("Paciente marcado como desistência antes do início do PB.");
-        await excluirSessoesFuturas(pacienteId, atendimentoId, dataDesistencia);
-
-        // --- Sub-fluxo: NÃO -> OUTRA MODALIDADE/HORÁRIO ---
-      } else if (motivoNaoInicio === "outra_modalidade") {
+        });
+        await excluirSessoesFuturas(pacienteId, atendimentoId, new Date());
+      } else if (motivo === "outra_modalidade") {
         const formAlteracao = document
           .getElementById("form-alteracao-pb")
           ?.querySelector("#alterar-horario-form");
         if (!formAlteracao)
-          throw new Error(
-            "Erro interno: Formulário de alteração de horário não encontrado."
-          );
-        if (!formAlteracao.checkValidity()) {
-          formAlteracao.reportValidity();
-          throw new Error(
-            "Preencha todos os campos obrigatórios (*) da nova configuração desejada."
-          );
+          throw new Error("Erro interno: Form alteração não encontrado.");
+
+        // Validação manual
+        const dia = formAlteracao.querySelector("#alterar-dia-semana").value;
+        const hora = formAlteracao.querySelector("#alterar-horario").value;
+        const tipo = formAlteracao.querySelector(
+          "#alterar-tipo-atendimento"
+        ).value;
+        const freq = formAlteracao.querySelector("#alterar-frequencia").value;
+        const sala = formAlteracao.querySelector("#alterar-sala").value;
+        const inicio = formAlteracao.querySelector(
+          "#alterar-data-inicio"
+        ).value;
+        const grade = formAlteracao.querySelector("#alterar-grade").value;
+
+        if (!dia || !hora || !tipo || !freq || !sala || !inicio || !grade) {
+          throw new Error("Preencha todos os campos da nova configuração.");
         }
+
         const dadosNovos = {
-          dia:
-            formAlteracao.querySelector("#alterar-dia-semana")?.value || null,
-          horario:
-            formAlteracao.querySelector("#alterar-horario")?.value || null,
-          modalidade:
-            formAlteracao.querySelector("#alterar-tipo-atendimento")?.value ||
-            null,
-          frequencia:
-            formAlteracao.querySelector("#alterar-frequencia")?.value || null,
-          sala: formAlteracao.querySelector("#alterar-sala")?.value || null,
-          dataInicio:
-            formAlteracao.querySelector("#alterar-data-inicio")?.value || null,
-          alterarGrade:
-            formAlteracao.querySelector("#alterar-grade")?.value || null,
+          dia,
+          horario: hora,
+          modalidade: tipo,
+          frequencia: freq,
+          sala,
+          dataInicio: inicio,
+          alterarGrade: grade,
         };
         const justificativa =
           formAlteracao.querySelector("#alterar-justificativa")?.value.trim() ||
-          "Solicitado antes do início do atendimento devido a preferência por outro horário/modalidade.";
-        const docSnap = await getDoc(docRefPaciente);
-        if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
-        const dadosDoPaciente = docSnap.data();
-        const atendimentoAtual = dadosDoPaciente.atendimentosPB?.find(
-          (at) => at.atendimentoId === atendimentoId
-        );
-        const horarioAntigo = atendimentoAtual?.horarioSessoes || {};
-        const dadosAntigos = {
-          dia: horarioAntigo.diaSemana || "N/A",
-          horario: horarioAntigo.horario || "N/A",
-          modalidade: horarioAntigo.tipoAtendimento || "N/A",
-          sala: horarioAntigo.salaAtendimento || "N/A",
-          frequencia: horarioAntigo.frequencia || "N/A",
-        };
-        const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
-        const indiceDoAtendimento = atendimentos.findIndex(
-          (at) => at.atendimentoId === atendimentoId
-        );
-        if (indiceDoAtendimento === -1)
-          throw new Error("Atendimento PB específico não encontrado!");
-        atendimentos[indiceDoAtendimento].statusAtendimento =
-          "solicitado_reencaminhamento";
-        atendimentos[indiceDoAtendimento].motivoNaoInicio = "outra_modalidade";
-        atendimentos[indiceDoAtendimento].solicitacaoAlteracaoPendente = {
+          "Preferência por outro horário.";
+
+        atendimentos[idx].statusAtendimento = "solicitado_reencaminhamento";
+        atendimentos[idx].motivoNaoInicio = "outra_modalidade";
+        atendimentos[idx].solicitacaoAlteracaoPendente = {
           ...dadosNovos,
-          justificativa: justificativa,
+          justificativa,
           dataSolicitacao: Timestamp.now(),
         };
-        atendimentos[indiceDoAtendimento].naoIniciouEm = Timestamp.now();
-        const dadosParaAtualizarTrilha = {
+        atendimentos[idx].naoIniciouEm = Timestamp.now();
+
+        await updateDoc(docRefPaciente, {
           atendimentosPB: atendimentos,
           status: "reavaliar_encaminhamento",
           lastUpdate: serverTimestamp(),
+        });
+
+        // Dados antigos (vazio pois não iniciou)
+        const dadosAntigos = {
+          dia: "N/A",
+          horario: "N/A",
+          modalidade: "N/A",
+          sala: "N/A",
+          frequencia: "N/A",
         };
-        await updateDoc(docRefPaciente, dadosParaAtualizarTrilha);
+
         const solicitacaoData = {
           tipo: "alteracao_horario",
           status: "Pendente",
@@ -814,50 +837,28 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
           pacienteId: pacienteId,
           pacienteNome: dadosDoPaciente.nomeCompleto,
           atendimentoId: atendimentoId,
-          detalhes: {
-            dadosAntigos: dadosAntigos,
-            dadosNovos: dadosNovos,
-            justificativa: justificativa,
-          },
+          detalhes: { dadosAntigos, dadosNovos, justificativa },
           adminFeedback: null,
         };
         await addDoc(collection(db, "solicitacoes"), solicitacaoData);
-        console.log(
-          "Solicitação 'alteracao_horario' criada via Horários PB (Não iniciou -> Outra).",
-          solicitacaoData.detalhes
-        );
-      } else {
-        throw new Error(
-          `Motivo de não início inválido ou não tratado: ${motivoNaoInicio}`
-        );
       }
-    } else {
-      throw new Error(`Valor inválido para 'iniciou-pb': ${iniciou}`);
     }
 
-    // --- Finalização Comum (Sucesso) ---
     alert("Informações salvas com sucesso!");
     modal.style.display = "none";
 
-    // Recarrega os dados e atualiza a UI
+    // Atualiza UI
     await carregador.carregarDadosPaciente(pacienteId);
     await carregador.carregarSessoes();
     interfaceUI.preencherFormularios();
     interfaceUI.renderizarSessoes();
     interfaceUI.renderizarPendencias();
     interfaceUI.atualizarVisibilidadeBotoesAcao(
-      estado.pacienteDataGlobal?.status || "desconhecido"
+      estado.pacienteDataGlobal?.status
     );
   } catch (error) {
-    console.error(
-      "Erro detalhado ao salvar informações de Horários PB:",
-      error
-    );
-    let errorMsg = error instanceof Error ? error.message : String(error);
-    if (!errorMsg.includes("obrigatórios") && !errorMsg.includes("Selecione")) {
-      errorMsg = `Erro ao salvar: ${errorMsg}`;
-    }
-    alert(errorMsg);
+    console.error("Erro detalhado:", error);
+    alert(`Erro ao salvar: ${error.message}`);
   } finally {
     if (botaoSalvar) {
       botaoSalvar.disabled = false;
@@ -866,64 +867,26 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
   }
 }
 
-// --- Função Auxiliar: Excluir Sessões Futuras ---
-
-/**
- * Exclui todas as sessões futuras (após dataReferencia) associadas a um atendimento específico.
- * @param {string} pacienteId - ID do paciente.
- * @param {string} atendimentoId - ID do atendimento PB específico.
- * @param {Date} dataReferencia - Data a partir da qual as sessões devem ser excluídas.
- */
 async function excluirSessoesFuturas(
   pacienteId,
   atendimentoId,
   dataReferencia
 ) {
-  console.log(
-    `Iniciando exclusão de sessões futuras para Atendimento ID: ${atendimentoId} após ${dataReferencia.toISOString()}`
-  );
+  // Mesma lógica do arquivo original
   const sessoesRef = collection(db, "trilhaPaciente", pacienteId, "sessoes");
   const timestampReferencia = Timestamp.fromDate(dataReferencia);
-
   const q = query(
     sessoesRef,
     where("atendimentoId", "==", atendimentoId),
     where("dataHora", ">", timestampReferencia)
   );
-
   try {
     const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      console.log(
-        "Nenhuma sessão futura encontrada para excluir para este atendimento."
-      );
-      return;
-    }
-
+    if (querySnapshot.empty) return;
     const batch = writeBatch(db);
-    let count = 0;
-    querySnapshot.forEach((doc) => {
-      console.log(
-        `Marcando sessão ${doc.id} (${
-          doc.data().dataHora?.toDate()?.toLocaleString("pt-BR") ||
-          "Data inválida"
-        }) para exclusão.`
-      );
-      batch.delete(doc.ref);
-      count++;
-    });
-
+    querySnapshot.forEach((doc) => batch.delete(doc.ref));
     await batch.commit();
-    console.log(
-      `${count} sessões futuras excluídas com sucesso para o atendimento ${atendimentoId}.`
-    );
   } catch (error) {
-    console.error(
-      `Erro ao excluir sessões futuras para o atendimento ${atendimentoId}:`,
-      error
-    );
-    alert(
-      `Atenção: Ocorreu um erro ao tentar excluir automaticamente as sessões futuras agendadas para este atendimento (${error.message}). Por favor, verifique e remova manualmente se necessário.`
-    );
+    console.error("Erro ao excluir sessões futuras:", error);
   }
 }
