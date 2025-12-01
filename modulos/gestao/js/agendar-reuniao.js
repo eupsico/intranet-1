@@ -68,28 +68,48 @@ async function carregarGestores() {
 
 async function carregarAgendamentosExistentes() {
   try {
-    const q = query(
+    // 1. Busca Agendamentos de Voluntários
+    const qVoluntarios = query(
       collection(firestoreDb, "agendamentos_voluntarios"),
       orderBy("criadoEm", "desc")
     );
-    const snapshot = await getDocs(q);
-
-    agendamentosExistentes = snapshot.docs.map((doc) => ({
+    const snapVoluntarios = await getDocs(qVoluntarios);
+    const listaVoluntarios = snapVoluntarios.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      origem: "voluntarios", // Marcador para identificar na renderização
     }));
 
-    console.log("[AGENDAR] Agendamentos carregados:", agendamentosExistentes);
+    // 2. Busca Reuniões Gerais (gestao_atas) que estão agendadas
+    // Nota: Trazemos todas ou filtramos por status 'Agendada' se desejar apenas futuras.
+    // Aqui trarei todas para garantir que apareçam, ordenando por data da reunião.
+    const qGeral = query(
+      collection(firestoreDb, "gestao_atas"),
+      orderBy("dataReuniao", "desc")
+    );
+    const snapGeral = await getDocs(qGeral);
+    const listaGeral = snapGeral.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      origem: "geral", // Marcador para identificar na renderização
+    }));
+
+    // 3. Combina e Ordena (Prioridade para data de criação ou data do evento)
+    agendamentosExistentes = [...listaVoluntarios, ...listaGeral];
+
+    // Ordenação secundária opcional (ex: mais recentes primeiro misturando os tipos)
+    // Como voluntários usam 'criadoEm' e atas usam 'dataReuniao', a ordenação perfeita é complexa,
+    // mas a concatenação acima já coloca os mais recentes de cada grupo no topo.
+
+    console.log("[AGENDAR] Total carregado:", agendamentosExistentes.length);
   } catch (error) {
     console.error("[AGENDAR] Erro ao carregar agendamentos:", error);
     agendamentosExistentes = [];
   }
 }
-
 function renderizarFormularioAgendamento() {
   const container = document.getElementById("agendar-reuniao-container");
   container.innerHTML = `
-        <!-- Botão para gerenciar agendamentos -->
         <div class="button-bar" style="margin-bottom: 1.5rem;">
             <button type="button" id="btn-gerenciar-agendamentos" class="action-button" style="background: #6c757d;">
                 📋 Gerenciar Agendamentos Existentes
@@ -154,7 +174,7 @@ async function renderizarGerenciarAgendamentos() {
         </button>
       </div>
       <div class="empty-state">
-        <p>Nenhum agendamento de reunião com voluntário foi criado ainda.</p>
+        <p>Nenhum agendamento encontrado.</p>
       </div>
     `;
     return;
@@ -162,89 +182,126 @@ async function renderizarGerenciarAgendamentos() {
 
   const agendamentosHTML = agendamentosExistentes
     .map((agendamento) => {
-      // ✅ Ordena slots por nome do gestor, depois por data e hora
-      const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
-        // Primeiro ordena por nome do gestor (alfabética)
-        const nomeA = (a.gestorNome || "").toLowerCase();
-        const nomeB = (b.gestorNome || "").toLowerCase();
-        if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
+      // TIPO 1: REUNIÃO COM VOLUNTÁRIO (Com slots)
+      if (agendamento.origem === "voluntarios" || agendamento.slots) {
+        // Ordena slots
+        const slotsOrdenados = [...(agendamento.slots || [])].sort((a, b) => {
+          const nomeA = (a.gestorNome || "").toLowerCase();
+          const nomeB = (b.gestorNome || "").toLowerCase();
+          if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
+          if (a.data !== b.data) return a.data.localeCompare(b.data);
+          return a.horaInicio.localeCompare(b.horaInicio);
+        });
 
-        // Se os gestores forem iguais, ordena por data
-        if (a.data !== b.data) return a.data.localeCompare(b.data);
+        const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
 
-        // Se as datas forem iguais, ordena por horário
-        return a.horaInicio.localeCompare(b.horaInicio);
-      });
+        const slotsListaHTML = slotsOrdenados
+          .map((slot) => {
+            const vagasPreenchidas = slot.vagas?.length || 0;
+            const statusVaga =
+              vagasPreenchidas > 0
+                ? `<span style="color: #28a745;">✓ Preenchido</span>`
+                : `<span style="color: #6c757d;">Disponível</span>`;
 
-      const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
-
-      const slotsListaHTML = slotsOrdenados
-        .map((slot) => {
-          const vagasPreenchidas = slot.vagas?.length || 0;
-          const statusVaga =
-            vagasPreenchidas > 0
-              ? `<span style="color: #28a745;">✓ Preenchido</span>`
-              : `<span style="color: #6c757d;">Disponível</span>`;
-
-          return `
-        <tr>
-          <td>${slot.gestorNome || "Não especificado"}</td>
-          <td>${formatarDataCompleta(slot.data)}</td>
-          <td>${slot.horaInicio}</td>
-          <td>${slot.horaFim}</td>
-          <td>${statusVaga}</td>
-        </tr>
-      `;
-        })
-        .join("");
-
-      return `
-      <div class="agendamento-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-          <div>
-            <h4 style="margin: 0 0 0.5rem 0;">Reunião com Voluntário</h4>
-            <small style="color: #666;">Criado em: ${formatarDataCriacao(
-              agendamento.criadoEm
-            )}</small>
-          </div>
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn-exportar-excel action-button" data-agendamento-id="${
-              agendamento.id
-            }" style="background: #28a745; padding: 0.5rem 1rem;">
-              📊 Exportar Excel
-            </button>
-            <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;">
-              📋 Copiar Link
-            </button>
-            <button class="btn-editar-agendamento action-button" data-agendamento-id="${
-              agendamento.id
-            }" style="background: #ffc107; padding: 0.5rem 1rem;">
-              ✏️ Editar
-            </button>
-          </div>
-        </div>
-        
-        <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-          <thead>
-            <tr style="background: #f8f9fa; text-align: left;">
-              <th style="padding: 0.75rem; border: 1px solid #ddd;">Gestor</th>
-              <th style="padding: 0.75rem; border: 1px solid #ddd;">Data</th>
-              <th style="padding: 0.75rem; border: 1px solid #ddd;">Início</th>
-              <th style="padding: 0.75rem; border: 1px solid #ddd;">Fim</th>
-              <th style="padding: 0.75rem; border: 1px solid #ddd;">Status</th>
+            return `
+            <tr>
+            <td>${slot.gestorNome || "Não especificado"}</td>
+            <td>${formatarDataCompleta(slot.data)}</td>
+            <td>${slot.horaInicio}</td>
+            <td>${slot.horaFim}</td>
+            <td>${statusVaga}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${slotsListaHTML}
-          </tbody>
-        </table>
-        
-        <div style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 4px;">
-          <strong>Link de Agendamento:</strong>
-          <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" />
+        `;
+          })
+          .join("");
+
+        return `
+        <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid #17a2b8; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0;">Reunião com Voluntário</h4>
+                <small style="color: #666;">Criado em: ${formatarDataCriacao(
+                  agendamento.criadoEm
+                )}</small>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-exportar-excel action-button" data-agendamento-id="${
+                  agendamento.id
+                }" style="background: #28a745; padding: 0.5rem 1rem;">
+                📊 Excel
+                </button>
+                <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;">
+                📋 Link
+                </button>
+                <button class="btn-editar-agendamento action-button" data-agendamento-id="${
+                  agendamento.id
+                }" style="background: #ffc107; padding: 0.5rem 1rem;">
+                ✏️ Editar
+                </button>
+            </div>
+            </div>
+            
+            <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+            <thead>
+                <tr style="background: #f8f9fa; text-align: left;">
+                <th style="padding: 0.75rem; border: 1px solid #ddd;">Gestor</th>
+                <th style="padding: 0.75rem; border: 1px solid #ddd;">Data</th>
+                <th style="padding: 0.75rem; border: 1px solid #ddd;">Início</th>
+                <th style="padding: 0.75rem; border: 1px solid #ddd;">Fim</th>
+                <th style="padding: 0.75rem; border: 1px solid #ddd;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${slotsListaHTML}
+            </tbody>
+            </table>
         </div>
-      </div>
-    `;
+        `;
+      }
+      // TIPO 2: REUNIÃO GERAL (Atas/Agendamentos Padrão)
+      else {
+        const statusCor =
+          agendamento.status === "Concluída" ? "#28a745" : "#ffc107";
+        const dataF = formatarDataCompleta(agendamento.dataReuniao);
+
+        return `
+            <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid #0d6efd; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0;">${
+                          agendamento.titulo || agendamento.tipo
+                        }</h4>
+                        <span class="badge" style="background: ${statusCor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                            ${agendamento.status || "Agendada"}
+                        </span>
+                    </div>
+                    </div>
+                
+                <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <p style="margin: 0; color: #666; font-size: 0.9rem;">Data e Hora:</p>
+                        <p style="margin: 0; font-weight: bold;">${dataF} | ${
+          agendamento.horaInicio
+        } - ${agendamento.horaFim}</p>
+                    </div>
+                    <div>
+                         <p style="margin: 0; color: #666; font-size: 0.9rem;">Responsável:</p>
+                        <p style="margin: 0; font-weight: bold;">${
+                          agendamento.responsavelTecnica ||
+                          agendamento.responsavel ||
+                          "N/A"
+                        }</p>
+                    </div>
+                    <div style="grid-column: 1 / -1; margin-top: 0.5rem;">
+                         <p style="margin: 0; color: #666; font-size: 0.9rem;">Pauta/Tema:</p>
+                        <p style="margin: 0; background: #f8f9fa; padding: 8px; border-radius: 4px;">${
+                          agendamento.pauta || "Sem pauta definida"
+                        }</p>
+                    </div>
+                </div>
+            </div>
+          `;
+      }
     })
     .join("");
 
@@ -255,7 +312,7 @@ async function renderizarGerenciarAgendamentos() {
       </button>
     </div>
     
-    <h3 style="margin-bottom: 1.5rem;">Agendamentos Existentes</h3>
+    <h3 style="margin-bottom: 1.5rem;">Todos os Agendamentos</h3>
     
     ${agendamentosHTML}
   `;
@@ -271,11 +328,15 @@ async function renderizarEditarAgendamento(agendamentoId) {
     return;
   }
 
-  const container = document.getElementById("agendar-reuniao-container");
+  // Proteção: Se tentar editar uma reunião geral que não tem slots
+  if (agendamento.origem === "geral") {
+    alert(
+      "Para editar reuniões gerais, utilize a funcionalidade de Atas ou recrie o agendamento."
+    );
+    return;
+  }
 
-  const gestoresOptions = gestores
-    .map((g) => `<option value="${g.id}">${g.nome}</option>`)
-    .join("");
+  const container = document.getElementById("agendar-reuniao-container");
 
   // Slots existentes ordenados
   const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
@@ -314,7 +375,7 @@ async function renderizarEditarAgendamento(agendamentoId) {
       </button>
     </div>
     
-    <h3>Editar Agendamento</h3>
+    <h3>Editar Agendamento (Voluntários)</h3>
     
     <div style="background: #fff3cd; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 4px solid #ffc107;">
       <strong>📌 Horários existentes:</strong>
@@ -442,6 +503,11 @@ function exportarParaExcel(agendamentoId) {
     return;
   }
 
+  if (agendamento.origem === "geral") {
+    alert("Exportação disponível apenas para reuniões com voluntários.");
+    return;
+  }
+
   // Ordena slots por gestor, data e hora
   const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
     const nomeA = (a.gestorNome || "").toLowerCase();
@@ -478,7 +544,6 @@ function exportarParaExcel(agendamentoId) {
   link.click();
   document.body.removeChild(link);
 }
-
 function renderizarCamposDinamicos() {
   const tipo = document.getElementById("tipo-reuniao").value;
   const container = document.getElementById("campos-dinamicos");
@@ -582,7 +647,6 @@ function criarSlotHTML() {
     </div>
   `;
 }
-
 function adicionarSlot() {
   const slotsContainer = document.getElementById("slots-container");
   const novoSlot = document.createElement("div");
