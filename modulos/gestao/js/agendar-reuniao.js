@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 3.4 - Código Completo (Ordenação, Edição Geral, Excel e Links)
+// VERSÃO 4.0 - Unificação de Links, Slots para Todos e Vagas Ilimitadas para Técnicas
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -16,21 +16,21 @@ import {
 
 let gestores = [];
 let agendamentosExistentes = [];
-let editandoId = null; // Controla se estamos em modo de edição para reuniões gerais
+let editandoId = null;
 
 export async function init() {
-  console.log("[AGENDAR] Módulo Agendar Reunião iniciado (v3.4 - Completo).");
+  console.log("[AGENDAR] Módulo Agendar Reunião iniciado (v4.0).");
   await carregarGestores();
   renderizarFormularioAgendamento();
 
-  // Event listeners globais para delegar eventos dos botões dinâmicos
+  // Event listeners globais
   document.addEventListener("click", async (e) => {
-    // Botão: Gerenciar Agendamentos (vai para a lista)
+    // Gerenciar/Listar
     if (e.target.id === "btn-gerenciar-agendamentos") {
       await renderizarGerenciarAgendamentos();
     }
 
-    // Botão: Voltar para Criar Novo (sai da lista ou edição)
+    // Voltar para Criar/Lista
     if (
       e.target.id === "btn-voltar-criar" ||
       e.target.id === "btn-cancelar-edicao"
@@ -43,13 +43,7 @@ export async function init() {
     if (e.target.closest(".btn-editar-agendamento")) {
       const btn = e.target.closest(".btn-editar-agendamento");
       const id = btn.dataset.agendamentoId;
-      const origem = btn.dataset.origem;
-
-      if (origem === "geral") {
-        await editarReuniaoGeral(id);
-      } else {
-        await renderizarEditarAgendamento(id);
-      }
+      await renderizarEditarAgendamento(id);
     }
 
     // Botão: Copiar Link
@@ -67,7 +61,7 @@ export async function init() {
       exportarParaExcel(id);
     }
 
-    // Botão: Adicionar Slot (na tela de edição de voluntários)
+    // Botão: Adicionar Slot (na tela de edição)
     if (e.target.id === "btn-adicionar-slot-edit") {
       const container = document.getElementById("novos-slots-container");
       const novoSlot = document.createElement("div");
@@ -89,8 +83,6 @@ async function carregarGestores() {
         funcoes: doc.data().funcoes || [],
       }))
       .filter((u) => u.funcoes.includes("gestor"));
-
-    console.log("[AGENDAR] Gestores carregados:", gestores);
   } catch (error) {
     console.error("[AGENDAR] Erro ao carregar gestores:", error);
     gestores = [];
@@ -99,14 +91,17 @@ async function carregarGestores() {
 
 async function carregarAgendamentosExistentes() {
   try {
-    // 1. Busca Agendamentos de Voluntários
-    const qVoluntarios = query(
-      collection(firestoreDb, "agendamentos_voluntarios")
-    );
-    const snapVoluntarios = await getDocs(qVoluntarios);
-    const listaVoluntarios = snapVoluntarios.docs.map((doc) => {
+    // Busca Agendamentos (agora tudo fica em 'agendamentos_voluntarios' para padronizar estrutura de slots)
+    // Se você tiver dados antigos em 'gestao_atas', precisaremos migrar ou tratar separadamente.
+    // Nesta versão 4.0, assumimos que TODOS os agendamentos com inscrição usam a coleção 'agendamentos_voluntarios'
+    // para suportar a lógica de slots e links unificados.
+
+    const q = query(collection(firestoreDb, "agendamentos_voluntarios"));
+    const snapshot = await getDocs(q);
+
+    agendamentosExistentes = snapshot.docs.map((doc) => {
       const data = doc.data();
-      // Define data de ordenação baseada no primeiro slot ou na data de criação
+      // Pega a primeira data disponível nos slots ou a data de criação
       const primeiraData =
         data.slots && data.slots.length > 0
           ? data.slots[0].data
@@ -115,49 +110,28 @@ async function carregarAgendamentosExistentes() {
         id: doc.id,
         ...data,
         dataOrdenacao: primeiraData,
-        origem: "voluntarios",
       };
     });
 
-    // 2. Busca Reuniões Gerais (gestao_atas)
-    const qGeral = query(collection(firestoreDb, "gestao_atas"));
-    const snapGeral = await getDocs(qGeral);
-    const listaGeral = snapGeral.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        dataOrdenacao: data.dataReuniao, // Já vem como string YYYY-MM-DD
-        origem: "geral",
-      };
-    });
-
-    // 3. Combina e Ordena pela DATA DO EVENTO (Mais recente/futuro primeiro)
-    agendamentosExistentes = [...listaVoluntarios, ...listaGeral];
-
+    // Ordena pela DATA DO EVENTO (Mais recente/futuro primeiro)
     agendamentosExistentes.sort((a, b) => {
       const dataA = new Date(a.dataOrdenacao);
       const dataB = new Date(b.dataOrdenacao);
-      // Ordem decrescente (mais recentes no topo)
       return dataB - dataA;
     });
 
-    console.log(
-      "[AGENDAR] Total carregado e ordenado:",
-      agendamentosExistentes.length
-    );
+    console.log("[AGENDAR] Total carregado:", agendamentosExistentes.length);
   } catch (error) {
     console.error("[AGENDAR] Erro ao carregar agendamentos:", error);
     agendamentosExistentes = [];
   }
 }
 
-// --- RENDERIZAÇÃO DO FORMULÁRIO PRINCIPAL ---
+// --- RENDERIZAÇÃO DO FORMULÁRIO DE CRIAÇÃO ---
 
 function renderizarFormularioAgendamento() {
   const container = document.getElementById("agendar-reuniao-container");
 
-  // HTML do formulário
   container.innerHTML = `
         <div class="button-bar" style="margin-bottom: 1.5rem;">
             <button type="button" id="btn-gerenciar-agendamentos" class="action-button" style="background: #6c757d;">
@@ -178,139 +152,102 @@ function renderizarFormularioAgendamento() {
                     <option value="Reunião com Voluntário">Reunião com Voluntário</option>
                 </select>
             </div>
-
-            <div class="form-row cols-3" id="data-hora-container">
-                <div class="form-group">
-                    <label for="data-reuniao">Data da Reunião</label>
-                    <input type="date" id="data-reuniao" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="hora-inicio">Hora de Início</label>
-                    <input type="time" id="hora-inicio" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="hora-fim">Hora de Fim</label>
-                    <input type="time" id="hora-fim" class="form-control" required>
-                </div>
-            </div>
-
-            <div id="campos-dinamicos"></div>
-
-            <div class="button-bar">
-                <button type="submit" id="btn-submit-agendamento" class="action-button save-btn">Agendar Reunião</button>
-                ${
-                  editandoId
-                    ? `<button type="button" id="btn-cancelar-edicao" class="action-button" style="background: #dc3545; margin-left: 10px;">Cancelar Edição</button>`
-                    : ""
-                }
-            </div>
-            <div id="agendamento-feedback" class="status-message" style="margin-top: 15px;"></div>
-        </form>
-  `;
-
-  // Listeners do formulário
-  document
-    .getElementById("tipo-reuniao")
-    .addEventListener("change", renderizarCamposDinamicos);
-  document
-    .getElementById("form-agendamento")
-    .addEventListener("submit", salvarAgendamento);
-
-  // Se estiver editando, bloqueia a mudança de tipo
-  if (editandoId) {
-    document.getElementById("tipo-reuniao").disabled = true;
-  }
-}
-
-function renderizarCamposDinamicos() {
-  const tipo = document.getElementById("tipo-reuniao").value;
-  const container = document.getElementById("campos-dinamicos");
-  const dataHoraContainer = document.getElementById("data-hora-container");
-
-  const dataInput = document.getElementById("data-reuniao");
-  const horaInicioInput = document.getElementById("hora-inicio");
-  const horaFimInput = document.getElementById("hora-fim");
-
-  if (tipo === "Reunião Técnica") {
-    dataHoraContainer.style.display = "flex";
-    dataInput.required = true;
-    horaInicioInput.required = true;
-    horaFimInput.required = true;
-
-    container.innerHTML = `
+            
             <div class="form-group">
-                <label for="facilitador">Facilitador do Treinamento</label>
-                <input type="text" id="facilitador" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="tema-reuniao">Tema da Reunião</label>
-                <textarea id="tema-reuniao" class="form-control" rows="3" required></textarea>
-            </div>
-        `;
-  } else if (
-    tipo === "Reunião Conselho administrativo" ||
-    tipo === "Reunião com Gestor"
-  ) {
-    dataHoraContainer.style.display = "flex";
-    dataInput.required = true;
-    horaInicioInput.required = true;
-    horaFimInput.required = true;
-
-    container.innerHTML = `
-            <div class="form-group">
-                <label for="pauta-reuniao">Pauta da Reunião</label>
-                <textarea id="pauta-reuniao" class="form-control" rows="4" required></textarea>
-            </div>
-        `;
-  } else if (tipo === "Reunião com Voluntário") {
-    dataHoraContainer.style.display = "none";
-    dataInput.required = false;
-    horaInicioInput.required = false;
-    horaFimInput.required = false;
-
-    // Se estiver editando, não mostramos os slots aqui, pois voluntários tem tela própria de edição
-    if (!editandoId) {
-      container.innerHTML = `
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="exibir-gestor" checked />
-                    Exibir nome do gestor no link de agendamento
-                </label>
+                <label for="descricao-custom">Texto da Página de Inscrição</label>
+                <textarea id="descricao-custom" class="form-control" rows="4" placeholder="Texto que aparecerá para quem for se inscrever. Deixe em branco para usar o padrão."></textarea>
+                <small class="text-muted">Personalize o convite que aparece na página pública.</small>
             </div>
 
             <div class="form-group">
-                <label for="descricao-voluntario">Descrição da Reunião (opcional)</label>
-                <textarea id="descricao-voluntario" class="form-control" rows="4" placeholder="Deixe em branco para usar texto padrão"></textarea>
-                <small style="color: #666; font-size: 0.9em;">Se deixar em branco, será usado um texto padrão convidativo.</small>
-            </div>
-
-            <div class="form-group">
-                <label>Datas, Horários e Gestores Disponíveis *</label>
+                <label>Datas e Horários Disponíveis *</label>
                 <small style="display: block; color: #666; margin-bottom: 0.5rem;">
-                    O horário será dividido automaticamente em slots de 30 minutos.
+                    Configure as datas e horários. Para reuniões técnicas, o horário permitirá múltiplas inscrições.
                 </small>
                 <div id="slots-container" style="margin-bottom: 1rem;">
                     ${criarSlotHTML()}
                 </div>
                 <button type="button" id="btn-adicionar-slot" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
             </div>
-        `;
-      document
-        .getElementById("btn-adicionar-slot")
-        .addEventListener("click", adicionarSlot);
+
+            <div class="form-group" id="container-exibir-gestor" style="display:none;">
+                <label>
+                    <input type="checkbox" id="exibir-gestor" checked />
+                    Exibir nome do gestor no slot (Para reuniões 1:1)
+                </label>
+            </div>
+
+            <div class="button-bar">
+                <button type="submit" id="btn-submit-agendamento" class="action-button save-btn">Criar Agendamento</button>
+            </div>
+            <div id="agendamento-feedback" class="status-message" style="margin-top: 15px;"></div>
+        </form>
+  `;
+
+  // Listeners
+  document
+    .getElementById("btn-adicionar-slot")
+    .addEventListener("click", adicionarSlot);
+  document
+    .getElementById("form-agendamento")
+    .addEventListener("submit", salvarAgendamento);
+
+  // Controle de exibição específico por tipo
+  document.getElementById("tipo-reuniao").addEventListener("change", (e) => {
+    const tipo = e.target.value;
+    const checkGestor = document.getElementById("container-exibir-gestor");
+
+    // Se for voluntário, geralmente queremos mostrar quem é o gestor específico do horário
+    if (tipo === "Reunião com Voluntário") {
+      checkGestor.style.display = "block";
     } else {
-      container.innerHTML = `<div class="alert alert-info">Para editar horários de voluntários, use o botão "Editar" na lista de agendamentos.</div>`;
+      checkGestor.style.display = "none";
     }
-  } else {
-    dataHoraContainer.style.display = "flex";
-    dataInput.required = true;
-    horaInicioInput.required = true;
-    horaFimInput.required = true;
-    container.innerHTML = "";
-  }
+  });
 }
 
-// --- RENDERIZAÇÃO DA LISTA DE AGENDAMENTOS ---
+function criarSlotHTML() {
+  const gestoresOptions = gestores
+    .map((g) => `<option value="${g.id}">${g.nome}</option>`)
+    .join("");
+
+  return `
+    <div class="slot-item" style="display: grid; grid-template-columns: 1fr 1fr auto 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6;">
+      <div>
+        <small>Data</small>
+        <input type="date" class="slot-data form-control" required />
+      </div>
+      <div>
+        <small>Início</small>
+        <input type="time" class="slot-hora-inicio form-control" required />
+      </div>
+      <div style="padding-top: 18px;">até</div>
+      <div>
+        <small>Fim</small>
+        <input type="time" class="slot-hora-fim form-control" required />
+      </div>
+      <div>
+        <small>Responsável/Gestor</small>
+        <select class="slot-gestor form-control" required>
+            <option value="">Selecione...</option>
+            ${gestoresOptions}
+        </select>
+      </div>
+      <div style="padding-top: 18px;">
+        <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.parentElement.remove()">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+function adicionarSlot() {
+  const slotsContainer = document.getElementById("slots-container");
+  const novoSlot = document.createElement("div");
+  novoSlot.innerHTML = criarSlotHTML();
+  slotsContainer.appendChild(novoSlot.firstElementChild);
+}
+
+// --- RENDERIZAÇÃO DA LISTA ---
 
 async function renderizarGerenciarAgendamentos() {
   await carregarAgendamentosExistentes();
@@ -333,128 +270,99 @@ async function renderizarGerenciarAgendamentos() {
 
   const agendamentosHTML = agendamentosExistentes
     .map((agendamento) => {
-      // Configuração do Link de Inscrição
-      let linkAgendamento;
-      if (agendamento.origem === "voluntarios") {
-        linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
-      } else {
-        // Link para inscrição em reuniões gerais
-        linkAgendamento = `${window.location.origin}/public/inscricao-reuniao.html?id=${agendamento.id}&tipo=geral`;
-      }
+      // LINK UNIFICADO: Sempre usa agendamento-voluntario.html
+      const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
 
-      // Botões de Ação Unificados
-      const botoesAcao = `
-        <div style="display: flex; gap: 0.5rem;">
-            <button class="btn-exportar-excel action-button" data-agendamento-id="${agendamento.id}" style="background: #28a745; padding: 0.5rem 1rem;" title="Exportar Excel">
-              📊 Excel
-            </button>
-            <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;" title="Copiar Link de Inscrição">
-              📋 Link
-            </button>
-            <button class="btn-editar-agendamento action-button" data-agendamento-id="${agendamento.id}" data-origem="${agendamento.origem}" style="background: #ffc107; padding: 0.5rem 1rem;" title="Editar">
-              ✏️ Editar
-            </button>
-        </div>
-      `;
+      // Configuração visual baseada no tipo
+      let borderLeftColor = "#0d6efd"; // Azul padrão
+      if (agendamento.tipo === "Reunião com Voluntário")
+        borderLeftColor = "#17a2b8"; // Ciano
+      else if (agendamento.tipo === "Reunião Técnica")
+        borderLeftColor = "#6610f2"; // Roxo
 
-      // Renderização Condicional baseada na Origem
-      if (agendamento.origem === "voluntarios" || agendamento.slots) {
-        // --- CARD: Reunião com Voluntário ---
-        const slotsOrdenados = [...(agendamento.slots || [])].sort((a, b) => {
-          const nomeA = (a.gestorNome || "").toLowerCase();
-          const nomeB = (b.gestorNome || "").toLowerCase();
-          if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
-          if (a.data !== b.data) return a.data.localeCompare(b.data);
-          return a.horaInicio.localeCompare(b.horaInicio);
-        });
+      // Detalhes dos Slots
+      const slotsOrdenados = [...(agendamento.slots || [])].sort((a, b) =>
+        a.data.localeCompare(b.data)
+      );
+      const slotsListaHTML = slotsOrdenados
+        .map((slot) => {
+          const inscritosCount = slot.vagas?.length || 0;
+          // Lógica de Status:
+          // Voluntário: 1 inscrito = Cheio
+          // Técnica: Ilimitado = Sempre Disponível (mostra quantos inscritos tem)
 
-        const slotsListaHTML = slotsOrdenados
-          .map((slot) => {
-            const vagasPreenchidas = slot.vagas?.length || 0;
-            const statusVaga =
-              vagasPreenchidas > 0
-                ? `<span style="color: #28a745;">✓ Preenchido</span>`
-                : `<span style="color: #6c757d;">Disponível</span>`;
-            return `
+          let statusTexto = "";
+          let statusCor = "";
+
+          if (agendamento.tipo === "Reunião com Voluntário") {
+            if (inscritosCount >= 1) {
+              statusTexto = "Ocupado";
+              statusCor = "color: #dc3545;";
+            } else {
+              statusTexto = "Disponível";
+              statusCor = "color: #198754;";
+            }
+          } else {
+            // Reunião Técnica (Ilimitada)
+            statusTexto = `${inscritosCount} inscritos`;
+            statusCor = "color: #0d6efd; font-weight: bold;";
+          }
+
+          return `
             <tr>
-              <td>${slot.gestorNome || "Não especificado"}</td>
+              <td>${slot.gestorNome || "N/A"}</td>
               <td>${formatarDataCompleta(slot.data)}</td>
-              <td>${slot.horaInicio}</td>
-              <td>${slot.horaFim}</td>
-              <td>${statusVaga}</td>
+              <td>${slot.horaInicio} - ${slot.horaFim}</td>
+              <td style="${statusCor}">${statusTexto}</td>
             </tr>`;
-          })
-          .join("");
+        })
+        .join("");
 
-        return `
-        <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid #17a2b8; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
+      return `
+        <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid ${borderLeftColor}; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
               <div>
-                <h4 style="margin: 0 0 0.5rem 0;">Reunião com Voluntário</h4>
-                <small style="color: #666;">Criado em: ${formatarDataCriacao(
+                <h4 style="margin: 0 0 0.25rem 0;">${agendamento.tipo}</h4>
+                <small class="text-muted">Criado em: ${formatarDataCriacao(
                   agendamento.criadoEm
                 )}</small>
               </div>
-              ${botoesAcao}
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-exportar-excel action-button" data-agendamento-id="${
+                  agendamento.id
+                }" style="background: #28a745; padding: 0.5rem 1rem;" title="Exportar Lista de Inscritos">
+                  📊 Excel
+                </button>
+                <button class="btn-copiar-link action-button" data-link="${linkAgendamento}" style="background: #17a2b8; padding: 0.5rem 1rem;" title="Copiar Link de Inscrição">
+                  📋 Link
+                </button>
+                <button class="btn-editar-agendamento action-button" data-agendamento-id="${
+                  agendamento.id
+                }" style="background: #ffc107; padding: 0.5rem 1rem;" title="Editar">
+                  ✏️ Editar
+                </button>
+              </div>
             </div>
             
+            <div style="margin-bottom: 1rem; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                <strong>Texto da Página:</strong><br>
+                <em style="color: #666; font-size: 0.9em;">"${(
+                  agendamento.descricao || ""
+                ).substring(0, 100)}..."</em>
+            </div>
+
             <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em;">
               <thead>
                 <tr style="background: #f8f9fa; text-align: left;">
-                  <th style="padding: 0.5rem; border: 1px solid #ddd;">Gestor</th>
+                  <th style="padding: 0.5rem; border: 1px solid #ddd;">Responsável</th>
                   <th style="padding: 0.5rem; border: 1px solid #ddd;">Data</th>
-                  <th style="padding: 0.5rem; border: 1px solid #ddd;">Início</th>
-                  <th style="padding: 0.5rem; border: 1px solid #ddd;">Fim</th>
+                  <th style="padding: 0.5rem; border: 1px solid #ddd;">Horário</th>
                   <th style="padding: 0.5rem; border: 1px solid #ddd;">Status</th>
                 </tr>
               </thead>
               <tbody>${slotsListaHTML}</tbody>
             </table>
         </div>`;
-      } else {
-        // --- CARD: Reunião Geral (Técnica, Gestor, etc) ---
-        const statusCor =
-          agendamento.status === "Concluída" ? "#28a745" : "#ffc107";
-        const dataF = formatarDataCompleta(agendamento.dataReuniao);
-
-        return `
-            <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid #0d6efd; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <h4 style="margin: 0 0 0.5rem 0;">${
-                          agendamento.titulo || agendamento.tipo
-                        }</h4>
-                        <span class="badge" style="background: ${statusCor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
-                            ${agendamento.status || "Agendada"}
-                        </span>
-                    </div>
-                    ${botoesAcao}
-                </div>
-                
-                <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <p style="margin: 0; color: #666; font-size: 0.9rem;">Data e Hora:</p>
-                        <p style="margin: 0; font-weight: bold;">${dataF} | ${
-          agendamento.horaInicio
-        } - ${agendamento.horaFim}</p>
-                    </div>
-                    <div>
-                         <p style="margin: 0; color: #666; font-size: 0.9rem;">Responsável:</p>
-                        <p style="margin: 0; font-weight: bold;">${
-                          agendamento.responsavelTecnica ||
-                          agendamento.responsavel ||
-                          "N/A"
-                        }</p>
-                    </div>
-                    <div style="grid-column: 1 / -1; margin-top: 0.5rem;">
-                         <p style="margin: 0; color: #666; font-size: 0.9rem;">Pauta/Tema:</p>
-                        <p style="margin: 0; background: #f8f9fa; padding: 8px; border-radius: 4px;">${
-                          agendamento.pauta || "Sem pauta definida"
-                        }</p>
-                    </div>
-                </div>
-            </div>`;
-      }
     })
     .join("");
 
@@ -464,55 +372,12 @@ async function renderizarGerenciarAgendamentos() {
         ← Voltar para Criar Novo
       </button>
     </div>
-    
-    <h3 style="margin-bottom: 1.5rem;">Todos os Agendamentos (Recentes Primeiro)</h3>
-    
+    <h3 style="margin-bottom: 1.5rem;">Agendamentos Ativos</h3>
     ${agendamentosHTML}
   `;
 }
 
-// --- EDIÇÃO DE REUNIÕES GERAIS ---
-
-async function editarReuniaoGeral(id) {
-  const agendamento = agendamentosExistentes.find((a) => a.id === id);
-  if (!agendamento) return;
-
-  // Configura o formulário para edição
-  editandoId = id;
-  renderizarFormularioAgendamento();
-
-  // Atualiza textos e estados
-  document.getElementById(
-    "titulo-form"
-  ).textContent = `Editando: ${agendamento.tipo}`;
-  document.getElementById("btn-submit-agendamento").textContent =
-    "Salvar Alterações";
-
-  const tipoSelect = document.getElementById("tipo-reuniao");
-  tipoSelect.value = agendamento.tipo;
-  // Força atualização dos campos dinâmicos agora que o valor mudou
-  renderizarCamposDinamicos();
-
-  // Preenche dados básicos
-  document.getElementById("data-reuniao").value = agendamento.dataReuniao;
-  document.getElementById("hora-inicio").value = agendamento.horaInicio;
-  document.getElementById("hora-fim").value = agendamento.horaFim;
-
-  // Preenche campos específicos baseados no tipo
-  setTimeout(() => {
-    if (agendamento.tipo === "Reunião Técnica") {
-      const fac = document.getElementById("facilitador");
-      const tema = document.getElementById("tema-reuniao");
-      if (fac) fac.value = agendamento.responsavelTecnica || "";
-      if (tema) tema.value = agendamento.pauta || "";
-    } else {
-      const pauta = document.getElementById("pauta-reuniao");
-      if (pauta) pauta.value = agendamento.pauta || "";
-    }
-  }, 50);
-}
-
-// --- EDIÇÃO DE REUNIÕES COM VOLUNTÁRIOS (TELA DEDICADA) ---
+// --- EDIÇÃO DE AGENDAMENTO (UNIFICADA) ---
 
 async function renderizarEditarAgendamento(agendamentoId) {
   const agendamento = agendamentosExistentes.find(
@@ -526,29 +391,16 @@ async function renderizarEditarAgendamento(agendamentoId) {
 
   const container = document.getElementById("agendar-reuniao-container");
 
-  // Slots existentes ordenados
-  const slotsOrdenados = [...agendamento.slots].sort((a, b) => {
-    const nomeA = (a.gestorNome || "").toLowerCase();
-    const nomeB = (b.gestorNome || "").toLowerCase();
-    if (nomeA !== nomeB) return nomeA.localeCompare(nomeB);
-    if (a.data !== b.data) return a.data.localeCompare(b.data);
-    return a.horaInicio.localeCompare(b.horaInicio);
-  });
-
-  const slotsExistentesHTML = slotsOrdenados
+  // Slots existentes (somente leitura visual, edição adiciona novos)
+  const slotsExistentesHTML = (agendamento.slots || [])
     .map((slot) => {
-      const vagasInfo =
-        slot.vagas && slot.vagas.length > 0
-          ? `<small style="color: #28a745;">(${slot.vagas.length} inscrito(s))</small>`
-          : "";
-
+      const inscritos = slot.vagas?.length || 0;
       return `
-      <div class="slot-existente" style="display: grid; grid-template-columns: 1fr 1fr auto 1fr 2fr; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 4px;">
-        <input type="date" value="${slot.data}" readonly class="form-control" style="background: #e9ecef;" />
-        <input type="time" value="${slot.horaInicio}" readonly class="form-control" style="background: #e9ecef;" />
-        <span>até</span>
-        <input type="time" value="${slot.horaFim}" readonly class="form-control" style="background: #e9ecef;" />
-        <div><strong>${slot.gestorNome}</strong> ${vagasInfo}</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; padding: 8px; border-bottom: 1px solid #eee;">
+        <span>${formatarDataCompleta(slot.data)}</span>
+        <span>${slot.horaInicio} - ${slot.horaFim}</span>
+        <span>${slot.gestorNome}</span>
+        <span style="font-weight: bold;">${inscritos} inscritos</span>
       </div>`;
     })
     .join("");
@@ -560,107 +412,82 @@ async function renderizarEditarAgendamento(agendamentoId) {
       </button>
     </div>
     
-    <h3>Editar Agendamento (Voluntários)</h3>
+    <h3>Editar: ${agendamento.tipo}</h3>
     
-    <div style="background: #fff3cd; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; border-left: 4px solid #ffc107;">
-      <strong>📌 Horários existentes:</strong>
-      <div style="margin-top: 1rem;">
-        ${slotsExistentesHTML}
-      </div>
-    </div>
-    
-    <form id="form-editar-agendamento-slots">
-      <h4>Adicionar Novos Horários</h4>
-      
-      <div class="form-group">
-        <label>Datas, Horários e Gestores Disponíveis</label>
-        <small style="display: block; color: #666; margin-bottom: 0.5rem;">
-          O horário será dividido automaticamente em slots de 30 minutos.
-        </small>
-        <div id="novos-slots-container" style="margin-bottom: 1rem;">
-          ${criarSlotHTML()}
+    <form id="form-editar-completo">
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="edit-descricao" style="font-weight: bold; display: block; margin-bottom: 0.5rem;">Texto da Página de Inscrição</label>
+            <textarea id="edit-descricao" class="form-control" rows="5" style="width: 100%; padding: 0.5rem;">${
+              agendamento.descricao || ""
+            }</textarea>
+            <div style="margin-top: 5px;">
+                <button type="button" id="btn-salvar-descricao" class="action-button" style="background: #17a2b8; font-size: 0.9em;">Salvar Apenas Texto</button>
+            </div>
         </div>
-        <button type="button" id="btn-adicionar-slot-edit" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
-      </div>
-      
-      <div class="button-bar" style="margin-top: 1.5rem;">
-        <button type="submit" class="action-button save-btn">Salvar Novos Horários</button>
-      </div>
-      <div id="edit-feedback" class="status-message" style="margin-top: 15px;"></div>
+
+        <hr style="margin: 2rem 0;">
+
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+            <strong>📌 Horários Atuais:</strong>
+            <div style="margin-top: 1rem; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #ddd;">
+                ${slotsExistentesHTML}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label style="font-weight: bold;">Adicionar Novos Horários</label>
+            <small style="display: block; color: #666; margin-bottom: 0.5rem;">
+                Adicione novos slots abaixo. A regra de vagas (ilimitada ou 1:1) será mantida baseada no tipo da reunião.
+            </small>
+            <div id="novos-slots-container" style="margin-bottom: 1rem;">
+                ${criarSlotHTML()}
+            </div>
+            <button type="button" id="btn-adicionar-slot-edit" class="action-button" style="background: #6c757d;">+ Adicionar Horário</button>
+        </div>
+        
+        <div class="button-bar" style="margin-top: 1.5rem;">
+            <button type="submit" class="action-button save-btn">Salvar Novos Horários</button>
+        </div>
+        <div id="edit-feedback" class="status-message" style="margin-top: 15px;"></div>
     </form>
   `;
 
-  // Listener específico para este formulário
+  // Listener para salvar apenas descrição
   document
-    .getElementById("form-editar-agendamento-slots")
+    .getElementById("btn-salvar-descricao")
+    .addEventListener("click", async () => {
+      const novaDescricao = document.getElementById("edit-descricao").value;
+      const btn = document.getElementById("btn-salvar-descricao");
+      btn.textContent = "Salvando...";
+      btn.disabled = true;
+
+      try {
+        await updateDoc(
+          doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
+          {
+            descricao: novaDescricao,
+          }
+        );
+        alert("Descrição atualizada com sucesso!");
+      } catch (err) {
+        alert("Erro ao atualizar descrição.");
+        console.error(err);
+      } finally {
+        btn.textContent = "Salvar Apenas Texto";
+        btn.disabled = false;
+      }
+    });
+
+  // Listener para salvar novos slots
+  document
+    .getElementById("form-editar-completo")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
       await salvarNovosSlots(agendamentoId, agendamento);
     });
 }
 
-async function salvarNovosSlots(agendamentoId, agendamento) {
-  const feedbackEl = document.getElementById("edit-feedback");
-  const saveButton = document.querySelector('button[type="submit"]');
-  saveButton.disabled = true;
-  saveButton.textContent = "Salvando...";
-  feedbackEl.textContent = "";
-  feedbackEl.className = "status-message";
-
-  let novosSlots = [];
-
-  document
-    .querySelectorAll("#novos-slots-container .slot-item")
-    .forEach((slotItem) => {
-      const dataSlot = slotItem.querySelector(".slot-data").value;
-      const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
-      const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
-      const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
-
-      if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
-        const gestor = gestores.find((g) => g.id === gestorIdSlot);
-        const slotsGerados = gerarSlotsAutomaticos(
-          dataSlot,
-          horaInicioSlot,
-          horaFimSlot,
-          gestorIdSlot,
-          gestor?.nome || ""
-        );
-        novosSlots = novosSlots.concat(slotsGerados);
-      }
-    });
-
-  if (novosSlots.length === 0) {
-    feedbackEl.textContent = "Adicione pelo menos um novo horário.";
-    feedbackEl.classList.add("alert", "alert-danger");
-    saveButton.disabled = false;
-    saveButton.textContent = "Salvar Novos Horários";
-    return;
-  }
-
-  try {
-    const slotsAtualizados = [...agendamento.slots, ...novosSlots];
-    await updateDoc(
-      doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
-      {
-        slots: slotsAtualizados,
-      }
-    );
-
-    feedbackEl.innerHTML = `<div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px;"><strong>✓ ${novosSlots.length} novos horários adicionados com sucesso!</strong></div>`;
-    setTimeout(() => {
-      renderizarGerenciarAgendamentos();
-    }, 2000);
-  } catch (error) {
-    console.error("[AGENDAR] Erro ao atualizar agendamento:", error);
-    feedbackEl.textContent = "Erro ao salvar. Tente novamente.";
-    feedbackEl.classList.add("alert", "alert-danger");
-    saveButton.disabled = false;
-    saveButton.textContent = "Salvar Novos Horários";
-  }
-}
-
-// --- FUNÇÃO DE SALVAMENTO PRINCIPAL (CRIAÇÃO E EDIÇÃO GERAL) ---
+// --- LÓGICA DE SALVAMENTO ---
 
 async function salvarAgendamento(e) {
   e.preventDefault();
@@ -668,261 +495,222 @@ async function salvarAgendamento(e) {
   const saveButton = document.getElementById("btn-submit-agendamento");
 
   saveButton.disabled = true;
-  saveButton.textContent = editandoId ? "Salvando..." : "A agendar...";
+  saveButton.textContent = "Criando...";
   feedbackEl.textContent = "";
-  feedbackEl.className = "status-message";
 
   const tipo = document.getElementById("tipo-reuniao").value;
-
-  // Lógica de Voluntários (Apenas criação aqui, edição é em tela própria)
-  if (tipo === "Reunião com Voluntário" && !editandoId) {
-    await salvarReuniaoVoluntario(e);
-    return;
-  }
-
-  // Objeto de dados (Reuniões Gerais)
-  const dadosAgendamento = {
-    tipo: tipo,
-    dataReuniao: document.getElementById("data-reuniao").value,
-    horaInicio: document.getElementById("hora-inicio").value,
-    horaFim: document.getElementById("hora-fim").value,
-    // Se for novo, status é Agendada. Se for edição, não altera o status existente.
-    status: editandoId ? undefined : "Agendada",
-  };
-
-  // Limpa campos undefined
-  Object.keys(dadosAgendamento).forEach(
-    (key) => dadosAgendamento[key] === undefined && delete dadosAgendamento[key]
-  );
-
-  if (tipo === "Reunião Técnica") {
-    dadosAgendamento.responsavelTecnica =
-      document.getElementById("facilitador").value;
-    dadosAgendamento.pauta = document.getElementById("tema-reuniao").value;
-  } else {
-    dadosAgendamento.pauta = document.getElementById("pauta-reuniao").value;
-  }
-
-  try {
-    if (editandoId) {
-      // UPDATE
-      const docRef = doc(firestoreDb, "gestao_atas", editandoId);
-      await updateDoc(docRef, dadosAgendamento);
-      feedbackEl.innerHTML = `<div class="alert alert-success">Alterações salvas com sucesso!</div>`;
-    } else {
-      // CREATE
-      dadosAgendamento.createdAt = serverTimestamp();
-      dadosAgendamento.pontos = "";
-      dadosAgendamento.decisoes = "";
-      dadosAgendamento.participantes = "";
-      dadosAgendamento.planoDeAcao = [];
-      dadosAgendamento.encaminhamentos = [];
-      dadosAgendamento.feedbacks = [];
-
-      await addDoc(collection(firestoreDb, "gestao_atas"), dadosAgendamento);
-      feedbackEl.innerHTML = `<div class="alert alert-success">Reunião agendada com sucesso!</div>`;
-      e.target.reset();
-      document.getElementById("campos-dinamicos").innerHTML = "";
-    }
-  } catch (error) {
-    console.error("Erro ao salvar:", error);
-    feedbackEl.innerHTML = `<div class="alert alert-danger">Erro ao salvar. Tente novamente.</div>`;
-  } finally {
-    saveButton.disabled = false;
-    saveButton.textContent = editandoId
-      ? "Salvar Alterações"
-      : "Agendar Reunião";
-
-    if (editandoId) {
-      setTimeout(() => {
-        editandoId = null;
-        renderizarGerenciarAgendamentos();
-      }, 1500);
-    } else {
-      setTimeout(() => (feedbackEl.textContent = ""), 4000);
-    }
-  }
-}
-
-async function salvarReuniaoVoluntario(e) {
-  const feedbackEl = document.getElementById("agendamento-feedback");
-  const saveButton = document.getElementById("btn-submit-agendamento");
-
+  const descricao = document.getElementById("descricao-custom").value;
   const exibirGestor = document.getElementById("exibir-gestor").checked;
-  const descricaoCustom = document.getElementById("descricao-voluntario").value;
 
-  const descricaoPadrao = `
-<p><strong>✨ Gestão EuPsico: Alinhando Processos, Otimizando a Prática Profissional</strong></p>
-<p>Em nome de toda a equipe da <strong>EuPsico</strong>, expressamos nossa sincera gratidão pela sua dedicação e pelo impacto valioso do seu trabalho. Você é parte essencial da nossa missão, e é com profundo respeito que convidamos você para um momento exclusivo de escuta e diálogo, pensado especialmente para você.</p>
-<p><strong>🤝 Nosso Propósito: Ouvir, Valorizar e Evoluir Juntos</strong></p>
-Mais do que uma conversa sobre os próximos passos da EuPsico, este encontro é uma oportunidade para fortalecer nossa parceria, alinhando expectativas, ideias e caminhos de crescimento mútuo. Criamos esse espaço para:
-<ul>
-  <li><strong>Valorizar sua voz</strong>: Conhecer suas vivências, desafios e ideias que podem transformar nosso ambiente de voluntariado.</li>
-  <li><strong>Construir em conjunto</strong>: Compartilhar perspectivas sobre as próximas etapas e como elas se conectam ao seu desenvolvimento pessoal e profissional.</li>
-  <li><strong>Fortalecer seu caminho</strong>: Identificar formas de apoio mais eficazes da gestão para sua jornada conosco.</li>
-</ul>
-<p><strong>🗓️ Agende o Melhor Momento para Você</strong></p>
-<p>Sua visão é única e indispensável para a evolução da nossa comunidade.</p>
-<p>Para que esse encontro seja leve e conveniente, pedimos que selecione abaixo o horário que melhor se encaixa na sua rotina.<p> <strong><em>Observação: O link exclusivo para nossa reunião online será enviado via WhatsApp no dia agendado, pelo Gestor Responsável.</em></strong>
-<p>Será um prazer conduzir esta conversa construtiva com você.</p>
-<p><strong>Com apreço,<br>Gestão EuPsico</strong></p>
-`;
-
+  // Coleta Slots
   let slots = [];
-
   document
     .querySelectorAll("#slots-container .slot-item")
     .forEach((slotItem) => {
-      const dataSlot = slotItem.querySelector(".slot-data").value;
-      const horaInicioSlot = slotItem.querySelector(".slot-hora-inicio").value;
-      const horaFimSlot = slotItem.querySelector(".slot-hora-fim").value;
-      const gestorIdSlot = slotItem.querySelector(".slot-gestor").value;
+      const data = slotItem.querySelector(".slot-data").value;
+      const horaInicio = slotItem.querySelector(".slot-hora-inicio").value;
+      const horaFim = slotItem.querySelector(".slot-hora-fim").value;
+      const gestorId = slotItem.querySelector(".slot-gestor").value;
 
-      if (dataSlot && horaInicioSlot && horaFimSlot && gestorIdSlot) {
-        const gestor = gestores.find((g) => g.id === gestorIdSlot);
-        const slotsGerados = gerarSlotsAutomaticos(
-          dataSlot,
-          horaInicioSlot,
-          horaFimSlot,
-          gestorIdSlot,
-          gestor?.nome || ""
-        );
-        slots = slots.concat(slotsGerados);
+      if (data && horaInicio && horaFim && gestorId) {
+        const gestor = gestores.find((g) => g.id === gestorId);
+        // Gera slots (divide o tempo se necessário, ou cria um único se o intervalo for igual)
+        // Por simplicidade neste editor unificado, se for Reunião Técnica, podemos não querer dividir em 30 min,
+        // mas a função gerarSlotsAutomaticos divide. Vamos manter a divisão padrão de 30min para consistência
+        // ou criar apenas 1 slot se o usuário definir início e fim.
+        // **Decisão:** Manter divisão de 30min para Voluntários. Para Técnica, geralmente é um bloco só.
+
+        if (tipo === "Reunião com Voluntário") {
+          const slotsGerados = gerarSlotsAutomaticos(
+            data,
+            horaInicio,
+            horaFim,
+            gestorId,
+            gestor?.nome || ""
+          );
+          slots = slots.concat(slotsGerados);
+        } else {
+          // Para técnica, cria um slot único com o horário cheio (ex: 14:00 as 16:00)
+          // E define capacidade ilimitada (que é tratado na hora da inscrição, não aqui no banco,
+          // mas a estrutura de 'vagas' array permite infinitos pushes)
+          slots.push({
+            data,
+            horaInicio,
+            horaFim,
+            gestorId,
+            gestorNome: gestor?.nome || "",
+            vagas: [], // Array vazio para receber inscritos
+          });
+        }
       }
     });
 
   if (slots.length === 0) {
-    feedbackEl.textContent = "Adicione pelo menos uma data, horário e gestor.";
-    feedbackEl.classList.add("alert", "alert-danger");
+    alert("Adicione pelo menos um horário.");
     saveButton.disabled = false;
-    saveButton.textContent = "Agendar Reunião";
+    saveButton.textContent = "Criar Agendamento";
     return;
   }
 
-  const dataAgendamento = {
-    tipo: "Reunião com Voluntário",
-    exibirGestor,
-    descricao: descricaoCustom || descricaoPadrao,
+  // Define descrição padrão se vazio
+  const descFinal = descricao || getDescricaoPadrao(tipo);
+
+  const dados = {
+    tipo,
+    descricao: descFinal,
+    exibirGestor, // Usado pelo front público para esconder/mostrar nome
     slots,
     criadoEm: serverTimestamp(),
+    // Flag para o front público saber se limita vagas
+    vagasLimitadas: tipo === "Reunião com Voluntário",
   };
 
   try {
     const docRef = await addDoc(
       collection(firestoreDb, "agendamentos_voluntarios"),
-      dataAgendamento
+      dados
     );
-    const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
+    const link = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
 
     feedbackEl.innerHTML = `
-      <div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
-        <strong>✓ Reunião com Voluntário criada com sucesso!</strong>
-        <p style="margin: 0.5rem 0;">Foram criados <strong>${slots.length} horários</strong> disponíveis.</p>
-        <p style="margin: 0.5rem 0;"><strong>Link de Inscrição:</strong></p>
-        <input type="text" value="${linkAgendamento}" readonly onclick="this.select()" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;" />
-        <button onclick="navigator.clipboard.writeText('${linkAgendamento}'); alert('Link copiado!')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
-          Copiar Link
-        </button>
-      </div>
-    `;
+        <div class="alert alert-success">
+            <h4>Agendamento Criado!</h4>
+            <p>Link para inscrição:</p>
+            <input type="text" value="${link}" style="width:100%" readonly>
+        </div>`;
 
-    e.target.reset();
-    document.getElementById("campos-dinamicos").innerHTML = "";
-  } catch (error) {
-    console.error("[AGENDAR] Erro ao criar reunião com voluntário:", error);
-    feedbackEl.textContent = "Erro ao criar agendamento. Tente novamente.";
-    feedbackEl.classList.add("alert", "alert-danger");
+    // Limpa formulário
+    document.getElementById("form-agendamento").reset();
+    document.getElementById("slots-container").innerHTML = criarSlotHTML(); // Reseta para 1 slot vazio
+  } catch (err) {
+    console.error(err);
+    feedbackEl.innerHTML = `<div class="alert alert-danger">Erro ao criar agendamento.</div>`;
   } finally {
     saveButton.disabled = false;
-    saveButton.textContent = "Agendar Reunião";
+    saveButton.textContent = "Criar Agendamento";
   }
 }
 
-// --- FUNÇÃO DE EXPORTAÇÃO EXCEL ---
+async function salvarNovosSlots(agendamentoId, agendamento) {
+  const feedbackEl = document.getElementById("edit-feedback");
+  const saveButton = document.querySelector(
+    '#form-editar-completo button[type="submit"]'
+  );
+  saveButton.disabled = true;
+  saveButton.textContent = "Salvando...";
 
+  let novosSlots = [];
+
+  document
+    .querySelectorAll("#novos-slots-container .slot-item")
+    .forEach((slotItem) => {
+      const data = slotItem.querySelector(".slot-data").value;
+      const horaInicio = slotItem.querySelector(".slot-hora-inicio").value;
+      const horaFim = slotItem.querySelector(".slot-hora-fim").value;
+      const gestorId = slotItem.querySelector(".slot-gestor").value;
+
+      if (data && horaInicio && horaFim && gestorId) {
+        const gestor = gestores.find((g) => g.id === gestorId);
+
+        if (agendamento.tipo === "Reunião com Voluntário") {
+          const slotsGerados = gerarSlotsAutomaticos(
+            data,
+            horaInicio,
+            horaFim,
+            gestorId,
+            gestor?.nome || ""
+          );
+          novosSlots = novosSlots.concat(slotsGerados);
+        } else {
+          // Slot único para reuniões gerais
+          novosSlots.push({
+            data,
+            horaInicio,
+            horaFim,
+            gestorId,
+            gestorNome: gestor?.nome || "",
+            vagas: [],
+          });
+        }
+      }
+    });
+
+  if (novosSlots.length === 0) {
+    alert("Nenhum slot novo preenchido.");
+    saveButton.disabled = false;
+    saveButton.textContent = "Salvar Novos Horários";
+    return;
+  }
+
+  try {
+    const slotsAtualizados = [...agendamento.slots, ...novosSlots];
+
+    // Atualiza também a descrição, caso tenha mudado no textarea mas o usuário clicou direto em "Salvar Novos Horários"
+    const novaDescricao = document.getElementById("edit-descricao").value;
+
+    await updateDoc(
+      doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
+      {
+        slots: slotsAtualizados,
+        descricao: novaDescricao,
+      }
+    );
+
+    feedbackEl.innerHTML = `<div class="alert alert-success">Atualizado com sucesso!</div>`;
+    setTimeout(() => renderizarGerenciarAgendamentos(), 1500);
+  } catch (err) {
+    console.error(err);
+    feedbackEl.innerHTML = `<div class="alert alert-danger">Erro ao salvar.</div>`;
+    saveButton.disabled = false;
+    saveButton.textContent = "Salvar Novos Horários";
+  }
+}
+
+// --- EXPORTAR EXCEL ---
 function exportarParaExcel(agendamentoId) {
   const agendamento = agendamentosExistentes.find(
     (a) => a.id === agendamentoId
   );
+  if (!agendamento) return alert("Erro ao encontrar dados.");
 
-  if (!agendamento) {
-    alert("Agendamento não encontrado.");
-    return;
-  }
+  let csv = "Data,Horario,Responsavel,Inscrito,Status\n";
 
-  let csvContent = "";
-  let filename = "";
-
-  if (agendamento.origem === "voluntarios" || agendamento.slots) {
-    // CSV para Reuniões de Voluntários
-    csvContent = "Gestor,Data,Dia da Semana,Hora Início,Hora Fim,Status\n";
-    const slots = [...(agendamento.slots || [])].sort((a, b) =>
+  if (agendamento.slots) {
+    // Ordena por data
+    const slots = [...agendamento.slots].sort((a, b) =>
       a.data.localeCompare(b.data)
     );
 
     slots.forEach((slot) => {
-      const status = slot.vagas?.length > 0 ? "Preenchido" : "Disponível";
-      csvContent += `"${slot.gestorNome || "Não especificado"}","${
-        slot.data
-      }","${formatarDataCompleta(slot.data)}","${slot.horaInicio}","${
-        slot.horaFim
-      }","${status}"\n`;
+      const dataF = formatarDataCompleta(slot.data);
+      const horaF = `${slot.horaInicio} - ${slot.horaFim}`;
+
+      if (slot.vagas && slot.vagas.length > 0) {
+        slot.vagas.forEach((vaga) => {
+          // Se tiver nome do inscrito, usa. Se não, "Ocupado"
+          const nomeInscrito = vaga.profissionalNome || "Inscrito"; // Adapte conforme seu objeto de vaga no front público
+          csv += `"${dataF}","${horaF}","${slot.gestorNome}","${nomeInscrito}","Confirmado"\n`;
+        });
+      } else {
+        csv += `"${dataF}","${horaF}","${slot.gestorNome}","","Disponível"\n`;
+      }
     });
-    filename = `agendamento_voluntarios_${agendamento.id}.csv`;
-  } else {
-    // CSV para Reuniões Gerais
-    csvContent = "Tipo,Data,Hora Início,Hora Fim,Responsável,Pauta,Status\n";
-    const resp =
-      agendamento.responsavelTecnica || agendamento.responsavel || "N/A";
-    const pautaLimpa = (agendamento.pauta || "").replace(/"/g, '""'); // Escape de aspas duplas
-    csvContent += `"${agendamento.tipo}","${agendamento.dataReuniao}","${agendamento.horaInicio}","${agendamento.horaFim}","${resp}","${pautaLimpa}","${agendamento.status}"\n`;
-    filename = `reuniao_${agendamento.dataReuniao}_${agendamento.id}.csv`;
   }
 
-  // Cria o arquivo para download
-  const blob = new Blob(["\ufeff" + csvContent], {
-    type: "text/csv;charset=utf-8;",
-  });
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-
   link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
-
+  link.setAttribute(
+    "download",
+    `lista_presenca_${agendamento.tipo.replace(/\s/g, "_")}.csv`
+  );
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
 
-// --- HELPERS E FUNÇÕES AUXILIARES ---
-
-function criarSlotHTML() {
-  const gestoresOptions = gestores
-    .map((g) => `<option value="${g.id}">${g.nome}</option>`)
-    .join("");
-
-  return `
-    <div class="slot-item" style="display: grid; grid-template-columns: 1fr 1fr auto 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-      <input type="date" class="slot-data form-control" required />
-      <input type="time" class="slot-hora-inicio form-control" required />
-      <span>até</span>
-      <input type="time" class="slot-hora-fim form-control" required />
-      <select class="slot-gestor form-control" required>
-        <option value="">Selecione o gestor...</option>
-        ${gestoresOptions}
-      </select>
-      <button type="button" class="btn-remove-slot" style="background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer;" onclick="this.parentElement.remove()">✕</button>
-    </div>
-  `;
-}
-
-function adicionarSlot() {
-  const slotsContainer = document.getElementById("slots-container");
-  const novoSlot = document.createElement("div");
-  novoSlot.innerHTML = criarSlotHTML();
-  slotsContainer.appendChild(novoSlot.firstElementChild);
-}
+// --- HELPERS ---
 
 function gerarSlotsAutomaticos(
   data,
@@ -933,10 +721,8 @@ function gerarSlotsAutomaticos(
 ) {
   const slots = [];
   const INTERVALO_MINUTOS = 30;
-
   const [horaIni, minIni] = horaInicioStr.split(":").map(Number);
   const [hrFim, minFim] = horaFimStr.split(":").map(Number);
-
   let minutoAtual = horaIni * 60 + minIni;
   const minutoFinal = hrFim * 60 + minFim;
 
@@ -945,7 +731,6 @@ function gerarSlotsAutomaticos(
       minutoAtual + INTERVALO_MINUTOS,
       minutoFinal
     );
-
     const horaInicioSlot = `${String(Math.floor(minutoAtual / 60)).padStart(
       2,
       "0"
@@ -954,7 +739,6 @@ function gerarSlotsAutomaticos(
       2,
       "0"
     )}:${String(minutoProximo % 60).padStart(2, "0")}`;
-
     slots.push({
       data,
       horaInicio: horaInicioSlot,
@@ -963,10 +747,8 @@ function gerarSlotsAutomaticos(
       gestorNome,
       vagas: [],
     });
-
     minutoAtual = minutoProximo;
   }
-
   return slots;
 }
 
@@ -974,23 +756,24 @@ function formatarDataCompleta(dataISO) {
   if (!dataISO) return "Data inválida";
   const [ano, mes, dia] = dataISO.split("-");
   const data = new Date(ano, mes - 1, dia);
-  const diasSemana = [
-    "Domingo",
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-  ];
-  return `${diasSemana[data.getDay()]}, ${dia}/${mes}/${ano}`;
+  return data.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function formatarDataCriacao(timestamp) {
-  if (!timestamp) return "Data não informada";
-  if (timestamp.toDate) {
-    const data = timestamp.toDate();
-    return data.toLocaleString("pt-BR");
+  if (!timestamp) return "";
+  return timestamp.toDate ? timestamp.toDate().toLocaleDateString("pt-BR") : "";
+}
+
+function getDescricaoPadrao(tipo) {
+  if (tipo === "Reunião com Voluntário") {
+    return "Olá! Selecione um horário abaixo para nossa conversa individual de alinhamento. O link da reunião será enviado pelo WhatsApp.";
   }
-  return "Data não informada";
+  if (tipo === "Reunião Técnica") {
+    return "Participe da nossa Reunião Técnica. Inscreva-se em um dos horários disponíveis abaixo para garantir sua presença.";
+  }
+  return "Selecione um horário para participar desta reunião.";
 }
