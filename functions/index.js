@@ -1752,55 +1752,85 @@ exports.enviarEmailGestorAgendamento = onDocumentUpdated(
 
     const novosInscritos = [];
 
+    // Identifica TODOS os novos inscritos comparando os arrays de vagas
     novosDados.slots.forEach((slot, index) => {
       const vagasNovas = slot.vagas || [];
       const vagasAntigas = dadosAntigos.slots[index]?.vagas || [];
 
+      // Se houver mais vagas agora do que antes, processa as adições
       if (vagasNovas.length > vagasAntigas.length) {
-        const novaVaga = vagasNovas[vagasNovas.length - 1];
-        novosInscritos.push({ slot, vaga: novaVaga });
+        // Pega todos os novos itens adicionados (não apenas o último)
+        for (let i = vagasAntigas.length; i < vagasNovas.length; i++) {
+          const novaVaga = vagasNovas[i];
+          novosInscritos.push({
+            slot,
+            vaga: novaVaga,
+            tipoReuniao: novosDados.tipo || "Reunião",
+            descricao: novosDados.descricao || "",
+          });
+        }
       }
     });
 
+    if (novosInscritos.length === 0) return;
+
+    logger.info(`Processando ${novosInscritos.length} novos inscritos.`);
+
+    // Processa cada novo inscrito
     for (const inscrito of novosInscritos) {
       try {
-        const gestorDoc = await db
-          .collection("usuarios")
-          .doc(inscrito.slot.gestorId)
-          .get();
+        const { slot, vaga, tipoReuniao } = inscrito;
 
-        if (!gestorDoc.exists) {
-          logger.warn(`Gestor ${inscrito.slot.gestorId} não encontrado`);
-          continue;
-        }
-
-        const gestorEmail = gestorDoc.data().email;
-        const gestorNome = gestorDoc.data().nome;
-
-        if (!gestorEmail) {
-          logger.warn(`Gestor ${gestorNome} não tem e-mail cadastrado`);
-          continue;
-        }
-
+        // Gera Link do Google Calendar
         const linkCalendar = gerarLinkGoogleCalendar(
-          `Reunião com ${inscrito.vaga.profissionalNome}`,
-          "Reunião individual com voluntário - EuPsico",
-          inscrito.slot.data,
-          inscrito.slot.horaInicio,
-          inscrito.slot.horaFim
+          `${tipoReuniao} - ${vaga.nome || "Voluntário"}`,
+          `Reunião: ${tipoReuniao}\nParticipante: ${vaga.nome}\nGestor: ${slot.gestorNome}`,
+          slot.data,
+          slot.horaInicio,
+          slot.horaFim
         );
 
-        const mailOptions = {
-          from: "EuPsico Gestão <atendimento@eupsico.org.br>",
-          to: gestorEmail,
-          subject: `📅 Novo Agendamento - ${inscrito.vaga.profissionalNome}`,
-          html: gerarEmailAgendamento(gestorNome, inscrito, linkCalendar),
-        };
+        // 1. ENVIA E-MAIL PARA O GESTOR
+        if (slot.gestorId) {
+          const gestorDoc = await db
+            .collection("usuarios")
+            .doc(slot.gestorId)
+            .get();
 
-        await transporter.sendMail(mailOptions);
-        logger.log(`✅ E-mail enviado para ${gestorEmail}`);
+          if (gestorDoc.exists) {
+            const gestorEmail = gestorDoc.data().email;
+            const gestorNome = gestorDoc.data().nome;
+
+            if (gestorEmail) {
+              const mailOptionsGestor = {
+                from: "EuPsico Gestão <atendimento@eupsico.org.br>",
+                to: gestorEmail,
+                subject: `📅 Novo Agendamento: ${vaga.nome} (${tipoReuniao})`,
+                html: gerarEmailGestor(gestorNome, inscrito, linkCalendar),
+              };
+              await transporter.sendMail(mailOptionsGestor);
+              logger.log(`✅ E-mail enviado para Gestor: ${gestorEmail}`);
+            }
+          }
+        }
+
+        // 2. ENVIA E-MAIL PARA O PARTICIPANTE (QUEM AGENDOU)
+        if (vaga.email) {
+          const mailOptionsParticipante = {
+            from: "EuPsico <atendimento@eupsico.org.br>",
+            to: vaga.email,
+            subject: `✅ Confirmação: ${tipoReuniao} Agendada`,
+            html: gerarEmailParticipante(inscrito, linkCalendar),
+          };
+          await transporter.sendMail(mailOptionsParticipante);
+          logger.log(`✅ E-mail enviado para Participante: ${vaga.email}`);
+        } else {
+          logger.warn(
+            `Participante ${vaga.nome} não possui e-mail cadastrado na vaga.`
+          );
+        }
       } catch (error) {
-        logger.error("❌ Erro ao enviar e-mail:", error);
+        logger.error("❌ Erro ao enviar e-mails de agendamento:", error);
       }
     }
 
@@ -1808,6 +1838,70 @@ exports.enviarEmailGestorAgendamento = onDocumentUpdated(
   }
 );
 
+function gerarEmailGestor(gestorNome, inscrito, linkCalendar) {
+  const { vaga, slot, tipoReuniao } = inscrito;
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
+      <div style="background: #003d7a; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h2>Nova Inscrição Recebida</h2>
+      </div>
+      <div style="background: #f8f9fa; padding: 20px; border: 1px solid #ddd;">
+        <p>Olá, <strong>${gestorNome}</strong>!</p>
+        <p>Uma nova pessoa se inscreveu para o horário abaixo:</p>
+        
+        <div style="background: white; padding: 15px; border-left: 4px solid #003d7a; margin: 15px 0;">
+          <p><strong>Evento:</strong> ${tipoReuniao}</p>
+          <p><strong>Participante:</strong> ${vaga.nome}</p>
+          <p><strong>E-mail:</strong> ${vaga.email || "Não informado"}</p>
+          <p><strong>Telefone:</strong> ${vaga.telefone || "Não informado"}</p>
+          <hr style="border: 0; border-top: 1px solid #eee;">
+          <p><strong>Data:</strong> ${formatarDataCompleta(slot.data)}</p>
+          <p><strong>Horário:</strong> ${slot.horaInicio} - ${slot.horaFim}</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="${linkCalendar}" style="background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            📅 Adicionar ao Google Calendar
+          </a>
+        </div>
+        <p style="margin-top:20px; font-size: 0.9em; color: #666;">Lembre-se de enviar o link da videochamada para o participante via WhatsApp no dia do evento.</p>
+      </div>
+    </div>
+  `;
+}
+
+function gerarEmailParticipante(inscrito, linkCalendar) {
+  const { vaga, slot, tipoReuniao } = inscrito;
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
+      <div style="background: #198754; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h2>Inscrição Confirmada!</h2>
+      </div>
+      <div style="background: #f8f9fa; padding: 20px; border: 1px solid #ddd;">
+        <p>Olá, <strong>${vaga.nome}</strong>!</p>
+        <p>Sua inscrição para <strong>${tipoReuniao}</strong> foi confirmada com sucesso.</p>
+        
+        <div style="background: white; padding: 15px; border-left: 4px solid #198754; margin: 15px 0;">
+          <p><strong>Data:</strong> ${formatarDataCompleta(slot.data)}</p>
+          <p><strong>Horário:</strong> ${slot.horaInicio} - ${slot.horaFim}</p>
+          <p><strong>Responsável:</strong> ${slot.gestorNome}</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="${linkCalendar}" style="background: #198754; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            📅 Salvar na minha Agenda
+          </a>
+        </div>
+        
+        <p style="margin-top:20px; background: #fff3cd; padding: 10px; border-radius: 4px; font-size: 0.9em;">
+          <strong>ℹ️ Importante:</strong> O link para a reunião online será enviado para o seu WhatsApp cadastrado (${
+            vaga.telefone
+          }) no dia do agendamento.
+        </p>
+      </div>
+    </div>
+  `;
+}
 // ====================================================================
 // Funções auxiliares para e-mail
 // ====================================================================
@@ -1868,6 +1962,7 @@ function gerarEmailAgendamento(gestorNome, inscrito, linkCalendar) {
 }
 
 function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
+  if (!data || !horaInicio || !horaFim) return "#";
   const [ano, mes, dia] = data.split("-");
   const [horaIni, minIni] = horaInicio.split(":");
   const [horaFimStr, minFim] = horaFim.split(":");
@@ -1880,7 +1975,7 @@ function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
     text: titulo,
     dates: `${dataInicio}/${dataFimFormatada}`,
     details: descricao,
-    location: "Online",
+    location: "Online (Link via WhatsApp)",
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
