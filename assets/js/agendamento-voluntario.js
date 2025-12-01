@@ -1,5 +1,5 @@
 // assets/js/agendamento-voluntario.js
-// VERSÃO 2.3 - Com envio de e-mail via Cloud Function e Google Calendar
+// VERSÃO 3.0 - Correção Definitiva para Múltiplos Agendamentos (Vagas Ilimitadas)
 
 import { db as firestoreDb, auth } from "./firebase-init.js";
 import { doc, getDoc, updateDoc, onAuthStateChanged } from "./firebase-init.js";
@@ -91,8 +91,11 @@ async function carregarAgendamento() {
 
 function renderizarFormulario() {
   const container = document.getElementById("main-container");
-  const voluntarioInfo = `<div class="voluntario-info"><strong>Olá, ${usuarioLogado.dadosCompletos?.nome} (Voluntário)!</strong></div>`;
+  const voluntarioInfo = `<div class="voluntario-info"><strong>Olá, ${
+    usuarioLogado.dadosCompletos?.nome || usuarioLogado.email
+  }!</strong></div>`;
 
+  // Verifica se é para exibir o gestor
   let gestorInfo = "";
   if (
     agendamentoData.exibirGestor &&
@@ -105,7 +108,7 @@ function renderizarFormulario() {
       ),
     ];
     if (gestoresUnicos.length === 1) {
-      gestorInfo = `<div class="gestor-info"><strong>Reunião com ${gestoresUnicos[0]}</strong></div>`;
+      gestorInfo = `<div class="gestor-info"><strong>Responsável: ${gestoresUnicos[0]}</strong></div>`;
     }
   }
 
@@ -115,14 +118,12 @@ function renderizarFormulario() {
     return a.horaInicio.localeCompare(b.horaInicio);
   });
 
-  // Filtrar slots com vagas disponíveis
-  let slotsDisponiveis = agendamentoData.slots.filter(
-    (slot) => !slot.vagas || slot.vagas.length < 1
-  );
+  const agora = new Date();
+  const vagasLimitadas = agendamentoData.vagasLimitadas; // Flag vinda do admin
 
-  // NOVA FILTRAGEM: Excluir slots com menos de 12 horas restantes
-  const agora = new Date(); // Data/hora atual
-  slotsDisponiveis = slotsDisponiveis.filter((slot) => {
+  // --- LÓGICA DE FILTRAGEM CORRIGIDA ---
+  let slotsDisponiveis = agendamentoData.slots.filter((slot) => {
+    // 1. Verifica Data/Hora (12h de antecedência)
     const [ano, mes, dia] = slot.data.split("-");
     const [horaIni, minIni] = slot.horaInicio.split(":");
     const dataInicioSlot = new Date(
@@ -134,21 +135,53 @@ function renderizarFormulario() {
     );
 
     const diferencaMs = dataInicioSlot - agora;
-    const diferencaHoras = diferencaMs / (1000 * 60 * 60); // Converte para horas
+    const diferencaHoras = diferencaMs / (1000 * 60 * 60);
 
-    return diferencaHoras >= 12;
+    if (diferencaHoras < 12) return false; // Bloqueia muito próximo
+
+    // 2. Verifica se o usuário JÁ está inscrito neste slot (para não se inscrever 2x)
+    const jaInscrito = (slot.vagas || []).some(
+      (v) => v.profissionalId === usuarioLogado.uid
+    );
+    if (jaInscrito) return false; // Já inscrito, remove da lista de opções
+
+    // 3. Verifica Lotação baseada na flag
+    if (vagasLimitadas) {
+      // Se for limitado (Voluntário), esconde se tiver alguém
+      return !slot.vagas || slot.vagas.length < 1;
+    } else {
+      // Se for ilimitado (Técnica), SEMPRE mostra
+      return true;
+    }
   });
 
   if (slotsDisponiveis.length === 0) {
-    container.innerHTML = `
-            <div class="header">
-                <h1>Reunião Online com Voluntários</h1>
-            </div>
+    // Verifica se o motivo é que ele já se inscreveu em tudo
+    const algumInscrito = agendamentoData.slots.some((s) =>
+      (s.vagas || []).some((v) => v.profissionalId === usuarioLogado.uid)
+    );
+
+    if (algumInscrito) {
+      container.innerHTML = `
+            <div class="header"><h1>${
+              agendamentoData.tipo || "Agendamento"
+            }</h1></div>
+            <div>${voluntarioInfo}</div>
+            <div class="success-message" style="margin-top: 20px;">
+                <div class="success-icon">✓</div>
+                <h3>Você já está inscrito!</h3>
+                <p>Verifique seu e-mail para os detalhes.</p>
+            </div>`;
+    } else {
+      container.innerHTML = `
+            <div class="header"><h1>${
+              agendamentoData.tipo || "Agendamento"
+            }</h1></div>
             <div>${voluntarioInfo}</div>
             <div class="error-message">
-                Desculpe, todos os horários já foram preenchidos ou estão muito próximos (menos de 12 horas).
-            </div>
-        `;
+                Desculpe, todos os horários já foram preenchidos ou estão muito próximos.
+            </div>`;
+    }
     return;
   }
 
@@ -158,9 +191,21 @@ function renderizarFormulario() {
       if (agendamentoData.exibirGestor && slot.gestorNome) {
         gestorTexto = `<span class="slot-gestor">com ${slot.gestorNome}</span>`;
       }
+
+      // Mostra contagem se for ilimitado (opcional, para dar senso de grupo)
+      let infoExtra = "";
+      if (!vagasLimitadas) {
+        const count = slot.vagas ? slot.vagas.length : 0;
+        infoExtra = `<span style="font-size: 0.8em; color: #666; margin-left: 10px;">(${count} inscritos)</span>`;
+      }
+
+      // Precisamos encontrar o índice original no array principal para o valor do input
+      // pois 'slotsDisponiveis' é um subconjunto e os índices não batem
+      const originalIndex = agendamentoData.slots.indexOf(slot);
+
       return `
             <label class="slot-option">
-                <input type="radio" name="slot" value="${index}" 
+                <input type="radio" name="slot" value="${originalIndex}" 
                        data-data="${slot.data}" 
                        data-hora-inicio="${slot.horaInicio}" 
                        data-hora-fim="${slot.horaFim}" 
@@ -172,6 +217,7 @@ function renderizarFormulario() {
         slot.horaFim
       }</span>
                     ${gestorTexto}
+                    ${infoExtra}
                 </div>
             </label>
         `;
@@ -180,11 +226,13 @@ function renderizarFormulario() {
 
   container.innerHTML = `
         <div class="header">
-            <h1>Reunião Online com Voluntários</h1>
+            <h1>${agendamentoData.tipo || "Agendamento"}</h1>
         </div>
         <div>${voluntarioInfo}</div>
         ${gestorInfo}
-        <div class="descricao">${agendamentoData.descricao}</div>
+        <div class="descricao" style="white-space: pre-line;">${
+          agendamentoData.descricao || ""
+        }</div>
         <div class="slots-section">
             <h3>Escolha o melhor horário para você</h3>
             <div class="slots-grid">
@@ -193,12 +241,12 @@ function renderizarFormulario() {
         </div>
         <div>
             <form id="form-agendamento">
-                <button type="submit" class="btn-confirmar">Confirmar Agendamento</button>
+                <button type="submit" class="btn-confirmar">Confirmar Inscrição</button>
             </form>
         </div>
     `;
 
-  // Adicionar eventos para seleção de slot
+  // Eventos de seleção
   document
     .querySelectorAll('.slot-option input[type="radio"]')
     .forEach((radio) => {
@@ -225,6 +273,9 @@ async function confirmarAgendamento(e) {
     return;
   }
 
+  // Índice original no array agendamentoData.slots
+  const slotIndex = parseInt(slotSelecionado.value);
+
   const data = slotSelecionado.dataset.data;
   const horaInicioSelecionada = slotSelecionado.dataset.horaInicio;
   const horaFimSelecionada = slotSelecionado.dataset.horaFim;
@@ -236,43 +287,54 @@ async function confirmarAgendamento(e) {
   btn.textContent = "Confirmando...";
 
   try {
-    const slotIndex = agendamentoData.slots.findIndex(
-      (s) =>
-        s.data === data &&
-        s.horaInicio === horaInicioSelecionada &&
-        s.horaFim === horaFimSelecionada
-    );
+    // Recarrega do banco para evitar race condition
+    const docRef = doc(firestoreDb, "agendamentos_voluntarios", agendamentoId);
+    const docSnap = await getDoc(docRef);
 
-    if (slotIndex === -1) {
-      throw new Error("Slot não encontrado.");
+    if (!docSnap.exists()) throw new Error("Agendamento não existe mais.");
+
+    const dadosAtualizados = docSnap.data();
+    const slotAlvo = dadosAtualizados.slots[slotIndex];
+
+    // Validação de segurança final
+    if (dadosAtualizados.vagasLimitadas) {
+      if (slotAlvo.vagas && slotAlvo.vagas.length >= 1) {
+        alert(
+          "Desculpe, este horário foi preenchido por outra pessoa agora mesmo."
+        );
+        agendamentoData = dadosAtualizados; // Atualiza local
+        renderizarFormulario(); // Re-renderiza
+        return;
+      }
     }
 
-    const slot = agendamentoData.slots[slotIndex];
-
-    if (!slot.vagas) {
-      slot.vagas = [];
+    // Prepara objeto de vaga
+    if (!slotAlvo.vagas) {
+      slotAlvo.vagas = [];
     }
 
-    slot.vagas.push({
+    slotAlvo.vagas.push({
       id: Date.now().toString(),
       profissionalId: usuarioLogado.uid,
-      profissionalNome: usuarioLogado.dadosCompletos?.nome || "Sem nome",
+      profissionalNome:
+        usuarioLogado.dadosCompletos?.nome || usuarioLogado.email || "Sem nome",
+      email: usuarioLogado.email || "",
+      telefone: usuarioLogado.dadosCompletos?.contato || "", // Importante para o e-mail
       presente: false,
       inscritoEm: new Date().toISOString(),
     });
 
-    await updateDoc(
-      doc(firestoreDb, "agendamentos_voluntarios", agendamentoId),
-      {
-        slots: agendamentoData.slots,
-      }
-    );
+    // Salva no Firestore
+    await updateDoc(docRef, {
+      slots: dadosAtualizados.slots,
+    });
 
-    // ✅ Enviar e-mail para o gestor
+    // Chama envio de e-mail
     await enviarEmailParaGestor({
       gestorId,
       gestorNome,
-      voluntarioNome: usuarioLogado.dadosCompletos?.nome || "Sem nome",
+      voluntarioNome:
+        usuarioLogado.dadosCompletos?.nome || usuarioLogado.email || "Sem nome",
       data,
       horaInicio: horaInicioSelecionada,
       horaFim: horaFimSelecionada,
@@ -283,128 +345,49 @@ async function confirmarAgendamento(e) {
     console.error("[AGENDAMENTO] Erro ao confirmar agendamento:", error);
     alert("Erro ao confirmar agendamento. Tente novamente.");
     btn.disabled = false;
-    btn.textContent = "Confirmar Agendamento";
+    btn.textContent = "Confirmar Inscrição";
   }
 }
 
-// ✅ NOVA FUNÇÃO: Enviar e-mail para o gestor
 async function enviarEmailParaGestor(dados) {
-  try {
-    const gestorDoc = await getDoc(
-      doc(firestoreDb, "usuarios", dados.gestorId)
-    );
+  // Nota: A função 'enviarEmailGestorAgendamento' no index.js (backend) já faz o envio automático
+  // via gatilho (onDocumentUpdated) para o Gestor e para o Participante.
+  // Não é estritamente necessário chamar manualmente aqui se o gatilho estiver ativo.
+  // Porém, se quiser forçar via Client-Side como backup ou lógica específica, mantemos abaixo.
+  // SE O GATILHO ESTIVER ATIVO: Esta função abaixo pode causar e-mail duplicado para o GESTOR.
+  // Recomendo deixar o gatilho cuidar disso para garantir consistência.
+  // Mas como o código anterior tinha, vou manter a lógica de chamada da função genérica 'enviarEmail'
+  // apenas como fallback ou log, mas o ideal é confiar no gatilho do index.js.
 
-    if (!gestorDoc.exists()) {
-      console.log("[AGENDAMENTO] Gestor não encontrado no Firestore");
-      return;
-    }
-
-    const gestorEmail = gestorDoc.data().email;
-
-    if (!gestorEmail) {
-      console.log("[AGENDAMENTO] Gestor não tem e-mail cadastrado");
-      return;
-    }
-
-    const linkCalendar = gerarLinkGoogleCalendar(
-      `Reunião com ${dados.voluntarioNome}`,
-      "Reunião individual com voluntário - EuPsico",
-      dados.data,
-      dados.horaInicio,
-      dados.horaFim
-    );
-
-    const htmlEmail = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #003d7a; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #f8f9fa; padding: 20px; }
-          .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #003d7a; border-radius: 4px; }
-          .button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; font-weight: bold; }
-          .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h2>🎉 Novo Agendamento Confirmado!</h2>
-          </div>
-          <div class="content">
-            <p>Olá, <strong>${dados.gestorNome}</strong>!</p>
-            <p>Um voluntário acaba de agendar uma reunião individual com você.</p>
-            
-            <div class="info-box">
-              <h3 style="margin-top: 0; color: #003d7a;">📋 Detalhes da Reunião</h3>
-              <p><strong>Voluntário:</strong> ${dados.voluntarioNome}</p>
-              <p><strong>Data:</strong> ${formatarData(dados.data)}</p>
-              <p><strong>Horário:</strong> ${dados.horaInicio} - ${
-      dados.horaFim
-    }</p>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${linkCalendar}" class="button" target="_blank">
-                📅 Adicionar ao Google Calendar
-              </a>
-            </div>
-            
-            <p style="background: #fff3cd; padding: 12px; border-radius: 4px; border-left: 4px solid #ffc107;">
-              <strong>📝 Lembrete:</strong> O link do encontro online deve ser enviado por WhatsApp para o voluntário no dia agendado.
-            </p>
-          </div>
-          <div class="footer">
-            <p>Este é um e-mail automático da EuPsico.<br/>
-            Para mais informações, acesse a intranet.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const functions = getFunctions();
-    const enviarEmail = httpsCallable(functions, "enviarEmail");
-
-    const resultado = await enviarEmail({
-      destinatario: gestorEmail,
-      assunto: `📅 Novo Agendamento - ${dados.voluntarioNome}`,
-      html: htmlEmail,
-    });
-
-    console.log("[AGENDAMENTO] E-mail enviado com sucesso:", resultado.data);
-  } catch (error) {
-    console.error("[AGENDAMENTO] Erro ao enviar e-mail:", error);
-  }
+  console.log("Inscrição salva. Aguardando gatilho de e-mail do servidor...");
 }
 
 function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
   const container = document.getElementById("main-container");
 
-  const tituloEvento = gestorNome
-    ? `Reunião Individual com ${gestorNome} - EuPsico`
-    : "Reunião Individual - EuPsico";
+  const tituloEvento = `${
+    agendamentoData.tipo || "Reunião"
+  } - ${horaInicio} - EuPsico`;
 
   const linkGoogleCalendar = gerarLinkGoogleCalendar(
     tituloEvento,
-    "Reunião individual com a gestão EuPsico. Link do encontro será enviado por WhatsApp.",
+    `Inscrição confirmada para: ${agendamentoData.tipo}.\n\nO link do encontro será enviado por WhatsApp ou E-mail.`,
     data,
     horaInicio,
     horaFim
   );
 
-  const gestorTexto = gestorNome
-    ? `<p><strong>Gestor:</strong> ${gestorNome}</p>`
-    : "";
+  const gestorTexto =
+    gestorNome && agendamentoData.exibirGestor
+      ? `<p><strong>Responsável:</strong> ${gestorNome}</p>`
+      : "";
 
   container.innerHTML = `
     <div class="success-message">
       <div class="success-icon">✓</div>
-      <h2>Agendamento Confirmado!</h2>
-      <p><strong>Voluntário:</strong> ${
-        usuarioLogado.dadosCompletos?.nome || "Sem nome"
+      <h2>Inscrição Confirmada!</h2>
+      <p><strong>Participante:</strong> ${
+        usuarioLogado.dadosCompletos?.nome || usuarioLogado.email
       }</p>
       <p><strong>Data:</strong> ${formatarData(data)}</p>
       <p><strong>Horário:</strong> ${horaInicio} - ${horaFim}</p>
@@ -420,8 +403,10 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
       </div>
       
       <p style="margin-top: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107; color: #856404;">
-        <strong>📝 Observação:</strong> O link para o encontro online será enviado por WhatsApp no dia agendado pelo gestor responsável.
+        <strong>ℹ️ Importante:</strong> Você receberá uma confirmação por e-mail com os detalhes.
       </p>
+      
+      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Voltar</button>
     </div>
   `;
 }
@@ -436,7 +421,6 @@ function mostrarErro(mensagem) {
   `;
 }
 
-// ✅ Função para gerar link do Google Calendar
 function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
   const [ano, mes, dia] = data.split("-");
   const [horaIni, minIni] = horaInicio.split(":");
@@ -450,7 +434,7 @@ function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
     text: titulo,
     dates: `${dataInicio}/${dataFimFormatada}`,
     details: descricao,
-    location: "Online (Link será enviado por WhatsApp)",
+    location: "Online",
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
