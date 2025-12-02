@@ -412,15 +412,13 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
       <h2>Agendamento Atualizado!</h2>
       <p><strong>Data:</strong> ${formatarData(data)}</p>
       <p><strong>Horário:</strong> ${horaInicio} - ${horaFim}</p>
-      ${gestorNome ? `<p><strong>Responsável:</strong> ${gestorNome}</p>` : ""}
+      }
       
       <div style="margin-top: 2rem; padding: 1rem; background: #f0f9ff; border: 2px solid #4285f4; border-radius: 8px;">
         <a href="${linkCalendar}" target="_blank" style="display: inline-block; background: #4285f4; color: white; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: bold;">
           Adicionar ao Google Calendar
         </a>
       </div>
-      <p style="margin-top: 1.5rem; color: #666;">Você receberá um novo e-mail de confirmação.</p>
-      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px;">Voltar</button>
     </div>
   `;
 }
