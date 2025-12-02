@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.5 (Correção: Botões "Ver Detalhes" agora expandem os cards)
+// VERSÃO 5.6 (Filtro Padrão Futuro + Histórico por Periodo)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -79,7 +79,9 @@ function getListaUnificada() {
 }
 
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v5.5 - Detalhes corrigidos).");
+  console.log(
+    "[DASH] Dashboard iniciado (v5.6 - Filtros de Data e Layout Atualizado)."
+  );
   configurarEventListeners();
   carregarDados();
 }
@@ -97,10 +99,17 @@ function configurarEventListeners() {
   });
 
   const tipoFiltro = document.getElementById("tipo-filtro");
+  const dataInicio = document.getElementById("filtro-data-inicio");
+  const dataFim = document.getElementById("filtro-data-fim");
+  const buscaInput = document.getElementById("busca-titulo");
+  const limparBtn = document.getElementById("limpar-filtros");
+
   if (tipoFiltro)
     tipoFiltro.addEventListener("change", aplicarFiltrosEExibirAtas);
+  if (dataInicio)
+    dataInicio.addEventListener("change", aplicarFiltrosEExibirAtas);
+  if (dataFim) dataFim.addEventListener("change", aplicarFiltrosEExibirAtas);
 
-  const buscaInput = document.getElementById("busca-titulo");
   if (buscaInput) {
     buscaInput.addEventListener("input", () => {
       clearTimeout(timeoutBusca);
@@ -108,11 +117,12 @@ function configurarEventListeners() {
     });
   }
 
-  const limparBtn = document.getElementById("limpar-filtros");
   if (limparBtn)
     limparBtn.addEventListener("click", () => {
       if (tipoFiltro) tipoFiltro.value = "Todos";
       if (buscaInput) buscaInput.value = "";
+      if (dataInicio) dataInicio.value = "";
+      if (dataFim) dataFim.value = "";
       aplicarFiltrosEExibirAtas();
     });
 }
@@ -160,44 +170,78 @@ function carregarDados() {
   });
 }
 
-// Função auxiliar para expandir card
-function toggleCard(element) {
-  const card = element.closest(".ata-item");
-  if (card) {
-    const content = card.querySelector(".ata-conteudo");
-    content.style.display = content.style.display === "none" ? "block" : "none";
-  }
-}
-
 function aplicarFiltrosEExibirAtas() {
   const tipoFiltro = document.getElementById("tipo-filtro")?.value || "Todos";
   const buscaTermo =
     document.getElementById("busca-titulo")?.value.toLowerCase() || "";
+  const dataInicioVal = document.getElementById("filtro-data-inicio")?.value;
+  const dataFimVal = document.getElementById("filtro-data-fim")?.value;
 
   let itensFiltrados = getListaUnificada();
 
+  // 1. Filtro por Tipo
   if (tipoFiltro !== "Todos") {
     itensFiltrados = itensFiltrados.filter((item) =>
       item.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
     );
   }
 
+  // 2. Filtro por Texto
   if (buscaTermo) {
     itensFiltrados = itensFiltrados.filter((item) =>
       item.titulo?.toLowerCase().includes(buscaTermo)
     );
   }
 
-  itensFiltrados.sort((a, b) => b.dataOrdenacao - a.dataOrdenacao);
+  // 3. Filtro de Data (Lógica solicitada)
+  const agora = new Date();
+  agora.setHours(0, 0, 0, 0); // Zera hora para comparar apenas data
+
+  if (dataInicioVal || dataFimVal) {
+    // Se houver qualquer data selecionada, usa o filtro de período (Histórico)
+    if (dataInicioVal) {
+      const dtIni = new Date(dataInicioVal);
+      itensFiltrados = itensFiltrados.filter(
+        (item) => item.dataOrdenacao >= dtIni
+      );
+    }
+    if (dataFimVal) {
+      const dtFim = new Date(dataFimVal);
+      // Ajusta para final do dia para incluir a data selecionada
+      dtFim.setHours(23, 59, 59, 999);
+      itensFiltrados = itensFiltrados.filter(
+        (item) => item.dataOrdenacao <= dtFim
+      );
+    }
+  } else {
+    // PADRÃO: Se não houver data selecionada, mostra SOMENTE FUTURAS (>= hoje)
+    itensFiltrados = itensFiltrados.filter(
+      (item) => item.dataOrdenacao >= agora
+    );
+  }
+
+  // Ordenação:
+  // Se for visualização padrão (futuras), ordena Crescente (mais próxima primeiro).
+  // Se for histórico (com datas), ordena Decrescente (mais recente primeiro).
+  if (!dataInicioVal && !dataFimVal) {
+    itensFiltrados.sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
+  } else {
+    itensFiltrados.sort((a, b) => b.dataOrdenacao - a.dataOrdenacao);
+  }
 
   const container = document.getElementById("atas-container");
   if (!container) return;
 
   if (itensFiltrados.length === 0) {
+    const msg =
+      dataInicioVal || dataFimVal
+        ? "Nenhuma reunião encontrada no período selecionado."
+        : "Nenhuma reunião agendada para o futuro. Use os filtros de data para ver o histórico.";
+
     container.innerHTML = `
             <div class="alert alert-info text-center">
-                <span class="material-symbols-outlined">search_off</span>
-                Nenhuma reunião ou ata encontrada.
+                <span class="material-symbols-outlined">event_busy</span>
+                <br>${msg}
             </div>
         `;
     atualizarContadorAtas(0);
@@ -207,15 +251,14 @@ function aplicarFiltrosEExibirAtas() {
   container.innerHTML = itensFiltrados
     .map((item) => {
       const dataItem = item.dataOrdenacao;
-      const agora = new Date();
-      const ehFutura = dataItem > agora;
+      const ehFutura = dataItem >= agora;
 
       let statusCor = "text-success";
       let iconeStatus = "check_circle";
 
       if (ehFutura || item.statusCalculado === "Agendada") {
         statusCor = "text-info";
-        iconeStatus = "schedule";
+        iconeStatus = "event";
       }
 
       const participantes = item.participantes || [];
@@ -225,7 +268,6 @@ function aplicarFiltrosEExibirAtas() {
 
       const horarioDisplay = item.horaInicio ? ` às ${item.horaInicio}` : "";
 
-      // Botão de Visualizar corrigido para expandir o card
       const botaoAcao =
         item.origem === "agendamento"
           ? `<button class="btn btn-sm btn-outline-secondary" title="Ver Detalhes/Inscritos" 
@@ -410,13 +452,8 @@ function renderizarTabelaAtasPorTipo(listaUnificada) {
 }
 
 function renderizarTabelaAgendamentosPorGestor() {
-  // Mantém a lógica existente, apenas simplificando renderização se necessário
-  // (Código omitido para brevidade, mantendo funcionalidade original da V5.4)
-  // ... Se quiser o código completo desta função, ele é o mesmo da versão anterior ...
   const container = document.getElementById("grafico-agendamentos-gestor");
   if (!container) return;
-  // (Reutilize a função renderizarTabelaAgendamentosPorGestor da resposta anterior se precisar do código completo aqui)
-  // Vou incluir uma versão simplificada funcional:
 
   const agendamentosPorGestor = {};
   todosOsAgendamentos.forEach((agendamento) => {
@@ -468,36 +505,32 @@ function renderizarProximaReuniao(listaUnificada) {
   let tempoTexto = dias === 0 ? "É hoje!" : `Em ${dias} dias`;
 
   infoEl.innerHTML = `
-        <h5>${proxima.titulo || "Reunião"}</h5>
-        <p class="mb-1"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">event</span> ${proxima.dataOrdenacao.toLocaleString(
+        <h5 class="text-white">${proxima.titulo || "Reunião"}</h5>
+        <p class="mb-1 text-white-50"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">event</span> ${proxima.dataOrdenacao.toLocaleString(
           "pt-BR",
           { dateStyle: "short", timeStyle: "short" }
         )}</p>
-        <p class="mb-2"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">location_on</span> ${
+        <p class="mb-2 text-white-50"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">location_on</span> ${
           proxima.local || "Online"
         }</p>
         <p class="fw-bold text-warning mb-0">${tempoTexto}</p>
     `;
 
-  // CORREÇÃO: Botão ver detalhes agora busca o card na lista e o expande
   const detalhesBtn = document.getElementById("ver-detalhes-proxima");
   if (detalhesBtn) {
     detalhesBtn.onclick = () => {
-      // Rola até o card
       const card = document.querySelector(`.ata-item[data-id="${proxima.id}"]`);
       if (card) {
         card.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Expande se estiver fechado
         const content = card.querySelector(".ata-conteudo");
         if (content && content.style.display === "none") {
           content.style.display = "block";
-          // Efeito visual de destaque
           card.style.transition = "box-shadow 0.3s";
           card.style.boxShadow = "0 0 15px rgba(13, 110, 253, 0.5)";
           setTimeout(() => (card.style.boxShadow = ""), 1500);
         }
       } else {
-        alert("Detalhes indisponíveis na lista atual.");
+        alert("Detalhes indisponíveis na lista atual (verifique os filtros).");
       }
     };
   }
