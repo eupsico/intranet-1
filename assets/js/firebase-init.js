@@ -30,6 +30,7 @@ import {
   writeBatch,
   FieldValue,
   arrayRemove,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -116,4 +117,5 @@ export {
   // Funções de Functions
   getFunctions,
   httpsCallable,
+  runTransaction,
 };
