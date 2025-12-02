@@ -2019,34 +2019,131 @@ function gerarEmailGestor(gestorNome, inscrito, linkCalendar) {
 
 function gerarEmailParticipante(inscrito, linkCalendar) {
   const { vaga, slot, tipoReuniao } = inscrito;
+
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
-      <div style="background: #198754; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h2>Inscrição Confirmada!</h2>
-      </div>
-      <div style="background: #f8f9fa; padding: 20px; border: 1px solid #ddd;">
-        <p>Olá, <strong>${vaga.nome}</strong>!</p>
-        <p>Sua inscrição para <strong>${tipoReuniao}</strong> foi confirmada com sucesso.</p>
-        
-        <div style="background: white; padding: 15px; border-left: 4px solid #198754; margin: 15px 0;">
-          <p><strong>Data:</strong> ${formatarDataCompleta(slot.data)}</p>
-          <p><strong>Horário:</strong> ${slot.horaInicio} - ${slot.horaFim}</p>
-          <p><strong>Responsável:</strong> ${slot.gestorNome}</p>
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="${linkCalendar}" style="background: #198754; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-            📅 Salvar na minha Agenda
-          </a>
-        </div>
-        
-        <p style="margin-top:20px; background: #fff3cd; padding: 10px; border-radius: 4px; font-size: 0.9em;">
-          <strong>ℹ️ Importante:</strong> O link para a reunião online será enviado para o seu WhatsApp cadastrado (${
-            vaga.telefone
-          }) no dia do agendamento.
-        </p>
-      </div>
-    </div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscrição Confirmada - EuPsico</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #198754 0%, #157347 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
+                ✅ Inscrição Confirmada!
+              </h1>
+              <p style="margin: 12px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                Seu agendamento foi realizado com sucesso
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              
+              <!-- Greeting -->
+              <p style="margin: 0 0 24px 0; color: #1F2121; font-size: 16px; line-height: 1.6;">
+                Olá, <strong>${vaga.nome}</strong>! 👋
+              </p>
+
+              <p style="margin: 0 0 32px 0; color: #626C71; font-size: 15px; line-height: 1.6;">
+                Sua inscrição para <strong>${tipoReuniao}</strong> foi confirmada com sucesso. Confira os detalhes abaixo:
+              </p>
+
+              <!-- Details Card -->
+              <div style="background-color: #FCFCF9; border: 1px solid rgba(94,82,64,0.12); border-radius: 10px; padding: 24px; margin-bottom: 32px;">
+                <h2 style="margin: 0 0 20px 0; color: #1F2121; font-size: 18px; font-weight: 600; padding-bottom: 12px; border-bottom: 2px solid #198754;">
+                  📋 Detalhes do Agendamento
+                </h2>
+
+                <table width="100%" cellpadding="8" cellspacing="0">
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0; width: 140px;">
+                      📋 Evento:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${tipoReuniao}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      📅 Data:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${formatarDataCompleta(slot.data)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      🕐 Horário:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${slot.horaInicio} - ${slot.horaFim}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      👤 Responsável:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${slot.gestorNome}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Action Button -->
+              <div style="text-align: center; margin-bottom: 32px;">
+                <a href="${linkCalendar}" 
+                   style="display: inline-block; background-color: #198754; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(25,135,84,0.3);">
+                  📅 Salvar na minha Agenda
+                </a>
+              </div>
+
+              <!-- Important Info -->
+              <div style="background-color: #FFF3CD; border-left: 4px solid #FFC107; padding: 16px 20px; border-radius: 6px; margin-bottom: 32px;">
+                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                  <strong>ℹ️ Importante:</strong><br>
+                  O link para a reunião online será enviado para o seu WhatsApp cadastrado <strong>(${
+                    vaga.telefone
+                  })</strong> no dia do agendamento.
+                </p>
+              </div>
+
+              <!-- Contact Section -->
+              <div style="text-align: center; margin-bottom: 32px; padding: 20px; background-color: #F0F9F4; border-radius: 8px;">
+                <p style="margin: 0 0 12px 0; color: #626C71; font-size: 14px;">
+                  Precisa falar com o(a) responsável?
+                </p>
+                <p style="margin: 0; color: #1F2121; font-size: 14px;">
+                  Entre em contato: <strong>${slot.gestorNome}</strong>
+                </p>
+              </div>
+
+              <!-- Footer Note -->
+              <p style="margin: 0; color: #A7A9A9; font-size: 13px; line-height: 1.6; text-align: center; padding-top: 24px; border-top: 1px solid rgba(94,82,64,0.12);">
+                Este é um e-mail automático da plataforma EuPsico.<br>
+                Para dúvidas, entre em contato com o suporte.
+              </p>
+
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `;
 }
 // ====================================================================
