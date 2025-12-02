@@ -1865,34 +1865,155 @@ exports.enviarEmailGestorAgendamento = onDocumentUpdated(
 );
 function gerarEmailGestor(gestorNome, inscrito, linkCalendar) {
   const { vaga, slot, tipoReuniao } = inscrito;
-  // ATUALIZADO: Agora usa as cores VERDES (#198754) iguais ao do participante
+
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
-      <div style="background: #198754; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h2>Nova Inscrição Recebida</h2>
-      </div>
-      <div style="background: #f8f9fa; padding: 20px; border: 1px solid #ddd;">
-        <p>Olá, <strong>${gestorNome}</strong>!</p>
-        <p>Uma nova pessoa se inscreveu para o horário abaixo:</p>
-        
-        <div style="background: white; padding: 15px; border-left: 4px solid #198754; margin: 15px 0;">
-          <p><strong>Evento:</strong> ${tipoReuniao}</p>
-          <p><strong>Participante:</strong> ${vaga.nome}</p>
-          <p><strong>E-mail:</strong> ${vaga.email}</p>
-          <p><strong>Telefone/Contato:</strong> ${vaga.telefone}</p>
-          <hr style="border: 0; border-top: 1px solid #eee;">
-          <p><strong>Data:</strong> ${formatarDataCompleta(slot.data)}</p>
-          <p><strong>Horário:</strong> ${slot.horaInicio} - ${slot.horaFim}</p>
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="${linkCalendar}" style="background: #198754; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-            📅 Adicionar ao Google Calendar
-          </a>
-        </div>
-        <p style="margin-top:20px; font-size: 0.9em; color: #666;">Lembre-se de enviar o link da videochamada para o participante via WhatsApp no dia do evento.</p>
-      </div>
-    </div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Inscrição - EuPsico</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #198754 0%, #157347 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
+                📅 Nova Inscrição Recebida
+              </h1>
+              <p style="margin: 12px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                Um novo participante se inscreveu
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              
+              <!-- Greeting -->
+              <p style="margin: 0 0 24px 0; color: #1F2121; font-size: 16px; line-height: 1.6;">
+                Olá, <strong>${gestorNome}</strong>! 👋
+              </p>
+
+              <p style="margin: 0 0 32px 0; color: #626C71; font-size: 15px; line-height: 1.6;">
+                Uma nova pessoa se inscreveu para o horário abaixo:
+              </p>
+
+              <!-- Event Type Badge -->
+              <div style="background-color: #F0F9F4; border-left: 4px solid #198754; padding: 16px 20px; border-radius: 6px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #198754; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  📋 ${tipoReuniao}
+                </p>
+              </div>
+
+              <!-- Details Card -->
+              <div style="background-color: #FCFCF9; border: 1px solid rgba(94,82,64,0.12); border-radius: 10px; padding: 24px; margin-bottom: 32px;">
+                <h2 style="margin: 0 0 20px 0; color: #1F2121; font-size: 18px; font-weight: 600; padding-bottom: 12px; border-bottom: 2px solid #198754;">
+                  👤 Dados do Participante
+                </h2>
+
+                <table width="100%" cellpadding="8" cellspacing="0">
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0; width: 140px;">
+                      Nome:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${vaga.nome}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      📧 E-mail:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; padding: 8px 0;">
+                      <a href="mailto:${
+                        vaga.email
+                      }" style="color: #198754; text-decoration: none;">${
+    vaga.email
+  }</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      📱 Telefone:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; padding: 8px 0;">
+                      <a href="tel:${
+                        vaga.telefone
+                      }" style="color: #198754; text-decoration: none;">${
+    vaga.telefone
+  }</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <hr style="border: 0; border-top: 1px solid rgba(94,82,64,0.12); margin: 20px 0;">
+
+                <table width="100%" cellpadding="8" cellspacing="0">
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0; width: 140px;">
+                      📅 Data:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${formatarDataCompleta(slot.data)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: #626C71; font-size: 14px; font-weight: 500; padding: 8px 0;">
+                      🕐 Horário:
+                    </td>
+                    <td style="color: #1F2121; font-size: 15px; font-weight: 600; padding: 8px 0;">
+                      ${slot.horaInicio} - ${slot.horaFim}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Action Button -->
+              <div style="text-align: center; margin-bottom: 32px;">
+                <a href="${linkCalendar}" 
+                   style="display: inline-block; background-color: #198754; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(25,135,84,0.3);">
+                  📅 Adicionar ao Google Calendar
+                </a>
+              </div>
+
+              <!-- Reminder -->
+              <div style="background-color: #FFF9F0; border-left: 4px solid #E68161; padding: 16px 20px; border-radius: 6px; margin-bottom: 32px;">
+                <p style="margin: 0; color: #5E5240; font-size: 14px; line-height: 1.6;">
+                  <strong>📝 Lembrete Importante:</strong><br>
+                  Lembre-se de enviar o link da videochamada para o participante via WhatsApp no dia do evento.
+                </p>
+              </div>
+
+              <!-- WhatsApp Button -->
+              <div style="text-align: center; margin-bottom: 32px;">
+                <a href="https://wa.me/${vaga.telefone.replace(/\D/g, "")}" 
+                   style="display: inline-block; background-color: #25D366; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                  💬 Abrir WhatsApp
+                </a>
+              </div>
+
+              <!-- Footer Note -->
+              <p style="margin: 0; color: #A7A9A9; font-size: 13px; line-height: 1.6; text-align: center; padding-top: 24px; border-top: 1px solid rgba(94,82,64,0.12);">
+                Este é um e-mail automático da plataforma EuPsico.<br>
+                Para dúvidas, entre em contato com o suporte.
+              </p>
+
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `;
 }
 
