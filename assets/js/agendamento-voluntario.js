@@ -400,7 +400,7 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
   const container = document.getElementById("main-container");
   const linkCalendar = gerarLinkGoogleCalendar(
     `${agendamentoData.tipo} - EuPsico`,
-    `Inscrição confirmada.`,
+    `Inscrição confirmada.\nLink via WhatsApp.`,
     data,
     horaInicio,
     horaFim
@@ -412,13 +412,13 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
       <h2>Agendamento Atualizado!</h2>
       <p><strong>Data:</strong> ${formatarData(data)}</p>
       <p><strong>Horário:</strong> ${horaInicio} - ${horaFim}</p>
-      }
       
       <div style="margin-top: 2rem; padding: 1rem; background: #f0f9ff; border: 2px solid #4285f4; border-radius: 8px;">
         <a href="${linkCalendar}" target="_blank" style="display: inline-block; background: #4285f4; color: white; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: bold;">
           Adicionar ao Google Calendar
         </a>
       </div>
+      <p style="margin-top: 1.5rem; color: #666;">O link da reunião será enviado no dia do encontro para o seu WhatsApp/E-mail de cadastro.</p>
     </div>
   `;
 }
