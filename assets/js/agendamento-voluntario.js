@@ -1,18 +1,17 @@
 // assets/js/agendamento-voluntario.js
-// VERSÃO 3.2 - Correção: Múltiplos Agendamentos + Transação Segura + Dados de Contato
+// VERSÃO 5.0 - Troca de Horários (Switch) e Verificação de Inscrição Existente
 
-import { db as firestoreDb, auth } from "./firebase-init.js";
 import {
+  db as firestoreDb,
+  auth,
+  runTransaction,
   doc,
   getDoc,
   updateDoc,
   onAuthStateChanged,
-  runTransaction,
-} from "./firebase-init.js";
-import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "./firebase-init.js";
 
 let agendamentoId = null;
 let agendamentoData = null;
@@ -52,10 +51,6 @@ async function carregarDadosUsuario() {
     );
     if (userDoc.exists()) {
       usuarioLogado.dadosCompletos = userDoc.data();
-      console.log(
-        "[AGENDAMENTO] Usuário identificado:",
-        usuarioLogado.dadosCompletos.nome
-      );
     } else {
       usuarioLogado.dadosCompletos = {};
     }
@@ -99,18 +94,17 @@ async function carregarAgendamento() {
 function renderizarFormulario() {
   const container = document.getElementById("main-container");
 
-  // Dados do usuário para exibição
   const nomeExibicao =
     usuarioLogado.dadosCompletos?.nome || usuarioLogado.email;
   const voluntarioInfo = `<div class="voluntario-info"><strong>Olá, ${nomeExibicao}!</strong></div>`;
 
-  // Define se é limitado (Voluntário) ou ilimitado (Técnica)
-  // Se a flag não existir (reunião antiga), assume limitado APENAS se for "Reunião com Voluntário"
+  // Configuração de Limite de Vagas
   const ehLimitado =
     agendamentoData.vagasLimitadas !== undefined
       ? agendamentoData.vagasLimitadas
       : agendamentoData.tipo === "Reunião com Voluntário";
 
+  // Informação do Gestor (se único)
   let gestorInfo = "";
   if (
     agendamentoData.exibirGestor &&
@@ -127,16 +121,18 @@ function renderizarFormulario() {
     }
   }
 
-  // Ordenar slots por data e hora
-  agendamentoData.slots.sort((a, b) => {
+  // --- ORDENAÇÃO ---
+  // Cria cópia para não perder índices originais
+  const slotsParaExibir = [...(agendamentoData.slots || [])];
+  slotsParaExibir.sort((a, b) => {
     if (a.data !== b.data) return a.data.localeCompare(b.data);
     return a.horaInicio.localeCompare(b.horaInicio);
   });
 
   const agora = new Date();
 
-  // --- LÓGICA DE FILTRAGEM CORRIGIDA ---
-  let slotsDisponiveis = agendamentoData.slots.filter((slot) => {
+  // --- FILTRAGEM ---
+  const slotsFiltrados = slotsParaExibir.filter((slot) => {
     // 1. Filtro de Tempo (12h antecedência)
     const [ano, mes, dia] = slot.data.split("-");
     const [horaIni, minIni] = slot.horaInicio.split(":");
@@ -151,73 +147,73 @@ function renderizarFormulario() {
 
     if (diferencaHoras < 12) return false;
 
-    // 2. Filtro de Duplicidade (Usuário já inscrito neste slot específico)
-    const jaInscrito = (slot.vagas || []).some(
-      (v) => v.profissionalId === usuarioLogado.uid
-    );
-    if (jaInscrito) return false;
-
-    // 3. Filtro de Capacidade (CORREÇÃO PRINCIPAL)
+    // 2. Filtro de Capacidade
+    // Se for limitado, esconde se estiver cheio, A MENOS que seja o slot do próprio usuário
     if (ehLimitado) {
-      // Se for limitado (1:1), esconde se tiver >= 1 inscrito
-      return !slot.vagas || slot.vagas.length < 1;
-    } else {
-      // Se for ilimitado (Reunião Técnica), SEMPRE mostra, independente de quantos tem
-      return true;
+      const souEu = (slot.vagas || []).some(
+        (v) => v.profissionalId === usuarioLogado.uid
+      );
+      if (!souEu && slot.vagas && slot.vagas.length >= 1) {
+        return false;
+      }
     }
+    return true;
   });
 
-  // Mensagens de erro/sucesso caso não haja slots
-  if (slotsDisponiveis.length === 0) {
-    // Verifica se o usuário já se inscreveu em algum slot desta reunião
-    const jaInscritoGeral = agendamentoData.slots.some((s) =>
-      (s.vagas || []).some((v) => v.profissionalId === usuarioLogado.uid)
-    );
-
-    if (jaInscritoGeral) {
-      container.innerHTML = `
-            <div class="header"><h1>${
-              agendamentoData.tipo || "Agendamento"
-            }</h1></div>
-            <div>${voluntarioInfo}</div>
-            <div class="success-message" style="margin-top:20px;">
-                <h3>Você já está inscrito!</h3>
-                <p>Sua inscrição foi confirmada. Verifique seu e-mail.</p>
-            </div>
-        `;
-    } else {
-      container.innerHTML = `
-            <div class="header"><h1>${
-              agendamentoData.tipo || "Agendamento"
-            }</h1></div>
-            <div>${voluntarioInfo}</div>
-            <div class="error-message">
-                Desculpe, todos os horários já foram preenchidos ou estão muito próximos.
-            </div>
-        `;
-    }
+  if (slotsFiltrados.length === 0) {
+    container.innerHTML = `
+        <div class="header"><h1>${
+          agendamentoData.tipo || "Agendamento"
+        }</h1></div>
+        <div>${voluntarioInfo}</div>
+        <div class="error-message">Desculpe, todos os horários já foram preenchidos ou estão muito próximos.</div>
+      `;
     return;
   }
 
-  // Renderiza slots
-  const slotsHTML = slotsDisponiveis
-    .map((slot, index) => {
+  // Renderiza HTML
+  const slotsHTML = slotsFiltrados
+    .map((slot) => {
+      // Recupera o índice ORIGINAL no array do banco
+      const originalIndex = agendamentoData.slots.indexOf(slot);
+
       let gestorTexto = "";
       if (agendamentoData.exibirGestor && slot.gestorNome) {
         gestorTexto = `<span class="slot-gestor">com ${slot.gestorNome}</span>`;
       }
 
-      // Se for ilimitado, mostra quantos já vão (opcional, mas bom para grupos)
+      // Verifica se é o agendamento atual do usuário
+      const jaInscritoNesteSlot = (slot.vagas || []).some(
+        (v) => v.profissionalId === usuarioLogado.uid
+      );
+
+      // Card Confirmado (Verde)
+      if (jaInscritoNesteSlot) {
+        return `
+            <label class="slot-option disabled" style="background-color: #d1e7dd; border-color: #badbcc; cursor: pointer;">
+                <input type="radio" name="slot" value="${originalIndex}" checked 
+                       data-data="${slot.data}" 
+                       data-hora-inicio="${slot.horaInicio}">
+                <div class="slot-info">
+                    <span class="slot-date">${formatarData(slot.data)}</span>
+                    <span class="slot-time">${slot.horaInicio} - ${
+          slot.horaFim
+        }</span>
+                    <span style="color: #0f5132; font-weight: bold; display: block; margin-top: 5px;">✓ Seu Agendamento Atual</span>
+                </div>
+            </label>
+          `;
+      }
+
+      // Info extra para reuniões ilimitadas
       let infoExtra = "";
       if (!ehLimitado) {
         const count = slot.vagas ? slot.vagas.length : 0;
         if (count > 0)
-          infoExtra = `<span style="font-size:0.8em; color:#666; margin-left:10px;">(${count} participantes confirmados)</span>`;
+          infoExtra = `<span style="font-size:0.8em; color:#666; margin-left:10px;">(${count} inscritos)</span>`;
       }
 
-      // Encontrar índice original para referência correta
-      const originalIndex = agendamentoData.slots.indexOf(slot);
-
+      // Card Disponível
       return `
             <label class="slot-option">
                 <input type="radio" name="slot" value="${originalIndex}" 
@@ -261,6 +257,7 @@ function renderizarFormulario() {
         </div>
     `;
 
+  // Lógica de seleção visual
   document
     .querySelectorAll('.slot-option input[type="radio"]')
     .forEach((radio) => {
@@ -268,7 +265,12 @@ function renderizarFormulario() {
         document
           .querySelectorAll(".slot-option")
           .forEach((opt) => opt.classList.remove("selected"));
-        radio.closest(".slot-option").classList.add("selected");
+
+        // Se clicar no próprio agendamento, não marca como 'selected' visualmente da mesma forma
+        const parent = radio.closest(".slot-option");
+        if (!parent.classList.contains("disabled")) {
+          parent.classList.add("selected");
+        }
       });
     });
 
@@ -286,13 +288,42 @@ async function confirmarAgendamento(e) {
     return;
   }
 
-  const slotIndex = parseInt(slotSelecionado.value);
-  const dataEvento = slotSelecionado.dataset.data;
-  const horaInicio = slotSelecionado.dataset.horaInicio;
-  const horaFim = slotSelecionado.dataset.horaFim;
-  const gestorNome = slotSelecionado.dataset.gestorNome;
-  const gestorId = slotSelecionado.dataset.gestorId; // Importante para o e-mail
+  // Verifica se o usuário clicou no horário que ele JÁ tem
+  const parentLabel = slotSelecionado.closest(".slot-option");
+  if (parentLabel && parentLabel.classList.contains("disabled")) {
+    alert("Você já está confirmado neste horário.");
+    return;
+  }
 
+  // --- LÓGICA DE VERIFICAÇÃO E TROCA ---
+  const slotIndexNovo = parseInt(slotSelecionado.value);
+  const dataNova = slotSelecionado.dataset.data;
+  const horaInicioNova = slotSelecionado.dataset.horaInicio;
+  const horaFimNova = slotSelecionado.dataset.horaFim;
+  const gestorNomeNova = slotSelecionado.dataset.gestorNome;
+  const gestorIdNova = slotSelecionado.dataset.gestorId;
+
+  // Procura se já existe algum agendamento antigo em OUTRO slot
+  // (Lembre-se: o array original 'agendamentoData.slots' contém todos)
+  const slotAntigo = agendamentoData.slots.find((s) =>
+    (s.vagas || []).some((v) => v.profissionalId === usuarioLogado.uid)
+  );
+
+  let confirmacaoTroca = true;
+
+  if (slotAntigo) {
+    const dataAntigaF = formatarData(slotAntigo.data);
+    const horaAntigaF = slotAntigo.horaInicio;
+    const dataNovaF = formatarData(dataNova);
+
+    const mensagem = `Você já possui um agendamento para ${dataAntigaF} às ${horaAntigaF}.\n\nDeseja TROCAR para o dia ${dataNovaF} às ${horaInicioNova}?`;
+
+    confirmacaoTroca = confirm(mensagem);
+  }
+
+  if (!confirmacaoTroca) return;
+
+  // --- EXECUÇÃO DA TROCA NO BANCO ---
   const btn = document.querySelector(".btn-confirmar");
   btn.disabled = true;
   btn.textContent = "Processando...";
@@ -300,21 +331,16 @@ async function confirmarAgendamento(e) {
   try {
     const docRef = doc(firestoreDb, "agendamentos_voluntarios", agendamentoId);
 
-    // --- TRANSAÇÃO SEGURA PARA CONCORRÊNCIA ---
     await runTransaction(firestoreDb, async (transaction) => {
       const docSnap = await transaction.get(docRef);
-      if (!docSnap.exists()) {
-        throw "O agendamento não existe mais.";
-      }
+      if (!docSnap.exists()) throw "O agendamento não existe mais.";
 
       const dadosAtuais = docSnap.data();
-      const slotAlvo = dadosAtuais.slots[slotIndex];
+      const slotAlvo = dadosAtuais.slots[slotIndexNovo];
 
-      if (!slotAlvo) {
-        throw "O horário selecionado não está mais disponível.";
-      }
+      if (!slotAlvo) throw "O novo horário selecionado não existe mais.";
 
-      // Verifica capacidade novamente dentro da transação
+      // Verifica capacidade do NOVO slot
       const ehLimitado =
         dadosAtuais.vagasLimitadas !== undefined
           ? dadosAtuais.vagasLimitadas
@@ -324,10 +350,21 @@ async function confirmarAgendamento(e) {
         throw "Desculpe, a vaga foi preenchida por outra pessoa neste exato momento.";
       }
 
-      // Prepara dados do inscrito
+      // 1. REMOVE do slot antigo (se existir)
+      dadosAtuais.slots.forEach((s) => {
+        if (s.vagas) {
+          const idx = s.vagas.findIndex(
+            (v) => v.profissionalId === usuarioLogado.uid
+          );
+          if (idx !== -1) {
+            s.vagas.splice(idx, 1); // Remove
+          }
+        }
+      });
+
+      // 2. ADICIONA no novo slot
       if (!slotAlvo.vagas) slotAlvo.vagas = [];
 
-      // Garante que o contato está preenchido
       const telefoneUsuario =
         usuarioLogado.dadosCompletos?.contato || "Não informado";
       const nomeUsuario =
@@ -339,46 +376,37 @@ async function confirmarAgendamento(e) {
         profissionalNome: nomeUsuario,
         nome: nomeUsuario,
         email: usuarioLogado.email || "Não informado",
-        telefone: telefoneUsuario, // Campo crucial para o e-mail
+        telefone: telefoneUsuario,
         presente: false,
         inscritoEm: new Date().toISOString(),
       });
 
-      // Salva a alteração
       transaction.update(docRef, { slots: dadosAtuais.slots });
     });
 
-    // Se chegou aqui, a transação funcionou. Envia o e-mail manual (fallback/gestor)
+    // Envio de E-mail
     await enviarEmailParaGestor({
-      gestorId,
-      gestorNome,
+      gestorId: gestorIdNova,
+      gestorNome: gestorNomeNova,
       voluntarioNome: usuarioLogado.dadosCompletos?.nome || "Sem nome",
-      data: dataEvento,
-      horaInicio,
-      horaFim,
+      data: dataNova,
+      horaInicio: horaInicioNova,
+      horaFim: horaFimNova,
     });
 
-    mostrarSucesso(dataEvento, horaInicio, horaFim, gestorNome);
+    mostrarSucesso(dataNova, horaInicioNova, horaFimNova, gestorNomeNova);
   } catch (error) {
     console.error("[AGENDAMENTO] Erro:", error);
-    // Se o erro for uma string (nossa validação), mostra alerta amigável
     const msg =
-      typeof error === "string"
-        ? error
-        : "Erro ao confirmar agendamento. Tente novamente.";
+      typeof error === "string" ? error : "Erro ao confirmar agendamento.";
     alert(msg);
-    if (msg.includes("vaga foi preenchida")) {
-      window.location.reload(); // Recarrega para atualizar a lista
-    }
+    if (msg.includes("preenchida")) window.location.reload();
     btn.disabled = false;
     btn.textContent = "Confirmar Inscrição";
   }
 }
 
-// Envio de e-mail Client-Side (Fallback/Gestor)
 async function enviarEmailParaGestor(dados) {
-  // Nota: O Cloud Function (index.js) também dispara e-mails automáticos ao detectar mudança no banco.
-  // Esta função garante que o processo de UI não trave, apenas loga ou dispara backup se necessário.
   try {
     if (!dados.gestorId) return;
     const userSnap = await getDoc(doc(firestoreDb, "usuarios", dados.gestorId));
@@ -387,7 +415,6 @@ async function enviarEmailParaGestor(dados) {
       if (emailGestor) {
         const functions = getFunctions();
         const enviarEmail = httpsCallable(functions, "enviarEmail");
-        // Dispara sem await para não travar a tela de sucesso
         enviarEmail({
           destinatario: emailGestor,
           assunto: `📅 Novo Agendamento: ${dados.voluntarioNome}`,
@@ -406,10 +433,9 @@ async function enviarEmailParaGestor(dados) {
 
 function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
   const container = document.getElementById("main-container");
-
   const linkCalendar = gerarLinkGoogleCalendar(
     `${agendamentoData.tipo} - EuPsico`,
-    `Inscrição confirmada para ${agendamentoData.tipo}.\n\nO link será enviado por WhatsApp.`,
+    `Inscrição confirmada.`,
     data,
     horaInicio,
     horaFim
@@ -418,7 +444,7 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
   container.innerHTML = `
     <div class="success-message">
       <div class="success-icon">✓</div>
-      <h2>Inscrição Confirmada!</h2>
+      <h2>Agendamento Atualizado!</h2>
       <p><strong>Data:</strong> ${formatarData(data)}</p>
       <p><strong>Horário:</strong> ${horaInicio} - ${horaFim}</p>
       ${gestorNome ? `<p><strong>Responsável:</strong> ${gestorNome}</p>` : ""}
@@ -428,7 +454,7 @@ function mostrarSucesso(data, horaInicio, horaFim, gestorNome) {
           Adicionar ao Google Calendar
         </a>
       </div>
-      <p style="margin-top: 1.5rem; color: #666;">Você receberá um e-mail de confirmação em breve.</p>
+      <p style="margin-top: 1.5rem; color: #666;">Você receberá um novo e-mail de confirmação.</p>
       <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px;">Voltar</button>
     </div>
   `;
@@ -456,25 +482,8 @@ function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function obterDiaSemana(dataISO) {
-  if (!dataISO) return "";
-  const [ano, mes, dia] = dataISO.split("-");
-  const data = new Date(ano, mes - 1, dia);
-  const diasSemana = [
-    "Domingo",
-    "Segunda-feira",
-    "Terça-feira",
-    "Quarta-feira",
-    "Quinta-feira",
-    "Sexta-feira",
-    "Sábado",
-  ];
-  return diasSemana[data.getDay()];
-}
-
 function formatarData(dataISO) {
   if (!dataISO) return "Data inválida";
   const [ano, mes, dia] = dataISO.split("-");
-  const diaSemana = obterDiaSemana(dataISO);
-  return `${diaSemana}, ${dia}/${mes}/${ano}`;
+  return `${dia}/${mes}/${ano}`;
 }
