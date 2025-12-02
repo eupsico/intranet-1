@@ -506,11 +506,11 @@ function renderizarProximaReuniao(listaUnificada) {
 
   infoEl.innerHTML = `
         <h5 class="text-white">${proxima.titulo || "Reunião"}</h5>
-        <p class="mb-1 text-white-10"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">event</span> ${proxima.dataOrdenacao.toLocaleString(
+        <p class="mb-1 text-white"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">event</span> ${proxima.dataOrdenacao.toLocaleString(
           "pt-BR",
           { dateStyle: "short", timeStyle: "short" }
         )}</p>
-        <p class="mb-2 text-white-10"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">location_on</span> ${
+        <p class="mb-2 text-white"><span class="material-symbols-outlined" style="font-size:16px; vertical-align:middle">location_on</span> ${
           proxima.local || "Online"
         }</p>
         <p class="fw-bold text-warning mb-0">${tempoTexto}</p>
