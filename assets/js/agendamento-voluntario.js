@@ -384,16 +384,6 @@ async function confirmarAgendamento(e) {
       transaction.update(docRef, { slots: dadosAtuais.slots });
     });
 
-    // Envio de E-mail
-    await enviarEmailParaGestor({
-      gestorId: gestorIdNova,
-      gestorNome: gestorNomeNova,
-      voluntarioNome: usuarioLogado.dadosCompletos?.nome || "Sem nome",
-      data: dataNova,
-      horaInicio: horaInicioNova,
-      horaFim: horaFimNova,
-    });
-
     mostrarSucesso(dataNova, horaInicioNova, horaFimNova, gestorNomeNova);
   } catch (error) {
     console.error("[AGENDAMENTO] Erro:", error);
@@ -403,31 +393,6 @@ async function confirmarAgendamento(e) {
     if (msg.includes("preenchida")) window.location.reload();
     btn.disabled = false;
     btn.textContent = "Confirmar Inscrição";
-  }
-}
-
-async function enviarEmailParaGestor(dados) {
-  try {
-    if (!dados.gestorId) return;
-    const userSnap = await getDoc(doc(firestoreDb, "usuarios", dados.gestorId));
-    if (userSnap.exists()) {
-      const emailGestor = userSnap.data().email;
-      if (emailGestor) {
-        const functions = getFunctions();
-        const enviarEmail = httpsCallable(functions, "enviarEmail");
-        enviarEmail({
-          destinatario: emailGestor,
-          assunto: `📅 Novo Agendamento: ${dados.voluntarioNome}`,
-          html: `<p>Novo inscrito: <strong>${
-            dados.voluntarioNome
-          }</strong><br>Data: ${formatarData(dados.data)}<br>Hora: ${
-            dados.horaInicio
-          }</p>`,
-        }).catch((err) => console.error("Erro email fallback:", err));
-      }
-    }
-  } catch (e) {
-    console.error(e);
   }
 }
 
