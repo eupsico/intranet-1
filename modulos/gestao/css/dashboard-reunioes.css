@@ -73,7 +73,7 @@
 
 /* Próxima Reunião */
 #proxima-reuniao-container {
-    background: linear-gradient(135deg, #74bbed 0%, #bda8d3 100%);
+    background: linear-gradient(135deg, #03204c 0%, #1d70b7 100%);
     color: white;
     border-radius: 12px;
     margin-bottom: 1.5rem;
@@ -97,7 +97,7 @@
 }
 
 #proxima-reuniao-info .fw-bold {
-    color: #fbbf24;
+    color: #ffff;
     font-size: 1.1rem;
 }
 
