@@ -510,9 +510,9 @@ function renderizarProximaReuniao(listaUnificada) {
           "pt-BR",
           { dateStyle: "short", timeStyle: "short" }
         )}</p>
-        <p class="mb-2 text-white"><span class="material-symbols-outlined" style="font-size:16px; color: white; vertical-align:middle">location_on</span> ${
+        <p class="mb-2 text-white"><span class="material-symbols-outlined" style="font-size:16px; color: white; vertical-align:middle">location_on ${
           proxima.local || "Online"
-        }</p>
+        }</span></p>
         <p class="fw-bold text-warning mb-0">${tempoTexto}</p>
     `;
 
