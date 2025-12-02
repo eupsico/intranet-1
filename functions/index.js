@@ -1882,7 +1882,7 @@ function gerarEmailGestor(gestorNome, inscrito, linkCalendar) {
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #198754 0%, #157347 100%); padding: 40px 30px; text-align: center;">
+            <td style="background: linear-gradient(135deg, #227dcdff 0%, #0f27d6ff 100%); padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
                 📅 Nova Inscrição Recebida
               </h1>
@@ -2036,7 +2036,7 @@ function gerarEmailParticipante(inscrito, linkCalendar) {
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #198754 0%, #157347 100%); padding: 40px 30px; text-align: center;">
+            <td style="background: linear-gradient(135deg, #1d28c9ff 0%, #4b62cbff 100%); padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
                 ✅ Inscrição Confirmada!
               </h1>
@@ -2104,7 +2104,7 @@ function gerarEmailParticipante(inscrito, linkCalendar) {
               <!-- Action Button -->
               <div style="text-align: center; margin-bottom: 32px;">
                 <a href="${linkCalendar}" 
-                   style="display: inline-block; background-color: #198754; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(25,135,84,0.3);">
+                   style="display: inline-block; background-color: #091fdeff; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(25,135,84,0.3);">
                   📅 Salvar na minha Agenda
                 </a>
               </div>
@@ -2149,61 +2149,6 @@ function gerarEmailParticipante(inscrito, linkCalendar) {
 // ====================================================================
 // Funções auxiliares para e-mail
 // ====================================================================
-function gerarEmailAgendamento(gestorNome, inscrito, linkCalendar) {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #003d7a; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f8f9fa; padding: 20px; }
-        .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #003d7a; border-radius: 4px; }
-        .button { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; font-weight: bold; }
-        .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9em; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h2>🎉 Novo Agendamento Confirmado!</h2>
-        </div>
-        <div class="content">
-          <p>Olá, <strong>${gestorNome}</strong>!</p>
-          <p>Um voluntário acaba de agendar uma reunião individual com você.</p>
-          
-          <div class="info-box">
-            <h3 style="margin-top: 0; color: #003d7a;">📋 Detalhes da Reunião</h3>
-            <p><strong>Voluntário:</strong> ${
-              inscrito.vaga.profissionalNome
-            }</p>
-            <p><strong>Data:</strong> ${formatarDataCompleta(
-              inscrito.slot.data
-            )}</p>
-            <p><strong>Horário:</strong> ${inscrito.slot.horaInicio} - ${
-    inscrito.slot.horaFim
-  }</p>
-          </div>
-          
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${linkCalendar}" class="button" target="_blank">
-              📅 Adicionar ao Google Calendar
-            </a>
-          </div>
-          
-          <p style="background: #fff3cd; padding: 12px; border-radius: 4px; border-left: 4px solid #ffc107;">
-            <strong>📝 Lembrete:</strong> O link do encontro online deve ser enviado por WhatsApp para o voluntário no dia agendado.
-          </p>
-        </div>
-        <div class="footer">
-          <p>Este é um e-mail automático da EuPsico.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
 
 function gerarLinkGoogleCalendar(titulo, descricao, data, horaInicio, horaFim) {
   if (!data || !horaInicio || !horaFim) return "#";
