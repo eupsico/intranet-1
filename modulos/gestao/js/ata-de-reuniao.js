@@ -1,5 +1,5 @@
 // /modulos/gestao/js/ata-de-reuniao.js
-// VERSÃO 2.1 (Confirmado - Filtra corretamente a lista de reuniões para registo)
+// VERSÃO 2.2 (Lista de Presença com Todos os Usuários e Visível para Todos)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -13,26 +13,27 @@ import {
   updateDoc,
 } from "../../../assets/js/firebase-init.js";
 
-let gestoresCache = [];
+let usuariosCache = [];
 
 export async function init() {
-  console.log("[ATA] Módulo Registar Ata iniciado.");
-  await fetchGestores();
+  console.log("[ATA] Módulo Registar Ata iniciado (v2.2).");
+  await fetchTodosUsuarios();
   await carregarReunioesAgendadas();
 }
 
-async function fetchGestores() {
-  if (gestoresCache.length > 0) return;
+async function fetchTodosUsuarios() {
+  if (usuariosCache.length > 0) return;
   try {
-    const q = query(
-      collection(firestoreDb, "usuarios"),
-      where("funcoes", "array-contains", "gestor"),
-      orderBy("nome")
-    );
+    // Query alterada: Removemos o filtro 'where("funcoes", "array-contains", "gestor")'
+    // para buscar TODOS os usuários cadastrados para a lista de presença.
+    const q = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
     const snapshot = await getDocs(q);
-    gestoresCache = snapshot.docs.map((doc) => doc.data().nome);
+    usuariosCache = snapshot.docs.map((doc) => doc.data().nome);
+    console.log(
+      `[ATA] ${usuariosCache.length} usuários carregados para lista de presença.`
+    );
   } catch (error) {
-    console.error("[ATA] Erro ao buscar gestores:", error);
+    console.error("[ATA] Erro ao buscar usuários:", error);
   }
 }
 
@@ -41,21 +42,18 @@ async function carregarReunioesAgendadas() {
   container.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // A query filtra para incluir APENAS reuniões de gestão
+    // Busca reuniões agendadas. Mantivemos os tipos, mas agora a lista de presença
+    // funcionará para qualquer um deles que for selecionado.
     const q = query(
       collection(firestoreDb, "gestao_atas"),
       where("status", "==", "Agendada"),
-      where("tipo", "in", [
-        "Reunião Conselho administrativo",
-        "Reunião com Gestor",
-      ]),
       orderBy("dataReuniao", "desc")
     );
 
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
       container.innerHTML =
-        '<h3>Nenhuma reunião de gestão pendente de ata.</h3><p>Para criar uma ata, primeiro agende a reunião na aba "Agendar Reunião".</p>';
+        '<h3>Nenhuma reunião pendente de ata.</h3><p>Para criar uma ata, primeiro agende a reunião na aba "Agendar Reunião".</p>';
       return;
     }
 
@@ -92,13 +90,15 @@ function renderizarFormularioAta(data, docId) {
   const container = document.getElementById("form-ata-container");
   container.style.display = "block";
 
-  const participantesCheckboxes = gestoresCache
+  // Gera checkboxes com TODOS os usuários
+  const participantesCheckboxes = usuariosCache
     .map(
       (nome) =>
         `<div><label><input type="checkbox" class="participante-check" value="${nome}"> ${nome}</label></div>`
     )
     .join("");
 
+  // Removemos a condição 'style="display: ..."' para que o campo apareça sempre
   container.innerHTML = `
         <form id="form-ata-registro">
             <h3>Registo da Ata: ${data.tipo}</h3>
@@ -109,11 +109,12 @@ function renderizarFormularioAta(data, docId) {
   }</p>
             <hr>
             
-            <div class="form-group participantes-field" style="display: ${
-              data.tipo === "Reunião Conselho administrativo" ? "block" : "none"
-            };">
-                <label>Participantes</label>
-                <div class="participantes-checkbox-container">${participantesCheckboxes}</div>
+            <div class="form-group participantes-field">
+                <label>Lista de Presença (Avaliação de Participação)</label>
+                <div class="participantes-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+                    ${participantesCheckboxes}
+                </div>
+                <small class="text-muted">Selecione todos os presentes na reunião.</small>
             </div>
 
             <div class="form-group"><label>Pontos Discutidos</label><textarea class="form-control" id="ata-pontos" rows="4" required></textarea></div>
