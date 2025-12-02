@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.3 (Coluna "Presença" com Taxa de Comparecer)
+// VERSÃO 5.4 (Unificação de Atas e Agendamentos no Dashboard)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -27,8 +27,64 @@ function normalizarParticipantes(participantes) {
   return [];
 }
 
+/**
+ * Função auxiliar para unificar Atas (gestao_atas) e Agendamentos (agendamentos_voluntarios).
+ * Transforma os slots de agendamentos em objetos compatíveis com a estrutura de atas.
+ */
+function getListaUnificada() {
+  const listaUnificada = [];
+
+  // 1. Adiciona as Atas existentes (copiando propriedades)
+  todasAsAtas.forEach((ata) => {
+    listaUnificada.push({
+      ...ata,
+      origem: "ata",
+      statusCalculado: ata.status || "Concluída", // Assume concluída se não tiver status
+      dataOrdenacao: new Date(ata.dataReuniao + "T00:00:00"), // Assume YYYY-MM-DD
+    });
+  });
+
+  // 2. Processa Agendamentos de Voluntários e seus Slots
+  todosOsAgendamentos.forEach((agendamento) => {
+    if (agendamento.slots && Array.isArray(agendamento.slots)) {
+      agendamento.slots.forEach((slot, index) => {
+        // Mapeia participantes do slot
+        const participantesSlot = (slot.vagas || []).map(
+          (v) => v.nome || v.profissionalNome || "Anônimo"
+        );
+
+        // Cria objeto compatível
+        listaUnificada.push({
+          id: `${agendamento.id}_slot_${index}`, // ID virtual único
+          titulo: agendamento.tipo || "Agendamento",
+          tipo: agendamento.tipo || "Reunião Agendada",
+          dataReuniao: slot.data,
+          horaInicio: slot.horaInicio, // Extra para exibição
+          local: "Online", // Padrão para agendamentos desse tipo
+          responsavel: slot.gestorNome || "Não especificado",
+          participantes: participantesSlot,
+          resumo: agendamento.descricao
+            ? `(Descrição do Agendamento): ${agendamento.descricao.substring(
+                0,
+                100
+              )}...`
+            : "",
+          origem: "agendamento",
+          statusCalculado: "Agendada",
+          dataOrdenacao: new Date(`${slot.data}T${slot.horaInicio}:00`),
+          linkOriginal: agendamento.id, // Referência para ações futuras se necessário
+        });
+      });
+    }
+  });
+
+  return listaUnificada;
+}
+
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v5.3 - Presença de Voluntários).");
+  console.log(
+    "[DASH] Dashboard iniciado (v5.4 - Unificado Atas e Agendamentos)."
+  );
   configurarEventListeners();
   carregarDados();
 }
@@ -82,6 +138,7 @@ function alternarAba(abaId) {
 }
 
 function carregarDados() {
+  // Carrega Atas
   const qAtas = query(
     collection(firestoreDb, "gestao_atas"),
     orderBy("dataReuniao", "desc")
@@ -92,11 +149,13 @@ function carregarDados() {
       ...doc.data(),
       participantes: normalizarParticipantes(doc.data().participantes),
     }));
+    // Atualiza interface sempre que houver mudança
     aplicarFiltrosEExibirAtas();
     atualizarGraficos();
-    console.log(`[DASH] Atas: ${todasAsAtas.length}`);
+    console.log(`[DASH] Atas carregadas: ${todasAsAtas.length}`);
   });
 
+  // Carrega Agendamentos
   const qAgendamentos = query(
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
@@ -106,8 +165,12 @@ function carregarDados() {
       id: doc.id,
       ...doc.data(),
     }));
+    // Atualiza interface sempre que houver mudança
+    aplicarFiltrosEExibirAtas();
     atualizarGraficos();
-    console.log(`[DASH] Agendamentos: ${todosOsAgendamentos.length}`);
+    console.log(
+      `[DASH] Agendamentos carregados: ${todosOsAgendamentos.length}`
+    );
   });
 }
 
@@ -116,99 +179,128 @@ function aplicarFiltrosEExibirAtas() {
   const buscaTermo =
     document.getElementById("busca-titulo")?.value.toLowerCase() || "";
 
-  let atasFiltradas = [...todasAsAtas];
+  // Usa a lista unificada em vez de apenas todasAsAtas
+  let itensFiltrados = getListaUnificada();
 
   if (tipoFiltro !== "Todos") {
-    atasFiltradas = atasFiltradas.filter((ata) =>
-      ata.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
+    itensFiltrados = itensFiltrados.filter((item) =>
+      item.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
     );
   }
 
   if (buscaTermo) {
-    atasFiltradas = atasFiltradas.filter((ata) =>
-      ata.titulo?.toLowerCase().includes(buscaTermo)
+    itensFiltrados = itensFiltrados.filter((item) =>
+      item.titulo?.toLowerCase().includes(buscaTermo)
     );
   }
 
-  atasFiltradas.sort(
-    (a, b) => new Date(b.dataReuniao) - new Date(a.dataReuniao)
-  );
+  // Ordena por data (mais recente primeiro)
+  itensFiltrados.sort((a, b) => b.dataOrdenacao - a.dataOrdenacao);
 
   const container = document.getElementById("atas-container");
   if (!container) return;
 
-  if (atasFiltradas.length === 0) {
+  if (itensFiltrados.length === 0) {
     container.innerHTML = `
             <div class="alert alert-info text-center">
                 <span class="material-symbols-outlined">search_off</span>
-                Nenhuma ata encontrada.
+                Nenhuma reunião ou ata encontrada.
             </div>
         `;
     atualizarContadorAtas(0);
     return;
   }
 
-  container.innerHTML = atasFiltradas
-    .map((ata) => {
-      const dataAta = new Date(ata.dataReuniao);
+  container.innerHTML = itensFiltrados
+    .map((item) => {
+      // Lógica de Data e Status
+      const dataItem = item.dataOrdenacao;
       const agora = new Date();
-      const ehFutura = dataAta > agora;
-      const statusCor = ehFutura ? "text-info" : "text-success";
-      const iconeStatus = ehFutura ? "schedule" : "check_circle";
+      // Considera futura se a data for maior que agora
+      const ehFutura = dataItem > agora;
 
-      const participantes = normalizarParticipantes(ata.participantes);
+      let statusCor = "text-success";
+      let iconeStatus = "check_circle";
+
+      if (ehFutura || item.statusCalculado === "Agendada") {
+        statusCor = "text-info";
+        iconeStatus = "schedule";
+      }
+
+      // Preparação de participantes para exibição
+      const participantes = item.participantes || [];
       const previewParticipantes = participantes.slice(0, 3);
       const maisParticipantes =
         participantes.length > 3 ? `+${participantes.length - 3}` : "";
 
+      // Exibe horário se disponível (comum em agendamentos)
+      const horarioDisplay = item.horaInicio ? ` às ${item.horaInicio}` : "";
+
       return `
-            <div class="ata-item card mb-4" data-ata-id="${ata.id}">
+            <div class="ata-item card mb-4" data-id="${item.id}">
                 <div class="card-header d-flex justify-content-between align-items-center p-3" onclick="this.parentElement.querySelector('.ata-conteudo').style.display = this.parentElement.querySelector('.ata-conteudo').style.display === 'none' ? 'block' : 'none';">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center mb-1">
-                            <span class="material-symbols-outlined me-2" style="color: ${statusCor};">${iconeStatus}</span>
+                            <span class="material-symbols-outlined me-2" style="color: ${
+                              ehFutura ? "#0dcaf0" : "#198754"
+                            };">${iconeStatus}</span>
                             <h5 class="mb-0">${
-                              ata.titulo || ata.tipo || "Reunião"
+                              item.titulo || item.tipo || "Reunião"
                             }</h5>
+                            ${
+                              item.origem === "agendamento"
+                                ? '<span class="badge bg-info text-dark ms-2" style="font-size: 0.7em;">Agendada</span>'
+                                : ""
+                            }
                         </div>
-                        <small class="text-muted">${dataAta.toLocaleDateString(
+                        <small class="text-muted">${dataItem.toLocaleDateString(
                           "pt-BR"
-                        )}</small>
+                        )}${horarioDisplay}</small>
                     </div>
                     <div class="ata-acoes">
-                        <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" onclick="event.stopPropagation(); alert('PDF: ${
-                          ata.id
-                        }');">
-                            <span class="material-symbols-outlined">picture_as_pdf</span>
-                        </button>
-                        <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Feedback" onclick="event.stopPropagation(); alert('Feedback: ${
-                          ata.id
-                        }');">
-                            <span class="material-symbols-outlined">feedback</span>
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" onclick="event.stopPropagation(); alert('Editar: ${
-                          ata.id
-                        }');">
-                            <span class="material-symbols-outlined">edit</span>
-                        </button>
+                        ${
+                          item.origem === "ata"
+                            ? `
+                            <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="PDF" onclick="event.stopPropagation(); alert('PDF: ${item.id}');">
+                                <span class="material-symbols-outlined">picture_as_pdf</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success btn-feedback me-1" title="Feedback" onclick="event.stopPropagation(); alert('Feedback: ${item.id}');">
+                                <span class="material-symbols-outlined">feedback</span>
+                            </button>
+                        `
+                            : ""
+                        }
+                        ${
+                          item.origem === "agendamento"
+                            ? `
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Detalhes" onclick="event.stopPropagation(); alert('Detalhes do Agendamento ID: ${item.linkOriginal}');">
+                                <span class="material-symbols-outlined">visibility</span>
+                            </button>
+                        `
+                            : `
+                            <button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar" onclick="event.stopPropagation(); alert('Editar: ${item.id}');">
+                                <span class="material-symbols-outlined">edit</span>
+                            </button>
+                        `
+                        }
                     </div>
                 </div>
                 <div class="ata-conteudo card-body" style="display: none; border-top: 1px solid #e5e7eb;">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <p><strong>Tipo:</strong> ${
-                              ata.tipo || "Não especificado"
+                              item.tipo || "Não especificado"
                             }</p>
-                            <p><strong>Data:</strong> ${dataAta.toLocaleDateString(
+                            <p><strong>Data:</strong> ${dataItem.toLocaleDateString(
                               "pt-BR"
-                            )}</p>
+                            )}${horarioDisplay}</p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Local:</strong> ${
-                              ata.local || "Online"
+                              item.local || "Online"
                             }</p>
                             <p><strong>Responsável:</strong> ${
-                              ata.responsavel || "Não especificado"
+                              item.responsavel || "Não especificado"
                             }</p>
                         </div>
                     </div>
@@ -216,7 +308,7 @@ function aplicarFiltrosEExibirAtas() {
                       participantes.length > 0
                         ? `
                         <div class="mb-3">
-                            <h6>Participantes</h6>
+                            <h6>Participantes (Inscritos/Presentes)</h6>
                             <div class="d-flex flex-wrap gap-1">
                                 ${previewParticipantes
                                   .map(
@@ -238,11 +330,11 @@ function aplicarFiltrosEExibirAtas() {
                         : ""
                     }
                     ${
-                      ata.resumo
+                      item.resumo
                         ? `
                         <div class="mb-3">
-                            <h6>Resumo</h6>
-                            <p>${ata.resumo}</p>
+                            <h6>Resumo / Descrição</h6>
+                            <p>${item.resumo}</p>
                         </div>
                     `
                         : ""
@@ -253,21 +345,25 @@ function aplicarFiltrosEExibirAtas() {
     })
     .join("");
 
-  atualizarContadorAtas(atasFiltradas.length);
+  atualizarContadorAtas(itensFiltrados.length);
 }
 
 function atualizarGraficos() {
   const agora = new Date();
+  const listaUnificada = getListaUnificada();
 
-  const totalAtas = todasAsAtas.length;
-  const atasFuturas = todasAsAtas.filter((ata) => {
-    const dataAta = new Date(ata.dataReuniao);
-    return !isNaN(dataAta.getTime()) && dataAta > agora;
+  const totalGeral = listaUnificada.length;
+
+  // Filtra Futuras (Data > Agora)
+  const reunioesFuturas = listaUnificada.filter((item) => {
+    return item.dataOrdenacao > agora;
   }).length;
-  const atasConcluidas = todasAsAtas.filter((ata) => {
-    const dataAta = new Date(ata.dataReuniao);
+
+  // Filtra Concluídas (Data < Agora E Status == Concluída ou origem Ata)
+  const reunioesConcluidas = listaUnificada.filter((item) => {
     return (
-      !isNaN(dataAta.getTime()) && dataAta < agora && ata.status === "Concluída"
+      item.dataOrdenacao < agora &&
+      (item.statusCalculado === "Concluída" || item.origem === "ata")
     );
   }).length;
 
@@ -275,47 +371,46 @@ function atualizarGraficos() {
   const proximasEl = document.getElementById("proximas-reunioes");
   const concluidasEl = document.getElementById("reunioes-concluidas");
 
-  if (totalEl) totalEl.textContent = totalAtas;
-  if (proximasEl) proximasEl.textContent = atasFuturas;
-  if (concluidasEl) concluidasEl.textContent = atasConcluidas;
+  if (totalEl) totalEl.textContent = totalGeral;
+  if (proximasEl) proximasEl.textContent = reunioesFuturas;
+  if (concluidasEl) concluidasEl.textContent = reunioesConcluidas;
 
-  renderizarTabelaAtasPorTipo();
-  renderizarTabelaAgendamentosPorGestor();
-  renderizarProximaReuniao();
+  renderizarTabelaAtasPorTipo(listaUnificada);
+  renderizarTabelaAgendamentosPorGestor(); // Mantém lógica original para este gráfico específico
+  renderizarProximaReuniao(listaUnificada);
 }
 
-function renderizarTabelaAtasPorTipo() {
+function renderizarTabelaAtasPorTipo(listaUnificada) {
   const container = document.getElementById("grafico-atas-tipo");
   if (!container) return;
 
-  const atasPorTipo = {};
-  todasAsAtas.forEach((ata) => {
-    const tipo = ata.tipo || "Outros";
-    atasPorTipo[tipo] = (atasPorTipo[tipo] || 0) + 1;
+  const contagemPorTipo = {};
+  listaUnificada.forEach((item) => {
+    const tipo = item.tipo || "Outros";
+    contagemPorTipo[tipo] = (contagemPorTipo[tipo] || 0) + 1;
   });
 
-  const totalAtas = todasAsAtas.length;
+  const total = listaUnificada.length;
 
-  if (totalAtas === 0) {
+  if (total === 0) {
     container.innerHTML = `
             <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
                 <h5 class="mb-0">
                     <span class="material-symbols-outlined me-2" style="vertical-align: middle;">bar_chart</span>
-                    Atas por Tipo de Reunião
+                    Reuniões por Tipo
                 </h5>
             </div>
             <div class="alert alert-info text-center">
-                <p class="mb-0">Nenhuma ata registrada.</p>
+                <p class="mb-0">Nenhuma reunião registrada.</p>
             </div>
         `;
     return;
   }
 
-  const linhas = Object.entries(atasPorTipo)
+  const linhas = Object.entries(contagemPorTipo)
     .sort((a, b) => b[1] - a[1])
     .map(([tipo, qtd]) => {
-      const percentual =
-        totalAtas > 0 ? Math.round((qtd / totalAtas) * 100) : 0;
+      const percentual = total > 0 ? Math.round((qtd / total) * 100) : 0;
       return `
                 <tr>
                     <td><strong>${tipo}</strong></td>
@@ -337,7 +432,7 @@ function renderizarTabelaAtasPorTipo() {
         <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
             <h5 class="mb-0">
                 <span class="material-symbols-outlined me-2" style="vertical-align: middle;">bar_chart</span>
-                Atas por Tipo de Reunião
+                Reuniões por Tipo
             </h5>
         </div>
         <div class="table-responsive">
@@ -345,9 +440,9 @@ function renderizarTabelaAtasPorTipo() {
                 <thead class="table-light">
                     <tr>
                         <th>Tipo de Reunião</th>
-                        <th class="text-center">Quantidade</th>
-                        <th class="text-center">Percentual</th>
-                        <th>Gráfico</th>
+                        <th class="text-center">Qtd</th>
+                        <th class="text-center">%</th>
+                        <th>Visualização</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -423,11 +518,9 @@ function renderizarTabelaAgendamentosPorGestor() {
           ? Math.round((dadosPresenca.presente / dadosPresenca.total) * 100)
           : 0;
 
-      // Define cor baseado na presença
-      let corPresenca = "bg-danger"; // Vermelho: baixa presença
-      if (percentualPresenca >= 75)
-        corPresenca = "bg-success"; // Verde: alta presença
-      else if (percentualPresenca >= 50) corPresenca = "bg-warning"; // Amarelo: média presença
+      let corPresenca = "bg-danger";
+      if (percentualPresenca >= 75) corPresenca = "bg-success";
+      else if (percentualPresenca >= 50) corPresenca = "bg-warning";
 
       const iconePresenca =
         percentualPresenca >= 75
@@ -462,30 +555,6 @@ function renderizarTabelaAgendamentosPorGestor() {
     })
     .join("");
 
-  // Cards de resumo
-  const cardsResumo = `
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="card bg-light border-0" style="border-radius: 8px;">
-                    <div class="card-body text-center">
-                        <span class="material-symbols-outlined" style="font-size: 32px; color: #0d6efd;">event</span>
-                        <h3 class="mt-2">${todosOsAgendamentos.length}</h3>
-                        <p class="text-muted mb-0">Total de Agendamentos</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card bg-light border-0" style="border-radius: 8px;">
-                    <div class="card-body text-center">
-                        <span class="material-symbols-outlined" style="font-size: 32px; color: #198754;">person</span>
-                        <h3 class="mt-2">${totalAgendamentosComGestor}</h3>
-                        <p class="text-muted mb-0">Total de Vagas Agendadas</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
   container.innerHTML = `
         <div class="card-header bg-light p-3 mb-3" style="border-radius: 4px;">
             <h5 class="mb-0">
@@ -493,7 +562,6 @@ function renderizarTabelaAgendamentosPorGestor() {
                 Agendamentos com Voluntários por Gestor
             </h5>
         </div>
-        ${cardsResumo}
         <div class="table-responsive">
             <table class="table table-hover table-bordered">
                 <thead class="table-light">
@@ -512,14 +580,13 @@ function renderizarTabelaAgendamentosPorGestor() {
     `;
 }
 
-function renderizarProximaReuniao() {
+function renderizarProximaReuniao(listaUnificada) {
   const agora = new Date();
-  const proximas = todasAsAtas
-    .filter((ata) => {
-      const dataAta = new Date(ata.dataReuniao);
-      return !isNaN(dataAta.getTime()) && dataAta > agora;
-    })
-    .sort((a, b) => new Date(a.dataReuniao) - new Date(b.dataReuniao));
+
+  // Filtra apenas as futuras
+  const proximas = listaUnificada
+    .filter((item) => item.dataOrdenacao > agora)
+    .sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
 
   const proximaContainer = document.getElementById("proxima-reuniao-container");
   const infoEl = document.getElementById("proxima-reuniao-info");
@@ -533,8 +600,7 @@ function renderizarProximaReuniao() {
 
   proximaContainer.style.display = "block";
   const proxima = proximas[0];
-  const dataProxima = new Date(proxima.dataReuniao);
-  const diffMs = dataProxima - agora;
+  const diffMs = proxima.dataOrdenacao - agora;
   const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -549,10 +615,13 @@ function renderizarProximaReuniao() {
   infoEl.innerHTML = `
         <h5>${proxima.titulo || proxima.tipo || "Reunião"}</h5>
         <p><strong>Tipo:</strong> ${proxima.tipo || "Não especificado"}</p>
-        <p><strong>Data:</strong> ${dataProxima.toLocaleString("pt-BR", {
-          dateStyle: "full",
-          timeStyle: "short",
-        })}</p>
+        <p><strong>Data:</strong> ${proxima.dataOrdenacao.toLocaleString(
+          "pt-BR",
+          {
+            dateStyle: "full",
+            timeStyle: "short",
+          }
+        )}</p>
         <p><strong>Local:</strong> ${proxima.local || "Online"}</p>
         <p class="fw-bold text-primary">${tempoTexto}</p>
     `;
@@ -560,7 +629,7 @@ function renderizarProximaReuniao() {
   const detalhesBtn = document.getElementById("ver-detalhes-proxima");
   if (detalhesBtn)
     detalhesBtn.onclick = () =>
-      alert(`Detalhes: ${proxima.titulo || proxima.id}`);
+      alert(`Detalhes da reunião: ${proxima.titulo || "ID " + proxima.id}`);
 
   const calendarioBtn = document.getElementById("calendario-proxima");
   if (calendarioBtn)
@@ -568,7 +637,7 @@ function renderizarProximaReuniao() {
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
         proxima.titulo || "Reunião"
       )}&dates=${
-        dataProxima.toISOString().replace(/[-:]/g, "").split(".")[0]
+        proxima.dataOrdenacao.toISOString().replace(/[-:]/g, "").split(".")[0]
       }Z&location=${encodeURIComponent(proxima.local || "Online")}`;
       window.open(url, "_blank");
     };
