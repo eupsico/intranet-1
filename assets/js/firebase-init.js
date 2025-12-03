@@ -1,12 +1,17 @@
 // Arquivo: assets/js/firebase-init.js
-// Versão: 9.5 (Corrigido - Adiciona exports)
+// Versão: 9.6 (Atualizado e Padronizado para 9.22.1 para corrigir conflito de versões)
 
 // 1. Importa as funções de inicialização e os serviços
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+// IMPORTANTE: Todas as URLs foram atualizadas para 9.22.1 para garantir compatibilidade
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+
 import {
   getAuth,
   onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+  signInWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
 import {
   getFirestore,
   collection,
@@ -31,19 +36,22 @@ import {
   FieldValue,
   arrayRemove,
   runTransaction,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
 import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-functions.js";
+
 import {
   getStorage,
   ref,
   uploadBytes,
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
 // 2. Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDJqPJjDDIGo7uRewh3pw1SQZOpMgQJs5M",
@@ -61,7 +69,7 @@ const app = initializeApp(firebaseConfig);
 // 4. Inicializa os serviços
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storage = getStorage(app); // Agora funcionará pois o 'app' é da mesma versão
 const database = getDatabase(app);
 const functions = getFunctions(app, "us-central1");
 
@@ -71,9 +79,7 @@ window.auth = auth;
 window.storage = storage;
 window.functions = functions;
 
-console.log("✅ Firebase inicializado com sucesso!");
-console.log("✅ window.db definido:", !!window.db);
-console.log("✅ window.auth definido:", !!window.auth);
+console.log("✅ Firebase inicializado com sucesso (v9.22.1)!");
 
 // ✅ 6. EXPORTA TUDO (para módulos que usam import)
 export {
@@ -84,13 +90,12 @@ export {
   storage,
   database,
   functions,
-  ref,
-  uploadBytes,
-  getDownloadURL,
 
   // Funções de Auth
   getAuth,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
 
   // Funções de Firestore
   getFirestore,
@@ -115,9 +120,13 @@ export {
   writeBatch,
   FieldValue,
   arrayRemove,
+  runTransaction,
 
   // Funções de Storage
   getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
 
   // Funções de Database
   getDatabase,
@@ -125,5 +134,4 @@ export {
   // Funções de Functions
   getFunctions,
   httpsCallable,
-  runTransaction,
 };
