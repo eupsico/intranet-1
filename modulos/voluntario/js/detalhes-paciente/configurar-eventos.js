@@ -152,6 +152,12 @@ export function adicionarEventListenersGerais() {
       interfaceUI.togglePacienteActionsMenu(menuContainer); // Função da UI
     });
   }
+
+  // --- NOVO LISTENER: Upload de Arquivo ---
+  const fileInput = document.getElementById("ac-novo-arquivo");
+  if (fileInput) {
+    fileInput.addEventListener("change", handlers.handleUploadArquivo);
+  }
 }
 
 /**
