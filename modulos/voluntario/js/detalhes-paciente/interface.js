@@ -92,7 +92,7 @@ export function preencherFormularios() {
       "preencherFormularios chamado sem dados do paciente no estado."
     );
     return;
-  } // Função auxiliar interna para definir valor de um elemento
+  }
 
   const setElementValue = (
     id,
@@ -106,7 +106,6 @@ export function preencherFormularios() {
       if (tagName === "SPAN") {
         element.textContent = value ?? "--";
       } else if (["INPUT", "TEXTAREA", "SELECT"].includes(tagName)) {
-        // Formata valor monetário
         let displayValue = value ?? "";
         if (id === "dp-valor-contribuicao" && typeof value === "number") {
           displayValue = value.toLocaleString("pt-BR", {
@@ -114,53 +113,49 @@ export function preencherFormularios() {
             maximumFractionDigits: 2,
           });
         }
-        element.value = displayValue; // Lógica específica para o input readonly de status
+        element.value = displayValue;
 
         if (isInputReadOnly && id === "dp-status-atual-input") {
-          const statusSpan = document.getElementById("dp-status-atual"); // Span oculto com classes
+          const statusSpan = document.getElementById("dp-status-atual");
           if (statusSpan) {
-            element.className = "form-control status-badge-input"; // Reset base
+            element.className = "form-control status-badge-input";
             statusSpan.classList.forEach((cls) => {
               if (!["readonly-value", "status-badge"].includes(cls)) {
                 element.classList.add(cls);
               }
             });
-            element.value = statusSpan.textContent || "--"; // Usa texto do span formatado
+            element.value = statusSpan.textContent || "--";
           } else {
-            element.value = value ?? "--"; // Fallback
+            element.value = value ?? "--";
           }
         } else if (isInputReadOnly) {
-          element.value = value ?? "--"; // Para outros inputs readonly
+          element.value = value ?? "--";
         }
       }
     } else {
       console.warn(`Elemento #${id} não encontrado para preenchimento.`);
     }
-  }; // --- Preenchimento ---
+  };
 
-  const paciente = estado.pacienteDataGlobal; // Aba: Informações Pessoais
+  const paciente = estado.pacienteDataGlobal;
 
+  // --- STATUS E DADOS BÁSICOS ---
   const statusPaciente = paciente.status || "desconhecido";
   const statusFormatado = formatarStatus(statusPaciente);
-  const statusSpan = document.getElementById("dp-status-atual"); // Span oculto
+  const statusSpan = document.getElementById("dp-status-atual");
   if (statusSpan) {
     statusSpan.textContent = statusFormatado;
-    statusSpan.className = `readonly-value status-badge ${statusPaciente}`; // Atualiza classes do span
+    statusSpan.className = `readonly-value status-badge ${statusPaciente}`;
   }
-  setElementValue("dp-status-atual", statusFormatado, true); // Preenche o span (se ainda usado)
-  setElementValue("dp-status-atual-input", statusFormatado, true); // Preenche o input readonly
+  setElementValue("dp-status-atual", statusFormatado, true);
+  setElementValue("dp-status-atual-input", statusFormatado, true);
 
-  // --- LÓGICA DO CAMPO PARCERIA ---
   const parceriaContainer = document.getElementById("dp-parceria-container");
   const parceriaSelect = document.getElementById("dp-parceria");
-
   if (parceriaContainer && parceriaSelect) {
     if (statusPaciente === "pacientes_parcerias") {
       parceriaContainer.style.display = "block";
-
-      // Popula as opções se ainda não foram (evita repopular desnecessariamente)
       if (parceriaSelect.options.length <= 1) {
-        // Só tem o default
         const parceriasList =
           estado.systemConfigsGlobal?.listas?.parcerias || [];
         parceriasList.forEach((parc) => {
@@ -176,23 +171,51 @@ export function preencherFormularios() {
     }
   }
 
+  // --- NOVO: CONTRATO ASSINADO ---
+  const contratoLinkContainer = document.getElementById(
+    "dp-contrato-link-container"
+  );
+  const contratoLink = document.getElementById("dp-contrato-link");
+  const contratoData = document.getElementById("dp-contrato-data");
+
+  if (contratoLinkContainer && contratoLink) {
+    if (paciente.contratoUrl) {
+      contratoLinkContainer.style.display = "block";
+      contratoLink.href = paciente.contratoUrl;
+
+      if (contratoData && paciente.contratoData) {
+        const d = paciente.contratoData.toDate
+          ? paciente.contratoData.toDate()
+          : new Date(paciente.contratoData);
+        contratoData.textContent =
+          d.toLocaleDateString("pt-BR") +
+          " às " +
+          d.toLocaleTimeString("pt-BR");
+      } else if (contratoData) {
+        contratoData.textContent = "Data não registrada";
+      }
+    } else {
+      contratoLinkContainer.style.display = "none";
+    }
+  }
+
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
-  setElementValue("dp-idade", idadeCalculada, true); // Span (se ainda usado)
-  setElementValue("dp-idade-input", idadeCalculada, true); // Input readonly
+  setElementValue("dp-idade", idadeCalculada, true);
+  setElementValue("dp-idade-input", idadeCalculada, true);
 
   const dataEncaminhamentoRaw =
     paciente.plantaoInfo?.dataEncaminhamento ||
     paciente.atendimentosPB?.[0]?.dataEncaminhamento;
   const dataEncaminhamento = dataEncaminhamentoRaw
-    ? new Date(dataEncaminhamentoRaw + "T03:00:00").toLocaleDateString("pt-BR") // Adiciona T03 para timezone
+    ? new Date(dataEncaminhamentoRaw + "T03:00:00").toLocaleDateString("pt-BR")
     : "--";
-  setElementValue("dp-desde", dataEncaminhamento, true); // Span (se ainda usado)
-  setElementValue("dp-desde-input", dataEncaminhamento, true); // Input readonly
+  setElementValue("dp-desde", dataEncaminhamento, true);
+  setElementValue("dp-desde-input", dataEncaminhamento, true);
 
-  setElementValue("dp-nome-completo", paciente.nomeCompleto); // Readonly pelo HTML
+  setElementValue("dp-nome-completo", paciente.nomeCompleto);
   setElementValue("dp-telefone", paciente.telefoneCelular);
   setElementValue("dp-data-nascimento", paciente.dataNascimento);
-  setElementValue("dp-cpf", paciente.cpf); // Readonly pelo HTML
+  setElementValue("dp-cpf", paciente.cpf);
 
   const endereco = paciente.endereco || {};
   setElementValue("dp-endereco-logradouro", endereco.logradouro);
@@ -211,9 +234,9 @@ export function preencherFormularios() {
   setElementValue(
     "dp-contato-emergencia-telefone",
     paciente.contatoEmergencia?.telefone
-  ); // Aba: Informações Financeiras
+  );
 
-  setElementValue("dp-valor-contribuicao", paciente.valorContribuicao); // Aba: Acompanhamento Clínico
+  setElementValue("dp-valor-contribuicao", paciente.valorContribuicao);
 
   const acompanhamento = paciente.acompanhamentoClinico || {};
   setElementValue("ac-avaliacao-demanda", acompanhamento.avaliacaoDemanda);
@@ -224,9 +247,50 @@ export function preencherFormularios() {
     acompanhamento.registroEncerramento
   );
 
+  // --- NOVO: LISTA DE ARQUIVOS CLÍNICOS ---
+  const arquivosContainer = document.getElementById("ac-arquivos-lista");
+  if (arquivosContainer) {
+    arquivosContainer.innerHTML = "";
+    if (paciente.arquivosClinicos && paciente.arquivosClinicos.length > 0) {
+      const ul = document.createElement("ul");
+      ul.style.listStyle = "none";
+      ul.style.padding = "0";
+
+      paciente.arquivosClinicos.forEach((arq) => {
+        const li = document.createElement("li");
+        li.style.marginBottom = "8px";
+        li.style.paddingBottom = "8px";
+        li.style.borderBottom = "1px solid #eee";
+        li.style.display = "flex";
+        li.style.justifyContent = "space-between";
+        li.style.alignItems = "center";
+
+        const dataUpload = arq.data
+          ? (arq.data.toDate
+              ? arq.data.toDate()
+              : new Date(arq.data)
+            ).toLocaleDateString("pt-BR")
+          : "";
+
+        li.innerHTML = `
+                <div>
+                    <a href="${arq.url}" target="_blank" style="font-weight: 600; color: #0056b3; text-decoration: none;">
+                        📄 ${arq.nome}
+                    </a>
+                    <span style="display: block; font-size: 0.8em; color: #777;">Enviado em: ${dataUpload}</span>
+                </div>
+              `;
+        ul.appendChild(li);
+      });
+      arquivosContainer.appendChild(ul);
+    } else {
+      arquivosContainer.innerHTML =
+        '<p class="text-muted" style="font-size: 0.9em; font-style: italic;">Nenhum arquivo anexado.</p>';
+    }
+  }
+
   console.log("Formulários preenchidos.");
 }
-
 /**
  * Renderiza a lista de sessões na interface.
  * Assume que o estado.sessoesCarregadas já foi populado.

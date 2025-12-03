@@ -62,6 +62,21 @@
                                 <option value="">Selecione a parceria...</option>
                             </select>
                         </div>
+                        <div class="form-group" style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; margin-bottom: 20px;">
+                            <label style="color: var(--cor-primaria); font-weight: bold;">📄 Contrato Terapêutico Assinado</label>
+                            
+                            <div id="dp-contrato-link-container" style="margin-bottom: 10px; display: none;">
+                                <a href="#" id="dp-contrato-link" target="_blank" class="action-button secondary-button small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                    <span>👁️ Visualizar Contrato Atual</span>
+                                </a>
+                                <small class="text-muted" style="display: block; margin-top: 5px;">Enviado em: <span id="dp-contrato-data"></span></small>
+                            </div>
+
+                            <div class="file-upload-wrapper">
+                                <label for="dp-contrato-upload" style="font-size: 0.9em; cursor: pointer;">Enviar/Atualizar Contrato (PDF ou Imagem):</label>
+                                <input type="file" id="dp-contrato-upload" class="form-control" accept="application/pdf, image/*">
+                            </div>
+                        </div>
         
                         <div class="form-grid cols-4">
                             <div class="form-group readonly">
@@ -171,7 +186,7 @@
                 </fieldset>
             </form>
             
-            <form id="acompanhamento-clinico-form">
+           <form id="acompanhamento-clinico-form">
                 <fieldset class="accordion-item"> 
                     <legend class="accordion-header">
                         <button type="button" class="accordion-button">
@@ -182,6 +197,16 @@
                         <fieldset>
                             <legend>Acompanhamento Clínico</legend>
 
+                            <div class="form-group" style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; margin-bottom: 20px;">
+                                <label style="color: var(--cor-primaria); font-weight: bold;">📁 Arquivos e Anexos (Anamnese, Testes, etc.)</label>
+                                
+                                <div id="ac-arquivos-lista" style="margin-bottom: 15px;">
+                                    <p class="text-muted" style="font-size: 0.9em; font-style: italic;">Nenhum arquivo anexado.</p>
+                                </div>
+
+                                <label for="ac-novo-arquivo" style="font-size: 0.9em; cursor: pointer;">Adicionar Novo Arquivo:</label>
+                                <input type="file" id="ac-novo-arquivo" class="form-control" multiple>
+                            </div>
                             <div class="form-group">
                                 <label for="ac-avaliacao-demanda">AVALIAÇÃO DA DEMANDA (QUEIXA DO PACIENTE)</label>
                                 <p class="field-description">(Explicação: Descreva a queixa principal trazida pelo paciente no início do tratamento.)</p>
@@ -213,6 +238,8 @@
                     </div> 
                 </fieldset>
             </form>
+            
+        </div>
             
         </div> 
         <div id="pendencias-section">
@@ -275,7 +302,7 @@
             <div class="modal-header">
                 <h2 class="modal-title-text">Anotações da Sessão</h2>
                 <span class="close-button modal-cancel-btn">&times;</span>
-            </div>      
+            </div> frequencia frequencia frequencia
             <div class="modal-body"> 
                 <input type="hidden" id="anotacoes-sessao-id">
 
