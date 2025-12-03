@@ -243,15 +243,14 @@ export function renderizarSessoes() {
     return;
   }
 
-  // Limpa container e esconde placeholder/loading
   container.innerHTML = "";
   loading.style.display = "none";
   placeholder.style.display = "none";
 
-  const sessoes = estado.sessoesCarregadas; // Pega do estado
+  const sessoes = estado.sessoesCarregadas;
 
   if (sessoes.length === 0) {
-    placeholder.style.display = "block"; // Mostra placeholder se vazio
+    placeholder.style.display = "block";
     return;
   }
 
@@ -260,21 +259,39 @@ export function renderizarSessoes() {
     itemDiv.className = "session-item";
     itemDiv.dataset.sessaoId = sessao.id;
 
-    const dataHora = sessao.dataHora?.toDate ? sessao.dataHora.toDate() : null;
-    const dataFormatada = dataHora
-      ? dataHora.toLocaleDateString("pt-BR")
-      : "Data Indefinida";
-    const horaFormatada = dataHora
-      ? dataHora.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "";
+    // --- CORREÇÃO: Lógica robusta para obter Data e Hora ---
+    let dataObj = null;
+    let horaTexto = "";
+
+    if (sessao.dataHora?.toDate) {
+      // Caso ideal: Timestamp do Firestore
+      dataObj = sessao.dataHora.toDate();
+      horaTexto = dataObj.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } else if (sessao.data) {
+      // Fallback: Campos separados (String)
+      const horaTemp = sessao.horaInicio || "00:00";
+      try {
+        // Adiciona T para ISO
+        dataObj = new Date(`${sessao.data}T${horaTemp}:00`);
+        horaTexto = horaTemp;
+      } catch (e) {
+        console.warn("Data inválida na sessão", sessao);
+      }
+    }
+
+    const dataFormatada =
+      dataObj && !isNaN(dataObj)
+        ? dataObj.toLocaleDateString("pt-BR")
+        : "Data Inválida";
     const statusSessao = sessao.status || "pendente";
+    // -------------------------------------------------------
 
     let statusTexto = "Pendente";
     let statusClasse = "status-pendente";
-    let itemClasseStatus = "status-pendente"; // Classe para o itemDiv
+    let itemClasseStatus = "status-pendente";
 
     if (statusSessao === "presente") {
       statusTexto = "Realizada (Presente)";
@@ -285,7 +302,7 @@ export function renderizarSessoes() {
       statusClasse = "status-realizada status-ausente";
       itemClasseStatus = "status-realizada";
     }
-    itemDiv.classList.add(itemClasseStatus); // Adiciona classe ao itemDiv
+    itemDiv.classList.add(itemClasseStatus);
 
     itemDiv.innerHTML = `
       <div class="session-info">
@@ -295,7 +312,7 @@ export function renderizarSessoes() {
         </div>
         <div class="info-item">
           <span class="label">Horário</span>
-          <span class="value">${horaFormatada}</span>
+          <span class="value">${horaTexto}</span>
         </div>
         <div class="info-item">
           <span class="label">Status</span>
@@ -320,7 +337,7 @@ export function renderizarSessoes() {
           } Anotações
         </button>
       </div>
-    `; // Verifica se há *alguma* anotação preenchida
+    `;
     container.appendChild(itemDiv);
   });
   console.log("Lista de sessões renderizada.");

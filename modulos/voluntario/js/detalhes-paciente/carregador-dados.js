@@ -1,5 +1,6 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/carregador-dados.js
 // Contém as funções responsáveis por carregar dados do Firestore.
+// Versão: Corrigida (Ordenação híbrida Data String/Timestamp)
 
 import {
   db,
@@ -11,8 +12,6 @@ import {
   getDocs,
 } from "./conexao-db.js"; // Importa do módulo de conexão
 import * as estado from "./estado.js"; // Importa o módulo de estado
-// Importa a função renderizarSessoes que estará em interface.js
-// import { renderizarSessoes } from './interface.js'; // Descomentar quando interface.js for criado
 
 // --- Funções de Carregamento de Dados ---
 
@@ -68,7 +67,7 @@ export async function carregarSystemConfigs() {
     await loadGradeData();
   } catch (error) {
     console.error("Erro ao carregar configurações do sistema:", error);
-    estado.setSystemConfigsGlobal({ textos: {}, listas: {} }); // Define um padrão vazio em caso de erro // Decide se quer carregar a grade mesmo com erro nas configs ou não // await loadGradeData(); // Opcional: tentar carregar grade mesmo assim
+    estado.setSystemConfigsGlobal({ textos: {}, listas: {} }); // Define um padrão vazio em caso de erro
   }
 }
 
@@ -99,24 +98,12 @@ export async function loadGradeData() {
 }
 
 /**
- * Carrega as sessões da subcoleção do paciente, ordenadas por data descendente.
+ * Carrega as sessões da subcoleção do paciente.
+ * CORREÇÃO: Removemos o orderBy da query do Firestore para buscar todas as sessões
+ * (mesmo as antigas sem o campo 'dataHora') e fazemos a ordenação manualmente no Javascript.
  * Atualiza o estado 'sessoesCarregadas'.
  */
 export async function carregarSessoes() {
-  // A manipulação do DOM (loading, placeholder) será movida para interface.js
-  // const container = document.getElementById("session-list-container");
-  // const loading = document.getElementById("session-list-loading");
-  // const placeholder = document.getElementById("session-list-placeholder");
-
-  // if (!container || !loading || !placeholder) {
-  //   console.error("Elementos da lista de sessões não encontrados no HTML.");
-  //   return;
-  // }
-
-  // loading.style.display = "block";
-  // placeholder.style.display = "none";
-  // container.querySelectorAll(".session-item").forEach((item) => item.remove()); // Limpa lista antiga
-
   let sessoesTemp = []; // Usa uma variável temporária
 
   try {
@@ -126,21 +113,45 @@ export async function carregarSessoes() {
       estado.pacienteIdGlobal, // Usa o ID do estado
       "sessoes"
     );
-    const q = query(sessoesRef, orderBy("dataHora", "desc"));
+
+    // --- ALTERAÇÃO AQUI: Removemos orderBy("dataHora", "desc") ---
+    // Isso evita que sessões antigas (sem dataHora) sejam ignoradas pelo Firestore
+    const q = query(sessoesRef);
+
     const querySnapshot = await getDocs(q);
 
     querySnapshot.forEach((doc) => {
       sessoesTemp.push({ id: doc.id, ...doc.data() }); // Adiciona à lista temporária
     });
 
-    estado.setSessoesCarregadas(sessoesTemp); // Atualiza o estado com a lista completa
-    console.log("Sessões carregadas no estado:", estado.sessoesCarregadas); // --- A RENDERIZAÇÃO SERÁ CHAMADA PELO CONTROLADOR APÓS O CARREGAMENTO --- // if (estado.sessoesCarregadas.length === 0) { //   // Lógica do placeholder (vai para interface.js) //   // placeholder.style.display = "block"; // } else { //   // A função renderizarSessoes será chamada de fora, //   // passando estado.sessoesCarregadas como argumento. //   // renderizarSessoes(estado.sessoesCarregadas); // Chamada movida // }
+    // --- ALTERAÇÃO AQUI: Ordenação manual no cliente ---
+    // Garante que misturar sessões com Timestamp e String funcione
+    sessoesTemp.sort((a, b) => {
+      // Tenta obter data A (Timestamp ou String convertida)
+      let dataA = a.dataHora?.toDate
+        ? a.dataHora.toDate()
+        : new Date(a.data + "T" + (a.horaInicio || "00:00"));
+
+      // Tenta obter data B
+      let dataB = b.dataHora?.toDate
+        ? b.dataHora.toDate()
+        : new Date(b.data + "T" + (b.horaInicio || "00:00"));
+
+      // Trata datas inválidas jogando para o fim (fallback de segurança)
+      if (isNaN(dataA.getTime())) dataA = new Date(0);
+      if (isNaN(dataB.getTime())) dataB = new Date(0);
+
+      return dataB - dataA; // Decrescente (mais recente primeiro)
+    });
+
+    estado.setSessoesCarregadas(sessoesTemp); // Atualiza o estado com a lista completa e ordenada
+    console.log(
+      "Sessões carregadas e ordenadas no estado:",
+      estado.sessoesCarregadas
+    );
   } catch (error) {
     console.error("Erro ao carregar sessões:", error);
-    estado.setSessoesCarregadas([]); // Limpa o estado em caso de erro // A exibição do erro na UI será responsabilidade de interface.js ou do controlador // container.innerHTML = `<p class="alert alert-error">Erro ao carregar sessões: ${error.message}</p>`; // placeholder.style.display = "none";
+    estado.setSessoesCarregadas([]); // Limpa o estado em caso de erro
     throw error; // Re-lança o erro para o controlador saber que falhou
-  } finally {
-    // A lógica de esconder o loading será de interface.js
-    // loading.style.display = "none";
   }
 }
