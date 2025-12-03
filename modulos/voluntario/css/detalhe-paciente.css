@@ -1,6 +1,9 @@
 /* Arquivo: /modulos/voluntario/css/detalhe-paciente.css */
+/* Versão Otimizada e Unificada */
 
-/* --- CABEÇALHO DA PÁGINA --- */
+/* =============================================================================
+   1. CABEÇALHO E BARRA DE INFORMAÇÕES
+   ============================================================================= */
 .detalhe-paciente-header {
     display: flex;
     justify-content: space-between;
@@ -9,29 +12,30 @@
     flex-wrap: wrap;
     gap: 15px;
 }
+
 .detalhe-paciente-header h2 {
     color: var(--cor-primaria);
     margin: 0;
     font-size: 1.8em;
-    word-break: break-word; /* Para nomes de pacientes longos */
+    word-break: break-word;
 }
-/* O botão de voltar usará as classes: "action-button secondary-button" do design-system */
 
-
-/* --- BARRA DE INFO RÁPIDA (Abaixo do H2 - Imagem 1) --- */
+/* Barra de Info Rápida */
 .paciente-info-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px 25px; /* 15px vertical, 25px horizontal */
+    gap: 15px 25px;
     background-color: var(--cor-fundo-box);
     padding: 15px 20px;
     border-radius: var(--borda-radius);
     margin-bottom: 25px;
 }
+
 .info-item {
     font-size: 0.9em;
-    min-width: 120px; /* Garante algum espaçamento */
+    min-width: 120px;
 }
+
 .info-item .label {
     display: block;
     font-weight: 600;
@@ -40,78 +44,128 @@
     margin-bottom: 2px;
     text-transform: uppercase;
 }
+
 .info-item .value {
     color: var(--cor-texto-principal);
     font-weight: 500;
     font-size: 1.05em;
 }
 
-/* Status Badge (Reutilizado do design-system e meus-pacientes.css) */
-.info-item .value.status-badge {
+/* Status Badge (Usado na barra de info e tabelas) */
+.status-badge {
     display: inline-block;
     padding: 4px 12px;
     border-radius: 15px;
     font-size: 0.9em;
     font-weight: 500;
     color: white;
+    vertical-align: middle;
 }
-/* Cores do Status Badge (pode ser globalizado no design-system) */
+
+.info-item .value.status-badge {
+    padding: 4px 12px;
+}
+
+/* Cores dos Status Badges */
 .status-badge.em_atendimento_plantao, 
 .status-badge.em_atendimento_pb,
-.status-badge.status-concluída { 
-    background-color: var(--cor-sucesso); 
-}
+.status-badge.status-concluída { background-color: var(--cor-sucesso); }
+
 .status-badge.aguardando_info_horarios, 
 .status-badge.aguardando_contrato,
-.status-badge.status-pendente { 
-    background-color: var(--cor-alerta); 
-    color: #212529; 
-}
+.status-badge.status-pendente { background-color: var(--cor-alerta); color: #212529; }
+
 .status-badge.status-rejeitada,
-.status-badge.desistencia {
-    background-color: var(--cor-erro);
-}
-.status-badge.alta {
-    background-color: var(--cor-secundaria);
-}
+.status-badge.desistencia { background-color: var(--cor-erro); }
+
+.status-badge.alta { background-color: var(--cor-secundaria); }
 
 
-/* --- LAYOUT PRINCIPAL (Info Pessoal / Financeira - Imagem 1) --- */
+/* =============================================================================
+   2. LAYOUT E FORMULÁRIOS
+   ============================================================================= */
 .detalhe-paciente-layout {
     display: grid;
-    /* 2fr 1fr significa que a primeira coluna é 2x maior que a segunda */
-    grid-template-columns: 2fr 1fr; 
+    grid-template-columns: 2fr 1fr; /* 1ª coluna 2x maior */
     gap: 30px;
     margin-bottom: 30px;
 }
-/* Os fieldsets, legends e form-groups são estilizados 
-   pelo design-system.css
-*/
+
+/* Grids de Formulário */
 .form-grid {
     display: grid;
     gap: 15px 20px;
 }
-.form-grid.cols-2 {
-    /* minmax(200px, 1fr) cria colunas responsivas */
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.form-grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.form-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.form-grid .form-group { margin-bottom: 0; }
+
+/* Grid de Resumo (Info Pessoais) */
+.info-summary-grid {
+    display: grid;
+    gap: 15px 20px;
+    margin-bottom: 20px;
 }
-.form-grid .form-group {
-    margin-bottom: 0; /* Remove a margem do form-group quando em grid */
+.info-summary-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.info-summary-grid .readonly-value { display: none; }
+
+/* Estilos de Input Readonly Específicos */
+#form-info-pessoais .form-control[readonly] {
+    background-color: var(--cor-fundo-box);
+    border: 1px solid var(--cor-borda-leve);
+    font-weight: 600;
+    color: var(--cor-texto-principal);
+    cursor: default;
+}
+#form-info-pessoais .status-badge-input[readonly] {
+    text-align: center;
+    font-weight: 600;
 }
 
+/* Descrições de Campo */
+.field-description {
+    font-size: 0.85em;
+    color: var(--cor-texto-secundario);
+    margin-top: -8px;
+    margin-bottom: 10px;
+    padding-left: 2px;
+    line-height: 1.4;
+    font-style: italic;
+}
+.field-description strong { color: var(--cor-erro); font-weight: 600; }
 
-/* --- ABAS (Sessões, Acompanhamento, Prontuário) --- */
-/* Classes .tabs-container, .tab-link, .tab-content 
-   são estilizadas pelo design-system.css
-*/
+#acompanhamento-clinico-form .form-group textarea { min-height: 150px; }
+
+/* Campos Dinâmicos (Mensagens) */
+.dynamic-form-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+.output-area { margin-top: 20px; }
+.output-area label { display: block; font-weight: 600; margin-bottom: 8px; }
+.output-area textarea {
+    width: 100%; min-height: 120px;
+    background-color: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    padding: 10px;
+    font-family: monospace; font-size: 0.9em; resize: vertical;
+}
+
+.reavaliacao-info { font-size: 0.8em; color: var(--cor-texto-secundario); margin-left: 5px; display: block; }
+.hidden { display: none; }
 
 
-/* --- ABA SESSÕES (Imagem 2) --- */
+/* =============================================================================
+   3. LISTA DE SESSÕES
+   ============================================================================= */
 .session-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
+
 .session-item {
     background-color: var(--cor-fundo);
     border: 1px solid var(--cor-borda);
@@ -123,109 +177,17 @@
     flex-wrap: wrap;
     gap: 15px;
 }
+
 .session-info {
     display: flex;
     gap: 25px;
     align-items: center;
     flex-wrap: wrap;
 }
-/* Reutiliza .info-item da barra de info */
-.session-info .info-item {
-    font-size: 1em;
-    min-width: auto;
-}
-.session-info .info-item .label {
-     font-size: 0.9em;
-}
 
-.session-actions {
-    position: relative; /* Para posicionar o menu */
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
+.session-info .info-item { font-size: 1em; min-width: auto; }
+.session-info .info-item .label { font-size: 0.9em; }
 
-/* =============================================================================
-MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
-=============================================================================
-/* Estilos Base dos Botões */
-.btn-presenca, .btn-ausencia, .btn-cancelar {
-    padding: 6px 12px;
-    border: 1px solid transparent;
-    border-radius: var(--borda-radius);
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.85em;
-    transition: all 0.2s ease;
-    opacity: 0.6; /* Botões inativos ficam meio transparentes */
-}
-.btn-presenca {
-    border-color: var(--cor-sucesso);
-    color: var(--cor-sucesso);
-    background-color: white;
-}
-.btn-presenca:hover, .btn-presenca.active {
-    background-color: var(--cor-sucesso);
-    color: white;
-    opacity: 1;
-    font-weight: bold;
-}
-.btn-ausencia {
-    border-color: var(--cor-erro);
-    color: var(--cor-erro);
-    background-color: white;
-}
-.btn-ausencia:hover, .btn-ausencia.active {
-    background-color: var(--cor-erro);
-    color: white;
-    opacity: 1;
-    font-weight: bold;
-}
-/* Botão Cancelar */
-.btn-cancelar {
-    border-color: #6c757d;
-    color: #6c757d;
-    background-color: white;
-}
-.btn-cancelar:hover, .btn-cancelar.active {
-    background-color: #6c757d;
-    color: white;
-    opacity: 1;
-    font-weight: bold;
-}
-
-/* Layout Mobile para os botões não quebrarem */
-@media (max-width: 600px) {
-    .session-actions {
-        flex-wrap: wrap;
-        justify-content: flex-start;
-    }
-    .btn-presenca, .btn-ausencia, .btn-cancelar {
-        flex-grow: 1; /* Botões ocupam espaço igual no mobile */
-        text-align: center;
-    }
-}
-/* FIM DA MODIFICAÇÃO */
-
-
-/* Estado "Realizada" (quando presença/ausência já foi marcada) */
-.session-item.status-realizada .session-info .value.status-presenca {
-    color: var(--cor-sucesso);
-    font-weight: 600;
-}
-.session-item.status-realizada .session-info .value.status-ausente {
-    color: var(--cor-erro);
-    font-weight: 600;
-}
-.session-item.status-realizada .session-actions .btn-presenca,
-.session-item.status-realizada .session-actions .btn-ausencia {
-    display: none; /* Esconde botões se já foi marcada */
-}
-.session-item.status-pendente .info-item .value.status {
-    color: var(--cor-texto-secundario);
-    font-style: italic;
-}
-/* Placeholder para lista vazia */
 .session-list-placeholder {
     text-align: center;
     padding: 30px;
@@ -234,659 +196,23 @@ MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
     border-radius: var(--borda-radius);
 }
 
-
-/* --- ABA ACOMPANHAMENTO CLÍNICO E MODAL DE ANOTAÇÕES (Imagens 3 e 4) --- */
-
-/* Descrição solicitada abaixo do label */
-.field-description {
-    font-size: 0.85em;
-    color: var(--cor-texto-secundario);
-    margin-top: -8px; /* Puxa para perto do label */
-    margin-bottom: 10px;
-    padding-left: 2px;
-    line-height: 1.4;
-    font-style: italic;
-}
-.field-description strong { /* Para "Atenção:" */
-    color: var(--cor-erro);
-    font-weight: 600;
-}
-
-#acompanhamento-clinico-form .form-group textarea {
-    min-height: 150px;
-}
-
-
-/* --- ABA PRONTUÁRIO PSICOLÓGICO (Imagem 7) --- */
-.prontuario-generator-layout {
-    display: grid;
-    grid-template-columns: 1fr 280px; /* Opções na esquerda, coluna de ação na direita */
-    gap: 30px;
-}
-.prontuario-generator-actions {
-    background-color: var(--cor-fundo-box);
-    padding: 20px 25px;
-    border-radius: var(--borda-radius);
-    height: fit-content; /* Para alinhar com o topo do fieldset */
-}
-.prontuario-generator-actions p {
-    font-size: 0.9em;
-    color: var(--cor-texto-secundario);
-    margin-bottom: 20px;
-}
-.prontuario-generator-actions .action-button {
-    width: 100%; /* Botão ocupa toda a largura */
-}
-/* O .checkbox-grid é estilizado pelo design-system.css
-   Apenas ajustamos o espaçamento se necessário
-*/
-.prontuario-generator-layout .checkbox-grid {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 12px;
-}
-
-
-.modal-content.large {
-    max-width: 850px;
-}
-
-/* Estilos específicos de modais que estavam em meus-pacientes.css */
-.message-templates-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.message-templates-list button {
-    width: 100%;
-    text-align: left;
-    padding: 12px 15px;
-    font-size: 1em;
-    /* Recomendação: Adicionar classes .action-button .secondary-button no HTML */
-}
-
-/* Feedback de validação (ex: modal de solicitar sessões) */
-#validacao-grade-feedback {
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: var(--borda-radius);
-    border-left-width: 5px;
-    border-left-style: solid;
-}
-/* Estas classes dependem de --cor-alerta-fundo, etc. 
-   Se não estiverem no design-system, usar as classes .alert do design-system */
-#validacao-grade-feedback.exists {
-    background-color: #fff3cd; /* Fallback para var(--cor-alerta-fundo) */
-    border-left-color: var(--cor-alerta);
-    color: #856404; /* Fallback para var(--cor-alerta-texto) */
-}
-#validacao-grade-feedback.success {
-    background-color: #d4edda; /* Fallback para var(--cor-sucesso-fundo) */
-    border-left-color: var(--cor-sucesso);
-    color: #155724; /* Fallback para var(--cor-sucesso-texto) */
-}
-
-.dynamic-form-fields {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-}
-.output-area {
-    margin-top: 20px;
-}
-.output-area label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-.output-area textarea {
-    width: 100%;
-    min-height: 120px;
-    background-color: var(--cor-fundo);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    padding: 10px;
-    font-family: monospace;
-    font-size: 0.9em;
-    resize: vertical;
-}
-.reavaliacao-info { /* Para o valor da contribuição no modal de reavaliação */
-    font-size: 0.8em;
-    color: var(--cor-texto-secundario);
-    margin-left: 5px;
-    display: block; /* Para ficar abaixo do valor */
-}
-.hidden {
-    display: none;
-}
-
-
-/* --- RESPONSIVIDADE --- */
-@media (max-width: 900px) {
-    .detalhe-paciente-layout {
-        grid-template-columns: 1fr; /* Coluna única em telas menores */
-   }
-    .prontuario-generator-layout {
-        grid-template-columns: 1fr; /* Coluna única */
-    }
-    .prontuario-generator-actions {
-        order: -1; /* Move a caixa de ação para cima no mobile */
-    }
-}
-
-@media (max-width: 600px) {
-    .form-grid.cols-2 {
-        grid-template-columns: 1fr; /* Coluna única */
-    }
-    .session-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .session-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    .detalhe-paciente-header {
-         justify-content: flex-start;
-    }
-    .detalhe-paciente-header h2 {
-         font-size: 1.5em;
-    }
-    .paciente-info-bar {
-        flex-direction: column;
-        gap: 12px;
-    }
-}
+/* Cores dos status na lista (Feedback visual Texto) */
+.status-text.presente { color: #28a745; font-weight: bold; }
+.status-text.ausente { color: #856404; font-weight: bold; }
+.status-text.cancelada_paciente { color: #dc3545; text-decoration: line-through; }
+.status-text.cancelada_prof { color: #dc3545; text-decoration: line-through; }
 
 /* =============================================================================
-ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
-=============================================================================
-*/
-/* Garante que a classe .horizontal-tabs funcione se não estiver no design-system */
-.tabs-container.horizontal-tabs {
+   4. BOTÕES, DROPDOWNS E AÇÕES
+   ============================================================================= */
+.session-actions {
+    position: relative;
     display: flex;
-    flex-direction: row; /* Abas lado a lado */
-    border-bottom: 2px solid var(--cor-borda); /* Linha abaixo das abas */
-    margin-bottom: 20px; /* Espaçamento antes do conteúdo */
-    flex-wrap: nowrap; /* Impede que as abas quebrem linha */
-    overflow-x: auto; /* Permite rolagem horizontal se as abas não couberem */
-}
-
-.tabs-container.horizontal-tabs .tab-link {
-    padding: 10px 18px;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: var(--cor-texto-secundario);
-    background-color: transparent;
-    border: none;
-    border-bottom: 3px solid transparent; /* Borda inferior inativa */
-    cursor: pointer;
-    margin-bottom: -2px; /* Alinha com a borda inferior do container */
-    transition: all 0.2s ease;
-    white-space: nowrap; /* Impede que o texto da aba quebre linha */
-}
-
-.tabs-container.horizontal-tabs .tab-link:hover {
-    color: var(--cor-primaria);
-    background-color: var(--cor-fundo-box);
-}
-
-.tabs-container.horizontal-tabs .tab-link.active {
-    color: var(--cor-primaria);
-    border-bottom: 3px solid var(--cor-primaria); /* Borda inferior ativa */
-    font-weight: 600;
-}
-/* Aplica Flexbox vertical ao container do conteúdo do modal */
-.modal-content.flex-layout {
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100vh - 100px); 
-    overflow: hidden; 
-}
-
-/* O header não cresce nem encolhe */
-.modal-content.flex-layout .modal-header {
-    flex-shrink: 0;
-}
-
-/* O body ocupa o espaço restante e permite rolagem interna */
-.modal-content.flex-layout .modal-body {
-    flex-grow: 1; /* Faz o corpo crescer para preencher o espaço */
-    overflow-y: auto; /* Adiciona rolagem vertical APENAS ao corpo, se necessário */
-    min-height: 100px; /* Altura mínima para evitar que fique muito pequeno */
-}
-
-/* O footer não cresce nem encolhe */
-.modal-content.flex-layout .modal-footer {
-    flex-shrink: 0;
-}
-
-/* Ajuste fino para telas menores (mobile) */
-@media (max-width: 600px) {
-    .modal-content.flex-layout {
-        /* Reduz a margem em telas menores para aproveitar mais espaço */
-        max-height: calc(100vh - 40px); 
-    }
-    /* Reduzir padding do body em telas pequenas se necessário */
-    /* .modal-content.flex-layout .modal-body {
-        padding: 15px; 
-    } */
-}
-/* Oculta conteúdo da aba inativa (pode já existir no design-system) */
-/* (Estilos específicos para o container de abas do modal) */
-#anotacoes-tabs-content .tab-content {
-    display: none;
-}
-#anotacoes-tabs-content .tab-content.active {
-    display: block;
-}
-.dropdown-container {
-    position: relative; /* Necessário para posicionar o menu dropdown */
-    display: inline-block; /* Para ficar na mesma linha dos outros botões */
-}
-
-.dropdown-toggle .dropdown-arrow {
-    margin-left: 8px; /* Espaço entre o texto e a seta */
-    font-size: 0.8em; /* Tamanho da seta */
-    transition: transform 0.2s ease-in-out; /* Animação da seta */
-}
-
-/* Gira a seta quando o dropdown está ativo */
-.dropdown-container.active .dropdown-toggle .dropdown-arrow {
-    transform: rotate(180deg);
-}
-
-.dropdown-menu {
-    display: none; /* Escondido por padrão */
-    position: absolute; /* Posicionamento relativo ao container */
-    top: 100%; /* Abaixo do botão */
-    right: 0; /* Alinhado à direita do botão */
-    background-color: var(--cor-fundo-box);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    min-width: 250px; /* Largura mínima do menu */
-    z-index: 10; /* Para ficar sobre outros elementos */
-    padding: 8px 0; /* Espaçamento interno vertical */
-    margin-top: 4px; /* Pequeno espaço entre o botão e o menu */
-}
-
-/* Mostra o menu quando o container tem a classe 'active' (será controlada por JS) */
-.dropdown-container.active .dropdown-menu {
-    display: block;
-}
-
-.dropdown-item {
-    display: block; /* Ocupa toda a largura */
-    width: 100%;
-    padding: 10px 20px;
-    text-align: left;
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 0.95em;
-    color: var(--cor-texto-principal); /* Cor padrão do texto */
-    white-space: nowrap; /* Evita quebra de linha */
-}
-
-.dropdown-item:hover {
-    background-color: var(--cor-fundo-hover); /* Cor de fundo no hover */
-    color: var(--cor-primaria); /* Cor do texto no hover */
-}
-
-/* Ajusta as cores específicas dos botões dentro do dropdown */
-.dropdown-item.secondary-button { color: var(--cor-texto-secundario); }
-.dropdown-item.secondary-button:hover { color: var(--cor-secundaria-hover); background-color: var(--cor-fundo-hover); }
-
-.dropdown-item.danger-button { color: var(--cor-erro); }
-.dropdown-item.danger-button:hover { color: var(--cor-erro-hover); background-color: var(--cor-fundo-hover); } /* Mantém fundo padrão no hover */
-
-.dropdown-item.special-button { color: var(--cor-especial); } /* Assumindo que existe --cor-especial */
-.dropdown-item.special-button:hover { color: var(--cor-especial-hover); background-color: var(--cor-fundo-hover); } /* Assumindo que existe --cor-especial-hover */
-
-/* Remove estilos de botão padrão se necessário (caso herde algo indesejado) */
-.dropdown-item.action-button {
-    /* Reseta estilos se action-button adicionar algo indesejado para itens de menu */
-    border-radius: 0; 
-    margin: 0;
-}
-.accordion-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Espaço entre os itens do acordeão */
-    margin-bottom: 20px; /* Espaço abaixo do último item */
-}
-
-.accordion-item fieldset { /* Garante que fieldset dentro do item não tenha margem extra */
-    margin-bottom: 0;
-    border: none; /* Remove borda padrão do fieldset se houver */
-    padding: 0; /* Remove padding padrão do fieldset se houver */
-}
-
-.accordion-header {
-    padding: 0; /* Remove padding padrão da legend */
-    border-bottom: 1px solid var(--cor-borda); /* Linha separadora */
-    margin-bottom: 0; /* Remove margem inferior da legend */
-}
-
-.accordion-button {
-    display: flex;
-    justify-content: space-between; /* Alinha texto à esquerda, ícone à direita */
+    gap: 10px;
     align-items: center;
-    width: 100%;
-    padding: 12px 15px; /* Espaçamento interno */
-    background-color: var(--cor-fundo-box); /* Fundo sutil */
-    border: none;
-    cursor: pointer;
-    font-size: 1.1em; /* Tamanho da fonte do título */
-    font-weight: 600;
-    color: var(--cor-primaria); /* Cor do título */
-    text-align: left;
-    transition: background-color 0.2s ease;
 }
 
-.accordion-button:hover {
-    background-color: var(--cor-fundo-hover);
-}
-
-.accordion-icon {
-    font-size: 0.9em;
-    transition: transform 0.3s ease; /* Animação suave da seta */
-    margin-left: 10px;
-}
-
-/* Estilo para quando o acordeão está fechado */
-.accordion-item:not(.open) .accordion-content {
-    display: none; /* Oculta o conteúdo */
-}
-
-/* Gira o ícone quando o acordeão está aberto */
-.accordion-item.open .accordion-icon {
-    transform: rotate(180deg);
-}
-
-.accordion-content {
-    padding: 20px 15px; /* Espaçamento interno do conteúdo */
-    background-color: var(--cor-fundo); /* Fundo ligeiramente diferente para o conteúdo */
-    border-top: none; /* Garante que não haja borda dupla com a legend */
-    /* Animação suave (opcional) - pode requerer ajuste de altura em JS */
-    /* transition: max-height 0.3s ease-out, padding 0.3s ease-out; */
-    /* overflow: hidden; */
-}
-.info-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Cria 3 colunas de largura igual */
-    gap: 15px 20px; /* Espaçamento entre linhas e colunas */
-    margin-bottom: 20px; /* Espaço antes do próximo grupo de campos */
-}
-
-/* Esconde os spans originais (já definido no HTML, mas reforça aqui) */
-.info-summary-grid .readonly-value {
-    display: none;
-}
-
-/* Responsividade para o grid de resumo (opcional, mas recomendado) */
-@media (max-width: 768px) {
-    .info-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Colunas automáticas */
-    }
-}
-
-@media (max-width: 480px) {
-    .info-summary-grid {
-        grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
-    }
-}
-
-/* =============================================================================
-   ADIÇÃO: Menu Hamburger de Ações do Paciente
-   =============================================================================
-*/
-
-/* O container principal agora age como um container de dropdown */
-.action-buttons-container.main-actions {
-    position: relative; /* Para ancorar o menu */
-    display: flex;
-    /* justify-content: flex-end;  <-- REMOVIDO (o header pai controla) */
-    /* margin-bottom: 20px;       <-- REMOVIDO (o header pai controla) */
-}
-
-/* Botão de Toggle (O Hamburger) */
-.hamburger-toggle-button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.9em;
-    font-weight: 600;
-}
-
-.hamburger-icon {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 24px;
-    height: 20px;
-    justify-content: center;
-}
-
-.hamburger-icon div {
-    width: 100%;
-    height: 3px;
-    background-color: var(--cor-primaria); /* Cor do ícone */
-    border-radius: 2px;
-    transition: all 0.3s ease;
-}
-
-/* Animação do ícone para 'X' quando ativo */
-.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(1) {
-    transform: translateY(7px) rotate(45deg);
-}
-.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(2) {
-    opacity: 0;
-}
-.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(3) {
-    transform: translateY(-7px) rotate(-45deg);
-}
-
-/* O Conteúdo do Menu (Dropdown) */
-.hamburger-menu-content {
-    display: none; /* Escondido por padrão */
-    position: absolute; /* Posicionamento */
-    top: 100%; /* Abaixo do botão */
-    right: 0; /* Alinhado à direita */
-    min-width: 280px; /* Largura do menu */
-    background-color: var(--cor-fundo-box);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 100; /* Sobrepor outros elementos */
-    padding: 8px 0;
-    margin-top: 4px;
-}
-
-/* Mostra o menu quando o container está ativo */
-.action-buttons-container.main-actions.active .hamburger-menu-content {
-    display: block;
-}
-
-/* Itens dentro do menu */
-.hamburger-menu-item {
-    display: block;
-    width: 100%;
-    padding: 12px 20px;
-    text-align: left;
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 0.95em;
-    color: var(--cor-texto-principal);
-    white-space: nowrap;
-    border-radius: 0; /* Reseta o radius dos action-button */
-    margin: 0; /* Reseta margem dos action-button */
-}
-
-.hamburger-menu-item:hover {
-    background-color: var(--cor-fundo-hover);
-    color: var(--cor-primaria);
-}
-
-/* Estilos de cores (reutilizando o padrão do dropdown anterior) */
-.hamburger-menu-item.secondary-button { color: var(--cor-texto-secundario); }
-.hamburger-menu-item.secondary-button:hover { color: var(--cor-secundaria-hover); background-color: var(--cor-fundo-hover); }
-
-.hamburger-menu-item.danger-button { color: var(--cor-erro); }
-.hamburger-menu-item.danger-button:hover { color: var(--cor-erro-hover); background-color: var(--cor-fundo-hover); }
-
-.hamburger-menu-item.special-button { color: var(--cor-especial, var(--cor-primaria)); } /* Fallback para cor especial */
-.hamburger-menu-item.special-button:hover { color: var(--cor-especial-hover, var(--cor-primaria-hover)); background-color: var(--cor-fundo-hover); }
-
-/* Ajuste de responsividade (sobrescreve o @media (max-width: 600px) .session-actions) */
-@media (max-width: 600px) {
-    .action-buttons-container.main-actions {
-        justify-content: flex-start; /* Alinha à esquerda no mobile */
-    }
-    .hamburger-toggle-button {
-        width: 100%;
-        justify-content: space-between; /* Texto à esquerda, ícone à direita */
-    }
-    .hamburger-menu-content {
-        width: 100%; /* Ocupa a largura toda */
-    }
-}
-.modal-content.flex-layout > form {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1; /* Faz o form preencher todo o espaço do modal-content */
-    
-    /* Impede que o form cresça mais do que o container pai.
-      Isso força o .modal-body interno a respeitar o limite e ativar a rolagem.
-    */
-    min-height: 0; 
-}
-/* =============================================================================
-   ADIÇÃO: Estilos para Slots de Agendamento (Reavaliação)
-   =============================================================================
-*/
-.slots-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.slots-container p {
-    width: 100%;
-    font-style: italic;
-    color: var(--cor-texto-secundario);
-}
-
-.slot-time {
-    padding: 8px 15px;
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    background-color: var(--cor-fundo-box);
-    color: var(--cor-primaria);
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.slot-time:hover {
-    background-color: var(--cor-fundo-hover);
-    border-color: var(--cor-primaria);
-}
-
-.slot-time.selected {
-    background-color: var(--cor-primaria);
-    color: white;
-    border-color: var(--cor-primaria);
-    font-weight: 600;
-}
-
-.slot-time.disabled,
-.slot-time:disabled {
-    background-color: var(--cor-fundo);
-    color: var(--cor-texto-secundario);
-    border-color: var(--cor-borda-leve);
-    cursor: not-allowed;
-    text-decoration: line-through;
-}
-#form-info-pessoais .form-control[readonly] {
-    background-color: var(--cor-fundo-box); /* Cor de fundo cinza */
-    border: 1px solid var(--cor-borda-leve); /* Borda mais leve */
-    font-weight: 600; /* Texto em negrito (bold) */
-    color: var(--cor-texto-principal);
-    cursor: default;
-}
-
-/* 2. Garante que o input de Status (que tem classes de badge) 
-     mantenha o alinhamento central e o negrito.
-*/
-#form-info-pessoais .status-badge-input[readonly] {
-    text-align: center;
-    font-weight: 600; /* Reforça o negrito */
-}
-
-/* 3. Ajusta o grid de resumo (info-summary-grid) para ter 2 colunas.
-     (Ajustando a classe que já existia no HTML).
-*/
-.info-summary-grid.cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-}
-@media (max-width: 480px) {
-    .info-summary-grid.cols-3 {
-        grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
-    }
-}
-
-
-/* 4. Define o novo grid de 4 colunas (cols-4)
-*/
-.form-grid.cols-4 {
-    display: grid;
-    gap: 15px 20px;
-    /* Cria 4 colunas em telas largas */
-    grid-template-columns: repeat(4, 1fr);
-}
-
-/* Media queries para responsividade do cols-4 */
-@media (max-width: 900px) {
-     .form-grid.cols-4 {
-        /* 2 colunas em tablets */
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-     }
-}
-
-@media (max-width: 480px) {
-     .form-grid.cols-4 {
-        grid-template-columns: 1fr; /* 1 coluna em mobile */
-     }
-}
-/* ... estilos existentes ... */
-
-/* Botão Cancelar */
-.btn-cancelar {
-    padding: 8px 15px;
-    border: 1px solid #6c757d; /* Cinza */
-    border-radius: var(--borda-radius);
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9em;
-    transition: all 0.2s ease;
-    background-color: transparent;
-    color: #6c757d;
-}
-
-.btn-cancelar:hover {
-    background-color: #6c757d;
-    color: white;
-}
-
-/* Status Cancelada */
-.session-item.status-realizada .session-info .value.status-cancelada {
-    color: #6c757d; /* Cinza */
-    font-weight: 600;
-    text-decoration: line-through; /* Opcional: risco para indicar cancelamento */
-}
+/* Botão com Ícone para Dropdown */
 .btn-status-dropdown {
     padding: 8px 12px;
     background-color: #fff;
@@ -900,54 +226,36 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
     transition: all 0.2s;
     color: var(--cor-texto-principal);
 }
-
 .btn-status-dropdown:hover {
     background-color: var(--cor-fundo-hover);
     border-color: var(--cor-primaria);
 }
+.btn-status-dropdown i, .btn-status-dropdown .icon { font-size: 1.1em; }
 
-.btn-status-dropdown i {
-    font-size: 1.1em;
-}
-
-/* O Menu Dropdown */
+/* Menu Dropdown de Status */
 .status-dropdown-menu {
-    display: none; /* Oculto por padrão */
+    display: none;
     position: absolute;
-    top: 100%;
-    right: 0;
+    top: 100%; right: 0;
     width: 220px;
     background-color: white;
     border: 1px solid var(--cor-borda);
     border-radius: var(--borda-radius);
     box-shadow: 0 4px 15px rgba(0,0,0,0.15);
     z-index: 100;
-    margin-top: 5px;
-    padding: 5px 0;
+    margin-top: 5px; padding: 5px 0;
 }
-
-.status-dropdown-menu.active {
-    display: block; /* Mostra quando ativo */
-}
+.status-dropdown-menu.active { display: block; }
 
 .status-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 15px;
-    border: none;
-    background: none;
-    text-align: left;
-    cursor: pointer;
-    font-size: 0.95em;
-    color: var(--cor-texto-principal);
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 15px;
+    border: none; background: none;
+    text-align: left; cursor: pointer;
+    font-size: 0.95em; color: var(--cor-texto-principal);
     transition: background 0.2s;
 }
-
-.status-dropdown-item:hover {
-    background-color: var(--cor-fundo-hover);
-}
+.status-dropdown-item:hover { background-color: var(--cor-fundo-hover); }
 
 /* Cores dos itens do menu */
 .item-presente:hover { color: #28a745; background-color: #e6f9ed; }
@@ -955,8 +263,200 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
 .item-cancelado-paciente:hover { color: #dc3545; background-color: #f8d7da; }
 .item-cancelado-prof:hover { color: #dc3545; background-color: #f8d7da; }
 
-/* Cores dos status na lista (Feedback visual) */
-.status-text.presente { color: #28a745; font-weight: bold; }
-.status-text.ausente { color: #856404; font-weight: bold; }
-.status-text.cancelada_paciente { color: #dc3545; text-decoration: line-through; }
-.status-text.cancelada_prof { color: #dc3545; text-decoration: line-through; }
+/* Botões Antigos/Fallback (Presença/Ausência/Cancelar) */
+.btn-presenca, .btn-ausencia, .btn-cancelar {
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+    background-color: white;
+}
+
+.btn-presenca { border-color: var(--cor-sucesso); color: var(--cor-sucesso); }
+.btn-presenca:hover, .btn-presenca.active { background-color: var(--cor-sucesso); color: white; opacity: 1; font-weight: bold; }
+
+.btn-ausencia { border-color: var(--cor-erro); color: var(--cor-erro); }
+.btn-ausencia:hover, .btn-ausencia.active { background-color: var(--cor-erro); color: white; opacity: 1; font-weight: bold; }
+
+.btn-cancelar { border-color: #6c757d; color: #6c757d; }
+.btn-cancelar:hover, .btn-cancelar.active { background-color: #6c757d; color: white; opacity: 1; font-weight: bold; }
+
+/* Dropdown Genérico */
+.dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%; right: 0;
+    background-color: var(--cor-fundo-box);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 250px;
+    z-index: 10;
+    padding: 8px 0;
+    margin-top: 4px;
+}
+.dropdown-container.active .dropdown-menu { display: block; }
+.dropdown-item {
+    display: block; width: 100%; padding: 10px 20px;
+    text-align: left; background-color: transparent; border: none;
+    cursor: pointer; font-size: 0.95em; color: var(--cor-texto-principal);
+    white-space: nowrap;
+}
+.dropdown-item:hover { background-color: var(--cor-fundo-hover); color: var(--cor-primaria); }
+.dropdown-item.secondary-button { color: var(--cor-texto-secundario); }
+.dropdown-item.danger-button { color: var(--cor-erro); }
+
+/* Menu Hamburger */
+.action-buttons-container.main-actions { position: relative; display: flex; }
+.hamburger-toggle-button { display: flex; align-items: center; gap: 10px; font-size: 0.9em; font-weight: 600; }
+.hamburger-icon { display: flex; flex-direction: column; gap: 4px; width: 24px; height: 20px; justify-content: center; }
+.hamburger-icon div { width: 100%; height: 3px; background-color: var(--cor-primaria); border-radius: 2px; transition: all 0.3s ease; }
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(2) { opacity: 0; }
+.action-buttons-container.main-actions.active .hamburger-icon div:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.hamburger-menu-content {
+    display: none; position: absolute; top: 100%; right: 0;
+    min-width: 280px; background-color: var(--cor-fundo-box);
+    border: 1px solid var(--cor-borda); border-radius: var(--borda-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); z-index: 100;
+    padding: 8px 0; margin-top: 4px;
+}
+.action-buttons-container.main-actions.active .hamburger-menu-content { display: block; }
+.hamburger-menu-item {
+    display: block; width: 100%; padding: 12px 20px; text-align: left;
+    background-color: transparent; border: none; cursor: pointer;
+    font-size: 0.95em; color: var(--cor-texto-principal); white-space: nowrap;
+}
+.hamburger-menu-item:hover { background-color: var(--cor-fundo-hover); color: var(--cor-primaria); }
+
+
+/* =============================================================================
+   5. MODAIS E ABAS INTERNAS
+   ============================================================================= */
+.modal-content.large { max-width: 850px; }
+
+.modal-content.flex-layout {
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 100px); overflow: hidden;
+}
+.modal-content.flex-layout .modal-header,
+.modal-content.flex-layout .modal-footer { flex-shrink: 0; }
+.modal-content.flex-layout .modal-body { flex-grow: 1; overflow-y: auto; min-height: 100px; }
+.modal-content.flex-layout > form {
+    display: flex; flex-direction: column; flex-grow: 1; min-height: 0;
+}
+
+/* Abas Horizontais (Modal Anotações) */
+.tabs-container.horizontal-tabs {
+    display: flex; flex-direction: row; border-bottom: 2px solid var(--cor-borda);
+    margin-bottom: 20px; flex-wrap: nowrap; overflow-x: auto;
+}
+.tabs-container.horizontal-tabs .tab-link {
+    padding: 10px 18px; font-size: 0.95em; font-weight: 500;
+    color: var(--cor-texto-secundario); background-color: transparent;
+    border: none; border-bottom: 3px solid transparent;
+    cursor: pointer; margin-bottom: -2px; white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.tabs-container.horizontal-tabs .tab-link:hover { color: var(--cor-primaria); background-color: var(--cor-fundo-box); }
+.tabs-container.horizontal-tabs .tab-link.active { color: var(--cor-primaria); border-bottom: 3px solid var(--cor-primaria); font-weight: 600; }
+#anotacoes-tabs-content .tab-content { display: none; }
+#anotacoes-tabs-content .tab-content.active { display: block; }
+
+/* Slots de Agendamento (Reavaliação) */
+.slots-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+.slots-container p { width: 100%; font-style: italic; color: var(--cor-texto-secundario); }
+.slot-time {
+    padding: 8px 15px; border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius); background-color: var(--cor-fundo-box);
+    color: var(--cor-primaria); cursor: pointer; font-weight: 500;
+    transition: all 0.2s ease;
+}
+.slot-time:hover { background-color: var(--cor-fundo-hover); border-color: var(--cor-primaria); }
+.slot-time.selected { background-color: var(--cor-primaria); color: white; border-color: var(--cor-primaria); font-weight: 600; }
+.slot-time.disabled { background-color: var(--cor-fundo); color: var(--cor-texto-secundario); border-color: var(--cor-borda-leve); cursor: not-allowed; text-decoration: line-through; }
+
+/* Mensagens e Templates */
+.message-templates-list { display: flex; flex-direction: column; gap: 10px; }
+.message-templates-list button { width: 100%; text-align: left; padding: 12px 15px; font-size: 1em; }
+
+/* Feedback Validação Grade */
+#validacao-grade-feedback { margin-top: 15px; padding: 12px; border-radius: var(--borda-radius); border-left-width: 5px; border-left-style: solid; }
+#validacao-grade-feedback.exists { background-color: #fff3cd; border-left-color: var(--cor-alerta); color: #856404; }
+#validacao-grade-feedback.success { background-color: #d4edda; border-left-color: var(--cor-sucesso); color: #155724; }
+
+/* =============================================================================
+   6. ACORDEÃO
+   ============================================================================= */
+.accordion-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+.accordion-item fieldset { margin-bottom: 0; border: none; padding: 0; }
+.accordion-header { padding: 0; border-bottom: 1px solid var(--cor-borda); margin-bottom: 0; }
+.accordion-button {
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; padding: 12px 15px; background-color: var(--cor-fundo-box);
+    border: none; cursor: pointer; font-size: 1.1em; font-weight: 600;
+    color: var(--cor-primaria); text-align: left; transition: background-color 0.2s ease;
+}
+.accordion-button:hover { background-color: var(--cor-fundo-hover); }
+.accordion-icon { font-size: 0.9em; transition: transform 0.3s ease; margin-left: 10px; }
+.accordion-item:not(.open) .accordion-content { display: none; }
+.accordion-item.open .accordion-icon { transform: rotate(180deg); }
+.accordion-content { padding: 20px 15px; background-color: var(--cor-fundo); border-top: none; }
+
+/* =============================================================================
+   7. PRONTUÁRIO
+   ============================================================================= */
+.prontuario-generator-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 30px;
+}
+.prontuario-generator-actions {
+    background-color: var(--cor-fundo-box);
+    padding: 20px 25px;
+    border-radius: var(--borda-radius);
+    height: fit-content;
+}
+.prontuario-generator-actions p { font-size: 0.9em; color: var(--cor-texto-secundario); margin-bottom: 20px; }
+.prontuario-generator-actions .action-button { width: 100%; }
+.prontuario-generator-layout .checkbox-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+
+/* =============================================================================
+   8. RESPONSIVIDADE (Media Queries Unificadas)
+   ============================================================================= */
+@media (max-width: 900px) {
+    .detalhe-paciente-layout { grid-template-columns: 1fr; }
+    .form-grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .prontuario-generator-layout { grid-template-columns: 1fr; }
+    .prontuario-generator-actions { order: -1; }
+}
+
+@media (max-width: 768px) {
+    .info-summary-grid, .info-summary-grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    .form-grid.cols-2, .form-grid.cols-3, .form-grid.cols-4 { grid-template-columns: 1fr; }
+    .session-item { flex-direction: column; align-items: flex-start; }
+    .session-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+    .btn-presenca, .btn-ausencia, .btn-cancelar { flex-grow: 1; text-align: center; }
+    .detalhe-paciente-header { justify-content: flex-start; }
+    .detalhe-paciente-header h2 { font-size: 1.5em; }
+    .paciente-info-bar { flex-direction: column; gap: 12px; }
+    .action-buttons-container.main-actions { justify-content: flex-start; }
+    .hamburger-toggle-button { width: 100%; justify-content: space-between; }
+    .hamburger-menu-content { width: 100%; }
+    .modal-content.flex-layout { max-height: calc(100vh - 40px); }
+}
+
+@media (max-width: 480px) {
+    .info-summary-grid, .info-summary-grid.cols-3 { grid-template-columns: 1fr; }
+}
