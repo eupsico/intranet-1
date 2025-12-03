@@ -603,13 +603,13 @@ export async function init(db_ignored, user, userData) {
   }
 
   // --- ATUALIZADO: Handler com verificação de feriado ---
-
   async function handleNovasSessoesAction(docId, action, solicitacaoData) {
     const btnAprovar = document.getElementById("btn-aprovar-novas-sessoes");
     const btnRejeitar = document.getElementById("btn-rejeitar-novas-sessoes");
     const mensagemInput = document.getElementById("admin-ag-message-text");
     const mensagem = mensagemInput ? mensagemInput.value.trim() : "";
 
+    // Captura os valores do formulário
     const dataInicio = document.getElementById("admin-ag-data-inicio")?.value;
     const horaInicio = document.getElementById("admin-ag-hora-inicio")?.value;
     const horaFim = document.getElementById("admin-ag-hora-fim")?.value;
@@ -644,6 +644,7 @@ export async function init(db_ignored, user, userData) {
         });
         alert("Solicitação rejeitada com sucesso.");
       } else if (action === "Aprovada") {
+        // Validações
         if (
           !dataInicio ||
           !horaInicio ||
@@ -655,8 +656,6 @@ export async function init(db_ignored, user, userData) {
             "Preencha todos os campos obrigatórios do agendamento (*)."
           );
         }
-
-        // Validação de segurança para garantir que temos o ID do paciente
         if (!solicitacaoData.pacienteId) {
           throw new Error(
             "Erro: ID do paciente não encontrado na solicitação."
@@ -665,8 +664,7 @@ export async function init(db_ignored, user, userData) {
 
         const batch = writeBatch(dbInstance);
 
-        // --- CORREÇÃO AQUI ---
-        [cite_start]; // Aponta para: trilhaPaciente -> ID do Paciente -> Subcoleção 'sessoes' [cite: 1]
+        // Referência correta: trilhaPaciente -> ID -> sessoes
         const sessoesRef = collection(
           dbInstance,
           "trilhaPaciente",
@@ -674,27 +672,30 @@ export async function init(db_ignored, user, userData) {
           "sessoes"
         );
 
+        // Inicializa a data base (adiciona horário zerado para evitar problemas de fuso)
         let dataBase = new Date(dataInicio + "T00:00:00");
 
         let sessoesCriadas = 0;
         let tentativasSeguranca = 0;
         const MAX_TENTATIVAS = 100;
 
+        // Loop while para garantir a quantidade exata de sessões (pulando feriados)
         while (
           sessoesCriadas < qtdSessoes &&
           tentativasSeguranca < MAX_TENTATIVAS
         ) {
           tentativasSeguranca++;
 
-          // Verifica feriado usando a lista do sistema
+          // Verifica se é feriado
           if (ehFeriado(dataBase)) {
             console.log(`Pulando feriado: ${dataBase.toLocaleDateString()}`);
             avancarData(dataBase, recorrencia);
-            continue;
+            continue; // Pula para a próxima iteração do loop sem criar sessão
           }
 
           const novaSessaoRef = doc(sessoesRef);
-          const dataString = dataBase.toISOString().split("T")[0];
+          const dataString = dataBase.toISOString().split("T")[0]; // YYYY-MM-DD
+
           const sessaoData = {
             pacienteId: solicitacaoData.pacienteId || null,
             pacienteNome: solicitacaoData.pacienteNome || "N/A",
@@ -703,17 +704,20 @@ export async function init(db_ignored, user, userData) {
             data: dataString,
             horaInicio: horaInicio,
             horaFim: horaFim,
-            status: "Agendado", // Status inicial da sessão
+            status: "Agendado",
             modalidade: tipoSessao,
             sala: sala,
             criadoEm: serverTimestamp(),
             origemSolicitacaoId: docId,
           };
-          batch.set(novaSessaoRef, sessaoData);
 
+          batch.set(novaSessaoRef, sessaoData);
           sessoesCriadas++;
+
+          // Avança para a próxima data
           avancarData(dataBase, recorrencia);
 
+          // Se for sessão única, encerra o loop imediatamente
           if (recorrencia === "unica" || recorrencia === "") break;
         }
 
