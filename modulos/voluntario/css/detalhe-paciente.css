@@ -147,39 +147,62 @@
 /* =============================================================================
 MODIFICAÇÃO: Botões de Presença/Ausência (Formato Sólido)
 =============================================================================
-*/
-.btn-presenca, .btn-ausencia {
-    padding: 8px 15px;
-    border: 1px solid;
+/* Estilos Base dos Botões */
+.btn-presenca, .btn-ausencia, .btn-cancelar {
+    padding: 6px 12px;
+    border: 1px solid transparent;
     border-radius: var(--borda-radius);
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.9em;
+    font-size: 0.85em;
     transition: all 0.2s ease;
+    opacity: 0.6; /* Botões inativos ficam meio transparentes */
 }
 .btn-presenca {
-    /* background-color: transparent; */ /* Alterado */
-    /* color: var(--cor-sucesso); */ /* Alterado */
-    background-color: var(--cor-sucesso); /* Adicionado */
-    color: white; /* Adicionado */
     border-color: var(--cor-sucesso);
+    color: var(--cor-sucesso);
+    background-color: white;
 }
 .btn-presenca:hover, .btn-presenca.active {
     background-color: var(--cor-sucesso);
     color: white;
-    filter: brightness(0.9); /* Adicionado para novo hover */
+    opacity: 1;
+    font-weight: bold;
 }
 .btn-ausencia {
-    /* background-color: transparent; */ /* Alterado */
-    /* color: var(--cor-erro); */ /* Alterado */
-    background-color: var(--cor-erro); /* Adicionado */
-    color: white; /* Adicionado */
     border-color: var(--cor-erro);
+    color: var(--cor-erro);
+    background-color: white;
 }
 .btn-ausencia:hover, .btn-ausencia.active {
     background-color: var(--cor-erro);
     color: white;
-    filter: brightness(0.9); /* Adicionado para novo hover */
+    opacity: 1;
+    font-weight: bold;
+}
+/* Botão Cancelar */
+.btn-cancelar {
+    border-color: #6c757d;
+    color: #6c757d;
+    background-color: white;
+}
+.btn-cancelar:hover, .btn-cancelar.active {
+    background-color: #6c757d;
+    color: white;
+    opacity: 1;
+    font-weight: bold;
+}
+
+/* Layout Mobile para os botões não quebrarem */
+@media (max-width: 600px) {
+    .session-actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+    .btn-presenca, .btn-ausencia, .btn-cancelar {
+        flex-grow: 1; /* Botões ocupam espaço igual no mobile */
+        text-align: center;
+    }
 }
 /* FIM DA MODIFICAÇÃO */
 
