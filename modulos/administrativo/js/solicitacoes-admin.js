@@ -21,6 +21,7 @@ let dbInstance = db;
 let adminUser;
 let dadosDaGradeAdmin = {};
 let salasPresenciaisAdmin = [];
+let listaFeriadosSistema = [];
 
 // --- Funções Auxiliares ---
 function formatarData(timestamp) {
@@ -81,24 +82,39 @@ async function loadGradeDataAdmin() {
   }
 }
 
-// Função para carregar salas
-async function carregarSalasDoFirebase() {
-  if (salasPresenciaisAdmin.length > 0) return;
+// --- ATUALIZADO: Carrega Salas E Feriados ---
+async function carregarConfiguracoesGerais() {
+  if (salasPresenciaisAdmin.length > 0 && listaFeriadosSistema.length > 0)
+    return;
+
   try {
     const configRef = doc(dbInstance, "configuracoesSistema", "geral");
     const docSnap = await getDoc(configRef);
-    if (docSnap.exists() && docSnap.data().listas?.salasPresenciais) {
-      salasPresenciaisAdmin = docSnap.data().listas.salasPresenciais;
-      console.log("Salas presenciais carregadas:", salasPresenciaisAdmin);
+
+    if (docSnap.exists()) {
+      const dados = docSnap.data();
+
+      // 1. Carregar Salas
+      if (dados.listas?.salasPresenciais) {
+        salasPresenciaisAdmin = dados.listas.salasPresenciais;
+        console.log("Salas carregadas:", salasPresenciaisAdmin);
+      }
+
+      // 2. Carregar Feriados
+      if (dados.listas?.feriados) {
+        // Limpa espaços extras das strings
+        listaFeriadosSistema = dados.listas.feriados.map((f) => f.trim());
+        console.log("Feriados carregados:", listaFeriadosSistema);
+      }
     } else {
-      console.warn(
-        "Lista de salas presenciais não encontrada nas configurações."
-      );
+      console.warn("Configurações gerais não encontradas.");
       salasPresenciaisAdmin = [];
+      listaFeriadosSistema = [];
     }
   } catch (error) {
-    console.error("Erro ao carregar salas:", error);
+    console.error("Erro ao carregar configurações gerais:", error);
     salasPresenciaisAdmin = [];
+    listaFeriadosSistema = [];
   }
 }
 
@@ -110,7 +126,7 @@ export async function init(db_ignored, user, userData) {
   adminUser = userData;
 
   await loadGradeDataAdmin();
-  await carregarSalasDoFirebase();
+  await carregarConfiguracoesGerais();
 
   const tabsContainer = document.querySelector(".tabs-container");
   const tabLinks = document.querySelectorAll(".tab-link");
@@ -567,7 +583,25 @@ export async function init(db_ignored, user, userData) {
       });
     }
   }
+  // --- NOVA FUNÇÃO DE VERIFICAÇÃO DE FERIADOS (Dinâmica) ---
+  function ehFeriado(data) {
+    const dia = String(data.getDate()).padStart(2, "0");
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const ano = data.getFullYear();
 
+    const feriadoFixo = `${dia}/${mes}`; // Ex: 25/12
+    const feriadoCompleto = `${dia}/${mes}/${ano}`; // Ex: 13/02/2024
+
+    // Verifica se alguma entrada na lista do sistema coincide
+    // A lista pode conter strings puras como "25/12" ou "25/12 (Natal)"
+    // Vamos verificar se a data *começa* com o padrão, para ignorar descrições entre parênteses se houver
+
+    return listaFeriadosSistema.some((f) => {
+      const fLimpo = f.split(" ")[0]; // Pega só a data antes do primeiro espaço (se houver descrição)
+      return fLimpo === feriadoFixo || fLimpo === feriadoCompleto;
+    });
+  }
+  // --- ATUALIZADO: Handler com verificação de feriado ---
   async function handleNovasSessoesAction(docId, action, solicitacaoData) {
     const btnAprovar = document.getElementById("btn-aprovar-novas-sessoes");
     const btnRejeitar = document.getElementById("btn-rejeitar-novas-sessoes");
@@ -619,11 +653,28 @@ export async function init(db_ignored, user, userData) {
             "Preencha todos os campos obrigatórios do agendamento (*)."
           );
         }
+
         const batch = writeBatch(dbInstance);
         const sessoesRef = collection(dbInstance, "agendamentos");
         let dataBase = new Date(dataInicio + "T00:00:00");
 
-        for (let i = 0; i < qtdSessoes; i++) {
+        let sessoesCriadas = 0;
+        let tentativasSeguranca = 0;
+        const MAX_TENTATIVAS = 100;
+
+        while (
+          sessoesCriadas < qtdSessoes &&
+          tentativasSeguranca < MAX_TENTATIVAS
+        ) {
+          tentativasSeguranca++;
+
+          // Verifica feriado usando a lista do sistema
+          if (ehFeriado(dataBase)) {
+            console.log(`Pulando feriado: ${dataBase.toLocaleDateString()}`);
+            avancarData(dataBase, recorrencia);
+            continue;
+          }
+
           const novaSessaoRef = doc(sessoesRef);
           const dataString = dataBase.toISOString().split("T")[0];
           const sessaoData = {
@@ -642,21 +693,25 @@ export async function init(db_ignored, user, userData) {
           };
           batch.set(novaSessaoRef, sessaoData);
 
-          if (recorrencia === "semanal")
-            dataBase.setDate(dataBase.getDate() + 7);
-          else if (recorrencia === "quinzenal")
-            dataBase.setDate(dataBase.getDate() + 14);
-          else if (recorrencia === "mensal")
-            dataBase.setMonth(dataBase.getMonth() + 1);
-          else break;
+          sessoesCriadas++;
+          avancarData(dataBase, recorrencia);
+
+          if (recorrencia === "unica" || recorrencia === "") break;
         }
+
+        if (tentativasSeguranca >= MAX_TENTATIVAS) {
+          console.warn(
+            "Limite de tentativas atingido. Verifique recorrência e feriados."
+          );
+        }
+
         batch.update(docRef, {
           status: "Concluída",
           adminFeedback: adminFeedback,
         });
         await batch.commit();
         alert(
-          `Sucesso! ${qtdSessoes} sessões foram geradas e a solicitação foi aprovada.`
+          `Sucesso! ${sessoesCriadas} sessões foram geradas e a solicitação foi aprovada.`
         );
       }
       closeModal();
@@ -668,6 +723,12 @@ export async function init(db_ignored, user, userData) {
     }
   }
 
+  function avancarData(dateObj, recorrencia) {
+    if (recorrencia === "semanal") dateObj.setDate(dateObj.getDate() + 7);
+    else if (recorrencia === "quinzenal")
+      dateObj.setDate(dateObj.getDate() + 14);
+    else if (recorrencia === "mensal") dateObj.setMonth(dateObj.getMonth() + 1);
+  }
   // --- Função Principal para Abrir Modal (RESTAURADA) ---
   async function openGenericSolicitacaoModal(docId, tipo) {
     console.log(`Abrindo modal para ${tipo}, ID: ${docId}`);
