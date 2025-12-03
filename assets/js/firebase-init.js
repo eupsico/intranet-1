@@ -35,10 +35,7 @@ import {
   uploadBytes,
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import {
-  getStorage,
-  storage,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import {
   getFunctions,
@@ -124,7 +121,6 @@ export {
   getFunctions,
   httpsCallable,
   runTransaction,
-  storage,
   ref,
   uploadBytes,
   getDownloadURL,
