@@ -7,6 +7,7 @@ import * as estado from "./estado.js"; // Acesso ao estado global
 import * as carregador from "./carregador-dados.js"; // Para recarregar dados após salvar
 import * as interfaceUI from "./interface.js"; // Para atualizar a UI após salvar
 import { handleAbrirAnotacoes } from "./modais/modal-anotacoes.js";
+import { gerarProntuarioPDF } from "./pdf-prontuario.js";
 
 /**
  * Handler para salvar dados pessoais e de endereço.
@@ -255,12 +256,14 @@ export async function handlePresencaAusenciaClick(
  * Handler para o botão "Gerar Prontuário PDF".
  * (Lógica de geração do PDF não implementada).
  */
-export function handleGerarProntuarioPDF() {
-  console.log("Iniciando geração do PDF do prontuário...");
+export async function handleGerarProntuarioPDF(event) {
+  event.preventDefault();
+  const btn = event.target;
+  const originalText = btn.textContent;
+
   const form = document.getElementById("form-gerar-prontuario");
   if (!form) {
-    console.error("Formulário de geração de prontuário não encontrado.");
-    alert("Erro: Formulário não encontrado.");
+    alert("Erro: Formulário de prontuário não encontrado.");
     return;
   }
 
@@ -271,13 +274,31 @@ export function handleGerarProntuarioPDF() {
   if (selectedItems.length === 0) {
     alert("Selecione pelo menos um item para incluir no prontuário.");
     return;
-  } // Placeholder para a lógica de geração de PDF
+  }
 
-  alert(
-    `Itens selecionados para o PDF: ${selectedItems.join(
-      ", "
-    )}\n\n(Lógica de geração do PDF ainda não implementada)`
-  ); // Aqui você chamaria a biblioteca ou função responsável por gerar o PDF // Ex: gerarPDFProntuario(estado.pacienteDataGlobal, estado.sessoesCarregadas, selectedItems);
+  if (!estado.pacienteDataGlobal) {
+    alert("Dados do paciente não carregados.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner-small"></span> Gerando...';
+
+  try {
+    // Chama a função dedicada de geração do PDF
+    await gerarProntuarioPDF(
+      estado.pacienteDataGlobal,
+      estado.sessoesCarregadas,
+      estado.userDataGlobal,
+      selectedItems
+    );
+  } catch (error) {
+    console.error("Erro ao gerar PDF:", error);
+    alert(`Ocorreu um erro ao gerar o PDF: ${error.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 /**
  * Handler para alterar o status da sessão e abrir anotações se necessário.
