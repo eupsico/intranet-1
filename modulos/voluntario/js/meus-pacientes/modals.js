@@ -1693,10 +1693,10 @@ export async function handleHorariosPbSubmit(evento, user, userData) {
 // --- Fechamento de Modais ---
 // Listener genérico movido para events.js, mas manter funções pode ser útil se chamadas de outro lugar.
 // function fecharModal(modalId) {
-//   const modal = document.getElementById(modalId);
-//   if (modal) {
-//     modal.style.display = "none";
-//   }
+//  const modal = document.getElementById(modalId);
+//  if (modal) {
+//   modal.style.display = "none";
+//  }
 // }
 
 // Adiciona listeners para fechar modais específicos (se o listener genérico não pegar)
