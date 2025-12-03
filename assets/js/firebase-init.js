@@ -31,17 +31,19 @@ import {
   FieldValue,
   arrayRemove,
   runTransaction,
-  ref,
-  uploadBytes,
-  getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
 import { getDatabase } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import {
   getFunctions,
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
-
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
 // 2. Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDJqPJjDDIGo7uRewh3pw1SQZOpMgQJs5M",
@@ -82,6 +84,9 @@ export {
   storage,
   database,
   functions,
+  ref,
+  uploadBytes,
+  getDownloadURL,
 
   // Funções de Auth
   getAuth,
@@ -121,7 +126,4 @@ export {
   getFunctions,
   httpsCallable,
   runTransaction,
-  ref,
-  uploadBytes,
-  getDownloadURL,
 };
