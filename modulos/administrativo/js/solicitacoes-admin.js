@@ -664,15 +664,20 @@ export async function init(db_ignored, user, userData) {
 
         const batch = writeBatch(dbInstance);
 
-        // Referência correta: trilhaPaciente -> ID -> sessoes
+        // Referências
         const sessoesRef = collection(
           dbInstance,
           "trilhaPaciente",
           solicitacaoData.pacienteId,
           "sessoes"
         );
+        const pacienteRef = doc(
+          dbInstance,
+          "trilhaPaciente",
+          solicitacaoData.pacienteId
+        ); // Referência ao Doc do Paciente
 
-        // Inicializa a data base (adiciona horário zerado para evitar problemas de fuso)
+        // Inicializa a data base
         let dataBase = new Date(dataInicio + "T00:00:00");
 
         let sessoesCriadas = 0;
@@ -690,7 +695,7 @@ export async function init(db_ignored, user, userData) {
           if (ehFeriado(dataBase)) {
             console.log(`Pulando feriado: ${dataBase.toLocaleDateString()}`);
             avancarData(dataBase, recorrencia);
-            continue; // Pula para a próxima iteração do loop sem criar sessão
+            continue;
           }
 
           const novaSessaoRef = doc(sessoesRef);
@@ -714,10 +719,8 @@ export async function init(db_ignored, user, userData) {
           batch.set(novaSessaoRef, sessaoData);
           sessoesCriadas++;
 
-          // Avança para a próxima data
           avancarData(dataBase, recorrencia);
 
-          // Se for sessão única, encerra o loop imediatamente
           if (recorrencia === "unica" || recorrencia === "") break;
         }
 
@@ -727,13 +730,21 @@ export async function init(db_ignored, user, userData) {
           );
         }
 
+        // 1. Atualiza a solicitação para Concluída
         batch.update(docRef, {
           status: "Concluída",
           adminFeedback: adminFeedback,
         });
+
+        // 2. Atualiza o status do paciente para "em_atendimento_pb"
+        batch.update(pacienteRef, {
+          status: "em_atendimento_pb",
+          lastUpdate: serverTimestamp(),
+        });
+
         await batch.commit();
         alert(
-          `Sucesso! ${sessoesCriadas} sessões foram geradas na ficha do paciente.`
+          `Sucesso! ${sessoesCriadas} sessões geradas e status do paciente atualizado para 'Em Atendimento PB'.`
         );
       }
       closeModal();
@@ -744,6 +755,7 @@ export async function init(db_ignored, user, userData) {
       if (btnRejeitar) btnRejeitar.disabled = false;
     }
   }
+
   function avancarData(dateObj, recorrencia) {
     if (recorrencia === "semanal") dateObj.setDate(dateObj.getDate() + 7);
     else if (recorrencia === "quinzenal")
