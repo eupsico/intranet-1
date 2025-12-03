@@ -1,8 +1,19 @@
 // Arquivo: /modulos/voluntario/js/detalhes-paciente/manipuladores.js
 // Contém os handlers para submits de formulários principais e ações da lista de sessões.
 
-// CORREÇÃO: Adicionada a importação do 'db'
-import { db, doc, updateDoc, serverTimestamp, getDoc } from "./conexao-db.js"; // Funções do Firestore
+// CORREÇÃO: Adicionada a importação do 'db' e funções de Storage e ArrayUnion
+import {
+  db,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  getDoc,
+  storage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  arrayUnion,
+} from "./conexao-db.js"; // Funções do Firestore e Storage
 import * as estado from "./estado.js"; // Acesso ao estado global
 import * as carregador from "./carregador-dados.js"; // Para recarregar dados após salvar
 import * as interfaceUI from "./interface.js"; // Para atualizar a UI após salvar
@@ -346,5 +357,71 @@ export async function handleAlterarStatusSessao(sessaoId, novoStatus) {
   } catch (error) {
     console.error(`Erro ao atualizar status da sessão ${sessaoId}:`, error);
     alert(`Erro ao alterar status: ${error.message}`);
+  }
+}
+
+// --- NOVA FUNÇÃO DE UPLOAD ---
+/**
+ * Handler para o upload de arquivos complementares (Anamnese, Testes, etc.).
+ */
+export async function handleUploadArquivo(event) {
+  const input = event.target;
+  const file = input.files[0];
+  const statusSpan = document.getElementById("upload-status");
+
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    // 5MB limit
+    alert("O arquivo é muito grande. Tamanho máximo permitido: 5MB.");
+    input.value = "";
+    return;
+  }
+
+  if (!estado.pacienteIdGlobal) {
+    alert("Erro: ID do paciente não encontrado.");
+    input.value = "";
+    return;
+  }
+
+  // Feedback visual
+  input.disabled = true;
+  if (statusSpan) statusSpan.textContent = "Enviando...";
+
+  try {
+    // Caminho no Storage: pacientes/{idPaciente}/arquivos/{nomeArquivo}
+    const storagePath = `pacientes/${
+      estado.pacienteIdGlobal
+    }/arquivos/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, storagePath);
+
+    // Upload
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    // Atualiza Firestore (adiciona ao array arquivosClinicos)
+    const docRef = doc(db, "trilhaPaciente", estado.pacienteIdGlobal);
+    await updateDoc(docRef, {
+      arquivosClinicos: arrayUnion({
+        nome: file.name,
+        url: downloadURL,
+        path: storagePath,
+        data: new Date().toISOString(), // Salva como string ISO para compatibilidade
+      }),
+      lastUpdate: serverTimestamp(),
+    });
+
+    alert("Arquivo enviado com sucesso!");
+
+    // Recarrega dados e atualiza UI
+    await carregador.carregarDadosPaciente(estado.pacienteIdGlobal);
+    interfaceUI.preencherFormularios();
+  } catch (error) {
+    console.error("Erro no upload:", error);
+    alert(`Erro ao enviar arquivo: ${error.message}`);
+  } finally {
+    input.value = "";
+    input.disabled = false;
+    if (statusSpan) statusSpan.textContent = "";
   }
 }
