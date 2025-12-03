@@ -609,74 +609,218 @@ export async function init(db_ignored, user, userData) {
     `;
     return tr;
   }
-  async function openGenericSolicitacaoModal(docId, tipo) {
-    console.log(`Abrindo modal para ${tipo}, ID: ${docId}`);
-    modalTitle.textContent = `Processar Solicitação (${formatarTipoSolicitacao(
-      tipo
-    )})`;
-    modalBodyContent.innerHTML = '<div class="loading-spinner"></div>';
-    modalFooterActions.innerHTML = ""; // Limpa botões
-    modalFooterActions.appendChild(modalCancelBtn); // Adiciona Cancelar
-    openModal();
+
+  // --- INÍCIO DAS FUNÇÕES ADICIONADAS PARA CORREÇÃO (NOVAS SESSÕES) ---
+
+  /**
+   * Configura o dropdown de salas inicialmente (chamado ao abrir o modal)
+   */
+  function carregarSalasDropdownAdmin() {
+    const salaSelect = document.getElementById("admin-ag-sala");
+    if (salaSelect) {
+      salaSelect.innerHTML =
+        '<option value="">Selecione o Tipo de Sessão primeiro...</option>';
+    }
+  }
+
+  /**
+   * Configura a lógica dinâmica do formulário de Agendamento (Novas Sessões)
+   * Manipula recorrência, cálculo de horário fim e lista de salas baseada no tipo.
+   */
+  function setupModalLogicNovasSessoes(data) {
+    const recorrenciaSelect = document.getElementById("admin-ag-recorrencia");
+    const quantidadeContainer = document.getElementById(
+      "admin-ag-quantidade-container"
+    );
+    const tipoSessaoSelect = document.getElementById("admin-ag-tipo-sessao");
+    const salaSelect = document.getElementById("admin-ag-sala");
+    const horaInicioInput = document.getElementById("admin-ag-hora-inicio");
+    const horaFimInput = document.getElementById("admin-ag-hora-fim");
+    const quantidadeInput = document.getElementById("admin-ag-quantidade");
+
+    // 1. Lógica de Recorrência (Mostrar/Esconder quantidade)
+    if (recorrenciaSelect && quantidadeContainer) {
+      recorrenciaSelect.addEventListener("change", (e) => {
+        if (e.target.value === "unica") {
+          quantidadeContainer.style.display = "none";
+          if (quantidadeInput) quantidadeInput.value = "1";
+        } else {
+          quantidadeContainer.style.display = "block";
+          if (quantidadeInput && quantidadeInput.value === "1") {
+            quantidadeInput.value = "4"; // Sugestão padrão para mensal
+          }
+        }
+      });
+      // Dispara evento inicial para ajustar estado
+      recorrenciaSelect.dispatchEvent(new Event("change"));
+    }
+
+    // 2. Lógica de Tipo de Sessão -> Salas
+    if (tipoSessaoSelect && salaSelect) {
+      tipoSessaoSelect.addEventListener("change", (e) => {
+        salaSelect.innerHTML = '<option value="">Selecione...</option>';
+        const tipo = e.target.value;
+
+        if (tipo === "Online") {
+          const opt = document.createElement("option");
+          opt.value = "Online";
+          opt.textContent = "Atendimento Online";
+          opt.selected = true;
+          salaSelect.appendChild(opt);
+        } else if (tipo === "Presencial") {
+          if (salasPresenciaisAdmin && salasPresenciaisAdmin.length > 0) {
+            salasPresenciaisAdmin.forEach((sala) => {
+              const opt = document.createElement("option");
+              opt.value = sala;
+              opt.textContent = sala;
+              salaSelect.appendChild(opt);
+            });
+          } else {
+            salaSelect.innerHTML =
+              '<option value="">Nenhuma sala cadastrada</option>';
+          }
+        }
+      });
+    }
+
+    // 3. Cálculo Automático de Horário Fim (Início + 50min)
+    if (horaInicioInput && horaFimInput) {
+      horaInicioInput.addEventListener("change", (e) => {
+        const inicio = e.target.value; // HH:MM
+        if (inicio) {
+          const [horas, minutos] = inicio.split(":").map(Number);
+          const dataTemp = new Date();
+          dataTemp.setHours(horas);
+          dataTemp.setMinutes(minutos + 50); // Adiciona 50 minutos padrão
+
+          const horasFim = String(dataTemp.getHours()).padStart(2, "0");
+          const minutosFim = String(dataTemp.getMinutes()).padStart(2, "0");
+          horaFimInput.value = `${horasFim}:${minutosFim}`;
+        }
+      });
+    }
+  }
+
+  /**
+   * Processa a Ação de Aprovar ou Rejeitar Novas Sessões
+   */
+  async function handleNovasSessoesAction(docId, action, solicitacaoData) {
+    const btnAprovar = document.getElementById("btn-aprovar-novas-sessoes");
+    const btnRejeitar = document.getElementById("btn-rejeitar-novas-sessoes");
+    const mensagemInput = document.getElementById("admin-ag-message-text");
+    const mensagem = mensagemInput ? mensagemInput.value.trim() : "";
+
+    // Elementos do formulário de agendamento
+    const dataInicio = document.getElementById("admin-ag-data-inicio")?.value;
+    const horaInicio = document.getElementById("admin-ag-hora-inicio")?.value;
+    const horaFim = document.getElementById("admin-ag-hora-fim")?.value;
+    const recorrencia = document.getElementById("admin-ag-recorrencia")?.value;
+    const qtdSessoes = parseInt(
+      document.getElementById("admin-ag-quantidade")?.value || "1"
+    );
+    const tipoSessao = document.getElementById("admin-ag-tipo-sessao")?.value;
+    const sala = document.getElementById("admin-ag-sala")?.value;
+
+    if (btnAprovar) btnAprovar.disabled = true;
+    if (btnRejeitar) btnRejeitar.disabled = true;
 
     try {
       const docRef = doc(dbInstance, "solicitacoes", docId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) throw new Error("Solicitação não encontrada!");
-      const solicitacaoData = { id: docSnap.id, ...docSnap.data() }; // Inclui ID
+      const adminFeedback = {
+        statusFinal: action, // 'Aprovada' ou 'Rejeitada'
+        mensagemAdmin: mensagem,
+        dataResolucao: serverTimestamp(),
+        adminNome: adminUser.nome || "Admin",
+        adminId: adminUser.uid || "N/A",
+      };
 
-      let modalHtmlPath = `../page/`; // Caminho relativo ao JS
-      switch (tipo) {
-        case "novas_sessoes":
-          modalHtmlPath += "modal-novas-sessoes.html";
-          break;
-        case "alteracao_horario":
-          modalHtmlPath += "modal-alteracao-horario.html";
-          break;
-        case "desfecho":
-          modalHtmlPath += "modal-desfecho.html";
-          break;
-        case "encaminhamento":
-          modalHtmlPath += "modal-encaminhamento.html"; // NOVO: Modal para Encaminhamento
-          break;
-        case "reavaliacao":
-          modalHtmlPath += "modal-reavaliacao.html";
-          break;
-        case "inclusao_alteracao_grade":
-          modalHtmlPath += "modal-inclusao-alteracao-grade.html";
-          break;
-        case "exclusao_horario":
-          modalHtmlPath += "modal-exclusao-grade.html";
-          break;
-        default:
-          throw new Error(`Tipo de solicitação desconhecido: ${tipo}`);
-      }
+      if (action === "Rejeitada") {
+        if (!mensagem)
+          throw new Error(
+            "Para rejeitar, é obrigatório informar uma mensagem/motivo."
+          );
 
-      console.log("Tentando carregar modal de:", modalHtmlPath);
-      const response = await fetch(modalHtmlPath);
-      if (!response.ok)
-        throw new Error(
-          `Falha ao carregar o HTML do modal (${response.statusText}). Caminho: ${modalHtmlPath}`
+        await updateDoc(docRef, {
+          status: "Rejeitada",
+          adminFeedback: adminFeedback,
+        });
+        alert("Solicitação rejeitada com sucesso.");
+      } else if (action === "Aprovada") {
+        // Validações de Agendamento
+        if (
+          !dataInicio ||
+          !horaInicio ||
+          !recorrencia ||
+          !tipoSessao ||
+          !sala
+        ) {
+          throw new Error(
+            "Preencha todos os campos obrigatórios do agendamento (*)."
+          );
+        }
+
+        // Criação das Sessões em Lote
+        const batch = writeBatch(dbInstance);
+        const sessoesRef = collection(dbInstance, "agendamentos"); // Ou 'sessoes', conforme sua estrutura
+
+        let dataBase = new Date(dataInicio + "T00:00:00");
+
+        // Loop para criar QTD sessões
+        for (let i = 0; i < qtdSessoes; i++) {
+          const novaSessaoRef = doc(sessoesRef); // Gera ID automático
+
+          // Formata data string YYYY-MM-DD
+          const dataString = dataBase.toISOString().split("T")[0];
+
+          const sessaoData = {
+            pacienteId: solicitacaoData.pacienteId || null,
+            pacienteNome: solicitacaoData.pacienteNome || "N/A",
+            profissionalId: solicitacaoData.solicitanteId || null,
+            profissionalNome: solicitacaoData.solicitanteNome || "N/A",
+            data: dataString,
+            horaInicio: horaInicio,
+            horaFim: horaFim,
+            status: "Agendado",
+            modalidade: tipoSessao,
+            sala: sala,
+            criadoEm: serverTimestamp(),
+            origemSolicitacaoId: docId,
+          };
+
+          batch.set(novaSessaoRef, sessaoData);
+
+          // Incrementa a data baseada na recorrência
+          if (recorrencia === "semanal") {
+            dataBase.setDate(dataBase.getDate() + 7);
+          } else if (recorrencia === "quinzenal") {
+            dataBase.setDate(dataBase.getDate() + 14);
+          } else if (recorrencia === "mensal") {
+            dataBase.setMonth(dataBase.getMonth() + 1);
+          } else {
+            break; // Única
+          }
+        }
+
+        // Atualiza a solicitação
+        batch.update(docRef, {
+          status: "Concluída", // Novas Sessões geralmente viram 'Concluída' ao gerar agenda
+          adminFeedback: adminFeedback,
+        });
+
+        await batch.commit();
+        alert(
+          `Sucesso! ${qtdSessoes} sessões foram geradas e a solicitação foi aprovada.`
         );
-
-      modalBodyContent.innerHTML = await response.text(); // Preenche os campos COMUNS e específicos
-
-      preencherCamposModal(tipo, solicitacaoData); // Configura os botões e lógica específica (Aprovar/Rejeitar/Salvar)
-
-      configurarAcoesModal(docId, tipo, solicitacaoData); // Adiciona lógica JS específica APÓS carregar o HTML do modal
-
-      if (tipo === "novas_sessoes") {
-        setupModalLogicNovasSessoes(solicitacaoData); // Configura listeners do novo form
-      } else if (tipo === "exclusao_horario") {
-        setupModalFormLogicExclusao(); // Configura listeners do form de exclusão
       }
+
+      closeModal();
     } catch (error) {
-      console.error("Erro ao abrir modal genérico:", error);
-      modalBodyContent.innerHTML = `<p class="alert alert-error">Erro ao carregar detalhes: ${error.message}</p>`;
-      modalFooterActions.innerHTML = ""; // Limpa botões se deu erro
-      modalFooterActions.appendChild(modalCancelBtn); // Deixa só o Cancelar
+      console.error("Erro ao processar novas sessões:", error);
+      alert("Erro: " + error.message);
+      if (btnAprovar) btnAprovar.disabled = false;
+      if (btnRejeitar) btnRejeitar.disabled = false;
     }
-  } // --- Funções Auxiliares do Modal (Ajustada para novas sessoes) ---
+  }
 
   function preencherCamposModal(tipo, data) {
     const detalhes = data.detalhes || {}; // Campos comuns
