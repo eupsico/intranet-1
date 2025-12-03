@@ -106,22 +106,40 @@ export async function abrirModalHorariosPb() {
   }
 
   // --- CORREÇÃO CRÍTICA DOS LISTENERS ---
-  // Usamos removeEventListener e addEventListener em vez de clonar o nó (replaceChild),
-  // pois clonar quebra a referência do label com o input.
+  // Removemos os listeners existentes de forma mais eficaz usando clonagem
+  // e mantendo a referência do label com o input através do for atributo
 
   // 1. Listeners para "Iniciou PB?"
   const radiosIniciou = form.querySelectorAll('input[name="iniciou-pb"]');
   radiosIniciou.forEach((radio) => {
     radio.required = true;
-    radio.removeEventListener("change", listenerIniciouPbChange); // Remove anterior se existir
-    radio.addEventListener("change", listenerIniciouPbChange); // Adiciona novo
+    // Cria um novo elemento limpo mantendo atributos essenciais
+    const novoRadio = radio.cloneNode(true);
+    novoRadio.checked = radio.checked; // Preserva estado
+    radio.parentNode.replaceChild(novoRadio, radio);
+  });
+
+  // Reseleciona os novos elementos e adiciona listeners
+  const novosRadiosIniciou = form.querySelectorAll('input[name="iniciou-pb"]');
+  novosRadiosIniciou.forEach((radio) => {
+    radio.addEventListener("change", listenerIniciouPbChange);
   });
 
   // 2. Listeners para "Motivo Não Início"
   const radiosMotivo = form.querySelectorAll('input[name="motivo-nao-inicio"]');
   radiosMotivo.forEach((radio) => {
-    radio.removeEventListener("change", listenerMotivoNaoInicioChange); // Remove anterior se existir
-    radio.addEventListener("change", listenerMotivoNaoInicioChange); // Adiciona novo
+    // Cria um novo elemento limpo mantendo atributos essenciais
+    const novoRadio = radio.cloneNode(true);
+    novoRadio.checked = radio.checked; // Preserva estado
+    radio.parentNode.replaceChild(novoRadio, radio);
+  });
+
+  // Reseleciona os novos elementos e adiciona listeners
+  const novosRadiosMotivo = form.querySelectorAll(
+    'input[name="motivo-nao-inicio"]'
+  );
+  novosRadiosMotivo.forEach((radio) => {
+    radio.addEventListener("change", listenerMotivoNaoInicioChange);
   });
 
   modal.style.display = "flex";
@@ -154,6 +172,7 @@ function listenerIniciouPbChange(event) {
   ].forEach((el) => {
     if (el) el.style.display = "none";
   });
+
   if (formContinuacaoContainer) formContinuacaoContainer.innerHTML = "";
   if (formAlteracaoContainer) formAlteracaoContainer.innerHTML = "";
 
@@ -201,6 +220,7 @@ function listenerMotivoNaoInicioChange(event) {
   ].forEach((el) => {
     if (el) el.style.display = "none";
   });
+
   if (formAlteracaoContainer) formAlteracaoContainer.innerHTML = "";
 
   // Limpa requireds específicos
@@ -221,14 +241,12 @@ function listenerMotivoNaoInicioChange(event) {
     if (formAlteracaoContainer) {
       formAlteracaoContainer.style.display = "block";
       formAlteracaoContainer.innerHTML = getHtmlAlteracaoHorario(); // Injeta HTML
-
       const atendimentoId = formPrincipal.querySelector(
         "#atendimento-id-horarios-modal"
       )?.value;
       const atendimentoAtual = estado.pacienteDataGlobal?.atendimentosPB?.find(
         (at) => at.atendimentoId === atendimentoId
       );
-
       setupFormLogicAlterarHorario(formAlteracaoContainer, atendimentoAtual); // Configura eventos
     }
   }
@@ -238,136 +256,155 @@ function listenerMotivoNaoInicioChange(event) {
 
 function getHtmlNovasSessoes() {
   return `
-        <div id="solicitar-sessoes-form">
-            <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Configuração do Atendimento</h4>
-            <div class="form-grid cols-2"> 
-                <div class="form-group">
-                    <label for="solicitar-dia-semana">Dia da Sessão*</label>
-                    <select id="solicitar-dia-semana" class="form-control" required>
-                        <option value="">Selecione...</option> <option value="Segunda-feira">Segunda-feira</option>
-                        <option value="Terça-feira">Terça-feira</option>
-                        <option value="Quarta-feira">Quarta-feira</option>
-                        <option value="Quinta-feira">Quinta-feira</option>
-                        <option value="Sexta-feira">Sexta-feira</option>
-                        <option value="Sábado">Sábado</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="solicitar-horario">Horário*</label>
-                    <select id="solicitar-horario" class="form-control" required></select>
-                </div>
-            </div>
-            <div class="form-grid cols-2">
-                <div class="form-group">
-                    <label for="solicitar-tipo-atendimento">Tipo de Atendimento*</label>
-                    <select id="solicitar-tipo-atendimento" class="form-control" required>
-                        <option value="">Selecione...</option> <option value="online">Online</option>
-                        <option value="presencial">Presencial</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="solicitar-sala">Sala de Atendimento*</label>
-                    <select id="solicitar-sala" class="form-control" required>
-                        <option value="Online">Online</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-grid cols-2">
-                <div class="form-group">
-                    <label for="solicitar-frequencia">Frequência*</label>
-                    <select id="solicitar-frequencia" class="form-control" required>
-                        <option value="">Selecione...</option>
-                        <option value="Semanal">Semanal</option>
-                        <option value="Quinzenal">Quinzenal</option>
-                        <option value="Mensal">Mensal</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="solicitar-data-inicio">Data de Início*</label>
-                    <input type="date" id="solicitar-data-inicio" class="form-control" required>
-                </div>
-            </div>
-            <input type="hidden" id="alterar-grade-pb" value="Sim"> 
+    <div id="solicitar-sessoes-form">
+      <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Configuração do Atendimento</h4>
+      
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="solicitar-dia-semana">Dia da Sessão</label>
+          <select id="solicitar-dia-semana" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="Segunda-feira">Segunda-feira</option>
+            <option value="Terça-feira">Terça-feira</option>
+            <option value="Quarta-feira">Quarta-feira</option>
+            <option value="Quinta-feira">Quinta-feira</option>
+            <option value="Sexta-feira">Sexta-feira</option>
+            <option value="Sábado">Sábado</option>
+          </select>
         </div>
-    `;
+        
+        <div class="form-group">
+          <label for="solicitar-horario">Horário</label>
+          <select id="solicitar-horario" class="form-control" required></select>
+        </div>
+      </div>
+
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="solicitar-tipo-atendimento">Tipo de Atendimento</label>
+          <select id="solicitar-tipo-atendimento" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="online">Online</option>
+            <option value="presencial">Presencial</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="solicitar-sala">Sala de Atendimento</label>
+          <select id="solicitar-sala" class="form-control" required>
+            <option value="Online">Online</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="solicitar-frequencia">Frequência</label>
+          <select id="solicitar-frequencia" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="Semanal">Semanal</option>
+            <option value="Quinzenal">Quinzenal</option>
+            <option value="Mensal">Mensal</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="solicitar-data-inicio">Data de Início</label>
+          <input type="date" id="solicitar-data-inicio" class="form-control" required />
+        </div>
+      </div>
+
+      <input type="hidden" id="alterar-grade-pb" value="Sim" />
+    </div>
+  `;
 }
 
 function getHtmlAlteracaoHorario() {
   return `
-        <div id="alterar-horario-form">
-            <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Nova Preferência de Horário</h4>
-            <div class="form-grid cols-2">
-                <div class="form-group">
-                    <label>Dia Atual</label>
-                    <input type="text" id="alterar-dia-atual" class="form-control" readonly>
-                </div>
-                <div class="form-group">
-                    <label>Horário Atual</label>
-                    <input type="text" id="alterar-horario-atual" class="form-control" readonly>
-                </div>
-            </div>
-            <div class="form-grid cols-2"> 
-                <div class="form-group">
-                    <label for="alterar-dia-semana">Novo Dia*</label>
-                    <select id="alterar-dia-semana" class="form-control" required>
-                        <option value="">Selecione...</option>
-                        <option value="Segunda-feira">Segunda-feira</option>
-                        <option value="Terça-feira">Terça-feira</option>
-                        <option value="Quarta-feira">Quarta-feira</option>
-                        <option value="Quinta-feira">Quinta-feira</option>
-                        <option value="Sexta-feira">Sexta-feira</option>
-                        <option value="Sábado">Sábado</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="alterar-horario">Novo Horário*</label>
-                    <select id="alterar-horario" class="form-control" required></select>
-                </div>
-            </div>
-            <div class="form-grid cols-2">
-                <div class="form-group">
-                    <label for="alterar-tipo-atendimento">Novo Tipo*</label>
-                    <select id="alterar-tipo-atendimento" class="form-control" required>
-                        <option value="">Selecione...</option>
-                        <option value="Online">Online</option>
-                        <option value="Presencial">Presencial</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="alterar-sala">Nova Sala*</label>
-                    <select id="alterar-sala" class="form-control" required>
-                        <option value="Online">Online</option>
-                    </select>
-                </div>
-            </div>
-             <div class="form-grid cols-2">
-                <div class="form-group">
-                    <label for="alterar-frequencia">Frequência*</label>
-                    <select id="alterar-frequencia" class="form-control" required>
-                        <option value="">Selecione...</option>
-                        <option value="Semanal">Semanal</option>
-                        <option value="Quinzenal">Quinzenal</option>
-                        <option value="Mensal">Mensal</option>
-                    </select>
-                </div>
-                 <div class="form-group">
-                    <label for="alterar-data-inicio">A partir de*</label>
-                    <input type="date" id="alterar-data-inicio" class="form-control" required>
-                </div>
-            </div>
-             <div class="form-group">
-                <label for="alterar-grade">Alterar na grade?*</label>
-                <select id="alterar-grade" class="form-control" required>
-                    <option value="Sim">Sim</option>
-                    <option value="Não">Não</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="alterar-justificativa">Justificativa:</label>
-                <textarea id="alterar-justificativa" rows="2" class="form-control"></textarea>
-            </div>
+    <div id="alterar-horario-form">
+      <h4 style="color: var(--cor-primaria); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Nova Preferência de Horário</h4>
+      
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label>Dia Atual</label>
+          <input type="text" id="alterar-dia-atual" class="form-control" readonly />
         </div>
-    `;
+        
+        <div class="form-group">
+          <label>Horário Atual</label>
+          <input type="text" id="alterar-horario-atual" class="form-control" readonly />
+        </div>
+      </div>
+
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="alterar-dia-semana">Novo Dia</label>
+          <select id="alterar-dia-semana" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="Segunda-feira">Segunda-feira</option>
+            <option value="Terça-feira">Terça-feira</option>
+            <option value="Quarta-feira">Quarta-feira</option>
+            <option value="Quinta-feira">Quinta-feira</option>
+            <option value="Sexta-feira">Sexta-feira</option>
+            <option value="Sábado">Sábado</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="alterar-horario">Novo Horário</label>
+          <select id="alterar-horario" class="form-control" required></select>
+        </div>
+      </div>
+
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="alterar-tipo-atendimento">Novo Tipo</label>
+          <select id="alterar-tipo-atendimento" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="Online">Online</option>
+            <option value="Presencial">Presencial</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="alterar-sala">Nova Sala</label>
+          <select id="alterar-sala" class="form-control" required>
+            <option value="Online">Online</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label for="alterar-frequencia">Frequência</label>
+          <select id="alterar-frequencia" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="Semanal">Semanal</option>
+            <option value="Quinzenal">Quinzenal</option>
+            <option value="Mensal">Mensal</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="alterar-data-inicio">A partir de</label>
+          <input type="date" id="alterar-data-inicio" class="form-control" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="alterar-grade">Alterar na grade?</label>
+        <select id="alterar-grade" class="form-control" required>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="alterar-justificativa">Justificativa</label>
+        <textarea id="alterar-justificativa" rows="2" class="form-control"></textarea>
+      </div>
+    </div>
+  `;
 }
 
 // --- Funções Auxiliares de Lógica dos Forms Injetados ---
@@ -378,12 +415,12 @@ function setupFormLogicNovasSessoes(container) {
   // Popula Horários
   const horarioSelect = form.querySelector("#solicitar-horario");
   if (horarioSelect) {
-    horarioSelect.innerHTML = "<option value=''>Selecione...</option>";
+    horarioSelect.innerHTML = '<option value="">Selecione...</option>';
     for (let i = 7; i <= 21; i++) {
-      const hora = `${String(i).padStart(2, "0")}:00`;
+      const hora = String(i).padStart(2, "0") + ":00";
       horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
       if (i < 21) {
-        const hora30 = `${String(i).padStart(2, "0")}:30`;
+        const hora30 = String(i).padStart(2, "0") + ":30";
         horarioSelect.innerHTML += `<option value="${hora30}">${hora30}</option>`;
       }
     }
@@ -400,20 +437,24 @@ function setupFormLogicNovasSessoes(container) {
     });
   }
 
-  // Lógica Tipo -> Sala
+  // Lógica Tipo - Sala
   const tipoAtendimentoSelect = form.querySelector(
     "#solicitar-tipo-atendimento"
   );
+
   const ajustarSala = () => {
     const tipo = tipoAtendimentoSelect?.value;
     const isOnline = tipo === "online";
     if (salaSelect) {
       salaSelect.disabled = isOnline;
       salaSelect.required = !isOnline;
-      if (isOnline) salaSelect.value = "Online";
-      else if (salaSelect.value === "Online") salaSelect.value = "";
+      if (isOnline) {
+        salaSelect.value = "Online";
+      } else if (salaSelect.value === "Online") {
+        salaSelect.value = "";
+      }
+      validarHorarioNaGrade(form);
     }
-    validarHorarioNaGrade(form);
   };
 
   if (tipoAtendimentoSelect) {
@@ -424,7 +465,9 @@ function setupFormLogicNovasSessoes(container) {
   ["solicitar-dia-semana", "solicitar-horario", "solicitar-sala"].forEach(
     (id) => {
       const el = form.querySelector(`#${id}`);
-      if (el) el.addEventListener("change", () => validarHorarioNaGrade(form));
+      if (el) {
+        el.addEventListener("change", () => validarHorarioNaGrade(form));
+      }
     }
   );
 
@@ -435,21 +478,22 @@ function setupFormLogicAlterarHorario(container, atendimentoAtivo) {
   const form = container.querySelector("#alterar-horario-form");
 
   // Preenche dados atuais
-  const horarioAtual = atendimentoAtivo?.horarioSessoes || {};
+  const horarioAtual = atendimentoAtivo?.horarioSessoes;
   const diaAtualEl = form.querySelector("#alterar-dia-atual");
-  if (diaAtualEl) diaAtualEl.value = horarioAtual.diaSemana || "N/A";
+  if (diaAtualEl) diaAtualEl.value = horarioAtual?.diaSemana || "N/A";
+
   const horaAtualEl = form.querySelector("#alterar-horario-atual");
-  if (horaAtualEl) horaAtualEl.value = horarioAtual.horario || "N/A";
+  if (horaAtualEl) horaAtualEl.value = horarioAtual?.horario || "N/A";
 
   // Popula Horários
   const horarioSelect = form.querySelector("#alterar-horario");
   if (horarioSelect) {
-    horarioSelect.innerHTML = "<option value=''>Selecione...</option>";
+    horarioSelect.innerHTML = '<option value="">Selecione...</option>';
     for (let i = 7; i <= 21; i++) {
-      const hora = `${String(i).padStart(2, "0")}:00`;
+      const hora = String(i).padStart(2, "0") + ":00";
       horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
       if (i < 21) {
-        const hora30 = `${String(i).padStart(2, "0")}:30`;
+        const hora30 = String(i).padStart(2, "0") + ":30";
         horarioSelect.innerHTML += `<option value="${hora30}">${hora30}</option>`;
       }
     }
@@ -466,22 +510,27 @@ function setupFormLogicAlterarHorario(container, atendimentoAtivo) {
     });
   }
 
-  // Lógica Tipo -> Sala
+  // Lógica Tipo - Sala
   const tipoAtendimentoSelect = form.querySelector("#alterar-tipo-atendimento");
+
   const ajustarSala = () => {
     const tipo = tipoAtendimentoSelect?.value;
     const isOnline = tipo === "Online";
     if (salaSelect) {
       salaSelect.disabled = isOnline;
       salaSelect.required = !isOnline;
-      if (isOnline) salaSelect.value = "Online";
-      else if (salaSelect.value === "Online") salaSelect.value = "";
+      if (isOnline) {
+        salaSelect.value = "Online";
+      } else if (salaSelect.value === "Online") {
+        salaSelect.value = "";
+      }
     }
   };
 
   if (tipoAtendimentoSelect) {
     tipoAtendimentoSelect.addEventListener("change", ajustarSala);
   }
+
   ajustarSala();
 }
 
@@ -504,9 +553,12 @@ function validarHorarioNaGrade(formContext) {
   const horarioCompleto = horarioEl.value;
   const tipo = tipoEl.value;
   const sala = salaEl.value;
+
   const horaKey = horarioCompleto ? horarioCompleto.replace(":", "-") : null;
 
-  if (!dia || !horaKey || !tipo || (tipo === "presencial" && !sala)) return;
+  if (!dia || !horaKey || !tipo || (tipo === "presencial" && !sala)) {
+    return;
+  }
 
   const diasMapGrade = {
     "Segunda-feira": "segunda",
@@ -516,7 +568,9 @@ function validarHorarioNaGrade(formContext) {
     "Sexta-feira": "sexta",
     Sábado: "sabado",
   };
+
   const diaChave = diasMapGrade[dia] || dia.toLowerCase();
+
   let isOcupado = false;
   const grade = estado.dadosDaGradeGlobal;
 
@@ -557,6 +611,7 @@ function validarHorarioNaGrade(formContext) {
 
 export async function handleHorariosPbSubmit(evento, userUid, userData) {
   evento.preventDefault();
+
   const formularioPrincipal = evento.target;
   const modal = formularioPrincipal.closest(".modal-overlay");
   const botaoSalvar = modal?.querySelector('button[type="submit"]');
@@ -590,20 +645,23 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
     const iniciouRadio = formularioPrincipal.querySelector(
       'input[name="iniciou-pb"]:checked'
     );
-    if (!iniciouRadio)
+    if (!iniciouRadio) {
       throw new Error("Selecione se o paciente iniciou o atendimento ou não.");
+    }
 
     const iniciou = iniciouRadio.value;
 
-    // --- FLUXO SIM (Iniciou) ---
+    // --- FLUXO "SIM" (Iniciou) ---
     if (iniciou === "sim") {
       const formContinuacao = document
         .getElementById("form-continuacao-pb")
         ?.querySelector("#solicitar-sessoes-form");
-      if (!formContinuacao)
+
+      if (!formContinuacao) {
         throw new Error(
           "Erro interno: Formulário de agendamento não encontrado."
         );
+      }
 
       // Validação manual
       const dia = formContinuacao.querySelector("#solicitar-dia-semana").value;
@@ -638,15 +696,19 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
       };
 
       const docSnap = await getDoc(docRefPaciente);
-      if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
+      if (!docSnap.exists()) {
+        throw new Error("Paciente não encontrado!");
+      }
+
       const dadosDoPaciente = docSnap.data();
-      const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
+      const atendimentos = [...dadosDoPaciente.atendimentosPB];
       const idx = atendimentos.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
 
-      if (idx === -1)
+      if (idx === -1) {
         throw new Error("Atendimento PB específico não encontrado!");
+      }
 
       atendimentos[idx].horarioSessoes = horarioSessaoData;
       atendimentos[idx].statusAtendimento = "horarios_informados";
@@ -669,9 +731,10 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
         detalhes: {
           diaSemana: horarioSessaoData.diaSemana,
           horario: horarioSessaoData.horario,
-          modalidade: horarioSessaoData.tipoAtendimento?.replace(/^./, (c) =>
-            c.toUpperCase()
-          ),
+          modalidade:
+            horarioSessaoData.tipoAtendimento?.replace(/^./, (c) =>
+              c.toUpperCase()
+            ) || "",
           frequencia: horarioSessaoData.frequencia,
           sala: horarioSessaoData.salaAtendimento,
           dataInicioPreferencial: horarioSessaoData.dataInicio,
@@ -679,33 +742,44 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
         },
         adminFeedback: null,
       };
-      await addDoc(collection(db, "solicitacoes"), solicitacaoData);
 
-      // --- FLUXO NÃO (Não Iniciou) ---
-    } else if (iniciou === "nao") {
+      await addDoc(collection(db, "solicitacoes"), solicitacaoData);
+    }
+    // --- FLUXO "NÃO" (Não Iniciou) ---
+    else if (iniciou === "nao") {
       const motivoRadio = formularioPrincipal.querySelector(
         'input[name="motivo-nao-inicio"]:checked'
       );
-      if (!motivoRadio)
+      if (!motivoRadio) {
         throw new Error(
           "Selecione o motivo pelo qual o atendimento não foi iniciado."
         );
+      }
+
       const motivo = motivoRadio.value;
 
       const docSnap = await getDoc(docRefPaciente);
-      if (!docSnap.exists()) throw new Error("Paciente não encontrado!");
+      if (!docSnap.exists()) {
+        throw new Error("Paciente não encontrado!");
+      }
+
       const dadosDoPaciente = docSnap.data();
-      const atendimentos = [...(dadosDoPaciente.atendimentosPB || [])];
+      const atendimentos = [...dadosDoPaciente.atendimentosPB];
       const idx = atendimentos.findIndex(
         (at) => at.atendimentoId === atendimentoId
       );
-      if (idx === -1) throw new Error("Atendimento PB não encontrado!");
+
+      if (idx === -1) {
+        throw new Error("Atendimento PB não encontrado!");
+      }
 
       if (motivo === "desistiu") {
         const desc = formularioPrincipal
           .querySelector("#motivo-desistencia-pb")
           .value.trim();
-        if (!desc) throw new Error("Descreva o motivo da desistência.");
+        if (!desc) {
+          throw new Error("Descreva o motivo da desistência.");
+        }
 
         atendimentos[idx].statusAtendimento = "desistencia_antes_inicio";
         atendimentos[idx].motivoNaoInicio = desc;
@@ -716,13 +790,16 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
           status: "desistencia",
           lastUpdate: serverTimestamp(),
         });
+
         await excluirSessoesFuturas(pacienteId, atendimentoId, new Date());
       } else if (motivo === "outra_modalidade") {
         const formAlteracao = document
           .getElementById("form-alteracao-pb")
           ?.querySelector("#alterar-horario-form");
-        if (!formAlteracao)
+
+        if (!formAlteracao) {
           throw new Error("Erro interno: Form alteração não encontrado.");
+        }
 
         const dia = formAlteracao.querySelector("#alterar-dia-semana").value;
         const hora = formAlteracao.querySelector("#alterar-horario").value;
@@ -749,6 +826,7 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
           dataInicio: inicio,
           alterarGrade: grade,
         };
+
         const justificativa =
           formAlteracao.querySelector("#alterar-justificativa")?.value.trim() ||
           "Preferência por outro horário.";
@@ -790,6 +868,7 @@ export async function handleHorariosPbSubmit(evento, userUid, userData) {
           },
           adminFeedback: null,
         };
+
         await addDoc(collection(db, "solicitacoes"), solicitacaoData);
       }
     }
@@ -824,16 +903,22 @@ async function excluirSessoesFuturas(
 ) {
   const sessoesRef = collection(db, "trilhaPaciente", pacienteId, "sessoes");
   const timestampReferencia = Timestamp.fromDate(dataReferencia);
+
   const q = query(
     sessoesRef,
     where("atendimentoId", "==", atendimentoId),
-    where("dataHora", ">", timestampReferencia)
+    where("dataHora", ">=", timestampReferencia)
   );
+
   try {
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return;
+
     const batch = writeBatch(db);
-    querySnapshot.forEach((doc) => batch.delete(doc.ref));
+    querySnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
     await batch.commit();
   } catch (error) {
     console.error("Erro ao excluir sessões futuras:", error);
