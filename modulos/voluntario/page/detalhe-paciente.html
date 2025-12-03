@@ -5,19 +5,14 @@
         
         <div class="action-buttons-container main-actions">
             <button id="btn-paciente-actions-toggle" class="action-button hamburger-toggle-button">
-                <span>Gerenciar Atendimento</span> <div class="hamburger-icon">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                </div>
+                <span>Gerenciar Atendimento</span> <div class="hamburger-icon"><div></div><div></div><div></div></div>
             </button>
-        
             <div id="paciente-actions-menu" class="hamburger-menu-content">
                 <button id="btn-abrir-modal-mensagem" class="hamburger-menu-item action-button">Enviar Mensagem</button>
                 <button id="btn-abrir-modal-solicitar-sessoes" class="hamburger-menu-item action-button">Solicitar Novas Sessões</button>
                 <button id="btn-abrir-modal-alterar-horario" class="hamburger-menu-item action-button">Alterar Horário</button>
                 <button id="btn-abrir-modal-reavaliacao" class="hamburger-menu-item action-button secondary-button">Solicitar Reavaliação</button>
-                <button id="btn-abrir-modal-horarios-pb" class="hamburger-menu-item action-button special-button" title="Usar quando o paciente está aguardando informação de horários">Informar Horários PB</button>
+                <button id="btn-abrir-modal-horarios-pb" class="hamburger-menu-item action-button special-button">Informar Horários PB</button>
                 <button id="btn-abrir-modal-encaminhamento-pb" class="hamburger-menu-item action-button secondary-button">Solicitar Encaminhamento PB</button>
                 <button id="btn-abrir-modal-desfecho-pb" class="hamburger-menu-item action-button danger-button">Registrar Desfecho PB</button>
                 <button id="btn-abrir-modal-encerramento-plantao" class="hamburger-menu-item action-button danger-button">Registrar Encerramento Plantão</button>
@@ -196,17 +191,6 @@
                     <div class="accordion-content">
                         <fieldset>
                             <legend>Acompanhamento Clínico</legend>
-
-                            <div class="form-group" style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; margin-bottom: 20px;">
-                                <label style="color: var(--cor-primaria); font-weight: bold;">📁 Arquivos e Anexos (Anamnese, Testes, etc.)</label>
-                                
-                                <div id="ac-arquivos-lista" style="margin-bottom: 15px;">
-                                    <p class="text-muted" style="font-size: 0.9em; font-style: italic;">Nenhum arquivo anexado.</p>
-                                </div>
-
-                                <label for="ac-novo-arquivo" style="font-size: 0.9em; cursor: pointer;">Adicionar Novo Arquivo:</label>
-                                <input type="file" id="ac-novo-arquivo" class="form-control" multiple>
-                            </div>
                             <div class="form-group">
                                 <label for="ac-avaliacao-demanda">AVALIAÇÃO DA DEMANDA (QUEIXA DO PACIENTE)</label>
                                 <p class="field-description">(Explicação: Descreva a queixa principal trazida pelo paciente no início do tratamento.)</p>
@@ -238,9 +222,57 @@
                     </div> 
                 </fieldset>
             </form>
-            
-        </div>
-            
+            <form id="documentos-section-container">
+                <fieldset class="accordion-item">
+                    <legend class="accordion-header">
+                        <button type="button" class="accordion-button">
+                            DOCUMENTOS E ANEXOS
+                            <span class="accordion-icon">&#9654;</span> 
+                        </button>
+                    </legend>
+                    <div class="accordion-content">
+                        
+                        <div class="form-group" style="background-color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ddd; margin-bottom: 25px;">
+                            <h4 style="color: var(--cor-primaria); margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">📄 Contrato Terapêutico</h4>
+                            
+                            <div id="dp-contrato-status-assinado" style="display: none; margin-top: 15px;">
+                                <p style="color: var(--cor-sucesso); font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-check-circle"></i> Contrato Assinado
+                                </p>
+                                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                                    Assinado em: <span id="dp-contrato-data-texto"></span>
+                                </p>
+                                <a href="#" id="dp-contrato-link-visualizar" target="_blank" class="action-button" style="text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                    <span>👁️ Visualizar PDF</span>
+                                </a>
+                            </div>
+
+                            <div id="dp-contrato-status-pendente" style="display: none; margin-top: 15px;">
+                                <div class="alert alert-warning" style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span><strong>Pendente:</strong> O contrato terapêutico ainda não foi assinado.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee;">
+                            <h4 style="color: var(--cor-primaria); margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">📁 Arquivos e Anexos (Anamnese, Testes, etc.)</h4>
+                            
+                            <div id="ac-arquivos-lista" style="margin-bottom: 20px;">
+                                <p class="text-muted" style="font-size: 0.9em; font-style: italic;">Carregando arquivos...</p>
+                            </div>
+
+                            <label for="ac-novo-arquivo" style="font-size: 0.9em; cursor: pointer; font-weight: 600;">Adicionar Novo Arquivo:</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="file" id="ac-novo-arquivo" class="form-control" style="flex-grow: 1;">
+                                <span id="upload-status" style="font-size: 0.85em; font-style: italic; color: var(--cor-primaria);"></span>
+                            </div>
+                            <small class="text-muted">Selecione um arquivo (PDF, Imagem) para salvar automaticamente no prontuário.</small>
+                        </div>
+
+                    </div>
+                </fieldset>
+            </form>
         </div> 
         <div id="pendencias-section">
             <fieldset>
