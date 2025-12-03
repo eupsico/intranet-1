@@ -285,27 +285,26 @@ export function renderizarSessoes() {
         : "Data Inválida";
     const statusSessao = sessao.status || "pendente";
 
-    // --- Lógica de Status e Estilos ---
+    // --- Lógica de Status Texto ---
     let statusTexto = "Pendente";
-    let statusClasse = "status-pendente";
-    let itemClasseStatus = "status-pendente";
-
-    if (statusSessao === "presente") {
-      statusTexto = "Realizada (Presente)";
-      statusClasse = "status-realizada status-presenca";
-      itemClasseStatus = "status-realizada";
-    } else if (statusSessao === "ausente") {
-      statusTexto = "Realizada (Ausente)";
-      statusClasse = "status-realizada status-ausente";
-      itemClasseStatus = "status-realizada";
-    } else if (statusSessao === "cancelada_prof") {
-      // NOVO STATUS
+    if (statusSessao === "presente") statusTexto = "Realizada (Presente)";
+    else if (statusSessao === "ausente") statusTexto = "Realizada (Ausente)";
+    else if (statusSessao === "cancelada_prof")
       statusTexto = "Cancelada (Profissional)";
-      statusClasse = "status-realizada status-cancelada";
-      itemClasseStatus = "status-realizada";
-    }
 
-    itemDiv.classList.add(itemClasseStatus);
+    // Adiciona classe ao container principal para estilização se necessário
+    itemDiv.classList.add(`status-${statusSessao}`);
+
+    // --- CORREÇÃO AQUI: Botões sempre visíveis e destacando o selecionado ---
+    const btnPresenteClass = `btn-presenca ${
+      statusSessao === "presente" ? "active" : ""
+    }`;
+    const btnAusenteClass = `btn-ausencia ${
+      statusSessao === "ausente" ? "active" : ""
+    }`;
+    const btnCancelarClass = `btn-cancelar ${
+      statusSessao === "cancelada_prof" ? "active" : ""
+    }`;
 
     itemDiv.innerHTML = `
       <div class="session-info">
@@ -319,26 +318,21 @@ export function renderizarSessoes() {
         </div>
         <div class="info-item">
           <span class="label">Status</span>
-          <span class="value status ${statusClasse}">${statusTexto}</span>
+          <span class="value status status-${statusSessao}">${statusTexto}</span>
         </div>
       </div>
       <div class="session-actions">
-        ${
-          statusSessao === "pendente"
-            ? `
-          <button type="button" class="btn-presenca" data-action="presente" title="Paciente compareceu">Presente</button>
-          <button type="button" class="btn-ausencia" data-action="ausente" title="Paciente faltou">Ausente</button>
-          <button type="button" class="btn-cancelar" data-action="cancelada_prof" title="Cancelada pelo profissional">Cancelar</button>
-        `
-            : ""
-        }
-        <button type="button" class="action-button secondary-button btn-anotacoes" data-action="anotacoes">
+          <button type="button" class="${btnPresenteClass}" data-action="presente" title="Marcar como Presente">Presente</button>
+          <button type="button" class="${btnAusenteClass}" data-action="ausente" title="Marcar como Ausente">Ausente</button>
+          <button type="button" class="${btnCancelarClass}" data-action="cancelada_prof" title="Cancelar Sessão">Cancelar</button>
+        
+          <button type="button" class="action-button secondary-button btn-anotacoes" data-action="anotacoes">
           ${
             sessao.anotacoes &&
             Object.keys(sessao.anotacoes).some((k) => sessao.anotacoes[k])
-              ? "Ver/Editar"
-              : "Adicionar"
-          } Anotações
+              ? "Ver/Editar Anotações"
+              : "Adicionar Anotações"
+          }
         </button>
       </div>
     `;
