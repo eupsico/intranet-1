@@ -759,7 +759,7 @@ export async function init(db_ignored, user, userData) {
           );
           setTextContentIfExists(
             "#modal-ns-recorrencia",
-            detalhes.recorrenciaSolicitada || "N/A"
+            detalhes.frequencia || "N/A"
           );
           setValueIfExists("#admin-ag-profissional-nome", data.solicitanteNome);
           carregarSalasDropdownAdmin();
