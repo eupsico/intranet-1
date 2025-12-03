@@ -259,22 +259,19 @@ export function renderizarSessoes() {
     itemDiv.className = "session-item";
     itemDiv.dataset.sessaoId = sessao.id;
 
-    // --- CORREÇÃO: Lógica robusta para obter Data e Hora ---
+    // --- Lógica de Data e Hora ---
     let dataObj = null;
     let horaTexto = "";
 
     if (sessao.dataHora?.toDate) {
-      // Caso ideal: Timestamp do Firestore
       dataObj = sessao.dataHora.toDate();
       horaTexto = dataObj.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
       });
     } else if (sessao.data) {
-      // Fallback: Campos separados (String)
       const horaTemp = sessao.horaInicio || "00:00";
       try {
-        // Adiciona T para ISO
         dataObj = new Date(`${sessao.data}T${horaTemp}:00`);
         horaTexto = horaTemp;
       } catch (e) {
@@ -287,8 +284,8 @@ export function renderizarSessoes() {
         ? dataObj.toLocaleDateString("pt-BR")
         : "Data Inválida";
     const statusSessao = sessao.status || "pendente";
-    // -------------------------------------------------------
 
+    // --- Lógica de Status e Estilos ---
     let statusTexto = "Pendente";
     let statusClasse = "status-pendente";
     let itemClasseStatus = "status-pendente";
@@ -301,7 +298,13 @@ export function renderizarSessoes() {
       statusTexto = "Realizada (Ausente)";
       statusClasse = "status-realizada status-ausente";
       itemClasseStatus = "status-realizada";
+    } else if (statusSessao === "cancelada_prof") {
+      // NOVO STATUS
+      statusTexto = "Cancelada (Profissional)";
+      statusClasse = "status-realizada status-cancelada";
+      itemClasseStatus = "status-realizada";
     }
+
     itemDiv.classList.add(itemClasseStatus);
 
     itemDiv.innerHTML = `
@@ -323,8 +326,9 @@ export function renderizarSessoes() {
         ${
           statusSessao === "pendente"
             ? `
-          <button type="button" class="btn-presenca" data-action="presente">Presente</button>
-          <button type="button" class="btn-ausencia" data-action="ausente">Ausente</button>
+          <button type="button" class="btn-presenca" data-action="presente" title="Paciente compareceu">Presente</button>
+          <button type="button" class="btn-ausencia" data-action="ausente" title="Paciente faltou">Ausente</button>
+          <button type="button" class="btn-cancelar" data-action="cancelada_prof" title="Cancelada pelo profissional">Cancelar</button>
         `
             : ""
         }

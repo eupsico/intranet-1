@@ -837,3 +837,29 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
         grid-template-columns: 1fr; /* 1 coluna em mobile */
      }
 }
+/* ... estilos existentes ... */
+
+/* Botão Cancelar */
+.btn-cancelar {
+    padding: 8px 15px;
+    border: 1px solid #6c757d; /* Cinza */
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    background-color: transparent;
+    color: #6c757d;
+}
+
+.btn-cancelar:hover {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Status Cancelada */
+.session-item.status-realizada .session-info .value.status-cancelada {
+    color: #6c757d; /* Cinza */
+    font-weight: 600;
+    text-decoration: line-through; /* Opcional: risco para indicar cancelamento */
+}

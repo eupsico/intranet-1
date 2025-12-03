@@ -68,10 +68,6 @@ export function adicionarEventListenersGerais() {
     "session-list-container"
   );
   if (sessionListContainer) {
-    // Remove listener antigo antes de adicionar novo para evitar duplicação
-    // Nota: A remoção de listeners anônimos ou com funções diferentes é complexa.
-    // Uma abordagem mais robusta seria usar uma função nomeada ou gerenciar o listener.
-    // Por simplicidade aqui, vamos confiar que init só roda uma vez.
     sessionListContainer.addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button) return;
@@ -82,13 +78,18 @@ export function adicionarEventListenersGerais() {
 
       if (!sessaoId || !action) return;
 
-      if (action === "presente" || action === "ausente") {
+      // --- ALTERAÇÃO AQUI: Incluir 'cancelada_prof' na verificação ---
+      if (
+        action === "presente" ||
+        action === "ausente" ||
+        action === "cancelada_prof"
+      ) {
         handlers.handlePresencaAusenciaClick(sessaoId, action, button);
       } else if (action === "anotacoes") {
-        handleAbrirAnotacoes(sessaoId); // Handler do modal de anotações
+        handleAbrirAnotacoes(sessaoId);
       }
     });
-  } // Gerar Prontuário PDF
+  }
 
   document
     .getElementById("btn-gerar-prontuario-pdf")
