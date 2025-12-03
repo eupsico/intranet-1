@@ -372,7 +372,7 @@
             document.getElementById('data-paciente-nascimento').textContent = new Date(pacienteData.dataNascimento + 'T03:00:00').toLocaleDateString('pt-BR');
             document.getElementById('data-contribuicao').textContent = `R$ ${pacienteData.valorContribuicao || '0,00'}`;
 
-            const horarioInfo = meuAtendimento.horarioSessao || {};
+            const horarioInfo = meuAtendimento.horarioSessoes || {};
             document.getElementById('data-dia-sessao').textContent = horarioInfo.diaSemana || 'A definir';
             document.getElementById('data-horario-sessao').textContent = horarioInfo.horario || 'A definir';
             document.getElementById('data-tipo-atendimento').textContent = horarioInfo.tipoAtendimento || 'A definir';
