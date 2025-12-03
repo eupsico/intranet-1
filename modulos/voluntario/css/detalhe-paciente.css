@@ -460,3 +460,80 @@
 @media (max-width: 480px) {
     .info-summary-grid, .info-summary-grid.cols-3 { grid-template-columns: 1fr; }
 }
+/* Botão que abre o menu */
+.btn-options-toggle {
+    background: transparent;
+    border: 1px solid var(--cor-borda);
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--cor-texto-secundario);
+}
+.btn-options-toggle:hover, .btn-options-toggle.active {
+    background-color: var(--cor-fundo-hover);
+    color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+/* O Menu Dropdown Flutuante */
+.session-dropdown-menu {
+    display: none; /* Oculto */
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 240px;
+    background-color: white;
+    border: 1px solid var(--cor-borda);
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    z-index: 100;
+    margin-top: 5px;
+    padding: 5px 0;
+    flex-direction: column;
+}
+
+.session-dropdown-menu.active {
+    display: flex; /* Mostra quando ativo */
+}
+
+/* Itens do Menu */
+.session-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--cor-texto-principal);
+    transition: background 0.2s;
+}
+.session-dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+.session-dropdown-item i {
+    width: 20px;
+    text-align: center;
+}
+
+/* Cores Específicas dos Itens */
+.item-presente:hover { color: #28a745; background-color: #e6f9ed; }
+.item-ausente:hover { color: #856404; background-color: #fff3cd; }
+.item-cancel-paciente:hover { color: #dc3545; background-color: #f8d7da; }
+.item-cancel-prof:hover { color: #dc3545; background-color: #f8d7da; }
+.item-confirmar:hover { color: #007bff; background-color: #e6f2ff; }
+
+/* Separador no menu */
+.menu-separator {
+    height: 1px;
+    background-color: #eee;
+    margin: 4px 0;
+}
