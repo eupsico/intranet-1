@@ -147,19 +147,19 @@ export async function abrirModalHorariosPb() {
     'input[name="iniciou-pb"]'
   );
   radiosIniciouOriginais.forEach((radio) => {
-    const clone = radio.cloneNode(true);
-    clone.required = true;
-    radio.parentNode.replaceChild(clone, radio);
-    clone.addEventListener("change", listenerIniciouPbChange);
+    radio.required = true;
+    // Remove o listener anterior para evitar duplicação (caso a função seja chamada várias vezes)
+    radio.removeEventListener("change", listenerIniciouPbChange);
+    // Adiciona o listener novamente
+    radio.addEventListener("change", listenerIniciouPbChange);
   });
 
   const radiosMotivoOriginais = form.querySelectorAll(
     'input[name="motivo-nao-inicio"]'
   );
   radiosMotivoOriginais.forEach((radio) => {
-    const clone = radio.cloneNode(true);
-    radio.parentNode.replaceChild(clone, radio);
-    clone.addEventListener("change", listenerMotivoNaoInicioChange);
+    radio.removeEventListener("change", listenerMotivoNaoInicioChange);
+    radio.addEventListener("change", listenerMotivoNaoInicioChange);
   });
 
   modal.style.display = "flex";
