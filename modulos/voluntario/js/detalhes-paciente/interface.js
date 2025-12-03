@@ -236,21 +236,22 @@ export function renderizarSessoes() {
   const loading = document.getElementById("session-list-loading");
   const placeholder = document.getElementById("session-list-placeholder");
 
-  if (!container || !loading || !placeholder) {
-    console.error(
-      "Elementos da lista de sessões não encontrados no HTML para renderização."
+  // Verificação de segurança reforçada
+  if (!container) {
+    console.warn(
+      "Ainda não é possível renderizar sessões: container não encontrado no DOM."
     );
     return;
   }
 
   container.innerHTML = "";
-  loading.style.display = "none";
-  placeholder.style.display = "none";
+  if (loading) loading.style.display = "none";
+  if (placeholder) placeholder.style.display = "none";
 
   const sessoes = estado.sessoesCarregadas;
 
-  if (sessoes.length === 0) {
-    placeholder.style.display = "block";
+  if (!sessoes || sessoes.length === 0) {
+    if (placeholder) placeholder.style.display = "block";
     return;
   }
 
@@ -285,27 +286,38 @@ export function renderizarSessoes() {
         : "Data Inválida";
     const statusSessao = sessao.status || "pendente";
 
-    // --- Lógica de Status Texto ---
-    let statusTexto = "Pendente";
-    if (statusSessao === "presente") statusTexto = "Realizada (Presente)";
-    else if (statusSessao === "ausente") statusTexto = "Realizada (Ausente)";
-    else if (statusSessao === "cancelada_prof")
-      statusTexto = "Cancelada (Profissional)";
+    // --- Ícones e Textos Baseados no Status ---
+    let statusLabel = "Agendado";
+    let statusIcon = "📅"; // Ícone padrão
+    let statusClass = "";
 
-    // Adiciona classe ao container principal para estilização se necessário
-    itemDiv.classList.add(`status-${statusSessao}`);
+    switch (statusSessao) {
+      case "presente":
+        statusLabel = "Paciente Presente";
+        statusIcon = "👍";
+        statusClass = "presente";
+        break;
+      case "ausente":
+        statusLabel = "Paciente Ausente";
+        statusIcon = "👎";
+        statusClass = "ausente";
+        break;
+      case "cancelada_paciente":
+        statusLabel = "Cancelado (Paciente)";
+        statusIcon = "🚫";
+        statusClass = "cancelada_paciente";
+        break;
+      case "cancelada_prof":
+        statusLabel = "Cancelado (Profissional)";
+        statusIcon = "⛔";
+        statusClass = "cancelada_prof";
+        break;
+      default:
+        statusLabel = "Agendado";
+        statusIcon = "📅";
+    }
 
-    // --- CORREÇÃO AQUI: Botões sempre visíveis e destacando o selecionado ---
-    const btnPresenteClass = `btn-presenca ${
-      statusSessao === "presente" ? "active" : ""
-    }`;
-    const btnAusenteClass = `btn-ausencia ${
-      statusSessao === "ausente" ? "active" : ""
-    }`;
-    const btnCancelarClass = `btn-cancelar ${
-      statusSessao === "cancelada_prof" ? "active" : ""
-    }`;
-
+    // --- HTML do Card com Dropdown ---
     itemDiv.innerHTML = `
       <div class="session-info">
         <div class="info-item">
@@ -318,22 +330,41 @@ export function renderizarSessoes() {
         </div>
         <div class="info-item">
           <span class="label">Status</span>
-          <span class="value status status-${statusSessao}">${statusTexto}</span>
+          <span class="value status-text ${statusClass}">
+             ${statusIcon} ${statusLabel}
+          </span>
         </div>
       </div>
+
       <div class="session-actions">
-          <button type="button" class="${btnPresenteClass}" data-action="presente" title="Marcar como Presente">Presente</button>
-          <button type="button" class="${btnAusenteClass}" data-action="ausente" title="Marcar como Ausente">Ausente</button>
-          <button type="button" class="${btnCancelarClass}" data-action="cancelada_prof" title="Cancelar Sessão">Cancelar</button>
+          <div class="dropdown-container">
+              <button type="button" class="btn-status-dropdown" data-action="toggle-status-menu">
+                  <span class="icon">⚙️</span> Opções
+              </button>
+              
+              <div class="status-dropdown-menu">
+                  <button type="button" class="status-dropdown-item item-presente" data-action="mudar-status" data-novo-status="presente">
+                      👍 Paciente Presente
+                  </button>
+                  <button type="button" class="status-dropdown-item item-ausente" data-action="mudar-status" data-novo-status="ausente">
+                      👎 Paciente Ausente
+                  </button>
+                  <button type="button" class="status-dropdown-item item-cancelado-paciente" data-action="mudar-status" data-novo-status="cancelada_paciente">
+                      🚫 Paciente Cancelou
+                  </button>
+                  <button type="button" class="status-dropdown-item item-cancelado-prof" data-action="mudar-status" data-novo-status="cancelada_prof">
+                      ⛔ Profissional Cancelou
+                  </button>
+                   <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
+                  <button type="button" class="status-dropdown-item" data-action="mudar-status" data-novo-status="pendente">
+                      📅 Agendado (Resetar)
+                  </button>
+              </div>
+          </div>
         
           <button type="button" class="action-button secondary-button btn-anotacoes" data-action="anotacoes">
-          ${
-            sessao.anotacoes &&
-            Object.keys(sessao.anotacoes).some((k) => sessao.anotacoes[k])
-              ? "Ver/Editar Anotações"
-              : "Adicionar Anotações"
-          }
-        </button>
+             📝 Anotações
+          </button>
       </div>
     `;
     container.appendChild(itemDiv);

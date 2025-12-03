@@ -67,8 +67,34 @@ export function adicionarEventListenersGerais() {
   const sessionListContainer = document.getElementById(
     "session-list-container"
   );
+
   if (sessionListContainer) {
-    sessionListContainer.addEventListener("click", (event) => {
+    // Remove listener antigo para evitar duplicação (boa prática)
+    const newContainer = sessionListContainer.cloneNode(true);
+    sessionListContainer.parentNode.replaceChild(
+      newContainer,
+      sessionListContainer
+    );
+
+    newContainer.addEventListener("click", (event) => {
+      // 1. Lógica para abrir/fechar o menu dropdown
+      const toggleBtn = event.target.closest(
+        '[data-action="toggle-status-menu"]'
+      );
+      if (toggleBtn) {
+        const menu = toggleBtn.nextElementSibling;
+        // Fecha outros menus abertos
+        document
+          .querySelectorAll(".status-dropdown-menu.active")
+          .forEach((m) => {
+            if (m !== menu) m.classList.remove("active");
+          });
+        menu.classList.toggle("active");
+        event.stopPropagation(); // Impede que o clique feche imediatamente
+        return;
+      }
+
+      // 2. Lógica para clique nos itens do menu ou anotações
       const button = event.target.closest("button");
       if (!button) return;
 
@@ -78,16 +104,22 @@ export function adicionarEventListenersGerais() {
 
       if (!sessaoId || !action) return;
 
-      // --- ALTERAÇÃO AQUI: Incluir 'cancelada_prof' na verificação ---
-      if (
-        action === "presente" ||
-        action === "ausente" ||
-        action === "cancelada_prof"
-      ) {
-        handlers.handlePresencaAusenciaClick(sessaoId, action, button);
+      if (action === "mudar-status") {
+        const novoStatus = button.dataset.novoStatus;
+        // Fecha o menu
+        button.closest(".status-dropdown-menu").classList.remove("active");
+        // Chama o manipulador
+        handlers.handleAlterarStatusSessao(sessaoId, novoStatus);
       } else if (action === "anotacoes") {
         handleAbrirAnotacoes(sessaoId);
       }
+    });
+
+    // Fecha menus ao clicar fora
+    document.addEventListener("click", () => {
+      document
+        .querySelectorAll(".status-dropdown-menu.active")
+        .forEach((m) => m.classList.remove("active"));
     });
   }
 

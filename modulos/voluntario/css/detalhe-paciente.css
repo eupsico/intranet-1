@@ -139,6 +139,7 @@
 }
 
 .session-actions {
+    position: relative; /* Para posicionar o menu */
     display: flex;
     gap: 10px;
     align-items: center;
@@ -886,3 +887,76 @@ ADIÇÃO: Estilos para Abas Horizontais (Modal de Anotações)
     font-weight: 600;
     text-decoration: line-through; /* Opcional: risco para indicar cancelamento */
 }
+.btn-status-dropdown {
+    padding: 8px 12px;
+    background-color: #fff;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    color: var(--cor-texto-principal);
+}
+
+.btn-status-dropdown:hover {
+    background-color: var(--cor-fundo-hover);
+    border-color: var(--cor-primaria);
+}
+
+.btn-status-dropdown i {
+    font-size: 1.1em;
+}
+
+/* O Menu Dropdown */
+.status-dropdown-menu {
+    display: none; /* Oculto por padrão */
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 220px;
+    background-color: white;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    z-index: 100;
+    margin-top: 5px;
+    padding: 5px 0;
+}
+
+.status-dropdown-menu.active {
+    display: block; /* Mostra quando ativo */
+}
+
+.status-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--cor-texto-principal);
+    transition: background 0.2s;
+}
+
+.status-dropdown-item:hover {
+    background-color: var(--cor-fundo-hover);
+}
+
+/* Cores dos itens do menu */
+.item-presente:hover { color: #28a745; background-color: #e6f9ed; }
+.item-ausente:hover { color: #856404; background-color: #fff3cd; }
+.item-cancelado-paciente:hover { color: #dc3545; background-color: #f8d7da; }
+.item-cancelado-prof:hover { color: #dc3545; background-color: #f8d7da; }
+
+/* Cores dos status na lista (Feedback visual) */
+.status-text.presente { color: #28a745; font-weight: bold; }
+.status-text.ausente { color: #856404; font-weight: bold; }
+.status-text.cancelada_paciente { color: #dc3545; text-decoration: line-through; }
+.status-text.cancelada_prof { color: #dc3545; text-decoration: line-through; }

@@ -6,6 +6,7 @@ import { db, doc, updateDoc, serverTimestamp, getDoc } from "./conexao-db.js"; /
 import * as estado from "./estado.js"; // Acesso ao estado global
 import * as carregador from "./carregador-dados.js"; // Para recarregar dados após salvar
 import * as interfaceUI from "./interface.js"; // Para atualizar a UI após salvar
+import { handleAbrirAnotacoes } from "./modais/modal-anotacoes.js";
 
 /**
  * Handler para salvar dados pessoais e de endereço.
@@ -277,4 +278,52 @@ export function handleGerarProntuarioPDF() {
       ", "
     )}\n\n(Lógica de geração do PDF ainda não implementada)`
   ); // Aqui você chamaria a biblioteca ou função responsável por gerar o PDF // Ex: gerarPDFProntuario(estado.pacienteDataGlobal, estado.sessoesCarregadas, selectedItems);
+}
+/**
+ * Handler para alterar o status da sessão e abrir anotações se necessário.
+ */
+export async function handleAlterarStatusSessao(sessaoId, novoStatus) {
+  try {
+    const sessaoRef = doc(
+      db,
+      "trilhaPaciente",
+      estado.pacienteIdGlobal,
+      "sessoes",
+      sessaoId
+    );
+
+    const updateData = {
+      status: novoStatus,
+      statusAtualizadoEm: serverTimestamp(),
+    };
+
+    if (estado.userDataGlobal) {
+      updateData.statusAtualizadoPor = {
+        id: estado.userDataGlobal.uid,
+        nome: estado.userDataGlobal.nome,
+      };
+    }
+
+    await updateDoc(sessaoRef, updateData);
+    console.log(`Status da sessão ${sessaoId} atualizado para ${novoStatus}`);
+
+    // Atualiza a UI
+    await carregador.carregarSessoes();
+    interfaceUI.renderizarSessoes();
+
+    // --- LÓGICA AUTOMÁTICA ---
+    // Se foi cancelado, abre o modal de anotações automaticamente para justificativa
+    if (
+      novoStatus === "cancelada_paciente" ||
+      novoStatus === "cancelada_prof"
+    ) {
+      setTimeout(() => {
+        alert("Por favor, registre o motivo do cancelamento nas anotações.");
+        handleAbrirAnotacoes(sessaoId);
+      }, 300); // Pequeno delay para a UI atualizar antes
+    }
+  } catch (error) {
+    console.error(`Erro ao atualizar status da sessão ${sessaoId}:`, error);
+    alert(`Erro ao alterar status: ${error.message}`);
+  }
 }
