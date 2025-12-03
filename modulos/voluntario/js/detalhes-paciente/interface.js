@@ -172,30 +172,42 @@ export function preencherFormularios() {
   }
 
   // --- NOVO: CONTRATO ASSINADO ---
-  const contratoLinkContainer = document.getElementById(
-    "dp-contrato-link-container"
+  const contratoStatusAssinado = document.getElementById(
+    "dp-contrato-status-assinado"
   );
-  const contratoLink = document.getElementById("dp-contrato-link");
-  const contratoData = document.getElementById("dp-contrato-data");
+  const contratoStatusPendente = document.getElementById(
+    "dp-contrato-status-pendente"
+  );
+  const contratoLink = document.getElementById("dp-contrato-link-visualizar");
+  const contratoData = document.getElementById("dp-contrato-data-texto");
 
-  if (contratoLinkContainer && contratoLink) {
+  if (contratoStatusAssinado && contratoStatusPendente) {
+    // Verifica se existe URL do contrato (sinalizando que foi assinado)
     if (paciente.contratoUrl) {
-      contratoLinkContainer.style.display = "block";
-      contratoLink.href = paciente.contratoUrl;
+      contratoStatusAssinado.style.display = "block";
+      contratoStatusPendente.style.display = "none";
 
-      if (contratoData && paciente.contratoData) {
-        const d = paciente.contratoData.toDate
-          ? paciente.contratoData.toDate()
-          : new Date(paciente.contratoData);
-        contratoData.textContent =
-          d.toLocaleDateString("pt-BR") +
-          " às " +
-          d.toLocaleTimeString("pt-BR");
-      } else if (contratoData) {
-        contratoData.textContent = "Data não registrada";
+      if (contratoLink) {
+        contratoLink.href = paciente.contratoUrl;
+      }
+
+      if (contratoData) {
+        if (paciente.contratoData) {
+          const d = paciente.contratoData.toDate
+            ? paciente.contratoData.toDate()
+            : new Date(paciente.contratoData);
+          contratoData.textContent =
+            d.toLocaleDateString("pt-BR") +
+            " às " +
+            d.toLocaleTimeString("pt-BR");
+        } else {
+          contratoData.textContent = "Data não registrada";
+        }
       }
     } else {
-      contratoLinkContainer.style.display = "none";
+      // Se não tem URL, está pendente
+      contratoStatusAssinado.style.display = "none";
+      contratoStatusPendente.style.display = "block";
     }
   }
 
