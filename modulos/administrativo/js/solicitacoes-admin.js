@@ -603,13 +603,13 @@ export async function init(db_ignored, user, userData) {
   }
 
   // --- ATUALIZADO: Handler com verificação de feriado ---
+  // --- Função Principal: Processar Novas Sessões (CORRIGIDA: Gera dataHora) ---
   async function handleNovasSessoesAction(docId, action, solicitacaoData) {
     const btnAprovar = document.getElementById("btn-aprovar-novas-sessoes");
     const btnRejeitar = document.getElementById("btn-rejeitar-novas-sessoes");
     const mensagemInput = document.getElementById("admin-ag-message-text");
     const mensagem = mensagemInput ? mensagemInput.value.trim() : "";
 
-    // Captura os valores do formulário
     const dataInicio = document.getElementById("admin-ag-data-inicio")?.value;
     const horaInicio = document.getElementById("admin-ag-hora-inicio")?.value;
     const horaFim = document.getElementById("admin-ag-hora-fim")?.value;
@@ -644,7 +644,6 @@ export async function init(db_ignored, user, userData) {
         });
         alert("Solicitação rejeitada com sucesso.");
       } else if (action === "Aprovada") {
-        // Validações
         if (
           !dataInicio ||
           !horaInicio ||
@@ -663,8 +662,6 @@ export async function init(db_ignored, user, userData) {
         }
 
         const batch = writeBatch(dbInstance);
-
-        // Referências
         const sessoesRef = collection(
           dbInstance,
           "trilhaPaciente",
@@ -675,23 +672,20 @@ export async function init(db_ignored, user, userData) {
           dbInstance,
           "trilhaPaciente",
           solicitacaoData.pacienteId
-        ); // Referência ao Doc do Paciente
+        );
 
-        // Inicializa a data base
         let dataBase = new Date(dataInicio + "T00:00:00");
 
         let sessoesCriadas = 0;
         let tentativasSeguranca = 0;
         const MAX_TENTATIVAS = 100;
 
-        // Loop while para garantir a quantidade exata de sessões (pulando feriados)
         while (
           sessoesCriadas < qtdSessoes &&
           tentativasSeguranca < MAX_TENTATIVAS
         ) {
           tentativasSeguranca++;
 
-          // Verifica se é feriado
           if (ehFeriado(dataBase)) {
             console.log(`Pulando feriado: ${dataBase.toLocaleDateString()}`);
             avancarData(dataBase, recorrencia);
@@ -699,16 +693,21 @@ export async function init(db_ignored, user, userData) {
           }
 
           const novaSessaoRef = doc(sessoesRef);
-          const dataString = dataBase.toISOString().split("T")[0]; // YYYY-MM-DD
+          const dataString = dataBase.toISOString().split("T")[0];
+
+          // --- CORREÇÃO: Criar objeto Date combinando dia e hora ---
+          const dataHoraIso = new Date(`${dataString}T${horaInicio}:00`);
+          // ---------------------------------------------------------
 
           const sessaoData = {
             pacienteId: solicitacaoData.pacienteId || null,
             pacienteNome: solicitacaoData.pacienteNome || "N/A",
             profissionalId: solicitacaoData.solicitanteId || null,
             profissionalNome: solicitacaoData.solicitanteNome || "N/A",
-            data: dataString,
-            horaInicio: horaInicio,
+            data: dataString, // Campo Legado/Visualização simples
+            horaInicio: horaInicio, // Campo Legado/Visualização simples
             horaFim: horaFim,
+            dataHora: Timestamp.fromDate(dataHoraIso), // *** CAMPO CRUCIAL PARA ORDENAÇÃO ***
             status: "Agendado",
             modalidade: tipoSessao,
             sala: sala,
@@ -725,18 +724,13 @@ export async function init(db_ignored, user, userData) {
         }
 
         if (tentativasSeguranca >= MAX_TENTATIVAS) {
-          console.warn(
-            "Limite de tentativas atingido. Verifique recorrência e feriados."
-          );
+          console.warn("Limite de tentativas atingido.");
         }
 
-        // 1. Atualiza a solicitação para Concluída
         batch.update(docRef, {
           status: "Concluída",
           adminFeedback: adminFeedback,
         });
-
-        // 2. Atualiza o status do paciente para "em_atendimento_pb"
         batch.update(pacienteRef, {
           status: "em_atendimento_pb",
           lastUpdate: serverTimestamp(),
@@ -744,7 +738,7 @@ export async function init(db_ignored, user, userData) {
 
         await batch.commit();
         alert(
-          `Sucesso! ${sessoesCriadas} sessões geradas e status do paciente atualizado para 'Em Atendimento PB'.`
+          `Sucesso! ${sessoesCriadas} sessões geradas e status do paciente atualizado.`
         );
       }
       closeModal();
@@ -755,7 +749,6 @@ export async function init(db_ignored, user, userData) {
       if (btnRejeitar) btnRejeitar.disabled = false;
     }
   }
-
   function avancarData(dateObj, recorrencia) {
     if (recorrencia === "semanal") dateObj.setDate(dateObj.getDate() + 7);
     else if (recorrencia === "quinzenal")
