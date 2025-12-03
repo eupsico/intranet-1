@@ -601,7 +601,9 @@ export async function init(db_ignored, user, userData) {
       return fLimpo === feriadoFixo || fLimpo === feriadoCompleto;
     });
   }
+
   // --- ATUALIZADO: Handler com verificação de feriado ---
+
   async function handleNovasSessoesAction(docId, action, solicitacaoData) {
     const btnAprovar = document.getElementById("btn-aprovar-novas-sessoes");
     const btnRejeitar = document.getElementById("btn-rejeitar-novas-sessoes");
@@ -654,8 +656,24 @@ export async function init(db_ignored, user, userData) {
           );
         }
 
+        // Validação de segurança para garantir que temos o ID do paciente
+        if (!solicitacaoData.pacienteId) {
+          throw new Error(
+            "Erro: ID do paciente não encontrado na solicitação."
+          );
+        }
+
         const batch = writeBatch(dbInstance);
-        const sessoesRef = collection(dbInstance, "agendamentos");
+
+        // --- CORREÇÃO AQUI ---
+        [cite_start]; // Aponta para: trilhaPaciente -> ID do Paciente -> Subcoleção 'sessoes' [cite: 1]
+        const sessoesRef = collection(
+          dbInstance,
+          "trilhaPaciente",
+          solicitacaoData.pacienteId,
+          "sessoes"
+        );
+
         let dataBase = new Date(dataInicio + "T00:00:00");
 
         let sessoesCriadas = 0;
@@ -685,7 +703,7 @@ export async function init(db_ignored, user, userData) {
             data: dataString,
             horaInicio: horaInicio,
             horaFim: horaFim,
-            status: "Agendado",
+            status: "Agendado", // Status inicial da sessão
             modalidade: tipoSessao,
             sala: sala,
             criadoEm: serverTimestamp(),
@@ -711,7 +729,7 @@ export async function init(db_ignored, user, userData) {
         });
         await batch.commit();
         alert(
-          `Sucesso! ${sessoesCriadas} sessões foram geradas e a solicitação foi aprovada.`
+          `Sucesso! ${sessoesCriadas} sessões foram geradas na ficha do paciente.`
         );
       }
       closeModal();
@@ -722,7 +740,6 @@ export async function init(db_ignored, user, userData) {
       if (btnRejeitar) btnRejeitar.disabled = false;
     }
   }
-
   function avancarData(dateObj, recorrencia) {
     if (recorrencia === "semanal") dateObj.setDate(dateObj.getDate() + 7);
     else if (recorrencia === "quinzenal")
