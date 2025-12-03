@@ -21,7 +21,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // --- Função Exportada ---
 

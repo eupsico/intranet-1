@@ -10,7 +10,7 @@ import {
   collection,
   serverTimestamp,
 } from "./firebase-init.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 // --- Ponto de Entrada ---
 document.addEventListener("DOMContentLoaded", init);

@@ -5,7 +5,7 @@
  * Descrição: Gerenciador principal do painel RH com roteamento por hash
  */
 
-import { arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 /**
  * Inicializa o painel de RH e configura o sistema de roteamento

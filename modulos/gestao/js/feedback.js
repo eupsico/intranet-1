@@ -2,7 +2,7 @@
 // VERSÃO 2.0 (CORRIGIDO - Utiliza o utilizador logado)
 
 import { db as firestoreDb, auth } from "../../../assets/js/firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
   collection,
   query,

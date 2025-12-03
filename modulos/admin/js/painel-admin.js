@@ -1,7 +1,7 @@
 import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 // Variáveis para armazenar os dados do usuário no escopo do módulo
 let currentUser, currentUserData;

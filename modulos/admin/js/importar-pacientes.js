@@ -8,7 +8,7 @@
 import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 export function init(user, userData) {
   console.log("🚀 Módulo de Importar Pacientes iniciado (v4.0 COM DEBUG).");

@@ -10,17 +10,17 @@ import {
   signInWithPopup,
   onAuthStateChanged,
   signOut,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 import {
   ref,
   uploadBytes,
   getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import {
   getDoc,
   doc,
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ============================================
 // ELEMENTOS DO DOM
