@@ -85,6 +85,9 @@ export function atualizarVisibilidadeBotoesAcao(status) {
 /**
  * Preenche os formulários da página com os dados do paciente do estado.
  */
+/**
+ * Preenche os formulários da página com os dados do paciente do estado.
+ */
 export function preencherFormularios() {
   console.log(">>> Entrou em preencherFormularios()");
   if (!estado.pacienteDataGlobal) {
@@ -132,8 +135,6 @@ export function preencherFormularios() {
           element.value = value ?? "--";
         }
       }
-    } else {
-      console.warn(`Elemento #${id} não encontrado para preenchimento.`);
     }
   };
 
@@ -150,11 +151,13 @@ export function preencherFormularios() {
   setElementValue("dp-status-atual", statusFormatado, true);
   setElementValue("dp-status-atual-input", statusFormatado, true);
 
+  // --- PARCERIA ---
   const parceriaContainer = document.getElementById("dp-parceria-container");
   const parceriaSelect = document.getElementById("dp-parceria");
   if (parceriaContainer && parceriaSelect) {
     if (statusPaciente === "pacientes_parcerias") {
       parceriaContainer.style.display = "block";
+      // Preenche select se vazio
       if (parceriaSelect.options.length <= 1) {
         const parceriasList =
           estado.systemConfigsGlobal?.listas?.parcerias || [];
@@ -171,46 +174,61 @@ export function preencherFormularios() {
     }
   }
 
-  // --- NOVO: CONTRATO ASSINADO ---
-  const contratoStatusAssinado = document.getElementById(
-    "dp-contrato-status-assinado"
-  );
-  const contratoStatusPendente = document.getElementById(
-    "dp-contrato-status-pendente"
-  );
-  const contratoLink = document.getElementById("dp-contrato-link-visualizar");
-  const contratoData = document.getElementById("dp-contrato-data-texto");
+  // --- LÓGICA DO CONTRATO (NOVO ACORDEÃO) ---
+  const areaAssinado = document.getElementById("area-contrato-assinado");
+  const areaPendente = document.getElementById("area-contrato-pendente");
+  const linkContrato = document.getElementById("link-ver-contrato");
+  const dataAssinatura = document.getElementById("data-assinatura-contrato");
 
-  if (contratoStatusAssinado && contratoStatusPendente) {
-    // Verifica se existe URL do contrato (sinalizando que foi assinado)
-    if (paciente.contratoUrl) {
-      contratoStatusAssinado.style.display = "block";
-      contratoStatusPendente.style.display = "none";
+  // Procura contrato assinado no objeto principal ou nos atendimentos
+  let contratoUrl = paciente.contratoUrl;
+  let contratoData = paciente.contratoData;
 
-      if (contratoLink) {
-        contratoLink.href = paciente.contratoUrl;
+  // Se não achar no raiz, tenta achar no atendimento PB ativo do usuário
+  if (!contratoUrl && paciente.atendimentosPB && estado.userDataGlobal) {
+    const meuAtendimento = paciente.atendimentosPB.find(
+      (at) => at.profissionalId === estado.userDataGlobal.uid
+    );
+    if (meuAtendimento && meuAtendimento.contratoAssinado) {
+      // Estrutura do contratoAssinado dentro do atendimento
+      contratoUrl =
+        meuAtendimento.contratoAssinado.urlPdf ||
+        meuAtendimento.contratoAssinado.arquivoUrl;
+      contratoData = meuAtendimento.contratoAssinado.assinadoEm;
+    }
+  }
+
+  if (areaAssinado && areaPendente) {
+    if (contratoUrl) {
+      // CONTRATO ASSINADO
+      areaAssinado.style.display = "block";
+      areaPendente.style.display = "none";
+
+      if (linkContrato) {
+        linkContrato.href = contratoUrl;
       }
 
-      if (contratoData) {
-        if (paciente.contratoData) {
-          const d = paciente.contratoData.toDate
-            ? paciente.contratoData.toDate()
-            : new Date(paciente.contratoData);
-          contratoData.textContent =
+      if (dataAssinatura) {
+        if (contratoData) {
+          const d = contratoData.toDate
+            ? contratoData.toDate()
+            : new Date(contratoData);
+          dataAssinatura.textContent =
             d.toLocaleDateString("pt-BR") +
             " às " +
             d.toLocaleTimeString("pt-BR");
         } else {
-          contratoData.textContent = "Data não registrada";
+          dataAssinatura.textContent = "Data não registrada";
         }
       }
     } else {
-      // Se não tem URL, está pendente
-      contratoStatusAssinado.style.display = "none";
-      contratoStatusPendente.style.display = "block";
+      // CONTRATO PENDENTE
+      areaAssinado.style.display = "none";
+      areaPendente.style.display = "block";
     }
   }
 
+  // --- DEMAIS DADOS ---
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
   setElementValue("dp-idade", idadeCalculada, true);
   setElementValue("dp-idade-input", idadeCalculada, true);
@@ -259,7 +277,7 @@ export function preencherFormularios() {
     acompanhamento.registroEncerramento
   );
 
-  // --- NOVO: LISTA DE ARQUIVOS CLÍNICOS ---
+  // --- LISTA DE ARQUIVOS CLÍNICOS (UPLOAD) ---
   const arquivosContainer = document.getElementById("ac-arquivos-lista");
   if (arquivosContainer) {
     arquivosContainer.innerHTML = "";
@@ -267,12 +285,15 @@ export function preencherFormularios() {
       const ul = document.createElement("ul");
       ul.style.listStyle = "none";
       ul.style.padding = "0";
+      ul.style.margin = "0";
 
       paciente.arquivosClinicos.forEach((arq) => {
         const li = document.createElement("li");
         li.style.marginBottom = "8px";
-        li.style.paddingBottom = "8px";
-        li.style.borderBottom = "1px solid #eee";
+        li.style.padding = "10px";
+        li.style.border = "1px solid #eee";
+        li.style.borderRadius = "4px";
+        li.style.backgroundColor = "#fff";
         li.style.display = "flex";
         li.style.justifyContent = "space-between";
         li.style.alignItems = "center";
@@ -285,19 +306,22 @@ export function preencherFormularios() {
           : "";
 
         li.innerHTML = `
-                <div>
-                    <a href="${arq.url}" target="_blank" style="font-weight: 600; color: #0056b3; text-decoration: none;">
-                        📄 ${arq.nome}
+                <div style="overflow: hidden; text-overflow: ellipsis;">
+                    <a href="${arq.url}" target="_blank" style="font-weight: 600; color: var(--cor-primaria); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-file-alt"></i> ${arq.nome}
                     </a>
-                    <span style="display: block; font-size: 0.8em; color: #777;">Enviado em: ${dataUpload}</span>
+                    <span style="display: block; font-size: 0.8em; color: #777; margin-left: 20px;">Enviado em: ${dataUpload}</span>
                 </div>
+                <a href="${arq.url}" target="_blank" class="action-button secondary-button small" title="Baixar">
+                    <i class="fas fa-download"></i>
+                </a>
               `;
         ul.appendChild(li);
       });
       arquivosContainer.appendChild(ul);
     } else {
       arquivosContainer.innerHTML =
-        '<p class="text-muted" style="font-size: 0.9em; font-style: italic;">Nenhum arquivo anexado.</p>';
+        '<p class="text-muted" style="font-size: 0.9em; font-style: italic; text-align: center; padding: 10px;">Nenhum arquivo anexado.</p>';
     }
   }
 
