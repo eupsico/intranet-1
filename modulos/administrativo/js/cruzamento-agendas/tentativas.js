@@ -8,6 +8,7 @@ import {
   updateDoc,
   serverTimestamp,
   getDoc,
+  deleteDoc,
 } from "../../../../assets/js/firebase-init.js";
 
 let firestoreDb;
@@ -20,9 +21,7 @@ export function init(dbInstance) {
   setupModalActions();
 }
 
-export function refresh() {
-  // onSnapshot cuida da atualização automática
-}
+export function refresh() {}
 
 function setupFilters() {
   const filtro = document.getElementById("filtro-status-tentativa");
@@ -41,6 +40,7 @@ function setupFilters() {
   }
 }
 
+// --- RENDERING DA TABELA ---
 function listenToTentativas() {
   const q = query(collection(firestoreDb, "agendamentoTentativas"));
   const tbody = document.getElementById("tentativas-tbody");
@@ -57,18 +57,17 @@ function listenToTentativas() {
     document.getElementById("nenhuma-tentativa").style.display = "none";
 
     tentativas.forEach((t) => {
-      const statusSlug = t.status
-        .toLowerCase()
-        .replace(/ /g, "-")
-        .replace(/\//g, "-");
       const tr = document.createElement("tr");
-      tr.className = `status-${statusSlug}`;
+      updateRowColor(tr, t.status); // Aplica cor inicial
+
       tr.dataset.status = t.status;
       tr.dataset.id = t.id;
       tr.dataset.pacienteId = t.pacienteId;
       tr.dataset.profissionalId = t.profissionalId;
       tr.dataset.profissionalNome = t.profissionalNome;
+      // Salva dados para o modal
       tr.dataset.horario = t.horarioCompativel;
+      tr.dataset.valor = t.valorContribuicao;
 
       const options = [
         "Primeiro Contato",
@@ -90,30 +89,60 @@ function listenToTentativas() {
       tr.innerHTML = `
                 <td>${t.pacienteNome}</td>
                 <td>${t.profissionalNome}</td>
-                <td>${t.horarioCompativel || "-"}</td>
-                <td>${t.valorContribuicao || "-"}</td>
+                <td>${
+                  t.horarioCompativel || '<span class="text-muted">N/A</span>'
+                }</td>
+                <td>${
+                  t.valorContribuicao || '<span class="text-muted">N/A</span>'
+                }</td>
                 <td>${t.pacienteTelefone}</td>
-                <td><span class="badge bg-secondary">${t.status}</span></td>
                 <td>
                     <select class="form-select form-select-sm status-change-select">
                         ${options}
                     </select>
                 </td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-danger btn-excluir-tentativa" title="Excluir Tentativa">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
+                </td>
             `;
       tbody.appendChild(tr);
     });
 
+    // Event Listeners
+    document.querySelectorAll(".status-change-select").forEach((sel) => {
+      sel.addEventListener("change", handleStatusChange);
+    });
+    document.querySelectorAll(".btn-excluir-tentativa").forEach((btn) => {
+      btn.addEventListener("click", handleDeleteAttempt);
+    });
+
+    // Re-aplica filtro
     const filtroVal = document.getElementById("filtro-status-tentativa").value;
     if (filtroVal !== "todos") {
       document
         .getElementById("filtro-status-tentativa")
         .dispatchEvent(new Event("change"));
     }
-
-    document.querySelectorAll(".status-change-select").forEach((sel) => {
-      sel.addEventListener("change", handleStatusChange);
-    });
   });
+}
+
+function updateRowColor(tr, status) {
+  // Remove classes anteriores
+  tr.classList.remove(
+    "status-primeiro-contato",
+    "status-segundo-contato",
+    "status-terceiro-contato",
+    "status-aguardando-confirmacao",
+    "status-aguardando-pagamento",
+    "status-agendado",
+    "status-cancelado-sem-sucesso"
+  );
+
+  // Normaliza para classe CSS
+  const slug = status.toLowerCase().replace(/ /g, "-").replace(/\//g, "-");
+  tr.classList.add(`status-${slug}`);
 }
 
 function handleStatusChange(e) {
@@ -125,9 +154,12 @@ function handleStatusChange(e) {
   const profissionalNome = row.dataset.profissionalNome;
   const horarioTxt = row.dataset.horario;
 
+  // Atualiza cor imediatamente para feedback visual
+  updateRowColor(row, newStatus);
+
   if (newStatus === "Cancelado/Sem Sucesso") {
     openModalDesistencia(id, pacienteId);
-    e.target.value = row.dataset.status;
+    e.target.value = row.dataset.status; // Reseta visualmente até confirmar
   } else if (newStatus === "Agendado") {
     openModalAgendado(
       id,
@@ -136,7 +168,7 @@ function handleStatusChange(e) {
       profissionalNome,
       horarioTxt
     );
-    e.target.value = row.dataset.status;
+    e.target.value = row.dataset.status; // Reseta visualmente até confirmar
   } else {
     updateDoc(doc(firestoreDb, "agendamentoTentativas", id), {
       status: newStatus,
@@ -144,11 +176,19 @@ function handleStatusChange(e) {
   }
 }
 
-// --- FUNÇÕES AUXILIARES DE BANCO DE DADOS ---
+async function handleDeleteAttempt(e) {
+  if (
+    confirm(
+      "Tem certeza que deseja excluir esta tentativa? Isso não afeta o paciente na trilha."
+    )
+  ) {
+    const id = e.target.closest("tr").dataset.id;
+    await deleteDoc(doc(firestoreDb, "agendamentoTentativas", id));
+  }
+}
 
-/**
- * Normaliza strings de dias da semana para o formato curto usado no banco ('segunda', 'terca'...).
- */
+// --- FUNÇÕES DE BANCO DE DADOS (Disponibilidade/Grade) ---
+
 function normalizarDiaParaChave(diaSemana) {
   const mapa = {
     "segunda-feira": "segunda",
@@ -157,7 +197,6 @@ function normalizarDiaParaChave(diaSemana) {
     "quinta-feira": "quinta",
     "sexta-feira": "sexta",
     sábado: "sabado",
-    domingo: "domingo",
     segunda: "segunda",
     terca: "terca",
     quarta: "quarta",
@@ -168,9 +207,6 @@ function normalizarDiaParaChave(diaSemana) {
   return mapa[diaSemana.toLowerCase().trim()] || diaSemana.toLowerCase();
 }
 
-/**
- * Altera o status do horário no array 'horarios' do usuário para 'ocupado'.
- */
 async function ocuparHorarioProfissional(profissionalId, diaSemana, horaInt) {
   try {
     const userRef = doc(firestoreDb, "usuarios", profissionalId);
@@ -181,17 +217,11 @@ async function ocuparHorarioProfissional(profissionalId, diaSemana, horaInt) {
     const data = userSnap.data();
     const horarios = data.horarios || [];
     let alterou = false;
-
     const diaAlvo = normalizarDiaParaChave(diaSemana);
 
-    // Mapeia o array para criar um novo com o status atualizado
     const novosHorarios = horarios.map((h) => {
-      // Normaliza o dia do item atual do array
       const hDia = normalizarDiaParaChave(h.dia);
-
-      // Compara dia e horário (garantindo que horário seja comparado como número)
       if (hDia === diaAlvo && parseInt(h.horario) === parseInt(horaInt)) {
-        // Verifica se já não está ocupado para evitar writes desnecessários (opcional)
         if (h.status !== "ocupado") {
           alterou = true;
           return { ...h, status: "ocupado" };
@@ -202,26 +232,14 @@ async function ocuparHorarioProfissional(profissionalId, diaSemana, horaInt) {
 
     if (alterou) {
       await updateDoc(userRef, { horarios: novosHorarios });
-      console.log(
-        `Disponibilidade atualizada: ${diaSemana} às ${horaInt}h marcado como 'ocupado'.`
-      );
-    } else {
-      console.log(
-        `Horário ${diaSemana} ${horaInt}h não estava 'disponivel' ou não encontrado.`
-      );
     }
-
-    // Retorna o username para uso na grade (aproveita que já leu o doc)
-    return data.username || data.nome;
+    return data.username || data.nome; // Retorna username para usar na grade
   } catch (error) {
-    console.error("Erro ao atualizar disponibilidade do profissional:", error);
+    console.error("Erro ao atualizar disponibilidade:", error);
     throw error;
   }
 }
 
-/**
- * Verifica se o horário está na grade e insere o USERNAME se estiver livre.
- */
 async function verificarEAdicionarGrade(
   usernameProfissional,
   modalidade,
@@ -229,40 +247,27 @@ async function verificarEAdicionarGrade(
   horaString
 ) {
   try {
-    if (!usernameProfissional)
-      throw new Error(
-        "Username do profissional é obrigatório para inserir na grade."
-      );
+    if (!usernameProfissional) throw new Error("Username obrigatório.");
 
-    // Formata a hora para o padrão da grade (Ex: "18:00" -> "18-00")
     const horaFormatada = horaString.replace(":", "-");
     const diaKey = normalizarDiaParaChave(diaSemana);
-    const modKey = modalidade.toLowerCase(); // 'online' ou 'presencial'
+    const modKey = modalidade.toLowerCase();
 
     const gradeRef = doc(firestoreDb, "administrativo", "grades");
     const gradeSnap = await getDoc(gradeRef);
-
-    if (!gradeSnap.exists())
-      throw new Error("Documento de grades não encontrado.");
+    if (!gradeSnap.exists()) throw new Error("Grade não encontrada.");
 
     const gradeData = gradeSnap.data();
-
-    // Caminho: modalidade.dia.hora (Ex: online.segunda.18-00)
     const slotData = gradeData[modKey]?.[diaKey]?.[horaFormatada] || {};
 
-    // 1. Verifica se o username já existe neste horário em alguma coluna
     const jaCadastrado = Object.values(slotData).some(
-      (valor) => valor === usernameProfissional
+      (val) => val === usernameProfissional
     );
-
     if (jaCadastrado) {
-      console.log(
-        `O username '${usernameProfissional}' já consta na grade neste horário.`
-      );
+      console.log("Profissional já está na grade.");
       return;
     }
 
-    // 2. Encontra a primeira coluna vazia (col0 a col5)
     let targetCol = null;
     for (let i = 0; i < 6; i++) {
       if (!slotData[`col${i}`]) {
@@ -272,41 +277,32 @@ async function verificarEAdicionarGrade(
     }
 
     if (!targetCol) {
-      alert(
-        `Atenção: Não há vaga na grade (${modKey} - ${diaKey} - ${horaString}) para inserir o profissional. A grade está cheia.`
-      );
+      alert(`Atenção: Grade cheia para ${diaKey} ${horaString} (${modKey}).`);
       return;
     }
 
-    // 3. Atualiza a grade com o username
     const updatePath = `${modKey}.${diaKey}.${horaFormatada}.${targetCol}`;
-
-    await updateDoc(gradeRef, {
-      [updatePath]: usernameProfissional,
-    });
-
-    console.log(`Inserido na grade: ${usernameProfissional} em ${updatePath}`);
+    await updateDoc(gradeRef, { [updatePath]: usernameProfissional });
   } catch (error) {
-    console.error("Erro ao atualizar a grade:", error);
+    console.error("Erro grade:", error);
     throw error;
   }
 }
 
-// --- MODAIS ---
+// --- MODAL: DESISTÊNCIA ---
 
 function openModalDesistencia(tentativaId, pacienteId) {
   const modalBody = document.getElementById("modal-acao-body");
   const modalTitle = document.getElementById("modal-acao-titulo");
 
-  modalTitle.textContent = "Registrar Desistência";
+  modalTitle.textContent = "Registrar Desistência/Cancelamento";
   modalBody.innerHTML = `
         <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            O paciente será movido para a aba 'Desistências' e o status na trilha será atualizado.
+            O paciente será movido para 'Desistências' e o status na trilha será atualizado.
         </div>
         <div class="form-group">
             <label class="fw-bold">Motivo (Obrigatório):</label>
-            <textarea id="modal-motivo" class="form-control" rows="3" placeholder="Descreva o motivo da desistência ou insucesso no contato..."></textarea>
+            <textarea id="modal-motivo" class="form-control" rows="3" placeholder="Descreva o motivo..."></textarea>
         </div>
     `;
 
@@ -316,25 +312,18 @@ function openModalDesistencia(tentativaId, pacienteId) {
 
   newBtn.addEventListener("click", async () => {
     const motivo = document.getElementById("modal-motivo").value.trim();
-
-    // Validação Obrigatória
     if (!motivo) {
-      alert("Por favor, informe o motivo da desistência.");
-      document.getElementById("modal-motivo").focus();
+      alert("Motivo é obrigatório.");
       return;
     }
 
     newBtn.disabled = true;
-    newBtn.textContent = "Registrando...";
-
     try {
-      // 1. Atualiza Trilha
       await updateDoc(doc(firestoreDb, "trilhaPaciente", pacienteId), {
         status: "desistencia",
         desistenciaMotivo: motivo,
         lastUpdate: serverTimestamp(),
       });
-      // 2. Move para Histórico
       await updateDoc(doc(firestoreDb, "agendamentoTentativas", tentativaId), {
         status: "Cancelado/Sem Sucesso",
         motivoCancelamento: motivo,
@@ -344,16 +333,16 @@ function openModalDesistencia(tentativaId, pacienteId) {
       document.getElementById("modal-acao-cruzamento").style.display = "none";
       alert("Registrado com sucesso.");
     } catch (e) {
-      console.error(e);
-      alert("Erro ao registrar: " + e.message);
+      alert("Erro: " + e.message);
     } finally {
       newBtn.disabled = false;
-      newBtn.textContent = "Confirmar";
     }
   });
 
   document.getElementById("modal-acao-cruzamento").style.display = "flex";
 }
+
+// --- MODAL: AGENDADO (COM WHATSAPP) ---
 
 async function openModalAgendado(
   tentativaId,
@@ -369,24 +358,21 @@ async function openModalAgendado(
   const pacData = pacSnap.data();
   const fila = pacData.status.includes("plantao") ? "Plantão" : "PB";
 
-  // Tenta extrair hora do horarioTxt (ex: "quarta 18h" ou "quarta 18:00")
+  // Pega telefone do profissional para o botão do WhatsApp
+  const profSnap = await getDoc(doc(firestoreDb, "usuarios", profissionalId));
+  const profData = profSnap.data();
+  const profTel =
+    profData.contato || profData.telefone || profData.celular || "";
+
   let preHora = "";
   const matchHora = horarioTxt ? horarioTxt.match(/(\d{1,2})/) : null;
-  if (matchHora) {
-    preHora = `${String(matchHora[0]).padStart(2, "0")}:00`;
-  }
+  if (matchHora) preHora = `${String(matchHora[0]).padStart(2, "0")}:00`;
 
   modalTitle.textContent = `Confirmar Agendamento (${fila})`;
 
   modalBody.innerHTML = `
-        <div class="alert alert-info">
-            Ao confirmar, o sistema irá:<br>
-            1. Atualizar a trilha do paciente.<br>
-            2. <strong>Remover a disponibilidade</strong> do profissional (Mudar para 'Ocupado').<br>
-            3. <strong>Inserir o Username</strong> na Grade Geral (se não existir).
-        </div>
         <div class="form-group mb-2">
-            <label class="fw-bold">Data de Início:</label>
+            <label class="fw-bold">Data 1ª Sessão:</label>
             <input type="date" id="modal-data-inicio" class="form-control">
         </div>
         <div class="form-group mb-2">
@@ -400,7 +386,38 @@ async function openModalAgendado(
                 <option value="Presencial">Presencial</option>
             </select>
         </div>
+        <hr>
+        <button id="btn-whatsapp-prof" class="btn btn-success w-100 mb-3" ${
+          !profTel ? "disabled" : ""
+        }>
+            <i class="fab fa-whatsapp"></i> Enviar Mensagem ao Profissional
+        </button>
+        <div class="alert alert-info small">
+            Ao confirmar, o sistema irá atualizar a trilha, ocupar a disponibilidade e inserir na grade.
+        </div>
     `;
+
+  // Lógica do Botão WhatsApp
+  const btnZap = document.getElementById("btn-whatsapp-prof");
+  btnZap.onclick = () => {
+    const d = document.getElementById("modal-data-inicio").value;
+    const h = document.getElementById("modal-hora").value;
+    const m = document.getElementById("modal-mod").value;
+
+    if (!d || !h) {
+      alert("Preencha data e hora antes de enviar.");
+      return;
+    }
+
+    const dataF = new Date(d).toLocaleDateString("pt-BR");
+    const msg = `Olá ${profissionalNome}, agendamos um paciente para você!\n\n*Paciente:* ${pacData.nomeCompleto}\n*Contato:* ${pacData.telefoneCelular}\n*Data 1ª Sessão:* ${dataF}\n*Horário:* ${h}\n*Modalidade:* ${m}\n\nO paciente já está disponível na sua aba 'Meus Pacientes'.`;
+
+    const link = `https://wa.me/55${profTel.replace(
+      /\D/g,
+      ""
+    )}?text=${encodeURIComponent(msg)}`;
+    window.open(link, "_blank");
+  };
 
   const btnConfirm = document.getElementById("btn-confirm-modal-acao");
   const newBtn = btnConfirm.cloneNode(true);
@@ -408,7 +425,7 @@ async function openModalAgendado(
 
   newBtn.addEventListener("click", async () => {
     const dataInicio = document.getElementById("modal-data-inicio").value;
-    const horaInput = document.getElementById("modal-hora").value; // Ex: "18:00"
+    const horaInput = document.getElementById("modal-hora").value;
     const mod = document.getElementById("modal-mod").value;
 
     if (!dataInicio || !horaInput) return alert("Preencha data e horário.");
@@ -417,12 +434,11 @@ async function openModalAgendado(
     newBtn.textContent = "Processando...";
 
     try {
-      // Preparação dos dados de data
       const dataObj = new Date(dataInicio + "T00:00:00");
       const diaSemana = dataObj.toLocaleDateString("pt-BR", {
         weekday: "long",
-      }); // Ex: "segunda-feira"
-      const horaInt = parseInt(horaInput.split(":")[0]); // Ex: 18
+      });
+      const horaInt = parseInt(horaInput.split(":")[0]);
 
       // 1. Atualizar Trilha
       const updateData = {
@@ -432,12 +448,23 @@ async function openModalAgendado(
             : "em_atendimento_pb",
         lastUpdate: serverTimestamp(),
       };
+      // Adiciona info extra dependendo da fila
+      if (fila === "Plantão") {
+        updateData["plantaoInfo.dataPrimeiraSessao"] = dataInicio;
+        updateData["plantaoInfo.horaPrimeiraSessao"] = horaInput;
+        updateData["plantaoInfo.profissionalId"] = profissionalId;
+        updateData["plantaoInfo.profissionalNome"] = profissionalNome;
+      } else {
+        // Lógica PB (adicionar ao array atendimentosPB - simplificado aqui)
+        // updateData["atendimentosPB"] = arrayUnion(...)
+      }
+
       await updateDoc(
         doc(firestoreDb, "trilhaPaciente", pacienteId),
         updateData
       );
 
-      // 2. Atualizar Tentativa (Arquivar)
+      // 2. Arquivar Tentativa
       await updateDoc(doc(firestoreDb, "agendamentoTentativas", tentativaId), {
         status: "Agendado",
         dataInicio: dataInicio,
@@ -445,33 +472,23 @@ async function openModalAgendado(
         arquivadoEm: serverTimestamp(),
       });
 
-      // 3. Remover Disponibilidade (Mudar status para 'ocupado') e obter Username
-      // Essa função agora retorna o username encontrado no doc do profissional
-      const usernameProfissional = await ocuparHorarioProfissional(
+      // 3. Ocupar Horário e Pegar Username
+      const username = await ocuparHorarioProfissional(
         profissionalId,
         diaSemana,
         horaInt
       );
 
-      // 4. Inserir na Grade usando o Username recuperado
-      // Se o username não existir no cadastro, usa o nome como fallback (comportamento da função anterior)
-      await verificarEAdicionarGrade(
-        usernameProfissional,
-        mod,
-        diaSemana,
-        horaInput
-      );
+      // 4. Inserir na Grade
+      await verificarEAdicionarGrade(username, mod, diaSemana, horaInput);
 
-      alert(
-        "Agendamento confirmado, disponibilidade atualizada e grade preenchida!"
-      );
+      alert("Agendamento concluído com sucesso!");
       document.getElementById("modal-acao-cruzamento").style.display = "none";
     } catch (e) {
       console.error(e);
-      alert("Erro ao processar agendamento: " + e.message);
+      alert("Erro ao processar: " + e.message);
     } finally {
       newBtn.disabled = false;
-      newBtn.textContent = "Confirmar";
     }
   });
 
