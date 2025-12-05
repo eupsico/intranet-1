@@ -1,15 +1,24 @@
 // Arquivo: /modulos/administrativo/js/cruzamento-agendas/index.js
-import * as compatibilidade from "./compatibilidade.js";
+
+// Importa o arquivo original (que está um nível acima) para gerenciar a aba Compatibilidade
+import * as originalCruzamento from "../../cruzamento-agendas.js";
 import * as tentativas from "./tentativas.js";
 import * as historico from "./historico.js";
 
 export function init(db, user, userData) {
-  console.log("Iniciando Módulo Cruzamento de Agendas (Modular)");
+  console.log("Iniciando Módulo Cruzamento de Agendas (Híbrido)");
 
   const tabsContainer = document.getElementById("cruzamento-tabs");
 
-  // Inicializa sub-módulos
-  compatibilidade.init(db);
+  // Inicializa o arquivo original (focado na Compatibilidade)
+  // Nota: O arquivo original também possui lógica de tentativas básica.
+  // O módulo 'tentativas.js' abaixo irá se sobrepor na manipulação do DOM da aba 'Tentativas'
+  // para fornecer as funcionalidades avançadas (Modais, Grade, WhatsApp).
+  if (originalCruzamento && typeof originalCruzamento.init === "function") {
+    originalCruzamento.init(user, userData);
+  }
+
+  // Inicializa os novos módulos avançados
   tentativas.init(db);
   historico.init(db);
 
@@ -19,7 +28,7 @@ export function init(db, user, userData) {
       if (e.target.classList.contains("tab-link")) {
         const tabId = e.target.dataset.tab;
 
-        // UI Update
+        // Atualização da UI das abas
         document
           .querySelectorAll(".tab-link")
           .forEach((btn) => btn.classList.remove("active"));
@@ -36,7 +45,7 @@ export function init(db, user, userData) {
           activeTab.classList.add("active");
         }
 
-        // Refresh de dados específicos ao mudar de aba
+        // Refresh de dados específicos ao mudar para abas novas
         if (tabId === "tentativas") tentativas.refresh();
         if (tabId === "desistencias" || tabId === "agendados")
           historico.refresh(tabId);
