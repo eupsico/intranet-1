@@ -3,8 +3,7 @@
 
     <div class="tabs-container" id="cruzamento-tabs">
         <button class="tab-link active" data-tab="compatibilidade">Compatibilidade</button>
-        <button class="tab-link" data-tab="tentativas">Acompanhamento (Tentativas)</button>
-        <button class="tab-link" data-tab="agendados">Agendados</button>
+        <button class="tab-link" data-tab="tentativas">Agendamento de Sessão</button> <button class="tab-link" data-tab="agendados">Agendados</button>
         <button class="tab-link" data-tab="desistencias">Desistências/Cancelados</button>
         <button class="tab-link" data-tab="disponibilidade-geral">Disponibilidade Geral</button>
     </div>
@@ -15,8 +14,6 @@
                 <h5 class="mb-0">Verificar Compatibilidade Automática</h5>
             </div>
             <div class="card-body">
-                <p>Utilize os filtros abaixo para cruzar as agendas.</p>
-                
                 <div class="row g-3 align-items-end mb-4">
                     <div class="col-md-6">
                         <label for="profissional-select" class="form-label"><strong>Buscar por Profissional</strong></label>
@@ -24,7 +21,6 @@
                             <option value="">Selecione um profissional...</option>
                         </select>
                     </div>
-
                     <div class="col-md-6">
                         <label for="paciente-select" class="form-label"><strong>Buscar por Paciente</strong></label>
                         <select id="paciente-select" class="form-select">
@@ -34,9 +30,7 @@
                 </div>
 
                 <div id="loading-spinner" class="text-center my-5" style="display: none;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div>
                     <p class="mt-2">Realizando cruzamento de dados...</p>
                 </div>
 
@@ -48,9 +42,7 @@
                             <tbody id="compatibilidade-tbody"></tbody>
                         </table>
                     </div>
-                    <div id="nenhum-resultado-msg" class="alert alert-info mt-3" style="display: none;">
-                        Nenhuma compatibilidade encontrada.
-                    </div>
+                    <div id="nenhum-resultado-msg" class="alert alert-info mt-3" style="display: none;">Nenhuma compatibilidade encontrada.</div>
                 </div>
             </div>
         </div>
@@ -59,7 +51,7 @@
     <div id="tentativas" class="tab-content" style="display: none;">
         <div class="card shadow-sm">
              <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Acompanhamento de Tentativas</h5>
+                <h5 class="mb-0">Agendamento de Sessão</h5>
                 <select id="filtro-status-tentativa" class="form-select form-select-sm" style="width: 200px;">
                     <option value="todos">Todos os Status</option>
                     <option value="Primeiro Contato">Primeiro Contato</option>
@@ -95,9 +87,7 @@
 
     <div id="agendados" class="tab-content" style="display: none;">
         <div class="card shadow-sm">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Agendamentos Concluídos</h5>
-            </div>
+            <div class="card-header bg-success text-white"><h5 class="mb-0">Agendamentos Concluídos</h5></div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -111,9 +101,7 @@
 
     <div id="desistencias" class="tab-content" style="display: none;">
         <div class="card shadow-sm">
-            <div class="card-header bg-danger text-white">
-                <h5 class="mb-0">Desistências e Cancelamentos</h5>
-            </div>
+            <div class="card-header bg-danger text-white"><h5 class="mb-0">Desistências e Cancelamentos</h5></div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -127,24 +115,13 @@
 
     <div id="disponibilidade-geral" class="tab-content" style="display: none;">
         <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Disponibilidade Geral dos Profissionais</h5>
-            </div>
+            <div class="card-header bg-light"><h5 class="mb-0">Disponibilidade Geral</h5></div>
             <div class="card-body">
                  <div class="table-responsive">
                     <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col">Profissional</th>
-                                <th scope="col">Disponibilidade Cadastrada</th>
-                                <th scope="col">Modalidade</th>
-                            </tr>
-                        </thead>
+                        <thead class="table-light"><tr><th>Profissional</th><th>Disponibilidade</th><th>Modalidade</th></tr></thead>
                         <tbody id="disponibilidade-geral-tbody"></tbody>
                     </table>
-                </div>
-                <div id="nenhum-profissional-disponibilidade" class="alert alert-info mt-3" style="display: none;">
-                    Nenhum profissional com disponibilidade cadastrada foi encontrado.
                 </div>
             </div>
         </div>
