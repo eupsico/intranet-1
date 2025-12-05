@@ -67,7 +67,6 @@ function formatProfGeneralAvailability(horarios) {
 
 // Helper para gerar o Badge colorido da modalidade
 function getModalityBadge(modality) {
-  // Normaliza para verificar qual badge exibir
   const m = normalizeText(modality);
   if (m.includes("online"))
     return '<span class="badge bg-info text-dark">Online</span>';
@@ -95,8 +94,7 @@ function checkPeriodMatch(periodo, diaSemana) {
   }
 }
 
-// --- NOVA FUNÇÃO DE NORMALIZAÇÃO ---
-// Remove acentos, hífens e coloca em minúsculo para garantir o match (Ex: "On-line" == "online")
+// --- FUNÇÃO DE NORMALIZAÇÃO ---
 function normalizeText(text) {
   if (!text) return "";
   return text
@@ -277,7 +275,6 @@ export function init(dbInstance, user, userData) {
 
         allPatients.forEach((patient) => {
           const patientAvailability = patient.disponibilidadeEspecifica || [];
-          // NORMALIZAÇÃO APLICADA AQUI
           const patientModalidade = normalizeText(
             patient.modalidadeAtendimento || "Qualquer"
           );
@@ -288,7 +285,6 @@ export function init(dbInstance, user, userData) {
           professionalAvailability.forEach((profSlot) => {
             if (profSlot.status !== "disponivel") return;
 
-            // NORMALIZAÇÃO APLICADA AQUI
             const profModality = normalizeText(profSlot.modalidade || "");
 
             const modalityMatch =
@@ -370,10 +366,11 @@ export function init(dbInstance, user, userData) {
     nenhumResultadoMsg.style.display = "none";
     tituloResultados.textContent = "Profissionais Compatíveis Encontrados";
 
+    // ALTERADO: Trocado "Contato" por "Valor Contrib."
     tabelaHeaders.innerHTML = `
         <tr>
             <th scope="col">Nome do Profissional</th>
-            <th scope="col">Contato</th>
+            <th scope="col">Valor Contrib.</th>
             <th scope="col">Match (Horário Profissional)</th>
             <th scope="col">Disponibilidade Paciente</th>
             <th scope="col">Modalidade</th>
@@ -387,8 +384,6 @@ export function init(dbInstance, user, userData) {
         if (!patient) throw new Error("Paciente não encontrado na lista.");
 
         const patientAvailability = patient.disponibilidadeEspecifica || [];
-
-        // NORMALIZAÇÃO APLICADA AQUI (CORRIGE O PROBLEMA "On-line" vs "Online")
         const patientModalidade = normalizeText(
           patient.modalidadeAtendimento || "Qualquer"
         );
@@ -405,7 +400,6 @@ export function init(dbInstance, user, userData) {
           profAvailability.forEach((profSlot) => {
             if (profSlot.status !== "disponivel") return;
 
-            // NORMALIZAÇÃO APLICADA AQUI
             const profModality = normalizeText(profSlot.modalidade || "");
 
             const modalityMatch =
@@ -428,8 +422,6 @@ export function init(dbInstance, user, userData) {
                   `${profSlot.dia.toLowerCase()}_${profSlot.horario}:00`
                 );
 
-                // Lógica de Prioridade:
-                // Se paciente é "Online", prioriza "Online" puro (score 2) sobre "Ambas" (score 1)
                 if (patientModalidade === "online") {
                   if (profModality === "online") matchTypeScore = 2;
                   else if (profModality === "ambas" && matchTypeScore < 2)
@@ -459,7 +451,7 @@ export function init(dbInstance, user, userData) {
           }
         });
 
-        // ORDENAÇÃO
+        // Ordenação
         compatibleProfessionals.sort((a, b) => {
           if (b.matchScore !== a.matchScore) {
             return b.matchScore - a.matchScore;
@@ -467,7 +459,12 @@ export function init(dbInstance, user, userData) {
           return a.nome.localeCompare(b.nome);
         });
 
-        renderProfessionalsTable(compatibleProfessionals, patient.id);
+        // Passamos o valor de contribuição do paciente para renderizar na tabela
+        renderProfessionalsTable(
+          compatibleProfessionals,
+          patient.id,
+          patient.valorContribuicao
+        );
       } catch (error) {
         console.error(
           "Erro no algoritmo de compatibilidade (Paciente -> Prof):",
@@ -517,7 +514,8 @@ export function init(dbInstance, user, userData) {
     compatibilidadeBody.innerHTML = rowsHtml;
   }
 
-  function renderProfessionalsTable(professionals, patientId) {
+  // ALTERADO: Recebe agora o parâmetro patientValue
+  function renderProfessionalsTable(professionals, patientId, patientValue) {
     if (professionals.length === 0) {
       nenhumResultadoMsg.textContent =
         "Nenhum profissional compatível encontrado para este paciente.";
@@ -528,12 +526,13 @@ export function init(dbInstance, user, userData) {
 
     let rowsHtml = "";
     professionals.forEach((prof) => {
+      // ALTERADO: Coluna de contato substituída pelo valor de contribuição do paciente
       rowsHtml += `
             <tr data-professional-id="${
               prof.id
             }" data-patient-id="${patientId}">
                 <td>${prof.nome}</td>
-                <td>${prof.contato}</td>
+                <td>${patientValue || "N/A"}</td>
                 <td>${formatProfMatchAvailability(prof.matchingProfSlots)}</td>
                 <td>${formatPatientAvailability(prof.matchingPatientSlots)}</td>
                 <td>${getModalityBadge(prof.matchedModality)}</td>
