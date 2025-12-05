@@ -12,6 +12,13 @@
     min-width: 200px;
 }
 
+/* --- Cores de Status para Tentativas --- */
+tr.status-primeiro-contato { background-color: #e3f2fd; } /* Azul claro */
+tr.status-segundo-contato { background-color: #fff3cd; } /* Amarelo claro */
+tr.status-terceiro-contato { background-color: #ffccbc; } /* Laranja claro */
+tr.status-aguardando-confirmacao { background-color: #d1e7dd; } /* Verde claro */
+tr.status-aguardando-pagamento { background-color: #e2e3e5; } /* Cinza claro */
+
 .availability-list {
     list-style-type: none;
     padding: 0;
