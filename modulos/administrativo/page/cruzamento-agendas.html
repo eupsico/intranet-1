@@ -13,11 +13,21 @@
                 <h5 class="mb-0">Verificar Compatibilidade Automática</h5>
             </div>
             <div class="card-body">
-                <p>Selecione um profissional para ver a lista de pacientes compatíveis que estão nas filas "Encaminhar para Plantão" ou "Encaminhar para PB".</p>
+                <p>Utilize os filtros abaixo para cruzar as agendas. Ao selecionar um campo, o outro será resetado.</p>
+                
                 <div class="row g-3 align-items-end mb-4">
                     <div class="col-md-6">
-                        <label for="profissional-select" class="form-label"><strong>Profissional</strong></label>
-                        <select id="profissional-select" class="form-select"></select>
+                        <label for="profissional-select" class="form-label"><strong>Buscar por Profissional</strong> <small class="text-muted">(Encontrar Pacientes)</small></label>
+                        <select id="profissional-select" class="form-select">
+                            <option value="">Selecione um profissional...</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="paciente-select" class="form-label"><strong>Buscar por Paciente</strong> <small class="text-muted">(Encontrar Profissionais)</small></label>
+                        <select id="paciente-select" class="form-select">
+                            <option value="">Selecione um paciente (Fila de Espera)...</option>
+                        </select>
                     </div>
                 </div>
 
@@ -25,14 +35,14 @@
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando...</span>
                     </div>
-                    <p class="mt-2">Buscando pacientes compatíveis...</p>
+                    <p class="mt-2">Realizando cruzamento de dados...</p>
                 </div>
 
                 <div id="resultados-compatibilidade" style="display: none;">
-                    <h5 class="mb-3">Pacientes Compatíveis Encontrados</h5>
+                    <h5 class="mb-3" id="titulo-resultados">Resultados Encontrados</h5>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
-                            <thead class="table-light">
+                            <thead class="table-light" id="tabela-headers">
                                 <tr>
                                     <th scope="col">Nome do Paciente</th>
                                     <th scope="col">Telefone</th>
@@ -41,14 +51,15 @@
                                     <th scope="col">Fila</th>
                                     <th scope="col">Ação</th>
                                 </tr>
-                            </thead>
+                                </thead>
                             <tbody id="compatibilidade-tbody"></tbody>
                         </table>
                     </div>
-                    <div id="nenhum-paciente-compativel" class="alert alert-info mt-3" style="display: none;">
-                        Nenhum paciente compatível encontrado para este profissional.
+                    <div id="nenhum-resultado-msg" class="alert alert-info mt-3" style="display: none;">
+                        Nenhuma compatibilidade encontrada.
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
