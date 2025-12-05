@@ -67,12 +67,14 @@ function formatProfGeneralAvailability(horarios) {
 
 // Helper para gerar o Badge colorido da modalidade
 function getModalityBadge(modality) {
-  const m = (modality || "").toLowerCase().trim();
-  if (m === "online")
+  // Normaliza para verificar qual badge exibir
+  const m = normalizeText(modality);
+  if (m.includes("online"))
     return '<span class="badge bg-info text-dark">Online</span>';
-  if (m === "presencial")
+  if (m.includes("presencial"))
     return '<span class="badge bg-success">Presencial</span>';
-  if (m === "ambas") return '<span class="badge bg-secondary">Ambas</span>';
+  if (m.includes("ambas"))
+    return '<span class="badge bg-secondary">Ambas</span>';
   return `<span class="badge bg-light text-dark">${modality}</span>`;
 }
 
@@ -91,6 +93,18 @@ function checkPeriodMatch(periodo, diaSemana) {
     default:
       return false;
   }
+}
+
+// --- NOVA FUNÇÃO DE NORMALIZAÇÃO ---
+// Remove acentos, hífens e coloca em minúsculo para garantir o match (Ex: "On-line" == "online")
+function normalizeText(text) {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+    .replace(/-/g, "") // Remove hífens (On-line -> Online)
+    .trim();
 }
 
 export function init(dbInstance, user, userData) {
@@ -240,7 +254,6 @@ export function init(dbInstance, user, userData) {
     nenhumResultadoMsg.style.display = "none";
     tituloResultados.textContent = "Pacientes Compatíveis Encontrados";
 
-    // Adicionado coluna de Valor e Ajuste de cabeçalhos
     tabelaHeaders.innerHTML = `
         <tr>
             <th scope="col">Nome do Paciente</th>
@@ -264,11 +277,10 @@ export function init(dbInstance, user, userData) {
 
         allPatients.forEach((patient) => {
           const patientAvailability = patient.disponibilidadeEspecifica || [];
-          const patientModalidade = (
+          // NORMALIZAÇÃO APLICADA AQUI
+          const patientModalidade = normalizeText(
             patient.modalidadeAtendimento || "Qualquer"
-          )
-            .toLowerCase()
-            .trim();
+          );
 
           let commonSlots = new Set();
           let matchedModalityType = "indefinido";
@@ -276,11 +288,9 @@ export function init(dbInstance, user, userData) {
           professionalAvailability.forEach((profSlot) => {
             if (profSlot.status !== "disponivel") return;
 
-            const profModality = (profSlot.modalidade || "")
-              .toLowerCase()
-              .trim();
+            // NORMALIZAÇÃO APLICADA AQUI
+            const profModality = normalizeText(profSlot.modalidade || "");
 
-            // Verifica compatibilidade de modalidade
             const modalityMatch =
               patientModalidade === "qualquer" ||
               profModality === "ambas" ||
@@ -296,7 +306,6 @@ export function init(dbInstance, user, userData) {
                 checkPeriodMatch(periodo, profSlot.dia)
               ) {
                 commonSlots.add(patientSlot);
-                // Define qual modalidade será exibida no badge
                 matchedModalityType =
                   profModality === "ambas"
                     ? "Ambas"
@@ -378,9 +387,11 @@ export function init(dbInstance, user, userData) {
         if (!patient) throw new Error("Paciente não encontrado na lista.");
 
         const patientAvailability = patient.disponibilidadeEspecifica || [];
-        const patientModalidade = (patient.modalidadeAtendimento || "Qualquer")
-          .toLowerCase()
-          .trim();
+
+        // NORMALIZAÇÃO APLICADA AQUI (CORRIGE O PROBLEMA "On-line" vs "Online")
+        const patientModalidade = normalizeText(
+          patient.modalidadeAtendimento || "Qualquer"
+        );
 
         const compatibleProfessionals = [];
 
@@ -388,15 +399,14 @@ export function init(dbInstance, user, userData) {
           const profAvailability = prof.horarios || [];
           let commonSlots = new Set();
           let matchingProfSlots = new Set();
-          let matchTypeScore = 0; // Pontuação para ordenação
+          let matchTypeScore = 0;
           let displayModality = "Vários";
 
           profAvailability.forEach((profSlot) => {
             if (profSlot.status !== "disponivel") return;
 
-            const profModality = (profSlot.modalidade || "")
-              .toLowerCase()
-              .trim();
+            // NORMALIZAÇÃO APLICADA AQUI
+            const profModality = normalizeText(profSlot.modalidade || "");
 
             const modalityMatch =
               patientModalidade === "qualquer" ||
@@ -419,19 +429,15 @@ export function init(dbInstance, user, userData) {
                 );
 
                 // Lógica de Prioridade:
-                // Se paciente é estritamente Online:
-                // - Profissionais "Online" puro ganham score 2 (prioridade alta)
-                // - Profissionais "Ambas" ganham score 1 (prioridade normal)
+                // Se paciente é "Online", prioriza "Online" puro (score 2) sobre "Ambas" (score 1)
                 if (patientModalidade === "online") {
                   if (profModality === "online") matchTypeScore = 2;
                   else if (profModality === "ambas" && matchTypeScore < 2)
                     matchTypeScore = 1;
                 } else {
-                  // Se paciente é Presencial ou Qualquer, prioridade igual ou ajustável
                   matchTypeScore = 1;
                 }
 
-                // Define o badge a ser mostrado
                 if (profModality === "ambas") displayModality = "Ambas";
                 else if (profModality === "online") displayModality = "Online";
                 else if (profModality === "presencial")
@@ -454,8 +460,6 @@ export function init(dbInstance, user, userData) {
         });
 
         // ORDENAÇÃO
-        // 1. Maior Score primeiro (Online puro aparece antes de Ambas se paciente for online)
-        // 2. Ordem Alfabética
         compatibleProfessionals.sort((a, b) => {
           if (b.matchScore !== a.matchScore) {
             return b.matchScore - a.matchScore;
@@ -542,7 +546,7 @@ export function init(dbInstance, user, userData) {
     compatibilidadeBody.innerHTML = rowsHtml;
   }
 
-  // --- Tentativas de Agendamento (Código Restaurado) ---
+  // --- Tentativas de Agendamento ---
 
   function listenToSchedulingAttempts() {
     const q = query(collection(db, "agendamentoTentativas"));
