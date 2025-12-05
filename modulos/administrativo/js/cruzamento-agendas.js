@@ -47,6 +47,17 @@ function formatProfMatchAvailability(slots) {
   return `<ul class="availability-list">${formatted}</ul>`;
 }
 
+// Helper para converter array de slots em texto simples para salvar no banco
+function formatSlotsToText(slots) {
+  if (!slots || slots.length === 0) return "N/A";
+  return slots
+    .map((slot) => {
+      const [dia, hora] = slot.split("_");
+      return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${hora}`;
+    })
+    .join(", ");
+}
+
 function formatProfGeneralAvailability(horarios) {
   if (!horarios || horarios.length === 0) return "Nenhum horário cadastrado";
 
@@ -366,7 +377,6 @@ export function init(dbInstance, user, userData) {
     nenhumResultadoMsg.style.display = "none";
     tituloResultados.textContent = "Profissionais Compatíveis Encontrados";
 
-    // ALTERADO: Trocado "Contato" por "Valor Contrib."
     tabelaHeaders.innerHTML = `
         <tr>
             <th scope="col">Nome do Profissional</th>
@@ -459,7 +469,6 @@ export function init(dbInstance, user, userData) {
           return a.nome.localeCompare(b.nome);
         });
 
-        // Passamos o valor de contribuição do paciente para renderizar na tabela
         renderProfessionalsTable(
           compatibleProfessionals,
           patient.id,
@@ -491,10 +500,13 @@ export function init(dbInstance, user, userData) {
 
     let rowsHtml = "";
     patients.forEach((patient) => {
+      // Gera texto plano dos slots para salvar no DB ao clicar
+      const matchText = formatSlotsToText(patient.matchingProfSlots);
+
       rowsHtml += `
                 <tr data-patient-id="${patient.id}" data-patient-name="${
         patient.nomeCompleto
-      }">
+      }" data-match="${matchText}">
                     <td>${patient.nomeCompleto}</td>
                     <td>${patient.telefoneCelular || "N/A"}</td>
                     <td>${formatPatientAvailability(
@@ -514,7 +526,6 @@ export function init(dbInstance, user, userData) {
     compatibilidadeBody.innerHTML = rowsHtml;
   }
 
-  // ALTERADO: Recebe agora o parâmetro patientValue
   function renderProfessionalsTable(professionals, patientId, patientValue) {
     if (professionals.length === 0) {
       nenhumResultadoMsg.textContent =
@@ -526,11 +537,13 @@ export function init(dbInstance, user, userData) {
 
     let rowsHtml = "";
     professionals.forEach((prof) => {
-      // ALTERADO: Coluna de contato substituída pelo valor de contribuição do paciente
+      // Gera texto plano dos slots para salvar no DB ao clicar
+      const matchText = formatSlotsToText(prof.matchingProfSlots);
+
       rowsHtml += `
             <tr data-professional-id="${
               prof.id
-            }" data-patient-id="${patientId}">
+            }" data-patient-id="${patientId}" data-match="${matchText}">
                 <td>${prof.nome}</td>
                 <td>${patientValue || "N/A"}</td>
                 <td>${formatProfMatchAvailability(prof.matchingProfSlots)}</td>
@@ -597,6 +610,8 @@ export function init(dbInstance, user, userData) {
                 <tr data-tentativa-id="${item.id}">
                     <td>${item.pacienteNome}</td>
                     <td>${item.profissionalNome}</td>
+                    <td>${item.horarioCompativel || "-"}</td>
+                    <td>${item.valorContribuicao || "-"}</td>
                     <td>${item.pacienteTelefone}</td>
                     <td>
                         <select class="form-select status-select">${options}</select>
@@ -614,12 +629,13 @@ export function init(dbInstance, user, userData) {
     const row = button.closest("tr");
     const patientId = row.dataset.patientId;
     const professionalId = profissionalSelect.value;
+    const matchInfo = row.dataset.match; // Pega o horário compatível
 
     if (!professionalId) {
       alert("Erro: Profissional não identificado.");
       return;
     }
-    await createAttempt(patientId, professionalId, button, row);
+    await createAttempt(patientId, professionalId, button, row, matchInfo);
   }
 
   async function handleStartAttemptReverse(e) {
@@ -627,19 +643,21 @@ export function init(dbInstance, user, userData) {
     const row = button.closest("tr");
     const professionalId = row.dataset.professionalId;
     const patientId = row.dataset.patientId;
+    const matchInfo = row.dataset.match; // Pega o horário compatível
 
     if (!patientId) {
       alert("Erro: Paciente não identificado.");
       return;
     }
-    await createAttempt(patientId, professionalId, button, row);
+    await createAttempt(patientId, professionalId, button, row, matchInfo);
   }
 
   async function createAttempt(
     patientId,
     professionalId,
     buttonElement,
-    rowElement
+    rowElement,
+    matchInfo
   ) {
     buttonElement.disabled = true;
     buttonElement.textContent = "Iniciando...";
@@ -662,6 +680,8 @@ export function init(dbInstance, user, userData) {
         pacienteTelefone: patientData.telefoneCelular,
         profissionalId: professionalId,
         profissionalNome: professionalData.nome,
+        horarioCompativel: matchInfo || "N/A", // Salva o horário
+        valorContribuicao: patientData.valorContribuicao || "N/A", // Salva o valor
         status: "Primeiro Contato",
         criadoEm: serverTimestamp(),
       };
