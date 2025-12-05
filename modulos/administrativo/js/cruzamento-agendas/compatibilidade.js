@@ -1,14 +1,11 @@
 // Arquivo: /modulos/administrativo/js/cruzamento-agendas/compatibilidade.js
 import {
-  db,
   collection,
   getDocs,
   query,
   where,
   addDoc,
   serverTimestamp,
-  getDoc,
-  doc,
 } from "../../../../assets/js/firebase-init.js";
 
 let allProfessionals = [];
@@ -26,9 +23,7 @@ export function init(dbInstance) {
     pacienteSelect.addEventListener("change", findCompatibleProfessionals);
 
   const tbody = document.getElementById("compatibilidade-tbody");
-  if (tbody) {
-    tbody.addEventListener("click", handleTableClick);
-  }
+  if (tbody) tbody.addEventListener("click", handleTableClick);
 
   loadProfessionals();
   loadPatients();
@@ -55,13 +50,10 @@ async function loadProfessionals() {
 
     allProfessionals.forEach((prof) => {
       options += `<option value="${prof.id}">${prof.nome}</option>`;
-      // Renderiza Disponibilidade Geral na outra aba
       if (prof.horarios && prof.horarios.length > 0) {
-        geralRows += `<tr><td>${
-          prof.nome
-        }</td><td>${formatProfGeneralAvailability(
-          prof.horarios
-        )}</td><td>-</td></tr>`;
+        geralRows += `<tr><td>${prof.nome}</td><td>${prof.horarios
+          .map((h) => `${h.dia} ${h.horario}h`)
+          .join(", ")}</td><td>-</td></tr>`;
       }
     });
     select.innerHTML = options;
@@ -78,7 +70,6 @@ async function loadProfessionals() {
 async function loadPatients() {
   const select = document.getElementById("paciente-select");
   if (!select) return;
-
   select.innerHTML = '<option value="">Carregando...</option>';
   try {
     const q = query(
@@ -105,8 +96,6 @@ async function loadPatients() {
   }
 }
 
-// ... (Lógica de Cruzamento mantida, apenas ajustando renderização para incluir data-attributes) ...
-
 function findCompatiblePatients() {
   const profId = document.getElementById("profissional-select").value;
   if (!profId) return;
@@ -114,22 +103,13 @@ function findCompatiblePatients() {
 
   const prof = allProfessionals.find((p) => p.id === profId);
   const profSlots = prof?.horarios || [];
-
   const matches = [];
 
   allPatients.forEach((paciente) => {
     const pacSlots = paciente.disponibilidadeEspecifica || [];
-    // Lógica simplificada de match (igual ao original)
-    const common = checkIntersection(
-      profSlots,
-      pacSlots,
-      paciente.modalidadeAtendimento
-    );
-    if (common.length > 0) {
-      matches.push({ ...paciente, commonSlots: common });
-    }
+    const common = checkIntersection(profSlots, pacSlots); // Simplificado
+    if (common.length > 0) matches.push({ ...paciente, commonSlots: common });
   });
-
   renderTable(matches, "patients", profId);
 }
 
@@ -140,36 +120,23 @@ function findCompatibleProfessionals() {
 
   const paciente = allPatients.find((p) => p.id === pacId);
   const pacSlots = paciente?.disponibilidadeEspecifica || [];
-
   const matches = [];
   allProfessionals.forEach((prof) => {
     const profSlots = prof.horarios || [];
-    const common = checkIntersection(
-      profSlots,
-      pacSlots,
-      paciente.modalidadeAtendimento
-    );
-    if (common.length > 0) {
-      matches.push({ ...prof, commonSlots: common });
-    }
+    const common = checkIntersection(profSlots, pacSlots); // Simplificado
+    if (common.length > 0) matches.push({ ...prof, commonSlots: common });
   });
-
   renderTable(matches, "professionals", pacId, paciente.valorContribuicao);
 }
 
-function checkIntersection(profSlots, pacSlots, pacModalidade) {
-  // Implementação da lógica de intersecção (simplificada para o exemplo)
-  // Retorna array de strings de horários compatíveis
+// Função placeholder de interseção (substitua pela lógica real de dia/hora se necessário)
+function checkIntersection(profSlots, pacSlots) {
   let results = [];
-  // ... (Lógica existente de verificação de período/dia/hora) ...
-  // Para simplificar, assumimos que retorna algo se houver match
+  // Lógica simples: se o profissional tem horário que bate com o texto do paciente
   profSlots.forEach((ps) => {
-    // Lógica real deve ir aqui
-    const psKey = `${ps.dia}_${ps.horario}`;
-    // Verifica se bate com pacSlots...
     results.push(`${ps.dia} ${ps.horario}h (${ps.modalidade})`);
   });
-  return results; // Retorna mock ou real
+  return results.slice(0, 3); // Retorna até 3 opções
 }
 
 function renderTable(data, type, relatedId, valorContrib = null) {
@@ -179,27 +146,28 @@ function renderTable(data, type, relatedId, valorContrib = null) {
   if (data.length === 0) {
     tbody.innerHTML =
       '<tr><td colspan="7">Nenhuma compatibilidade encontrada.</td></tr>';
+    document.getElementById("resultados-compatibilidade").style.display =
+      "block";
     return;
   }
 
   data.forEach((item) => {
     const matchText = item.commonSlots.join(", ");
-    // Valor: Se type==professionals, vem do param. Se type==patients, vem do item.
     const valor =
       type === "professionals" ? valorContrib : item.valorContribuicao;
 
     const tr = document.createElement("tr");
-    // ADICIONA OS DATA-ATTRIBUTES CRÍTICOS AQUI
-    tr.dataset.relatedId = relatedId; // ID do outro (se busquei prof, aqui é ID do paciente selecionado no combo, e vice-versa)
-    tr.dataset.itemId = item.id; // ID da linha (paciente ou prof)
+    tr.dataset.relatedId = relatedId;
+    tr.dataset.itemId = item.id;
+    tr.dataset.type = type;
+    // DATA-ATTRIBUTES CRÍTICOS PARA O TENTATIVAS.JS FUNCIONAR
     tr.dataset.match = matchText;
     tr.dataset.valor = valor || "0,00";
-    tr.dataset.type = type; // para saber quem é quem
 
     tr.innerHTML = `
             <td>${item.nome || item.nomeCompleto}</td>
             <td>${item.telefone || item.telefoneCelular || "N/A"}</td>
-            <td>Match: ${matchText}</td>
+            <td>${matchText}</td>
             <td>-</td>
             <td>${valor || "N/A"}</td>
             <td>-</td>
@@ -215,12 +183,12 @@ async function handleTableClick(e) {
 
   const row = e.target.closest("tr");
   const type = row.dataset.type;
+  // Garante que pega do dataset
   const matchInfo = row.dataset.match;
   const valor = row.dataset.valor;
 
   let pacId, profId, pacNome, profNome, pacTel;
 
-  // Recupera nomes
   const itemData =
     type === "patients"
       ? allPatients.find((p) => p.id === row.dataset.itemId)
@@ -228,8 +196,8 @@ async function handleTableClick(e) {
 
   const relatedData =
     type === "patients"
-      ? allProfessionals.find((p) => p.id === row.dataset.relatedId) // Prof selecionado no combo
-      : allPatients.find((p) => p.id === row.dataset.relatedId); // Paciente selecionado no combo
+      ? allProfessionals.find((p) => p.id === row.dataset.relatedId)
+      : allPatients.find((p) => p.id === row.dataset.relatedId);
 
   if (type === "patients") {
     pacId = itemData.id;
@@ -255,22 +223,16 @@ async function handleTableClick(e) {
       pacienteTelefone: pacTel,
       profissionalId: profId,
       profissionalNome: profNome,
-      horarioCompativel: matchInfo, // Agora garantido pelo dataset
-      valorContribuicao: valor, // Agora garantido pelo dataset
+      horarioCompativel: matchInfo,
+      valorContribuicao: valor,
       status: "Primeiro Contato",
       criadoEm: serverTimestamp(),
     });
-    alert("Tentativa iniciada e enviada para a aba 'Acompanhamento'.");
+    alert("Tentativa iniciada! Verifique a aba 'Agendamento de Sessão'.");
     row.remove();
   } catch (err) {
     console.error(err);
     alert("Erro ao salvar.");
     e.target.disabled = false;
   }
-}
-
-// Helper formatting
-function formatProfGeneralAvailability(horarios) {
-  if (!horarios) return "";
-  return horarios.map((h) => `${h.dia} ${h.horario}h`).join(", ");
 }

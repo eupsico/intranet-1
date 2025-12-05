@@ -1,23 +1,15 @@
-.cruzamento-agendas-view .form-select,
-.cruzamento-agendas-view .btn {
-    height: calc(2.25rem + 8px);
-}
-
-.cruzamento-agendas-view .table .action-button {
-    padding: 6px 12px;
-    font-size: 0.9em;
-}
-
-.cruzamento-agendas-view .status-select {
-    min-width: 200px;
-}
+.cruzamento-agendas-view .form-select, .cruzamento-agendas-view .btn { height: calc(2.25rem + 8px); }
+.cruzamento-agendas-view .table .action-button { padding: 6px 12px; font-size: 0.9em; }
+.cruzamento-agendas-view .status-select { min-width: 180px; font-weight: 500; }
 
 /* --- Cores de Status para Tentativas --- */
-tr.status-primeiro-contato { background-color: #e3f2fd; } /* Azul claro */
-tr.status-segundo-contato { background-color: #fff3cd; } /* Amarelo claro */
-tr.status-terceiro-contato { background-color: #ffccbc; } /* Laranja claro */
-tr.status-aguardando-confirmacao { background-color: #d1e7dd; } /* Verde claro */
-tr.status-aguardando-pagamento { background-color: #e2e3e5; } /* Cinza claro */
+tr.status-primeiro-contato { background-color: #e3f2fd !important; } /* Azul */
+tr.status-segundo-contato { background-color: #fff9c4 !important; } /* Amarelo */
+tr.status-terceiro-contato { background-color: #ffe0b2 !important; } /* Laranja */
+tr.status-aguardando-confirmacao { background-color: #c8e6c9 !important; } /* Verde claro */
+tr.status-aguardando-pagamento { background-color: #e1bee7 !important; } /* Roxo claro */
+tr.status-agendado { background-color: #a5d6a7 !important; } /* Verde forte */
+tr.status-cancelado-sem-sucesso { background-color: #ffcdd2 !important; } /* Vermelho */
 
 .availability-list {
     list-style-type: none;
