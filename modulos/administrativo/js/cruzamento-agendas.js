@@ -13,6 +13,7 @@ import {
 } from "../../../assets/js/firebase-init.js";
 
 let allProfessionals = [];
+let allPatients = []; // Cache para pacientes carregados
 let unsubscribeTentativas;
 
 // Função para formatar a exibição da disponibilidade do PACIENTE
@@ -46,7 +47,7 @@ function formatProfMatchAvailability(slots) {
   return `<ul class="availability-list">${formatted}</ul>`;
 }
 
-// NOVA Função para formatar a exibição da disponibilidade GERAL do PROFISSIONAL
+// Função para formatar a disponibilidade GERAL do PROFISSIONAL
 function formatProfGeneralAvailability(horarios) {
   if (!horarios || horarios.length === 0) return "Nenhum horário cadastrado";
 
@@ -67,22 +68,28 @@ function formatProfGeneralAvailability(horarios) {
 
 export function init(dbInstance, user, userData) {
   const profissionalSelect = document.getElementById("profissional-select");
+  const pacienteSelect = document.getElementById("paciente-select");
+
   const spinner = document.getElementById("loading-spinner");
   const resultadosDiv = document.getElementById("resultados-compatibilidade");
+  const tituloResultados = document.getElementById("titulo-resultados");
+  const tabelaHeaders = document.getElementById("tabela-headers");
   const compatibilidadeBody = document.getElementById("compatibilidade-tbody");
+
   const tentativasBody = document.getElementById("tentativas-tbody");
   const disponibilidadeGeralBody = document.getElementById(
     "disponibilidade-geral-tbody"
-  ); // Nova Tabela
-  const nenhumCompativelMsg = document.getElementById(
-    "nenhum-paciente-compativel"
   );
+
+  const nenhumResultadoMsg = document.getElementById("nenhum-resultado-msg");
   const nenhumaTentativaMsg = document.getElementById("nenhuma-tentativa");
   const nenhumProfissionalDispMsg = document.getElementById(
     "nenhum-profissional-disponibilidade"
-  ); // Nova Mensagem
+  );
 
   const tabsContainer = document.getElementById("cruzamento-tabs");
+
+  // --- Controle de Abas ---
   tabsContainer.addEventListener("click", (e) => {
     if (e.target.classList.contains("tab-link")) {
       const tabId = e.target.dataset.tab;
@@ -100,9 +107,10 @@ export function init(dbInstance, user, userData) {
     }
   });
 
+  // --- Carregamento de Dados Iniciais ---
+
   async function loadProfessionals() {
-    profissionalSelect.innerHTML =
-      '<option value="">Carregando profissionais...</option>';
+    profissionalSelect.innerHTML = '<option value="">Carregando...</option>';
     try {
       const q = query(
         collection(db, "usuarios"),
@@ -115,13 +123,13 @@ export function init(dbInstance, user, userData) {
       });
       allProfessionals.sort((a, b) => a.nome.localeCompare(b.nome));
 
-      let optionsHtml = '<option value="">Selecione um profissional</option>';
+      let optionsHtml =
+        '<option value="">Selecione um profissional...</option>';
       allProfessionals.forEach((prof) => {
         optionsHtml += `<option value="${prof.id}">${prof.nome}</option>`;
       });
       profissionalSelect.innerHTML = optionsHtml;
 
-      // Chamar a nova função para renderizar a terceira aba
       renderAllProfessionalsAvailability();
     } catch (error) {
       console.error("Erro ao carregar profissionais:", error);
@@ -130,7 +138,38 @@ export function init(dbInstance, user, userData) {
     }
   }
 
-  // NOVA função para renderizar a terceira aba
+  async function loadPatients() {
+    pacienteSelect.innerHTML = '<option value="">Carregando...</option>';
+    try {
+      const q = query(
+        collection(db, "trilhaPaciente"),
+        where("status", "in", ["encaminhar_para_plantao", "encaminhar_para_pb"])
+      );
+      const querySnapshot = await getDocs(q);
+      allPatients = [];
+      querySnapshot.forEach((doc) => {
+        allPatients.push({ id: doc.id, ...doc.data() });
+      });
+      allPatients.sort((a, b) =>
+        (a.nomeCompleto || "").localeCompare(b.nomeCompleto || "")
+      );
+
+      let optionsHtml =
+        '<option value="">Selecione um paciente (Fila de Espera)...</option>';
+      allPatients.forEach((paciente) => {
+        const fila =
+          paciente.status === "encaminhar_para_plantao" ? "Plantão" : "PB";
+        optionsHtml += `<option value="${paciente.id}">${paciente.nomeCompleto} (${fila})</option>`;
+      });
+      pacienteSelect.innerHTML = optionsHtml;
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error);
+      pacienteSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+  }
+
+  // --- Lógica de Renderização Geral ---
+
   function renderAllProfessionalsAvailability() {
     const professionalsWithAvailability = allProfessionals.filter(
       (p) => p.horarios && p.horarios.length > 0
@@ -144,7 +183,6 @@ export function init(dbInstance, user, userData) {
 
     let rowsHtml = "";
     professionalsWithAvailability.forEach((prof) => {
-      // Agrupar modalidades para exibição
       const modalidades = [...new Set(prof.horarios.map((h) => h.modalidade))];
       const modalidadesHtml = modalidades
         .map((m) => `<span class="modalidade-badge ${m}">${m}</span>`)
@@ -161,9 +199,15 @@ export function init(dbInstance, user, userData) {
     disponibilidadeGeralBody.innerHTML = rowsHtml;
   }
 
-  async function findCompatiblePatients() {
+  // --- Lógica de Cruzamento: Profissional -> Pacientes ---
+
+  function findCompatiblePatients() {
     const professionalId = profissionalSelect.value;
-    if (!professionalId) {
+
+    // Limpa a seleção do outro campo
+    if (professionalId) {
+      pacienteSelect.value = "";
+    } else {
       resultadosDiv.style.display = "none";
       return;
     }
@@ -171,81 +215,196 @@ export function init(dbInstance, user, userData) {
     spinner.style.display = "block";
     resultadosDiv.style.display = "none";
     compatibilidadeBody.innerHTML = "";
-    nenhumCompativelMsg.style.display = "none";
+    nenhumResultadoMsg.style.display = "none";
+    tituloResultados.textContent = "Pacientes Compatíveis Encontrados";
 
-    try {
-      const professional = allProfessionals.find(
-        (p) => p.id === professionalId
-      );
-      const professionalAvailability = professional.horarios || [];
+    // Configura Cabeçalho da Tabela
+    tabelaHeaders.innerHTML = `
+        <tr>
+            <th scope="col">Nome do Paciente</th>
+            <th scope="col">Telefone</th>
+            <th scope="col">Disponibilidade Paciente</th>
+            <th scope="col">Match (Horário Profissional)</th>
+            <th scope="col">Fila</th>
+            <th scope="col">Ação</th>
+        </tr>
+    `;
 
-      const q = query(
-        collection(db, "trilhaPaciente"),
-        where("status", "in", ["encaminhar_para_plantao", "encaminhar_para_pb"])
-      );
-      const patientsSnapshot = await getDocs(q);
-      const compatiblePatients = [];
+    setTimeout(() => {
+      // Timeout simulado para não travar UI se array for grande, e usar dados já carregados
+      try {
+        const professional = allProfessionals.find(
+          (p) => p.id === professionalId
+        );
+        const professionalAvailability = professional?.horarios || [];
 
-      patientsSnapshot.forEach((doc) => {
-        const patient = { id: doc.id, ...doc.data() };
+        // Filtra os pacientes que já foram carregados em loadPatients
+        // Se allPatients estiver vazio (ex: erro no load), buscar novamente seria ideal, mas aqui usamos o cache
+        const compatiblePatients = [];
+
+        allPatients.forEach((patient) => {
+          const patientAvailability = patient.disponibilidadeEspecifica || [];
+          const patientModalidade = patient.modalidadeAtendimento || "Qualquer";
+          let commonSlots = new Set();
+
+          professionalAvailability.forEach((profSlot) => {
+            if (profSlot.status !== "disponivel") return;
+
+            const modalityMatch =
+              patientModalidade === "Qualquer" ||
+              profSlot.modalidade === "ambas" ||
+              profSlot.modalidade.toLowerCase() ===
+                patientModalidade.toLowerCase();
+
+            if (!modalityMatch) return;
+
+            patientAvailability.forEach((patientSlot) => {
+              const [periodo, hora] = patientSlot.split("_");
+              const horaNum = parseInt(hora.split(":")[0], 10);
+              if (
+                profSlot.horario === horaNum &&
+                checkPeriodMatch(periodo, profSlot.dia)
+              ) {
+                commonSlots.add(patientSlot);
+              }
+            });
+          });
+
+          if (commonSlots.size > 0) {
+            const commonSlotsArray = Array.from(commonSlots);
+            const profCommonSlots = professionalAvailability
+              .filter((profSlot) =>
+                commonSlotsArray.some((pSlot) => {
+                  const [period, hora] = pSlot.split("_");
+                  return (
+                    profSlot.horario === parseInt(hora.split(":")[0], 10) &&
+                    checkPeriodMatch(period, profSlot.dia)
+                  );
+                })
+              )
+              .map((s) => `${s.dia.toLowerCase()}_${s.horario}:00`);
+
+            compatiblePatients.push({
+              ...patient,
+              matchingPatientSlots: commonSlotsArray,
+              matchingProfSlots: [...new Set(profCommonSlots)],
+            });
+          }
+        });
+
+        renderPatientsTable(compatiblePatients);
+      } catch (error) {
+        console.error(
+          "Erro no algoritmo de compatibilidade (Profissional -> Paciente):",
+          error
+        );
+        window.showToast("Erro ao processar compatibilidade.", "error");
+      } finally {
+        spinner.style.display = "none";
+        resultadosDiv.style.display = "block";
+      }
+    }, 100);
+  }
+
+  // --- Lógica de Cruzamento: Paciente -> Profissionais ---
+
+  function findCompatibleProfessionals() {
+    const patientId = pacienteSelect.value;
+
+    // Limpa a seleção do outro campo
+    if (patientId) {
+      profissionalSelect.value = "";
+    } else {
+      resultadosDiv.style.display = "none";
+      return;
+    }
+
+    spinner.style.display = "block";
+    resultadosDiv.style.display = "none";
+    compatibilidadeBody.innerHTML = "";
+    nenhumResultadoMsg.style.display = "none";
+    tituloResultados.textContent = "Profissionais Compatíveis Encontrados";
+
+    // Configura Cabeçalho da Tabela
+    tabelaHeaders.innerHTML = `
+        <tr>
+            <th scope="col">Nome do Profissional</th>
+            <th scope="col">Contato</th>
+            <th scope="col">Match (Horário Profissional)</th>
+            <th scope="col">Disponibilidade Paciente</th>
+            <th scope="col">Modalidade</th>
+            <th scope="col">Ação</th>
+        </tr>
+    `;
+
+    setTimeout(() => {
+      try {
+        const patient = allPatients.find((p) => p.id === patientId);
+        if (!patient) throw new Error("Paciente não encontrado na lista.");
+
         const patientAvailability = patient.disponibilidadeEspecifica || [];
         const patientModalidade = patient.modalidadeAtendimento || "Qualquer";
 
-        let commonSlots = new Set();
+        const compatibleProfessionals = [];
 
-        professionalAvailability.forEach((profSlot) => {
-          if (profSlot.status !== "disponivel") return;
+        allProfessionals.forEach((prof) => {
+          const profAvailability = prof.horarios || [];
+          let commonSlots = new Set();
+          let matchingProfSlots = new Set();
 
-          const modalityMatch =
-            patientModalidade === "Qualquer" ||
-            profSlot.modalidade === "ambas" ||
-            profSlot.modalidade.toLowerCase() ===
-              patientModalidade.toLowerCase();
-          if (!modalityMatch) return;
+          profAvailability.forEach((profSlot) => {
+            if (profSlot.status !== "disponivel") return;
 
-          patientAvailability.forEach((patientSlot) => {
-            const [periodo, hora] = patientSlot.split("_");
-            const horaNum = parseInt(hora.split(":")[0], 10);
-            if (
-              profSlot.horario === horaNum &&
-              checkPeriodMatch(periodo, profSlot.dia)
-            ) {
-              commonSlots.add(patientSlot);
-            }
+            const modalityMatch =
+              patientModalidade === "Qualquer" ||
+              profSlot.modalidade === "ambas" ||
+              profSlot.modalidade.toLowerCase() ===
+                patientModalidade.toLowerCase();
+
+            if (!modalityMatch) return;
+
+            patientAvailability.forEach((patientSlot) => {
+              const [periodo, hora] = patientSlot.split("_");
+              const horaNum = parseInt(hora.split(":")[0], 10);
+
+              if (
+                profSlot.horario === horaNum &&
+                checkPeriodMatch(periodo, profSlot.dia)
+              ) {
+                commonSlots.add(patientSlot);
+                matchingProfSlots.add(
+                  `${profSlot.dia.toLowerCase()}_${profSlot.horario}:00`
+                );
+              }
+            });
           });
+
+          if (matchingProfSlots.size > 0) {
+            compatibleProfessionals.push({
+              ...prof,
+              matchingPatientSlots: Array.from(commonSlots),
+              matchingProfSlots: Array.from(matchingProfSlots),
+              contato:
+                prof.telefone || prof.celular || prof.email || "Sem contato",
+            });
+          }
         });
 
-        if (commonSlots.size > 0) {
-          const commonSlotsArray = Array.from(commonSlots);
-          const profCommonSlots = professionalAvailability
-            .filter((profSlot) =>
-              commonSlotsArray.some((pSlot) => {
-                const [period, hora] = pSlot.split("_");
-                return (
-                  profSlot.horario === parseInt(hora.split(":")[0], 10) &&
-                  checkPeriodMatch(period, profSlot.dia)
-                );
-              })
-            )
-            .map((s) => `${s.dia.toLowerCase()}_${s.horario}:00`);
-
-          compatiblePatients.push({
-            ...patient,
-            matchingPatientSlots: commonSlotsArray,
-            matchingProfSlots: [...new Set(profCommonSlots)],
-          });
-        }
-      });
-
-      renderCompatibilityTable(compatiblePatients);
-    } catch (error) {
-      console.error("Erro ao buscar pacientes compatíveis:", error);
-      window.showToast("Erro ao buscar pacientes.", "error");
-    } finally {
-      spinner.style.display = "none";
-      resultadosDiv.style.display = "block";
-    }
+        renderProfessionalsTable(compatibleProfessionals, patient.id);
+      } catch (error) {
+        console.error(
+          "Erro no algoritmo de compatibilidade (Paciente -> Profissional):",
+          error
+        );
+        window.showToast("Erro ao processar compatibilidade.", "error");
+      } finally {
+        spinner.style.display = "none";
+        resultadosDiv.style.display = "block";
+      }
+    }, 100);
   }
+
+  // --- Funções Auxiliares de Lógica ---
 
   function checkPeriodMatch(periodo, diaSemana) {
     const dia = diaSemana.toLowerCase();
@@ -263,9 +422,13 @@ export function init(dbInstance, user, userData) {
     }
   }
 
-  function renderCompatibilityTable(patients) {
+  // --- Renderização de Tabelas de Resultados ---
+
+  function renderPatientsTable(patients) {
     if (patients.length === 0) {
-      nenhumCompativelMsg.style.display = "block";
+      nenhumResultadoMsg.textContent =
+        "Nenhum paciente compatível encontrado para este profissional.";
+      nenhumResultadoMsg.style.display = "block";
       compatibilidadeBody.innerHTML = "";
       return;
     }
@@ -275,7 +438,9 @@ export function init(dbInstance, user, userData) {
       const fila =
         patient.status === "encaminhar_para_plantao" ? "Plantão" : "PB";
       rowsHtml += `
-                <tr data-patient-id="${patient.id}">
+                <tr data-patient-id="${patient.id}" data-patient-name="${
+        patient.nomeCompleto
+      }">
                     <td>${patient.nomeCompleto}</td>
                     <td>${patient.telefoneCelular || "N/A"}</td>
                     <td>${formatPatientAvailability(
@@ -284,7 +449,7 @@ export function init(dbInstance, user, userData) {
                     <td>${formatProfMatchAvailability(
                       patient.matchingProfSlots
                     )}</td>
-                    <td>${fila}</td>
+                    <td><span class="badge bg-secondary">${fila}</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary action-button btn-iniciar-tentativa">Iniciar Tentativa</button>
                     </td>
@@ -293,6 +458,37 @@ export function init(dbInstance, user, userData) {
     });
     compatibilidadeBody.innerHTML = rowsHtml;
   }
+
+  function renderProfessionalsTable(professionals, patientId) {
+    if (professionals.length === 0) {
+      nenhumResultadoMsg.textContent =
+        "Nenhum profissional compatível encontrado para este paciente.";
+      nenhumResultadoMsg.style.display = "block";
+      compatibilidadeBody.innerHTML = "";
+      return;
+    }
+
+    let rowsHtml = "";
+    professionals.forEach((prof) => {
+      rowsHtml += `
+            <tr data-professional-id="${
+              prof.id
+            }" data-patient-id="${patientId}">
+                <td>${prof.nome}</td>
+                <td>${prof.contato}</td>
+                <td>${formatProfMatchAvailability(prof.matchingProfSlots)}</td>
+                <td>${formatPatientAvailability(prof.matchingPatientSlots)}</td>
+                <td><span class="badge bg-info text-dark">Compatível</span></td>
+                <td>
+                    <button class="btn btn-sm btn-success action-button btn-iniciar-tentativa-reverso">Selecionar</button>
+                </td>
+            </tr>
+      `;
+    });
+    compatibilidadeBody.innerHTML = rowsHtml;
+  }
+
+  // --- Tentativas de Agendamento ---
 
   function listenToSchedulingAttempts() {
     const q = query(collection(db, "agendamentoTentativas"));
@@ -317,7 +513,7 @@ export function init(dbInstance, user, userData) {
 
     nenhumaTentativaMsg.style.display = "none";
     tentativas.sort((a, b) =>
-      (a.pacienteNome || "").localeCompare(b.pacienteNome)
+      (a.pacienteNome || "").localeCompare(b.pacienteNome || "")
     );
 
     let rowsHtml = "";
@@ -328,6 +524,7 @@ export function init(dbInstance, user, userData) {
       "Aguardando Confirmação",
       "Aguardando Pagamento",
       "Agendado",
+      "Cancelado/Sem Sucesso",
     ];
     tentativas.forEach((item) => {
       const options = statusOptions
@@ -338,6 +535,7 @@ export function init(dbInstance, user, userData) {
             }>${opt}</option>`
         )
         .join("");
+
       rowsHtml += `
                 <tr data-tentativa-id="${item.id}">
                     <td>${item.pacienteNome}</td>
@@ -352,14 +550,49 @@ export function init(dbInstance, user, userData) {
     tentativasBody.innerHTML = rowsHtml;
   }
 
+  // --- Ações de Botões ---
+
+  // Caso 1: Usuário selecionou Profissional -> Clicou em um Paciente da lista
   async function handleStartAttempt(e) {
     const button = e.target;
     const row = button.closest("tr");
     const patientId = row.dataset.patientId;
+    // O profissional é o que está no select principal
     const professionalId = profissionalSelect.value;
 
-    button.disabled = true;
-    button.textContent = "Iniciando...";
+    if (!professionalId) {
+      alert("Erro: Profissional não identificado.");
+      return;
+    }
+
+    await createAttempt(patientId, professionalId, button, row);
+  }
+
+  // Caso 2: Usuário selecionou Paciente -> Clicou em um Profissional da lista
+  async function handleStartAttemptReverse(e) {
+    const button = e.target;
+    const row = button.closest("tr");
+    const professionalId = row.dataset.professionalId;
+    // O paciente é o que está no select principal (ou passado via data-attribute na row)
+    const patientId = row.dataset.patientId;
+
+    if (!patientId) {
+      alert("Erro: Paciente não identificado.");
+      return;
+    }
+
+    await createAttempt(patientId, professionalId, button, row);
+  }
+
+  // Função unificada para criar a tentativa no Firebase
+  async function createAttempt(
+    patientId,
+    professionalId,
+    buttonElement,
+    rowElement
+  ) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = "Iniciando...";
 
     try {
       const patientDocRef = doc(db, "trilhaPaciente", patientId);
@@ -390,12 +623,15 @@ export function init(dbInstance, user, userData) {
       await addDoc(collection(db, "agendamentoTentativas"), tentativaData);
 
       window.showToast("Tentativa de agendamento iniciada!", "success");
-      row.remove();
+      rowElement.remove(); // Remove da lista de sugestões pois já virou tentativa
+
+      // Se necessário, recarregar a tabela para atualizar dados,
+      // mas remover a linha visualmente já dá feedback imediato.
     } catch (error) {
       console.error("Erro ao iniciar tentativa:", error);
       window.showToast("Erro ao iniciar tentativa.", "error");
-      button.disabled = false;
-      button.textContent = "Iniciar Tentativa";
+      buttonElement.disabled = false;
+      buttonElement.textContent = "Tentar Novamente";
     }
   }
 
@@ -417,18 +653,28 @@ export function init(dbInstance, user, userData) {
     }
   }
 
+  // --- Event Listeners ---
+
   profissionalSelect.addEventListener("change", findCompatiblePatients);
+  pacienteSelect.addEventListener("change", findCompatibleProfessionals);
+
   compatibilidadeBody.addEventListener("click", (e) => {
     if (e.target.classList.contains("btn-iniciar-tentativa")) {
       handleStartAttempt(e);
     }
+    if (e.target.classList.contains("btn-iniciar-tentativa-reverso")) {
+      handleStartAttemptReverse(e);
+    }
   });
+
   tentativasBody.addEventListener("change", (e) => {
     if (e.target.classList.contains("status-select")) {
       handleStatusChange(e);
     }
   });
 
+  // Inicialização
   loadProfessionals();
+  loadPatients();
   listenToSchedulingAttempts();
 }
