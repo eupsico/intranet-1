@@ -131,6 +131,116 @@ function normalizeDiaParaGrade(diaSemana) {
   return mapa[diaSemana.toLowerCase().trim()] || diaSemana.toLowerCase();
 }
 
+// --- NOVAS FUNÇÕES DE LÓGICA DE NEGÓCIO (Encaminhamento e Profissão) ---
+
+/**
+ * Analisa os encaminhamentos do paciente e calcula o valor dividido.
+ */
+function analisarEncaminhamentosEValor(paciente) {
+  const listaAlvo = [
+    "Atendimento Psicológico",
+    "Atendimento Psicopedagógico",
+    "Atendimento com musicoterapeuta",
+  ];
+
+  const encaminhamentosPaciente =
+    paciente.plantaoInfo && Array.isArray(paciente.plantaoInfo.encaminhamento)
+      ? paciente.plantaoInfo.encaminhamento
+      : [];
+
+  // Filtra apenas os 3 que importam para a regra
+  const encaminhamentosValidos = encaminhamentosPaciente.filter((item) =>
+    listaAlvo.includes(item)
+  );
+
+  // Se não tiver nenhum dos 3, retorna padrão (ou vazio se quiser bloquear)
+  if (encaminhamentosValidos.length === 0) {
+    return {
+      relevantes: [],
+      valorCalculado: paciente.valorContribuicao || "0,00",
+      tooltip: "Sem encaminhamento específico identificado",
+      divisao: 1,
+    };
+  }
+
+  // Cálculo do valor
+  let valorOriginal = 0;
+  if (paciente.valorContribuicao) {
+    // Converte "100,00" ou "100" para float
+    valorOriginal = parseFloat(
+      String(paciente.valorContribuicao).replace(",", ".")
+    );
+  }
+
+  const quantidadeDivisao = encaminhamentosValidos.length;
+  const valorDividido =
+    quantidadeDivisao > 0 ? valorOriginal / quantidadeDivisao : valorOriginal;
+
+  // Formata de volta para String PT-BR
+  const valorFinalString = valorDividido.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const tooltip = `Valor Original: ${
+    paciente.valorContribuicao
+  }. Dividido por ${quantidadeDivisao} para: ${encaminhamentosValidos.join(
+    ", "
+  )}`;
+
+  return {
+    relevantes: encaminhamentosValidos,
+    valorCalculado: valorFinalString,
+    tooltip: tooltip,
+    divisao: quantidadeDivisao,
+  };
+}
+
+/**
+ * Verifica se a profissão do profissional bate com algum encaminhamento do paciente.
+ * Retorna o encaminhamento correspondente se houver match.
+ */
+function obterEncaminhamentoCompativel(
+  profissaoProfissional,
+  listaEncaminhamentosRelevantes
+) {
+  if (!profissaoProfissional) return null;
+  if (
+    !listaEncaminhamentosRelevantes ||
+    listaEncaminhamentosRelevantes.length === 0
+  )
+    return null;
+
+  const profNorm = normalizeText(profissaoProfissional);
+
+  // Mapeamento: Profissão -> Encaminhamento Necessário
+  // Ex: Se o prof é Psicólogo, o paciente precisa ter "Atendimento Psicológico"
+  const mapaMatch = [
+    {
+      profissaoChave: "psicologo", // cobre Psicólogo(a)
+      servicoAlvo: "Atendimento Psicológico",
+    },
+    {
+      profissaoChave: "psicopedagogo", // cobre Psicopedagogo(a)
+      servicoAlvo: "Atendimento Psicopedagógico",
+    },
+    {
+      profissaoChave: "musicoterapeuta",
+      servicoAlvo: "Atendimento com musicoterapeuta",
+    },
+  ];
+
+  for (const regra of mapaMatch) {
+    if (profNorm.includes(regra.profissaoChave)) {
+      if (listaEncaminhamentosRelevantes.includes(regra.servicoAlvo)) {
+        return regra.servicoAlvo;
+      }
+    }
+  }
+
+  return null;
+}
+
 // --- INIT PRINCIPAL ---
 export function init(dbInstance, user, userData) {
   firestoreDb = dbInstance; // Atualiza referência global
@@ -290,7 +400,7 @@ function renderAllProfessionalsAvailability() {
   tbody.innerHTML = rowsHtml;
 }
 
-// --- LOGICA DE COMPATIBILIDADE ---
+// --- LOGICA DE COMPATIBILIDADE ATUALIZADA ---
 function findCompatiblePatients() {
   const professionalId = document.getElementById("profissional-select").value;
   if (professionalId) {
@@ -328,28 +438,58 @@ function processCompatibility(profId, pacId) {
   tbody.innerHTML = "";
   msgVazio.style.display = "none";
 
-  // Define Cabeçalhos
+  // Define Cabeçalhos (Adicionada coluna 'Encaminhamento')
   if (profId) {
     titulo.textContent = "Pacientes Compatíveis Encontrados";
-    headers.innerHTML = `<tr><th>Nome do Paciente</th><th>Telefone</th><th>Disp. Paciente</th><th>Match</th><th>Valor</th><th>Modalidade</th><th>Ação</th></tr>`;
+    headers.innerHTML = `<tr>
+            <th>Nome do Paciente</th>
+            <th>Telefone</th>
+            <th>Encaminhamento</th>
+            <th>Disp. Paciente</th>
+            <th>Match</th>
+            <th>Valor</th>
+            <th>Modalidade</th>
+            <th>Ação</th>
+        </tr>`;
   } else {
     titulo.textContent = "Profissionais Compatíveis Encontrados";
-    headers.innerHTML = `<tr><th>Nome do Profissional</th><th>Valor</th><th>Match</th><th>Disp. Paciente</th><th>Modalidade</th><th>Ação</th></tr>`;
+    headers.innerHTML = `<tr>
+            <th>Nome do Profissional</th>
+            <th>Encaminhamento</th>
+            <th>Valor</th>
+            <th>Match</th>
+            <th>Disp. Paciente</th>
+            <th>Modalidade</th>
+            <th>Ação</th>
+        </tr>`;
   }
 
   setTimeout(() => {
     let matches = [];
 
     if (profId) {
-      // Buscando Pacientes para um Profissional
+      // --- Buscando Pacientes para um Profissional ---
       const prof = allProfessionals.find((p) => p.id === profId);
       const profSlots = prof?.horarios || [];
+      const profissaoProf = prof?.profissao || "";
 
       allPatients.forEach((pat) => {
+        // 1. Lógica de Encaminhamento Inteligente
+        const dadosEncaminhamento = analisarEncaminhamentosEValor(pat);
+        const servicoMatch = obterEncaminhamentoCompativel(
+          profissaoProf,
+          dadosEncaminhamento.relevantes
+        );
+
+        // Se o profissional tem uma profissão restrita e não bate com o encaminhamento, ignora
+        if (dadosEncaminhamento.relevantes.length > 0 && !servicoMatch) {
+          return; // Pula este paciente
+        }
+
         const patSlots = pat.disponibilidadeEspecifica || [];
         const patMod = normalizeText(pat.modalidadeAtendimento || "Qualquer");
 
-        // Lógica de Match (Simplificada para brevidade, mantendo lógica original)
+        // Lógica de Match de Horário/Modalidade
         let commonSlots = [];
         let matchedMod = "Indefinido";
 
@@ -377,16 +517,33 @@ function processCompatibility(profId, pacId) {
             commonSlots: [...new Set(commonSlots)],
             matchedMod,
             type: "patient",
+            displayServico: servicoMatch || "Geral/Outros",
+            displayValor: dadosEncaminhamento.valorCalculado,
+            valorTooltip: dadosEncaminhamento.tooltip,
           });
         }
       });
     } else {
-      // Buscando Profissionais para um Paciente
+      // --- Buscando Profissionais para um Paciente ---
       const pat = allPatients.find((p) => p.id === pacId);
       const patSlots = pat?.disponibilidadeEspecifica || [];
       const patMod = normalizeText(pat.modalidadeAtendimento || "Qualquer");
 
+      // 1. Lógica de Encaminhamento Inteligente
+      const dadosEncaminhamento = analisarEncaminhamentosEValor(pat);
+
       allProfessionals.forEach((prof) => {
+        const profissaoProf = prof.profissao || "";
+        const servicoMatch = obterEncaminhamentoCompativel(
+          profissaoProf,
+          dadosEncaminhamento.relevantes
+        );
+
+        // Se o paciente tem encaminhamentos específicos, só mostra profs compatíveis
+        if (dadosEncaminhamento.relevantes.length > 0 && !servicoMatch) {
+          return; // Pula este profissional
+        }
+
         const profSlots = prof.horarios || [];
         let commonSlots = [];
         let matchedMod = "Indefinido";
@@ -415,7 +572,9 @@ function processCompatibility(profId, pacId) {
             commonSlots: [...new Set(commonSlots)],
             matchedMod,
             type: "professional",
-            patientVal: pat.valorContribuicao,
+            displayServico: servicoMatch || "Geral/Outros",
+            displayValor: dadosEncaminhamento.valorCalculado,
+            valorTooltip: dadosEncaminhamento.tooltip,
           });
         }
       });
@@ -427,35 +586,38 @@ function processCompatibility(profId, pacId) {
     } else {
       matches.forEach((item) => {
         const matchText = item.commonSlots.join(", ");
-        const valor =
-          item.type === "professional"
-            ? item.patientVal
-            : item.valorContribuicao;
 
+        // Determina quem é o alvo para pegar os IDs corretos
+        // Se type == 'patient', item é o paciente, related é o profissional selecionado no dropdown
+        // Se type == 'professional', item é o profissional, related é o paciente selecionado
         const tr = document.createElement("tr");
-        // DATASET CRÍTICO PARA O SAVE FUNCIONAR
         tr.dataset.itemId = item.id;
         tr.dataset.relatedId = profId ? profId : pacId;
         tr.dataset.type = item.type;
         tr.dataset.match = matchText;
-        tr.dataset.valor = valor || "0,00";
+        tr.dataset.valor = item.displayValor;
+
+        const colunaValor = `<span style="cursor: help; border-bottom: 1px dotted #666;" title="${item.valorTooltip}">${item.displayValor}</span>`;
+        const colunaServico = `<span class="badge bg-info text-dark">${item.displayServico}</span>`;
 
         if (item.type === "patient") {
           tr.innerHTML = `
                         <td>${item.nomeCompleto}</td>
                         <td>${item.telefoneCelular || "N/A"}</td>
+                        <td>${colunaServico}</td>
                         <td>${formatPatientAvailability(
                           item.disponibilidadeEspecifica || []
                         )}</td>
                         <td>${matchText}</td>
-                        <td>${valor || "N/A"}</td>
+                        <td>${colunaValor}</td>
                         <td>${getModalityBadge(item.matchedMod)}</td>
                         <td><button class="btn btn-sm btn-primary btn-iniciar">Iniciar Tentativa</button></td>
                     `;
         } else {
           tr.innerHTML = `
                         <td>${item.nome}</td>
-                        <td>${valor || "N/A"}</td>
+                        <td>${colunaServico}</td>
+                        <td>${colunaValor}</td>
                         <td>${matchText}</td>
                         <td>${formatPatientAvailability(
                           allPatients.find((p) => p.id === pacId)
