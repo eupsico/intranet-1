@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.5 (Correção definitiva do evento de clique - Removido conflito touch)
+// VERSÃO 2.6 (Correção F5/SPA - Reset de Estado e Renderização Forçada)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -11,13 +11,13 @@ import {
   doc,
   updateDoc,
 } from "../../../assets/js/firebase-init.js";
-
-// Import getDoc necessário para marcarPresenca
 import { getDoc } from "../../../assets/js/firebase-init.js";
 
+// Variáveis de Estado Global do Módulo
 let todasAsAtas = [];
 let todosOsProfissionais = [];
 let todosOsAgendamentos = [];
+
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
   objetivos: "Os objetivos da reunião foram alcançados?",
@@ -46,13 +46,37 @@ function formatarData(dataReuniao) {
   }
 }
 
+// Função para zerar o estado ao entrar na tela (Corrige o problema do F5)
+function resetState() {
+  todasAsAtas = [];
+  todosOsProfissionais = [];
+  todosOsAgendamentos = [];
+  console.log("[RELATÓRIO] Estado resetado.");
+}
+
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.5 - Fix Click).");
+  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.6).");
+
+  // 1. Zera variáveis antigas
+  resetState();
+
+  // 2. Configura cliques
   setupEventListeners();
+
+  // 3. Carrega dados frescos
   await carregarRelatorios();
 }
 
 async function carregarRelatorios() {
+  const containers = document.querySelectorAll('[id$="-container"]');
+  // Mostra spinner em todos containers visíveis para dar feedback imediato
+  containers.forEach((c) => {
+    if (!c.innerHTML.includes("loading-spinner")) {
+      c.innerHTML =
+        '<div class="loading-spinner"></div><p class="text-center">Atualizando dados...</p>';
+    }
+  });
+
   try {
     const [atasSnapshot, profissionaisSnapshot, agendamentosSnapshot] =
       await Promise.all([
@@ -85,10 +109,11 @@ async function carregarRelatorios() {
     }));
 
     console.log(
-      `[RELATÓRIO] Carregados: ${todasAsAtas.length} atas, ${todosOsProfissionais.length} profissionais, ${todosOsAgendamentos.length} agendamentos.`
+      `[RELATÓRIO] Carregados: ${todasAsAtas.length} atas, ${todosOsProfissionais.length} profissionais.`
     );
 
-    // Renderiza abas com verificação de containers
+    // Renderiza as abas principais IMEDIATAMENTE após carregar
+    // Isso garante que o usuário veja os dados sem precisar clicar
     renderizarAbaSeExistir("resumo", () =>
       renderizarResumo(todasAsAtas, todosOsProfissionais)
     );
@@ -98,18 +123,18 @@ async function carregarRelatorios() {
     renderizarAbaSeExistir("feedbacks", () =>
       renderizarFeedbacks(todasAsAtas, todosOsProfissionais)
     );
-    renderizarAbaSeExistir("agendados", () =>
-      renderizarAgendados(todosOsAgendamentos, todosOsProfissionais)
-    );
 
-    // Remove spinners
-    document
-      .querySelectorAll(".loading-spinner")
-      .forEach((spinner) => (spinner.style.display = "none"));
-    console.log("[RELATÓRIO] Todas as abas renderizadas com sucesso.");
+    // Agendados pode ser pesado, mantemos lazy load ou carregamos se for a aba ativa
+    const activeTab = document.querySelector(".tab-content.active");
+    if (activeTab && activeTab.id === "agendados") {
+      renderizarAgendados(todosOsAgendamentos, todosOsProfissionais);
+      activeTab.classList.add("rendered");
+    }
+
+    console.log("[RELATÓRIO] Renderização inicial concluída.");
   } catch (error) {
     console.error("[RELATÓRIO] Erro ao carregar:", error);
-    mostrarErro("Erro ao carregar dados. Verifique conexão.");
+    mostrarErro("Erro ao carregar dados. Tente atualizar a página.");
   }
 }
 
@@ -130,18 +155,20 @@ function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
   if (!viewContainer) return;
 
-  // Tabs - Gerenciamento de clique simplificado
+  // Remove listeners antigos clonando o elemento (truque rápido para SPA) ou apenas adiciona novo
+  // Como o HTML é recriado pelo loadView, apenas adicionar é seguro.
+
   viewContainer.addEventListener("click", (e) => {
-    // Verifica se clicou na aba
+    // 1. Lógica de Abas
     const tabLink = e.target.closest(".tab-link");
     if (tabLink) {
       e.preventDefault();
       const targetTab = tabLink.dataset.tab;
       trocarAba(targetTab);
-      return; // Encerra aqui se foi clique na aba
+      return;
     }
 
-    // Verifica se clicou no header do accordion
+    // 2. Lógica de Accordion
     const accordionHeader = e.target.closest(".accordion-header");
     if (accordionHeader) {
       e.preventDefault();
@@ -152,7 +179,7 @@ function setupEventListeners() {
       const isActive = accordionItem.classList.toggle("active");
       if (content) {
         content.style.maxHeight = isActive
-          ? `${content.scrollHeight}px`
+          ? `${content.scrollHeight + 500}px` // Adiciona buffer para conteúdo dinâmico
           : "0px";
       }
       if (icon) {
@@ -162,431 +189,433 @@ function setupEventListeners() {
     }
   });
 
-  // Checkboxes de presença (change event delegação)
+  // 3. Lógica de Presença (Checkbox)
   viewContainer.addEventListener("change", (e) => {
     if (e.target.matches(".checkbox-presenca")) {
       marcarPresenca(e.target);
     }
   });
-
-  // REMOVIDO: O listener de 'touchstart' que causava conflito e exigia múltiplos cliques.
 }
 
 function trocarAba(tabId) {
+  // Atualiza botões
   document
     .querySelectorAll(".tab-link")
     .forEach((btn) => btn.classList.remove("active"));
+  const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+  if (activeBtn) activeBtn.classList.add("active");
+
+  // Atualiza conteúdo
   document
     .querySelectorAll(".tab-content")
     .forEach((content) => content.classList.remove("active"));
 
-  const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
   const activeContent = document.getElementById(tabId);
-  if (activeBtn) activeBtn.classList.add("active");
-  if (activeContent) activeContent.classList.add("active");
+  if (activeContent) {
+    activeContent.classList.add("active");
 
-  // Lazy render para Agendados
-  if (tabId === "agendados" && !activeContent.classList.contains("rendered")) {
-    renderizarAgendados(todosOsAgendamentos, todosOsProfissionais);
-    activeContent.classList.add("rendered");
+    // Lazy load para agendados (carrega só quando clica na aba pela primeira vez)
+    if (
+      tabId === "agendados" &&
+      !activeContent.classList.contains("rendered")
+    ) {
+      renderizarAgendados(todosOsAgendamentos, todosOsProfissionais);
+      activeContent.classList.add("rendered");
+    }
   }
 }
 
-// RESUMO GERAL
+// ==========================
+// FUNÇÕES DE RENDERIZAÇÃO
+// ==========================
+
 function renderizarResumo(atas, profissionais) {
   const container = document.getElementById("resumo-container");
   if (!container) return;
 
-  try {
-    const atasOrdenadas = [...atas].sort((a, b) => {
-      const dataA = formatarData(a.dataReuniao);
-      const dataB = formatarData(b.dataReuniao);
-      return new Date(dataB) - new Date(dataA);
-    });
+  const atasOrdenadas = [...atas].sort((a, b) => {
+    const dataA = formatarData(a.dataReuniao);
+    const dataB = formatarData(b.dataReuniao);
+    return new Date(dataB) - new Date(dataA);
+  });
 
-    const totalReunioes = atas.length;
-    const reunioesRecentes = atasOrdenadas.slice(0, 5);
+  const totalReunioes = atas.length;
+  const reunioesRecentes = atasOrdenadas.slice(0, 5);
 
-    container.innerHTML = `
-            <div class="card-header">
-                <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral das Reuniões</h3>
-            </div>
-            <div class="card-body">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="material-symbols-outlined">event</span>
-                        <h4>${totalReunioes}</h4>
-                        <p>Total de Reuniões</p>
-                    </div>
-                    <div class="stat-card">
-                        <span class="material-symbols-outlined">group</span>
-                        <h4>${profissionais.length}</h4>
-                        <p>Profissionais Cadastrados</p>
-                    </div>
-                    <div class="stat-card">
-                        <span class="material-symbols-outlined">thumb_up</span>
-                        <h4>${calcularMediaFeedbacks(atas)}</h4>
-                        <p>Média de Satisfação (%)</p>
-                    </div>
+  container.innerHTML = `
+        <div class="card-header">
+            <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral das Reuniões</h3>
+        </div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">event</span>
+                    <h4>${totalReunioes}</h4>
+                    <p>Total de Reuniões</p>
                 </div>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">group</span>
+                    <h4>${profissionais.length}</h4>
+                    <p>Profissionais Cadastrados</p>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">thumb_up</span>
+                    <h4>${calcularMediaFeedbacks(atas)}</h4>
+                    <p>Média de Satisfação (%)</p>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Reunião</th>
+                            <th>Data</th>
+                            <th>Participantes (Ata)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reunioesRecentes
+                          .map(
+                            (ata) => `
                             <tr>
-                                <th>Reunião</th>
-                                <th>Data</th>
-                                <th>Participantes</th>
+                                <td>${ata.titulo || "Reunião Técnica"}</td>
+                                <td>${formatarData(ata.dataReuniao)}</td>
+                                <td>${
+                                  Array.isArray(ata.participantes)
+                                    ? ata.participantes.length
+                                    : ata.participantes
+                                    ? ata.participantes.split(",").length
+                                    : 0
+                                }</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${reunioesRecentes
-                              .map(
-                                (ata) => `
-                                <tr>
-                                    <td>${ata.titulo || "Reunião Técnica"}</td>
-                                    <td>${formatarData(ata.dataReuniao)}</td>
-                                    <td>${ata.participantes?.length || 0}</td>
-                                </tr>
-                            `
-                              )
-                              .join("")}
-                        </tbody>
-                    </table>
-                </div>
+                        `
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
             </div>
-        `;
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro no resumo:", error);
-    container.innerHTML =
-      '<div class="alert alert-danger">Erro ao carregar resumo.</div>';
-  }
+        </div>
+    `;
 }
 
-// RESUMO DE PARTICIPAÇÃO
 function renderizarParticipacao(atas, profissionais) {
   const container = document.getElementById("participacao-container");
   if (!container) return;
 
-  try {
-    const participacoes = calcularParticipacoes(atas, profissionais);
-    const taxaMedia =
-      participacoes.totalReunioes > 0
-        ? (
-            (participacoes.totalPresencas /
-              (participacoes.totalReunioes * profissionais.length)) *
-            100
-          ).toFixed(1)
-        : 0;
+  const participacoes = calcularParticipacoes(atas, profissionais);
+  const taxaMedia =
+    participacoes.totalReunioes > 0
+      ? (
+          (participacoes.totalPresencas /
+            (participacoes.totalReunioes * profissionais.length)) *
+          100
+        ).toFixed(1)
+      : 0;
 
-    container.innerHTML = `
-            <div class="card-header">
-                <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
-                <p>Taxa média de comparecimento: <strong>${taxaMedia}%</strong></p>
-            </div>
-            <div class="card-body">
-                <div class="stats-grid">
-                    <div class="stat-card success">
-                        <span class="material-symbols-outlined">check_circle</span>
-                        <h4>${participacoes.totalPresencas}</h4>
-                        <p>Total de Presenças</p>
-                    </div>
-                    <div class="stat-card warning">
-                        <span class="material-symbols-outlined">warning</span>
-                        <h4>${participacoes.totalAusencias}</h4>
-                        <p>Total de Ausências</p>
-                    </div>
-                    <div class="stat-card">
-                        <span class="material-symbols-outlined">leaderboard</span>
-                        <h4>${participacoes.topParticipantes.length}</h4>
-                        <p>Top Participantes (>80%)</p>
-                    </div>
+  container.innerHTML = `
+        <div class="card-header">
+            <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
+            <p>Calculado com base na Lista de Presença da Ata (Checkboxes).</p>
+        </div>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card success">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <h4>${participacoes.totalPresencas}</h4>
+                    <p>Total de Presenças</p>
                 </div>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
+                <div class="stat-card warning">
+                    <span class="material-symbols-outlined">warning</span>
+                    <h4>${participacoes.totalAusencias}</h4>
+                    <p>Total de Ausências</p>
+                </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">leaderboard</span>
+                    <h4>${participacoes.topParticipantes.length}</h4>
+                    <p>Top Participantes (>80%)</p>
+                </div>
+            </div>
+            
+             <div class="alert alert-info">
+                 <strong>Nota:</strong> Esta taxa reflete quem estava presente no momento da Ata, não necessariamente quem respondeu o Feedback online.
+                 Taxa média global: <strong>${taxaMedia}%</strong>
+             </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Profissional</th>
+                            <th>Presenças</th>
+                            <th>Ausências</th>
+                            <th>Taxa (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${participacoes.topParticipantes
+                          .slice(0, 10)
+                          .map(
+                            (prof) => `
                             <tr>
-                                <th>Profissional</th>
-                                <th>Presenças</th>
-                                <th>Ausências</th>
-                                <th>Taxa (%)</th>
+                                <td>${prof.nome}</td>
+                                <td>${prof.presencas}</td>
+                                <td>${prof.ausencias}</td>
+                                <td>${prof.taxa.toFixed(1)}%</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${participacoes.topParticipantes
-                              .slice(0, 10)
-                              .map(
-                                (prof) => `
-                                <tr>
-                                    <td>${prof.nome}</td>
-                                    <td>${prof.presencas}</td>
-                                    <td>${prof.ausencias}</td>
-                                    <td>${prof.taxa.toFixed(1)}%</td>
-                                </tr>
-                            `
-                              )
-                              .join("")}
-                        </tbody>
-                    </table>
-                    <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
-                </div>
+                        `
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+                <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
             </div>
-        `;
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro na participação:", error);
-    container.innerHTML =
-      '<div class="alert alert-danger">Erro ao carregar participação.</div>';
-  }
+        </div>
+    `;
 }
 
-// FEEDBACKS POR REUNIÃO
 function renderizarFeedbacks(atas, profissionais) {
   const container = document.getElementById("feedback-container");
   if (!container) return;
 
-  try {
-    const atasComFeedback = atas
-      .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
-      .sort(
-        (a, b) =>
-          new Date(formatarData(b.dataReuniao)) -
-          new Date(formatarData(a.dataReuniao))
-      );
+  const atasComFeedback = atas
+    .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
+    .sort(
+      (a, b) =>
+        new Date(formatarData(b.dataReuniao)) -
+        new Date(formatarData(a.dataReuniao))
+    );
 
-    if (atasComFeedback.length === 0) {
-      container.innerHTML =
-        '<div class="card-body"><div class="alert alert-info">Nenhuma ata com feedbacks encontrada.</div></div>';
-      return;
-    }
+  if (atasComFeedback.length === 0) {
+    container.innerHTML =
+      '<div class="card-body"><div class="alert alert-info">Nenhuma ata com feedbacks encontrada.</div></div>';
+    return;
+  }
 
-    container.innerHTML = `
-            <div class="card-header">
-                <h3><span class="material-symbols-outlined">feedback</span> Feedbacks por Reunião</h3>
-            </div>
-            <div class="card-body">
-                <div class="accordion">
-                    ${atasComFeedback
-                      .map(
-                        (ata) => `
-                        <div class="accordion-item">
-                            <button class="accordion-header" type="button">
-                                <span class="material-symbols-outlined">event</span>
-                                ${
-                                  ata.titulo || "Reunião Técnica"
-                                } - ${formatarData(ata.dataReuniao)}
-                                (${ata.feedbacks.length} feedbacks)
-                                <span class="accordion-icon">+</span>
-                            </button>
-                            <div class="accordion-content">
-                                <div class="feedback-list">
-                                    ${ata.feedbacks
-                                      .map((fb) => {
-                                        const profissional =
-                                          profissionais.find(
-                                            (p) => p.id === fb.profissionalId
-                                          ) ||
-                                          profissionais.find(
-                                            (p) => p.nome === fb.profissional
-                                          );
-                                        const nomeProfissional = profissional
-                                          ? profissional.nome
-                                          : fb.profissional || "Anônimo";
-                                        const respostas = Object.entries(
-                                          perguntasTexto
-                                        )
-                                          .map(
-                                            ([key, texto]) =>
-                                              `<p><strong>${texto}</strong>: ${
-                                                fb[key] || "N/R"
-                                              }</p>`
-                                          )
-                                          .join("");
-                                        return `
-                                            <div class="feedback-card">
-                                                <h5>${nomeProfissional}</h5>
-                                                <div class="feedback-respostas">${respostas}</div>
-                                                ${
-                                                  fb.sugestaoTema
-                                                    ? `<p><em>Sugestão: ${fb.sugestaoTema}</em></p>`
-                                                    : ""
-                                                }
-                                            </div>
-                                        `;
-                                      })
-                                      .join("")}
-                                </div>
+  container.innerHTML = `
+        <div class="card-header">
+            <h3><span class="material-symbols-outlined">feedback</span> Feedbacks por Reunião</h3>
+        </div>
+        <div class="card-body">
+            <div class="accordion">
+                ${atasComFeedback
+                  .map(
+                    (ata) => `
+                    <div class="accordion-item">
+                        <button class="accordion-header" type="button">
+                            <span class="material-symbols-outlined">event</span>
+                            ${ata.titulo || "Reunião Técnica"} - ${formatarData(
+                      ata.dataReuniao
+                    )}
+                            (${ata.feedbacks.length} feedbacks)
+                            <span class="accordion-icon">+</span>
+                        </button>
+                        <div class="accordion-content">
+                            <div class="feedback-list">
+                                ${ata.feedbacks
+                                  .map((fb) => {
+                                    // Tenta encontrar o nome do profissional se vier ID
+                                    let nomeProfissional =
+                                      fb.profissional || fb.nome || "Anônimo";
+                                    if (fb.profissionalId) {
+                                      const p = profissionais.find(
+                                        (pr) => pr.id === fb.profissionalId
+                                      );
+                                      if (p) nomeProfissional = p.nome;
+                                    }
+
+                                    const respostas = Object.entries(
+                                      perguntasTexto
+                                    )
+                                      .map(
+                                        ([key, texto]) =>
+                                          `<p><strong>${texto}</strong>: ${
+                                            fb[key] || "N/R"
+                                          }</p>`
+                                      )
+                                      .join("");
+                                    return `
+                                        <div class="feedback-card">
+                                            <h5>${nomeProfissional}</h5>
+                                            <div class="feedback-respostas">${respostas}</div>
+                                            ${
+                                              fb.sugestaoTema
+                                                ? `<p><em>Sugestão: ${fb.sugestaoTema}</em></p>`
+                                                : ""
+                                            }
+                                        </div>
+                                    `;
+                                  })
+                                  .join("")}
                             </div>
                         </div>
-                    `
-                      )
-                      .join("")}
-                </div>
+                    </div>
+                `
+                  )
+                  .join("")}
             </div>
-        `;
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro nos feedbacks:", error);
-    container.innerHTML =
-      '<div class="alert alert-danger">Erro ao carregar feedbacks.</div>';
-  }
+        </div>
+    `;
 }
 
-// AGENDADOS
 function renderizarAgendados(agendamentos, profissionais) {
   const container = document.getElementById("agendados-container");
   if (!container) return;
 
-  try {
-    if (agendamentos.length === 0) {
-      container.innerHTML = `
-                <div class="card-header">
-                    <h3><span class="material-symbols-outlined">event_available</span> Agendamentos</h3>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">Nenhum agendamento encontrado.</div>
-                </div>
-            `;
-      return;
-    }
-
-    const todosInscritos = [];
-    agendamentos.forEach((agendamento) => {
-      const tipoReuniao =
-        agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
-      (agendamento.slots || []).forEach((slot) => {
-        (slot.vagas || []).forEach((vaga) => {
-          if (vaga.profissionalId) {
-            const profissional = profissionais.find(
-              (p) => p.id === vaga.profissionalId
-            );
-            todosInscritos.push({
-              agendamentoId: agendamento.id,
-              tipoReuniao,
-              slotData: slot.data,
-              slotHoraInicio: slot.horaInicio,
-              slotHoraFim: slot.horaFim,
-              gestorNome: slot.gestorNome || "Não especificado",
-              nome: profissional ? profissional.nome : "Desconhecido",
-              presente: vaga.presente || false,
-              vagaId: vaga.id,
-            });
-          }
-        });
-      });
-    });
-
-    const inscritosPorAgendamento = agendamentos
-      .map((agendamento) => {
-        const tipoReuniao =
-          agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
-        const inscritos = todosInscritos.filter(
-          (i) => i.agendamentoId === agendamento.id
-        );
-        return { ...agendamento, tipoReuniao, inscritos };
-      })
-      .filter((a) => a.inscritos.length > 0);
-
+  if (agendamentos.length === 0) {
     container.innerHTML = `
             <div class="card-header">
-                <h3><span class="material-symbols-outlined">event_available</span> Agendamentos Confirmados</h3>
-                <p>Total de inscritos: ${todosInscritos.length}</p>
+                <h3><span class="material-symbols-outlined">event_available</span> Agendamentos</h3>
             </div>
             <div class="card-body">
-                <div class="accordion">
-                    ${inscritosPorAgendamento
-                      .map((agendamento) => {
-                        const totalInscritos = agendamento.inscritos.length;
-                        return `
-                            <div class="accordion-item">
-                                <button class="accordion-header" type="button">
-                                    <span class="material-symbols-outlined">schedule</span>
-                                    ${
-                                      agendamento.tipoReuniao
-                                    } - Criado em ${formatarData(
-                          agendamento.criadoEm
-                        )}
-                                    <span class="badge">${totalInscritos} inscritos</span>
-                                    <span class="accordion-icon">+</span>
-                                </button>
-                                <div class="accordion-content">
-                                    <div class="table-container">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Profissional</th>
-                                                    <th>Data</th>
-                                                    <th>Horário</th>
-                                                    <th>Gestor</th>
-                                                    <th>Presença</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                ${agendamento.inscritos
-                                                  .map(
-                                                    (inscrito) => `
-                                                    <tr>
-                                                        <td>${
-                                                          inscrito.nome
-                                                        }</td>
-                                                        <td>${formatarData(
-                                                          inscrito.slotData
-                                                        )}</td>
-                                                        <td>${
-                                                          inscrito.slotHoraInicio
-                                                        } - ${
-                                                      inscrito.slotHoraFim
-                                                    }</td>
-                                                        <td>${
-                                                          inscrito.gestorNome
-                                                        }</td>
-                                                        <td class="text-center">
-                                                            <input type="checkbox" class="checkbox-presenca" 
-                                                                   ${
-                                                                     inscrito.presente
-                                                                       ? "checked"
-                                                                       : ""
-                                                                   } 
-                                                                   data-agendamento-id="${
-                                                                     inscrito.agendamentoId
-                                                                   }"
-                                                                   data-slot-data="${
-                                                                     inscrito.slotData
-                                                                   }"
-                                                                   data-slot-hora-inicio="${
-                                                                     inscrito.slotHoraInicio
-                                                                   }"
-                                                                   data-vaga-id="${
-                                                                     inscrito.vagaId
-                                                                   }">
-                                                        </td>
-                                                    </tr>
-                                                `
-                                                  )
-                                                  .join("")}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div style="margin-top: 1rem;">
-                                        <button class="btn btn-primary btn-sm" onclick="exportarAgendados('${
-                                          agendamento.id
-                                        }')">
-                                            Exportar este agendamento (CSV)
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                      })
-                      .join("")}
-                </div>
+                <div class="alert alert-info">Nenhum agendamento encontrado.</div>
             </div>
         `;
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro nos agendados:", error);
-    container.innerHTML =
-      '<div class="alert alert-danger">Erro ao carregar agendamentos.</div>';
+    return;
   }
+
+  const todosInscritos = [];
+  agendamentos.forEach((agendamento) => {
+    const tipoReuniao =
+      agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
+    (agendamento.slots || []).forEach((slot) => {
+      (slot.vagas || []).forEach((vaga) => {
+        // Verifica se tem ID ou se é agendamento externo com apenas nome
+        if (vaga.profissionalId || vaga.nome) {
+          let nomeInscrito = vaga.nome || "Desconhecido";
+
+          if (vaga.profissionalId) {
+            const prof = profissionais.find(
+              (p) => p.id === vaga.profissionalId
+            );
+            if (prof) nomeInscrito = prof.nome;
+          }
+
+          todosInscritos.push({
+            agendamentoId: agendamento.id,
+            tipoReuniao,
+            slotData: slot.data,
+            slotHoraInicio: slot.horaInicio,
+            slotHoraFim: slot.horaFim,
+            gestorNome: slot.gestorNome || "Não especificado",
+            nome: nomeInscrito,
+            presente: vaga.presente || false,
+            vagaId: vaga.id || Math.random().toString(36), // Fallback de ID se não existir
+          });
+        }
+      });
+    });
+  });
+
+  const inscritosPorAgendamento = agendamentos
+    .map((agendamento) => {
+      const tipoReuniao =
+        agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
+      const inscritos = todosInscritos.filter(
+        (i) => i.agendamentoId === agendamento.id
+      );
+      return { ...agendamento, tipoReuniao, inscritos };
+    })
+    .filter((a) => a.inscritos.length > 0);
+
+  container.innerHTML = `
+        <div class="card-header">
+            <h3><span class="material-symbols-outlined">event_available</span> Agendamentos Confirmados</h3>
+            <p>Total de inscritos: ${todosInscritos.length}</p>
+        </div>
+        <div class="card-body">
+            <div class="accordion">
+                ${inscritosPorAgendamento
+                  .map((agendamento) => {
+                    const totalInscritos = agendamento.inscritos.length;
+                    return `
+                        <div class="accordion-item">
+                            <button class="accordion-header" type="button">
+                                <span class="material-symbols-outlined">schedule</span>
+                                ${
+                                  agendamento.tipoReuniao
+                                } - Criado em ${formatarData(
+                      agendamento.criadoEm
+                    )}
+                                <span class="badge">${totalInscritos} inscritos</span>
+                                <span class="accordion-icon">+</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="table-container">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Participante</th>
+                                                <th>Data</th>
+                                                <th>Horário</th>
+                                                <th>Gestor</th>
+                                                <th>Presença</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${agendamento.inscritos
+                                              .map(
+                                                (inscrito) => `
+                                                <tr>
+                                                    <td>${inscrito.nome}</td>
+                                                    <td>${formatarData(
+                                                      inscrito.slotData
+                                                    )}</td>
+                                                    <td>${
+                                                      inscrito.slotHoraInicio
+                                                    } - ${
+                                                  inscrito.slotHoraFim
+                                                }</td>
+                                                    <td>${
+                                                      inscrito.gestorNome
+                                                    }</td>
+                                                    <td class="text-center">
+                                                        <input type="checkbox" class="checkbox-presenca" 
+                                                               ${
+                                                                 inscrito.presente
+                                                                   ? "checked"
+                                                                   : ""
+                                                               } 
+                                                               data-agendamento-id="${
+                                                                 inscrito.agendamentoId
+                                                               }"
+                                                               data-slot-data="${
+                                                                 inscrito.slotData
+                                                               }"
+                                                               data-slot-hora-inicio="${
+                                                                 inscrito.slotHoraInicio
+                                                               }"
+                                                               data-vaga-id="${
+                                                                 inscrito.vagaId
+                                                               }">
+                                                    </td>
+                                                </tr>
+                                            `
+                                              )
+                                              .join("")}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="margin-top: 1rem;">
+                                    <button class="btn btn-primary btn-sm" onclick="exportarAgendados('${
+                                      agendamento.id
+                                    }')">
+                                        Exportar este agendamento (CSV)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                  })
+                  .join("")}
+            </div>
+        </div>
+    `;
 }
 
-// FUNÇÕES AUXILIARES
+// ==========================
+// CÁLCULOS E UTILITÁRIOS
+// ==========================
+
 function calcularMediaFeedbacks(atas) {
   let totalFeedbacks = 0;
   let totalAvaliacoes = 0;
@@ -614,9 +643,7 @@ function calcularParticipacoes(atas, profissionais) {
   });
 
   atas.forEach((ata) => {
-    // AQUI: Lê os participantes salvos na ATA, não no Feedback.
     const presentes = ata.participantes || [];
-    // Normaliza para array caso seja string (legado)
     let listaPresentes = [];
     if (typeof presentes === "string") {
       listaPresentes = presentes.split(",").map((p) => p.trim());
@@ -668,14 +695,12 @@ function calcularParticipacoes(atas, profissionais) {
 function mostrarErro(mensagem) {
   const containers = document.querySelectorAll('[id$="-container"]');
   containers.forEach((container) => {
-    if (container.innerHTML.includes("loading-spinner")) {
-      container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
-    }
+    container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
   });
   console.error("[RELATÓRIO] Erro geral:", mensagem);
 }
 
-// Função para marcar presença
+// Marcar Presença no Agendamento (Sincroniza com Firebase)
 async function marcarPresenca(checkbox) {
   const agendamentoId = checkbox.dataset.agendamentoId;
   const slotData = checkbox.dataset.slotData;
@@ -712,6 +737,11 @@ async function marcarPresenca(checkbox) {
         ? "#d4edda"
         : "#f8d7da";
       setTimeout(() => (checkbox.parentElement.style.background = ""), 1500);
+    } else {
+      // Fallback: Tentar achar por nome se ID falhar (para dados legados)
+      console.warn(
+        "Vaga não encontrada por ID, tentando lógica manual é arriscado, abortando."
+      );
     }
   } catch (error) {
     console.error("[RELATÓRIO] Erro ao marcar presença:", error);
@@ -720,7 +750,7 @@ async function marcarPresenca(checkbox) {
   }
 }
 
-// Export functions
+// Funções de Exportação (Globais)
 window.exportarRelatorioParticipacao = function () {
   const participacoes = calcularParticipacoes(
     todasAsAtas,
@@ -737,25 +767,22 @@ window.exportarAgendados = function (agendamentoId) {
   const agendamento = todosOsAgendamentos.find((a) => a.id === agendamentoId);
   if (!agendamento) return alert("Agendamento não encontrado");
 
-  let csv = "Profissional,Data,Horário,Presença\n";
+  let csv = "Participante,Data,Horário,Presença\n";
   (agendamento.slots || []).forEach((slot) => {
     (slot.vagas || []).forEach((vaga) => {
+      let nome = vaga.nome || "Desconhecido";
       if (vaga.profissionalId) {
-        const profissional = todosOsProfissionais.find(
-          (p) => p.id === vaga.profissionalId
+        const p = todosOsProfissionais.find(
+          (prof) => prof.id === vaga.profissionalId
         );
-        const nome = profissional ? profissional.nome : "Desconhecido";
-        csv += `"${nome}","${formatarData(slot.data)}","${slot.horaInicio}-${
-          slot.horaFim
-        }",${vaga.presente ? "Sim" : "Não"}\n`;
+        if (p) nome = p.nome;
       }
+      csv += `"${nome}","${formatarData(slot.data)}","${slot.horaInicio}-${
+        slot.horaFim
+      }",${vaga.presente ? "Sim" : "Não"}\n`;
     });
   });
   downloadCSV(csv, `agendados-${agendamentoId.slice(-6)}.csv`);
-};
-
-window.exportarParticipante = function (nome) {
-  alert(`Exportando dados de ${nome}... (Implementar export individual)`);
 };
 
 function downloadCSV(csvContent, filename) {
