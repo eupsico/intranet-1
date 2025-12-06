@@ -1,13 +1,13 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 3.0 (Correção: Sincronização de carregamento de dados nas abas)
+// VERSÃO 4.0 (Corrigido: Usando onSnapshot como Dashboard - Carregamento em tempo real)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
   collection,
   query,
   where,
-  getDocs,
   orderBy,
+  onSnapshot,
   doc,
   updateDoc,
   getDoc,
@@ -23,11 +23,10 @@ let dadosCache = {
   carregado: false,
 };
 
-// ✅ ADICIONADO: Estado de carregamento para sincronização
-let estadoCarregamento = {
-  carregando: false,
-  promiseCarregamento: null,
-};
+// ✅ Listeners para limpeza (como Dashboard)
+let unsubscribeAtas = null;
+let unsubscribeProf = null;
+let unsubscribeAgend = null;
 
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
@@ -39,8 +38,8 @@ const perguntasTexto = {
 // ==========================================
 // INICIALIZAÇÃO
 // ==========================================
-export async function init() {
-  console.log("[RELATÓRIO] Init v3.0 - Renderização sob demanda.");
+export function init() {
+  console.log("[RELATÓRIO] Init v4.0 - Usando onSnapshot (como Dashboard).");
 
   // 1. Limpa estado anterior (Reset forçado para SPA)
   dadosCache = {
@@ -50,76 +49,98 @@ export async function init() {
     carregado: false,
   };
 
-  // ✅ ADICIONADO: Reseta estado de carregamento
-  estadoCarregamento = {
-    carregando: false,
-    promiseCarregamento: null,
-  };
+  // 2. Limpa listeners antigos
+  cleanup();
 
-  // 2. Configura os cliques das abas imediatamente
+  // 3. Configura os cliques das abas imediatamente
   setupEventListeners();
 
-  // 3. Mostra loading na aba ativa atual
+  // 4. Mostra loading na aba ativa atual
   exibirLoadingNaAbaAtiva();
 
-  // 4. Busca dados
-  // ✅ ALTERADO: Armazena a promessa de carregamento
-  estadoCarregamento.promiseCarregamento = carregarDadosDoBanco();
-  await estadoCarregamento.promiseCarregamento;
+  // 5. ✅ Inicia listeners em tempo real (NÃO aguarda)
+  carregarDadosComListener();
 }
 
 // ==========================================
-// LÓGICA DE DADOS (Busca Única)
+// LÓGICA DE DADOS (Listeners em tempo real)
 // ==========================================
-async function carregarDadosDoBanco() {
-  try {
-    // ✅ ADICIONADO: Marca início do carregamento
-    estadoCarregamento.carregando = true;
+function carregarDadosComListener() {
+  console.log("[RELATÓRIO] Configurando listeners em tempo real...");
 
-    const [atasSnap, profSnap, agendSnap] = await Promise.all([
-      getDocs(
-        query(
-          collection(firestoreDb, "gestao_atas"),
-          where("tipo", "==", "Reunião Técnica")
-        )
-      ),
-      getDocs(query(collection(firestoreDb, "usuarios"), orderBy("nome"))),
-      getDocs(
-        query(
-          collection(firestoreDb, "agendamentos_voluntarios"),
-          orderBy("criadoEm", "desc")
-        )
-      ),
-    ]);
+  // Listener 1: Atas Técnicas
+  const qAtas = query(
+    collection(firestoreDb, "gestao_atas"),
+    where("tipo", "==", "Reunião Técnica")
+  );
+  unsubscribeAtas = onSnapshot(
+    qAtas,
+    (snapshot) => {
+      dadosCache.atas = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      console.log(
+        `[RELATÓRIO] Atas atualizadas: ${dadosCache.atas.length} atas.`
+      );
+      marcarComoCarregado();
+      renderizarAbaAtiva();
+    },
+    (error) => {
+      console.error("[RELATÓRIO] Erro ao carregar atas:", error);
+      mostrarErroGeral("Erro ao carregar atas. Verifique sua conexão.");
+    }
+  );
 
-    dadosCache.atas = atasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    dadosCache.profissionais = profSnap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
-    dadosCache.agendamentos = agendSnap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
+  // Listener 2: Profissionais
+  const qProf = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
+  unsubscribeProf = onSnapshot(
+    qProf,
+    (snapshot) => {
+      dadosCache.profissionais = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      console.log(
+        `[RELATÓRIO] Profissionais atualizados: ${dadosCache.profissionais.length} profissionais.`
+      );
+      marcarComoCarregado();
+      renderizarAbaAtiva();
+    },
+    (error) => {
+      console.error("[RELATÓRIO] Erro ao carregar profissionais:", error);
+    }
+  );
+
+  // Listener 3: Agendamentos
+  const qAgend = query(
+    collection(firestoreDb, "agendamentos_voluntarios"),
+    orderBy("criadoEm", "desc")
+  );
+  unsubscribeAgend = onSnapshot(
+    qAgend,
+    (snapshot) => {
+      dadosCache.agendamentos = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      console.log(
+        `[RELATÓRIO] Agendamentos atualizados: ${dadosCache.agendamentos.length} agendamentos.`
+      );
+      marcarComoCarregado();
+      renderizarAbaAtiva();
+    },
+    (error) => {
+      console.error("[RELATÓRIO] Erro ao carregar agendamentos:", error);
+    }
+  );
+}
+
+// ✅ Verifica se todos os listeners foram carregados
+function marcarComoCarregado() {
+  // Marca como carregado se profissionais chegaram (coleta essencial)
+  if (dadosCache.profissionais.length > 0) {
     dadosCache.carregado = true;
-
-    // ✅ ADICIONADO: Marca fim do carregamento
-    estadoCarregamento.carregando = false;
-
-    console.log(
-      `[RELATÓRIO] Dados carregados: ${dadosCache.atas.length} atas.`
-    );
-
-    // Após carregar, renderiza IMEDIATAMENTE a aba que está aberta visualmente
-    renderizarAbaAtiva();
-  } catch (error) {
-    // ✅ ADICIONADO: Marca fim do carregamento em caso de erro
-    estadoCarregamento.carregando = false;
-
-    console.error("[RELATÓRIO] Falha fatal:", error);
-    mostrarErroGeral(
-      "Não foi possível carregar os relatórios. Verifique sua conexão."
-    );
   }
 }
 
@@ -128,7 +149,10 @@ async function carregarDadosDoBanco() {
 // ==========================================
 function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
-  if (!viewContainer) return;
+  if (!viewContainer) {
+    console.error("[RELATÓRIO] View container não encontrado!");
+    return;
+  }
 
   // Usa delegação de eventos para garantir que funcione sempre
   viewContainer.addEventListener("click", (e) => {
@@ -137,8 +161,8 @@ function setupEventListeners() {
     if (tabLink) {
       e.preventDefault();
       const idAba = tabLink.dataset.tab;
-      // ✅ ALTERADO: Chama nova função que aguarda dados
-      ativarAbaComEspera(idAba);
+      console.log(`[RELATÓRIO] Clique na aba: ${idAba}`);
+      ativarAba(idAba);
       return;
     }
 
@@ -156,19 +180,6 @@ function setupEventListeners() {
       marcarPresenca(e.target);
     }
   });
-}
-
-// ✅ ADICIONADO: Nova função que aguarda dados antes de renderizar
-async function ativarAbaComEspera(tabId) {
-  // Se dados ainda estão carregando, aguarda
-  if (estadoCarregamento.carregando && estadoCarregamento.promiseCarregamento) {
-    console.log(
-      `[RELATÓRIO] Aguardando carregamento de dados para aba: ${tabId}`
-    );
-    await estadoCarregamento.promiseCarregamento;
-  }
-  // Só então ativa a aba
-  ativarAba(tabId);
 }
 
 function ativarAba(tabId) {
@@ -193,16 +204,27 @@ function ativarAba(tabId) {
 }
 
 function renderizarAbaAtiva() {
-  if (!dadosCache.carregado) return;
-
+  // Descobre qual aba está ativa no HTML
   const abaAtiva = document.querySelector(".tab-content.active");
-  if (!abaAtiva) return;
+  if (!abaAtiva) {
+    console.log("[RELATÓRIO] Nenhuma aba ativa encontrada.");
+    return;
+  }
 
-  const id = abaAtiva.id;
+  const id = abaAtiva.id; // 'resumo', 'participacao', 'feedbacks', 'agendados'
+
+  // Se dados ainda não carregaram, mostra loading
+  if (!dadosCache.carregado) {
+    console.log(
+      `[RELATÓRIO] Dados ainda não carregados para aba: ${id}. Mostrando loading...`
+    );
+    exibirLoadingNaAbaAtiva();
+    return;
+  }
 
   console.log(`[RELATÓRIO] Renderizando aba: ${id}`);
 
-  // ✅ ALTERADO: Procura .card dentro da aba ativa
+  // ✅ Procura .card dentro da aba ativa
   const container = abaAtiva.querySelector(".card");
   if (!container) {
     console.error(`[RELATÓRIO] Container .card não encontrado na aba ${id}`);
@@ -648,9 +670,6 @@ async function marcarPresenca(checkbox) {
   const presente = checkbox.checked;
 
   try {
-    // Localiza no cache primeiro para feedback rápido visual
-    // (Não implementado update otimista completo para manter simplicidade, confia no reload ou refresh posterior)
-
     const agendamentoRef = doc(
       firestoreDb,
       "agendamentos_voluntarios",
@@ -673,7 +692,6 @@ async function marcarPresenca(checkbox) {
       const vagaIdx = dados.slots[slotIdx].vagas.findIndex(
         (v) => v.id === vagaId || (vagaId === "" && v.profissionalId)
       );
-      // Fallback para ID vazio se for dado legado
 
       if (vagaIdx !== -1) {
         dados.slots[slotIdx].vagas[vagaIdx].presente = presente;
@@ -692,7 +710,7 @@ async function marcarPresenca(checkbox) {
     }
   } catch (err) {
     console.error("Erro ao marcar presença:", err);
-    checkbox.checked = !presente; // Reverte
+    checkbox.checked = !presente;
     alert("Erro ao salvar presença. Tente novamente.");
   }
 }
@@ -744,4 +762,13 @@ function downloadCSV(content, fileName) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// ✅ ADICIONADO: Limpeza ao desmontar (como Dashboard)
+export function cleanup() {
+  console.log("[RELATÓRIO] Desinscrever listeners...");
+  if (unsubscribeAtas) unsubscribeAtas();
+  if (unsubscribeProf) unsubscribeProf();
+  if (unsubscribeAgend) unsubscribeAgend();
+  console.log("[RELATÓRIO] Listeners desinscritos.");
 }
