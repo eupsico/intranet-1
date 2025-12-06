@@ -193,20 +193,21 @@ function ativarAba(tabId) {
 }
 
 function renderizarAbaAtiva() {
-  if (!dadosCache.carregado) return; // Se ainda não carregou dados, não faz nada (o loading já está lá)
+  if (!dadosCache.carregado) return;
 
-  // Descobre qual aba está ativa no HTML
   const abaAtiva = document.querySelector(".tab-content.active");
   if (!abaAtiva) return;
 
-  const id = abaAtiva.id; // 'resumo', 'participacao', 'feedbacks', 'agendados'
+  const id = abaAtiva.id;
 
   console.log(`[RELATÓRIO] Renderizando aba: ${id}`);
 
-  // Limpa o conteúdo atual antes de redesenhar (evita duplicação)
-  // Mas verificamos se o container existe dentro da aba
-  const container = document.getElementById(`${id}-container`);
-  if (!container) return;
+  // ✅ ALTERADO: Procura .card dentro da aba ativa
+  const container = abaAtiva.querySelector(".card");
+  if (!container) {
+    console.error(`[RELATÓRIO] Container .card não encontrado na aba ${id}`);
+    return;
+  }
 
   // Roteador de Renderização
   switch (id) {
