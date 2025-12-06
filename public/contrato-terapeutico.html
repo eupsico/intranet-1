@@ -290,7 +290,7 @@
         </div>
     </div>
 
-    <script type="module">
+   <script type="module">
       import { db, doc, getDoc, functions, httpsCallable } from '../assets/js/firebase-init.js';
 
       const assinarContrato = httpsCallable(functions, 'assinarContrato');
@@ -319,6 +319,7 @@
               msgElement.textContent = "A EuPsico foi notificada automaticamente.";
           }
       }
+
       function showError(message) {
           const errorDiv = document.getElementById('contract-error');
           errorDiv.textContent = message;
@@ -514,77 +515,81 @@
             });
 
             // Configuração do Botão de PDF
-const btnDownload = document.getElementById('btn-download-pdf');
-      if (btnDownload) {
-          btnDownload.addEventListener('click', () => {
-              const btn = btnDownload;
-              const originalText = btn.textContent;
-              btn.textContent = "Gerando PDF...";
-              btn.disabled = true;
+            const btnDownload = document.getElementById('btn-download-pdf');
+            if (btnDownload) {
+                btnDownload.addEventListener('click', () => {
+                    const btn = btnDownload;
+                    const originalText = btn.textContent;
+                    btn.textContent = "Gerando PDF...";
+                    btn.disabled = true;
 
-              // Dados para o rodapé
-              const nome = document.getElementById('receipt-name').textContent;
-              const cpf = document.getElementById('receipt-cpf').textContent;
-              const data = document.getElementById('receipt-date').textContent;
-              const id = document.getElementById('receipt-id').textContent;
+                    // Dados para o rodapé
+                    const nome = document.getElementById('receipt-name').textContent;
+                    const cpf = document.getElementById('receipt-cpf').textContent;
+                    const data = document.getElementById('receipt-date').textContent;
+                    const id = document.getElementById('receipt-id').textContent;
 
-              // Elementos para manipular a visibilidade
-              const contractContent = document.getElementById('contract-content');
-              const thankYouSection = document.getElementById('thank-you-section');
-              const acceptanceSection = document.getElementById('acceptance-form-section');
-              const container = document.querySelector('.contract-container');
+                    // Elementos para manipular a visibilidade
+                    const contractContent = document.getElementById('contract-content');
+                    const thankYouSection = document.getElementById('thank-you-section');
+                    const acceptanceSection = document.getElementById('acceptance-form-section');
+                    const container = document.querySelector('.contract-container');
 
-              // 1. PREPARAÇÃO: Mostra o contrato e esconde o sucesso para a "foto"
-              thankYouSection.classList.add('hidden'); // Esconde caixa verde
-              acceptanceSection.classList.add('hidden'); // Esconde formulário (se estiver visivel)
-              contractContent.classList.remove('hidden'); // MOSTRA O TEXTO DO CONTRATO
+                    // 1. PREPARAÇÃO: Mostra o contrato e esconde o sucesso para a "foto"
+                    thankYouSection.classList.add('hidden'); // Esconde caixa verde
+                    acceptanceSection.classList.add('hidden'); // Esconde formulário (se estiver visivel)
+                    contractContent.classList.remove('hidden'); // MOSTRA O TEXTO DO CONTRATO
 
-              // Configurações do PDF
-              const opt = {
-                  margin:       [15, 15, 15, 15], // Margens (mm)
-                  filename:     `Contrato_EuPsico_${nome.split(' ')[0]}.pdf`,
-                  image:        { type: 'jpeg', quality: 0.98 },
-                  html2canvas:  { scale: 2, useCORS: true, logging: false }, // useCORS ajuda com imagens
-                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                  pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] } // Evita quebras bruscas
-              };
+                    // Adiciona o rodapé com a assinatura visualmente no contrato
+                    const footerDiv = document.createElement('div');
+                    footerDiv.id = 'temp-pdf-footer';
+                    footerDiv.innerHTML = `
+                        <div style="margin-top: 50px; border-top: 1px solid #333; padding-top: 10px; font-size: 0.9em; color: #333; page-break-inside: avoid;">
+                            <p style="margin:0;"><strong>DOCUMENTO ASSINADO DIGITALMENTE</strong></p>
+                            <p style="margin:5px 0 0 0;"><strong>Nome:</strong> ${nome}</p>
+                            <p style="margin:0;"><strong>CPF:</strong> ${cpf}</p>
+                            <p style="margin:0;"><strong>Data da Assinatura:</strong> ${data}</p>
+                            <p style="margin:0;"><strong>Hash/ID da Transação:</strong> ${id}</p>
+                            <p style="margin:5px 0 0 0; font-size: 0.8em; color: #666;">Autenticado eletronicamente via Portal EuPsico.</p>
+                        </div>
+                    `;
+                    contractContent.appendChild(footerDiv);
 
-              // Adiciona o rodapé com a assinatura visualmente no contrato
-              const footerDiv = document.createElement('div');
-              footerDiv.id = 'temp-pdf-footer';
-              footerDiv.innerHTML = `
-                  <div style="margin-top: 50px; border-top: 1px solid #333; padding-top: 10px; font-size: 0.9em; color: #333; page-break-inside: avoid;">
-                      <p style="margin:0;"><strong>DOCUMENTO ASSINADO DIGITALMENTE</strong></p>
-                      <p style="margin:5px 0 0 0;"><strong>Nome:</strong> ${nome}</p>
-                      <p style="margin:0;"><strong>CPF:</strong> ${cpf}</p>
-                      <p style="margin:0;"><strong>Data da Assinatura:</strong> ${data}</p>
-                      <p style="margin:0;"><strong>Hash/ID da Transação:</strong> ${id}</p>
-                      <p style="margin:5px 0 0 0; font-size: 0.8em; color: #666;">Autenticado eletronicamente via Portal EuPsico.</p>
-                  </div>
-              `;
-              contractContent.appendChild(footerDiv);
+                    // Configurações do PDF
+                    const opt = {
+                        margin:       [15, 15, 15, 15], // Margens (mm)
+                        filename:     `Contrato_EuPsico_${nome.split(' ')[0]}.pdf`,
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0 }, // scrollY ajuda a capturar o topo
+                        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                    };
 
-              // Gera o PDF
-              html2pdf().set(opt).from(container).save().then(() => {
-                  // 2. RESTAURAÇÃO: Volta ao estado original (Sucesso visível, contrato oculto)
-                  footerDiv.remove(); // Remove o rodapé temporário
-                  contractContent.classList.add('hidden'); // Esconde contrato
-                  thankYouSection.classList.remove('hidden'); // Mostra caixa verde
-                  
-                  btn.textContent = originalText;
-                  btn.disabled = false;
-              }).catch(err => {
-                  console.error("Erro ao gerar PDF:", err);
-                  alert("Erro ao gerar o PDF. Tente novamente.");
-                  // Restaura em caso de erro também
-                  if(document.getElementById('temp-pdf-footer')) document.getElementById('temp-pdf-footer').remove();
-                  contractContent.classList.add('hidden');
-                  thankYouSection.classList.remove('hidden');
-                  btn.textContent = originalText;
-                  btn.disabled = false;
-              });
-          });
-      }
+                    // 2. DELAY CRÍTICO: Espera o navegador renderizar o conteúdo "desescondido"
+                    setTimeout(() => {
+                        window.scrollTo(0, 0); // Garante que estamos no topo
+                        
+                        html2pdf().set(opt).from(container).save().then(() => {
+                            // 3. RESTAURAÇÃO: Volta ao estado original
+                            if(document.getElementById('temp-pdf-footer')) footerDiv.remove();
+                            contractContent.classList.add('hidden');
+                            thankYouSection.classList.remove('hidden');
+                            
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }).catch(err => {
+                            console.error("Erro ao gerar PDF:", err);
+                            alert("Erro ao gerar o PDF. Tente novamente.");
+                            // Restaura em caso de erro
+                            if(document.getElementById('temp-pdf-footer')) document.getElementById('temp-pdf-footer').remove();
+                            contractContent.classList.add('hidden');
+                            thankYouSection.classList.remove('hidden');
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        });
+                    }, 500); // 500ms de espera para garantir a renderização
+                });
+            }
            
         } catch (error) {
             console.error("Erro ao carregar o contrato:", error);
