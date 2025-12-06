@@ -275,23 +275,24 @@
             </div>
             
             <div id="thank-you-section" class="acceptance-section hidden">
-    <div style="background-color: #d4edda; color: #155724; padding: 25px; border-radius: 8px; border: 1px solid #c3e6cb; text-align: center;">
-        <h2 style="color: #155724; border-bottom: none; margin-top: 0;">
-            <i class="fas fa-check-circle"></i> Contrato Assinado com Sucesso!
-        </h2>
-        <p>"data-terapeuta" foi notificada automaticamente.</p>
-        
-        <div style="text-align: left; background: rgba(255,255,255,0.7); padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <p style="margin: 5px 0;"><strong>Assinado por:</strong> <span id="receipt-name"></span></p>
-            <p style="margin: 5px 0;"><strong>CPF:</strong> <span id="receipt-cpf"></span></p>
-            <p style="margin: 5px 0;"><strong>Data da Assinatura:</strong> <span id="receipt-date"></span></p>
-            <p style="margin: 5px 0;"><strong>Hash da Transação:</strong> <span id="receipt-id" style="font-family: monospace; font-size: 0.9em;"></span></p>
-        </div>
+                <div style="background-color: #d4edda; color: #155724; padding: 25px; border-radius: 8px; border: 1px solid #c3e6cb; text-align: center;">
+                    <h2 style="color: #155724; border-bottom: none; margin-top: 0;">
+                        <i class="fas fa-check-circle"></i> Contrato Assinado com Sucesso!
+                    </h2>
+                    
+                    <p id="notification-message" style="font-weight: 500;">A EuPsico foi notificada.</p>
+                    
+                    <div style="text-align: left; background: rgba(255,255,255,0.7); padding: 15px; border-radius: 6px; margin: 20px 0;">
+                        <p style="margin: 5px 0;"><strong>Assinado por:</strong> <span id="receipt-name">--</span></p>
+                        <p style="margin: 5px 0;"><strong>CPF:</strong> <span id="receipt-cpf">--</span></p>
+                        <p style="margin: 5px 0;"><strong>Data da Assinatura:</strong> <span id="receipt-date">--</span></p>
+                        <p style="margin: 5px 0;"><strong>ID da Transação:</strong> <span id="receipt-id" style="font-family: monospace; font-size: 0.9em;">--</span></p>
+                    </div>
 
-        <button id="btn-download-pdf" class="action-button" style="background-color: #155724; max-width: 300px; margin: 0 auto;">
-            <i class="fas fa-file-pdf"></i> Baixar Cópia em PDF
-        </button>
-    </div>
+                    <button id="btn-download-pdf" class="action-button" style="background-color: #155724; max-width: 300px; margin: 0 auto;">
+                        <i class="fas fa-file-pdf"></i> Baixar Cópia em PDF
+                    </button>
+        </div>
 </div>
         </div>
     </div>
@@ -338,7 +339,31 @@
           if (resto !== parseInt(cpf.substring(10, 11))) return false;
           return true;
       }
-
+// Adicione esta função no topo do script para reusar a lógica de preencher o recibo
+      function preencherRecibo(nome, cpf, data, idTransacao, nomeTerapeuta) {
+          document.getElementById('receipt-name').textContent = nome || 'N/A';
+          document.getElementById('receipt-cpf').textContent = cpf || 'N/A';
+          
+          let dataTexto = data;
+          // Se for objeto Timestamp do Firebase, converte
+          if (data && data.toDate) {
+              const d = data.toDate();
+              dataTexto = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR');
+          } else if (data instanceof Date) {
+              dataTexto = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR');
+          }
+          
+          document.getElementById('receipt-date').textContent = dataTexto || 'Data não registrada';
+          document.getElementById('receipt-id').textContent = idTransacao || 'N/D';
+          
+          // Atualiza a mensagem de notificação com o nome do terapeuta
+          const msgElement = document.getElementById('notification-message');
+          if (nomeTerapeuta) {
+              msgElement.innerHTML = `<strong>${nomeTerapeuta}</strong> foi notificada automaticamente.`;
+          } else {
+              msgElement.textContent = "O profissional foi notificado automaticamente.";
+          }
+      }
       document.addEventListener('DOMContentLoaded', async () => {
         const loadingDiv = document.getElementById('contract-loading');
         const contentDiv = document.getElementById('contract-content');
@@ -396,8 +421,19 @@
             contentDiv.classList.remove('hidden');
 
             if (meuAtendimento.contratoAssinado) {
+                // Esconde formulário e mostra sucesso
                 document.getElementById('acceptance-form-section').classList.add('hidden');
                 document.getElementById('thank-you-section').classList.remove('hidden');
+                
+                // PREENCHE OS DADOS DO RECIBO (Isso estava faltando ao recarregar a página)
+                const assinatura = meuAtendimento.contratoAssinado;
+                preencherRecibo(
+                    assinatura.nomeSignatario,
+                    assinatura.cpfSignatario,
+                    assinatura.assinadoEm, // Pode ser Timestamp
+                    assinatura.id || meuAtendimento.atendimentoId, // ID da transação
+                    meuAtendimento.profissionalNome // Nome para a mensagem
+                );
             }
 
             const cpfInput = document.getElementById('signer-cpf');
@@ -444,97 +480,92 @@
                 submitButton.textContent = 'Salvando...';
                 feedbackDiv.textContent = '';
 
-            // ... dentro de signatureForm.addEventListener('submit', async (e) => { ...
+                try {
+                    const nomeSignatario = document.getElementById('signer-name').value;
+                    const cpfSignatario = cpfValue;
+                    const nomeTerapeuta = document.getElementById('data-terapeuta').textContent; // Pega o nome da tela
 
-try {
-    const nomeSignatario = document.getElementById('signer-name').value;
-    const cpfSignatario = cpfValue;
+                    const result = await assinarContrato({
+                        pacienteId: pacienteId,
+                        atendimentoId: atendimentoId,
+                        nomeSignatario: nomeSignatario,
+                        cpfSignatario: cpfSignatario,
+                        versaoContrato: "1.0"
+                    });
 
-    // Chama a função do Firebase
-    const result = await assinarContrato({
-        pacienteId: pacienteId,
-        atendimentoId: atendimentoId,
-        nomeSignatario: nomeSignatario,
-        cpfSignatario: cpfSignatario,
-        versaoContrato: "1.0"
-    });
+                    if (result.data && !result.data.success) {
+                        throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
+                    }
 
-    if (result.data && !result.data.success) {
-        throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
-    }
+                    // Preenche os dados visuais usando a função auxiliar
+                    preencherRecibo(
+                        nomeSignatario,
+                        cpfSignatario,
+                        new Date(), // Data atual
+                        result.data.id || 'DOC-' + Date.now(), // ID retornado ou gerado
+                        nomeTerapeuta
+                    );
 
-    // --- CÓDIGO NOVO: Preencher dados de confirmação ---
-    const dataAtual = new Date();
-    const dataFormatada = dataAtual.toLocaleDateString('pt-BR') + ' às ' + dataAtual.toLocaleTimeString('pt-BR');
-    
-    // Preenche os spans criados no HTML
-    document.getElementById('receipt-name').textContent = nomeSignatario;
-    document.getElementById('receipt-cpf').textContent = cpfSignatario;
-    document.getElementById('receipt-date').textContent = dataFormatada;
-    // Usa o ID retornado pelo Firebase ou gera um aleatório visual se não houver retorno
-    document.getElementById('receipt-id').textContent = result.data.id || 'DOC-' + Date.now();
+                    document.getElementById('acceptance-form-section').classList.add('hidden');
+                    document.getElementById('thank-you-section').classList.remove('hidden');
 
-    // Troca a visualização
-    document.getElementById('acceptance-form-section').classList.add('hidden');
-    document.getElementById('thank-you-section').classList.remove('hidden');
-
-    // --- Configurar Botão de PDF ---
-    document.getElementById('btn-download-pdf').addEventListener('click', () => {
-        const btn = document.getElementById('btn-download-pdf');
-        const originalText = btn.textContent;
-        btn.textContent = "Gerando PDF...";
-        btn.disabled = true;
-
-        // Seleciona o conteúdo do contrato para o PDF
-        const element = document.querySelector('.contract-container');
-        
-        // Opções para o html2pdf
-        const opt = {
-            margin:       [10, 10, 10, 10], // Margens (top, left, bottom, right)
-            filename:     `Contrato_EuPsico_${nomeSignatario.split(' ')[0]}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 }, // Melhora a qualidade
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        // Oculta elementos que não devem sair no PDF (como o próprio botão e mensagens de loading)
-        const botoes = element.querySelectorAll('button, #contract-loading, #contract-error');
-        botoes.forEach(b => b.style.display = 'none');
-
-        // Adiciona um rodapé visual de assinatura no PDF temporariamente
-        const footerDiv = document.createElement('div');
-        footerDiv.innerHTML = `
-            <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 0.8em; color: #555;">
-                <p><strong>Assinado digitalmente</strong></p>
-                <p>Nome: ${nomeSignatario}</p>
-                <p>CPF: ${cpfSignatario}</p>
-                <p>Data: ${dataFormatada}</p>
-                <p>IP/ID: ${result.data.id || 'Registrado no Sistema'}</p>
-            </div>
-        `;
-        document.getElementById('contract-content').appendChild(footerDiv);
-
-        // Gera o PDF
-        html2pdf().set(opt).from(element).save().then(() => {
-            // Restaura o estado original após o download
-            botoes.forEach(b => b.style.display = '');
-            footerDiv.remove(); // Remove o rodapé temporário
-            btn.textContent = originalText;
-            btn.disabled = false;
-        });
-    });
-
-} catch (error) {
-    console.error("Erro ao salvar assinatura:", error);
-    feedbackDiv.textContent = `Erro ao salvar a assinatura. (${error.message})`;
-    feedbackDiv.className = 'feedback-error';
-    submitButton.disabled = false;
-    submitButton.textContent = 'Assinar Contrato';
-}
-
-
+                } catch (error) {
+                    console.error("Erro ao salvar assinatura:", error);
+                    feedbackDiv.textContent = `Erro ao salvar a assinatura. (${error.message})`;
+                    feedbackDiv.className = 'feedback-error';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Assinar Contrato';
+                }
             });
 
+            // Configuração do Botão de PDF (Fora do submit para evitar duplicar listener)
+            const btnDownload = document.getElementById('btn-download-pdf');
+            if (btnDownload) {
+                btnDownload.addEventListener('click', () => {
+                    const btn = btnDownload;
+                    const originalText = btn.textContent;
+                    btn.textContent = "Gerando PDF...";
+                    btn.disabled = true;
+
+                    // Pega os dados atuais da tela de recibo
+                    const nome = document.getElementById('receipt-name').textContent;
+                    const cpf = document.getElementById('receipt-cpf').textContent;
+                    const data = document.getElementById('receipt-date').textContent;
+                    const id = document.getElementById('receipt-id').textContent;
+
+                    const element = document.querySelector('.contract-container');
+                    
+                    const opt = {
+                        margin:       [10, 10, 10, 10],
+                        filename:     `Contrato_EuPsico_${nome.split(' ')[0]}.pdf`,
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2 },
+                        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+
+                    const botoes = element.querySelectorAll('button, #contract-loading, #contract-error');
+                    botoes.forEach(b => b.style.display = 'none');
+
+                    const footerDiv = document.createElement('div');
+                    footerDiv.innerHTML = `
+                        <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 0.8em; color: #555;">
+                            <p><strong>Assinado digitalmente</strong></p>
+                            <p>Nome: ${nome}</p>
+                            <p>CPF: ${cpf}</p>
+                            <p>Data: ${data}</p>
+                            <p>ID Transação: ${id}</p>
+                        </div>
+                    `;
+                    document.getElementById('contract-content').appendChild(footerDiv);
+
+                    html2pdf().set(opt).from(element).save().then(() => {
+                        botoes.forEach(b => b.style.display = '');
+                        footerDiv.remove();
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    });
+                });
+            }
         } catch (error) {
             console.error("Erro ao carregar o contrato:", error);
             showError("Ocorreu um erro inesperado ao carregar o contrato.");
