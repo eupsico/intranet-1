@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 3.0 (Correção Definitiva: Renderização sob demanda e correção de layout)
+// VERSÃO 3.0 (Correção: Sincronização de carregamento de dados nas abas)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -23,6 +23,12 @@ let dadosCache = {
   carregado: false,
 };
 
+// ✅ ADICIONADO: Estado de carregamento para sincronização
+let estadoCarregamento = {
+  carregando: false,
+  promiseCarregamento: null,
+};
+
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
   objetivos: "Os objetivos da reunião foram alcançados?",
@@ -44,6 +50,12 @@ export async function init() {
     carregado: false,
   };
 
+  // ✅ ADICIONADO: Reseta estado de carregamento
+  estadoCarregamento = {
+    carregando: false,
+    promiseCarregamento: null,
+  };
+
   // 2. Configura os cliques das abas imediatamente
   setupEventListeners();
 
@@ -51,7 +63,9 @@ export async function init() {
   exibirLoadingNaAbaAtiva();
 
   // 4. Busca dados
-  await carregarDadosDoBanco();
+  // ✅ ALTERADO: Armazena a promessa de carregamento
+  estadoCarregamento.promiseCarregamento = carregarDadosDoBanco();
+  await estadoCarregamento.promiseCarregamento;
 }
 
 // ==========================================
@@ -59,6 +73,9 @@ export async function init() {
 // ==========================================
 async function carregarDadosDoBanco() {
   try {
+    // ✅ ADICIONADO: Marca início do carregamento
+    estadoCarregamento.carregando = true;
+
     const [atasSnap, profSnap, agendSnap] = await Promise.all([
       getDocs(
         query(
@@ -86,6 +103,9 @@ async function carregarDadosDoBanco() {
     }));
     dadosCache.carregado = true;
 
+    // ✅ ADICIONADO: Marca fim do carregamento
+    estadoCarregamento.carregando = false;
+
     console.log(
       `[RELATÓRIO] Dados carregados: ${dadosCache.atas.length} atas.`
     );
@@ -93,6 +113,9 @@ async function carregarDadosDoBanco() {
     // Após carregar, renderiza IMEDIATAMENTE a aba que está aberta visualmente
     renderizarAbaAtiva();
   } catch (error) {
+    // ✅ ADICIONADO: Marca fim do carregamento em caso de erro
+    estadoCarregamento.carregando = false;
+
     console.error("[RELATÓRIO] Falha fatal:", error);
     mostrarErroGeral(
       "Não foi possível carregar os relatórios. Verifique sua conexão."
@@ -114,7 +137,8 @@ function setupEventListeners() {
     if (tabLink) {
       e.preventDefault();
       const idAba = tabLink.dataset.tab;
-      ativarAba(idAba);
+      // ✅ ALTERADO: Chama nova função que aguarda dados
+      ativarAbaComEspera(idAba);
       return;
     }
 
@@ -132,6 +156,19 @@ function setupEventListeners() {
       marcarPresenca(e.target);
     }
   });
+}
+
+// ✅ ADICIONADO: Nova função que aguarda dados antes de renderizar
+async function ativarAbaComEspera(tabId) {
+  // Se dados ainda estão carregando, aguarda
+  if (estadoCarregamento.carregando && estadoCarregamento.promiseCarregamento) {
+    console.log(
+      `[RELATÓRIO] Aguardando carregamento de dados para aba: ${tabId}`
+    );
+    await estadoCarregamento.promiseCarregamento;
+  }
+  // Só então ativa a aba
+  ativarAba(tabId);
 }
 
 function ativarAba(tabId) {
