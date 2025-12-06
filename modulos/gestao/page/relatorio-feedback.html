@@ -1,50 +1,68 @@
+<!-- /modulos/gestao/html/relatorio-feedback.html -->
+
 <div class="view-container">
-    <!-- Navegação de Abas -->
-    <div class="tab-nav">
-        <button class="tab-link active" data-tab="resumo">
-            <span class="material-symbols-outlined">analytics</span>
-            Resumo Geral
-        </button>
-        <button class="tab-link" data-tab="participacao">
-            <span class="material-symbols-outlined">group</span>
-            Resumo de Participação
-        </button>
-        <button class="tab-link" data-tab="feedbacks">
-            <span class="material-symbols-outlined">feedback</span>
-            Feedbacks por Reunião
-        </button>
-        <button class="tab-link" data-tab="agendados">
-            <span class="material-symbols-outlined">event_available</span>
-            Agendados
-        </button>
-    </div>
 
-    <!-- Conteúdo das Abas -->
-    <div id="resumo" class="tab-content active">
-        <div id="resumo-container" class="card">
-            <div class="loading-spinner"></div>
-            <p>A carregar resumo geral...</p>
-        </div>
-    </div>
+  <!-- Navegação de abas -->
+  <div class="tab-nav">
+    <button class="tab-link active" data-tab="resumo">
+      <span class="material-symbols-outlined">analytics</span>
+      Resumo Geral
+    </button>
 
-    <div id="participacao" class="tab-content">
-        <div id="participacao-container" class="card">
-            <div class="loading-spinner"></div>
-            <p>A carregar resumo de participação...</p>
-        </div>
-    </div>
+    <button class="tab-link" data-tab="participacao">
+      <span class="material-symbols-outlined">group</span>
+      Resumo de Participação
+    </button>
 
-    <div id="feedbacks" class="tab-content">
-        <div id="feedback-container" class="card">
-            <div class="loading-spinner"></div>
-            <p>A carregar feedbacks...</p>
-        </div>
-    </div>
+    <button class="tab-link" data-tab="feedbacks">
+      <span class="material-symbols-outlined">feedback</span>
+      Feedbacks por Reunião
+    </button>
 
-    <div id="agendados" class="tab-content">
-        <div id="agendados-container" class="card">
-            <div class="loading-spinner"></div>
-            <p>A carregar agendamentos...</p>
-        </div>
+    <button class="tab-link" data-tab="agendados">
+      <span class="material-symbols-outlined">event_available</span>
+      Agendados
+    </button>
+  </div>
+
+  <!-- ABA: Resumo Geral -->
+  <div id="resumo" class="tab-content active">
+    <div id="resumo-container" class="card">
+      <div style="text-align:center; padding:40px;">
+        <div class="loading-spinner"></div>
+        <p>A carregar resumo geral...</p>
+      </div>
     </div>
+  </div>
+
+  <!-- ABA: Resumo Participação -->
+  <div id="participacao" class="tab-content">
+    <div id="participacao-container" class="card">
+      <div style="text-align:center; padding:40px;">
+        <div class="loading-spinner"></div>
+        <p>A carregar resumo de participação...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA: Feedbacks -->
+  <div id="feedbacks" class="tab-content">
+    <div id="feedback-container" class="card">
+      <div style="text-align:center; padding:40px;">
+        <div class="loading-spinner"></div>
+        <p>A carregar feedbacks...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA: Agendados -->
+  <div id="agendados" class="tab-content">
+    <div id="agendados-container" class="card">
+      <div style="text-align:center; padding:40px;">
+        <div class="loading-spinner"></div>
+        <p>A carregar agendamentos...</p>
+      </div>
+    </div>
+  </div>
+
 </div>
