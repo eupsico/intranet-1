@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrato Terapêutico - EuPsico</title>
     <link rel="stylesheet" href="../assets/css/design-system.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         /* CSS GERAL E FONTES */
         :root {
@@ -24,13 +27,10 @@
             padding: 20px 10px;
         }
 
-        /* --- INÍCIO DA CORREÇÃO --- */
-        /* Força a justificação dos parágrafos e itens de lista */
         #contract-content p,
         #contract-content li {
             text-align: justify;
         }
-        /* --- FIM DA CORREÇÃO --- */
 
         /* CONTAINER PRINCIPAL */
         .contract-container {
@@ -143,18 +143,10 @@
         .error-message, .feedback-error { color: var(--cor-erro); font-weight: bold; }
         .feedback-success { color: var(--cor-sucesso); font-weight: bold; }
 
-        /* AJUSTES PARA TELAS MENORES (RESPONSIVIDADE) */
+        /* AJUSTES PARA TELAS MENORES */
         @media (max-width: 768px) {
-            body {
-                padding: 0;
-            }
-            .contract-container {
-                margin: 0;
-                padding: 20px;
-                border-radius: 0;
-                box-shadow: none;
-                border: none;
-            }
+            body { padding: 0; }
+            .contract-container { margin: 0; padding: 20px; border-radius: 0; box-shadow: none; border: none; }
             h1 { font-size: 1.5em; }
             h2 { font-size: 1.2em; }
         }
@@ -292,8 +284,9 @@
                     <button id="btn-download-pdf" class="action-button" style="background-color: #155724; max-width: 300px; margin: 0 auto;">
                         <i class="fas fa-file-pdf"></i> Baixar Cópia em PDF
                     </button>
-        </div>
-</div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -301,6 +294,30 @@
       import { db, doc, getDoc, functions, httpsCallable } from '../assets/js/firebase-init.js';
 
       const assinarContrato = httpsCallable(functions, 'assinarContrato');
+
+      // Função auxiliar para preencher os dados do recibo de sucesso
+      function preencherRecibo(nome, cpf, data, idTransacao, nomeTerapeuta) {
+          document.getElementById('receipt-name').textContent = nome || 'N/A';
+          document.getElementById('receipt-cpf').textContent = cpf || 'N/A';
+          
+          let dataTexto = data;
+          if (data && data.toDate) {
+              const d = data.toDate();
+              dataTexto = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR');
+          } else if (data instanceof Date) {
+              dataTexto = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR');
+          }
+          
+          document.getElementById('receipt-date').textContent = dataTexto || 'Data não registrada';
+          document.getElementById('receipt-id').textContent = idTransacao || 'N/D';
+          
+          const msgElement = document.getElementById('notification-message');
+          if (nomeTerapeuta) {
+              msgElement.innerHTML = `<strong>${nomeTerapeuta}</strong> foi notificada automaticamente.`;
+          } else {
+              msgElement.textContent = "O profissional foi notificado automaticamente.";
+          }
+      }
 
       function showError(message) {
           const errorDiv = document.getElementById('contract-error');
@@ -339,31 +356,7 @@
           if (resto !== parseInt(cpf.substring(10, 11))) return false;
           return true;
       }
-// Adicione esta função no topo do script para reusar a lógica de preencher o recibo
-      function preencherRecibo(nome, cpf, data, idTransacao, nomeTerapeuta) {
-          document.getElementById('receipt-name').textContent = nome || 'N/A';
-          document.getElementById('receipt-cpf').textContent = cpf || 'N/A';
-          
-          let dataTexto = data;
-          // Se for objeto Timestamp do Firebase, converte
-          if (data && data.toDate) {
-              const d = data.toDate();
-              dataTexto = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR');
-          } else if (data instanceof Date) {
-              dataTexto = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR');
-          }
-          
-          document.getElementById('receipt-date').textContent = dataTexto || 'Data não registrada';
-          document.getElementById('receipt-id').textContent = idTransacao || 'N/D';
-          
-          // Atualiza a mensagem de notificação com o nome do terapeuta
-          const msgElement = document.getElementById('notification-message');
-          if (nomeTerapeuta) {
-              msgElement.innerHTML = `<strong>${nomeTerapeuta}</strong> foi notificada automaticamente.`;
-          } else {
-              msgElement.textContent = "O profissional foi notificado automaticamente.";
-          }
-      }
+
       document.addEventListener('DOMContentLoaded', async () => {
         const loadingDiv = document.getElementById('contract-loading');
         const contentDiv = document.getElementById('contract-content');
@@ -394,6 +387,7 @@
                 return;
             }
 
+            // Exibir Dados na Tela
             const idade = calculateAge(pacienteData.dataNascimento);
             const isMenor = idade !== null && idade < 18;
 
@@ -420,22 +414,23 @@
             loadingDiv.classList.add('hidden');
             contentDiv.classList.remove('hidden');
 
+            // Verifica se já está assinado
             if (meuAtendimento.contratoAssinado) {
-                // Esconde formulário e mostra sucesso
                 document.getElementById('acceptance-form-section').classList.add('hidden');
                 document.getElementById('thank-you-section').classList.remove('hidden');
                 
-                // PREENCHE OS DADOS DO RECIBO (Isso estava faltando ao recarregar a página)
+                // Preenche os dados de recibo caso já esteja assinado
                 const assinatura = meuAtendimento.contratoAssinado;
                 preencherRecibo(
                     assinatura.nomeSignatario,
                     assinatura.cpfSignatario,
-                    assinatura.assinadoEm, // Pode ser Timestamp
-                    assinatura.id || meuAtendimento.atendimentoId, // ID da transação
-                    meuAtendimento.profissionalNome // Nome para a mensagem
+                    assinatura.assinadoEm, 
+                    assinatura.id || meuAtendimento.atendimentoId, 
+                    meuAtendimento.profissionalNome 
                 );
             }
 
+            // Lógica do Formulário
             const cpfInput = document.getElementById('signer-cpf');
             const cpfFeedback = document.getElementById('cpf-feedback');
             cpfInput.addEventListener('input', () => {
@@ -483,7 +478,7 @@
                 try {
                     const nomeSignatario = document.getElementById('signer-name').value;
                     const cpfSignatario = cpfValue;
-                    const nomeTerapeuta = document.getElementById('data-terapeuta').textContent; // Pega o nome da tela
+                    const nomeTerapeuta = document.getElementById('data-terapeuta').textContent;
 
                     const result = await assinarContrato({
                         pacienteId: pacienteId,
@@ -497,12 +492,12 @@
                         throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
                     }
 
-                    // Preenche os dados visuais usando a função auxiliar
+                    // Preenche Recibo e Mostra Sucesso
                     preencherRecibo(
                         nomeSignatario,
                         cpfSignatario,
-                        new Date(), // Data atual
-                        result.data.id || 'DOC-' + Date.now(), // ID retornado ou gerado
+                        new Date(),
+                        result.data.id || 'DOC-' + Date.now(),
                         nomeTerapeuta
                     );
 
@@ -518,7 +513,7 @@
                 }
             });
 
-            // Configuração do Botão de PDF (Fora do submit para evitar duplicar listener)
+            // Configuração do Botão de PDF
             const btnDownload = document.getElementById('btn-download-pdf');
             if (btnDownload) {
                 btnDownload.addEventListener('click', () => {
@@ -527,7 +522,6 @@
                     btn.textContent = "Gerando PDF...";
                     btn.disabled = true;
 
-                    // Pega os dados atuais da tela de recibo
                     const nome = document.getElementById('receipt-name').textContent;
                     const cpf = document.getElementById('receipt-cpf').textContent;
                     const data = document.getElementById('receipt-date').textContent;
@@ -566,6 +560,7 @@
                     });
                 });
             }
+
         } catch (error) {
             console.error("Erro ao carregar o contrato:", error);
             showError("Ocorreu um erro inesperado ao carregar o contrato.");
