@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 4.1 (Debug completo - Logs detalhados)
+// VERSÃO 4.1 (Com debounce para evitar re-renderizações múltiplas)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -23,10 +23,12 @@ let dadosCache = {
   carregado: false,
 };
 
-// ✅ Listeners para limpeza (como Dashboard)
 let unsubscribeAtas = null;
 let unsubscribeProf = null;
 let unsubscribeAgend = null;
+
+// ✅ NOVO: Debounce para renderização
+let renderTimeout = null;
 
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
@@ -40,118 +42,80 @@ const perguntasTexto = {
 // ==========================================
 export function init() {
   console.log(
-    "%c[RELATÓRIO] ========== INIT v4.1 (Debug) ==========",
-    "color: #00ff00; font-weight: bold;"
+    "%c[RELATÓRIO] Init v4.1 - Com debounce.",
+    "color:#00ff00; font-weight: bold;"
   );
-  console.log("[RELATÓRIO] 1. Iniciando módulo...");
 
-  // 1. Limpa estado anterior
   dadosCache = {
     atas: [],
     profissionais: [],
     agendamentos: [],
     carregado: false,
   };
-  console.log("[RELATÓRIO] 2. Estado resetado:", dadosCache);
 
-  // 2. Limpa listeners antigos
   cleanup();
-  console.log("[RELATÓRIO] 3. Listeners antigos limpos");
-
-  // 3. Configura os cliques das abas
   setupEventListeners();
-  console.log("[RELATÓRIO] 4. Event listeners configurados");
-
-  // 4. Mostra loading
   exibirLoadingNaAbaAtiva();
-  console.log("[RELATÓRIO] 5. Loading exibido");
-
-  // 5. Inicia listeners
   carregarDadosComListener();
-  console.log("[RELATÓRIO] 6. Listeners iniciados");
-  console.log(
-    "%c[RELATÓRIO] ========== INIT COMPLETO ==========",
-    "color: #00ff00; font-weight: bold;"
-  );
 }
 
 // ==========================================
 // LÓGICA DE DADOS (Listeners em tempo real)
 // ==========================================
 function carregarDadosComListener() {
-  console.log(
-    "%c[RELATÓRIO] >>> Configurando listeners onSnapshot...",
-    "color: #ffaa00; font-weight: bold;"
-  );
+  console.log("[RELATÓRIO] Configurando listeners em tempo real...");
 
   // Listener 1: Atas Técnicas
   const qAtas = query(
     collection(firestoreDb, "gestao_atas"),
     where("tipo", "==", "Reunião Técnica")
   );
-  console.log("[RELATÓRIO] Query Atas criada");
 
   unsubscribeAtas = onSnapshot(
     qAtas,
     (snapshot) => {
       console.log(
-        "%c[RELATÓRIO] 🔥 SNAPSHOT ATAS RECEBIDO!",
-        "color: #ff00ff; font-weight: bold;"
+        `%c[RELATÓRIO] 🔥 SNAPSHOT ATAS: ${snapshot.docs.length} docs`,
+        "color:#ff00ff; font-weight: bold;"
       );
-      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
 
       dadosCache.atas = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
 
-      console.log("[RELATÓRIO] Atas processadas:", dadosCache.atas.length);
-      console.table(dadosCache.atas.slice(0, 3)); // Mostra primeiras 3
-
       marcarComoCarregado();
-      renderizarAbaAtiva();
+      renderizarComDebounce(); // ✅ MUDANÇA AQUI
     },
     (error) => {
-      console.error(
-        "%c[RELATÓRIO] ❌ ERRO ao carregar atas:",
-        "color: #ff0000; font-weight: bold;",
-        error
-      );
+      console.error("%c[RELATÓRIO] ❌ ERRO atas:", "color:#ff0000;", error);
       mostrarErroGeral("Erro ao carregar atas. Verifique sua conexão.");
     }
   );
 
   // Listener 2: Profissionais
   const qProf = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
-  console.log("[RELATÓRIO] Query Profissionais criada");
 
   unsubscribeProf = onSnapshot(
     qProf,
     (snapshot) => {
       console.log(
-        "%c[RELATÓRIO] 🔥 SNAPSHOT PROFISSIONAIS RECEBIDO!",
-        "color: #ff00ff; font-weight: bold;"
+        `%c[RELATÓRIO] 🔥 SNAPSHOT PROFISSIONAIS: ${snapshot.docs.length} docs`,
+        "color:#ff00ff; font-weight: bold;"
       );
-      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
 
       dadosCache.profissionais = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
 
-      console.log(
-        "[RELATÓRIO] Profissionais processados:",
-        dadosCache.profissionais.length
-      );
-      console.table(dadosCache.profissionais.slice(0, 3)); // Mostra primeiros 3
-
       marcarComoCarregado();
-      renderizarAbaAtiva();
+      renderizarComDebounce(); // ✅ MUDANÇA AQUI
     },
     (error) => {
       console.error(
-        "%c[RELATÓRIO] ❌ ERRO ao carregar profissionais:",
-        "color: #ff0000; font-weight: bold;",
+        "%c[RELATÓRIO] ❌ ERRO profissionais:",
+        "color:#ff0000;",
         error
       );
     }
@@ -162,63 +126,64 @@ function carregarDadosComListener() {
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
   );
-  console.log("[RELATÓRIO] Query Agendamentos criada");
 
   unsubscribeAgend = onSnapshot(
     qAgend,
     (snapshot) => {
       console.log(
-        "%c[RELATÓRIO] 🔥 SNAPSHOT AGENDAMENTOS RECEBIDO!",
-        "color: #ff00ff; font-weight: bold;"
+        `%c[RELATÓRIO] 🔥 SNAPSHOT AGENDAMENTOS: ${snapshot.docs.length} docs`,
+        "color:#ff00ff; font-weight: bold;"
       );
-      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
 
       dadosCache.agendamentos = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
 
-      console.log(
-        "[RELATÓRIO] Agendamentos processados:",
-        dadosCache.agendamentos.length
-      );
-      console.table(dadosCache.agendamentos.slice(0, 3)); // Mostra primeiros 3
-
       marcarComoCarregado();
-      renderizarAbaAtiva();
+      renderizarComDebounce(); // ✅ MUDANÇA AQUI
     },
     (error) => {
       console.error(
-        "%c[RELATÓRIO] ❌ ERRO ao carregar agendamentos:",
-        "color: #ff0000; font-weight: bold;",
+        "%c[RELATÓRIO] ❌ ERRO agendamentos:",
+        "color:#ff0000;",
         error
       );
     }
   );
-
-  console.log(
-    "[RELATÓRIO] Todos os listeners onSnapshot configurados. Aguardando dados..."
-  );
 }
 
-// ✅ Verifica se todos os listeners foram carregados
-function marcarComoCarregado() {
-  const antes = dadosCache.carregado;
-
-  if (dadosCache.profissionais.length > 0) {
-    dadosCache.carregado = true;
+// ✅ NOVA FUNÇÃO: Debounce para evitar múltiplas renderizações
+function renderizarComDebounce() {
+  if (renderTimeout) {
+    clearTimeout(renderTimeout);
   }
 
-  if (!antes && dadosCache.carregado) {
+  renderTimeout = setTimeout(() => {
     console.log(
-      "%c[RELATÓRIO] ✅ DADOS CARREGADOS!",
-      "color: #00ff00; font-weight: bold; font-size: 14px;"
+      "%c[RELATÓRIO] ⏱️ Debounce concluído - Renderizando...",
+      "color:#ffaa00; font-weight: bold;"
     );
-    console.log("[RELATÓRIO] Estado final do cache:");
-    console.log("  - Atas:", dadosCache.atas.length);
-    console.log("  - Profissionais:", dadosCache.profissionais.length);
-    console.log("  - Agendamentos:", dadosCache.agendamentos.length);
-    console.log("  - Carregado:", dadosCache.carregado);
+    renderizarAbaAtiva();
+  }, 100); // Aguarda 100ms sem atualizações antes de renderizar
+}
+
+function marcarComoCarregado() {
+  if (dadosCache.profissionais.length > 0) {
+    const antes = dadosCache.carregado;
+    dadosCache.carregado = true;
+
+    if (!antes) {
+      console.log(
+        "%c[RELATÓRIO] ✅ DADOS CARREGADOS!",
+        "color:#00ff00; font-weight: bold; font-size: 14px;"
+      );
+      console.log("[RELATÓRIO] Cache:", {
+        atas: dadosCache.atas.length,
+        profissionais: dadosCache.profissionais.length,
+        agendamentos: dadosCache.agendamentos.length,
+      });
+    }
   }
 }
 
@@ -227,16 +192,10 @@ function marcarComoCarregado() {
 // ==========================================
 function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
-
   if (!viewContainer) {
-    console.error(
-      "%c[RELATÓRIO] ❌ ERRO CRÍTICO: .view-container não encontrado!",
-      "color: #ff0000; font-weight: bold;"
-    );
+    console.error("[RELATÓRIO] ❌ view-container não encontrado!");
     return;
   }
-
-  console.log("[RELATÓRIO] view-container encontrado:", viewContainer);
 
   viewContainer.addEventListener("click", (e) => {
     const tabLink = e.target.closest(".tab-link");
@@ -245,7 +204,7 @@ function setupEventListeners() {
       const idAba = tabLink.dataset.tab;
       console.log(
         `%c[RELATÓRIO] 👆 Clique na aba: ${idAba}`,
-        "color: #00aaff; font-weight: bold;"
+        "color:#00aaff; font-weight: bold;"
       );
       ativarAba(idAba);
       return;
@@ -268,7 +227,6 @@ function setupEventListeners() {
 function ativarAba(tabId) {
   console.log(`[RELATÓRIO] >> ativarAba(${tabId})`);
 
-  // Remove ativos
   document
     .querySelectorAll(".tab-link")
     .forEach((b) => b.classList.remove("active"));
@@ -279,9 +237,6 @@ function ativarAba(tabId) {
   const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
   const content = document.getElementById(tabId);
 
-  console.log(`[RELATÓRIO] Botão encontrado:`, btn);
-  console.log(`[RELATÓRIO] Conteúdo encontrado:`, content);
-
   if (btn) btn.classList.add("active");
   if (content) content.classList.add("active");
 
@@ -289,11 +244,6 @@ function ativarAba(tabId) {
 }
 
 function renderizarAbaAtiva() {
-  console.log(
-    "%c[RELATÓRIO] >>> renderizarAbaAtiva() <<<",
-    "color: #aa00ff; font-weight: bold;"
-  );
-
   const abaAtiva = document.querySelector(".tab-content.active");
 
   if (!abaAtiva) {
@@ -302,8 +252,10 @@ function renderizarAbaAtiva() {
   }
 
   const id = abaAtiva.id;
-  console.log(`[RELATÓRIO] Aba ativa: #${id}`);
-  console.log(`[RELATÓRIO] dadosCache.carregado:`, dadosCache.carregado);
+  console.log(
+    `%c[RELATÓRIO] 🎨 Renderizando aba: ${id}`,
+    "color:#00ff00; font-weight: bold;"
+  );
 
   if (!dadosCache.carregado) {
     console.log(
@@ -313,57 +265,38 @@ function renderizarAbaAtiva() {
     return;
   }
 
-  console.log(
-    `%c[RELATÓRIO] 🎨 Renderizando aba: ${id}`,
-    "color: #00ff00; font-weight: bold;"
-  );
-
   const container = abaAtiva.querySelector(".card");
 
   if (!container) {
     console.error(
-      `%c[RELATÓRIO] ❌ ERRO: Container .card não encontrado na aba ${id}!`,
-      "color: #ff0000; font-weight: bold;"
-    );
-    console.log(
-      "[RELATÓRIO] HTML da aba ativa:",
-      abaAtiva.innerHTML.substring(0, 200)
+      `%c[RELATÓRIO] ❌ Container .card não encontrado!`,
+      "color:#ff0000; font-weight: bold;"
     );
     return;
   }
 
-  console.log(`[RELATÓRIO] Container encontrado:`, container);
-
   switch (id) {
     case "resumo":
-      console.log("[RELATÓRIO] Chamando renderizarResumo()...");
       renderizarResumo(container);
       break;
     case "participacao":
-      console.log("[RELATÓRIO] Chamando renderizarParticipacao()...");
       renderizarParticipacao(container);
       break;
     case "feedbacks":
-      console.log("[RELATÓRIO] Chamando renderizarFeedbacks()...");
       renderizarFeedbacks(container);
       break;
     case "agendados":
-      console.log("[RELATÓRIO] Chamando renderizarAgendados()...");
       renderizarAgendados(container);
       break;
-    default:
-      console.warn(`[RELATÓRIO] ⚠️ ID de aba desconhecido: ${id}`);
   }
 
   console.log(
     "%c[RELATÓRIO] ✅ Renderização concluída!",
-    "color: #00ff00; font-weight: bold;"
+    "color:#00ff00; font-weight: bold;"
   );
 }
 
 function exibirLoadingNaAbaAtiva() {
-  console.log("[RELATÓRIO] exibirLoadingNaAbaAtiva()");
-
   const abaAtiva = document.querySelector(".tab-content.active");
   if (abaAtiva) {
     const container = abaAtiva.querySelector(".card");
@@ -374,11 +307,6 @@ function exibirLoadingNaAbaAtiva() {
             <p>Carregando dados...</p>
         </div>
       `;
-      console.log("[RELATÓRIO] Loading inserido no container");
-    } else {
-      console.warn(
-        "[RELATÓRIO] ⚠️ Container .card não encontrado para loading"
-      );
     }
   }
 }
@@ -391,10 +319,6 @@ function renderizarResumo(container) {
   console.log("[RELATÓRIO] >>> renderizarResumo() <<<");
   const { atas, profissionais } = dadosCache;
 
-  console.log(
-    `[RELATÓRIO] Dados disponíveis: ${atas.length} atas, ${profissionais.length} profissionais`
-  );
-
   const atasOrdenadas = [...atas].sort(
     (a, b) =>
       new Date(formatarData(b.dataReuniao)) -
@@ -402,7 +326,7 @@ function renderizarResumo(container) {
   );
   const reunioesRecentes = atasOrdenadas.slice(0, 5);
 
-  const html = `
+  container.innerHTML = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral</h3>
     </div>
@@ -446,22 +370,18 @@ function renderizarResumo(container) {
     </div>
   `;
 
-  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
-  console.log(`[RELATÓRIO] Primeiros 300 caracteres:`, html.substring(0, 300));
-
-  container.innerHTML = html;
-  console.log("[RELATÓRIO] HTML inserido no container");
+  console.log(
+    `[RELATÓRIO] HTML inserido (${container.innerHTML.length} caracteres)`
+  );
 }
 
 function renderizarParticipacao(container) {
   console.log("[RELATÓRIO] >>> renderizarParticipacao() <<<");
   const { atas, profissionais } = dadosCache;
 
-  console.log(`[RELATÓRIO] Calculando estatísticas...`);
   const stats = calcularEstatisticasParticipacao(atas, profissionais);
-  console.log(`[RELATÓRIO] Estatísticas calculadas:`, stats);
 
-  const html = `
+  container.innerHTML = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
     </div>
@@ -509,10 +429,6 @@ function renderizarParticipacao(container) {
         </div>
     </div>
   `;
-
-  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
-  container.innerHTML = html;
-  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderizarFeedbacks(container) {
@@ -527,16 +443,13 @@ function renderizarFeedbacks(container) {
         new Date(formatarData(a.dataReuniao))
     );
 
-  console.log(`[RELATÓRIO] Atas com feedback: ${atasComFeedback.length}`);
-
   if (atasComFeedback.length === 0) {
     container.innerHTML =
       '<div class="card-body"><div class="alert alert-info">Nenhum feedback registrado até o momento.</div></div>';
-    console.log("[RELATÓRIO] Nenhum feedback encontrado");
     return;
   }
 
-  const html = `
+  container.innerHTML = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">feedback</span> Feedbacks Detalhados</h3>
     </div>
@@ -572,10 +485,6 @@ function renderizarFeedbacks(container) {
         </div>
     </div>
   `;
-
-  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
-  container.innerHTML = html;
-  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderCardFeedback(fb, profissionais) {
@@ -611,12 +520,9 @@ function renderizarAgendados(container) {
   console.log("[RELATÓRIO] >>> renderizarAgendados() <<<");
   const { agendamentos, profissionais } = dadosCache;
 
-  console.log(`[RELATÓRIO] Total de agendamentos: ${agendamentos.length}`);
-
   if (!agendamentos || agendamentos.length === 0) {
     container.innerHTML =
       '<div class="card-body"><div class="alert alert-info">Nenhum agendamento encontrado.</div></div>';
-    console.log("[RELATÓRIO] Nenhum agendamento encontrado");
     return;
   }
 
@@ -628,11 +534,7 @@ function renderizarAgendados(container) {
     return { ...ag, totalInscritos };
   });
 
-  console.log(
-    `[RELATÓRIO] Lista processada: ${listaAgendamentos.length} items`
-  );
-
-  const html = `
+  container.innerHTML = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">event_available</span> Lista de Agendamentos</h3>
     </div>
@@ -674,10 +576,6 @@ function renderizarAgendados(container) {
         </div>
     </div>
   `;
-
-  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
-  container.innerHTML = html;
-  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderLinhasInscritos(agendamento, profissionais) {
@@ -917,11 +815,17 @@ function downloadCSV(content, fileName) {
   document.body.removeChild(link);
 }
 
-// ✅ ADICIONADO: Limpeza ao desmontar (como Dashboard)
 export function cleanup() {
   console.log("[RELATÓRIO] Desinscrever listeners...");
   if (unsubscribeAtas) unsubscribeAtas();
   if (unsubscribeProf) unsubscribeProf();
   if (unsubscribeAgend) unsubscribeAgend();
+
+  // ✅ Limpa timeout pendente
+  if (renderTimeout) {
+    clearTimeout(renderTimeout);
+    renderTimeout = null;
+  }
+
   console.log("[RELATÓRIO] Listeners desinscritos.");
 }
