@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.6 (Filtro Padrão Futuro + Histórico por Periodo)
+// VERSÃO 5.7 (Botão Link Feedback Adicionado)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -52,7 +52,8 @@ function getListaUnificada() {
         );
 
         listaUnificada.push({
-          id: `${agendamento.id}_slot_${index}`,
+          id: agendamento.id, // Usa o ID do documento principal para o link funcionar
+          slotId: `${agendamento.id}_slot_${index}`, // ID único para lista
           titulo: agendamento.tipo || "Agendamento",
           tipo: agendamento.tipo || "Reunião Agendada",
           dataReuniao: slot.data,
@@ -79,9 +80,7 @@ function getListaUnificada() {
 }
 
 export function init() {
-  console.log(
-    "[DASH] Dashboard iniciado (v5.6 - Filtros de Data e Layout Atualizado)."
-  );
+  console.log("[DASH] Dashboard iniciado (v5.7 - Link Feedback).");
   configurarEventListeners();
   carregarDados();
 }
@@ -95,6 +94,26 @@ function configurarEventListeners() {
         : e.target.closest(".tab-link");
       const abaId = btn.dataset.tab;
       alternarAba(abaId);
+    }
+
+    // Listener para o botão de copiar link de feedback
+    if (e.target.closest(".btn-link-feedback")) {
+      e.stopPropagation();
+      const btn = e.target.closest(".btn-link-feedback");
+      const id = btn.dataset.id;
+
+      // Constrói o link absoluto
+      const link = `${window.location.origin}/modulos/gestao/page/feedback.html#${id}`;
+
+      navigator.clipboard
+        .writeText(link)
+        .then(() => {
+          alert("Link de feedback copiado para a área de transferência!");
+        })
+        .catch((err) => {
+          console.error("Erro ao copiar:", err);
+          prompt("Copie o link manualmente:", link);
+        });
     }
   });
 
@@ -179,26 +198,22 @@ function aplicarFiltrosEExibirAtas() {
 
   let itensFiltrados = getListaUnificada();
 
-  // 1. Filtro por Tipo
   if (tipoFiltro !== "Todos") {
     itensFiltrados = itensFiltrados.filter((item) =>
       item.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
     );
   }
 
-  // 2. Filtro por Texto
   if (buscaTermo) {
     itensFiltrados = itensFiltrados.filter((item) =>
       item.titulo?.toLowerCase().includes(buscaTermo)
     );
   }
 
-  // 3. Filtro de Data (Lógica solicitada)
   const agora = new Date();
-  agora.setHours(0, 0, 0, 0); // Zera hora para comparar apenas data
+  agora.setHours(0, 0, 0, 0);
 
   if (dataInicioVal || dataFimVal) {
-    // Se houver qualquer data selecionada, usa o filtro de período (Histórico)
     if (dataInicioVal) {
       const dtIni = new Date(dataInicioVal);
       itensFiltrados = itensFiltrados.filter(
@@ -207,22 +222,17 @@ function aplicarFiltrosEExibirAtas() {
     }
     if (dataFimVal) {
       const dtFim = new Date(dataFimVal);
-      // Ajusta para final do dia para incluir a data selecionada
       dtFim.setHours(23, 59, 59, 999);
       itensFiltrados = itensFiltrados.filter(
         (item) => item.dataOrdenacao <= dtFim
       );
     }
   } else {
-    // PADRÃO: Se não houver data selecionada, mostra SOMENTE FUTURAS (>= hoje)
     itensFiltrados = itensFiltrados.filter(
       (item) => item.dataOrdenacao >= agora
     );
   }
 
-  // Ordenação:
-  // Se for visualização padrão (futuras), ordena Crescente (mais próxima primeiro).
-  // Se for histórico (com datas), ordena Decrescente (mais recente primeiro).
   if (!dataInicioVal && !dataFimVal) {
     itensFiltrados.sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
   } else {
@@ -253,13 +263,8 @@ function aplicarFiltrosEExibirAtas() {
       const dataItem = item.dataOrdenacao;
       const ehFutura = dataItem >= agora;
 
-      let statusCor = "text-success";
-      let iconeStatus = "check_circle";
-
-      if (ehFutura || item.statusCalculado === "Agendada") {
-        statusCor = "text-info";
-        iconeStatus = "event";
-      }
+      let iconeStatus = "event";
+      if (!ehFutura) iconeStatus = "check_circle";
 
       const participantes = item.participantes || [];
       const previewParticipantes = participantes.slice(0, 3);
@@ -268,6 +273,7 @@ function aplicarFiltrosEExibirAtas() {
 
       const horarioDisplay = item.horaInicio ? ` às ${item.horaInicio}` : "";
 
+      // Botão de Detalhes ou Editar (mantido)
       const botaoAcao =
         item.origem === "agendamento"
           ? `<button class="btn btn-sm btn-outline-secondary" title="Ver Detalhes/Inscritos" 
@@ -301,11 +307,17 @@ function aplicarFiltrosEExibirAtas() {
                           "pt-BR"
                         )}${horarioDisplay}</small>
                     </div>
-                    <div class="ata-acoes">
+                    <div class="ata-acoes d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-success btn-link-feedback" title="Copiar Link de Feedback" data-id="${
+                          item.id
+                        }">
+                            <span class="material-symbols-outlined">share</span>
+                        </button>
+
                         ${
                           item.origem === "ata"
                             ? `
-                            <button class="btn btn-sm btn-outline-primary btn-pdf me-1" title="Visualizar PDF (Em breve)" onclick="event.stopPropagation(); alert('Funcionalidade de PDF em desenvolvimento.');">
+                            <button class="btn btn-sm btn-outline-primary btn-pdf" title="Visualizar PDF" onclick="event.stopPropagation(); alert('Funcionalidade de PDF em desenvolvimento.');">
                                 <span class="material-symbols-outlined">picture_as_pdf</span>
                             </button>
                         `
@@ -356,11 +368,7 @@ function aplicarFiltrosEExibirAtas() {
                             }</small>
                         </div>
                     `
-                        : `
-                        <div class="mb-3 mt-3">
-                            <p class="text-muted fst-italic">Nenhum participante inscrito ainda.</p>
-                        </div>
-                    `
+                        : ""
                     }
                     ${
                       item.resumo
@@ -519,36 +527,6 @@ function renderizarProximaReuniao(listaUnificada) {
   </p>
   <p class="fw-bold text-warning mb-0">${tempoTexto}</p>
 `;
-
-  const detalhesBtn = document.getElementById("ver-detalhes-proxima");
-  if (detalhesBtn) {
-    detalhesBtn.onclick = () => {
-      const card = document.querySelector(`.ata-item[data-id="${proxima.id}"]`);
-      if (card) {
-        card.scrollIntoView({ behavior: "smooth", block: "center" });
-        const content = card.querySelector(".ata-conteudo");
-        if (content && content.style.display === "none") {
-          content.style.display = "block";
-          card.style.transition = "box-shadow 0.3s";
-          card.style.boxShadow = "0 0 15px rgba(13, 110, 253, 0.5)";
-          setTimeout(() => (card.style.boxShadow = ""), 1500);
-        }
-      } else {
-        alert("Detalhes indisponíveis na lista atual (verifique os filtros).");
-      }
-    };
-  }
-
-  const calendarioBtn = document.getElementById("calendario-proxima");
-  if (calendarioBtn)
-    calendarioBtn.onclick = () => {
-      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-        proxima.titulo
-      )}&dates=${
-        proxima.dataOrdenacao.toISOString().replace(/[-:]/g, "").split(".")[0]
-      }Z&location=${encodeURIComponent(proxima.local || "Online")}`;
-      window.open(url, "_blank");
-    };
 }
 
 function atualizarContadorAtas(qtd) {
