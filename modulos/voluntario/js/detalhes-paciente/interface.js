@@ -174,7 +174,7 @@ export function preencherFormularios() {
     }
   }
 
-  // --- LÓGICA DO CONTRATO (NOVO ACORDEÃO) ---
+  // --- LÓGICA DO CONTRATO (CORRIGIDA) ---
   const areaAssinado = document.getElementById("area-contrato-assinado");
   const areaPendente = document.getElementById("area-contrato-pendente");
   const linkContrato = document.getElementById("link-ver-contrato");
@@ -183,29 +183,45 @@ export function preencherFormularios() {
   // Procura contrato assinado no objeto principal ou nos atendimentos
   let contratoUrl = paciente.contratoUrl;
   let contratoData = paciente.contratoData;
+  let estaAssinado = false; // Nova flag de controle
+
+  // Verifica se existe assinatura no nível raiz
+  if (contratoUrl || contratoData) {
+    estaAssinado = true;
+  }
 
   // Se não achar no raiz, tenta achar no atendimento PB ativo do usuário
-  if (!contratoUrl && paciente.atendimentosPB && estado.userDataGlobal) {
+  if (!estaAssinado && paciente.atendimentosPB && estado.userDataGlobal) {
     const meuAtendimento = paciente.atendimentosPB.find(
       (at) => at.profissionalId === estado.userDataGlobal.uid
     );
+
+    // CORREÇÃO: Verifica se o objeto contratoAssinado existe, independente da URL
     if (meuAtendimento && meuAtendimento.contratoAssinado) {
-      // Estrutura do contratoAssinado dentro do atendimento
+      estaAssinado = true;
+
+      // Tenta pegar a URL se existir
       contratoUrl =
         meuAtendimento.contratoAssinado.urlPdf ||
         meuAtendimento.contratoAssinado.arquivoUrl;
+
       contratoData = meuAtendimento.contratoAssinado.assinadoEm;
     }
   }
 
   if (areaAssinado && areaPendente) {
-    if (contratoUrl) {
+    if (estaAssinado) {
       // CONTRATO ASSINADO
       areaAssinado.style.display = "block";
       areaPendente.style.display = "none";
 
       if (linkContrato) {
-        linkContrato.href = contratoUrl;
+        if (contratoUrl) {
+          linkContrato.href = contratoUrl;
+          linkContrato.style.display = "inline-flex"; // Mostra o botão se tiver link
+        } else {
+          linkContrato.style.display = "none"; // Esconde o botão se for apenas registro de dados
+        }
       }
 
       if (dataAssinatura) {
@@ -227,7 +243,6 @@ export function preencherFormularios() {
       areaPendente.style.display = "block";
     }
   }
-
   // --- DEMAIS DADOS ---
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
   setElementValue("dp-idade", idadeCalculada, true);
