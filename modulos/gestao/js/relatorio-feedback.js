@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.6 (Correção F5/SPA - Reset de Estado e Renderização Forçada)
+// VERSÃO 3.0 (Correção Definitiva: Renderização sob demanda e correção de layout)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -10,13 +10,18 @@ import {
   orderBy,
   doc,
   updateDoc,
+  getDoc,
 } from "../../../assets/js/firebase-init.js";
-import { getDoc } from "../../../assets/js/firebase-init.js";
 
-// Variáveis de Estado Global do Módulo
-let todasAsAtas = [];
-let todosOsProfissionais = [];
-let todosOsAgendamentos = [];
+// ==========================================
+// ESTADO GLOBAL DO MÓDULO
+// ==========================================
+let dadosCache = {
+  atas: [],
+  profissionais: [],
+  agendamentos: [],
+  carregado: false,
+};
 
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
@@ -25,171 +30,103 @@ const perguntasTexto = {
   sugestaoTema: "Sugestão de tema para próxima reunião:",
 };
 
-function formatarData(dataReuniao) {
-  if (!dataReuniao) return "Data indisponível";
-  try {
-    let data;
-    if (dataReuniao.toDate && typeof dataReuniao.toDate === "function") {
-      data = dataReuniao.toDate();
-    } else if (typeof dataReuniao === "string") {
-      data = new Date(dataReuniao);
-    } else if (dataReuniao instanceof Date) {
-      data = dataReuniao;
-    } else {
-      data = new Date(dataReuniao);
-    }
-    if (isNaN(data.getTime())) return "Data inválida";
-    return data.toLocaleDateString("pt-BR");
-  } catch (error) {
-    console.warn("[RELATÓRIO] Erro ao formatar data:", error);
-    return "Data indisponível";
-  }
-}
-
-// Função para zerar o estado ao entrar na tela (Corrige o problema do F5)
-function resetState() {
-  todasAsAtas = [];
-  todosOsProfissionais = [];
-  todosOsAgendamentos = [];
-  console.log("[RELATÓRIO] Estado resetado.");
-}
-
+// ==========================================
+// INICIALIZAÇÃO
+// ==========================================
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.6).");
+  console.log("[RELATÓRIO] Init v3.0 - Renderização sob demanda.");
 
-  // 1. Zera variáveis antigas
-  resetState();
+  // 1. Limpa estado anterior (Reset forçado para SPA)
+  dadosCache = {
+    atas: [],
+    profissionais: [],
+    agendamentos: [],
+    carregado: false,
+  };
 
-  // 2. Configura cliques
+  // 2. Configura os cliques das abas imediatamente
   setupEventListeners();
 
-  // 3. Carrega dados frescos
-  await carregarRelatorios();
+  // 3. Mostra loading na aba ativa atual
+  exibirLoadingNaAbaAtiva();
+
+  // 4. Busca dados
+  await carregarDadosDoBanco();
 }
 
-async function carregarRelatorios() {
-  const containers = document.querySelectorAll('[id$="-container"]');
-  // Mostra spinner em todos containers visíveis para dar feedback imediato
-  containers.forEach((c) => {
-    if (!c.innerHTML.includes("loading-spinner")) {
-      c.innerHTML =
-        '<div class="loading-spinner"></div><p class="text-center">Atualizando dados...</p>';
-    }
-  });
-
+// ==========================================
+// LÓGICA DE DADOS (Busca Única)
+// ==========================================
+async function carregarDadosDoBanco() {
   try {
-    const [atasSnapshot, profissionaisSnapshot, agendamentosSnapshot] =
-      await Promise.all([
-        getDocs(
-          query(
-            collection(firestoreDb, "gestao_atas"),
-            where("tipo", "==", "Reunião Técnica")
-          )
-        ),
-        getDocs(query(collection(firestoreDb, "usuarios"), orderBy("nome"))),
-        getDocs(
-          query(
-            collection(firestoreDb, "agendamentos_voluntarios"),
-            orderBy("criadoEm", "desc")
-          )
-        ),
-      ]);
+    const [atasSnap, profSnap, agendSnap] = await Promise.all([
+      getDocs(
+        query(
+          collection(firestoreDb, "gestao_atas"),
+          where("tipo", "==", "Reunião Técnica")
+        )
+      ),
+      getDocs(query(collection(firestoreDb, "usuarios"), orderBy("nome"))),
+      getDocs(
+        query(
+          collection(firestoreDb, "agendamentos_voluntarios"),
+          orderBy("criadoEm", "desc")
+        )
+      ),
+    ]);
 
-    todasAsAtas = atasSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
+    dadosCache.atas = atasSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    dadosCache.profissionais = profSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
     }));
-    todosOsProfissionais = profissionaisSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
+    dadosCache.agendamentos = agendSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
     }));
-    todosOsAgendamentos = agendamentosSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    dadosCache.carregado = true;
 
     console.log(
-      `[RELATÓRIO] Carregados: ${todasAsAtas.length} atas, ${todosOsProfissionais.length} profissionais.`
+      `[RELATÓRIO] Dados carregados: ${dadosCache.atas.length} atas.`
     );
 
-    // Renderiza as abas principais IMEDIATAMENTE após carregar
-    // Isso garante que o usuário veja os dados sem precisar clicar
-    renderizarAbaSeExistir("resumo", () =>
-      renderizarResumo(todasAsAtas, todosOsProfissionais)
-    );
-    renderizarAbaSeExistir("participacao", () =>
-      renderizarParticipacao(todasAsAtas, todosOsProfissionais)
-    );
-    renderizarAbaSeExistir("feedbacks", () =>
-      renderizarFeedbacks(todasAsAtas, todosOsProfissionais)
-    );
-
-    // Agendados pode ser pesado, mantemos lazy load ou carregamos se for a aba ativa
-    const activeTab = document.querySelector(".tab-content.active");
-    if (activeTab && activeTab.id === "agendados") {
-      renderizarAgendados(todosOsAgendamentos, todosOsProfissionais);
-      activeTab.classList.add("rendered");
-    }
-
-    console.log("[RELATÓRIO] Renderização inicial concluída.");
+    // Após carregar, renderiza IMEDIATAMENTE a aba que está aberta visualmente
+    renderizarAbaAtiva();
   } catch (error) {
-    console.error("[RELATÓRIO] Erro ao carregar:", error);
-    mostrarErro("Erro ao carregar dados. Tente atualizar a página.");
+    console.error("[RELATÓRIO] Falha fatal:", error);
+    mostrarErroGeral(
+      "Não foi possível carregar os relatórios. Verifique sua conexão."
+    );
   }
 }
 
-function renderizarAbaSeExistir(tabId, renderFunction) {
-  const container = document.getElementById(`${tabId}-container`);
-  if (container) {
-    try {
-      renderFunction();
-    } catch (error) {
-      console.error(`[RELATÓRIO] Erro ao renderizar aba ${tabId}:`, error);
-      container.innerHTML =
-        '<div class="alert alert-danger">Erro ao carregar esta seção.</div>';
-    }
-  }
-}
-
+// ==========================================
+// LÓGICA DE NAVEGAÇÃO E RENDERIZAÇÃO
+// ==========================================
 function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
   if (!viewContainer) return;
 
-  // Remove listeners antigos clonando o elemento (truque rápido para SPA) ou apenas adiciona novo
-  // Como o HTML é recriado pelo loadView, apenas adicionar é seguro.
-
+  // Usa delegação de eventos para garantir que funcione sempre
   viewContainer.addEventListener("click", (e) => {
-    // 1. Lógica de Abas
+    // CLIQUE NA ABA
     const tabLink = e.target.closest(".tab-link");
     if (tabLink) {
       e.preventDefault();
-      const targetTab = tabLink.dataset.tab;
-      trocarAba(targetTab);
+      const idAba = tabLink.dataset.tab;
+      ativarAba(idAba);
       return;
     }
 
-    // 2. Lógica de Accordion
+    // CLIQUE NO ACCORDION (Expandir/Recolher)
     const accordionHeader = e.target.closest(".accordion-header");
     if (accordionHeader) {
       e.preventDefault();
-      const accordionItem = accordionHeader.closest(".accordion-item");
-      const content = accordionHeader.nextElementSibling;
-      const icon = accordionHeader.querySelector(".accordion-icon");
-
-      const isActive = accordionItem.classList.toggle("active");
-      if (content) {
-        content.style.maxHeight = isActive
-          ? `${content.scrollHeight + 500}px` // Adiciona buffer para conteúdo dinâmico
-          : "0px";
-      }
-      if (icon) {
-        icon.textContent = isActive ? "−" : "+";
-      }
-      return;
+      toggleAccordion(accordionHeader);
     }
   });
 
-  // 3. Lógica de Presença (Checkbox)
+  // Evento de Checkbox (Presença)
   viewContainer.addEventListener("change", (e) => {
     if (e.target.matches(".checkbox-presenca")) {
       marcarPresenca(e.target);
@@ -197,188 +134,194 @@ function setupEventListeners() {
   });
 }
 
-function trocarAba(tabId) {
-  // Atualiza botões
+function ativarAba(tabId) {
+  // 1. Manipula Classes CSS (Visual)
   document
     .querySelectorAll(".tab-link")
-    .forEach((btn) => btn.classList.remove("active"));
-  const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
-  if (activeBtn) activeBtn.classList.add("active");
-
-  // Atualiza conteúdo
+    .forEach((b) => b.classList.remove("active"));
   document
     .querySelectorAll(".tab-content")
-    .forEach((content) => content.classList.remove("active"));
+    .forEach((c) => c.classList.remove("active"));
 
-  const activeContent = document.getElementById(tabId);
-  if (activeContent) {
-    activeContent.classList.add("active");
+  const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
+  const content = document.getElementById(tabId);
 
-    // Lazy load para agendados (carrega só quando clica na aba pela primeira vez)
-    if (
-      tabId === "agendados" &&
-      !activeContent.classList.contains("rendered")
-    ) {
-      renderizarAgendados(todosOsAgendamentos, todosOsProfissionais);
-      activeContent.classList.add("rendered");
+  if (btn) btn.classList.add("active");
+  if (content) content.classList.add("active");
+
+  // 2. CHAMA A RENDERIZAÇÃO
+  // O segredo é chamar a renderização SEMPRE que trocar a aba.
+  // Se os dados já existem, ele desenha instantaneamente.
+  renderizarAbaAtiva();
+}
+
+function renderizarAbaAtiva() {
+  if (!dadosCache.carregado) return; // Se ainda não carregou dados, não faz nada (o loading já está lá)
+
+  // Descobre qual aba está ativa no HTML
+  const abaAtiva = document.querySelector(".tab-content.active");
+  if (!abaAtiva) return;
+
+  const id = abaAtiva.id; // 'resumo', 'participacao', 'feedbacks', 'agendados'
+
+  console.log(`[RELATÓRIO] Renderizando aba: ${id}`);
+
+  // Limpa o conteúdo atual antes de redesenhar (evita duplicação)
+  // Mas verificamos se o container existe dentro da aba
+  const container = document.getElementById(`${id}-container`);
+  if (!container) return;
+
+  // Roteador de Renderização
+  switch (id) {
+    case "resumo":
+      renderizarResumo(container);
+      break;
+    case "participacao":
+      renderizarParticipacao(container);
+      break;
+    case "feedbacks":
+      renderizarFeedbacks(container);
+      break;
+    case "agendados":
+      renderizarAgendados(container);
+      break;
+  }
+}
+
+function exibirLoadingNaAbaAtiva() {
+  const abaAtiva = document.querySelector(".tab-content.active");
+  if (abaAtiva) {
+    const container = abaAtiva.querySelector(".card"); // O container interno
+    if (container) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+      `;
     }
   }
 }
 
-// ==========================
-// FUNÇÕES DE RENDERIZAÇÃO
-// ==========================
+// ==========================================
+// FUNÇÕES DE DESENHO (VIEW)
+// ==========================================
 
-function renderizarResumo(atas, profissionais) {
-  const container = document.getElementById("resumo-container");
-  if (!container) return;
+function renderizarResumo(container) {
+  const { atas, profissionais } = dadosCache;
 
-  const atasOrdenadas = [...atas].sort((a, b) => {
-    const dataA = formatarData(a.dataReuniao);
-    const dataB = formatarData(b.dataReuniao);
-    return new Date(dataB) - new Date(dataA);
-  });
-
-  const totalReunioes = atas.length;
+  const atasOrdenadas = [...atas].sort(
+    (a, b) =>
+      new Date(formatarData(b.dataReuniao)) -
+      new Date(formatarData(a.dataReuniao))
+  );
   const reunioesRecentes = atasOrdenadas.slice(0, 5);
 
   container.innerHTML = `
-        <div class="card-header">
-            <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral das Reuniões</h3>
-        </div>
-        <div class="card-body">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">event</span>
-                    <h4>${totalReunioes}</h4>
-                    <p>Total de Reuniões</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">group</span>
-                    <h4>${profissionais.length}</h4>
-                    <p>Profissionais Cadastrados</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">thumb_up</span>
-                    <h4>${calcularMediaFeedbacks(atas)}</h4>
-                    <p>Média de Satisfação (%)</p>
-                </div>
+    <div class="card-header">
+        <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral</h3>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="material-symbols-outlined">event</span>
+                <h4>${atas.length}</h4>
+                <p>Total de Reuniões</p>
             </div>
-            <div class="table-container">
-                <table class="table">
-                    <thead>
+            <div class="stat-card">
+                <span class="material-symbols-outlined">group</span>
+                <h4>${profissionais.length}</h4>
+                <p>Profissionais</p>
+            </div>
+            <div class="stat-card">
+                <span class="material-symbols-outlined">thumb_up</span>
+                <h4>${calcularMediaFeedbacks(atas)}%</h4>
+                <p>Satisfação Média</p>
+            </div>
+        </div>
+        <div class="table-container mt-3">
+            <h5 class="mb-3">Últimas Reuniões Realizadas</h5>
+            <table class="table">
+                <thead><tr><th>Reunião</th><th>Data</th><th>Participantes</th></tr></thead>
+                <tbody>
+                    ${reunioesRecentes
+                      .map(
+                        (ata) => `
                         <tr>
-                            <th>Reunião</th>
-                            <th>Data</th>
-                            <th>Participantes (Ata)</th>
+                            <td>${ata.titulo || "Reunião Técnica"}</td>
+                            <td>${formatarData(ata.dataReuniao)}</td>
+                            <td>${contarParticipantes(ata.participantes)}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${reunioesRecentes
-                          .map(
-                            (ata) => `
-                            <tr>
-                                <td>${ata.titulo || "Reunião Técnica"}</td>
-                                <td>${formatarData(ata.dataReuniao)}</td>
-                                <td>${
-                                  Array.isArray(ata.participantes)
-                                    ? ata.participantes.length
-                                    : ata.participantes
-                                    ? ata.participantes.split(",").length
-                                    : 0
-                                }</td>
-                            </tr>
-                        `
-                          )
-                          .join("")}
-                    </tbody>
-                </table>
-            </div>
+                    `
+                      )
+                      .join("")}
+                </tbody>
+            </table>
         </div>
-    `;
+    </div>
+  `;
 }
 
-function renderizarParticipacao(atas, profissionais) {
-  const container = document.getElementById("participacao-container");
-  if (!container) return;
-
-  const participacoes = calcularParticipacoes(atas, profissionais);
-  const taxaMedia =
-    participacoes.totalReunioes > 0
-      ? (
-          (participacoes.totalPresencas /
-            (participacoes.totalReunioes * profissionais.length)) *
-          100
-        ).toFixed(1)
-      : 0;
+function renderizarParticipacao(container) {
+  const { atas, profissionais } = dadosCache;
+  const stats = calcularEstatisticasParticipacao(atas, profissionais);
 
   container.innerHTML = `
-        <div class="card-header">
-            <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
-            <p>Calculado com base na Lista de Presença da Ata (Checkboxes).</p>
-        </div>
-        <div class="card-body">
-            <div class="stats-grid">
-                <div class="stat-card success">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <h4>${participacoes.totalPresencas}</h4>
-                    <p>Total de Presenças</p>
-                </div>
-                <div class="stat-card warning">
-                    <span class="material-symbols-outlined">warning</span>
-                    <h4>${participacoes.totalAusencias}</h4>
-                    <p>Total de Ausências</p>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">leaderboard</span>
-                    <h4>${participacoes.topParticipantes.length}</h4>
-                    <p>Top Participantes (>80%)</p>
-                </div>
+    <div class="card-header">
+        <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-card success">
+                <span class="material-symbols-outlined">check_circle</span>
+                <h4>${stats.totalPresencas}</h4>
+                <p>Total Presenças</p>
             </div>
-            
-             <div class="alert alert-info">
-                 <strong>Nota:</strong> Esta taxa reflete quem estava presente no momento da Ata, não necessariamente quem respondeu o Feedback online.
-                 Taxa média global: <strong>${taxaMedia}%</strong>
-             </div>
-
-            <div class="table-container">
-                <table class="table">
-                    <thead>
+            <div class="stat-card warning">
+                <span class="material-symbols-outlined">warning</span>
+                <h4>${stats.totalAusencias}</h4>
+                <p>Total Ausências</p>
+            </div>
+            <div class="stat-card">
+                <span class="material-symbols-outlined">leaderboard</span>
+                <h4>${stats.taxaMedia}%</h4>
+                <p>Taxa Média Global</p>
+            </div>
+        </div>
+        <div class="table-container mt-3">
+             <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5>Ranking de Presença (Top 10)</h5>
+                <button class="btn btn-primary btn-sm" onclick="exportarRelatorioParticipacao()">Exportar CSV</button>
+            </div>
+            <table class="table">
+                <thead><tr><th>Profissional</th><th>Presenças</th><th>Ausências</th><th>Taxa</th></tr></thead>
+                <tbody>
+                    ${stats.ranking
+                      .slice(0, 10)
+                      .map(
+                        (p) => `
                         <tr>
-                            <th>Profissional</th>
-                            <th>Presenças</th>
-                            <th>Ausências</th>
-                            <th>Taxa (%)</th>
+                            <td>${p.nome}</td>
+                            <td>${p.presencas}</td>
+                            <td>${p.ausencias}</td>
+                            <td><strong>${p.taxa.toFixed(1)}%</strong></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${participacoes.topParticipantes
-                          .slice(0, 10)
-                          .map(
-                            (prof) => `
-                            <tr>
-                                <td>${prof.nome}</td>
-                                <td>${prof.presencas}</td>
-                                <td>${prof.ausencias}</td>
-                                <td>${prof.taxa.toFixed(1)}%</td>
-                            </tr>
-                        `
-                          )
-                          .join("")}
-                    </tbody>
-                </table>
-                <button class="btn btn-primary mt-2" onclick="exportarRelatorioParticipacao()">Exportar CSV Completo</button>
-            </div>
+                    `
+                      )
+                      .join("")}
+                </tbody>
+            </table>
         </div>
-    `;
+    </div>
+  `;
 }
 
-function renderizarFeedbacks(atas, profissionais) {
-  const container = document.getElementById("feedback-container");
-  if (!container) return;
+function renderizarFeedbacks(container) {
+  const { atas, profissionais } = dadosCache;
 
+  // Filtra atas que tem feedback
   const atasComFeedback = atas
-    .filter((ata) => ata.feedbacks && ata.feedbacks.length > 0)
+    .filter((a) => a.feedbacks && a.feedbacks.length > 0)
     .sort(
       (a, b) =>
         new Date(formatarData(b.dataReuniao)) -
@@ -387,409 +330,379 @@ function renderizarFeedbacks(atas, profissionais) {
 
   if (atasComFeedback.length === 0) {
     container.innerHTML =
-      '<div class="card-body"><div class="alert alert-info">Nenhuma ata com feedbacks encontrada.</div></div>';
+      '<div class="card-body"><div class="alert alert-info">Nenhum feedback registrado até o momento.</div></div>';
     return;
   }
 
   container.innerHTML = `
-        <div class="card-header">
-            <h3><span class="material-symbols-outlined">feedback</span> Feedbacks por Reunião</h3>
-        </div>
-        <div class="card-body">
-            <div class="accordion">
-                ${atasComFeedback
-                  .map(
-                    (ata) => `
-                    <div class="accordion-item">
-                        <button class="accordion-header" type="button">
-                            <span class="material-symbols-outlined">event</span>
-                            ${ata.titulo || "Reunião Técnica"} - ${formatarData(
-                      ata.dataReuniao
-                    )}
-                            (${ata.feedbacks.length} feedbacks)
-                            <span class="accordion-icon">+</span>
-                        </button>
-                        <div class="accordion-content">
-                            <div class="feedback-list">
-                                ${ata.feedbacks
-                                  .map((fb) => {
-                                    // Tenta encontrar o nome do profissional se vier ID
-                                    let nomeProfissional =
-                                      fb.profissional || fb.nome || "Anônimo";
-                                    if (fb.profissionalId) {
-                                      const p = profissionais.find(
-                                        (pr) => pr.id === fb.profissionalId
-                                      );
-                                      if (p) nomeProfissional = p.nome;
-                                    }
-
-                                    const respostas = Object.entries(
-                                      perguntasTexto
-                                    )
-                                      .map(
-                                        ([key, texto]) =>
-                                          `<p><strong>${texto}</strong>: ${
-                                            fb[key] || "N/R"
-                                          }</p>`
-                                      )
-                                      .join("");
-                                    return `
-                                        <div class="feedback-card">
-                                            <h5>${nomeProfissional}</h5>
-                                            <div class="feedback-respostas">${respostas}</div>
-                                            ${
-                                              fb.sugestaoTema
-                                                ? `<p><em>Sugestão: ${fb.sugestaoTema}</em></p>`
-                                                : ""
-                                            }
-                                        </div>
-                                    `;
-                                  })
-                                  .join("")}
-                            </div>
+    <div class="card-header">
+        <h3><span class="material-symbols-outlined">feedback</span> Feedbacks Detalhados</h3>
+    </div>
+    <div class="card-body">
+        <div class="accordion">
+            ${atasComFeedback
+              .map(
+                (ata) => `
+                <div class="accordion-item">
+                    <button class="accordion-header" type="button">
+                        <span class="material-symbols-outlined">event</span>
+                        ${ata.titulo || "Reunião"} - ${formatarData(
+                  ata.dataReuniao
+                )}
+                        <span class="badge ms-2">${
+                          ata.feedbacks.length
+                        } feedbacks</span>
+                        <span class="accordion-icon">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="feedback-list mt-3">
+                            ${ata.feedbacks
+                              .map((fb) =>
+                                renderCardFeedback(fb, profissionais)
+                              )
+                              .join("")}
                         </div>
                     </div>
-                `
-                  )
-                  .join("")}
-            </div>
+                </div>
+            `
+              )
+              .join("")}
         </div>
-    `;
+    </div>
+  `;
 }
 
-function renderizarAgendados(agendamentos, profissionais) {
-  const container = document.getElementById("agendados-container");
-  if (!container) return;
+function renderCardFeedback(fb, profissionais) {
+  // Resolve nome do profissional
+  let nome = fb.profissional || fb.nome || "Anônimo";
+  if (fb.profissionalId) {
+    const found = profissionais.find((p) => p.id === fb.profissionalId);
+    if (found) nome = found.nome;
+  }
 
-  if (agendamentos.length === 0) {
-    container.innerHTML = `
-            <div class="card-header">
-                <h3><span class="material-symbols-outlined">event_available</span> Agendamentos</h3>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">Nenhum agendamento encontrado.</div>
-            </div>
-        `;
+  const respostasHtml = Object.entries(perguntasTexto)
+    .map(
+      ([key, label]) =>
+        `<p class="mb-1"><small><strong>${label}</strong></small><br>${
+          fb[key] || "N/A"
+        }</p>`
+    )
+    .join("");
+
+  return `
+    <div class="feedback-card p-3 mb-3 border rounded bg-light">
+        <h6 class="text-primary mb-2">${nome}</h6>
+        ${respostasHtml}
+        ${
+          fb.sugestaoTema
+            ? `<p class="mt-2 text-muted"><em>" ${fb.sugestaoTema} "</em></p>`
+            : ""
+        }
+    </div>
+  `;
+}
+
+function renderizarAgendados(container) {
+  const { agendamentos, profissionais } = dadosCache;
+
+  if (!agendamentos || agendamentos.length === 0) {
+    container.innerHTML =
+      '<div class="card-body"><div class="alert alert-info">Nenhum agendamento encontrado.</div></div>';
     return;
   }
 
-  const todosInscritos = [];
-  agendamentos.forEach((agendamento) => {
-    const tipoReuniao =
-      agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
-    (agendamento.slots || []).forEach((slot) => {
-      (slot.vagas || []).forEach((vaga) => {
-        // Verifica se tem ID ou se é agendamento externo com apenas nome
-        if (vaga.profissionalId || vaga.nome) {
-          let nomeInscrito = vaga.nome || "Desconhecido";
-
-          if (vaga.profissionalId) {
-            const prof = profissionais.find(
-              (p) => p.id === vaga.profissionalId
-            );
-            if (prof) nomeInscrito = prof.nome;
-          }
-
-          todosInscritos.push({
-            agendamentoId: agendamento.id,
-            tipoReuniao,
-            slotData: slot.data,
-            slotHoraInicio: slot.horaInicio,
-            slotHoraFim: slot.horaFim,
-            gestorNome: slot.gestorNome || "Não especificado",
-            nome: nomeInscrito,
-            presente: vaga.presente || false,
-            vagaId: vaga.id || Math.random().toString(36), // Fallback de ID se não existir
-          });
-        }
-      });
-    });
+  // Prepara estrutura de dados plana para facilitar renderização
+  const listaAgendamentos = agendamentos.map((ag) => {
+    // Calcula total de inscritos somando vagas de todos os slots
+    const totalInscritos = (ag.slots || []).reduce(
+      (acc, slot) => acc + (slot.vagas ? slot.vagas.length : 0),
+      0
+    );
+    return { ...ag, totalInscritos };
   });
-
-  const inscritosPorAgendamento = agendamentos
-    .map((agendamento) => {
-      const tipoReuniao =
-        agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
-      const inscritos = todosInscritos.filter(
-        (i) => i.agendamentoId === agendamento.id
-      );
-      return { ...agendamento, tipoReuniao, inscritos };
-    })
-    .filter((a) => a.inscritos.length > 0);
 
   container.innerHTML = `
-        <div class="card-header">
-            <h3><span class="material-symbols-outlined">event_available</span> Agendamentos Confirmados</h3>
-            <p>Total de inscritos: ${todosInscritos.length}</p>
-        </div>
-        <div class="card-body">
-            <div class="accordion">
-                ${inscritosPorAgendamento
-                  .map((agendamento) => {
-                    const totalInscritos = agendamento.inscritos.length;
-                    return `
-                        <div class="accordion-item">
-                            <button class="accordion-header" type="button">
-                                <span class="material-symbols-outlined">schedule</span>
-                                ${
-                                  agendamento.tipoReuniao
-                                } - Criado em ${formatarData(
-                      agendamento.criadoEm
-                    )}
-                                <span class="badge">${totalInscritos} inscritos</span>
-                                <span class="accordion-icon">+</span>
-                            </button>
-                            <div class="accordion-content">
-                                <div class="table-container">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Participante</th>
-                                                <th>Data</th>
-                                                <th>Horário</th>
-                                                <th>Gestor</th>
-                                                <th>Presença</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${agendamento.inscritos
-                                              .map(
-                                                (inscrito) => `
-                                                <tr>
-                                                    <td>${inscrito.nome}</td>
-                                                    <td>${formatarData(
-                                                      inscrito.slotData
-                                                    )}</td>
-                                                    <td>${
-                                                      inscrito.slotHoraInicio
-                                                    } - ${
-                                                  inscrito.slotHoraFim
-                                                }</td>
-                                                    <td>${
-                                                      inscrito.gestorNome
-                                                    }</td>
-                                                    <td class="text-center">
-                                                        <input type="checkbox" class="checkbox-presenca" 
-                                                               ${
-                                                                 inscrito.presente
-                                                                   ? "checked"
-                                                                   : ""
-                                                               } 
-                                                               data-agendamento-id="${
-                                                                 inscrito.agendamentoId
-                                                               }"
-                                                               data-slot-data="${
-                                                                 inscrito.slotData
-                                                               }"
-                                                               data-slot-hora-inicio="${
-                                                                 inscrito.slotHoraInicio
-                                                               }"
-                                                               data-vaga-id="${
-                                                                 inscrito.vagaId
-                                                               }">
-                                                    </td>
-                                                </tr>
-                                            `
-                                              )
-                                              .join("")}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div style="margin-top: 1rem;">
-                                    <button class="btn btn-primary btn-sm" onclick="exportarAgendados('${
-                                      agendamento.id
-                                    }')">
-                                        Exportar este agendamento (CSV)
-                                    </button>
-                                </div>
-                            </div>
+    <div class="card-header">
+        <h3><span class="material-symbols-outlined">event_available</span> Lista de Agendamentos</h3>
+    </div>
+    <div class="card-body">
+        <div class="accordion">
+            ${listaAgendamentos
+              .map(
+                (ag) => `
+                <div class="accordion-item">
+                    <button class="accordion-header" type="button">
+                        <span class="material-symbols-outlined">schedule</span>
+                        ${
+                          ag.tipo || "Agendamento"
+                        } <small class="text-muted ms-2">Criado em ${formatarData(
+                  ag.criadoEm
+                )}</small>
+                        <span class="badge ms-auto">${
+                          ag.totalInscritos
+                        } inscritos</span>
+                        <span class="accordion-icon ms-2">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm">
+                                <thead><tr><th>Nome</th><th>Data/Hora</th><th>Gestor</th><th>Presença</th></tr></thead>
+                                <tbody>
+                                    ${renderLinhasInscritos(ag, profissionais)}
+                                </tbody>
+                            </table>
                         </div>
-                    `;
-                  })
-                  .join("")}
-            </div>
+                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="exportarAgendados('${
+                          ag.id
+                        }')">Download Lista (CSV)</button>
+                    </div>
+                </div>
+            `
+              )
+              .join("")}
         </div>
-    `;
+    </div>
+  `;
 }
 
-// ==========================
-// CÁLCULOS E UTILITÁRIOS
-// ==========================
-
-function calcularMediaFeedbacks(atas) {
-  let totalFeedbacks = 0;
-  let totalAvaliacoes = 0;
-  atas.forEach((ata) => {
-    if (ata.feedbacks) {
-      ata.feedbacks.forEach((fb) => {
-        const nota =
-          (fb.clareza === "Sim" ? 1 : 0) +
-          (fb.objetivos === "Sim" ? 1 : 0) +
-          (fb.duracao === "Sim" ? 1 : 0);
-        totalAvaliacoes += 3;
-        totalFeedbacks += nota;
-      });
-    }
-  });
-  return totalAvaliacoes > 0
-    ? Math.round((totalFeedbacks / totalAvaliacoes) * 100)
-    : 0;
-}
-
-function calcularParticipacoes(atas, profissionais) {
-  const participacoes = {};
-  profissionais.forEach((prof) => {
-    participacoes[prof.nome] = { presencas: 0, ausencias: 0, totalReunioes: 0 };
-  });
-
-  atas.forEach((ata) => {
-    const presentes = ata.participantes || [];
-    let listaPresentes = [];
-    if (typeof presentes === "string") {
-      listaPresentes = presentes.split(",").map((p) => p.trim());
-    } else {
-      listaPresentes = presentes;
-    }
-
-    profissionais.forEach((prof) => {
-      participacoes[prof.nome].totalReunioes++;
-      if (listaPresentes.includes(prof.nome)) {
-        participacoes[prof.nome].presencas++;
-      } else {
-        participacoes[prof.nome].ausencias++;
-      }
-    });
-  });
-
-  const topParticipantes = Object.entries(participacoes)
-    .map(([nome, dados]) => {
-      const taxa =
-        dados.totalReunioes > 0
-          ? (dados.presencas / dados.totalReunioes) * 100
-          : 0;
-      return {
-        nome,
-        presencas: dados.presencas,
-        ausencias: dados.ausencias,
-        taxa,
-      };
-    })
-    .filter((p) => p.taxa >= 80)
-    .sort((a, b) => b.taxa - a.taxa)
-    .slice(0, 10);
-
-  return {
-    totalPresencas: Object.values(participacoes).reduce(
-      (sum, p) => sum + p.presencas,
-      0
-    ),
-    totalAusencias: Object.values(participacoes).reduce(
-      (sum, p) => sum + p.ausencias,
-      0
-    ),
-    totalReunioes: atas.length,
-    topParticipantes,
-  };
-}
-
-function mostrarErro(mensagem) {
-  const containers = document.querySelectorAll('[id$="-container"]');
-  containers.forEach((container) => {
-    container.innerHTML = `<div class="alert alert-danger">${mensagem}</div>`;
-  });
-  console.error("[RELATÓRIO] Erro geral:", mensagem);
-}
-
-// Marcar Presença no Agendamento (Sincroniza com Firebase)
-async function marcarPresenca(checkbox) {
-  const agendamentoId = checkbox.dataset.agendamentoId;
-  const slotData = checkbox.dataset.slotData;
-  const slotHoraInicio = checkbox.dataset.slotHoraInicio;
-  const vagaId = checkbox.dataset.vagaId;
-  const presente = checkbox.checked;
-
-  try {
-    const agendamentoDoc = doc(
-      firestoreDb,
-      "agendamentos_voluntarios",
-      agendamentoId
-    );
-    const agendamentoSnap = await getDoc(agendamentoDoc);
-    if (!agendamentoSnap.exists())
-      throw new Error("Agendamento não encontrado");
-
-    const agendamento = { id: agendamentoId, ...agendamentoSnap.data() };
-    const slot = agendamento.slots.find(
-      (s) => s.data === slotData && s.horaInicio === slotHoraInicio
-    );
-    if (!slot) throw new Error("Slot não encontrado");
-
-    const vaga = slot.vagas.find((v) => v.id === vagaId);
-    if (vaga) {
-      vaga.presente = presente;
-      await updateDoc(agendamentoDoc, { slots: agendamento.slots });
-      console.log(
-        "[RELATÓRIO] Presença atualizada:",
-        presente ? "Presente" : "Ausente"
-      );
-
-      checkbox.parentElement.style.background = presente
-        ? "#d4edda"
-        : "#f8d7da";
-      setTimeout(() => (checkbox.parentElement.style.background = ""), 1500);
-    } else {
-      // Fallback: Tentar achar por nome se ID falhar (para dados legados)
-      console.warn(
-        "Vaga não encontrada por ID, tentando lógica manual é arriscado, abortando."
-      );
-    }
-  } catch (error) {
-    console.error("[RELATÓRIO] Erro ao marcar presença:", error);
-    checkbox.checked = !presente;
-    alert("Erro ao atualizar presença.");
-  }
-}
-
-// Funções de Exportação (Globais)
-window.exportarRelatorioParticipacao = function () {
-  const participacoes = calcularParticipacoes(
-    todasAsAtas,
-    todosOsProfissionais
-  );
-  let csv = "Profissional,Presenças,Ausências,Taxa(%)\n";
-  participacoes.topParticipantes.forEach((p) => {
-    csv += `"${p.nome}",${p.presencas},${p.ausencias},${p.taxa.toFixed(1)}\n`;
-  });
-  downloadCSV(csv, "relatorio-participacao.csv");
-};
-
-window.exportarAgendados = function (agendamentoId) {
-  const agendamento = todosOsAgendamentos.find((a) => a.id === agendamentoId);
-  if (!agendamento) return alert("Agendamento não encontrado");
-
-  let csv = "Participante,Data,Horário,Presença\n";
+function renderLinhasInscritos(agendamento, profissionais) {
+  let html = "";
   (agendamento.slots || []).forEach((slot) => {
     (slot.vagas || []).forEach((vaga) => {
       let nome = vaga.nome || "Desconhecido";
       if (vaga.profissionalId) {
-        const p = todosOsProfissionais.find(
-          (prof) => prof.id === vaga.profissionalId
+        const p = profissionais.find((prof) => prof.id === vaga.profissionalId);
+        if (p) nome = p.nome;
+      }
+
+      html += `
+        <tr>
+            <td>${nome}</td>
+            <td>${formatarData(slot.data)} <small>(${
+        slot.horaInicio
+      })</small></td>
+            <td>${slot.gestorNome || "-"}</td>
+            <td class="text-center">
+                <input type="checkbox" class="checkbox-presenca" 
+                    ${vaga.presente ? "checked" : ""}
+                    data-agendamento-id="${agendamento.id}"
+                    data-slot-data="${slot.data}"
+                    data-slot-hora-inicio="${slot.horaInicio}"
+                    data-vaga-id="${vaga.id || ""}">
+            </td>
+        </tr>
+      `;
+    });
+  });
+
+  if (html === "")
+    return '<tr><td colspan="4" class="text-center text-muted">Nenhum inscrito neste agendamento.</td></tr>';
+  return html;
+}
+
+// ==========================================
+// HELPERS E UTILITÁRIOS
+// ==========================================
+
+function formatarData(data) {
+  if (!data) return "-";
+  try {
+    if (data.toDate) return data.toDate().toLocaleDateString("pt-BR"); // Firestore Timestamp
+    if (typeof data === "string" && data.includes("-")) {
+      const [ano, mes, dia] = data.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+    return new Date(data).toLocaleDateString("pt-BR");
+  } catch (e) {
+    return data;
+  }
+}
+
+function contarParticipantes(participantes) {
+  if (!participantes) return 0;
+  if (Array.isArray(participantes)) return participantes.length;
+  if (typeof participantes === "string") return participantes.split(",").length;
+  return 0;
+}
+
+function toggleAccordion(header) {
+  const item = header.closest(".accordion-item");
+  const content = header.nextElementSibling;
+  const icon = header.querySelector(".accordion-icon");
+
+  const isOpen = item.classList.toggle("active");
+
+  if (content) {
+    content.style.maxHeight = isOpen
+      ? content.scrollHeight + 100 + "px"
+      : "0px";
+  }
+  if (icon) icon.textContent = isOpen ? "−" : "+";
+}
+
+function calcularMediaFeedbacks(atas) {
+  let totalPts = 0,
+    count = 0;
+  atas.forEach((ata) => {
+    (ata.feedbacks || []).forEach((fb) => {
+      if (fb.clareza === "Sim") totalPts++;
+      if (fb.objetivos === "Sim") totalPts++;
+      if (fb.duracao === "Sim") totalPts++;
+      count += 3;
+    });
+  });
+  return count > 0 ? Math.round((totalPts / count) * 100) : 0;
+}
+
+function calcularEstatisticasParticipacao(atas, profissionais) {
+  const stats = {};
+  profissionais.forEach(
+    (p) => (stats[p.nome] = { nome: p.nome, presencas: 0, ausencias: 0 })
+  );
+
+  atas.forEach((ata) => {
+    let presentes = [];
+    if (Array.isArray(ata.participantes)) presentes = ata.participantes;
+    else if (typeof ata.participantes === "string")
+      presentes = ata.participantes.split(",").map((s) => s.trim());
+
+    profissionais.forEach((p) => {
+      if (presentes.includes(p.nome)) stats[p.nome].presencas++;
+      else stats[p.nome].ausencias++;
+    });
+  });
+
+  const ranking = Object.values(stats)
+    .map((s) => ({
+      ...s,
+      taxa:
+        s.presencas + s.ausencias > 0
+          ? (s.presencas / (s.presencas + s.ausencias)) * 100
+          : 0,
+    }))
+    .sort((a, b) => b.taxa - a.taxa);
+
+  const totalP = ranking.reduce((acc, curr) => acc + curr.presencas, 0);
+  const totalA = ranking.reduce((acc, curr) => acc + curr.ausencias, 0);
+  const totalGeral = totalP + totalA;
+
+  return {
+    ranking,
+    totalPresencas: totalP,
+    totalAusencias: totalA,
+    taxaMedia: totalGeral > 0 ? ((totalP / totalGeral) * 100).toFixed(1) : 0,
+  };
+}
+
+function mostrarErroGeral(msg) {
+  const activeContainer = document.querySelector(".tab-content.active .card");
+  if (activeContainer) {
+    activeContainer.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
+  }
+}
+
+// ==========================================
+// AÇÕES DE DADOS (WRITE)
+// ==========================================
+
+async function marcarPresenca(checkbox) {
+  const { agendamentoId, slotData, slotHoraInicio, vagaId } = checkbox.dataset;
+  const presente = checkbox.checked;
+
+  try {
+    // Localiza no cache primeiro para feedback rápido visual
+    // (Não implementado update otimista completo para manter simplicidade, confia no reload ou refresh posterior)
+
+    const agendamentoRef = doc(
+      firestoreDb,
+      "agendamentos_voluntarios",
+      agendamentoId
+    );
+    const agendSnap = await getDoc(agendamentoRef);
+
+    if (!agendSnap.exists()) throw new Error("Agendamento não existe mais");
+
+    const dados = agendSnap.data();
+    const slotIdx = dados.slots.findIndex(
+      (s) => s.data === slotData && s.horaInicio === slotHoraInicio
+    );
+
+    if (slotIdx === -1) throw new Error("Slot não encontrado");
+
+    // Localiza a vaga
+    let vagaFound = false;
+    if (dados.slots[slotIdx].vagas) {
+      const vagaIdx = dados.slots[slotIdx].vagas.findIndex(
+        (v) => v.id === vagaId || (vagaId === "" && v.profissionalId)
+      );
+      // Fallback para ID vazio se for dado legado
+
+      if (vagaIdx !== -1) {
+        dados.slots[slotIdx].vagas[vagaIdx].presente = presente;
+        vagaFound = true;
+      }
+    }
+
+    if (vagaFound) {
+      await updateDoc(agendamentoRef, { slots: dados.slots });
+      console.log("Presença salva!");
+
+      // Feedback visual
+      const row = checkbox.closest("tr");
+      row.style.backgroundColor = presente ? "#d1e7dd" : "";
+      setTimeout(() => (row.style.backgroundColor = ""), 1000);
+    }
+  } catch (err) {
+    console.error("Erro ao marcar presença:", err);
+    checkbox.checked = !presente; // Reverte
+    alert("Erro ao salvar presença. Tente novamente.");
+  }
+}
+
+// ==========================================
+// EXPORTS GLOBAIS
+// ==========================================
+window.exportarRelatorioParticipacao = function () {
+  if (!dadosCache.carregado) return;
+  const stats = calcularEstatisticasParticipacao(
+    dadosCache.atas,
+    dadosCache.profissionais
+  );
+  let csv = "Nome,Presencas,Ausencias,Taxa(%)\n";
+  stats.ranking.forEach((r) => {
+    csv += `"${r.nome}",${r.presencas},${r.ausencias},${r.taxa.toFixed(1)}\n`;
+  });
+  downloadCSV(csv, "participacao_geral.csv");
+};
+
+window.exportarAgendados = function (id) {
+  const ag = dadosCache.agendamentos.find((a) => a.id === id);
+  if (!ag) return;
+
+  let csv = "Participante,Data,Hora,Gestor,Presenca\n";
+  (ag.slots || []).forEach((slot) => {
+    (slot.vagas || []).forEach((v) => {
+      let nome = v.nome || "Desconhecido";
+      if (v.profissionalId) {
+        const p = dadosCache.profissionais.find(
+          (prof) => prof.id === v.profissionalId
         );
         if (p) nome = p.nome;
       }
-      csv += `"${nome}","${formatarData(slot.data)}","${slot.horaInicio}-${
-        slot.horaFim
-      }",${vaga.presente ? "Sim" : "Não"}\n`;
+      csv += `"${nome}","${formatarData(slot.data)}","${slot.horaInicio}","${
+        slot.gestorNome
+      }",${v.presente ? "Sim" : "Nao"}\n`;
     });
   });
-  downloadCSV(csv, `agendados-${agendamentoId.slice(-6)}.csv`);
+  downloadCSV(csv, `agendamento_${id}.csv`);
 };
 
-function downloadCSV(csvContent, filename) {
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+function downloadCSV(content, fileName) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", fileName);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
