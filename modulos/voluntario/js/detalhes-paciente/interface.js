@@ -85,9 +85,6 @@ export function atualizarVisibilidadeBotoesAcao(status) {
 /**
  * Preenche os formulários da página com os dados do paciente do estado.
  */
-/**
- * Preenche os formulários da página com os dados do paciente do estado.
- */
 export function preencherFormularios() {
   console.log(">>> Entrou em preencherFormularios()");
   if (!estado.pacienteDataGlobal) {
@@ -174,75 +171,108 @@ export function preencherFormularios() {
     }
   }
 
-  // --- LÓGICA DO CONTRATO (CORRIGIDA) ---
+  // --- LÓGICA DO CONTRATO (ATUALIZADA) ---
   const areaAssinado = document.getElementById("area-contrato-assinado");
   const areaPendente = document.getElementById("area-contrato-pendente");
   const linkContrato = document.getElementById("link-ver-contrato");
-  const dataAssinatura = document.getElementById("data-assinatura-contrato");
 
-  // Procura contrato assinado no objeto principal ou nos atendimentos
-  let contratoUrl = paciente.contratoUrl;
-  let contratoData = paciente.contratoData;
-  let estaAssinado = false; // Nova flag de controle
+  // Elementos de detalhe do contrato
+  const nomeSignatarioEl = document.getElementById("ct-nome-signatario");
+  const cpfSignatarioEl = document.getElementById("ct-cpf-signatario");
+  const dataAssinaturaEl = document.getElementById("data-assinatura-contrato");
+  const idTransacaoEl = document.getElementById("ct-id-transacao");
 
-  // Verifica se existe assinatura no nível raiz
-  if (contratoUrl || contratoData) {
+  // Variáveis para guardar os dados encontrados
+  let estaAssinado = false;
+  let dadosAssinatura = null; // Objeto com os detalhes (nome, cpf, id, data)
+  let contratoUrl = null;
+
+  // 1. Verifica se existe assinatura no nível raiz (legado ou estrutura simples)
+  if (paciente.contratoUrl || paciente.contratoData) {
     estaAssinado = true;
+    contratoUrl = paciente.contratoUrl;
+    dadosAssinatura = {
+      assinadoEm: paciente.contratoData,
+      // Tenta pegar outros dados se existirem no raiz, senão usa fallback
+      nomeSignatario: paciente.nomeCompleto || "N/A",
+      cpfSignatario: paciente.cpf || "N/A",
+      id: "Antigo/Manual",
+    };
   }
 
-  // Se não achar no raiz, tenta achar no atendimento PB ativo do usuário
+  // 2. Se não achar no raiz, tenta achar no atendimento PB ativo do usuário (estrutura nova)
   if (!estaAssinado && paciente.atendimentosPB && estado.userDataGlobal) {
     const meuAtendimento = paciente.atendimentosPB.find(
       (at) => at.profissionalId === estado.userDataGlobal.uid
     );
 
-    // CORREÇÃO: Verifica se o objeto contratoAssinado existe, independente da URL
     if (meuAtendimento && meuAtendimento.contratoAssinado) {
       estaAssinado = true;
+      dadosAssinatura = meuAtendimento.contratoAssinado; // Pega o objeto completo
 
-      // Tenta pegar a URL se existir
-      contratoUrl =
-        meuAtendimento.contratoAssinado.urlPdf ||
-        meuAtendimento.contratoAssinado.arquivoUrl;
+      // Tenta pegar a URL do objeto ou do campo legado
+      contratoUrl = dadosAssinatura.urlPdf || dadosAssinatura.arquivoUrl;
 
-      contratoData = meuAtendimento.contratoAssinado.assinadoEm;
+      // Se o ID não existir no objeto de assinatura, usa o ID do atendimento como fallback
+      if (!dadosAssinatura.id) {
+        dadosAssinatura.id = meuAtendimento.atendimentoId;
+      }
     }
   }
 
   if (areaAssinado && areaPendente) {
-    if (estaAssinado) {
-      // CONTRATO ASSINADO
+    if (estaAssinado && dadosAssinatura) {
+      // --- CONTRATO ASSINADO: Exibir Detalhes ---
       areaAssinado.style.display = "block";
       areaPendente.style.display = "none";
 
-      if (linkContrato) {
-        if (contratoUrl) {
-          linkContrato.href = contratoUrl;
-          linkContrato.style.display = "inline-flex"; // Mostra o botão se tiver link
+      // Preenche Nome e CPF
+      if (nomeSignatarioEl)
+        nomeSignatarioEl.textContent =
+          dadosAssinatura.nomeSignatario || paciente.nomeCompleto || "N/A";
+      if (cpfSignatarioEl)
+        cpfSignatarioEl.textContent =
+          dadosAssinatura.cpfSignatario || paciente.cpf || "N/A";
+
+      // Preenche ID da Transação
+      if (idTransacaoEl)
+        idTransacaoEl.textContent = dadosAssinatura.id || "N/D";
+
+      // Preenche Data
+      if (dataAssinaturaEl) {
+        let dataObj = dadosAssinatura.assinadoEm;
+        if (dataObj && dataObj.toDate) {
+          dataObj = dataObj.toDate();
+        } else if (dataObj && !(dataObj instanceof Date)) {
+          dataObj = new Date(dataObj);
+        }
+
+        if (dataObj && !isNaN(dataObj)) {
+          dataAssinaturaEl.textContent =
+            dataObj.toLocaleDateString("pt-BR") +
+            " às " +
+            dataObj.toLocaleTimeString("pt-BR");
         } else {
-          linkContrato.style.display = "none"; // Esconde o botão se for apenas registro de dados
+          dataAssinaturaEl.textContent = "Data não registrada";
         }
       }
 
-      if (dataAssinatura) {
-        if (contratoData) {
-          const d = contratoData.toDate
-            ? contratoData.toDate()
-            : new Date(contratoData);
-          dataAssinatura.textContent =
-            d.toLocaleDateString("pt-BR") +
-            " às " +
-            d.toLocaleTimeString("pt-BR");
+      // Configura Link do PDF
+      if (linkContrato) {
+        if (contratoUrl) {
+          linkContrato.href = contratoUrl;
+          linkContrato.style.display = "inline-flex";
         } else {
-          dataAssinatura.textContent = "Data não registrada";
+          linkContrato.style.display = "none";
         }
       }
     } else {
-      // CONTRATO PENDENTE
+      // --- CONTRATO PENDENTE ---
       areaAssinado.style.display = "none";
       areaPendente.style.display = "block";
     }
   }
+
   // --- DEMAIS DADOS ---
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
   setElementValue("dp-idade", idadeCalculada, true);

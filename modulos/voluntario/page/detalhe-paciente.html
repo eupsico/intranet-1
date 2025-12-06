@@ -183,15 +183,20 @@
                         <div class="form-group" style="border-bottom: 1px solid var(--cor-borda); padding-bottom: 20px; margin-bottom: 20px;">
                             <label style="color: var(--cor-primaria); font-size: 1.1em;">Contrato Terapêutico</label>
                             
-                            <div id="area-contrato-assinado" style="display: none; background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; border: 1px solid #c3e6cb;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                                    <div>
-                                        <strong><i class="fas fa-check-circle"></i> Contrato Assinado</strong>
-                                        <p style="margin: 5px 0 0 0; font-size: 0.9em;">
-                                            Assinado em: <span id="data-assinatura-contrato">--</span>
-                                        </p>
-                                    </div>
-                                    <a href="#" target="_blank" id="link-ver-contrato" class="action-button small" style="text-decoration: none;">
+                            <div id="area-contrato-assinado" style="display: none; background-color: #d4edda; color: #155724; padding: 20px; border-radius: 8px; border: 1px solid #c3e6cb;">
+                                <h4 style="margin: 0 0 15px 0; color: #155724; font-size: 1.1em; border-bottom: 1px solid #c3e6cb; padding-bottom: 10px;">
+                                    <i class="fas fa-check-circle"></i> Contrato Assinado com Sucesso!
+                                </h4>
+                                
+                                <div style="font-size: 0.95em; line-height: 1.8;">
+                                    <p style="margin: 0;"><strong>Assinado por:</strong> <span id="ct-nome-signatario">--</span></p>
+                                    <p style="margin: 0;"><strong>CPF:</strong> <span id="ct-cpf-signatario">--</span></p>
+                                    <p style="margin: 0;"><strong>Data da Assinatura:</strong> <span id="data-assinatura-contrato">--</span></p>
+                                    <p style="margin: 0;"><strong>ID da Transação:</strong> <span id="ct-id-transacao" style="font-family: monospace; background: rgba(255,255,255,0.6); padding: 2px 5px; border-radius: 4px;">--</span></p>
+                                </div>
+
+                                <div style="margin-top: 20px; text-align: right;">
+                                    <a href="#" target="_blank" id="link-ver-contrato" class="action-button small" style="text-decoration: none; background-color: #155724; color: white; display: inline-flex; align-items: center; gap: 5px;">
                                         <i class="fas fa-file-pdf"></i> Visualizar PDF
                                     </a>
                                 </div>
