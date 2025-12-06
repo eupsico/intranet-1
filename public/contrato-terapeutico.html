@@ -275,9 +275,24 @@
             </div>
             
             <div id="thank-you-section" class="acceptance-section hidden">
-                <h2>Obrigado!</h2>
-                <p>O contrato foi assinado digitalmente com sucesso. A EuPsico foi notificada.</p>
-            </div>
+    <div style="background-color: #d4edda; color: #155724; padding: 25px; border-radius: 8px; border: 1px solid #c3e6cb; text-align: center;">
+        <h2 style="color: #155724; border-bottom: none; margin-top: 0;">
+            <i class="fas fa-check-circle"></i> Contrato Assinado com Sucesso!
+        </h2>
+        <p>"data-terapeuta" foi notificada automaticamente.</p>
+        
+        <div style="text-align: left; background: rgba(255,255,255,0.7); padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Assinado por:</strong> <span id="receipt-name"></span></p>
+            <p style="margin: 5px 0;"><strong>CPF:</strong> <span id="receipt-cpf"></span></p>
+            <p style="margin: 5px 0;"><strong>Data da Assinatura:</strong> <span id="receipt-date"></span></p>
+            <p style="margin: 5px 0;"><strong>Hash da Transação:</strong> <span id="receipt-id" style="font-family: monospace; font-size: 0.9em;"></span></p>
+        </div>
+
+        <button id="btn-download-pdf" class="action-button" style="background-color: #155724; max-width: 300px; margin: 0 auto;">
+            <i class="fas fa-file-pdf"></i> Baixar Cópia em PDF
+        </button>
+    </div>
+</div>
         </div>
     </div>
 
@@ -429,32 +444,95 @@
                 submitButton.textContent = 'Salvando...';
                 feedbackDiv.textContent = '';
 
-                try {
-                    const nomeSignatario = document.getElementById('signer-name').value;
-                    const cpfSignatario = cpfValue;
+            // ... dentro de signatureForm.addEventListener('submit', async (e) => { ...
 
-                    const result = await assinarContrato({
-                        pacienteId: pacienteId,
-                        atendimentoId: atendimentoId,
-                        nomeSignatario: nomeSignatario,
-                        cpfSignatario: cpfSignatario,
-                        versaoContrato: "1.0"
-                    });
+try {
+    const nomeSignatario = document.getElementById('signer-name').value;
+    const cpfSignatario = cpfValue;
 
-                    if (result.data && !result.data.success) {
-                        throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
-                    }
+    // Chama a função do Firebase
+    const result = await assinarContrato({
+        pacienteId: pacienteId,
+        atendimentoId: atendimentoId,
+        nomeSignatario: nomeSignatario,
+        cpfSignatario: cpfSignatario,
+        versaoContrato: "1.0"
+    });
 
-                    document.getElementById('acceptance-form-section').classList.add('hidden');
-                    document.getElementById('thank-you-section').classList.remove('hidden');
+    if (result.data && !result.data.success) {
+        throw new Error(result.data.message || 'Ocorreu um erro no servidor.');
+    }
 
-                } catch (error) {
-                    console.error("Erro ao salvar assinatura:", error);
-                    feedbackDiv.textContent = `Erro ao salvar a assinatura. (${error.message})`;
-                    feedbackDiv.className = 'feedback-error';
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Assinar Contrato';
-                }
+    // --- CÓDIGO NOVO: Preencher dados de confirmação ---
+    const dataAtual = new Date();
+    const dataFormatada = dataAtual.toLocaleDateString('pt-BR') + ' às ' + dataAtual.toLocaleTimeString('pt-BR');
+    
+    // Preenche os spans criados no HTML
+    document.getElementById('receipt-name').textContent = nomeSignatario;
+    document.getElementById('receipt-cpf').textContent = cpfSignatario;
+    document.getElementById('receipt-date').textContent = dataFormatada;
+    // Usa o ID retornado pelo Firebase ou gera um aleatório visual se não houver retorno
+    document.getElementById('receipt-id').textContent = result.data.id || 'DOC-' + Date.now();
+
+    // Troca a visualização
+    document.getElementById('acceptance-form-section').classList.add('hidden');
+    document.getElementById('thank-you-section').classList.remove('hidden');
+
+    // --- Configurar Botão de PDF ---
+    document.getElementById('btn-download-pdf').addEventListener('click', () => {
+        const btn = document.getElementById('btn-download-pdf');
+        const originalText = btn.textContent;
+        btn.textContent = "Gerando PDF...";
+        btn.disabled = true;
+
+        // Seleciona o conteúdo do contrato para o PDF
+        const element = document.querySelector('.contract-container');
+        
+        // Opções para o html2pdf
+        const opt = {
+            margin:       [10, 10, 10, 10], // Margens (top, left, bottom, right)
+            filename:     `Contrato_EuPsico_${nomeSignatario.split(' ')[0]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 }, // Melhora a qualidade
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Oculta elementos que não devem sair no PDF (como o próprio botão e mensagens de loading)
+        const botoes = element.querySelectorAll('button, #contract-loading, #contract-error');
+        botoes.forEach(b => b.style.display = 'none');
+
+        // Adiciona um rodapé visual de assinatura no PDF temporariamente
+        const footerDiv = document.createElement('div');
+        footerDiv.innerHTML = `
+            <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 0.8em; color: #555;">
+                <p><strong>Assinado digitalmente</strong></p>
+                <p>Nome: ${nomeSignatario}</p>
+                <p>CPF: ${cpfSignatario}</p>
+                <p>Data: ${dataFormatada}</p>
+                <p>IP/ID: ${result.data.id || 'Registrado no Sistema'}</p>
+            </div>
+        `;
+        document.getElementById('contract-content').appendChild(footerDiv);
+
+        // Gera o PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restaura o estado original após o download
+            botoes.forEach(b => b.style.display = '');
+            footerDiv.remove(); // Remove o rodapé temporário
+            btn.textContent = originalText;
+            btn.disabled = false;
+        });
+    });
+
+} catch (error) {
+    console.error("Erro ao salvar assinatura:", error);
+    feedbackDiv.textContent = `Erro ao salvar a assinatura. (${error.message})`;
+    feedbackDiv.className = 'feedback-error';
+    submitButton.disabled = false;
+    submitButton.textContent = 'Assinar Contrato';
+}
+
+
             });
 
         } catch (error) {
