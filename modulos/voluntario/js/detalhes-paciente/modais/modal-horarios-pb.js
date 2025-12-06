@@ -419,10 +419,6 @@ function setupFormLogicNovasSessoes(container) {
     for (let i = 7; i <= 21; i++) {
       const hora = String(i).padStart(2, "0") + ":00";
       horarioSelect.innerHTML += `<option value="${hora}">${hora}</option>`;
-      if (i < 21) {
-        const hora30 = String(i).padStart(2, "0") + ":30";
-        horarioSelect.innerHTML += `<option value="${hora30}">${hora30}</option>`;
-      }
     }
   }
 
