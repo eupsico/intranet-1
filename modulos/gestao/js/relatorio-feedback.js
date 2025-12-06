@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.4 (Correção do evento de clique nas abas e Seletores)
+// VERSÃO 2.5 (Correção definitiva do evento de clique - Removido conflito touch)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -11,6 +11,9 @@ import {
   doc,
   updateDoc,
 } from "../../../assets/js/firebase-init.js";
+
+// Import getDoc necessário para marcarPresenca
+import { getDoc } from "../../../assets/js/firebase-init.js";
 
 let todasAsAtas = [];
 let todosOsProfissionais = [];
@@ -44,7 +47,7 @@ function formatarData(dataReuniao) {
 }
 
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.4 - Corrigido).");
+  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.5 - Fix Click).");
   setupEventListeners();
   await carregarRelatorios();
 }
@@ -127,24 +130,24 @@ function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
   if (!viewContainer) return;
 
-  // Tabs - CORREÇÃO AQUI: Usa closest para detectar clique no ícone ou texto
+  // Tabs - Gerenciamento de clique simplificado
   viewContainer.addEventListener("click", (e) => {
+    // Verifica se clicou na aba
     const tabLink = e.target.closest(".tab-link");
     if (tabLink) {
       e.preventDefault();
       const targetTab = tabLink.dataset.tab;
       trocarAba(targetTab);
+      return; // Encerra aqui se foi clique na aba
     }
-  });
 
-  // Accordions fixos
-  viewContainer.addEventListener("click", (e) => {
-    if (e.target.closest(".accordion-header")) {
+    // Verifica se clicou no header do accordion
+    const accordionHeader = e.target.closest(".accordion-header");
+    if (accordionHeader) {
       e.preventDefault();
-      const header = e.target.closest(".accordion-header");
-      const accordionItem = header.closest(".accordion-item");
-      const content = header.nextElementSibling;
-      const icon = header.querySelector(".accordion-icon");
+      const accordionItem = accordionHeader.closest(".accordion-item");
+      const content = accordionHeader.nextElementSibling;
+      const icon = accordionHeader.querySelector(".accordion-icon");
 
       const isActive = accordionItem.classList.toggle("active");
       if (content) {
@@ -155,29 +158,18 @@ function setupEventListeners() {
       if (icon) {
         icon.textContent = isActive ? "−" : "+";
       }
+      return;
     }
   });
 
-  // Checkboxes de presença
+  // Checkboxes de presença (change event delegação)
   viewContainer.addEventListener("change", (e) => {
     if (e.target.matches(".checkbox-presenca")) {
       marcarPresenca(e.target);
     }
   });
 
-  // Touch support
-  viewContainer.addEventListener(
-    "touchstart",
-    (e) => {
-      const target =
-        e.target.closest(".tab-link") || e.target.closest(".accordion-header");
-      if (target) {
-        e.preventDefault();
-        target.click(); // Força o clique
-      }
-    },
-    { passive: false }
-  );
+  // REMOVIDO: O listener de 'touchstart' que causava conflito e exigia múltiplos cliques.
 }
 
 function trocarAba(tabId) {
@@ -192,9 +184,6 @@ function trocarAba(tabId) {
   const activeContent = document.getElementById(tabId);
   if (activeBtn) activeBtn.classList.add("active");
   if (activeContent) activeContent.classList.add("active");
-
-  // Scroll suave apenas se necessário
-  // activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // Lazy render para Agendados
   if (tabId === "agendados" && !activeContent.classList.contains("rendered")) {
@@ -625,10 +614,19 @@ function calcularParticipacoes(atas, profissionais) {
   });
 
   atas.forEach((ata) => {
+    // AQUI: Lê os participantes salvos na ATA, não no Feedback.
     const presentes = ata.participantes || [];
+    // Normaliza para array caso seja string (legado)
+    let listaPresentes = [];
+    if (typeof presentes === "string") {
+      listaPresentes = presentes.split(",").map((p) => p.trim());
+    } else {
+      listaPresentes = presentes;
+    }
+
     profissionais.forEach((prof) => {
       participacoes[prof.nome].totalReunioes++;
-      if (presentes.includes(prof.nome)) {
+      if (listaPresentes.includes(prof.nome)) {
         participacoes[prof.nome].presencas++;
       } else {
         participacoes[prof.nome].ausencias++;
@@ -769,6 +767,3 @@ function downloadCSV(csvContent, filename) {
   link.click();
   document.body.removeChild(link);
 }
-
-// Import getDoc (usado em marcarPresenca)
-import { getDoc } from "../../../assets/js/firebase-init.js";
