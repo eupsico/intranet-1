@@ -1,5 +1,5 @@
 /* /modulos/gestao/css/relatorio-feedback.css */
-/* VERSÃO 4.0 - Otimizado e corrigido para exibição correta */
+/* VERSÃO 4.1 - CORREÇÃO FINAL display */
 
 /* ==========================================
    CONTAINER PRINCIPAL
@@ -53,11 +53,11 @@
    CONTEÚDO DAS ABAS - CRÍTICO
    ========================================== */
 .tab-content {
-  display: none !important;
+  display: none; /* SEM !important */
 }
 
 .tab-content.active {
-  display: block !important;
+  display: block !important; /* COM !important apenas aqui */
   animation: fadeIn 0.3s ease;
 }
 
@@ -81,8 +81,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 1.25rem;
   min-height: 100px;
-  display: block !important;
-  visibility: visible !important;
 }
 
 .card-header {
@@ -102,19 +100,17 @@
 }
 
 .card-body {
-  display: block !important;
-  visibility: visible !important;
+  display: block;
 }
 
 /* ==========================================
    STATS GRID (Cards de estatísticas)
    ========================================== */
 .stats-grid {
-  display: grid !important;
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
-  visibility: visible !important;
 }
 
 .stat-card {
@@ -175,8 +171,6 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-top: 1rem;
-  display: block !important;
-  visibility: visible !important;
 }
 
 .table {
@@ -406,10 +400,12 @@
    ========================================== */
 .mt-2 { margin-top: 0.5rem; }
 .mt-3 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.25rem; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-3 { margin-bottom: 1rem; }
 .ms-2 { margin-left: 0.5rem; }
 .ms-auto { margin-left: auto; }
+.p-3 { padding: 1rem; }
 
 .text-center { text-align: center; }
 .text-muted { color: var(--text-secondary, #666); }
@@ -419,9 +415,18 @@
 .justify-content-between { justify-content: space-between; }
 .align-items-center { align-items: center; }
 
+.border { border: 1px solid var(--border-light, #e0e0e0); }
+.rounded { border-radius: 4px; }
+.bg-light { background-color: var(--bg-light, #f5f5f5); }
+
 .table-responsive {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.table-sm th,
+.table-sm td {
+  padding: 0.5rem;
 }
 
 /* ==========================================
