@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 4.0 (Corrigido: Usando onSnapshot como Dashboard - Carregamento em tempo real)
+// VERSÃO 4.1 (Debug completo - Logs detalhados)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -39,76 +39,121 @@ const perguntasTexto = {
 // INICIALIZAÇÃO
 // ==========================================
 export function init() {
-  console.log("[RELATÓRIO] Init v4.0 - Usando onSnapshot (como Dashboard).");
+  console.log(
+    "%c[RELATÓRIO] ========== INIT v4.1 (Debug) ==========",
+    "color: #00ff00; font-weight: bold;"
+  );
+  console.log("[RELATÓRIO] 1. Iniciando módulo...");
 
-  // 1. Limpa estado anterior (Reset forçado para SPA)
+  // 1. Limpa estado anterior
   dadosCache = {
     atas: [],
     profissionais: [],
     agendamentos: [],
     carregado: false,
   };
+  console.log("[RELATÓRIO] 2. Estado resetado:", dadosCache);
 
   // 2. Limpa listeners antigos
   cleanup();
+  console.log("[RELATÓRIO] 3. Listeners antigos limpos");
 
-  // 3. Configura os cliques das abas imediatamente
+  // 3. Configura os cliques das abas
   setupEventListeners();
+  console.log("[RELATÓRIO] 4. Event listeners configurados");
 
-  // 4. Mostra loading na aba ativa atual
+  // 4. Mostra loading
   exibirLoadingNaAbaAtiva();
+  console.log("[RELATÓRIO] 5. Loading exibido");
 
-  // 5. ✅ Inicia listeners em tempo real (NÃO aguarda)
+  // 5. Inicia listeners
   carregarDadosComListener();
+  console.log("[RELATÓRIO] 6. Listeners iniciados");
+  console.log(
+    "%c[RELATÓRIO] ========== INIT COMPLETO ==========",
+    "color: #00ff00; font-weight: bold;"
+  );
 }
 
 // ==========================================
 // LÓGICA DE DADOS (Listeners em tempo real)
 // ==========================================
 function carregarDadosComListener() {
-  console.log("[RELATÓRIO] Configurando listeners em tempo real...");
+  console.log(
+    "%c[RELATÓRIO] >>> Configurando listeners onSnapshot...",
+    "color: #ffaa00; font-weight: bold;"
+  );
 
   // Listener 1: Atas Técnicas
   const qAtas = query(
     collection(firestoreDb, "gestao_atas"),
     where("tipo", "==", "Reunião Técnica")
   );
+  console.log("[RELATÓRIO] Query Atas criada");
+
   unsubscribeAtas = onSnapshot(
     qAtas,
     (snapshot) => {
+      console.log(
+        "%c[RELATÓRIO] 🔥 SNAPSHOT ATAS RECEBIDO!",
+        "color: #ff00ff; font-weight: bold;"
+      );
+      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
+
       dadosCache.atas = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
-      console.log(
-        `[RELATÓRIO] Atas atualizadas: ${dadosCache.atas.length} atas.`
-      );
+
+      console.log("[RELATÓRIO] Atas processadas:", dadosCache.atas.length);
+      console.table(dadosCache.atas.slice(0, 3)); // Mostra primeiras 3
+
       marcarComoCarregado();
       renderizarAbaAtiva();
     },
     (error) => {
-      console.error("[RELATÓRIO] Erro ao carregar atas:", error);
+      console.error(
+        "%c[RELATÓRIO] ❌ ERRO ao carregar atas:",
+        "color: #ff0000; font-weight: bold;",
+        error
+      );
       mostrarErroGeral("Erro ao carregar atas. Verifique sua conexão.");
     }
   );
 
   // Listener 2: Profissionais
   const qProf = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
+  console.log("[RELATÓRIO] Query Profissionais criada");
+
   unsubscribeProf = onSnapshot(
     qProf,
     (snapshot) => {
+      console.log(
+        "%c[RELATÓRIO] 🔥 SNAPSHOT PROFISSIONAIS RECEBIDO!",
+        "color: #ff00ff; font-weight: bold;"
+      );
+      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
+
       dadosCache.profissionais = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
+
       console.log(
-        `[RELATÓRIO] Profissionais atualizados: ${dadosCache.profissionais.length} profissionais.`
+        "[RELATÓRIO] Profissionais processados:",
+        dadosCache.profissionais.length
       );
+      console.table(dadosCache.profissionais.slice(0, 3)); // Mostra primeiros 3
+
       marcarComoCarregado();
       renderizarAbaAtiva();
     },
     (error) => {
-      console.error("[RELATÓRIO] Erro ao carregar profissionais:", error);
+      console.error(
+        "%c[RELATÓRIO] ❌ ERRO ao carregar profissionais:",
+        "color: #ff0000; font-weight: bold;",
+        error
+      );
     }
   );
 
@@ -117,30 +162,63 @@ function carregarDadosComListener() {
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
   );
+  console.log("[RELATÓRIO] Query Agendamentos criada");
+
   unsubscribeAgend = onSnapshot(
     qAgend,
     (snapshot) => {
+      console.log(
+        "%c[RELATÓRIO] 🔥 SNAPSHOT AGENDAMENTOS RECEBIDO!",
+        "color: #ff00ff; font-weight: bold;"
+      );
+      console.log(`[RELATÓRIO] Documentos: ${snapshot.docs.length}`);
+
       dadosCache.agendamentos = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
+
       console.log(
-        `[RELATÓRIO] Agendamentos atualizados: ${dadosCache.agendamentos.length} agendamentos.`
+        "[RELATÓRIO] Agendamentos processados:",
+        dadosCache.agendamentos.length
       );
+      console.table(dadosCache.agendamentos.slice(0, 3)); // Mostra primeiros 3
+
       marcarComoCarregado();
       renderizarAbaAtiva();
     },
     (error) => {
-      console.error("[RELATÓRIO] Erro ao carregar agendamentos:", error);
+      console.error(
+        "%c[RELATÓRIO] ❌ ERRO ao carregar agendamentos:",
+        "color: #ff0000; font-weight: bold;",
+        error
+      );
     }
+  );
+
+  console.log(
+    "[RELATÓRIO] Todos os listeners onSnapshot configurados. Aguardando dados..."
   );
 }
 
 // ✅ Verifica se todos os listeners foram carregados
 function marcarComoCarregado() {
-  // Marca como carregado se profissionais chegaram (coleta essencial)
+  const antes = dadosCache.carregado;
+
   if (dadosCache.profissionais.length > 0) {
     dadosCache.carregado = true;
+  }
+
+  if (!antes && dadosCache.carregado) {
+    console.log(
+      "%c[RELATÓRIO] ✅ DADOS CARREGADOS!",
+      "color: #00ff00; font-weight: bold; font-size: 14px;"
+    );
+    console.log("[RELATÓRIO] Estado final do cache:");
+    console.log("  - Atas:", dadosCache.atas.length);
+    console.log("  - Profissionais:", dadosCache.profissionais.length);
+    console.log("  - Agendamentos:", dadosCache.agendamentos.length);
+    console.log("  - Carregado:", dadosCache.carregado);
   }
 }
 
@@ -149,24 +227,30 @@ function marcarComoCarregado() {
 // ==========================================
 function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
+
   if (!viewContainer) {
-    console.error("[RELATÓRIO] View container não encontrado!");
+    console.error(
+      "%c[RELATÓRIO] ❌ ERRO CRÍTICO: .view-container não encontrado!",
+      "color: #ff0000; font-weight: bold;"
+    );
     return;
   }
 
-  // Usa delegação de eventos para garantir que funcione sempre
+  console.log("[RELATÓRIO] view-container encontrado:", viewContainer);
+
   viewContainer.addEventListener("click", (e) => {
-    // CLIQUE NA ABA
     const tabLink = e.target.closest(".tab-link");
     if (tabLink) {
       e.preventDefault();
       const idAba = tabLink.dataset.tab;
-      console.log(`[RELATÓRIO] Clique na aba: ${idAba}`);
+      console.log(
+        `%c[RELATÓRIO] 👆 Clique na aba: ${idAba}`,
+        "color: #00aaff; font-weight: bold;"
+      );
       ativarAba(idAba);
       return;
     }
 
-    // CLIQUE NO ACCORDION (Expandir/Recolher)
     const accordionHeader = e.target.closest(".accordion-header");
     if (accordionHeader) {
       e.preventDefault();
@@ -174,7 +258,6 @@ function setupEventListeners() {
     }
   });
 
-  // Evento de Checkbox (Presença)
   viewContainer.addEventListener("change", (e) => {
     if (e.target.matches(".checkbox-presenca")) {
       marcarPresenca(e.target);
@@ -183,7 +266,9 @@ function setupEventListeners() {
 }
 
 function ativarAba(tabId) {
-  // 1. Manipula Classes CSS (Visual)
+  console.log(`[RELATÓRIO] >> ativarAba(${tabId})`);
+
+  // Remove ativos
   document
     .querySelectorAll(".tab-link")
     .forEach((b) => b.classList.remove("active"));
@@ -194,64 +279,94 @@ function ativarAba(tabId) {
   const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
   const content = document.getElementById(tabId);
 
+  console.log(`[RELATÓRIO] Botão encontrado:`, btn);
+  console.log(`[RELATÓRIO] Conteúdo encontrado:`, content);
+
   if (btn) btn.classList.add("active");
   if (content) content.classList.add("active");
 
-  // 2. CHAMA A RENDERIZAÇÃO
-  // O segredo é chamar a renderização SEMPRE que trocar a aba.
-  // Se os dados já existem, ele desenha instantaneamente.
   renderizarAbaAtiva();
 }
 
 function renderizarAbaAtiva() {
-  // Descobre qual aba está ativa no HTML
+  console.log(
+    "%c[RELATÓRIO] >>> renderizarAbaAtiva() <<<",
+    "color: #aa00ff; font-weight: bold;"
+  );
+
   const abaAtiva = document.querySelector(".tab-content.active");
+
   if (!abaAtiva) {
-    console.log("[RELATÓRIO] Nenhuma aba ativa encontrada.");
+    console.warn("[RELATÓRIO] ⚠️ Nenhuma aba ativa encontrada!");
     return;
   }
 
-  const id = abaAtiva.id; // 'resumo', 'participacao', 'feedbacks', 'agendados'
+  const id = abaAtiva.id;
+  console.log(`[RELATÓRIO] Aba ativa: #${id}`);
+  console.log(`[RELATÓRIO] dadosCache.carregado:`, dadosCache.carregado);
 
-  // Se dados ainda não carregaram, mostra loading
   if (!dadosCache.carregado) {
     console.log(
-      `[RELATÓRIO] Dados ainda não carregados para aba: ${id}. Mostrando loading...`
+      `[RELATÓRIO] ⏳ Dados ainda não carregados. Mostrando loading...`
     );
     exibirLoadingNaAbaAtiva();
     return;
   }
 
-  console.log(`[RELATÓRIO] Renderizando aba: ${id}`);
+  console.log(
+    `%c[RELATÓRIO] 🎨 Renderizando aba: ${id}`,
+    "color: #00ff00; font-weight: bold;"
+  );
 
-  // ✅ Procura .card dentro da aba ativa
   const container = abaAtiva.querySelector(".card");
+
   if (!container) {
-    console.error(`[RELATÓRIO] Container .card não encontrado na aba ${id}`);
+    console.error(
+      `%c[RELATÓRIO] ❌ ERRO: Container .card não encontrado na aba ${id}!`,
+      "color: #ff0000; font-weight: bold;"
+    );
+    console.log(
+      "[RELATÓRIO] HTML da aba ativa:",
+      abaAtiva.innerHTML.substring(0, 200)
+    );
     return;
   }
 
-  // Roteador de Renderização
+  console.log(`[RELATÓRIO] Container encontrado:`, container);
+
   switch (id) {
     case "resumo":
+      console.log("[RELATÓRIO] Chamando renderizarResumo()...");
       renderizarResumo(container);
       break;
     case "participacao":
+      console.log("[RELATÓRIO] Chamando renderizarParticipacao()...");
       renderizarParticipacao(container);
       break;
     case "feedbacks":
+      console.log("[RELATÓRIO] Chamando renderizarFeedbacks()...");
       renderizarFeedbacks(container);
       break;
     case "agendados":
+      console.log("[RELATÓRIO] Chamando renderizarAgendados()...");
       renderizarAgendados(container);
       break;
+    default:
+      console.warn(`[RELATÓRIO] ⚠️ ID de aba desconhecido: ${id}`);
   }
+
+  console.log(
+    "%c[RELATÓRIO] ✅ Renderização concluída!",
+    "color: #00ff00; font-weight: bold;"
+  );
 }
 
 function exibirLoadingNaAbaAtiva() {
+  console.log("[RELATÓRIO] exibirLoadingNaAbaAtiva()");
+
   const abaAtiva = document.querySelector(".tab-content.active");
   if (abaAtiva) {
-    const container = abaAtiva.querySelector(".card"); // O container interno
+    const container = abaAtiva.querySelector(".card");
     if (container) {
       container.innerHTML = `
         <div style="text-align: center; padding: 40px;">
@@ -259,6 +374,11 @@ function exibirLoadingNaAbaAtiva() {
             <p>Carregando dados...</p>
         </div>
       `;
+      console.log("[RELATÓRIO] Loading inserido no container");
+    } else {
+      console.warn(
+        "[RELATÓRIO] ⚠️ Container .card não encontrado para loading"
+      );
     }
   }
 }
@@ -268,7 +388,12 @@ function exibirLoadingNaAbaAtiva() {
 // ==========================================
 
 function renderizarResumo(container) {
+  console.log("[RELATÓRIO] >>> renderizarResumo() <<<");
   const { atas, profissionais } = dadosCache;
+
+  console.log(
+    `[RELATÓRIO] Dados disponíveis: ${atas.length} atas, ${profissionais.length} profissionais`
+  );
 
   const atasOrdenadas = [...atas].sort(
     (a, b) =>
@@ -277,7 +402,7 @@ function renderizarResumo(container) {
   );
   const reunioesRecentes = atasOrdenadas.slice(0, 5);
 
-  container.innerHTML = `
+  const html = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral</h3>
     </div>
@@ -320,13 +445,23 @@ function renderizarResumo(container) {
         </div>
     </div>
   `;
+
+  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
+  console.log(`[RELATÓRIO] Primeiros 300 caracteres:`, html.substring(0, 300));
+
+  container.innerHTML = html;
+  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderizarParticipacao(container) {
+  console.log("[RELATÓRIO] >>> renderizarParticipacao() <<<");
   const { atas, profissionais } = dadosCache;
-  const stats = calcularEstatisticasParticipacao(atas, profissionais);
 
-  container.innerHTML = `
+  console.log(`[RELATÓRIO] Calculando estatísticas...`);
+  const stats = calcularEstatisticasParticipacao(atas, profissionais);
+  console.log(`[RELATÓRIO] Estatísticas calculadas:`, stats);
+
+  const html = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">group</span> Resumo de Participação</h3>
     </div>
@@ -374,12 +509,16 @@ function renderizarParticipacao(container) {
         </div>
     </div>
   `;
+
+  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
+  container.innerHTML = html;
+  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderizarFeedbacks(container) {
+  console.log("[RELATÓRIO] >>> renderizarFeedbacks() <<<");
   const { atas, profissionais } = dadosCache;
 
-  // Filtra atas que tem feedback
   const atasComFeedback = atas
     .filter((a) => a.feedbacks && a.feedbacks.length > 0)
     .sort(
@@ -388,13 +527,16 @@ function renderizarFeedbacks(container) {
         new Date(formatarData(a.dataReuniao))
     );
 
+  console.log(`[RELATÓRIO] Atas com feedback: ${atasComFeedback.length}`);
+
   if (atasComFeedback.length === 0) {
     container.innerHTML =
       '<div class="card-body"><div class="alert alert-info">Nenhum feedback registrado até o momento.</div></div>';
+    console.log("[RELATÓRIO] Nenhum feedback encontrado");
     return;
   }
 
-  container.innerHTML = `
+  const html = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">feedback</span> Feedbacks Detalhados</h3>
     </div>
@@ -430,10 +572,13 @@ function renderizarFeedbacks(container) {
         </div>
     </div>
   `;
+
+  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
+  container.innerHTML = html;
+  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderCardFeedback(fb, profissionais) {
-  // Resolve nome do profissional
   let nome = fb.profissional || fb.nome || "Anônimo";
   if (fb.profissionalId) {
     const found = profissionais.find((p) => p.id === fb.profissionalId);
@@ -463,17 +608,19 @@ function renderCardFeedback(fb, profissionais) {
 }
 
 function renderizarAgendados(container) {
+  console.log("[RELATÓRIO] >>> renderizarAgendados() <<<");
   const { agendamentos, profissionais } = dadosCache;
+
+  console.log(`[RELATÓRIO] Total de agendamentos: ${agendamentos.length}`);
 
   if (!agendamentos || agendamentos.length === 0) {
     container.innerHTML =
       '<div class="card-body"><div class="alert alert-info">Nenhum agendamento encontrado.</div></div>';
+    console.log("[RELATÓRIO] Nenhum agendamento encontrado");
     return;
   }
 
-  // Prepara estrutura de dados plana para facilitar renderização
   const listaAgendamentos = agendamentos.map((ag) => {
-    // Calcula total de inscritos somando vagas de todos os slots
     const totalInscritos = (ag.slots || []).reduce(
       (acc, slot) => acc + (slot.vagas ? slot.vagas.length : 0),
       0
@@ -481,7 +628,11 @@ function renderizarAgendados(container) {
     return { ...ag, totalInscritos };
   });
 
-  container.innerHTML = `
+  console.log(
+    `[RELATÓRIO] Lista processada: ${listaAgendamentos.length} items`
+  );
+
+  const html = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">event_available</span> Lista de Agendamentos</h3>
     </div>
@@ -523,6 +674,10 @@ function renderizarAgendados(container) {
         </div>
     </div>
   `;
+
+  console.log(`[RELATÓRIO] HTML gerado (${html.length} caracteres)`);
+  container.innerHTML = html;
+  console.log("[RELATÓRIO] HTML inserido no container");
 }
 
 function renderLinhasInscritos(agendamento, profissionais) {
@@ -567,7 +722,7 @@ function renderLinhasInscritos(agendamento, profissionais) {
 function formatarData(data) {
   if (!data) return "-";
   try {
-    if (data.toDate) return data.toDate().toLocaleDateString("pt-BR"); // Firestore Timestamp
+    if (data.toDate) return data.toDate().toLocaleDateString("pt-BR");
     if (typeof data === "string" && data.includes("-")) {
       const [ano, mes, dia] = data.split("-");
       return `${dia}/${mes}/${ano}`;
@@ -686,7 +841,6 @@ async function marcarPresenca(checkbox) {
 
     if (slotIdx === -1) throw new Error("Slot não encontrado");
 
-    // Localiza a vaga
     let vagaFound = false;
     if (dados.slots[slotIdx].vagas) {
       const vagaIdx = dados.slots[slotIdx].vagas.findIndex(
@@ -703,7 +857,6 @@ async function marcarPresenca(checkbox) {
       await updateDoc(agendamentoRef, { slots: dados.slots });
       console.log("Presença salva!");
 
-      // Feedback visual
       const row = checkbox.closest("tr");
       row.style.backgroundColor = presente ? "#d1e7dd" : "";
       setTimeout(() => (row.style.backgroundColor = ""), 1000);
