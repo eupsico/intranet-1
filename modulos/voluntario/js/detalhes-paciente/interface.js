@@ -154,7 +154,6 @@ export function preencherFormularios() {
   if (parceriaContainer && parceriaSelect) {
     if (statusPaciente === "pacientes_parcerias") {
       parceriaContainer.style.display = "block";
-      // Preenche select se vazio
       if (parceriaSelect.options.length <= 1) {
         const parceriasList =
           estado.systemConfigsGlobal?.listas?.parcerias || [];
@@ -174,33 +173,32 @@ export function preencherFormularios() {
   // --- LÓGICA DO CONTRATO (ATUALIZADA) ---
   const areaAssinado = document.getElementById("area-contrato-assinado");
   const areaPendente = document.getElementById("area-contrato-pendente");
-  const linkContrato = document.getElementById("link-ver-contrato");
 
-  // Elementos de detalhe do contrato
+  // Elementos de detalhe e botões
+  const linkContrato = document.getElementById("link-ver-contrato");
+  const linkBaixar = document.getElementById("link-baixar-contrato"); // Novo botão
   const nomeSignatarioEl = document.getElementById("ct-nome-signatario");
   const cpfSignatarioEl = document.getElementById("ct-cpf-signatario");
   const dataAssinaturaEl = document.getElementById("data-assinatura-contrato");
   const idTransacaoEl = document.getElementById("ct-id-transacao");
 
-  // Variáveis para guardar os dados encontrados
   let estaAssinado = false;
-  let dadosAssinatura = null; // Objeto com os detalhes (nome, cpf, id, data)
+  let dadosAssinatura = null;
   let contratoUrl = null;
 
-  // 1. Verifica se existe assinatura no nível raiz (legado ou estrutura simples)
+  // 1. Verifica se existe assinatura no nível raiz
   if (paciente.contratoUrl || paciente.contratoData) {
     estaAssinado = true;
     contratoUrl = paciente.contratoUrl;
     dadosAssinatura = {
       assinadoEm: paciente.contratoData,
-      // Tenta pegar outros dados se existirem no raiz, senão usa fallback
       nomeSignatario: paciente.nomeCompleto || "N/A",
       cpfSignatario: paciente.cpf || "N/A",
       id: "Antigo/Manual",
     };
   }
 
-  // 2. Se não achar no raiz, tenta achar no atendimento PB ativo do usuário (estrutura nova)
+  // 2. Verifica no atendimento PB
   if (!estaAssinado && paciente.atendimentosPB && estado.userDataGlobal) {
     const meuAtendimento = paciente.atendimentosPB.find(
       (at) => at.profissionalId === estado.userDataGlobal.uid
@@ -208,12 +206,9 @@ export function preencherFormularios() {
 
     if (meuAtendimento && meuAtendimento.contratoAssinado) {
       estaAssinado = true;
-      dadosAssinatura = meuAtendimento.contratoAssinado; // Pega o objeto completo
-
-      // Tenta pegar a URL do objeto ou do campo legado
+      dadosAssinatura = meuAtendimento.contratoAssinado;
       contratoUrl = dadosAssinatura.urlPdf || dadosAssinatura.arquivoUrl;
 
-      // Se o ID não existir no objeto de assinatura, usa o ID do atendimento como fallback
       if (!dadosAssinatura.id) {
         dadosAssinatura.id = meuAtendimento.atendimentoId;
       }
@@ -222,23 +217,20 @@ export function preencherFormularios() {
 
   if (areaAssinado && areaPendente) {
     if (estaAssinado && dadosAssinatura) {
-      // --- CONTRATO ASSINADO: Exibir Detalhes ---
+      // --- CONTRATO ASSINADO ---
       areaAssinado.style.display = "block";
       areaPendente.style.display = "none";
 
-      // Preenche Nome e CPF
+      // Preenche os dados
       if (nomeSignatarioEl)
         nomeSignatarioEl.textContent =
           dadosAssinatura.nomeSignatario || paciente.nomeCompleto || "N/A";
       if (cpfSignatarioEl)
         cpfSignatarioEl.textContent =
           dadosAssinatura.cpfSignatario || paciente.cpf || "N/A";
-
-      // Preenche ID da Transação
       if (idTransacaoEl)
         idTransacaoEl.textContent = dadosAssinatura.id || "N/D";
 
-      // Preenche Data
       if (dataAssinaturaEl) {
         let dataObj = dadosAssinatura.assinadoEm;
         if (dataObj && dataObj.toDate) {
@@ -257,14 +249,19 @@ export function preencherFormularios() {
         }
       }
 
-      // Configura Link do PDF
-      if (linkContrato) {
-        if (contratoUrl) {
+      // Configura os Botões (Visualizar e Baixar)
+      if (contratoUrl) {
+        if (linkContrato) {
           linkContrato.href = contratoUrl;
           linkContrato.style.display = "inline-flex";
-        } else {
-          linkContrato.style.display = "none";
         }
+        if (linkBaixar) {
+          linkBaixar.href = contratoUrl;
+          linkBaixar.style.display = "inline-flex";
+        }
+      } else {
+        if (linkContrato) linkContrato.style.display = "none";
+        if (linkBaixar) linkBaixar.style.display = "none";
       }
     } else {
       // --- CONTRATO PENDENTE ---
@@ -273,7 +270,7 @@ export function preencherFormularios() {
     }
   }
 
-  // --- DEMAIS DADOS ---
+  // --- DEMAIS DADOS (Mantidos iguais) ---
   const idadeCalculada = calcularIdade(paciente.dataNascimento);
   setElementValue("dp-idade", idadeCalculada, true);
   setElementValue("dp-idade-input", idadeCalculada, true);
@@ -322,7 +319,6 @@ export function preencherFormularios() {
     acompanhamento.registroEncerramento
   );
 
-  // --- LISTA DE ARQUIVOS CLÍNICOS (UPLOAD) ---
   const arquivosContainer = document.getElementById("ac-arquivos-lista");
   if (arquivosContainer) {
     arquivosContainer.innerHTML = "";
@@ -372,6 +368,7 @@ export function preencherFormularios() {
 
   console.log("Formulários preenchidos.");
 }
+
 /**
  * Renderiza a lista de sessões na interface.
  * Assume que o estado.sessoesCarregadas já foi populado.
