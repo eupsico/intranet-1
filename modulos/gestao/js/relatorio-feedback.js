@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.3 (Completo: Todas funções incluídas, títulos corrigidos, erros fixos)
+// VERSÃO 2.4 (Correção do evento de clique nas abas e Seletores)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -44,7 +44,7 @@ function formatarData(dataReuniao) {
 }
 
 export async function init() {
-  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.3 - Completo).");
+  console.log("[RELATÓRIO] Módulo de Relatórios iniciado (v2.4 - Corrigido).");
   setupEventListeners();
   await carregarRelatorios();
 }
@@ -127,11 +127,12 @@ function setupEventListeners() {
   const viewContainer = document.querySelector(".view-container");
   if (!viewContainer) return;
 
-  // Tabs
+  // Tabs - CORREÇÃO AQUI: Usa closest para detectar clique no ícone ou texto
   viewContainer.addEventListener("click", (e) => {
-    if (e.target.matches(".tab-link")) {
+    const tabLink = e.target.closest(".tab-link");
+    if (tabLink) {
       e.preventDefault();
-      const targetTab = e.target.dataset.tab;
+      const targetTab = tabLink.dataset.tab;
       trocarAba(targetTab);
     }
   });
@@ -168,8 +169,11 @@ function setupEventListeners() {
   viewContainer.addEventListener(
     "touchstart",
     (e) => {
-      if (e.target.matches(".tab-link, .accordion-header")) {
+      const target =
+        e.target.closest(".tab-link") || e.target.closest(".accordion-header");
+      if (target) {
         e.preventDefault();
+        target.click(); // Força o clique
       }
     },
     { passive: false }
@@ -189,7 +193,8 @@ function trocarAba(tabId) {
   if (activeBtn) activeBtn.classList.add("active");
   if (activeContent) activeContent.classList.add("active");
 
-  activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Scroll suave apenas se necessário
+  // activeContent.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // Lazy render para Agendados
   if (tabId === "agendados" && !activeContent.classList.contains("rendered")) {
@@ -198,7 +203,7 @@ function trocarAba(tabId) {
   }
 }
 
-// RESUMO GERAL (agora incluída)
+// RESUMO GERAL
 function renderizarResumo(atas, profissionais) {
   const container = document.getElementById("resumo-container");
   if (!container) return;
@@ -268,7 +273,7 @@ function renderizarResumo(atas, profissionais) {
   }
 }
 
-// RESUMO DE PARTICIPAÇÃO (incluída)
+// RESUMO DE PARTICIPAÇÃO
 function renderizarParticipacao(atas, profissionais) {
   const container = document.getElementById("participacao-container");
   if (!container) return;
@@ -344,7 +349,7 @@ function renderizarParticipacao(atas, profissionais) {
   }
 }
 
-// FEEDBACKS POR REUNIÃO (mantida)
+// FEEDBACKS POR REUNIÃO
 function renderizarFeedbacks(atas, profissionais) {
   const container = document.getElementById("feedback-container");
   if (!container) return;
@@ -435,7 +440,7 @@ function renderizarFeedbacks(atas, profissionais) {
   }
 }
 
-// AGENDADOS (com título corrigido)
+// AGENDADOS
 function renderizarAgendados(agendamentos, profissionais) {
   const container = document.getElementById("agendados-container");
   if (!container) return;
@@ -456,7 +461,7 @@ function renderizarAgendados(agendamentos, profissionais) {
     const todosInscritos = [];
     agendamentos.forEach((agendamento) => {
       const tipoReuniao =
-        agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica"; // CORREÇÃO: Usa tipoDeReuniao
+        agendamento.tipoDeReuniao || agendamento.tipo || "Reunião Técnica";
       (agendamento.slots || []).forEach((slot) => {
         (slot.vagas || []).forEach((vaga) => {
           if (vaga.profissionalId) {
@@ -465,7 +470,7 @@ function renderizarAgendados(agendamentos, profissionais) {
             );
             todosInscritos.push({
               agendamentoId: agendamento.id,
-              tipoReuniao, // Usado no título
+              tipoReuniao,
               slotData: slot.data,
               slotHoraInicio: slot.horaInicio,
               slotHoraFim: slot.horaFim,
@@ -592,7 +597,7 @@ function renderizarAgendados(agendamentos, profissionais) {
   }
 }
 
-// FUNÇÕES AUXILIARES (todas incluídas)
+// FUNÇÕES AUXILIARES
 function calcularMediaFeedbacks(atas) {
   let totalFeedbacks = 0;
   let totalAvaliacoes = 0;
