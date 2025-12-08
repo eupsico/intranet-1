@@ -1,5 +1,5 @@
 // /modulos/gestao/js/dashboard-reunioes.js
-// VERSÃO 5.7 (Botão Link Feedback Adicionado)
+// VERSÃO 6.0 (Unificado Eventos + KPIs Avançados)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -9,83 +9,18 @@ import {
   onSnapshot,
 } from "../../../assets/js/firebase-init.js";
 
-let todasAsAtas = [];
-let todosOsAgendamentos = [];
-let unsubscribeAtas = null;
-let unsubscribeAgendamentos = null;
+let todosEventos = [];
+let unsubscribeEventos = null;
 let timeoutBusca = null;
 
-function normalizarParticipantes(participantes) {
-  if (!participantes) return [];
-  if (Array.isArray(participantes)) return participantes;
-  if (typeof participantes === "string") {
-    return participantes
-      .split(/[\n,]+/)
-      .map((nome) => nome.trim())
-      .filter((nome) => nome.length > 0);
-  }
-  return [];
-}
-
-/**
- * Função auxiliar para unificar Atas (gestao_atas) e Agendamentos (agendamentos_voluntarios).
- */
-function getListaUnificada() {
-  const listaUnificada = [];
-
-  // 1. Adiciona as Atas existentes
-  todasAsAtas.forEach((ata) => {
-    listaUnificada.push({
-      ...ata,
-      origem: "ata",
-      statusCalculado: ata.status || "Concluída",
-      dataOrdenacao: new Date(ata.dataReuniao + "T00:00:00"),
-    });
-  });
-
-  // 2. Processa Agendamentos de Voluntários
-  todosOsAgendamentos.forEach((agendamento) => {
-    if (agendamento.slots && Array.isArray(agendamento.slots)) {
-      agendamento.slots.forEach((slot, index) => {
-        const participantesSlot = (slot.vagas || []).map(
-          (v) => v.nome || v.profissionalNome || "Anônimo"
-        );
-
-        listaUnificada.push({
-          id: agendamento.id, // Usa o ID do documento principal para o link funcionar
-          slotId: `${agendamento.id}_slot_${index}`, // ID único para lista
-          titulo: agendamento.tipo || "Agendamento",
-          tipo: agendamento.tipo || "Reunião Agendada",
-          dataReuniao: slot.data,
-          horaInicio: slot.horaInicio,
-          local: "Online",
-          responsavel: slot.gestorNome || "Não especificado",
-          participantes: participantesSlot,
-          resumo: agendamento.descricao
-            ? `(Descrição do Agendamento): ${agendamento.descricao.substring(
-                0,
-                100
-              )}...`
-            : "",
-          origem: "agendamento",
-          statusCalculado: "Agendada",
-          dataOrdenacao: new Date(`${slot.data}T${slot.horaInicio}:00`),
-          linkOriginal: agendamento.id,
-        });
-      });
-    }
-  });
-
-  return listaUnificada;
-}
-
 export function init() {
-  console.log("[DASH] Dashboard iniciado (v5.7 - Link Feedback).");
+  console.log("[DASH] Dashboard iniciado (v6.0 - KPIs Avançados).");
   configurarEventListeners();
   carregarDados();
 }
 
 function configurarEventListeners() {
+  // Alternância de Abas
   document.body.addEventListener("click", (e) => {
     if (e.target.matches(".tab-link") || e.target.closest(".tab-link")) {
       e.preventDefault();
@@ -96,54 +31,40 @@ function configurarEventListeners() {
       alternarAba(abaId);
     }
 
-    // Listener para o botão de copiar link de feedback
+    // Botão Link Feedback
     if (e.target.closest(".btn-link-feedback")) {
       e.stopPropagation();
       const btn = e.target.closest(".btn-link-feedback");
       const id = btn.dataset.id;
-
-      // Constrói o link absoluto
+      // O ID já vem composto (DocId_SlotIndex) da lista normalizada
       const link = `${window.location.origin}/modulos/gestao/page/feedback.html#${id}`;
-
       navigator.clipboard
         .writeText(link)
-        .then(() => {
-          alert("Link de feedback copiado para a área de transferência!");
-        })
-        .catch((err) => {
-          console.error("Erro ao copiar:", err);
-          prompt("Copie o link manualmente:", link);
-        });
+        .then(() => alert("Link de feedback copiado!"))
+        .catch((err) => prompt("Copie o link manualmente:", link));
     }
   });
 
-  const tipoFiltro = document.getElementById("tipo-filtro");
-  const dataInicio = document.getElementById("filtro-data-inicio");
-  const dataFim = document.getElementById("filtro-data-fim");
-  const buscaInput = document.getElementById("busca-titulo");
-  const limparBtn = document.getElementById("limpar-filtros");
+  // Filtros
+  const filtros = ["tipo-filtro", "filtro-data-inicio", "filtro-data-fim"];
+  filtros.forEach((id) =>
+    document
+      .getElementById(id)
+      ?.addEventListener("change", aplicarFiltrosEExibir)
+  );
 
-  if (tipoFiltro)
-    tipoFiltro.addEventListener("change", aplicarFiltrosEExibirAtas);
-  if (dataInicio)
-    dataInicio.addEventListener("change", aplicarFiltrosEExibirAtas);
-  if (dataFim) dataFim.addEventListener("change", aplicarFiltrosEExibirAtas);
+  document.getElementById("busca-titulo")?.addEventListener("input", () => {
+    clearTimeout(timeoutBusca);
+    timeoutBusca = setTimeout(aplicarFiltrosEExibir, 300);
+  });
 
-  if (buscaInput) {
-    buscaInput.addEventListener("input", () => {
-      clearTimeout(timeoutBusca);
-      timeoutBusca = setTimeout(aplicarFiltrosEExibirAtas, 300);
-    });
-  }
-
-  if (limparBtn)
-    limparBtn.addEventListener("click", () => {
-      if (tipoFiltro) tipoFiltro.value = "Todos";
-      if (buscaInput) buscaInput.value = "";
-      if (dataInicio) dataInicio.value = "";
-      if (dataFim) dataFim.value = "";
-      aplicarFiltrosEExibirAtas();
-    });
+  document.getElementById("limpar-filtros")?.addEventListener("click", () => {
+    document.getElementById("tipo-filtro").value = "Todos";
+    document.getElementById("busca-titulo").value = "";
+    document.getElementById("filtro-data-inicio").value = "";
+    document.getElementById("filtro-data-fim").value = "";
+    aplicarFiltrosEExibir();
+  });
 }
 
 function alternarAba(abaId) {
@@ -161,386 +82,508 @@ function alternarAba(abaId) {
 }
 
 function carregarDados() {
-  const qAtas = query(
-    collection(firestoreDb, "gestao_atas"),
-    orderBy("dataReuniao", "desc")
-  );
-  unsubscribeAtas = onSnapshot(qAtas, (snapshot) => {
-    todasAsAtas = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      participantes: normalizarParticipantes(doc.data().participantes),
-    }));
-    aplicarFiltrosEExibirAtas();
-    atualizarGraficos();
-  });
-
-  const qAgendamentos = query(
-    collection(firestoreDb, "agendamentos_voluntarios"),
+  // Busca na coleção unificada 'eventos'
+  const q = query(
+    collection(firestoreDb, "eventos"),
     orderBy("criadoEm", "desc")
   );
-  unsubscribeAgendamentos = onSnapshot(qAgendamentos, (snapshot) => {
-    todosOsAgendamentos = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    aplicarFiltrosEExibirAtas();
-    atualizarGraficos();
+
+  unsubscribeEventos = onSnapshot(q, (snapshot) => {
+    todosEventos = [];
+
+    snapshot.forEach((docSnap) => {
+      const dados = docSnap.data();
+      const slots = dados.slots || [];
+
+      // NORMALIZAÇÃO DE DADOS
+      // Se tem slots (Eventos novos/múltiplos)
+      if (slots.length > 0) {
+        slots.forEach((slot, idx) => {
+          todosEventos.push({
+            id: docSnap.id, // ID do Documento
+            uniqueId: `${docSnap.id}_${idx}`, // ID Composto para Feedback
+            tipo: dados.tipo,
+            titulo: dados.tipo,
+            dataOrdenacao: new Date(slot.data + "T" + slot.horaInicio + ":00"),
+            hora: slot.horaInicio,
+            local: "Online",
+            gestor: slot.gestorNome || "N/A",
+            participantes: normalizarParticipantes(slot.vagas, true), // true = vem de objeto vagas
+            status: slot.status || "Agendada",
+            resumo: dados.descricao,
+
+            // Dados para KPIs
+            planoDeAcao: slot.planoDeAcao || [],
+            encaminhamentos: slot.encaminhamentos || [],
+            feedbacks: slot.feedbacks || [],
+            vagas: slot.vagas || [], // Array de inscritos
+            vagasLimitadas: dados.vagasLimitadas, // Bool
+          });
+        });
+      }
+      // Se é evento raiz (Legado ou Simples)
+      else {
+        const dataReuniao = dados.dataReuniao
+          ? new Date(dados.dataReuniao + "T00:00:00")
+          : new Date();
+        todosEventos.push({
+          id: docSnap.id,
+          uniqueId: `${docSnap.id}_-1`,
+          tipo: dados.tipo || "Reunião",
+          titulo: dados.pauta || dados.tipo || "Reunião",
+          dataOrdenacao: dataReuniao,
+          hora: "00:00",
+          local: "Geral",
+          gestor: dados.responsavel || "N/A",
+          participantes: normalizarParticipantes(dados.participantes, false),
+          status: dados.status || "Concluída",
+
+          // Dados para KPIs
+          planoDeAcao: dados.planoDeAcao || [],
+          encaminhamentos: dados.encaminhamentos || [],
+          feedbacks: dados.feedbacks || [],
+          vagas: [], // Legado geralmente não tem controle de vagas estrito
+          vagasLimitadas: false,
+        });
+      }
+    });
+
+    aplicarFiltrosEExibir();
+    calcularERenderizarKPIs(); // Nova função de gráficos avançados
   });
 }
 
-function aplicarFiltrosEExibirAtas() {
+function normalizarParticipantes(input, isVagasObj) {
+  if (!input) return [];
+  if (isVagasObj) {
+    return input.map((v) => v.nome || v.profissionalNome || "Anônimo");
+  }
+  // String ou Array de Strings
+  if (Array.isArray(input)) return input;
+  if (typeof input === "string") {
+    return input
+      .split(/[\n,]+/)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+  }
+  return [];
+}
+
+function aplicarFiltrosEExibir() {
   const tipoFiltro = document.getElementById("tipo-filtro")?.value || "Todos";
   const buscaTermo =
     document.getElementById("busca-titulo")?.value.toLowerCase() || "";
   const dataInicioVal = document.getElementById("filtro-data-inicio")?.value;
   const dataFimVal = document.getElementById("filtro-data-fim")?.value;
 
-  let itensFiltrados = getListaUnificada();
+  let itensFiltrados = todosEventos.filter((item) => {
+    const matchTipo = tipoFiltro === "Todos" || item.tipo === tipoFiltro;
+    const matchBusca =
+      !buscaTermo ||
+      item.titulo.toLowerCase().includes(buscaTermo) ||
+      item.gestor.toLowerCase().includes(buscaTermo);
+    return matchTipo && matchBusca;
+  });
 
-  if (tipoFiltro !== "Todos") {
-    itensFiltrados = itensFiltrados.filter((item) =>
-      item.tipo?.toLowerCase().includes(tipoFiltro.toLowerCase())
-    );
-  }
-
-  if (buscaTermo) {
-    itensFiltrados = itensFiltrados.filter((item) =>
-      item.titulo?.toLowerCase().includes(buscaTermo)
-    );
-  }
-
-  const agora = new Date();
-  agora.setHours(0, 0, 0, 0);
-
+  // Filtro de Data
   if (dataInicioVal || dataFimVal) {
-    if (dataInicioVal) {
-      const dtIni = new Date(dataInicioVal);
-      itensFiltrados = itensFiltrados.filter(
-        (item) => item.dataOrdenacao >= dtIni
-      );
-    }
-    if (dataFimVal) {
-      const dtFim = new Date(dataFimVal);
-      dtFim.setHours(23, 59, 59, 999);
-      itensFiltrados = itensFiltrados.filter(
-        (item) => item.dataOrdenacao <= dtFim
-      );
-    }
-  } else {
+    const dIni = dataInicioVal
+      ? new Date(dataInicioVal)
+      : new Date("2000-01-01");
+    const dFim = dataFimVal ? new Date(dataFimVal) : new Date("2100-01-01");
+    dFim.setHours(23, 59, 59);
     itensFiltrados = itensFiltrados.filter(
-      (item) => item.dataOrdenacao >= agora
+      (item) => item.dataOrdenacao >= dIni && item.dataOrdenacao <= dFim
     );
   }
 
-  if (!dataInicioVal && !dataFimVal) {
-    itensFiltrados.sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
-  } else {
-    itensFiltrados.sort((a, b) => b.dataOrdenacao - a.dataOrdenacao);
-  }
+  // Ordenação
+  itensFiltrados.sort((a, b) => b.dataOrdenacao - a.dataOrdenacao);
 
+  renderizarLista(itensFiltrados);
+  atualizarCardProximaReuniao(itensFiltrados);
+}
+
+function renderizarLista(lista) {
   const container = document.getElementById("atas-container");
   if (!container) return;
 
-  if (itensFiltrados.length === 0) {
-    const msg =
-      dataInicioVal || dataFimVal
-        ? "Nenhuma reunião encontrada no período selecionado."
-        : "Nenhuma reunião agendada para o futuro. Use os filtros de data para ver o histórico.";
-
-    container.innerHTML = `
-            <div class="alert alert-info text-center">
-                <span class="material-symbols-outlined">event_busy</span>
-                <br>${msg}
-            </div>
-        `;
-    atualizarContadorAtas(0);
+  if (lista.length === 0) {
+    container.innerHTML = `<div class="alert alert-info text-center">Nenhuma reunião encontrada.</div>`;
+    document.getElementById("contador-atas").textContent = "0";
     return;
   }
 
-  container.innerHTML = itensFiltrados
+  document.getElementById("contador-atas").textContent = lista.length;
+
+  container.innerHTML = lista
     .map((item) => {
-      const dataItem = item.dataOrdenacao;
-      const ehFutura = dataItem >= agora;
-
-      let iconeStatus = "event";
-      if (!ehFutura) iconeStatus = "check_circle";
-
-      const participantes = item.participantes || [];
-      const previewParticipantes = participantes.slice(0, 3);
-      const maisParticipantes =
-        participantes.length > 3 ? `+${participantes.length - 3}` : "";
-
-      const horarioDisplay = item.horaInicio ? ` às ${item.horaInicio}` : "";
-
-      // Botão de Detalhes ou Editar (mantido)
-      const botaoAcao =
-        item.origem === "agendamento"
-          ? `<button class="btn btn-sm btn-outline-secondary" title="Ver Detalhes/Inscritos" 
-                onclick="event.stopPropagation(); const content = this.closest('.ata-item').querySelector('.ata-conteudo'); content.style.display = content.style.display === 'none' ? 'block' : 'none';">
-                <span class="material-symbols-outlined">visibility</span>
-           </button>`
-          : `<button class="btn btn-sm btn-outline-secondary btn-editar" title="Editar Ata" onclick="event.stopPropagation(); window.location.hash = '#ata-de-reuniao';">
-                <span class="material-symbols-outlined">edit</span>
-           </button>`;
+      const isFutura = item.dataOrdenacao > new Date();
+      const corIcone = isFutura
+        ? "#0dcaf0"
+        : item.status === "Concluída"
+        ? "#198754"
+        : "#ffc107";
+      const icone = item.status === "Concluída" ? "task_alt" : "event";
+      const qtdParticipantes = item.participantes.length;
 
       return `
-            <div class="ata-item card mb-4" data-id="${item.id}">
-                <div class="card-header d-flex justify-content-between align-items-center p-3" 
-                     style="cursor: pointer;"
-                     onclick="const content = this.parentElement.querySelector('.ata-conteudo'); content.style.display = content.style.display === 'none' ? 'block' : 'none';">
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center mb-1">
-                            <span class="material-symbols-outlined me-2" style="color: ${
-                              ehFutura ? "#0dcaf0" : "#198754"
-                            };">${iconeStatus}</span>
-                            <h5 class="mb-0">${
-                              item.titulo || item.tipo || "Reunião"
+            <div class="ata-item card mb-3" style="border-left: 5px solid ${corIcone};">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center p-3" 
+                     onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'"
+                     style="cursor: pointer;">
+                    
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <span class="material-symbols-outlined me-3" style="font-size: 28px; color: ${corIcone};">${icone}</span>
+                        <div>
+                            <h5 class="mb-0" style="font-size: 1rem; font-weight: 600;">${
+                              item.titulo
                             }</h5>
-                            ${
-                              item.origem === "agendamento"
-                                ? '<span class="badge bg-info text-dark ms-2" style="font-size: 0.7em;">Agendada</span>'
-                                : ""
-                            }
+                            <small class="text-muted">
+                                ${item.dataOrdenacao.toLocaleDateString(
+                                  "pt-BR"
+                                )} às ${item.hora} • ${item.gestor}
+                            </small>
                         </div>
-                        <small class="text-muted">${dataItem.toLocaleDateString(
-                          "pt-BR"
-                        )}${horarioDisplay}</small>
                     </div>
-                    <div class="ata-acoes d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-success btn-link-feedback" title="Copiar Link de Feedback" data-id="${
-                          item.id
-                        }">
-                            <span class="material-symbols-outlined">share</span>
-                        </button>
 
-                        ${
-                          item.origem === "ata"
-                            ? `
-                            <button class="btn btn-sm btn-outline-primary btn-pdf" title="Visualizar PDF" onclick="event.stopPropagation(); alert('Funcionalidade de PDF em desenvolvimento.');">
-                                <span class="material-symbols-outlined">picture_as_pdf</span>
-                            </button>
-                        `
-                            : ""
-                        }
-                        ${botaoAcao}
+                    <div class="d-flex align-items-center gap-2">
+                         <span class="badge bg-light text-dark border">${qtdParticipantes} part.</span>
+                         <button class="btn btn-sm btn-outline-success btn-link-feedback" data-id="${
+                           item.uniqueId
+                         }" title="Link de Feedback">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">share</span>
+                        </button>
                     </div>
                 </div>
-                <div class="ata-conteudo card-body" style="display: none; border-top: 1px solid #e5e7eb;">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <p><strong>Tipo:</strong> ${
-                              item.tipo || "Não especificado"
-                            }</p>
-                            <p><strong>Data:</strong> ${dataItem.toLocaleDateString(
-                              "pt-BR"
-                            )}${horarioDisplay}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Local:</strong> ${
-                              item.local || "Online"
-                            }</p>
-                            <p><strong>Responsável:</strong> ${
-                              item.responsavel || "Não especificado"
-                            }</p>
-                        </div>
-                    </div>
-                    ${
-                      participantes.length > 0
-                        ? `
-                        <div class="mb-3 mt-3">
-                            <h6 class="text-primary"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: text-bottom;">group</span> Participantes Inscritos</h6>
-                            <div class="d-flex flex-wrap gap-1">
-                                ${previewParticipantes
-                                  .map(
-                                    (nome) =>
-                                      `<span class="badge bg-light text-dark border">${nome}</span>`
-                                  )
-                                  .join("")}
-                                ${
-                                  maisParticipantes
-                                    ? `<span class="badge bg-secondary">${maisParticipantes}</span>`
-                                    : ""
-                                }
-                            </div>
-                            <small class="text-muted">Total: ${
-                              participantes.length
-                            }</small>
-                        </div>
-                    `
-                        : ""
-                    }
+                
+                <div class="ata-conteudo card-body bg-light" style="display: none; border-top: 1px solid #eee;">
+                    <p class="mb-1"><strong>Status:</strong> ${item.status}</p>
+                    <p class="mb-2"><strong>Participantes:</strong> ${
+                      item.participantes.join(", ") || "Nenhum registrado"
+                    }</p>
                     ${
                       item.resumo
-                        ? `
-                        <div class="mb-3">
-                            <h6 class="text-primary">Descrição</h6>
-                            <p class="small text-muted">${item.resumo}</p>
-                        </div>
-                    `
+                        ? `<p class="small text-muted mb-0"><em>"${item.resumo}"</em></p>`
                         : ""
                     }
                 </div>
-            </div>
-        `;
+            </div>`;
     })
     .join("");
-
-  atualizarContadorAtas(itensFiltrados.length);
 }
 
-function atualizarGraficos() {
+function atualizarCardProximaReuniao(lista) {
   const agora = new Date();
-  const listaUnificada = getListaUnificada();
+  const proximas = lista
+    .filter((i) => i.dataOrdenacao > agora)
+    .sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
 
-  const totalGeral = listaUnificada.length;
+  const card = document.getElementById("proxima-reuniao-container");
+  const info = document.getElementById("proxima-reuniao-info");
 
-  const reunioesFuturas = listaUnificada.filter(
-    (item) => item.dataOrdenacao > agora
-  ).length;
-  const reunioesConcluidas = listaUnificada.filter(
-    (item) =>
-      item.dataOrdenacao < agora &&
-      (item.statusCalculado === "Concluída" || item.origem === "ata")
-  ).length;
-
-  const totalEl = document.getElementById("total-reunioes");
-  const proximasEl = document.getElementById("proximas-reunioes");
-  const concluidasEl = document.getElementById("reunioes-concluidas");
-
-  if (totalEl) totalEl.textContent = totalGeral;
-  if (proximasEl) proximasEl.textContent = reunioesFuturas;
-  if (concluidasEl) concluidasEl.textContent = reunioesConcluidas;
-
-  renderizarTabelaAtasPorTipo(listaUnificada);
-  renderizarTabelaAgendamentosPorGestor();
-  renderizarProximaReuniao(listaUnificada);
-}
-
-function renderizarTabelaAtasPorTipo(listaUnificada) {
-  const container = document.getElementById("grafico-atas-tipo");
-  if (!container) return;
-
-  const contagemPorTipo = {};
-  listaUnificada.forEach((item) => {
-    const tipo = item.tipo || "Outros";
-    contagemPorTipo[tipo] = (contagemPorTipo[tipo] || 0) + 1;
-  });
-
-  const total = listaUnificada.length;
-  if (total === 0) {
-    container.innerHTML =
-      '<div class="alert alert-info p-2 text-center">Sem dados.</div>';
+  if (proximas.length === 0) {
+    if (card) card.style.display = "none";
     return;
   }
 
-  const linhas = Object.entries(contagemPorTipo)
-    .sort((a, b) => b[1] - a[1])
-    .map(([tipo, qtd]) => {
-      const percentual = total > 0 ? Math.round((qtd / total) * 100) : 0;
-      return `
-                <tr>
-                    <td><small>${tipo}</small></td>
-                    <td class="text-center">${qtd}</td>
-                    <td class="text-center"><small>${percentual}%</small></td>
-                    <td><div class="progress" style="height: 10px;"><div class="progress-bar" style="width: ${percentual}%"></div></div></td>
-                </tr>
-            `;
-    })
-    .join("");
+  if (card) card.style.display = "block";
+  const prox = proximas[0];
+  const diffDias = Math.ceil(
+    (prox.dataOrdenacao - agora) / (1000 * 60 * 60 * 24)
+  );
 
+  if (info) {
+    info.innerHTML = `
+            <h5 class="text-white mb-1">${prox.titulo}</h5>
+            <div class="d-flex align-items-center gap-2 text-white-50 mb-2">
+                <span class="material-symbols-outlined" style="font-size: 16px;">calendar_month</span>
+                ${prox.dataOrdenacao.toLocaleDateString()} às ${prox.hora}
+            </div>
+            <span class="badge bg-warning text-dark">Em ${diffDias} dias</span>
+        `;
+  }
+}
+
+// ============================================================================
+// LÓGICA DE KPIS E GRÁFICOS AVANÇADOS
+// ============================================================================
+
+function calcularERenderizarKPIs() {
+  // 1. Termômetro de Eficiência (Tarefas)
+  let tarefasTotal = 0;
+  let tarefasConcluidas = 0;
+  let tarefasAtrasadas = 0;
+  let tarefasAFazer = 0;
+
+  // 2. NPS (Feedback)
+  let totalNpsScore = 0;
+  let totalNpsCount = 0;
+
+  // 3. Ocupação (Mês Atual)
+  const agora = new Date();
+  const mesAtual = agora.getMonth();
+  const anoAtual = agora.getFullYear();
+  let vagasOfertadas = 0;
+  let vagasPreenchidas = 0;
+
+  // 4. Ranking Assiduidade
+  const contagemParticipantes = {};
+
+  todosEventos.forEach((ev) => {
+    // A. Processar Tarefas (Plano de Ação + Encaminhamentos)
+    const tarefasEvento = [...ev.planoDeAcao, ...ev.encaminhamentos];
+    tarefasEvento.forEach((t) => {
+      tarefasTotal++;
+      if (t.status === "Concluído") tarefasConcluidas++;
+      else if (t.status === "Atrasado") tarefasAtrasadas++;
+      else tarefasAFazer++;
+    });
+
+    // B. Processar NPS (Feedbacks)
+    ev.feedbacks.forEach((fb) => {
+      // Clareza (Sim=100, Parc=50, Não=0)
+      let scoreClareza = 0;
+      if (fb.clareza === "Sim") scoreClareza = 100;
+      else if (fb.clareza === "Parcialmente") scoreClareza = 50;
+
+      // Objetivos (Sim=100, Não=0)
+      let scoreObjetivos = 0;
+      if (fb.objetivos === "Sim") scoreObjetivos = 100;
+
+      // Média simples do feedback
+      const mediaFb = (scoreClareza + scoreObjetivos) / 2;
+      totalNpsScore += mediaFb;
+      totalNpsCount++;
+    });
+
+    // C. Ocupação (Só Mês Atual)
+    if (
+      ev.dataOrdenacao.getMonth() === mesAtual &&
+      ev.dataOrdenacao.getFullYear() === anoAtual
+    ) {
+      // Se vagas limitadas (Voluntário 1:1), Ofertada = 1. Senão, indefinido (assumimos Ocupação = Inscritos para não distorcer)
+      const inscritos = ev.vagas.length;
+      if (ev.vagasLimitadas) {
+        vagasOfertadas += 1; // 1 Slot = 1 Vaga
+        vagasPreenchidas += inscritos > 0 ? 1 : 0;
+      } else {
+        // Reunião Técnica (Ilimitada): não conta para % de ocupação para não distorcer,
+        // ou conta Ofertada = Inscritos
+        // Decisão: Contar apenas eventos limitados para métrica de ocupação real.
+      }
+    }
+
+    // D. Ranking
+    ev.participantes.forEach((nome) => {
+      if (nome && nome !== "Anônimo") {
+        contagemParticipantes[nome] = (contagemParticipantes[nome] || 0) + 1;
+      }
+    });
+  });
+
+  // RENDERIZAÇÃO
+  renderizarGraficosHTML({
+    tarefas: {
+      total: tarefasTotal,
+      concluidas: tarefasConcluidas,
+      atrasadas: tarefasAtrasadas,
+      aFazer: tarefasAFazer,
+    },
+    nps: totalNpsCount > 0 ? Math.round(totalNpsScore / totalNpsCount) : 0,
+    ocupacao: { ofertadas: vagasOfertadas, preenchidas: vagasPreenchidas },
+    ranking: Object.entries(contagemParticipantes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5),
+  });
+}
+
+function renderizarGraficosHTML(kpis) {
+  const container = document.getElementById("graficos-tab");
+  if (!container) return;
+
+  // Calcula porcentagens para gráfico de rosca (Tarefas)
+  const pConcluido =
+    kpis.tarefas.total > 0
+      ? (kpis.tarefas.concluidas / kpis.tarefas.total) * 100
+      : 0;
+  const pAtrasado =
+    kpis.tarefas.total > 0
+      ? (kpis.tarefas.atrasadas / kpis.tarefas.total) * 100
+      : 0;
+  const pAFazer =
+    kpis.tarefas.total > 0
+      ? (kpis.tarefas.aFazer / kpis.tarefas.total) * 100
+      : 0;
+
+  // Calcula Ocupação
+  const percOcupacao =
+    kpis.ocupacao.ofertadas > 0
+      ? Math.round((kpis.ocupacao.preenchidas / kpis.ocupacao.ofertadas) * 100)
+      : 0;
+
+  // HTML DOS CARDS
   container.innerHTML = `
-        <div class="table-responsive">
-            <table class="table table-sm table-borderless mb-0">
-                <thead><tr><th>Tipo</th><th class="text-center">Qtd</th><th class="text-center">%</th><th></th></tr></thead>
-                <tbody>${linhas}</tbody>
-            </table>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card h-100 text-center p-3 shadow-sm border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h6 class="mb-2 opacity-75">Satisfação (NPS Interno)</h6>
+                    <h1 class="display-4 fw-bold mb-0">${kpis.nps}</h1>
+                    <div class="mb-2">
+                        ${renderizarEstrelas(kpis.nps)}
+                    </div>
+                    <small>Média baseada em feedbacks</small>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card h-100 p-3 shadow-sm border-0">
+                    <h6 class="text-muted mb-3">Ocupação (Voluntários)</h6>
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <h2 class="mb-0 text-primary">${percOcupacao}%</h2>
+                        <small class="text-muted">${
+                          kpis.ocupacao.preenchidas
+                        }/${kpis.ocupacao.ofertadas} vagas</small>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: ${percOcupacao}%"></div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Referente ao mês atual</small>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100 p-3 shadow-sm border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-muted mb-0">Eficiência (Tarefas)</h6>
+                        <span class="badge bg-light text-dark border">Total: ${
+                          kpis.tarefas.total
+                        }</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-around mt-3">
+                        <div style="
+                            width: 100px; height: 100px; border-radius: 50%;
+                            background: conic-gradient(
+                                #198754 0% ${pConcluido}%, 
+                                #dc3545 ${pConcluido}% ${
+    pConcluido + pAtrasado
+  }%, 
+                                #ffc107 ${pConcluido + pAtrasado}% 100%
+                            );
+                            position: relative;">
+                            <div style="position: absolute; inset: 20px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <strong>${Math.round(pConcluido)}%</strong>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 0.9em;">
+                            <div class="mb-1"><span style="display:inline-block;width:10px;height:10px;background:#198754;border-radius:50%;margin-right:5px;"></span> Concluídas (${
+                              kpis.tarefas.concluidas
+                            })</div>
+                            <div class="mb-1"><span style="display:inline-block;width:10px;height:10px;background:#dc3545;border-radius:50%;margin-right:5px;"></span> Atrasadas (${
+                              kpis.tarefas.atrasadas
+                            })</div>
+                            <div><span style="display:inline-block;width:10px;height:10px;background:#ffc107;border-radius:50%;margin-right:5px;"></span> A Fazer (${
+                              kpis.tarefas.aFazer
+                            })</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0">
+                        <h6 class="mb-0 fw-bold text-primary"><span class="material-symbols-outlined" style="vertical-align: middle;">military_tech</span> Top Participantes</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            ${
+                              kpis.ranking
+                                .map(
+                                  (r, index) => `
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-4">
+                                    <span>
+                                        <span class="badge ${
+                                          index === 0
+                                            ? "bg-warning text-dark"
+                                            : "bg-light text-dark"
+                                        } me-2 rounded-pill">${
+                                    index + 1
+                                  }º</span>
+                                        ${r[0]}
+                                    </span>
+                                    <span class="fw-bold text-muted">${
+                                      r[1]
+                                    } reuniões</span>
+                                </li>
+                            `
+                                )
+                                .join("") ||
+                              '<li class="list-group-item text-center text-muted">Sem dados suficientes</li>'
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                 <div class="card shadow-sm border-0">
+                    <div class="card-header bg-transparent border-0">
+                        <h6 class="mb-0 fw-bold">Tipos de Reunião</h6>
+                    </div>
+                    <div class="card-body" id="grafico-tipos-container">
+                        ${renderizarGraficoTipos(todosEventos)}
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 }
 
-function renderizarTabelaAgendamentosPorGestor() {
-  const container = document.getElementById("grafico-agendamentos-gestor");
-  if (!container) return;
-
-  const agendamentosPorGestor = {};
-  todosOsAgendamentos.forEach((agendamento) => {
-    (agendamento.slots || []).forEach((slot) => {
-      const nome = slot.gestorNome || "N/A";
-      agendamentosPorGestor[nome] =
-        (agendamentosPorGestor[nome] || 0) + (slot.vagas || []).length;
-    });
-  });
-
-  if (Object.keys(agendamentosPorGestor).length === 0) {
-    container.innerHTML =
-      '<div class="alert alert-info p-2 text-center">Sem agendamentos.</div>';
-    return;
+function renderizarEstrelas(score) {
+  // Score 0-100 -> 0-5 Estrelas
+  const estrelas = Math.round(score / 20);
+  let html = "";
+  for (let i = 1; i <= 5; i++) {
+    if (i <= estrelas)
+      html +=
+        '<span class="material-symbols-outlined" style="color: #ffc107; font-variation-settings: \'FILL\' 1;">star</span>';
+    else
+      html +=
+        '<span class="material-symbols-outlined" style="color: rgba(255,255,255,0.5);">star</span>';
   }
+  return html;
+}
 
-  const linhas = Object.entries(agendamentosPorGestor)
+function renderizarGraficoTipos(lista) {
+  const tipos = {};
+  lista.forEach((e) => (tipos[e.tipo] = (tipos[e.tipo] || 0) + 1));
+  const total = lista.length;
+
+  if (total === 0) return '<p class="text-center text-muted">Sem dados</p>';
+
+  return Object.entries(tipos)
     .sort((a, b) => b[1] - a[1])
-    .map(
-      ([gestor, qtd]) =>
-        `<tr><td><small>${gestor}</small></td><td class="text-center">${qtd}</td></tr>`
-    )
+    .map(([tipo, qtd]) => {
+      const perc = Math.round((qtd / total) * 100);
+      return `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>${tipo}</span>
+                        <span>${qtd}</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-secondary" style="width: ${perc}%"></div>
+                    </div>
+                </div>`;
+    })
     .join("");
-
-  container.innerHTML = `<table class="table table-sm"><thead><tr><th>Gestor</th><th class="text-center">Inscritos</th></tr></thead><tbody>${linhas}</tbody></table>`;
-}
-
-function renderizarProximaReuniao(listaUnificada) {
-  const agora = new Date();
-  const proximas = listaUnificada
-    .filter((item) => item.dataOrdenacao > agora)
-    .sort((a, b) => a.dataOrdenacao - b.dataOrdenacao);
-
-  const proximaContainer = document.getElementById("proxima-reuniao-container");
-  const infoEl = document.getElementById("proxima-reuniao-info");
-
-  if (!proximaContainer || !infoEl) return;
-
-  if (proximas.length === 0) {
-    proximaContainer.style.display = "none";
-    return;
-  }
-
-  proximaContainer.style.display = "block";
-  const proxima = proximas[0];
-  const diffMs = proxima.dataOrdenacao - agora;
-  const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  let tempoTexto = dias === 0 ? "É hoje!" : `Em ${dias} dias`;
-
-  infoEl.innerHTML = `
-  <h5 class="text-white">${proxima.titulo || "Reunião"}</h5>
-  <p class="mb-1" style="color:white">
-    <span class="material-symbols-outlined" style="font-size:16px; color:white; vertical-align:middle">event</span>
-    ${proxima.dataOrdenacao.toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    })}
-  </p>
-  <p class="mb-2" style="color:white">
-    <span class="material-symbols-outlined" style="font-size:16px; color:white; vertical-align:middle">location_on</span>
-    ${proxima.local || "Online"}
-  </p>
-  <p class="fw-bold text-warning mb-0">${tempoTexto}</p>
-`;
-}
-
-function atualizarContadorAtas(qtd) {
-  const contadorEl = document.getElementById("contador-atas");
-  if (contadorEl) {
-    contadorEl.textContent = qtd;
-    contadorEl.className = `badge ${
-      qtd > 0 ? "bg-primary" : "bg-secondary"
-    } ms-2`;
-  }
 }
 
 export function cleanup() {
-  if (unsubscribeAtas) unsubscribeAtas();
-  if (unsubscribeAgendamentos) unsubscribeAgendamentos();
+  if (unsubscribeEventos) unsubscribeEventos();
   clearTimeout(timeoutBusca);
 }
