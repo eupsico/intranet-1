@@ -1,4 +1,19 @@
-<div class="view-container">
-    <div id="agendar-reuniao-container" class="card">
-        </div>
+<div class="form-group">
+    <label for="tipoReuniao">Tipo de Reunião</label>
+    <select id="tipoReuniao" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="reuniao_tecnica">Reunião Técnica</option>
+        <option value="alinhamento">Alinhamento</option>
+        <option value="treinamento">Treinamento / Workshop</option> </select>
+</div>
+
+<div id="containerCapacidade" class="form-group" style="display: none; background: #e3f2fd; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb;">
+    <label for="capacidadeMaxima" style="color: #0d47a1; font-weight: bold;">
+        <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px;">group</span>
+        Limite de Inscrições (Vagas)
+    </label>
+    <input type="number" id="capacidadeMaxima" class="form-control" placeholder="Ex: 20 pessoas" min="1">
+    <small style="color: #555; display: block; margin-top: 5px;">
+        Defina quantas pessoas podem se inscrever. Deixe em branco para ilimitado.
+    </small>
 </div>

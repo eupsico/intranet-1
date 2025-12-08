@@ -1,5 +1,5 @@
 // /modulos/gestao/js/agendar-reuniao.js
-// VERSÃO 5.0 (Unificado com Coleção Eventos)
+// VERSÃO 5.1 (Unificado + Treinamento + Capacidade)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -19,7 +19,9 @@ let agendamentosExistentes = [];
 let editandoId = null;
 
 export async function init() {
-  console.log("[AGENDAR] Módulo Agendar Reunião iniciado (v5.0 - Eventos).");
+  console.log(
+    "[AGENDAR] Módulo Agendar Reunião iniciado (v5.1 - Treinamento)."
+  );
   await carregarGestores();
   renderizarFormularioAgendamento();
 
@@ -91,7 +93,6 @@ async function carregarGestores() {
 
 async function carregarAgendamentosExistentes() {
   try {
-    // ALTERAÇÃO: Busca agora na coleção 'eventos'
     const q = query(
       collection(firestoreDb, "eventos"),
       orderBy("criadoEm", "desc")
@@ -149,7 +150,19 @@ function renderizarFormularioAgendamento() {
                     <option value="Reunião Conselho administrativo">Reunião Conselho Administrativo</option>
                     <option value="Reunião com Gestor">Reunião com Gestor</option>
                     <option value="Reunião com Voluntário">Reunião com Voluntário</option>
+                    <option value="Treinamento">Treinamento / Workshop</option>
                 </select>
+            </div>
+
+            <div id="container-capacidade" class="form-group" style="display: none; background: #e3f2fd; padding: 15px; border-radius: 8px; border: 1px solid #bbdefb; margin-bottom: 20px;">
+                <label for="capacidade-maxima" style="color: #0d47a1; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">group</span>
+                    Limite de Inscrições (Vagas)
+                </label>
+                <input type="number" id="capacidade-maxima" class="form-control" placeholder="Ex: 20" min="1">
+                <small style="color: #555; display: block; margin-top: 5px;">
+                    Defina quantas pessoas podem se inscrever no total. Deixe em branco para ilimitado.
+                </small>
             </div>
             
             <div class="form-group">
@@ -192,20 +205,35 @@ function renderizarFormularioAgendamento() {
     .getElementById("form-agendamento")
     .addEventListener("submit", salvarAgendamento);
 
-  // Controle visual dinâmico (apenas hints e defaults)
+  // Controle visual dinâmico (Tipo de Reunião)
   document.getElementById("tipo-reuniao").addEventListener("change", (e) => {
     const tipo = e.target.value;
     const hintSlots = document.getElementById("hint-slots");
     const txtArea = document.getElementById("descricao-custom");
+    const containerCapacidade = document.getElementById("container-capacidade");
+    const inputCapacidade = document.getElementById("capacidade-maxima");
 
+    // Texto Padrão
     txtArea.value = getDescricaoPadrao(tipo);
 
+    // Lógica Treinamento (Mostrar Capacidade)
+    if (tipo === "Treinamento") {
+      containerCapacidade.style.display = "block";
+      inputCapacidade.focus();
+      hintSlots.textContent =
+        "Defina os dias/horários do treinamento. O limite de vagas será aplicado ao evento.";
+    } else {
+      containerCapacidade.style.display = "none";
+      inputCapacidade.value = ""; // Limpa valor
+    }
+
+    // Lógica Voluntário
     if (tipo === "Reunião com Voluntário") {
       hintSlots.textContent =
-        "Para Voluntários: Cada slot aceitará apenas 1 inscrição (Vaga Única).";
-    } else {
+        "Para Voluntários: Cada slot aceitará apenas 1 inscrição (Vaga Única) e os horários serão gerados automaticamente.";
+    } else if (tipo !== "Treinamento") {
       hintSlots.textContent =
-        "Para Reunião Técnica/Geral: Múltiplas pessoas podem se inscrever no mesmo horário (Vagas Ilimitadas).";
+        "Múltiplas pessoas podem se inscrever no mesmo horário (Vagas Ilimitadas).";
     }
   });
 }
@@ -278,14 +306,22 @@ async function renderizarGerenciarAgendamentos() {
     .map((agendamento) => {
       const linkAgendamento = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${agendamento.id}`;
 
-      let borderLeftColor = "#0d6efd"; // Azul
+      // Cores da borda lateral
+      let borderLeftColor = "#0d6efd"; // Azul (Padrão)
       if (agendamento.tipo === "Reunião com Voluntário")
         borderLeftColor = "#17a2b8"; // Ciano
       else if (agendamento.tipo === "Reunião Técnica")
         borderLeftColor = "#6610f2"; // Roxo
+      else if (agendamento.tipo === "Treinamento") borderLeftColor = "#ffc107"; // Amarelo/Laranja
 
       const slotsOrdenados = [...(agendamento.slots || [])].sort((a, b) =>
         a.data.localeCompare(b.data)
+      );
+
+      // Calcula total de inscritos no evento
+      let totalInscritosEvento = 0;
+      slotsOrdenados.forEach(
+        (s) => (totalInscritosEvento += s.vagas?.length || 0)
       );
 
       const slotsListaHTML = slotsOrdenados
@@ -293,7 +329,10 @@ async function renderizarGerenciarAgendamentos() {
           const inscritosCount = slot.vagas?.length || 0;
           let statusTexto = "";
 
-          if (agendamento.vagasLimitadas) {
+          if (
+            agendamento.vagasLimitadas &&
+            agendamento.tipo === "Reunião com Voluntário"
+          ) {
             // Voluntário (1:1)
             if (inscritosCount >= 1) {
               statusTexto = `<span style="color: #dc3545;">Ocupado (${inscritosCount})</span>`;
@@ -301,7 +340,7 @@ async function renderizarGerenciarAgendamentos() {
               statusTexto = `<span style="color: #198754;">Disponível</span>`;
             }
           } else {
-            // Reunião Técnica (Ilimitada)
+            // Geral
             statusTexto = `<span style="color: #0d6efd; font-weight: bold;">${inscritosCount} inscritos</span>`;
           }
 
@@ -315,6 +354,19 @@ async function renderizarGerenciarAgendamentos() {
         })
         .join("");
 
+      // Exibição da Capacidade no Card
+      let infoCapacidade = "";
+      if (agendamento.capacidadeMaxima) {
+        const porcentagem = Math.round(
+          (totalInscritosEvento / agendamento.capacidadeMaxima) * 100
+        );
+        infoCapacidade = `
+            <div style="margin-top: 10px; background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 4px; display: inline-block;">
+                <strong>Capacidade:</strong> ${totalInscritosEvento} / ${agendamento.capacidadeMaxima} vagas preenchidas (${porcentagem}%)
+            </div>
+          `;
+      }
+
       return `
         <div class="agendamento-card" style="border: 1px solid #ddd; border-left: 5px solid ${borderLeftColor}; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; background: white;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
@@ -323,6 +375,7 @@ async function renderizarGerenciarAgendamentos() {
                 <small class="text-muted">Criado em: ${formatarDataCriacao(
                   agendamento.criadoEm
                 )}</small>
+                ${infoCapacidade}
               </div>
               <div style="display: flex; gap: 0.5rem;">
                 <button class="btn-exportar-excel action-button" data-agendamento-id="${
@@ -346,10 +399,6 @@ async function renderizarGerenciarAgendamentos() {
                 <em style="color: #666; font-size: 0.9em;">"${(
                   agendamento.descricao || ""
                 ).substring(0, 150)}..."</em>
-                <br>
-                <small style="color: #666;"><strong>Exibir Gestor:</strong> ${
-                  agendamento.exibirGestor ? "Sim" : "Não"
-                }</small>
             </div>
 
             <div style="max-height: 250px; overflow-y: auto;">
@@ -409,8 +458,20 @@ async function renderizarEditarAgendamento(agendamentoId) {
     })
     .join("");
 
-  // CHECKBOX ESTADO
   const checkedGestor = agendamento.exibirGestor ? "checked" : "";
+
+  // HTML do campo de capacidade (se for treinamento, exibe para editar)
+  let capacidadeHTML = "";
+  if (agendamento.tipo === "Treinamento") {
+    capacidadeHTML = `
+        <div class="form-group" style="margin-top: 15px;">
+             <label style="font-weight: bold;">Capacidade Máxima (Vagas)</label>
+             <input type="number" id="edit-capacidade" class="form-control" value="${
+               agendamento.capacidadeMaxima || ""
+             }" placeholder="Ilimitado">
+        </div>
+      `;
+  }
 
   container.innerHTML = `
     <div class="button-bar" style="margin-bottom: 1.5rem;">
@@ -432,7 +493,9 @@ async function renderizarEditarAgendamento(agendamentoId) {
                 </label>
             </div>
 
-            <label for="edit-descricao" style="font-weight: bold; display: block; margin-bottom: 0.5rem;">Texto da Página de Inscrição</label>
+            ${capacidadeHTML}
+
+            <label for="edit-descricao" style="font-weight: bold; display: block; margin-bottom: 0.5rem; margin-top: 15px;">Texto da Página de Inscrição</label>
             <textarea id="edit-descricao" class="form-control" rows="5" style="width: 100%; padding: 0.5rem;">${
               agendamento.descricao || ""
             }</textarea>
@@ -469,24 +532,37 @@ async function renderizarEditarAgendamento(agendamentoId) {
     </form>
   `;
 
-  // Listener: Salvar Configurações (Texto + Checkbox)
+  // Listener: Salvar Configurações (Texto + Checkbox + Capacidade)
   document
     .getElementById("btn-salvar-configs")
     .addEventListener("click", async () => {
       const novaDescricao = document.getElementById("edit-descricao").value;
       const novoExibirGestor =
         document.getElementById("edit-exibir-gestor").checked;
+      let novaCapacidade = null;
+
+      const inputCap = document.getElementById("edit-capacidade");
+      if (inputCap && inputCap.value) {
+        novaCapacidade = parseInt(inputCap.value);
+      }
+
       const btn = document.getElementById("btn-salvar-configs");
 
       btn.textContent = "Salvando...";
       btn.disabled = true;
 
       try {
-        // ALTERAÇÃO: Atualiza na coleção 'eventos'
-        await updateDoc(doc(firestoreDb, "eventos", agendamentoId), {
+        const updateData = {
           descricao: novaDescricao,
           exibirGestor: novoExibirGestor,
-        });
+        };
+
+        // Só atualiza capacidade se o campo existiu (Treinamento)
+        if (agendamento.tipo === "Treinamento") {
+          updateData.capacidadeMaxima = novaCapacidade;
+        }
+
+        await updateDoc(doc(firestoreDb, "eventos", agendamentoId), updateData);
         alert("Configurações atualizadas com sucesso!");
       } catch (err) {
         alert("Erro ao atualizar configurações: " + err.message);
@@ -520,8 +596,14 @@ async function salvarAgendamento(e) {
 
   const tipo = document.getElementById("tipo-reuniao").value;
   const descricao = document.getElementById("descricao-custom").value;
-  // Agora pega a opção "exibir-gestor" independentemente do tipo
   const exibirGestor = document.getElementById("exibir-gestor").checked;
+
+  // Lógica Capacidade (Só pega se for Treinamento)
+  let capacidadeMaxima = null;
+  if (tipo === "Treinamento") {
+    const capVal = document.getElementById("capacidade-maxima").value;
+    if (capVal) capacidadeMaxima = parseInt(capVal);
+  }
 
   const vagasLimitadas = tipo === "Reunião com Voluntário";
 
@@ -547,7 +629,7 @@ async function salvarAgendamento(e) {
           );
           slots = slots.concat(slotsGerados);
         } else {
-          // Técnica: Slot único
+          // Técnica ou Treinamento: Slot único (gestor define inicio e fim)
           slots.push({
             data,
             horaInicio,
@@ -572,16 +654,16 @@ async function salvarAgendamento(e) {
   const dados = {
     tipo,
     descricao: descFinal,
-    exibirGestor: exibirGestor, // Salva a preferência
+    exibirGestor: exibirGestor,
     slots,
     criadoEm: serverTimestamp(),
     vagasLimitadas: vagasLimitadas,
-    status: "Agendada", // Campo chave para unificação
-    origem: "painel_gestao", // Identificador de origem
+    capacidadeMaxima: capacidadeMaxima, // Novo Campo
+    status: "Agendada",
+    origem: "painel_gestao",
   };
 
   try {
-    // ALTERAÇÃO: Salva na coleção 'eventos'
     const docRef = await addDoc(collection(firestoreDb, "eventos"), dados);
     const link = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docRef.id}`;
 
@@ -594,6 +676,8 @@ async function salvarAgendamento(e) {
 
     document.getElementById("form-agendamento").reset();
     document.getElementById("slots-container").innerHTML = criarSlotHTML();
+    // Reseta visibilidade
+    document.getElementById("container-capacidade").style.display = "none";
   } catch (err) {
     console.error(err);
     feedbackEl.innerHTML = `<div class="alert alert-danger">Erro ao criar agendamento: ${err.message}</div>`;
@@ -657,7 +741,6 @@ async function salvarNovosSlots(agendamentoId, agendamento) {
   try {
     const slotsAtualizados = [...agendamento.slots, ...novosSlots];
 
-    // ALTERAÇÃO: Atualiza na coleção 'eventos'
     await updateDoc(doc(firestoreDb, "eventos", agendamentoId), {
       slots: slotsAtualizados,
     });
@@ -778,6 +861,11 @@ function getDescricaoPadrao(tipo) {
     return `Olá! Selecione um horário abaixo para nossa conversa individual de alinhamento.
         
 O link da reunião será enviado pelo WhatsApp no dia agendado.`;
+  }
+  if (tipo === "Treinamento") {
+    return `Participe do nosso Treinamento! 
+    
+Vagas Limitadas. Garanta a sua inscrição abaixo.`;
   }
   if (tipo === "Reunião Técnica") {
     return `Bem-vindo(a) à nossa Reunião Técnica!
