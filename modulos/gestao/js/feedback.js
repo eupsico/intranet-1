@@ -1,5 +1,5 @@
 // /modulos/gestao/js/feedback.js
-// VERSÃO 2.2 (Compatível com Link de Agendamentos e Atas)
+// VERSÃO 3.0 (Unificado com Eventos e Suporte a Slots)
 
 import { db as firestoreDb, auth } from "../../../assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -43,21 +43,26 @@ function initializePage() {
 
 /**
  * Busca a reunião pelo ID da URL (Hash).
- * Tenta primeiro em 'gestao_atas', depois em 'agendamentos_voluntarios'.
+ * Suporta IDs compostos (DOCID_SLOTINDEX) para eventos com múltiplos horários.
  */
 async function findMeetingAndRender(userData) {
   try {
-    // Remove o '#' do início para pegar o ID
-    const meetingId = window.location.hash.substring(1);
-
-    if (!meetingId) {
+    const hash = window.location.hash.substring(1); // Ex: "DOCID" ou "DOCID_2"
+    if (!hash) {
       throw new Error("Link inválido: ID da reunião não encontrado.");
     }
+
+    // Separa ID do Documento e Index do Slot (se houver)
+    // Se não houver underline, o split retorna apenas o ID no index 0
+    const partes = hash.split("_");
+    const docId = partes[0];
+    const slotIndex = partes.length > 1 ? parseInt(partes[1]) : -1;
 
     // Busca modelo de perguntas
     const perguntasDoc = await getDoc(
       doc(firestoreDb, "configuracoesSistema", "modelo_feedback")
     );
+
     // Fallback de perguntas se não houver configuração
     const perguntasModelo = perguntasDoc.exists()
       ? perguntasDoc.data().perguntas
@@ -87,47 +92,65 @@ async function findMeetingAndRender(userData) {
           },
         ];
 
-    let data = null;
-    let collectionName = "";
+    // Busca o evento na coleção unificada
+    const docRef = doc(firestoreDb, "eventos", docId);
+    const docSnap = await getDoc(docRef);
 
-    // 1. Tenta buscar em 'gestao_atas' (Reuniões já finalizadas/registradas)
-    let docRef = doc(firestoreDb, "gestao_atas", meetingId);
-    let docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      collectionName = "gestao_atas";
-      data = docSnap.data();
-    } else {
-      // 2. Se não achar, tenta buscar em 'agendamentos_voluntarios' (Reuniões agendadas/em andamento)
-      docRef = doc(firestoreDb, "agendamentos_voluntarios", meetingId);
-      docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        collectionName = "agendamentos_voluntarios";
-        const rawData = docSnap.data();
-
-        // Normaliza os dados para o formato de exibição
-        data = {
-          pauta: rawData.descricao || rawData.tipo || "Sem pauta definida",
-          responsavelTecnica:
-            rawData.slots?.[0]?.gestorNome || "Gestor Responsável",
-          feedbacks: rawData.feedbacks || [],
-        };
-      }
-    }
-
-    if (!data) {
+    if (!docSnap.exists()) {
       throw new Error("Reunião não encontrada ou link expirado.");
     }
 
+    const dataRaiz = docSnap.data();
+    let dadosReuniao = null;
+    let feedbacksArray = [];
+
+    // Lógica para determinar de onde ler os dados (Slot ou Raiz)
+    if (slotIndex !== -1) {
+      // É um Slot específico
+      if (!dataRaiz.slots || !dataRaiz.slots[slotIndex]) {
+        throw new Error("Horário da reunião não encontrado.");
+      }
+
+      const slot = dataRaiz.slots[slotIndex];
+      const dataFormatada = new Date(
+        slot.data + "T00:00:00"
+      ).toLocaleDateString("pt-BR");
+
+      dadosReuniao = {
+        pauta: `${dataRaiz.tipo} - ${dataFormatada} às ${slot.horaInicio}`,
+        responsavelTecnica: slot.gestorNome || "Gestor Responsável",
+        // Campo 'descricao' na raiz costuma ter o texto público
+        descricao: dataRaiz.descricao || "Sem descrição",
+      };
+
+      feedbacksArray = slot.feedbacks || [];
+    } else {
+      // É um Evento Raiz (Simples ou Legado)
+      const dataFormatada = dataRaiz.dataReuniao
+        ? new Date(dataRaiz.dataReuniao + "T00:00:00").toLocaleDateString(
+            "pt-BR"
+          )
+        : "";
+
+      dadosReuniao = {
+        pauta:
+          dataRaiz.pauta ||
+          dataRaiz.tipo + (dataFormatada ? ` - ${dataFormatada}` : ""),
+        responsavelTecnica: dataRaiz.responsavel || "Não especificado",
+        descricao: dataRaiz.descricao || dataRaiz.pauta || "",
+      };
+
+      feedbacksArray = dataRaiz.feedbacks || [];
+    }
+
     // Verifica se o usuário já respondeu
-    const jaRespondeu = data.feedbacks?.some((fb) => fb.nome === userData.nome);
+    const jaRespondeu = feedbacksArray.some((fb) => fb.nome === userData.nome);
 
     if (jaRespondeu) {
       feedbackContainer.innerHTML = `
         <div class="info-header">
             <h2>Feedback Já Enviado</h2>
-            <p><strong>Tema:</strong> ${data.pauta}</p>
+            <p><strong>Tema:</strong> ${dadosReuniao.pauta}</p>
         </div>
         <div class="message-box alert alert-info" style="text-align:center; padding: 30px;">
             <span class="material-symbols-outlined" style="font-size: 48px; color: #0dcaf0;">check_circle</span>
@@ -137,9 +160,9 @@ async function findMeetingAndRender(userData) {
       feedbackContainer.classList.remove("loading");
     } else {
       renderFeedbackForm(
-        data,
-        meetingId,
-        collectionName,
+        dadosReuniao,
+        docId,
+        slotIndex, // Passamos o index para saber onde salvar
         perguntasModelo,
         userData
       );
@@ -155,7 +178,7 @@ async function findMeetingAndRender(userData) {
 function renderFeedbackForm(
   data,
   docId,
-  collectionName,
+  slotIndex,
   perguntasModelo,
   loggedInUser
 ) {
@@ -224,11 +247,33 @@ function renderFeedbackForm(
           feedbackData[p.id] = element.value;
         });
 
-        // Atualiza no Firestore
-        const docRef = doc(firestoreDb, collectionName, docId);
-        await updateDoc(docRef, {
-          feedbacks: arrayUnion(feedbackData),
-        });
+        const docRef = doc(firestoreDb, "eventos", docId);
+
+        // LÓGICA DE SALVAMENTO: RAIZ vs SLOT
+        if (slotIndex === -1) {
+          // Atualiza direto na raiz
+          await updateDoc(docRef, {
+            feedbacks: arrayUnion(feedbackData),
+          });
+        } else {
+          // Atualiza dentro do array de slots
+          // Precisamos ler o documento para garantir consistência do array
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const slots = snap.data().slots || [];
+
+            if (slots[slotIndex]) {
+              if (!slots[slotIndex].feedbacks) {
+                slots[slotIndex].feedbacks = [];
+              }
+              slots[slotIndex].feedbacks.push(feedbackData);
+
+              await updateDoc(docRef, { slots: slots });
+            } else {
+              throw new Error("Este horário não está mais disponível.");
+            }
+          }
+        }
 
         feedbackContainer.innerHTML = `
             <div class="message-box alert alert-success" style="text-align: center; padding: 40px;">
