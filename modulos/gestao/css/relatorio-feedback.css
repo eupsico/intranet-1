@@ -1,0 +1,133 @@
+/* /modulos/gestao/css/relatorio-feedback.css */
+
+/* Navegação de Abas Customizada */
+.tab-nav-relatorios {
+    display: flex;
+    gap: 10px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.rel-tab {
+    background: none;
+    border: none;
+    padding: 10px 15px;
+    color: #6c757d;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.rel-tab:hover {
+    color: var(--cor-primaria);
+    background-color: #f8f9fa;
+}
+
+.rel-tab.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+}
+
+/* Tabelas */
+.table-relatorio {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.table-relatorio th {
+    background-color: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+}
+
+.table-relatorio td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.table-relatorio tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* Status Badges */
+.status-atrasado {
+    color: #dc3545;
+    background-color: #fad7db;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+
+/* Estilo para Histórico de Atas (Documento Formal) */
+.ata-documento {
+    border: 1px solid #dee2e6;
+    padding: 30px;
+    margin-bottom: 30px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.ata-header {
+    border-bottom: 2px solid #333;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.ata-section {
+    margin-bottom: 15px;
+}
+
+.ata-section h5 {
+    font-size: 1em;
+    font-weight: bold;
+    color: #333;
+    text-transform: uppercase;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+.ata-content-text {
+    white-space: pre-wrap;
+    font-family: 'Times New Roman', serif;
+    line-height: 1.5;
+    color: #212529;
+}
+
+/* Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #relatorio-content, #relatorio-content * {
+        visibility: visible;
+    }
+    #relatorio-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .ata-documento {
+        break-inside: avoid;
+        page-break-after: always;
+        border: none;
+        box-shadow: none;
+    }
+    .btn, .tab-nav-relatorios, .card-header, .form-control, label {
+        display: none !important;
+    }
+}

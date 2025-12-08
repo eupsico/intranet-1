@@ -1,0 +1,56 @@
+<div class="view-container">
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h4 class="mb-0">
+                <span class="material-symbols-outlined me-2">analytics</span>
+                Relatórios e Métricas
+            </h4>
+            <div class="d-flex gap-2">
+                <button id="btn-exportar-csv" class="btn btn-success btn-sm">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">download</span> Exportar CSV
+                </button>
+                <button id="btn-imprimir" class="btn btn-secondary btn-sm" style="display: none;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">print</span> Imprimir
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Período (Início)</label>
+                    <input type="date" id="rel-data-inicio" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Período (Fim)</label>
+                    <input type="date" id="rel-data-fim" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Filtrar Texto</label>
+                    <input type="text" id="rel-busca" class="form-control" placeholder="Gestor, Tema ou Responsável...">
+                </div>
+                <div class="col-md-2">
+                    <button id="btn-aplicar-filtros" class="btn btn-primary w-100">Atualizar</button>
+                </div>
+            </div>
+
+            <div class="tab-nav-relatorios">
+                <button class="rel-tab active" data-view="pendencias">
+                    <span class="material-symbols-outlined">warning</span> Pendências
+                </button>
+                <button class="rel-tab" data-view="qualitativo">
+                    <span class="material-symbols-outlined">reviews</span> Feedback Qualitativo
+                </button>
+                <button class="rel-tab" data-view="performance">
+                    <span class="material-symbols-outlined">trending_up</span> Performance Gestores
+                </button>
+                <button class="rel-tab" data-view="historico">
+                    <span class="material-symbols-outlined">history_edu</span> Histórico de Atas
+                </button>
+            </div>
+
+            <div id="relatorio-content" class="mt-3">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+</div>
