@@ -237,3 +237,22 @@ input[readonly], select[disabled] {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+/* Estilo do contador de palavras */
+.word-counter {
+    font-size: 0.85rem;
+    color: #888;
+    text-align: right;
+    margin-top: 4px;
+    transition: color 0.3s;
+}
+
+/* Quando atingir o mínimo, fica verde */
+.word-counter.valid {
+    color: #28a745; /* Verde sucesso */
+}
+
+/* Ajuste fino para erro no textarea */
+textarea.input-error {
+    border: 2px solid var(--cor-erro) !important;
+    background-color: #fff8f8;
+}

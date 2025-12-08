@@ -1,5 +1,5 @@
 // /modulos/gestao/js/feedback.js
-// VERSÃO 4.1 (Estilo Card UI + Validação Obrigatória)
+// VERSÃO 5.0 (Card UI + Validação de Palavras + Feedback Visual)
 
 import { db as firestoreDb, auth } from "../../../assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -11,6 +11,9 @@ import {
 } from "../../../assets/js/firebase-init.js";
 
 const feedbackContainer = document.getElementById("feedback-container");
+
+// CONFIGURAÇÃO: Mínimo de palavras para respostas de texto (evita "ok", "pontinhos", etc)
+const MINIMO_PALAVRAS_PADRAO = 5;
 
 function initializePage() {
   onAuthStateChanged(auth, async (user) => {
@@ -43,12 +46,12 @@ async function findMeetingAndRender(userData) {
     const docId = partes[0];
     const slotIndex = partes.length > 1 ? parseInt(partes[1]) : -1;
 
-    // Busca modelo de perguntas
+    // 1. Busca modelo de perguntas
     const perguntasDoc = await getDoc(
       doc(firestoreDb, "configuracoesSistema", "modelo_feedback")
     );
 
-    // Fallback se não existir no banco
+    // Fallback: Se não houver configuração no banco, usa este padrão
     const perguntasModelo = perguntasDoc.exists()
       ? perguntasDoc.data().perguntas
       : [
@@ -65,12 +68,20 @@ async function findMeetingAndRender(userData) {
             opcoes: ["Sim", "Não"],
           },
           {
+            id: "aprendizado",
+            texto: "Qual foi o maior aprendizado?",
+            tipo: "textarea",
+            minPalavras: 5,
+          },
+          {
             id: "sugestaoTema",
             texto: "Sugestões/Comentários:",
             tipo: "textarea",
+            minPalavras: 5,
           },
         ];
 
+    // 2. Busca dados do evento
     const docRef = doc(firestoreDb, "eventos", docId);
     const docSnap = await getDoc(docRef);
 
@@ -81,8 +92,8 @@ async function findMeetingAndRender(userData) {
     let feedbacksArray = [];
     let dataEvento, horaInicioStr, horaFimStr;
 
+    // Lógica para extrair dados (Slot vs Raiz)
     if (slotIndex !== -1) {
-      // Lógica de Slot
       if (!dataRaiz.slots || !dataRaiz.slots[slotIndex])
         throw new Error("Horário não encontrado.");
       const slot = dataRaiz.slots[slotIndex];
@@ -100,7 +111,6 @@ async function findMeetingAndRender(userData) {
       };
       feedbacksArray = slot.feedbacks || [];
     } else {
-      // Lógica Raiz
       dataEvento =
         dataRaiz.dataReuniao ||
         dataRaiz.criadoEm?.toDate().toISOString().split("T")[0];
@@ -119,13 +129,13 @@ async function findMeetingAndRender(userData) {
       feedbacksArray = dataRaiz.feedbacks || [];
     }
 
-    // --- Validação de Tempo ---
+    // 3. Validação de Tempo (Janela de Abertura e Fechamento)
     const agora = new Date();
     const dataInicio = new Date(`${dataEvento}T${horaInicioStr}:00`);
     const dataFim = new Date(`${dataEvento}T${horaFimStr}:00`);
 
-    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000);
-    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000);
+    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000); // +30 min
+    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000); // +90 min
 
     if (agora < janelaAbertura) {
       const diffMin = Math.ceil((janelaAbertura - agora) / 60000);
@@ -134,10 +144,12 @@ async function findMeetingAndRender(userData) {
     }
 
     if (agora > janelaFechamento) {
-      throw new Error("O prazo para envio do feedback encerrou.");
+      throw new Error(
+        "O prazo para envio do feedback (90 min após o término) encerrou."
+      );
     }
-    // --------------------------
 
+    // 4. Verifica se já respondeu
     const jaRespondeu = feedbacksArray.some((fb) => fb.nome === userData.nome);
 
     if (jaRespondeu) {
@@ -147,7 +159,7 @@ async function findMeetingAndRender(userData) {
             <p><strong>Tema:</strong> ${dadosReuniao.pauta}</p>
         </div>
         <div class="message-box">
-            <span class="material-symbols-outlined" style="font-size: 64px; color: var(--cor-primaria);">check_circle</span>
+            <span class="material-symbols-outlined" style="font-size: 64px; color: #28a745;">check_circle</span>
             <p style="font-size: 1.2rem; margin-top: 15px;">Sua presença já foi confirmada com sucesso!</p>
         </div>`;
     } else {
@@ -164,6 +176,7 @@ async function findMeetingAndRender(userData) {
   }
 }
 
+// Renderiza a tela amarela de espera
 function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
   let tempoTexto = `${minutosRestantes} minutos`;
   if (minutosRestantes > 60) {
@@ -198,6 +211,7 @@ function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
   feedbackContainer.innerHTML = html;
 }
 
+// Renderiza o formulário principal
 function renderFeedbackForm(
   data,
   docId,
@@ -205,7 +219,7 @@ function renderFeedbackForm(
   perguntasModelo,
   loggedInUser
 ) {
-  // 1. Cabeçalho
+  // Cabeçalho e campo fixo
   let formHtml = `
         <div class="info-header">
             <h2>Feedback e Presença</h2>
@@ -219,12 +233,19 @@ function renderFeedbackForm(
                     <input type="text" value="${loggedInUser.nome}" disabled>
                 </div>`;
 
-  // 2. Loop de Perguntas Dinâmicas (FORÇANDO REQUIRED)
+  // Renderização Dinâmica das Perguntas
   perguntasModelo.forEach((p) => {
-    // Adiciona o asterisco visual e a obrigatoriedade
+    // Definir obrigatoriedade e mínimo de palavras
+    const isRequired = true; // Por padrão, tudo é obrigatório como solicitado
+    const minWords =
+      p.tipo !== "select" ? p.minPalavras || MINIMO_PALAVRAS_PADRAO : 0;
+
     formHtml += `
         <div class="form-group">
-            <label>${p.texto} <span class="required-asterisk">*</span></label>`;
+            <label>
+                ${p.texto} 
+                ${isRequired ? '<span class="required-asterisk">*</span>' : ""}
+            </label>`;
 
     if (p.tipo === "select") {
       formHtml += `
@@ -235,21 +256,50 @@ function renderFeedbackForm(
                   .join("")}
             </select>`;
     } else {
-      // Textarea também recebe required
-      formHtml += `<textarea id="${p.id}" rows="3" required></textarea>`;
+      // Textarea com contador de palavras
+      formHtml += `
+            <textarea 
+                id="${p.id}" 
+                rows="3" 
+                required 
+                data-min-words="${minWords}"
+            ></textarea>
+            <div class="word-counter" id="counter-${p.id}">
+                0/${minWords} palavras mínimas
+            </div>`;
     }
     formHtml += "</div>";
   });
 
-  // 3. Botão Final
   formHtml += `
             <button type="submit" class="btn-confirmar">Confirmar Presença</button>
         </form>
-    </div>`; // Fecha .form-body
+    </div>`; // Fim form-body
 
   feedbackContainer.innerHTML = formHtml;
 
-  // --- LÓGICA DE SUBMISSÃO COM VALIDAÇÃO VISUAL ---
+  // --- LÓGICA DE EVENTOS DO FORMULÁRIO ---
+
+  // 1. Contador em Tempo Real (Visual)
+  const textareas = feedbackContainer.querySelectorAll("textarea");
+  textareas.forEach((textarea) => {
+    textarea.addEventListener("input", function () {
+      const min = parseInt(this.getAttribute("data-min-words"));
+      const counterDiv = document.getElementById(`counter-${this.id}`);
+      const numPalavras = contarPalavras(this.value);
+
+      counterDiv.textContent = `${numPalavras}/${min} palavras mínimas`;
+
+      if (numPalavras >= min) {
+        counterDiv.classList.add("valid"); // Fica verde (definir no CSS)
+        this.classList.remove("input-error");
+      } else {
+        counterDiv.classList.remove("valid");
+      }
+    });
+  });
+
+  // 2. Validação e Envio
   document
     .getElementById("feedback-form")
     .addEventListener("submit", async (e) => {
@@ -257,37 +307,66 @@ function renderFeedbackForm(
       const form = e.target;
       const btn = form.querySelector("button");
 
-      // Validação JS Manual para Efeitos Visuais
       let formValido = true;
-      const inputsObrigatorios = form.querySelectorAll("[required]");
+      let erroMsg = "";
 
-      inputsObrigatorios.forEach((input) => {
-        if (!input.value.trim()) {
+      // Validar Selects
+      const selects = form.querySelectorAll("select[required]");
+      selects.forEach((sel) => {
+        if (!sel.value) {
           formValido = false;
-          input.classList.add("input-error");
-
-          // Remove erro ao digitar
-          input.addEventListener(
-            "input",
-            function () {
-              this.classList.remove("input-error");
-            },
+          sel.classList.add("input-error");
+          sel.addEventListener(
+            "change",
+            () => sel.classList.remove("input-error"),
             { once: true }
           );
         }
       });
 
+      // Validar Textareas (Contagem de Palavras)
+      const textareasValidacao = form.querySelectorAll(
+        "textarea[data-min-words]"
+      );
+      textareasValidacao.forEach((txt) => {
+        const min = parseInt(txt.getAttribute("data-min-words"));
+        const numPalavras = contarPalavras(txt.value);
+
+        if (numPalavras < min) {
+          formValido = false;
+          txt.classList.add("input-error");
+
+          const counterDiv = document.getElementById(`counter-${txt.id}`);
+          counterDiv.style.color = "var(--cor-erro)";
+          counterDiv.style.fontWeight = "bold";
+
+          if (!erroMsg)
+            erroMsg = `Por favor, forneça respostas mais completas (mínimo de ${min} palavras).`;
+
+          // Remove erro visualmente assim que atingir a meta
+          txt.addEventListener("input", function () {
+            if (contarPalavras(this.value) >= min) {
+              this.classList.remove("input-error");
+              document.getElementById(`counter-${this.id}`).style.color = "";
+              document.getElementById(`counter-${this.id}`).style.fontWeight =
+                "";
+            }
+          });
+        }
+      });
+
+      // Se houver erro, para tudo e mostra
       if (!formValido) {
-        // Rola até o primeiro erro
+        alert(erroMsg || "Preencha todos os campos obrigatórios corretamente.");
         const primeiroErro = form.querySelector(".input-error");
         if (primeiroErro) {
           primeiroErro.scrollIntoView({ behavior: "smooth", block: "center" });
           primeiroErro.focus();
         }
-        return; // Para aqui se inválido
+        return;
       }
 
-      // Se válido, prossegue com envio
+      // Se tudo OK, envia para Firebase
       btn.disabled = true;
       btn.textContent = "Enviando...";
 
@@ -319,7 +398,7 @@ function renderFeedbackForm(
             <div class="info-header"><h2>Sucesso!</h2></div>
             <div class="message-box">
                 <span class="material-symbols-outlined" style="font-size: 64px; color: #28a745;">check_circle</span>
-                <p>Presença confirmada e feedback enviado.</p>
+                <p>Presença confirmada e feedback registrado com sucesso!</p>
             </div>`;
       } catch (err) {
         alert("Erro ao salvar: " + err.message);
@@ -329,6 +408,15 @@ function renderFeedbackForm(
     });
 }
 
+// Helper: Conta palavras reais
+function contarPalavras(texto) {
+  if (!texto) return 0;
+  const limpo = texto.trim();
+  if (limpo === "") return 0;
+  return limpo.split(/\s+/).length;
+}
+
+// Renderiza erros gerais de carregamento
 function renderError(msg, isCritical = false) {
   const btn = isCritical
     ? '<br><a href="../../../index.html" class="btn-confirmar" style="display:inline-block; text-decoration:none; margin-top:20px;">Ir para Login</a>'
