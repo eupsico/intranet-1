@@ -34,3 +34,86 @@ body {
     font-size: 1.1em;
     padding: 40px 20px;
 }
+/* /modulos/gestao/css/feedback.css */
+
+/* --- Card de Espera (Wait State) --- */
+.wait-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    margin: 40px auto;
+    overflow: hidden;
+    text-align: center;
+    border-top: 5px solid #ffc107; /* Cor Amarela de Atenção */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.wait-header {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.wait-label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: #6c757d;
+    font-weight: 700;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.wait-meeting-title {
+    font-size: 1.2rem;
+    color: #212529;
+    margin: 0;
+    font-weight: 600;
+}
+
+.wait-body {
+    padding: 40px 30px;
+}
+
+.wait-icon {
+    font-size: 48px;
+    color: #ffc107;
+    margin-bottom: 20px;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.wait-message h3 {
+    margin: 0 0 10px 0;
+    color: #343a40;
+}
+
+.wait-message p {
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.wait-badge {
+    display: inline-block;
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid #ffeeba;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

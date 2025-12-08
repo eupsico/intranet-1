@@ -122,7 +122,7 @@ async function findMeetingAndRender(userData) {
       feedbacksArray = dataRaiz.feedbacks || [];
     }
 
-    // --- LÓGICA DE VALIDAÇÃO DE TEMPO ---
+    // --- LÓGICA DE VALIDAÇÃO DE TEMPO (ATUALIZADA) ---
     const agora = new Date();
 
     // Cria datas completas para inicio e fim
@@ -130,19 +130,21 @@ async function findMeetingAndRender(userData) {
     const dataFim = new Date(`${dataEvento}T${horaFimStr}:00`);
 
     // Regra: Liberar 30 min APÓS inicio
-    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000);
+    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000); // +30 min
 
     // Regra: Fechar 90 min APÓS termino
-    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000);
+    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000); // +90 min
 
-    // Se quiser testar sem restrição, comente o bloco abaixo
+    // VERIFICAÇÃO DE ESPERA (ANTES DO TEMPO)
     if (agora < janelaAbertura) {
       const diffMin = Math.ceil((janelaAbertura - agora) / 60000);
-      throw new Error(
-        `O feedback só estará liberado 30 minutos após o início da reunião.<br>Aguarde aproximadamente ${diffMin} minutos.`
-      );
+
+      // AQUI ESTÁ A MUDANÇA: Chamamos a função visual em vez de jogar erro
+      renderWaitScreen(dadosReuniao.pauta, diffMin, horaInicioStr);
+      return; // Para a execução aqui
     }
 
+    // VERIFICAÇÃO DE EXPIRAÇÃO (DEPOIS DO TEMPO)
     if (agora > janelaFechamento) {
       throw new Error(
         "O prazo para envio do feedback (90 min após o término) encerrou."
@@ -176,7 +178,48 @@ async function findMeetingAndRender(userData) {
     renderError(err.message);
   }
 }
+/**
+ * Renderiza a tela de espera estilizada (Amarela)
+ */
+function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
+  const feedbackContainer = document.getElementById("feedback-container");
 
+  // Converte minutos muito grandes em horas para ficar mais bonito
+  let tempoTexto = `${minutosRestantes} minutos`;
+  if (minutosRestantes > 60) {
+    const horas = Math.floor(minutosRestantes / 60);
+    const mins = minutosRestantes % 60;
+    tempoTexto = `${horas}h e ${mins}min`;
+  }
+
+  const html = `
+        <div class="wait-card">
+            <div class="wait-header">
+                <span class="wait-label">Reunião Agendada</span>
+                <h2 class="wait-meeting-title">${nomeReuniao}</h2>
+            </div>
+            <div class="wait-body">
+                <span class="material-symbols-outlined wait-icon">hourglass_top</span>
+                <div class="wait-message">
+                    <h3>Aguardando Liberação</h3>
+                    <p>
+                        O formulário de presença e feedback estará disponível 
+                        30 minutos após o início da reunião (${horaInicio}).
+                    </p>
+                    <div class="wait-badge">
+                        Faltam aproximadamente ${tempoTexto}
+                    </div>
+                </div>
+                <button onclick="location.reload()" class="action-button secondary-button" style="margin-top: 25px; background: transparent; color: #666; border: 1px solid #ccc;">
+                    <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px;">refresh</span> Atualizar Página
+                </button>
+            </div>
+        </div>
+    `;
+
+  feedbackContainer.innerHTML = html;
+  feedbackContainer.classList.remove("loading");
+}
 function renderFeedbackForm(
   data,
   docId,
