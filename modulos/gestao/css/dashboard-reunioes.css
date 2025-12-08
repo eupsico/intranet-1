@@ -230,7 +230,7 @@ p {
 }
 
 #proxima-reuniao-container .card-header {
-  background: rgba(0, 0, 0, 0.15);
+  background: transparent; /* ALTERADO: Removido fundo escuro para clarear o card */
   border: none;
   padding: var(--space-lg) var(--space-lg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
