@@ -1,5 +1,5 @@
 // /modulos/gestao/js/feedback.js
-// VERSÃO 4.0 (Janela de Tempo + Eventos Unificados)
+// VERSÃO 4.1 (Estilo Card UI + Validação Obrigatória)
 
 import { db as firestoreDb, auth } from "../../../assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -47,6 +47,8 @@ async function findMeetingAndRender(userData) {
     const perguntasDoc = await getDoc(
       doc(firestoreDb, "configuracoesSistema", "modelo_feedback")
     );
+
+    // Fallback se não existir no banco
     const perguntasModelo = perguntasDoc.exists()
       ? perguntasDoc.data().perguntas
       : [
@@ -77,12 +79,10 @@ async function findMeetingAndRender(userData) {
     const dataRaiz = docSnap.data();
     let dadosReuniao = null;
     let feedbacksArray = [];
-
-    // Variáveis para controle de tempo
     let dataEvento, horaInicioStr, horaFimStr;
 
     if (slotIndex !== -1) {
-      // SLOT
+      // Lógica de Slot
       if (!dataRaiz.slots || !dataRaiz.slots[slotIndex])
         throw new Error("Horário não encontrado.");
       const slot = dataRaiz.slots[slotIndex];
@@ -97,12 +97,10 @@ async function findMeetingAndRender(userData) {
       dadosReuniao = {
         pauta: `${dataRaiz.tipo} - ${dataFormatada} às ${slot.horaInicio}`,
         responsavelTecnica: slot.gestorNome || "Gestor Responsável",
-        descricao: dataRaiz.descricao || "",
       };
       feedbacksArray = slot.feedbacks || [];
     } else {
-      // RAIZ (Eventos simples)
-      // Assumindo duração padrão de 1h se não tiver horaFim definida
+      // Lógica Raiz
       dataEvento =
         dataRaiz.dataReuniao ||
         dataRaiz.criadoEm?.toDate().toISOString().split("T")[0];
@@ -117,54 +115,41 @@ async function findMeetingAndRender(userData) {
           dataRaiz.pauta ||
           dataRaiz.tipo + (dataFormatada ? ` - ${dataFormatada}` : ""),
         responsavelTecnica: dataRaiz.responsavel || "Não especificado",
-        descricao: dataRaiz.descricao || "",
       };
       feedbacksArray = dataRaiz.feedbacks || [];
     }
 
-    // --- LÓGICA DE VALIDAÇÃO DE TEMPO (ATUALIZADA) ---
+    // --- Validação de Tempo ---
     const agora = new Date();
-
-    // Cria datas completas para inicio e fim
     const dataInicio = new Date(`${dataEvento}T${horaInicioStr}:00`);
     const dataFim = new Date(`${dataEvento}T${horaFimStr}:00`);
 
-    // Regra: Liberar 30 min APÓS inicio
-    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000); // +30 min
+    const janelaAbertura = new Date(dataInicio.getTime() + 30 * 60000);
+    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000);
 
-    // Regra: Fechar 90 min APÓS termino
-    const janelaFechamento = new Date(dataFim.getTime() + 90 * 60000); // +90 min
-
-    // VERIFICAÇÃO DE ESPERA (ANTES DO TEMPO)
     if (agora < janelaAbertura) {
       const diffMin = Math.ceil((janelaAbertura - agora) / 60000);
-
-      // AQUI ESTÁ A MUDANÇA: Chamamos a função visual em vez de jogar erro
       renderWaitScreen(dadosReuniao.pauta, diffMin, horaInicioStr);
-      return; // Para a execução aqui
+      return;
     }
 
-    // VERIFICAÇÃO DE EXPIRAÇÃO (DEPOIS DO TEMPO)
     if (agora > janelaFechamento) {
-      throw new Error(
-        "O prazo para envio do feedback (90 min após o término) encerrou."
-      );
+      throw new Error("O prazo para envio do feedback encerrou.");
     }
-    // -------------------------------------
+    // --------------------------
 
     const jaRespondeu = feedbacksArray.some((fb) => fb.nome === userData.nome);
 
     if (jaRespondeu) {
       feedbackContainer.innerHTML = `
         <div class="info-header">
-            <h2>Feedback Já Enviado</h2>
+            <h2>Feedback Enviado</h2>
             <p><strong>Tema:</strong> ${dadosReuniao.pauta}</p>
         </div>
-        <div class="message-box alert alert-info" style="text-align:center; padding: 30px;">
-            <span class="material-symbols-outlined" style="font-size: 48px; color: #0dcaf0;">check_circle</span>
-            <p>Sua presença já foi computada.</p>
+        <div class="message-box">
+            <span class="material-symbols-outlined" style="font-size: 64px; color: var(--cor-primaria);">check_circle</span>
+            <p style="font-size: 1.2rem; margin-top: 15px;">Sua presença já foi confirmada com sucesso!</p>
         </div>`;
-      feedbackContainer.classList.remove("loading");
     } else {
       renderFeedbackForm(
         dadosReuniao,
@@ -178,13 +163,8 @@ async function findMeetingAndRender(userData) {
     renderError(err.message);
   }
 }
-/**
- * Renderiza a tela de espera estilizada (Amarela)
- */
-function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
-  const feedbackContainer = document.getElementById("feedback-container");
 
-  // Converte minutos muito grandes em horas para ficar mais bonito
+function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
   let tempoTexto = `${minutosRestantes} minutos`;
   if (minutosRestantes > 60) {
     const horas = Math.floor(minutosRestantes / 60);
@@ -203,23 +183,21 @@ function renderWaitScreen(nomeReuniao, minutosRestantes, horaInicio) {
                 <div class="wait-message">
                     <h3>Aguardando Liberação</h3>
                     <p>
-                        O formulário de presença e feedback estará disponível 
-                        30 minutos após o início da reunião (${horaInicio}).
+                        O formulário estará disponível 30 minutos após o início (${horaInicio}).
                     </p>
                     <div class="wait-badge">
-                        Faltam aproximadamente ${tempoTexto}
+                        Faltam aprox. ${tempoTexto}
                     </div>
                 </div>
-                <button onclick="location.reload()" class="action-button secondary-button" style="margin-top: 25px; background: transparent; color: #666; border: 1px solid #ccc;">
-                    <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px;">refresh</span> Atualizar Página
+                <button onclick="location.reload()" class="btn-confirmar" style="background: transparent; color: #666; border: 1px solid #ccc; margin-top: 20px;">
+                    Atualizar Página
                 </button>
             </div>
         </div>
     `;
-
   feedbackContainer.innerHTML = html;
-  feedbackContainer.classList.remove("loading");
 }
+
 function renderFeedbackForm(
   data,
   docId,
@@ -227,42 +205,89 @@ function renderFeedbackForm(
   perguntasModelo,
   loggedInUser
 ) {
+  // 1. Cabeçalho
   let formHtml = `
         <div class="info-header">
             <h2>Feedback e Presença</h2>
             <p><strong>Reunião:</strong> ${data.pauta}</p>
         </div>
         
-        <form id="feedback-form">
-            <div class="form-group">
-                <label>Profissional</label>
-                <input type="text" class="form-control" value="${loggedInUser.nome}" disabled style="background:#e9ecef;">
-            </div>`;
+        <div class="form-body">
+            <form id="feedback-form" novalidate>
+                <div class="form-group">
+                    <label>Profissional</label>
+                    <input type="text" value="${loggedInUser.nome}" disabled>
+                </div>`;
 
+  // 2. Loop de Perguntas Dinâmicas (FORÇANDO REQUIRED)
   perguntasModelo.forEach((p) => {
-    formHtml += `<div class="form-group"><label>${p.texto}</label>`;
+    // Adiciona o asterisco visual e a obrigatoriedade
+    formHtml += `
+        <div class="form-group">
+            <label>${p.texto} <span class="required-asterisk">*</span></label>`;
+
     if (p.tipo === "select") {
-      formHtml += `<select id="${
-        p.id
-      }" class="form-control" required><option value="">Selecione...</option>${p.opcoes
-        .map((o) => `<option value="${o}">${o}</option>`)
-        .join("")}</select>`;
+      formHtml += `
+            <select id="${p.id}" required>
+                <option value="">Selecione...</option>
+                ${p.opcoes
+                  .map((o) => `<option value="${o}">${o}</option>`)
+                  .join("")}
+            </select>`;
     } else {
-      formHtml += `<textarea id="${p.id}" class="form-control" rows="3"></textarea>`;
+      // Textarea também recebe required
+      formHtml += `<textarea id="${p.id}" rows="3" required></textarea>`;
     }
     formHtml += "</div>";
   });
 
-  formHtml += `<button type="submit" class="action-button save-btn" style="width:100%; margin-top:20px;">Confirmar Presença</button></form>`;
+  // 3. Botão Final
+  formHtml += `
+            <button type="submit" class="btn-confirmar">Confirmar Presença</button>
+        </form>
+    </div>`; // Fecha .form-body
 
   feedbackContainer.innerHTML = formHtml;
-  feedbackContainer.classList.remove("loading");
 
+  // --- LÓGICA DE SUBMISSÃO COM VALIDAÇÃO VISUAL ---
   document
     .getElementById("feedback-form")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector("button");
+      const form = e.target;
+      const btn = form.querySelector("button");
+
+      // Validação JS Manual para Efeitos Visuais
+      let formValido = true;
+      const inputsObrigatorios = form.querySelectorAll("[required]");
+
+      inputsObrigatorios.forEach((input) => {
+        if (!input.value.trim()) {
+          formValido = false;
+          input.classList.add("input-error");
+
+          // Remove erro ao digitar
+          input.addEventListener(
+            "input",
+            function () {
+              this.classList.remove("input-error");
+            },
+            { once: true }
+          );
+        }
+      });
+
+      if (!formValido) {
+        // Rola até o primeiro erro
+        const primeiroErro = form.querySelector(".input-error");
+        if (primeiroErro) {
+          primeiroErro.scrollIntoView({ behavior: "smooth", block: "center" });
+          primeiroErro.focus();
+        }
+        return; // Para aqui se inválido
+      }
+
+      // Se válido, prossegue com envio
       btn.disabled = true;
       btn.textContent = "Enviando...";
 
@@ -276,8 +301,6 @@ function renderFeedbackForm(
 
         perguntasModelo.forEach((p) => {
           const val = document.getElementById(p.id).value;
-          if (!val && p.tipo === "select")
-            throw new Error("Preencha todos os campos.");
           feedbackData[p.id] = val;
         });
 
@@ -292,9 +315,14 @@ function renderFeedbackForm(
           await updateDoc(docRef, { slots: slots });
         }
 
-        feedbackContainer.innerHTML = `<div class="alert alert-success text-center"><h2>Sucesso!</h2><p>Presença confirmada.</p></div>`;
+        feedbackContainer.innerHTML = `
+            <div class="info-header"><h2>Sucesso!</h2></div>
+            <div class="message-box">
+                <span class="material-symbols-outlined" style="font-size: 64px; color: #28a745;">check_circle</span>
+                <p>Presença confirmada e feedback enviado.</p>
+            </div>`;
       } catch (err) {
-        alert(err.message);
+        alert("Erro ao salvar: " + err.message);
         btn.disabled = false;
         btn.textContent = "Confirmar Presença";
       }
@@ -303,10 +331,15 @@ function renderFeedbackForm(
 
 function renderError(msg, isCritical = false) {
   const btn = isCritical
-    ? '<br><a href="../../../index.html" class="btn btn-secondary mt-3">Ir para Login</a>'
+    ? '<br><a href="../../../index.html" class="btn-confirmar" style="display:inline-block; text-decoration:none; margin-top:20px;">Ir para Login</a>'
     : "";
-  feedbackContainer.innerHTML = `<div class="alert alert-danger text-center"><h3>Aviso</h3><p>${msg}</p>${btn}</div>`;
-  feedbackContainer.classList.remove("loading");
+
+  feedbackContainer.innerHTML = `
+    <div class="alert alert-danger" style="text-align:center; margin: 20px;">
+        <h3>Aviso</h3>
+        <p>${msg}</p>
+        ${btn}
+    </div>`;
 }
 
 initializePage();
