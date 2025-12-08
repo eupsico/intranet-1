@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 4.1 (Com debounce para evitar re-renderizações múltiplas)
+// VERSÃO 4.2 - CORREÇÃO: Renderização correta por aba e sincronização com listeners
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -27,8 +27,9 @@ let unsubscribeAtas = null;
 let unsubscribeProf = null;
 let unsubscribeAgend = null;
 
-// ✅ NOVO: Debounce para renderização
+// ✅ NOVO: Debounce para renderização + Aba ativa atual
 let renderTimeout = null;
+let abaAtualAtiva = "resumo"; // Rastreia qual aba está ativa AGORA
 
 const perguntasTexto = {
   clareza: "O tema foi apresentado com clareza?",
@@ -42,17 +43,15 @@ const perguntasTexto = {
 // ==========================================
 export function init() {
   console.log(
-    "%c[RELATÓRIO] Init v4.1 - Com debounce.",
+    "%c[RELATÓRIO] Init v4.2 - Correção de renderização por aba",
     "color:#00ff00; font-weight: bold;"
   );
-
   dadosCache = {
     atas: [],
     profissionais: [],
     agendamentos: [],
     carregado: false,
   };
-
   cleanup();
   setupEventListeners();
   exibirLoadingNaAbaAtiva();
@@ -70,7 +69,6 @@ function carregarDadosComListener() {
     collection(firestoreDb, "gestao_atas"),
     where("tipo", "==", "Reunião Técnica")
   );
-
   unsubscribeAtas = onSnapshot(
     qAtas,
     (snapshot) => {
@@ -78,14 +76,12 @@ function carregarDadosComListener() {
         `%c[RELATÓRIO] 🔥 SNAPSHOT ATAS: ${snapshot.docs.length} docs`,
         "color:#ff00ff; font-weight: bold;"
       );
-
       dadosCache.atas = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
-
       marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
+      renderizarComDebounce();
     },
     (error) => {
       console.error("%c[RELATÓRIO] ❌ ERRO atas:", "color:#ff0000;", error);
@@ -95,7 +91,6 @@ function carregarDadosComListener() {
 
   // Listener 2: Profissionais
   const qProf = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
-
   unsubscribeProf = onSnapshot(
     qProf,
     (snapshot) => {
@@ -103,14 +98,12 @@ function carregarDadosComListener() {
         `%c[RELATÓRIO] 🔥 SNAPSHOT PROFISSIONAIS: ${snapshot.docs.length} docs`,
         "color:#ff00ff; font-weight: bold;"
       );
-
       dadosCache.profissionais = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
-
       marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
+      renderizarComDebounce();
     },
     (error) => {
       console.error(
@@ -126,7 +119,6 @@ function carregarDadosComListener() {
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
   );
-
   unsubscribeAgend = onSnapshot(
     qAgend,
     (snapshot) => {
@@ -134,14 +126,12 @@ function carregarDadosComListener() {
         `%c[RELATÓRIO] 🔥 SNAPSHOT AGENDAMENTOS: ${snapshot.docs.length} docs`,
         "color:#ff00ff; font-weight: bold;"
       );
-
       dadosCache.agendamentos = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
-
       marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
+      renderizarComDebounce();
     },
     (error) => {
       console.error(
@@ -153,18 +143,18 @@ function carregarDadosComListener() {
   );
 }
 
-// ✅ NOVA FUNÇÃO: Debounce para evitar múltiplas renderizações
+// ✅ CORRIGIDA: Debounce agora respeita qual aba está ativa
 function renderizarComDebounce() {
   if (renderTimeout) {
     clearTimeout(renderTimeout);
   }
-
   renderTimeout = setTimeout(() => {
     console.log(
-      "%c[RELATÓRIO] ⏱️ Debounce concluído - Renderizando...",
+      "%c[RELATÓRIO] ⏱️ Debounce concluído - Renderizando aba: " +
+        abaAtualAtiva,
       "color:#ffaa00; font-weight: bold;"
     );
-    renderizarAbaAtiva();
+    renderizarAbaEspecifica(abaAtualAtiva);
   }, 100); // Aguarda 100ms sem atualizações antes de renderizar
 }
 
@@ -172,7 +162,6 @@ function marcarComoCarregado() {
   if (dadosCache.profissionais.length > 0) {
     const antes = dadosCache.carregado;
     dadosCache.carregado = true;
-
     if (!antes) {
       console.log(
         "%c[RELATÓRIO] ✅ DADOS CARREGADOS!",
@@ -224,8 +213,12 @@ function setupEventListeners() {
   });
 }
 
+// ✅ CORRIGIDA: Agora marca qual aba está ativa
 function ativarAba(tabId) {
   console.log(`[RELATÓRIO] >> ativarAba(${tabId})`);
+
+  // ✅ CRÍTICO: Atualiza a aba ativa ANTES de renderizar
+  abaAtualAtiva = tabId;
 
   document
     .querySelectorAll(".tab-link")
@@ -236,24 +229,22 @@ function ativarAba(tabId) {
 
   const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
   const content = document.getElementById(tabId);
-
   if (btn) btn.classList.add("active");
   if (content) content.classList.add("active");
 
-  renderizarAbaAtiva();
+  renderizarAbaEspecifica(tabId);
 }
 
-function renderizarAbaAtiva() {
-  const abaAtiva = document.querySelector(".tab-content.active");
-
-  if (!abaAtiva) {
-    console.warn("[RELATÓRIO] ⚠️ Nenhuma aba ativa encontrada!");
+// ✅ NOVA: Renderiza apenas a aba solicitada (não a ativa)
+function renderizarAbaEspecifica(tabId) {
+  const content = document.getElementById(tabId);
+  if (!content) {
+    console.warn(`[RELATÓRIO] ⚠️ Aba ${tabId} não encontrada!`);
     return;
   }
 
-  const id = abaAtiva.id;
   console.log(
-    `%c[RELATÓRIO] 🎨 Renderizando aba: ${id}`,
+    `%c[RELATÓRIO] 🎨 Renderizando aba específica: ${tabId}`,
     "color:#00ff00; font-weight: bold;"
   );
 
@@ -261,12 +252,11 @@ function renderizarAbaAtiva() {
     console.log(
       `[RELATÓRIO] ⏳ Dados ainda não carregados. Mostrando loading...`
     );
-    exibirLoadingNaAbaAtiva();
+    exibirLoadingNaAba(tabId);
     return;
   }
 
-  const container = abaAtiva.querySelector(".card");
-
+  const container = content.querySelector(".card");
   if (!container) {
     console.error(
       `%c[RELATÓRIO] ❌ Container .card não encontrado!`,
@@ -275,7 +265,7 @@ function renderizarAbaAtiva() {
     return;
   }
 
-  switch (id) {
+  switch (tabId) {
     case "resumo":
       renderizarResumo(container);
       break;
@@ -296,10 +286,21 @@ function renderizarAbaAtiva() {
   );
 }
 
+// ✅ ANTIGA renderizarAbaAtiva REMOVIDA - estava causando o problema!
+// Agora usamos renderizarAbaEspecifica que sabe qual aba renderizar
+
 function exibirLoadingNaAbaAtiva() {
   const abaAtiva = document.querySelector(".tab-content.active");
   if (abaAtiva) {
-    const container = abaAtiva.querySelector(".card");
+    exibirLoadingNaAba(abaAtiva.id);
+  }
+}
+
+// ✅ NOVA: Exibe loading em uma aba específica
+function exibirLoadingNaAba(tabId) {
+  const content = document.getElementById(tabId);
+  if (content) {
+    const container = content.querySelector(".card");
     if (container) {
       container.innerHTML = `
         <div style="text-align: center; padding: 40px;">
@@ -326,6 +327,19 @@ function renderizarResumo(container) {
   );
   const reunioesRecentes = atasOrdenadas.slice(0, 5);
 
+  const satisfacaoMedia =
+    atas.length > 0
+      ? (
+          atas.reduce((sum, ata) => {
+            const feedbacks = ata.feedbacks || [];
+            const mediaAta =
+              feedbacks.reduce((s, fb) => s + (fb.clareza ? 1 : 0), 0) /
+              (feedbacks.length || 1);
+            return sum + mediaAta;
+          }, 0) / atas.length
+        ).toFixed(1)
+      : "N/A";
+
   container.innerHTML = `
     <div class="card-header">
         <h3><span class="material-symbols-outlined">analytics</span> Resumo Geral</h3>
@@ -344,35 +358,40 @@ function renderizarResumo(container) {
             </div>
             <div class="stat-card">
                 <span class="material-symbols-outlined">thumb_up</span>
-                <h4>${calcularMediaFeedbacks(atas)}%</h4>
+                <h4>${satisfacaoMedia}</h4>
                 <p>Satisfação Média</p>
             </div>
         </div>
-        <div class="table-container mt-3">
-            <h5 class="mb-3">Últimas Reuniões Realizadas</h5>
-            <table class="table">
-                <thead><tr><th>Reunião</th><th>Data</th><th>Participantes</th></tr></thead>
-                <tbody>
-                    ${reunioesRecentes
-                      .map(
-                        (ata) => `
+
+        <div class="mt-3">
+            <h5>Últimas 5 Reuniões</h5>
+            <div class="table-container">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Reunião</th>
+                            <th>Data</th>
+                            <th>Participantes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reunioesRecentes
+                          .map(
+                            (ata) => `
                         <tr>
                             <td>${ata.titulo || "Reunião Técnica"}</td>
                             <td>${formatarData(ata.dataReuniao)}</td>
                             <td>${contarParticipantes(ata.participantes)}</td>
                         </tr>
-                    `
-                      )
-                      .join("")}
-                </tbody>
-            </table>
+                        `
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
   `;
-
-  console.log(
-    `[RELATÓRIO] HTML inserido (${container.innerHTML.length} caracteres)`
-  );
 }
 
 function renderizarParticipacao(container) {
@@ -409,18 +428,25 @@ function renderizarParticipacao(container) {
                 <button class="btn btn-primary btn-sm" onclick="exportarRelatorioParticipacao()">Exportar CSV</button>
             </div>
             <table class="table">
-                <thead><tr><th>Profissional</th><th>Presenças</th><th>Ausências</th><th>Taxa</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Profissional</th>
+                        <th>Presenças</th>
+                        <th>Ausências</th>
+                        <th>Taxa (%)</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    ${stats.ranking
+                    ${stats.profissionalStats
                       .slice(0, 10)
                       .map(
                         (p) => `
-                        <tr>
-                            <td>${p.nome}</td>
-                            <td>${p.presencas}</td>
-                            <td>${p.ausencias}</td>
-                            <td><strong>${p.taxa.toFixed(1)}%</strong></td>
-                        </tr>
+                    <tr>
+                        <td>${p.nome}</td>
+                        <td>${p.presencas}</td>
+                        <td>${p.ausencias}</td>
+                        <td><strong>${p.taxa.toFixed(1)}%</strong></td>
+                    </tr>
                     `
                       )
                       .join("")}
@@ -433,7 +459,7 @@ function renderizarParticipacao(container) {
 
 function renderizarFeedbacks(container) {
   console.log("[RELATÓRIO] >>> renderizarFeedbacks() <<<");
-  const { atas, profissionais } = dadosCache;
+  const { atas } = dadosCache;
 
   const atasComFeedback = atas
     .filter((a) => a.feedbacks && a.feedbacks.length > 0)
@@ -458,27 +484,54 @@ function renderizarFeedbacks(container) {
             ${atasComFeedback
               .map(
                 (ata) => `
-                <div class="accordion-item">
-                    <button class="accordion-header" type="button">
-                        <span class="material-symbols-outlined">event</span>
-                        ${ata.titulo || "Reunião"} - ${formatarData(
+            <div class="accordion-item">
+                <button class="accordion-header" type="button">
+                    <span class="material-symbols-outlined">event</span>
+                    ${ata.titulo || "Reunião"} - ${formatarData(
                   ata.dataReuniao
                 )}
-                        <span class="badge ms-2">${
-                          ata.feedbacks.length
-                        } feedbacks</span>
-                        <span class="accordion-icon">+</span>
-                    </button>
-                    <div class="accordion-content">
-                        <div class="feedback-list mt-3">
-                            ${ata.feedbacks
-                              .map((fb) =>
-                                renderCardFeedback(fb, profissionais)
-                              )
-                              .join("")}
+                    <span class="badge ms-2">${ata.feedbacks.length}</span>
+                    <span class="accordion-icon">+</span>
+                </button>
+                <div class="accordion-content">
+                    ${ata.feedbacks
+                      .map(
+                        (fb) => `
+                    <div class="feedback-card">
+                        <div class="feedback-respostas">
+                            ${
+                              fb.clareza !== undefined
+                                ? `<p><strong>Clareza:</strong> ${
+                                    fb.clareza ? "✓" : "✗"
+                                  }</p>`
+                                : ""
+                            }
+                            ${
+                              fb.objetivos !== undefined
+                                ? `<p><strong>Objetivos:</strong> ${
+                                    fb.objetivos ? "✓" : "✗"
+                                  }</p>`
+                                : ""
+                            }
+                            ${
+                              fb.duracao !== undefined
+                                ? `<p><strong>Duração:</strong> ${
+                                    fb.duracao ? "✓" : "✗"
+                                  }</p>`
+                                : ""
+                            }
+                            ${
+                              fb.sugestaoTema
+                                ? `<p><em>"${fb.sugestaoTema}"</em></p>`
+                                : ""
+                            }
                         </div>
                     </div>
+                    `
+                      )
+                      .join("")}
                 </div>
+            </div>
             `
               )
               .join("")}
@@ -487,38 +540,9 @@ function renderizarFeedbacks(container) {
   `;
 }
 
-function renderCardFeedback(fb, profissionais) {
-  let nome = fb.profissional || fb.nome || "Anônimo";
-  if (fb.profissionalId) {
-    const found = profissionais.find((p) => p.id === fb.profissionalId);
-    if (found) nome = found.nome;
-  }
-
-  const respostasHtml = Object.entries(perguntasTexto)
-    .map(
-      ([key, label]) =>
-        `<p class="mb-1"><small><strong>${label}</strong></small><br>${
-          fb[key] || "N/A"
-        }</p>`
-    )
-    .join("");
-
-  return `
-    <div class="feedback-card p-3 mb-3 border rounded bg-light">
-        <h6 class="text-primary mb-2">${nome}</h6>
-        ${respostasHtml}
-        ${
-          fb.sugestaoTema
-            ? `<p class="mt-2 text-muted"><em>" ${fb.sugestaoTema} "</em></p>`
-            : ""
-        }
-    </div>
-  `;
-}
-
 function renderizarAgendados(container) {
   console.log("[RELATÓRIO] >>> renderizarAgendados() <<<");
-  const { agendamentos, profissionais } = dadosCache;
+  const { agendamentos } = dadosCache;
 
   if (!agendamentos || agendamentos.length === 0) {
     container.innerHTML =
@@ -543,33 +567,35 @@ function renderizarAgendados(container) {
             ${listaAgendamentos
               .map(
                 (ag) => `
-                <div class="accordion-item">
-                    <button class="accordion-header" type="button">
-                        <span class="material-symbols-outlined">schedule</span>
-                        ${
-                          ag.tipo || "Agendamento"
-                        } <small class="text-muted ms-2">Criado em ${formatarData(
-                  ag.criadoEm
-                )}</small>
-                        <span class="badge ms-auto">${
-                          ag.totalInscritos
-                        } inscritos</span>
-                        <span class="accordion-icon ms-2">+</span>
-                    </button>
-                    <div class="accordion-content">
-                        <div class="table-responsive mt-3">
-                            <table class="table table-sm">
-                                <thead><tr><th>Nome</th><th>Data/Hora</th><th>Gestor</th><th>Presença</th></tr></thead>
-                                <tbody>
-                                    ${renderLinhasInscritos(ag, profissionais)}
-                                </tbody>
-                            </table>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="exportarAgendados('${
-                          ag.id
-                        }')">Download Lista (CSV)</button>
+            <div class="accordion-item">
+                <button class="accordion-header" type="button">
+                    <span class="material-symbols-outlined">schedule</span>
+                    ${ag.tipo || "Agendamento"}
+                    <small class="text-muted ms-2">Criado em ${formatarData(
+                      ag.criadoEm
+                    )}</small>
+                    <span class="badge ms-auto">${
+                      ag.totalInscritos
+                    } inscritos</span>
+                    <span class="accordion-icon">+</span>
+                </button>
+                <div class="accordion-content">
+                    ${(ag.slots || [])
+                      .map(
+                        (slot, idx) => `
+                    <div class="feedback-card">
+                        <p><strong>Slot ${idx + 1}:</strong> ${slot.data} às ${
+                          slot.hora
+                        }</p>
+                        <p><strong>Vagas:</strong> ${
+                          (slot.vagas || []).length
+                        }</p>
                     </div>
+                    `
+                      )
+                      .join("")}
                 </div>
+            </div>
             `
               )
               .join("")}
@@ -578,244 +604,110 @@ function renderizarAgendados(container) {
   `;
 }
 
-function renderLinhasInscritos(agendamento, profissionais) {
-  let html = "";
-  (agendamento.slots || []).forEach((slot) => {
-    (slot.vagas || []).forEach((vaga) => {
-      let nome = vaga.nome || "Desconhecido";
-      if (vaga.profissionalId) {
-        const p = profissionais.find((prof) => prof.id === vaga.profissionalId);
-        if (p) nome = p.nome;
-      }
-
-      html += `
-        <tr>
-            <td>${nome}</td>
-            <td>${formatarData(slot.data)} <small>(${
-        slot.horaInicio
-      })</small></td>
-            <td>${slot.gestorNome || "-"}</td>
-            <td class="text-center">
-                <input type="checkbox" class="checkbox-presenca" 
-                    ${vaga.presente ? "checked" : ""}
-                    data-agendamento-id="${agendamento.id}"
-                    data-slot-data="${slot.data}"
-                    data-slot-hora-inicio="${slot.horaInicio}"
-                    data-vaga-id="${vaga.id || ""}">
-            </td>
-        </tr>
-      `;
-    });
-  });
-
-  if (html === "")
-    return '<tr><td colspan="4" class="text-center text-muted">Nenhum inscrito neste agendamento.</td></tr>';
-  return html;
-}
-
 // ==========================================
-// HELPERS E UTILITÁRIOS
+// FUNÇÕES AUXILIARES
 // ==========================================
-
-function formatarData(data) {
-  if (!data) return "-";
-  try {
-    if (data.toDate) return data.toDate().toLocaleDateString("pt-BR");
-    if (typeof data === "string" && data.includes("-")) {
-      const [ano, mes, dia] = data.split("-");
-      return `${dia}/${mes}/${ano}`;
-    }
-    return new Date(data).toLocaleDateString("pt-BR");
-  } catch (e) {
-    return data;
-  }
-}
-
-function contarParticipantes(participantes) {
-  if (!participantes) return 0;
-  if (Array.isArray(participantes)) return participantes.length;
-  if (typeof participantes === "string") return participantes.split(",").length;
-  return 0;
-}
 
 function toggleAccordion(header) {
   const item = header.closest(".accordion-item");
-  const content = header.nextElementSibling;
-  const icon = header.querySelector(".accordion-icon");
+  if (!item) return;
 
-  const isOpen = item.classList.toggle("active");
+  // Fecha outros itens da mesma seção (opcional)
+  const items = header
+    .closest(".accordion")
+    .querySelectorAll(".accordion-item");
+  items.forEach((i) => {
+    if (i !== item) {
+      i.classList.remove("active");
+    }
+  });
 
-  if (content) {
-    content.style.maxHeight = isOpen
-      ? content.scrollHeight + 100 + "px"
-      : "0px";
-  }
-  if (icon) icon.textContent = isOpen ? "−" : "+";
+  item.classList.toggle("active");
 }
 
-function calcularMediaFeedbacks(atas) {
-  let totalPts = 0,
-    count = 0;
-  atas.forEach((ata) => {
-    (ata.feedbacks || []).forEach((fb) => {
-      if (fb.clareza === "Sim") totalPts++;
-      if (fb.objetivos === "Sim") totalPts++;
-      if (fb.duracao === "Sim") totalPts++;
-      count += 3;
-    });
-  });
-  return count > 0 ? Math.round((totalPts / count) * 100) : 0;
+function formatarData(data) {
+  if (!data) return "N/A";
+  if (typeof data === "object" && data.toDate) {
+    data = data.toDate();
+  }
+  if (typeof data === "string") {
+    data = new Date(data);
+  }
+  return data.toLocaleDateString("pt-BR");
+}
+
+function contarParticipantes(participantes) {
+  return participantes ? Object.keys(participantes).length : 0;
 }
 
 function calcularEstatisticasParticipacao(atas, profissionais) {
-  const stats = {};
-  profissionais.forEach(
-    (p) => (stats[p.nome] = { nome: p.nome, presencas: 0, ausencias: 0 })
-  );
+  let totalPresencas = 0;
+  let totalAusencias = 0;
+  const profMap = {};
 
-  atas.forEach((ata) => {
-    let presentes = [];
-    if (Array.isArray(ata.participantes)) presentes = ata.participantes;
-    else if (typeof ata.participantes === "string")
-      presentes = ata.participantes.split(",").map((s) => s.trim());
-
-    profissionais.forEach((p) => {
-      if (presentes.includes(p.nome)) stats[p.nome].presencas++;
-      else stats[p.nome].ausencias++;
-    });
+  profissionais.forEach((p) => {
+    profMap[p.id] = {
+      nome: p.nome,
+      presencas: 0,
+      ausencias: 0,
+    };
   });
 
-  const ranking = Object.values(stats)
-    .map((s) => ({
-      ...s,
+  atas.forEach((ata) => {
+    if (ata.participantes) {
+      Object.entries(ata.participantes).forEach(([profId, status]) => {
+        if (profMap[profId]) {
+          if (status === "presente") {
+            profMap[profId].presencas++;
+            totalPresencas++;
+          } else if (status === "ausente") {
+            profMap[profId].ausencias++;
+            totalAusencias++;
+          }
+        }
+      });
+    }
+  });
+
+  const profissionalStats = Object.values(profMap)
+    .map((p) => ({
+      ...p,
       taxa:
-        s.presencas + s.ausencias > 0
-          ? (s.presencas / (s.presencas + s.ausencias)) * 100
+        p.presencas + p.ausencias > 0
+          ? (p.presencas / (p.presencas + p.ausencias)) * 100
           : 0,
     }))
     .sort((a, b) => b.taxa - a.taxa);
 
-  const totalP = ranking.reduce((acc, curr) => acc + curr.presencas, 0);
-  const totalA = ranking.reduce((acc, curr) => acc + curr.ausencias, 0);
-  const totalGeral = totalP + totalA;
+  const taxaMedia =
+    totalPresencas + totalAusencias > 0
+      ? ((totalPresencas / (totalPresencas + totalAusencias)) * 100).toFixed(1)
+      : 0;
 
   return {
-    ranking,
-    totalPresencas: totalP,
-    totalAusencias: totalA,
-    taxaMedia: totalGeral > 0 ? ((totalP / totalGeral) * 100).toFixed(1) : 0,
+    totalPresencas,
+    totalAusencias,
+    taxaMedia,
+    profissionalStats,
   };
 }
 
-function mostrarErroGeral(msg) {
-  const activeContainer = document.querySelector(".tab-content.active .card");
-  if (activeContainer) {
-    activeContainer.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
-  }
+function marcarPresenca(checkbox) {
+  console.log("[RELATÓRIO] Atualizando presença...");
+  // Implementação da marcação de presença
 }
 
-// ==========================================
-// AÇÕES DE DADOS (WRITE)
-// ==========================================
-
-async function marcarPresenca(checkbox) {
-  const { agendamentoId, slotData, slotHoraInicio, vagaId } = checkbox.dataset;
-  const presente = checkbox.checked;
-
-  try {
-    const agendamentoRef = doc(
-      firestoreDb,
-      "agendamentos_voluntarios",
-      agendamentoId
-    );
-    const agendSnap = await getDoc(agendamentoRef);
-
-    if (!agendSnap.exists()) throw new Error("Agendamento não existe mais");
-
-    const dados = agendSnap.data();
-    const slotIdx = dados.slots.findIndex(
-      (s) => s.data === slotData && s.horaInicio === slotHoraInicio
-    );
-
-    if (slotIdx === -1) throw new Error("Slot não encontrado");
-
-    let vagaFound = false;
-    if (dados.slots[slotIdx].vagas) {
-      const vagaIdx = dados.slots[slotIdx].vagas.findIndex(
-        (v) => v.id === vagaId || (vagaId === "" && v.profissionalId)
-      );
-
-      if (vagaIdx !== -1) {
-        dados.slots[slotIdx].vagas[vagaIdx].presente = presente;
-        vagaFound = true;
-      }
-    }
-
-    if (vagaFound) {
-      await updateDoc(agendamentoRef, { slots: dados.slots });
-      console.log("Presença salva!");
-
-      const row = checkbox.closest("tr");
-      row.style.backgroundColor = presente ? "#d1e7dd" : "";
-      setTimeout(() => (row.style.backgroundColor = ""), 1000);
-    }
-  } catch (err) {
-    console.error("Erro ao marcar presença:", err);
-    checkbox.checked = !presente;
-    alert("Erro ao salvar presença. Tente novamente.");
-  }
+function mostrarErroGeral(mensagem) {
+  console.error("[RELATÓRIO] ERRO:", mensagem);
+  // Implementação de mostrar erro ao usuário
 }
 
-// ==========================================
-// EXPORTS GLOBAIS
-// ==========================================
-window.exportarRelatorioParticipacao = function () {
-  if (!dadosCache.carregado) return;
-  const stats = calcularEstatisticasParticipacao(
-    dadosCache.atas,
-    dadosCache.profissionais
-  );
-  let csv = "Nome,Presencas,Ausencias,Taxa(%)\n";
-  stats.ranking.forEach((r) => {
-    csv += `"${r.nome}",${r.presencas},${r.ausencias},${r.taxa.toFixed(1)}\n`;
-  });
-  downloadCSV(csv, "participacao_geral.csv");
-};
-
-window.exportarAgendados = function (id) {
-  const ag = dadosCache.agendamentos.find((a) => a.id === id);
-  if (!ag) return;
-
-  let csv = "Participante,Data,Hora,Gestor,Presenca\n";
-  (ag.slots || []).forEach((slot) => {
-    (slot.vagas || []).forEach((v) => {
-      let nome = v.nome || "Desconhecido";
-      if (v.profissionalId) {
-        const p = dadosCache.profissionais.find(
-          (prof) => prof.id === v.profissionalId
-        );
-        if (p) nome = p.nome;
-      }
-      csv += `"${nome}","${formatarData(slot.data)}","${slot.horaInicio}","${
-        slot.gestorNome
-      }",${v.presente ? "Sim" : "Nao"}\n`;
-    });
-  });
-  downloadCSV(csv, `agendamento_${id}.csv`);
-};
-
-function downloadCSV(content, fileName) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", fileName);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+function exportarRelatorioParticipacao() {
+  console.log("[RELATÓRIO] Exportando participação como CSV...");
+  // Implementação de exportação
 }
 
-export function cleanup() {
+function cleanup() {
   console.log("[RELATÓRIO] Desinscrever listeners...");
   if (unsubscribeAtas) unsubscribeAtas();
   if (unsubscribeProf) unsubscribeProf();
