@@ -185,7 +185,8 @@ function aplicarFiltrosEExibir() {
     return matchTipo && matchBusca;
   });
 
-  // Filtro de Data
+  // ALTERAÇÃO: Lógica de Datas
+  // Se houver filtro de data explícito, usa ele.
   if (dataInicioVal || dataFimVal) {
     const dIni = dataInicioVal
       ? new Date(dataInicioVal)
@@ -195,6 +196,18 @@ function aplicarFiltrosEExibir() {
     itensFiltrados = itensFiltrados.filter(
       (item) => item.dataOrdenacao >= dIni && item.dataOrdenacao <= dFim
     );
+  } else {
+    // Caso contrário, mostra apenas o mês atual
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+
+    itensFiltrados = itensFiltrados.filter((item) => {
+      return (
+        item.dataOrdenacao.getMonth() === mesAtual &&
+        item.dataOrdenacao.getFullYear() === anoAtual
+      );
+    });
   }
 
   // Ordenação
@@ -209,7 +222,7 @@ function renderizarLista(lista) {
   if (!container) return;
 
   if (lista.length === 0) {
-    container.innerHTML = `<div class="alert alert-info text-center">Nenhuma reunião encontrada.</div>`;
+    container.innerHTML = `<div class="alert alert-info text-center">Nenhuma reunião encontrada para o período.</div>`;
     document.getElementById("contador-atas").textContent = "0";
     return;
   }
@@ -274,6 +287,9 @@ function renderizarLista(lista) {
 }
 
 function atualizarCardProximaReuniao(lista) {
+  // Nota: O card de próxima reunião pode considerar todas as futuras,
+  // independente do filtro de lista, ou obedecer à lista.
+  // Aqui estamos obedecendo à lista filtrada para consistência.
   const agora = new Date();
   const proximas = lista
     .filter((i) => i.dataOrdenacao > agora)
