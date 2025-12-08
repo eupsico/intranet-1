@@ -1,0 +1,240 @@
+/* /modulos/gestao/css/agendar.css */
+
+:root {
+    --cor-primaria: #0d3b66;
+    --cor-primaria-hover: #082542;
+    --cor-bg: #f4f6f9;
+    --cor-card: #ffffff;
+    --cor-borda: #e0e0e0;
+    --cor-texto: #333;
+    --cor-label: #555;
+    --cor-danger: #dc3545;
+    --radius: 8px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+body {
+    background-color: var(--cor-bg);
+    color: var(--cor-texto);
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Container Principal */
+.main-content {
+    padding: 30px;
+}
+
+/* Cartão de Agendamento */
+.card-agendamento {
+    background: var(--cor-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 30px;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.card-header-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 15px;
+}
+
+.card-header-custom h2 {
+    margin: 0;
+    color: var(--cor-primaria);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* Botão Superior (Gerenciar) */
+.btn-secondary-outline {
+    background: transparent;
+    border: 1px solid #ccc;
+    color: #666;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-secondary-outline:hover {
+    background: #f8f9fa;
+    border-color: #bbb;
+    color: #333;
+}
+
+/* Formulários e Inputs */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--cor-label);
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-sizing: border-box; /* Importante para não quebrar layout */
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 4px rgba(13, 59, 102, 0.1);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Checkbox estilizado */
+.checkbox-wrapper {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: var(--radius);
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-wrapper label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.help-text {
+    display: block;
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 4px;
+    margin-left: 28px; /* Alinha com o texto do checkbox */
+}
+
+/* Área Dinâmica de Slots (Datas e Horários) */
+.slots-container {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.slots-header {
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--cor-primaria);
+    display: block;
+}
+
+/* A linha mágica: Grid para alinhar tudo perfeitamente */
+.slot-row {
+    display: grid;
+    /* Data | Inicio | Fim | Responsavel | Botão Excluir */
+    grid-template-columns: 2fr 1fr 1fr 2fr 50px; 
+    gap: 15px;
+    align-items: end; /* Alinha os inputs na base */
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #eee;
+}
+
+.slot-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.slot-col label {
+    font-size: 0.8rem;
+    color: #777;
+    margin-bottom: 4px;
+}
+
+/* Botão de Excluir (X) */
+.btn-remove {
+    background-color: #fff0f0;
+    color: var(--cor-danger);
+    border: 1px solid #ffcccc;
+    border-radius: 6px;
+    width: 100%;
+    height: 42px; /* Mesma altura dos inputs */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-remove:hover {
+    background-color: var(--cor-danger);
+    color: white;
+    border-color: var(--cor-danger);
+}
+
+/* Botões de Ação Principal */
+.actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.btn-add {
+    background-color: #e9ecef;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-add:hover {
+    background-color: #dee2e6;
+}
+
+.btn-save {
+    background-color: var(--cor-primaria);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(13, 59, 102, 0.2);
+    transition: transform 0.1s;
+}
+
+.btn-save:hover {
+    background-color: var(--cor-primaria-hover);
+    transform: translateY(-1px);
+}
