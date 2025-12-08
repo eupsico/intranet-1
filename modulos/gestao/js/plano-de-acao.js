@@ -1,5 +1,5 @@
 // /modulos/gestao/js/plano-de-acao.js
-// VERSÃO 3.0 (MELHORADO: Realtime, Drag-Drop, Filtros, Status Visual)
+// VERSÃO 3.5 (Unificado com Eventos e Suporte a Slots)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -10,20 +10,18 @@ import {
   orderBy,
   doc,
   updateDoc,
-  arrayUnion,
   getDoc,
-  writeBatch,
 } from "../../../assets/js/firebase-init.js";
 
 let todasAsTarefas = [];
 let gestoresCache = [];
 let departamentosCache = [];
 let currentUser = null;
-let unsubscribeAtas = null;
+let unsubscribeEventos = null;
 let draggedCard = null;
 
 export async function init(user, userData) {
-  console.log("[PLANO] Módulo Plano de Ação iniciado (v3.0).");
+  console.log("[PLANO] Módulo Plano de Ação iniciado (v3.5 - Eventos).");
   currentUser = userData;
   await carregarDadosIniciais();
   configurarEventListeners();
@@ -34,7 +32,7 @@ async function carregarDadosIniciais() {
     await Promise.all([
       fetchGestores(),
       fetchDepartamentos(),
-      fetchAtasEPlanosRealtime(),
+      fetchTarefasRealtime(),
     ]);
     renderizarQuadroKanban();
     console.log("[PLANO] Dados iniciais carregados.");
@@ -44,50 +42,102 @@ async function carregarDadosIniciais() {
   }
 }
 
-async function fetchAtasEPlanosRealtime() {
+/**
+ * Busca tarefas em tempo real na coleção 'eventos'.
+ * Varre tanto a raiz do documento quanto os slots internos.
+ */
+async function fetchTarefasRealtime() {
   try {
+    // ALTERAÇÃO: Busca na coleção 'eventos'
     const q = query(
-      collection(firestoreDb, "gestao_atas"),
-      orderBy("dataReuniao", "desc")
+      collection(firestoreDb, "eventos"),
+      orderBy("criadoEm", "desc")
     );
 
-    if (unsubscribeAtas) unsubscribeAtas();
+    if (unsubscribeEventos) unsubscribeEventos();
 
-    unsubscribeAtas = onSnapshot(q, (snapshot) => {
+    unsubscribeEventos = onSnapshot(q, (snapshot) => {
       todasAsTarefas = [];
-      snapshot.forEach((docAta) => {
-        const ata = { id: docAta.id, ...docAta.data() };
-        const dataReuniao = ata.dataReuniao
-          ? new Date(ata.dataReuniao + "T00:00:00").toLocaleDateString("pt-BR")
-          : "Data Indefinida";
-        const origem = `${ata.tipo || "Reunião"} - ${dataReuniao}`;
 
-        const processarItens = (lista, tipo) => {
-          if (Array.isArray(lista)) {
-            lista.forEach((item, index) => {
-              const hoje = new Date();
-              hoje.setHours(0, 0, 0, 0);
+      snapshot.forEach((docSnap) => {
+        const dados = docSnap.data();
+        const docId = docSnap.id;
+        const slots = dados.slots || [];
 
+        // Função auxiliar para extrair tarefas de um objeto (seja raiz ou slot)
+        const processarObjeto = (obj, origemTexto, slotIndex) => {
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+
+          // Processa Atividades (planoDeAcao)
+          if (obj.planoDeAcao && Array.isArray(obj.planoDeAcao)) {
+            obj.planoDeAcao.forEach((item, index) => {
+              // Verifica atraso
               if (item.prazo && item.status !== "Concluído") {
                 const prazo = new Date(item.prazo + "T00:00:00");
-                if (prazo < hoje) {
-                  item.status = "Atrasado";
-                }
+                if (prazo < hoje) item.status = "Atrasado";
               }
 
               todasAsTarefas.push({
                 ...item,
-                type: tipo,
-                ataId: ata.id,
+                type: "atividade",
+                docId: docId,
+                slotIndex: slotIndex, // -1 para raiz, >=0 para slots
                 itemIndex: index,
-                origem,
+                origem: origemTexto,
+                status: item.status || "A Fazer",
+              });
+            });
+          }
+
+          // Processa Encaminhamentos
+          if (obj.encaminhamentos && Array.isArray(obj.encaminhamentos)) {
+            obj.encaminhamentos.forEach((item, index) => {
+              // Verifica atraso
+              if (item.prazo && item.status !== "Concluído") {
+                const prazo = new Date(item.prazo + "T00:00:00");
+                if (prazo < hoje) item.status = "Atrasado";
+              }
+
+              todasAsTarefas.push({
+                ...item,
+                type: "encaminhamento",
+                docId: docId,
+                slotIndex: slotIndex,
+                itemIndex: index,
+                origem: origemTexto,
+                status: item.status || "A Fazer",
               });
             });
           }
         };
 
-        processarItens(ata.planoDeAcao, "atividade");
-        processarItens(ata.encaminhamentos, "encaminhamento");
+        // 1. Processa Raiz (Eventos antigos ou simples)
+        // Se tiver data definida usa, senão data de criação
+        const dataRaiz = dados.dataReuniao
+          ? new Date(dados.dataReuniao + "T00:00:00").toLocaleDateString(
+              "pt-BR"
+            )
+          : "Data n/a";
+        processarObjeto(dados, `${dados.tipo} (Geral) - ${dataRaiz}`, -1);
+
+        // 2. Processa Slots (Eventos múltiplos)
+        slots.forEach((slot, idx) => {
+          const dataSlot = new Date(slot.data + "T00:00:00").toLocaleDateString(
+            "pt-BR"
+          );
+          // Só processa se tiver tarefas no slot
+          if (
+            (slot.planoDeAcao && slot.planoDeAcao.length) ||
+            (slot.encaminhamentos && slot.encaminhamentos.length)
+          ) {
+            processarObjeto(
+              slot,
+              `${dados.tipo} - ${dataSlot} (${slot.horaInicio})`,
+              idx
+            );
+          }
+        });
       });
 
       renderizarQuadroKanban();
@@ -96,8 +146,8 @@ async function fetchAtasEPlanosRealtime() {
       );
     });
   } catch (erro) {
-    console.error("[PLANO] Erro ao buscar atas:", erro);
-    throw new Error("Falha ao buscar plano de ação. Verifique permissões.");
+    console.error("[PLANO] Erro ao buscar tarefas:", erro);
+    throw new Error("Falha ao buscar plano de ação.");
   }
 }
 
@@ -109,12 +159,12 @@ async function fetchGestores() {
       where("funcoes", "array-contains", "gestor"),
       orderBy("nome")
     );
-    const snapshot = await onSnapshot(q, (snap) => {
+    // Listener one-time
+    const snap = await onSnapshot(q, (snap) => {
       gestoresCache = snap.docs.map((doc) => ({
         nome: doc.data().nome,
         departamento: doc.data().departamento || "",
       }));
-      console.log("[PLANO] Gestores carregados:", gestoresCache.length);
     });
   } catch (erro) {
     console.error("[PLANO] Erro ao buscar gestores:", erro);
@@ -129,12 +179,6 @@ async function fetchDepartamentos() {
     const docSnap = await getDoc(configRef);
     if (docSnap.exists() && docSnap.data().listas?.departamentos) {
       departamentosCache = docSnap.data().listas.departamentos.sort();
-      console.log(
-        "[PLANO] Departamentos carregados:",
-        departamentosCache.length
-      );
-    } else {
-      console.warn("[PLANO] Nenhuma lista de departamentos encontrada.");
     }
   } catch (erro) {
     console.error("[PLANO] Erro ao buscar departamentos:", erro);
@@ -154,15 +198,17 @@ function configurarEventListeners() {
   if (filtroBusca)
     filtroBusca.addEventListener("input", renderizarQuadroKanban);
   if (filtroTipo) filtroTipo.addEventListener("change", renderizarQuadroKanban);
-  if (botaoLimpar)
+
+  if (botaoLimpar) {
     botaoLimpar.addEventListener("click", () => {
       if (filtroStatus) filtroStatus.value = "Todos";
       if (filtroBusca) filtroBusca.value = "";
       if (filtroTipo) filtroTipo.value = "Todos";
       renderizarQuadroKanban();
     });
+  }
 
-  // Drag-and-Drop
+  // Drag-and-Drop Global
   document.addEventListener("dragstart", handleDragStart);
   document.addEventListener("dragend", handleDragEnd);
   document.addEventListener("dragover", handleDragOver);
@@ -207,9 +253,13 @@ function renderizarQuadroKanban() {
   });
 
   if (tarefasFiltradas.length === 0) {
-    const coluna = colunas[statusFiltro] || colunas["A Fazer"];
-    if (coluna) {
-      coluna.innerHTML =
+    // Se não tem nada filtrado, exibe msg na coluna do filtro ou na primeira
+    const colunaAlvo =
+      statusFiltro !== "Todos" && colunas[statusFiltro]
+        ? colunas[statusFiltro]
+        : colunas["A Fazer"];
+    if (colunaAlvo) {
+      colunaAlvo.innerHTML =
         '<div class="alert alert-info text-center">Nenhuma tarefa encontrada.</div>';
     }
     return;
@@ -222,10 +272,6 @@ function renderizarQuadroKanban() {
       colunas[status].innerHTML += criarCardHtml(item);
     }
   });
-
-  console.log(
-    `[PLANO] Kanban renderizado (${tarefasFiltradas.length} tarefas).`
-  );
 }
 
 function criarCardHtml(item) {
@@ -242,9 +288,10 @@ function criarCardHtml(item) {
     ? Math.ceil((dataPrazo - hoje) / (1000 * 60 * 60 * 24))
     : null;
 
-  // Define cor baseado na urgência
+  // Define cor baseado na urgência e status
   let corBorda = "border-secondary";
   let iconeUrgencia = "";
+
   if (item.status === "Atrasado") {
     corBorda = "border-danger";
     iconeUrgencia =
@@ -252,7 +299,8 @@ function criarCardHtml(item) {
   } else if (
     diasRestantes !== null &&
     diasRestantes < 3 &&
-    diasRestantes >= 0
+    diasRestantes >= 0 &&
+    item.status !== "Concluído"
   ) {
     corBorda = "border-warning";
     iconeUrgencia =
@@ -267,15 +315,17 @@ function criarCardHtml(item) {
     item.type === "encaminhamento"
       ? "bg-info text-white"
       : "bg-primary text-white";
-  const identifier = `${item.ataId}|${item.itemIndex}|${item.type}`;
+  const tipoLabel =
+    item.type === "encaminhamento" ? "Encaminhamento" : "Atividade";
+
+  // IDENTIFICADOR ÚNICO: DocId | SlotIndex | ItemIndex | Tipo
+  const identifier = `${item.docId}|${item.slotIndex}|${item.itemIndex}|${item.type}`;
 
   return `
         <div class="card mb-2 ${corBorda} cursor-move" draggable="true" data-identifier="${identifier}">
             <div class="card-body p-2">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge ${corTipo}">${
-    item.type === "encaminhamento" ? "Encaminhamento" : "Atividade"
-  }</span>
+                    <span class="badge ${corTipo}">${tipoLabel}</span>
                     ${iconeUrgencia}
                 </div>
                 <p class="card-text mb-2"><strong>${
@@ -285,7 +335,7 @@ function criarCardHtml(item) {
                 <small class="text-muted d-block mb-1">👤 ${responsavel}</small>
                 <small class="text-muted d-block">📅 ${prazo}</small>
                 ${
-                  diasRestantes !== null
+                  diasRestantes !== null && item.status !== "Concluído"
                     ? `
                     <small class="d-block mt-1">
                         <span class="badge ${
@@ -303,17 +353,17 @@ function criarCardHtml(item) {
                                 : `${diasRestantes} dia(s)`
                             }
                         </span>
-                    </small>
-                `
+                    </small>`
                     : ""
                 }
-                <button class="btn btn-sm btn-outline-primary mt-2" onclick="abrirDetalhes('${identifier}')">
-                    Ver Detalhes
-                </button>
-            </div>
+                </div>
         </div>
     `;
 }
+
+// =================================================================================
+// DRAG AND DROP HANDLERS
+// =================================================================================
 
 function handleDragStart(e) {
   if (e.target.matches('[draggable="true"]')) {
@@ -342,27 +392,58 @@ async function handleDrop(e) {
   const coluna = e.target.closest(".cards-container");
   if (!coluna) return;
 
-  const statusTarget =
-    coluna.closest("[data-status]")?.dataset.status ||
-    coluna.closest("#coluna-a-fazer")?.dataset.status ||
-    "A Fazer";
+  // Descobre qual o status de destino da coluna
+  // Tenta pegar do atributo data-status do pai .kanban-column
+  const kanbanColumn = coluna.closest(".kanban-column");
+  const statusTarget = kanbanColumn ? kanbanColumn.dataset.status : "A Fazer";
 
   const identifier = draggedCard.dataset.identifier;
-  const [ataId, itemIndex, tipo] = identifier.split("|");
+  if (!identifier) return;
+
+  // Desconstroi o ID: docId | slotIndex | itemIndex | tipo
+  const [docId, slotIndexStr, itemIndexStr, tipo] = identifier.split("|");
+  const slotIndex = parseInt(slotIndexStr);
+  const itemIndex = parseInt(itemIndexStr);
 
   try {
-    const docRef = doc(firestoreDb, "gestao_atas", ataId);
-    const campoAlterar =
+    const docRef = doc(firestoreDb, "eventos", docId);
+    const campoNome =
       tipo === "encaminhamento" ? "encaminhamentos" : "planoDeAcao";
-    const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      const dados = docSnap.data();
-      const items = dados[campoAlterar] || [];
-      if (items[itemIndex]) {
-        items[itemIndex].status = statusTarget;
-        await updateDoc(docRef, { [campoAlterar]: items });
-        console.log(`[PLANO] Tarefa movida para: ${statusTarget}`);
+    // Caso 1: Tarefa na Raiz (SlotIndex = -1)
+    if (slotIndex === -1) {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const lista = data[campoNome] || [];
+
+        if (lista[itemIndex]) {
+          lista[itemIndex].status = statusTarget;
+          await updateDoc(docRef, { [campoNome]: lista });
+          console.log(`[PLANO] Tarefa raiz atualizada para: ${statusTarget}`);
+        }
+      }
+    }
+    // Caso 2: Tarefa dentro de um Slot (SlotIndex >= 0)
+    else {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const slots = data.slots || [];
+
+        if (slots[slotIndex]) {
+          const lista = slots[slotIndex][campoNome] || [];
+
+          if (lista[itemIndex]) {
+            lista[itemIndex].status = statusTarget;
+
+            // Atualiza o array inteiro de slots
+            await updateDoc(docRef, { slots: slots });
+            console.log(
+              `[PLANO] Tarefa do slot ${slotIndex} atualizada para: ${statusTarget}`
+            );
+          }
+        }
       }
     }
   } catch (erro) {
@@ -371,25 +452,24 @@ async function handleDrop(e) {
   }
 }
 
-function abrirDetalhes(identifier) {
-  console.log("[PLANO] Abrindo detalhes de:", identifier);
-  alert(`Detalhes da tarefa: ${identifier} (implementar modal de edição)`);
-}
-
 function exibirErro(mensagem) {
   const alert = document.createElement("div");
   alert.className = "alert alert-danger alert-dismissible fade show";
+  alert.style.position = "fixed";
+  alert.style.top = "20px";
+  alert.style.right = "20px";
+  alert.style.zIndex = "9999";
   alert.innerHTML = `
         ${mensagem}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-  document.body.prepend(alert);
+  document.body.appendChild(alert); // Append no body para garantir visibilidade
   setTimeout(() => alert.remove(), 5000);
 }
 
 export function cleanup() {
-  if (unsubscribeAtas) {
-    unsubscribeAtas();
+  if (unsubscribeEventos) {
+    unsubscribeEventos();
     console.log("[PLANO] Listener cancelado.");
   }
 }
