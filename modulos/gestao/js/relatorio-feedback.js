@@ -14,7 +14,7 @@ import {
 } from "../../../assets/js/firebase-init.js";
 
 // ==========================================
-// ESTADO GLOBAL DO MÓDULO
+// ESTADO GLOBAL
 // ==========================================
 let dadosCache = {
   atas: [],
@@ -23,11 +23,15 @@ let dadosCache = {
   carregado: false,
 };
 
+let estadoCarregamento = {
+  atas: false,
+  profissionais: false,
+  agendamentos: false,
+};
+
 let unsubscribeAtas = null;
 let unsubscribeProf = null;
 let unsubscribeAgend = null;
-
-// ✅ NOVO: Debounce para renderização
 let renderTimeout = null;
 
 const perguntasTexto = {
@@ -41,16 +45,19 @@ const perguntasTexto = {
 // INICIALIZAÇÃO
 // ==========================================
 export function init() {
-  console.log(
-    "%c[RELATÓRIO] Init v4.1 - Com debounce.",
-    "color:#00ff00; font-weight: bold;"
-  );
+  console.log("%c[RELATÓRIO] Init v4.2", "color:#00ff00; font-weight:bold;");
 
   dadosCache = {
     atas: [],
     profissionais: [],
     agendamentos: [],
     carregado: false,
+  };
+
+  estadoCarregamento = {
+    atas: false,
+    profissionais: false,
+    agendamentos: false,
   };
 
   cleanup();
@@ -62,95 +69,46 @@ export function init() {
 // ==========================================
 // LÓGICA DE DADOS (Listeners em tempo real)
 // ==========================================
-function carregarDadosComListener() {
-  console.log("[RELATÓRIO] Configurando listeners em tempo real...");
 
-  // Listener 1: Atas Técnicas
+function carregarDadosComListener() {
   const qAtas = query(
     collection(firestoreDb, "gestao_atas"),
     where("tipo", "==", "Reunião Técnica")
   );
 
-  unsubscribeAtas = onSnapshot(
-    qAtas,
-    (snapshot) => {
-      console.log(
-        `%c[RELATÓRIO] 🔥 SNAPSHOT ATAS: ${snapshot.docs.length} docs`,
-        "color:#ff00ff; font-weight: bold;"
-      );
+  unsubscribeAtas = onSnapshot(qAtas, (snapshot) => {
+    dadosCache.atas = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    estadoCarregamento.atas = true;
+    marcarComoCarregado();
+    renderizarComDebounce();
+  });
 
-      dadosCache.atas = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
-    },
-    (error) => {
-      console.error("%c[RELATÓRIO] ❌ ERRO atas:", "color:#ff0000;", error);
-      mostrarErroGeral("Erro ao carregar atas. Verifique sua conexão.");
-    }
-  );
-
-  // Listener 2: Profissionais
   const qProf = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
 
-  unsubscribeProf = onSnapshot(
-    qProf,
-    (snapshot) => {
-      console.log(
-        `%c[RELATÓRIO] 🔥 SNAPSHOT PROFISSIONAIS: ${snapshot.docs.length} docs`,
-        "color:#ff00ff; font-weight: bold;"
-      );
+  unsubscribeProf = onSnapshot(qProf, (snapshot) => {
+    dadosCache.profissionais = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+    estadoCarregamento.profissionais = true;
+    marcarComoCarregado();
+    renderizarComDebounce();
+  });
 
-      dadosCache.profissionais = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
-    },
-    (error) => {
-      console.error(
-        "%c[RELATÓRIO] ❌ ERRO profissionais:",
-        "color:#ff0000;",
-        error
-      );
-    }
-  );
-
-  // Listener 3: Agendamentos
   const qAgend = query(
     collection(firestoreDb, "agendamentos_voluntarios"),
     orderBy("criadoEm", "desc")
   );
 
-  unsubscribeAgend = onSnapshot(
-    qAgend,
-    (snapshot) => {
-      console.log(
-        `%c[RELATÓRIO] 🔥 SNAPSHOT AGENDAMENTOS: ${snapshot.docs.length} docs`,
-        "color:#ff00ff; font-weight: bold;"
-      );
-
-      dadosCache.agendamentos = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      marcarComoCarregado();
-      renderizarComDebounce(); // ✅ MUDANÇA AQUI
-    },
-    (error) => {
-      console.error(
-        "%c[RELATÓRIO] ❌ ERRO agendamentos:",
-        "color:#ff0000;",
-        error
-      );
-    }
-  );
+  unsubscribeAgend = onSnapshot(qAgend, (snapshot) => {
+    dadosCache.agendamentos = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+    estadoCarregamento.agendamentos = true;
+    marcarComoCarregado();
+    renderizarComDebounce();
+  });
 }
 
 // ✅ NOVA FUNÇÃO: Debounce para evitar múltiplas renderizações
@@ -168,65 +126,53 @@ function renderizarComDebounce() {
   }, 100); // Aguarda 100ms sem atualizações antes de renderizar
 }
 
+// ==========================================
+// CONTROLE DE ESTADO
+// ==========================================
 function marcarComoCarregado() {
-  if (dadosCache.profissionais.length > 0) {
-    const antes = dadosCache.carregado;
-    dadosCache.carregado = true;
+  const pronto =
+    estadoCarregamento.atas &&
+    estadoCarregamento.profissionais &&
+    estadoCarregamento.agendamentos;
 
-    if (!antes) {
-      console.log(
-        "%c[RELATÓRIO] ✅ DADOS CARREGADOS!",
-        "color:#00ff00; font-weight: bold; font-size: 14px;"
-      );
-      console.log("[RELATÓRIO] Cache:", {
-        atas: dadosCache.atas.length,
-        profissionais: dadosCache.profissionais.length,
-        agendamentos: dadosCache.agendamentos.length,
-      });
-    }
+  if (pronto && !dadosCache.carregado) {
+    console.log(
+      "%c[RELATÓRIO] ✅ TODOS OS DADOS CARREGADOS",
+      "color:#00ff00; font-weight:bold;"
+    );
   }
+
+  dadosCache.carregado = pronto;
+}
+
+function renderizarComDebounce() {
+  if (renderTimeout) clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(renderizarAbaAtiva, 100);
 }
 
 // ==========================================
-// LÓGICA DE NAVEGAÇÃO E RENDERIZAÇÃO
+// NAVEGAÇÃO
 // ==========================================
 function setupEventListeners() {
-  const viewContainer = document.querySelector(".view-container");
-  if (!viewContainer) {
-    console.error("[RELATÓRIO] ❌ view-container não encontrado!");
-    return;
-  }
+  const container = document.querySelector(".view-container");
 
-  viewContainer.addEventListener("click", (e) => {
-    const tabLink = e.target.closest(".tab-link");
-    if (tabLink) {
-      e.preventDefault();
-      const idAba = tabLink.dataset.tab;
-      console.log(
-        `%c[RELATÓRIO] 👆 Clique na aba: ${idAba}`,
-        "color:#00aaff; font-weight: bold;"
-      );
-      ativarAba(idAba);
+  container.addEventListener("click", (e) => {
+    const tab = e.target.closest(".tab-link");
+    if (tab) {
+      ativarAba(tab.dataset.tab);
       return;
     }
 
-    const accordionHeader = e.target.closest(".accordion-header");
-    if (accordionHeader) {
-      e.preventDefault();
-      toggleAccordion(accordionHeader);
-    }
+    const acc = e.target.closest(".accordion-header");
+    if (acc) toggleAccordion(acc);
   });
 
-  viewContainer.addEventListener("change", (e) => {
-    if (e.target.matches(".checkbox-presenca")) {
-      marcarPresenca(e.target);
-    }
+  container.addEventListener("change", (e) => {
+    if (e.target.matches(".checkbox-presenca")) marcarPresenca(e.target);
   });
 }
 
-function ativarAba(tabId) {
-  console.log(`[RELATÓRIO] >> ativarAba(${tabId})`);
-
+function ativarAba(id) {
   document
     .querySelectorAll(".tab-link")
     .forEach((b) => b.classList.remove("active"));
@@ -234,48 +180,30 @@ function ativarAba(tabId) {
     .querySelectorAll(".tab-content")
     .forEach((c) => c.classList.remove("active"));
 
-  const btn = document.querySelector(`.tab-link[data-tab="${tabId}"]`);
-  const content = document.getElementById(tabId);
-
-  if (btn) btn.classList.add("active");
-  if (content) content.classList.add("active");
+  document
+    .querySelector(`.tab-link[data-tab="${id}"]`)
+    ?.classList.add("active");
+  document.getElementById(id)?.classList.add("active");
 
   renderizarAbaAtiva();
 }
 
+// ==========================================
+// RENDERIZAÇÃO
+// ==========================================
 function renderizarAbaAtiva() {
-  const abaAtiva = document.querySelector(".tab-content.active");
+  const aba = document.querySelector(".tab-content.active");
+  if (!aba) return;
 
-  if (!abaAtiva) {
-    console.warn("[RELATÓRIO] ⚠️ Nenhuma aba ativa encontrada!");
-    return;
-  }
-
-  const id = abaAtiva.id;
-  console.log(
-    `%c[RELATÓRIO] 🎨 Renderizando aba: ${id}`,
-    "color:#00ff00; font-weight: bold;"
-  );
+  const container = aba.querySelector(".card");
+  if (!container) return;
 
   if (!dadosCache.carregado) {
-    console.log(
-      `[RELATÓRIO] ⏳ Dados ainda não carregados. Mostrando loading...`
-    );
     exibirLoadingNaAbaAtiva();
     return;
   }
 
-  const container = abaAtiva.querySelector(".card");
-
-  if (!container) {
-    console.error(
-      `%c[RELATÓRIO] ❌ Container .card não encontrado!`,
-      "color:#ff0000; font-weight: bold;"
-    );
-    return;
-  }
-
-  switch (id) {
+  switch (aba.id) {
     case "resumo":
       renderizarResumo(container);
       break;
@@ -289,26 +217,16 @@ function renderizarAbaAtiva() {
       renderizarAgendados(container);
       break;
   }
-
-  console.log(
-    "%c[RELATÓRIO] ✅ Renderização concluída!",
-    "color:#00ff00; font-weight: bold;"
-  );
 }
 
 function exibirLoadingNaAbaAtiva() {
-  const abaAtiva = document.querySelector(".tab-content.active");
-  if (abaAtiva) {
-    const container = abaAtiva.querySelector(".card");
-    if (container) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p>Carregando dados...</p>
-        </div>
-      `;
-    }
-  }
+  const aba = document.querySelector(".tab-content.active");
+  const c = aba?.querySelector(".card");
+  if (c)
+    c.innerHTML = `<div style="text-align:center;padding:40px">
+      <div class="loading-spinner"></div>
+      <p>Carregando dados...</p>
+    </div>`;
 }
 
 // ==========================================
