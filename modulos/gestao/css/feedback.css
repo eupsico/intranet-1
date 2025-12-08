@@ -1,42 +1,162 @@
 /* /modulos/gestao/css/feedback.css */
+
+/* --- Variáveis e Configurações Globais --- */
+:root {
+    --cor-primaria: #0d3b66;       /* Azul Profissional */
+    --cor-primaria-hover: #082542; /* Tom mais escuro para hover */
+    --cor-fundo: #f4f6f9;          /* Fundo cinza claro da página */
+    --cor-card-bg: #ffffff;        /* Fundo branco do formulário */
+    --cor-texto-principal: #333333;
+    --cor-texto-label: #555555;
+    --cor-borda: #e0e0e0;
+    --cor-erro: #dc3545;
+    --borda-radius: 12px;          /* Arredondamento amigável */
+    --input-focus-shadow: rgba(13, 59, 102, 0.15);
+}
+
 body {
     background-color: var(--cor-fundo);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--cor-texto-principal);
+    margin: 0;
+    padding: 0;
 }
+
+/* --- Container Principal (Estilo Cartão) --- */
 .container {
     max-width: 800px;
     margin: 40px auto;
+    background-color: var(--cor-card-bg);
+    border-radius: var(--borda-radius);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden; /* Garante que o cabeçalho não vaze as bordas */
 }
+
+/* --- Cabeçalho do Formulário --- */
 .info-header {
     background-color: var(--cor-primaria);
     color: white;
-    padding: 25px;
-    border-radius: var(--borda-radius) var(--borda-radius) 0 0;
-    margin: -25px -25px 25px -25px;
+    padding: 25px 30px;
+    border-bottom: 4px solid rgba(0,0,0,0.1);
 }
-.info-header h2, .info-header p {
+
+.info-header h2 {
     margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
 }
+
 .info-header p {
-    margin-top: 8px;
+    margin: 5px 0 0 0;
     opacity: 0.9;
+    font-size: 0.95rem;
 }
-.feedback-period {
-    text-align: center;
-    background-color: var(--cor-fundo-box);
-    padding: 15px;
-    border-radius: var(--borda-radius);
+
+/* --- Corpo do Formulário e Inputs --- */
+/* Adicione esta classe numa div envolvendo os inputs se não houver, 
+   ou aplique padding direto no form se ele for filho direto do container */
+.form-body { 
+    padding: 30px;
+}
+
+.form-group {
     margin-bottom: 25px;
-    border: 1px solid var(--cor-borda);
-    color: var(--cor-texto-principal);
 }
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--cor-texto-label);
+    font-size: 0.95rem;
+}
+
+/* Estilo unificado para todos os inputs */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    font-size: 1rem;
+    color: var(--cor-texto-principal);
+    background-color: #fff;
+    transition: all 0.3s ease;
+    box-sizing: border-box; /* Garante que o padding não estoure a largura */
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Estado de Foco (Acessibilidade e Estilo) */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 4px var(--input-focus-shadow);
+}
+
+/* Campos somente leitura */
+input[readonly], select[disabled] {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #eee;
+}
+
+/* --- Botão de Confirmação --- */
+.btn-confirmar {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--cor-primaria);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-top: 10px;
+}
+
+.btn-confirmar:hover {
+    background-color: var(--cor-primaria-hover);
+}
+
+.btn-confirmar:active {
+    transform: scale(0.99);
+}
+
+/* --- Mensagens de Carregamento e Utilitários --- */
 .loading, .message-box {
     text-align: center;
     font-size: 1.1em;
     padding: 40px 20px;
+    color: #666;
 }
-/* /modulos/gestao/css/feedback.css */
 
-/* --- Card de Espera (Wait State) --- */
+/* --- Validação (Usado pelo JS) --- */
+.required-asterisk {
+    color: var(--cor-erro);
+    margin-left: 4px;
+    font-weight: bold;
+}
+
+.input-error {
+    border-color: var(--cor-erro) !important;
+    background-color: #fff8f8 !important;
+}
+
+/* =========================================
+   --- Card de Espera (Wait State) --- 
+   Mantido conforme original
+   ========================================= */
 .wait-card {
     background-color: #fff;
     border-radius: 8px;
