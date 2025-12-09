@@ -1,258 +1,80 @@
 /* /modulos/gestao/css/feedback.css */
+/* VERSÃO SCOPED - Integrada ao Design System */
 
-/* --- Variáveis e Configurações Globais --- */
-:root {
-    --cor-primaria: #0d3b66;       /* Azul Profissional */
-    --cor-primaria-hover: #082542; /* Tom mais escuro para hover */
-    --cor-fundo: #f4f6f9;          /* Fundo cinza claro da página */
-    --cor-card-bg: #ffffff;        /* Fundo branco do formulário */
-    --cor-texto-principal: #333333;
-    --cor-texto-label: #555555;
-    --cor-borda: #e0e0e0;
-    --cor-erro: #dc3545;
-    --borda-radius: 12px;          /* Arredondamento amigável */
-    --input-focus-shadow: rgba(13, 59, 102, 0.15);
+/* Container específico para a página pública */
+#feedback-container {
+  max-width: 800px;
+  margin: 40px auto;
+  background-color: var(--cor-surface);
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-modal); /* Sombra mais destacada */
+  overflow: hidden;
+  border: 1px solid var(--cor-borda);
 }
 
-body {
-    background-color: var(--cor-fundo);
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    color: var(--cor-texto-principal);
-    margin: 0;
-    padding: 0;
+/* Cabeçalho do Feedback */
+#feedback-container .info-header {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+  padding: 30px;
+  text-align: center;
 }
 
-/* --- Container Principal (Estilo Cartão) --- */
-.container {
-    max-width: 800px;
-    margin: 40px auto;
-    background-color: var(--cor-card-bg);
-    border-radius: var(--borda-radius);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    overflow: hidden; /* Garante que o cabeçalho não vaze as bordas */
+#feedback-container .info-header h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.8rem;
 }
 
-/* --- Cabeçalho do Formulário --- */
-.info-header {
-    background-color: var(--cor-primaria);
-    color: white;
-    padding: 25px 30px;
-    border-bottom: 4px solid rgba(0,0,0,0.1);
+/* Corpo do Formulário */
+#feedback-container .form-body {
+  padding: 30px;
 }
 
-.info-header h2 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+/* Inputs Específicos (caso diferenciem do DS) */
+#feedback-container textarea {
+  min-height: 120px;
 }
 
-.info-header p {
-    margin: 5px 0 0 0;
-    opacity: 0.9;
-    font-size: 0.95rem;
+/* Contador de Palavras */
+#feedback-container .word-counter {
+  font-size: 0.8rem;
+  color: var(--cor-texto-secundario);
+  text-align: right;
+  margin-top: 5px;
 }
 
-/* --- Corpo do Formulário e Inputs --- */
-/* Adicione esta classe numa div envolvendo os inputs se não houver, 
-   ou aplique padding direto no form se ele for filho direto do container */
-.form-body { 
-    padding: 30px;
+#feedback-container .word-counter.valid {
+  color: var(--cor-sucesso);
+  font-weight: 600;
 }
 
-.form-group {
-    margin-bottom: 25px;
+/* Card de Espera (Wait State) */
+#feedback-container .wait-card {
+  text-align: center;
+  padding: 40px;
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: var(--cor-texto-label);
-    font-size: 0.95rem;
-}
-
-/* Estilo unificado para todos os inputs */
-input[type="text"],
-input[type="email"],
-input[type="number"],
-select,
-textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--cor-borda);
-    border-radius: 8px;
-    font-size: 1rem;
-    color: var(--cor-texto-principal);
-    background-color: #fff;
-    transition: all 0.3s ease;
-    box-sizing: border-box; /* Garante que o padding não estoure a largura */
-}
-
-textarea {
-    min-height: 100px;
-    resize: vertical;
-}
-
-/* Estado de Foco (Acessibilidade e Estilo) */
-input:focus,
-select:focus,
-textarea:focus {
-    outline: none;
-    border-color: var(--cor-primaria);
-    box-shadow: 0 0 0 4px var(--input-focus-shadow);
-}
-
-/* Campos somente leitura */
-input[readonly], select[disabled] {
-    background-color: #f8f9fa;
-    color: #6c757d;
-    cursor: not-allowed;
-    border-color: #eee;
-}
-
-/* --- Botão de Confirmação --- */
-.btn-confirmar {
-    width: 100%;
-    padding: 15px;
-    background-color: var(--cor-primaria);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-    margin-top: 10px;
-}
-
-.btn-confirmar:hover {
-    background-color: var(--cor-primaria-hover);
-}
-
-.btn-confirmar:active {
-    transform: scale(0.99);
-}
-
-/* --- Mensagens de Carregamento e Utilitários --- */
-.loading, .message-box {
-    text-align: center;
-    font-size: 1.1em;
-    padding: 40px 20px;
-    color: #666;
-}
-
-/* --- Validação (Usado pelo JS) --- */
-.required-asterisk {
-    color: var(--cor-erro);
-    margin-left: 4px;
-    font-weight: bold;
-}
-
-.input-error {
-    border-color: var(--cor-erro) !important;
-    background-color: #fff8f8 !important;
-}
-
-/* =========================================
-   --- Card de Espera (Wait State) --- 
-   Mantido conforme original
-   ========================================= */
-.wait-card {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
-    margin: 40px auto;
-    overflow: hidden;
-    text-align: center;
-    border-top: 5px solid #ffc107; /* Cor Amarela de Atenção */
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-.wait-header {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.wait-label {
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 1px;
-    color: #6c757d;
-    font-weight: 700;
-    margin-bottom: 5px;
-    display: block;
-}
-
-.wait-meeting-title {
-    font-size: 1.2rem;
-    color: #212529;
-    margin: 0;
-    font-weight: 600;
-}
-
-.wait-body {
-    padding: 40px 30px;
-}
-
-.wait-icon {
-    font-size: 48px;
-    color: #ffc107;
-    margin-bottom: 20px;
-    display: inline-block;
-    animation: pulse 2s infinite;
-}
-
-.wait-message h3 {
-    margin: 0 0 10px 0;
-    color: #343a40;
-}
-
-.wait-message p {
-    color: #6c757d;
-    font-size: 1rem;
-    line-height: 1.5;
-    margin-bottom: 20px;
-}
-
-.wait-badge {
-    display: inline-block;
-    background-color: #fff3cd;
-    color: #856404;
-    padding: 8px 16px;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border: 1px solid #ffeeba;
+#feedback-container .wait-icon {
+  font-size: 64px;
+  color: var(--cor-alerta);
+  margin-bottom: 20px;
+  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-/* Estilo do contador de palavras */
-.word-counter {
-    font-size: 0.85rem;
-    color: #888;
-    text-align: right;
-    margin-top: 4px;
-    transition: color 0.3s;
+/* Estados de Sucesso */
+#feedback-container .message-box {
+  text-align: center;
+  padding: 50px 20px;
 }
 
-/* Quando atingir o mínimo, fica verde */
-.word-counter.valid {
-    color: #28a745; /* Verde sucesso */
-}
-
-/* Ajuste fino para erro no textarea */
-textarea.input-error {
-    border: 2px solid var(--cor-erro) !important;
-    background-color: #fff8f8;
+#feedback-container .message-box span {
+  color: var(--cor-sucesso);
+  margin-bottom: 20px;
+  display: block;
 }
