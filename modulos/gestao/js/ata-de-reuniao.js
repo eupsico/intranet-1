@@ -1,5 +1,5 @@
 // /modulos/gestao/js/ata-de-reuniao.js
-// VERSÃO 3.0 (Unificada com Eventos e Suporte a Slots)
+// VERSÃO 4.0 (Filtros de Data, Tipo Obrigatório e Layout em Cards)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -14,214 +14,223 @@ import {
 } from "../../../assets/js/firebase-init.js";
 
 let usuariosCache = [];
+let unsubscribeListener = null;
+
+// TIPOS QUE EXIGEM ATA (Business Logic)
+const TIPOS_COM_ATA = ["reuniao_gestor", "reuniao_conselho"];
 
 export async function init() {
-  console.log("[ATA] Módulo Registar Ata iniciado (v3.0 - Eventos).");
+  console.log("[ATA] Módulo Registar Ata iniciado (v4.0).");
+
+  // Configura data padrão para o mês atual
+  const inputMes = document.getElementById("filtro-mes-ata");
+  if (inputMes) {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const ano = hoje.getFullYear();
+    inputMes.value = `${ano}-${mes}`;
+  }
+
+  configurarListeners();
   await fetchTodosUsuarios();
   await carregarReunioesAgendadas();
 }
 
-/**
- * Carrega todos os usuários para montar a lista de presença.
- */
+function configurarListeners() {
+  const btnUpdate = document.getElementById("btn-atualizar-lista");
+  const filtroMes = document.getElementById("filtro-mes-ata");
+  const filtroStatus = document.getElementById("filtro-status-ata");
+
+  if (btnUpdate) btnUpdate.addEventListener("click", carregarReunioesAgendadas);
+  if (filtroMes)
+    filtroMes.addEventListener("change", carregarReunioesAgendadas);
+  if (filtroStatus)
+    filtroStatus.addEventListener("change", carregarReunioesAgendadas);
+}
+
 async function fetchTodosUsuarios() {
   if (usuariosCache.length > 0) return;
   try {
     const q = query(collection(firestoreDb, "usuarios"), orderBy("nome"));
     const snapshot = await getDocs(q);
     usuariosCache = snapshot.docs.map((doc) => doc.data().nome);
-    console.log(
-      `[ATA] ${usuariosCache.length} usuários carregados para lista de presença.`
-    );
   } catch (error) {
     console.error("[ATA] Erro ao buscar usuários:", error);
   }
 }
 
-/**
- * Busca reuniões pendentes na coleção 'eventos'.
- * Ouve em tempo real para atualizar a lista assim que uma ata for salva.
- */
 async function carregarReunioesAgendadas() {
   const container = document.getElementById("lista-reunioes-agendadas");
+  const formContainer = document.getElementById("form-ata-container");
+
+  // Reseta visualização
+  container.style.display = "flex"; // Flex para column layout
+  formContainer.style.display = "none";
   container.innerHTML = '<div class="loading-spinner"></div>';
 
+  // Pega valores dos filtros
+  const mesFiltro = document.getElementById("filtro-mes-ata").value; // YYYY-MM
+  const statusFiltro = document.getElementById("filtro-status-ata").value; // 'pendente' ou 'concluida'
+
   try {
-    // Busca na coleção unificada 'eventos'
     const q = query(
       collection(firestoreDb, "eventos"),
       orderBy("criadoEm", "desc")
     );
 
-    // Listener realtime
-    onSnapshot(q, (snapshot) => {
+    if (unsubscribeListener) unsubscribeListener();
+
+    unsubscribeListener = onSnapshot(q, (snapshot) => {
+      let html = "";
+      let count = 0;
+
       if (snapshot.empty) {
         container.innerHTML =
-          '<h3>Nenhuma reunião pendente.</h3><p>Agende uma nova reunião na aba "Agendar Reunião".</p>';
+          '<div class="alert alert-info">Nenhuma reunião encontrada no sistema.</div>';
         return;
       }
-
-      let listHtml =
-        '<h3>Selecione uma Reunião para Registar a Ata</h3><ul class="item-list">';
-      let encontrouPendencia = false;
 
       snapshot.forEach((docSnap) => {
         const evento = docSnap.data();
         const slots = evento.slots || [];
 
-        // CASO 1: Evento Simples (sem slots ou legado)
-        if (slots.length === 0) {
-          if (evento.status === "Agendada") {
-            encontrouPendencia = true;
-            const data = evento.dataReuniao
-              ? new Date(evento.dataReuniao + "T00:00:00").toLocaleDateString(
-                  "pt-BR"
-                )
-              : "Data indefinida";
-
-            listHtml += `
-                <li data-id="${docSnap.id}" data-slot-index="-1">
-                    <strong>${evento.tipo}</strong> - ${data} 
-                    <br><small class="text-muted">(${
-                      evento.pauta || evento.descricao || "Sem pauta"
-                    })</small>
-                </li>`;
-          }
+        // Verifica se o tipo da reunião exige ata
+        if (!TIPOS_COM_ATA.includes(evento.tipo)) {
+          return; // Pula iteração se não for Gestor ou Conselho
         }
-        // CASO 2: Evento com Múltiplos Horários (Slots)
-        else {
-          slots.forEach((slot, index) => {
-            // Verifica se o slot específico está pendente
-            // Consideramos pendente se não tiver status ou se for "Agendada"
-            if (
-              !slot.status ||
-              slot.status === "Agendada" ||
-              slot.status === "Pendente"
-            ) {
-              encontrouPendencia = true;
-              const dataSlot = new Date(
-                slot.data + "T00:00:00"
-              ).toLocaleDateString("pt-BR");
-              const gestorInfo = slot.gestorNome
-                ? `| Resp: ${slot.gestorNome}`
-                : "";
 
-              listHtml += `
-                <li data-id="${docSnap.id}" data-slot-index="${index}">
-                    <strong>${evento.tipo}</strong> - ${dataSlot} às ${slot.horaInicio}
-                    <br><small class="text-muted">${gestorInfo}</small>
-                </li>`;
-            }
-          });
+        // Processamento (Raiz ou Slots)
+        const processarItem = (itemData, slotIndex) => {
+          const dataItem = itemData.data || evento.dataReuniao;
+          if (!dataItem) return;
+
+          // 1. Filtro de Data (Mês/Ano)
+          if (mesFiltro && !dataItem.startsWith(mesFiltro)) return;
+
+          // 2. Filtro de Status
+          const statusItem = itemData.status || "Agendada";
+          const isConcluida = statusItem === "Concluída";
+
+          if (statusFiltro === "pendente" && isConcluida) return;
+          if (statusFiltro === "concluida" && !isConcluida) return;
+
+          // Renderização do Card
+          const nomeTipo = formatarNomeTipo(evento.tipo);
+          const classeTipo = getClassePorTipo(evento.tipo);
+          const dataFormatada = new Date(
+            dataItem + "T00:00:00"
+          ).toLocaleDateString("pt-BR");
+          const hora = itemData.horaInicio || "N/A";
+          const responsavel =
+            itemData.gestorNome || evento.responsavel || "N/A";
+          const badgeLabel = isConcluida ? "Ata Salva" : "Pendente";
+          const badgeClass = isConcluida ? "concluida" : "pendente";
+
+          html += `
+                <div class="reuniao-card-item ${classeTipo}" onclick="abrirFormulario('${
+            docSnap.id
+          }', ${slotIndex})">
+                    <div class="reuniao-card-header">
+                        <div>
+                            <h4 class="reuniao-card-title">${nomeTipo}</h4>
+                            <div class="reuniao-card-date">
+                                <span class="material-symbols-outlined" style="font-size:18px">calendar_month</span>
+                                ${dataFormatada} às ${hora}
+                            </div>
+                        </div>
+                        <span class="badge-status ${badgeClass}">${badgeLabel}</span>
+                    </div>
+                    <div class="reuniao-card-meta">
+                        <strong>Responsável:</strong> ${responsavel}<br>
+                        ${
+                          evento.pauta
+                            ? `<em class="text-muted">"${evento.pauta.substring(
+                                0,
+                                80
+                              )}..."</em>`
+                            : ""
+                        }
+                    </div>
+                </div>
+            `;
+          count++;
+        };
+
+        if (slots.length > 0) {
+          slots.forEach((slot, idx) => processarItem(slot, idx));
+        } else {
+          processarItem(evento, -1);
         }
       });
 
-      listHtml += "</ul>";
-
-      if (!encontrouPendencia) {
+      if (count === 0) {
         container.innerHTML = `
-            <div class="alert alert-success text-center">
-                <span class="material-symbols-outlined" style="font-size: 48px;">task_alt</span>
-                <h4 class="mt-2">Tudo em dia!</h4>
-                <p>Todas as reuniões agendadas já possuem ata registrada.</p>
+            <div class="alert alert-light text-center border">
+                <span class="material-symbols-outlined" style="font-size: 48px; color: #ccc;">event_busy</span>
+                <p class="mt-2 text-muted">Nenhuma reunião de <strong>Gestor</strong> ou <strong>Conselho</strong> encontrada com os filtros atuais.</p>
             </div>`;
       } else {
-        container.innerHTML = listHtml;
-        attachClickEvents(container);
+        container.innerHTML = html;
+        // Torna a função global para o onclick funcionar
+        window.abrirFormulario = abrirFormulario;
       }
     });
   } catch (error) {
-    console.error("[ATA] Erro ao carregar reuniões:", error);
-    container.innerHTML =
-      '<p class="alert alert-danger">Erro ao carregar lista de reuniões.</p>';
+    console.error("[ATA] Erro ao carregar:", error);
+    container.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados: ${error.message}</div>`;
   }
 }
 
-/**
- * Adiciona eventos de clique nos itens da lista
- */
-function attachClickEvents(container) {
-  container.querySelectorAll("li").forEach((li) => {
-    li.addEventListener("click", async () => {
-      // Esconde a lista e mostra loading
-      container.style.display = "none";
-      const formContainer = document.getElementById("form-ata-container");
-      formContainer.innerHTML = '<div class="loading-spinner"></div>';
-      formContainer.style.display = "block";
+async function abrirFormulario(docId, slotIndex) {
+  const containerLista = document.getElementById("lista-reunioes-agendadas");
+  const containerForm = document.getElementById("form-ata-container");
 
-      const docId = li.dataset.id;
-      const slotIndex = parseInt(li.dataset.slotIndex);
+  containerLista.style.display = "none";
+  containerForm.style.display = "block";
+  containerForm.innerHTML = '<div class="loading-spinner"></div>';
 
-      try {
-        const docSnap = await getDoc(doc(firestoreDb, "eventos", docId));
-        if (!docSnap.exists()) {
-          alert("Evento não encontrado!");
-          location.reload();
-          return;
-        }
+  try {
+    const docSnap = await getDoc(doc(firestoreDb, "eventos", docId));
+    if (!docSnap.exists()) throw new Error("Evento não encontrado");
 
-        const data = docSnap.data();
+    const data = docSnap.data();
+    let dadosItem = {};
 
-        // Normaliza os dados para o formulário dependendo se é Slot ou Raiz
-        let dadosForm = {};
+    if (slotIndex === -1) {
+      dadosItem = { ...data, slotIndex: -1, docId };
+    } else {
+      dadosItem = {
+        ...data.slots[slotIndex],
+        tipo: data.tipo,
+        pauta: data.descricao,
+        slotIndex,
+        docId,
+      };
+    }
 
-        if (slotIndex === -1) {
-          // Dados da Raiz
-          dadosForm = {
-            tipo: data.tipo,
-            dataReuniao: data.dataReuniao, // Formato YYYY-MM-DD esperado
-            pauta: data.pauta || data.descricao || data.tipo,
-            participantesSugestao: data.participantes
-              ? typeof data.participantes === "string"
-                ? data.participantes.split(", ")
-                : data.participantes
-              : [],
-            docId: docId,
-            slotIndex: -1,
-          };
-        } else {
-          // Dados do Slot
-          const slot = data.slots[slotIndex];
-          dadosForm = {
-            tipo: data.tipo,
-            dataReuniao: slot.data,
-            pauta: data.descricao || data.tipo,
-            // Tenta pegar inscritos no slot para sugerir na chamada
-            participantesSugestao: (slot.vagas || []).map(
-              (v) => v.nome || v.profissionalNome
-            ),
-            docId: docId,
-            slotIndex: slotIndex,
-            horaInicio: slot.horaInicio,
-          };
-        }
-
-        renderizarFormularioAta(dadosForm);
-      } catch (err) {
-        console.error(err);
-        alert("Erro ao carregar detalhes da reunião.");
-        location.reload();
-      }
-    });
-  });
+    renderizarFormulario(dadosItem);
+  } catch (e) {
+    alert("Erro ao abrir formulário: " + e.message);
+    location.reload();
+  }
 }
 
-/**
- * Renderiza o formulário de preenchimento da Ata
- */
-function renderizarFormularioAta(dados) {
+function renderizarFormulario(dados) {
   const container = document.getElementById("form-ata-container");
 
   // Prepara checkboxes de participantes
-  // Marca automaticamente quem já estava inscrito/previsto
   const participantesCheckboxes = usuariosCache
     .map((nome) => {
-      const isPresente = dados.participantesSugestao?.includes(nome)
-        ? "checked"
-        : "";
+      // Verifica se já estava presente (para edição) ou se estava inscrito (sugestão)
+      const listaVerificacao = dados.participantesConfirmados
+        ? dados.participantesConfirmados.split(", ") // Se já tem ata salva, usa os confirmados
+        : (dados.vagas || []).map((v) => v.nome || v.profissionalNome); // Senão, usa os inscritos
+
+      const isPresente = listaVerificacao.includes(nome) ? "checked" : "";
+
       return `
-        <div>
-            <label style="cursor: pointer;">
+        <div style="margin-bottom: 5px;">
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" class="participante-check" value="${nome}" ${isPresente}> 
                 ${nome}
             </label>
@@ -229,57 +238,77 @@ function renderizarFormularioAta(dados) {
     })
     .join("");
 
-  const dataDisplay = dados.dataReuniao
-    ? new Date(dados.dataReuniao + "T00:00:00").toLocaleDateString("pt-BR")
-    : "Data n/a";
-  const horaDisplay = dados.horaInicio ? ` às ${dados.horaInicio}` : "";
+  const dataDisplay = dados.data || dados.dataReuniao || "";
+  const horaDisplay = dados.horaInicio || "";
+  const titulo = formatarNomeTipo(dados.tipo);
 
   container.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <h3 style="margin:0; color: var(--cor-primaria);">
+                ${dados.status === "Concluída" ? "Editar Ata" : "Registrar Ata"}
+            </h3>
+            <button class="btn btn-outline-secondary btn-sm" onclick="cancelarEdicao()">
+                <span class="material-symbols-outlined" style="vertical-align: middle;">close</span> Fechar
+            </button>
+        </div>
+
         <form id="form-ata-registro">
-            <h3 style="margin-top: 0; color: var(--primary-color-dark);">Registo da Ata</h3>
-            
-            <div class="alert alert-info py-2">
-                <strong>${dados.tipo}</strong><br>
-                ${dataDisplay}${horaDisplay} | ${dados.pauta.substring(
-    0,
-    100
-  )}...
+            <div class="alert alert-info py-2 mb-4">
+                <strong>${titulo}</strong> - ${new Date(
+    dataDisplay
+  ).toLocaleDateString("pt-BR")} às ${horaDisplay}
             </div>
             
-            <div class="form-group participantes-field">
-                <label>Lista de Presença (Selecione os presentes)</label>
-                <div class="participantes-checkbox-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; background: #fff; border-radius: 4px;">
-                    ${participantesCheckboxes}
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="fw-bold mb-2">Lista de Presença</label>
+                        <div class="participantes-checkbox-container" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--cor-borda); padding: 15px; background: #fff; border-radius: var(--borda-radius);">
+                            ${participantesCheckboxes}
+                        </div>
+                    </div>
                 </div>
-                <small class="text-muted">Usuários pré-inscritos já vêm marcados.</small>
+                
+                <div class="col-md-8">
+                    <div class="form-group mb-3">
+                        <label class="fw-bold">Pontos Discutidos *</label>
+                        <textarea class="form-control" id="ata-pontos" rows="6" required placeholder="Resumo dos assuntos abordados...">${
+                          dados.pontos || ""
+                        }</textarea>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label class="fw-bold">Decisões Tomadas *</label>
+                        <textarea class="form-control" id="ata-decisoes" rows="4" required placeholder="O que foi decidido...">${
+                          dados.decisoes || ""
+                        }</textarea>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label class="fw-bold">Temas para Próxima Reunião</label>
+                        <textarea class="form-control" id="ata-temas-proxima" rows="2" placeholder="Opcional...">${
+                          dados.temasProximaReuniao || ""
+                        }</textarea>
+                    </div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Pontos Discutidos *</label>
-                <textarea class="form-control" id="ata-pontos" rows="4" required placeholder="Resumo dos assuntos abordados..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Decisões Tomadas *</label>
-                <textarea class="form-control" id="ata-decisoes" rows="4" required placeholder="O que foi decidido..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Temas para Próxima Reunião</label>
-                <textarea class="form-control" id="ata-temas-proxima" rows="2" placeholder="Opcional..."></textarea>
-            </div>
-
-            <div class="button-bar" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+            <div class="button-bar mt-4">
                 <button type="button" class="action-button secondary-button" onclick="cancelarEdicao()">Cancelar</button>
-                <button type="submit" class="action-button save-btn">Salvar e Concluir Ata</button>
+                <button type="submit" class="action-button save-btn">
+                    ${
+                      dados.status === "Concluída"
+                        ? "Atualizar Ata"
+                        : "Salvar e Concluir"
+                    }
+                </button>
             </div>
         </form>
     `;
 
-  // Função global para o botão cancelar funcionar no onclick inline
   window.cancelarEdicao = () => {
     container.style.display = "none";
-    document.getElementById("lista-reunioes-agendadas").style.display = "block";
+    document.getElementById("lista-reunioes-agendadas").style.display = "flex";
   };
 
   document
@@ -287,9 +316,6 @@ function renderizarFormularioAta(dados) {
     .addEventListener("submit", (e) => salvarAta(e, dados));
 }
 
-/**
- * Salva a Ata no Firestore (Atualiza o documento ou slot específico)
- */
 async function salvarAta(e, dadosContexto) {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
@@ -298,62 +324,64 @@ async function salvarAta(e, dadosContexto) {
   btn.textContent = "Salvando...";
 
   try {
-    // Coleta participantes marcados
     const participantes = Array.from(
       document.querySelectorAll(".participante-check:checked")
     )
       .map((cb) => cb.value)
       .join(", ");
 
-    // Objeto com os dados da Ata
     const dadosAta = {
       pontos: document.getElementById("ata-pontos").value,
       decisoes: document.getElementById("ata-decisoes").value,
       temasProximaReuniao: document.getElementById("ata-temas-proxima").value,
-      participantesConfirmados: participantes, // Salva string separada por vírgula
+      participantesConfirmados: participantes,
       ataRegistradaEm: new Date().toISOString(),
-      status: "Concluída",
+      status: "Concluída", // Marca como concluída para sair da lista de pendentes
     };
 
     const docRef = doc(firestoreDb, "eventos", dadosContexto.docId);
 
-    // LÓGICA DE SALVAMENTO: RAIZ vs SLOT
     if (dadosContexto.slotIndex === -1) {
-      // Atualiza direto na raiz do documento
       await updateDoc(docRef, dadosAta);
     } else {
-      // Atualiza um item específico dentro do array 'slots'
-      // Firestore não permite atualizar index de array diretamente sem ler o array todo
       const docSnap = await getDoc(docRef);
-
       if (docSnap.exists()) {
         const slots = docSnap.data().slots || [];
-
-        // Verifica se o slot ainda existe
         if (slots[dadosContexto.slotIndex]) {
-          // Mescla os dados existentes do slot com os novos dados da ata
           slots[dadosContexto.slotIndex] = {
             ...slots[dadosContexto.slotIndex],
             ...dadosAta,
           };
-
-          // Salva o array atualizado
           await updateDoc(docRef, { slots: slots });
-        } else {
-          throw new Error("O horário selecionado não existe mais no sistema.");
         }
       }
     }
 
-    // Sucesso
-    alert("Ata registrada com sucesso!");
-    document.getElementById("form-ata-container").style.display = "none";
-    document.getElementById("lista-reunioes-agendadas").style.display = "block";
-    // A lista será atualizada automaticamente pelo onSnapshot em carregarReunioesAgendadas
+    alert("Ata salva com sucesso!");
+    window.cancelarEdicao(); // Volta para a lista
   } catch (error) {
     console.error("Erro ao salvar ata:", error);
-    alert("Erro ao salvar a ata: " + error.message);
+    alert("Erro ao salvar: " + error.message);
     btn.disabled = false;
     btn.textContent = originalText;
   }
+}
+
+// Helpers
+function formatarNomeTipo(t) {
+  const map = {
+    reuniao_tecnica: "Reunião Técnica",
+    reuniao_conselho: "Reunião Conselho Administrativo",
+    reuniao_gestor: "Reunião com Gestor",
+    reuniao_voluntario: "Reunião com Voluntário",
+    treinamento: "Treinamento",
+    alinhamento: "Alinhamento",
+  };
+  return map[t] || t;
+}
+
+function getClassePorTipo(t) {
+  if (t === "reuniao_gestor") return "tipo-gestor";
+  if (t === "reuniao_conselho") return "tipo-conselho";
+  return "tipo-outros";
 }
