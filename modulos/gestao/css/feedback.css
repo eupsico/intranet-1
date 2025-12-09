@@ -1,46 +1,78 @@
 /* /modulos/gestao/css/feedback.css */
-/* VERSÃO SCOPED - Integrada ao Design System */
+/* VERSÃO OTIMIZADA - Scoped ao Design System */
 
-/* Container específico para a página pública */
+/* ===== CONTAINER PRINCIPAL ===== */
 #feedback-container {
   max-width: 800px;
   margin: 40px auto;
   background-color: var(--cor-surface);
   border-radius: var(--borda-radius);
-  box-shadow: var(--sombra-modal); /* Sombra mais destacada */
+  box-shadow: var(--sombra-modal);
   overflow: hidden;
   border: 1px solid var(--cor-borda);
 }
 
-/* Cabeçalho do Feedback */
+/* ===== HEADER DO FEEDBACK ===== */
 #feedback-container .info-header {
   background-color: var(--cor-primaria);
   color: var(--cor-texto-inverso);
-  padding: 30px;
+  padding: 40px 30px;
   text-align: center;
 }
 
 #feedback-container .info-header h2 {
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
   font-size: 1.8rem;
+  font-weight: 700;
 }
 
-/* Corpo do Formulário */
+#feedback-container .info-header p {
+  margin: 0;
+  opacity: 0.95;
+  font-size: 1rem;
+}
+
+/* ===== CORPO DO FORMULÁRIO ===== */
 #feedback-container .form-body {
   padding: 30px;
 }
 
-/* Inputs Específicos (caso diferenciem do DS) */
-#feedback-container textarea {
-  min-height: 120px;
+#feedback-container .form-group {
+  margin-bottom: 20px;
 }
 
-/* Contador de Palavras */
+#feedback-container label {
+  font-weight: 600;
+  color: var(--cor-texto-principal);
+  margin-bottom: 8px;
+  display: block;
+  font-size: 0.95rem;
+}
+
+#feedback-container textarea.form-control {
+  min-height: 140px;
+  padding: 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius-pequeno);
+  font-family: var(--fonte-principal);
+  font-size: 0.95rem;
+  resize: vertical;
+  transition: all var(--transicao-padrao);
+}
+
+#feedback-container textarea.form-control:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(4, 57, 109, 0.1);
+}
+
+/* ===== CONTADOR DE PALAVRAS ===== */
 #feedback-container .word-counter {
   font-size: 0.8rem;
   color: var(--cor-texto-secundario);
   text-align: right;
-  margin-top: 5px;
+  margin-top: 6px;
+  font-weight: 500;
 }
 
 #feedback-container .word-counter.valid {
@@ -48,10 +80,10 @@
   font-weight: 600;
 }
 
-/* Card de Espera (Wait State) */
+/* ===== CARD DE ESPERA (WAIT STATE) ===== */
 #feedback-container .wait-card {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
 }
 
 #feedback-container .wait-icon {
@@ -62,19 +94,85 @@
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
 }
 
-/* Estados de Sucesso */
+#feedback-container .wait-text {
+  font-size: 1.1rem;
+  color: var(--cor-texto-principal);
+  margin: 0;
+}
+
+/* ===== ESTADOS DE SUCESSO ===== */
 #feedback-container .message-box {
   text-align: center;
-  padding: 50px 20px;
+  padding: 60px 30px;
 }
 
 #feedback-container .message-box span {
   color: var(--cor-sucesso);
   margin-bottom: 20px;
   display: block;
+  font-size: 2.5rem;
+}
+
+#feedback-container .message-box h3 {
+  color: var(--cor-texto-principal);
+  margin: 15px 0;
+  font-size: 1.4rem;
+}
+
+#feedback-container .message-box p {
+  color: var(--cor-texto-secundario);
+  margin: 10px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ===== BOTÕES ===== */
+#feedback-container .btn {
+  padding: 12px 24px;
+  border-radius: var(--borda-radius-pequeno);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transicao-padrao);
+}
+
+#feedback-container .btn-primary {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+}
+
+#feedback-container .btn-primary:hover {
+  background-color: var(--cor-secundaria);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-media);
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 600px) {
+  #feedback-container {
+    margin: 20px;
+  }
+
+  #feedback-container .info-header {
+    padding: 30px 20px;
+  }
+
+  #feedback-container .info-header h2 {
+    font-size: 1.4rem;
+  }
+
+  #feedback-container .form-body {
+    padding: 20px;
+  }
 }
