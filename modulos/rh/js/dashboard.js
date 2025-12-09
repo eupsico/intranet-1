@@ -1,5 +1,5 @@
 // Arquivo: /modulos/rh/js/dashboard.js
-// Versão: 3.7.0 (CORREÇÃO DE ESTRUTURA: Alinhamento com testesrespondidos e nomes de campos)
+// Versão: 3.8.0 (ADICIONADO: Insights Avançados - Tempo Médio e Origem)
 
 import {
   collection,
@@ -106,6 +106,12 @@ export async function initdashboard(user, userData) {
     "btn-atualizar-relatorios"
   );
 
+  // Novos Elementos
+  const relTempoMedio = document.getElementById("rel-tempo-medio");
+  const relChartOrigemCtx = document
+    .getElementById("rel-chart-origem")
+    ?.getContext("2d");
+
   // ============================================
   // ESTADO GLOBAL DOS RELATÓRIOS
   // ============================================
@@ -183,6 +189,7 @@ export async function initdashboard(user, userData) {
           renderizarListaCandidatos();
           renderizarInscricoesPorVaga();
           renderizarRespostasAosTestes();
+          calcularInsightsAvancados(); // Recalcula insights ao filtrar
         });
       }
     });
@@ -454,9 +461,101 @@ export async function initdashboard(user, userData) {
       renderizarInscricoesPorVaga();
       renderizarListaCandidatos();
       renderizarRespostasAosTestes();
+
+      // ✅ CALCULAR INSIGHTS AVANÇADOS
+      calcularInsightsAvancados();
     } catch (e) {
       console.error(e);
       window.showToast?.("Erro ao carregar relatórios", "error");
+    }
+  }
+
+  // ============================================
+  // ✅ FUNÇÃO: Calcular Insights Avançados (NOVA)
+  // ============================================
+  function calcularInsightsAvancados() {
+    console.log("🔹 Calculando insights avançados...");
+
+    // 1. Tempo Médio de Contratação
+    let totalDias = 0;
+    let countContratados = 0;
+
+    candidatosCache.forEach((cand) => {
+      const status = cand.status_recrutamento || "";
+      if (
+        (status === "CONTRATADO" ||
+          status === "ADMISSAO_INICIADA" ||
+          status.includes("Contratado")) &&
+        cand.data_finalizacao &&
+        cand.data_candidatura
+      ) {
+        const fim = cand.data_finalizacao.toDate
+          ? cand.data_finalizacao.toDate()
+          : new Date(cand.data_finalizacao);
+        const inicio = cand.data_candidatura.toDate
+          ? cand.data_candidatura.toDate()
+          : new Date(cand.data_candidatura);
+
+        const diffTime = Math.abs(fim - inicio);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (!isNaN(diffDays)) {
+          totalDias += diffDays;
+          countContratados++;
+        }
+      }
+    });
+
+    const tempoMedio =
+      countContratados > 0 ? Math.round(totalDias / countContratados) : 0;
+    if (relTempoMedio) relTempoMedio.textContent = tempoMedio;
+
+    // 2. Gráfico de Origem dos Candidatos
+    if (relChartOrigemCtx) {
+      const origemMap = {};
+
+      candidatosCache.forEach((cand) => {
+        let origem =
+          cand.fonte_inscricao || cand.como_conheceu || "Não informado";
+        // Normalizar texto
+        origem = origem.charAt(0).toUpperCase() + origem.slice(1).toLowerCase();
+        origemMap[origem] = (origemMap[origem] || 0) + 1;
+      });
+
+      const labels = Object.keys(origemMap);
+      const data = Object.values(origemMap);
+
+      if (window.graficoOrigem) window.graficoOrigem.destroy();
+
+      window.graficoOrigem = new Chart(relChartOrigemCtx, {
+        type: "doughnut",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: data,
+              backgroundColor: [
+                "#4e73df",
+                "#1cc88a",
+                "#36b9cc",
+                "#f6c23e",
+                "#e74a3b",
+                "#858796",
+              ],
+              hoverOffset: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "right",
+            },
+          },
+        },
+      });
     }
   }
 
