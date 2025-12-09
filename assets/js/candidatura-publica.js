@@ -359,16 +359,23 @@ function mostrarSucessoCandidatura(nomeCandidato) {
   // ATUALIZADO: HTML de sucesso reescrito para usar
   // classes do Design System (alert, alert-success) e incluir a logo azul.
   formBody.innerHTML = `
-        <div class="alert alert-success" style="text-align: center; padding: 30px;">
-            <img src="../assets/img/logo-eupsico.png" alt="Logo " style="max-width: 160px; margin-bottom: 20px;">
-            <h2 style="color: var(--cor-texto-principal); margin-bottom: 15px;">Obrigado por se candidatar!</h2>
-            <p style="font-size: 1.1rem;">Olá, <strong>${
-              nomeCandidato || "Candidato(a)"
-            }</strong>!</p>
-            <p>Recebemos sua candidatura com sucesso. Seu currículo será analisado cuidadosamente pela nossa equipe de RH.</p>
-            <p>Entraremos em contato após o término do processo de recrutamento.</p>
-            <p style="margin-top: 20px; font-weight: 600; color: var(--cor-primaria);">Atenciosamente,<br>Equipe EuPsico</p>
-        </div>
+<div class="alert alert-success" style="text-align: center; padding: 30px;">
+    <img src="../assets/img/logo-eupsico.png" alt="Logo" style="max-width: 160px; margin-bottom: 20px;">
+    
+    <p style="font-size: 1.1rem;">Olá, <strong>${
+      nomeCandidato || "Candidato(a)"
+    }</strong>!</p>
+    
+    <h2 style="color: var(--cor-texto-principal); margin-bottom: 15px;">Obrigado por se candidatar!</h2>
+    
+    <p>Recebemos sua candidatura com sucesso. Seu currículo será analisado cuidadosamente pela nossa equipe de RH.</p>
+    <p>Entraremos em contato após o término do processo de recrutamento.</p>
+    
+    <p style="margin-top: 20px; font-weight: 600; color: var(--cor-primaria);">
+        Atenciosamente,<br>Equipe EuPsico
+    </p>
+</div>
+
     `;
 }
 
