@@ -3350,7 +3350,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           certificados: dadosFormulario.certificadosUrls || [],
         },
         // ✅ NOVOS CAMPOS DE CONTROLE
-        status_admissao: "AGUARDANDO_ASSINATURA_FASE1", // <--- AQUI COMEÇA O FLUXO NOVO
+        status_admissao: "ENVIAR_ASSINATURA_FASE1", // <--- AQUI COMEÇA O FLUXO NOVO
         primeiraFase: true,
         inativo: false,
         recebeDireto: true,
