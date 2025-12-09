@@ -28,7 +28,10 @@ import { renderizarEntrevistaGestor } from "./tabs/tabGestor.js";
 import { renderizarFinalizados } from "./tabs/tabFinalizados.js";
 
 // ✅ Importação do Utilitário de Status (Centralizado)
-import { formatarStatusLegivel, getStatusBadgeClass } from "./status_utils.js";
+import {
+  formatarStatusLegivel,
+  getStatusBadgeClass,
+} from "./js/utils/status_utils.js";
 
 // ============================================
 // CONSTANTES E COLEÇÕES DO FIRESTORE
