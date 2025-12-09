@@ -37,7 +37,7 @@ export async function renderizarFinalizados(state) {
       where("vaga_id", "==", vagaSelecionadaId),
       where("status_recrutamento", "in", [
         "REPROVADO_TRIAGEM",
-        "Processo Concluído - Rejeitado",
+        "REPROVADO",
         "AGUARDANDO_ADMISSAO",
       ])
     );
