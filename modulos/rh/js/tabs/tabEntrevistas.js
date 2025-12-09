@@ -1,10 +1,9 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 8.1.0 (Corrigida dependência circular)
+ * Versão: 9.0.0 (Atualizado para Status Simplificado + Utils)
  * Descrição: Módulo "mestre" que renderiza a lista e importa a lógica dos modais.
  */
 
-// ✅ CORREÇÃO: 'getGlobalState' removido.
 import {
   getDocs,
   query,
@@ -13,7 +12,13 @@ import {
   db,
 } from "../../../../assets/js/firebase-init.js";
 
-// ✅ 1. Importar a lógica dos submódulos
+// ✅ Importação do Utilitário de Status (Corrigido caminho relativo)
+import {
+  formatarStatusLegivel,
+  getStatusBadgeClass,
+} from "../utils/status_utils.js";
+
+// ✅ Importar a lógica dos submódulos (Modais)
 import { abrirModalAgendamentoRH } from "../tabs/entrevistas/modalAgendamentoRH.js";
 import { abrirModalAvaliacaoRH } from "../tabs/entrevistas/modalAvaliacaoRH.js";
 import { abrirModalEnviarTeste } from "../tabs/entrevistas/modalEnviarTeste.js";
@@ -42,18 +47,19 @@ export async function renderizarEntrevistas(state) {
   conteudoRecrutamento.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
+    // ✅ QUERY ATUALIZADA COM NOVOS STATUS TÉCNICOS
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      // ==========================================================
-      // ✅ CORREÇÃO 1: Adicionado "Testes Respondido" à query
-      // ==========================================================
       where("status_recrutamento", "in", [
+        // Fase de Entrevista RH
         "ENTREVISTA_RH_PENDENTE",
-        "Entrevista RH Aprovada (Testes Pendente)",
-        "Testes Pendente",
-        "Testes Pendente (Enviado)",
-        "Testes Respondido", // <-- ADICIONADO AQUI
+        "ENTREVISTA_RH_AGENDADA", // Caso implemente mudança de status no agendamento
+
+        // Fase de Testes
+        "TESTE_PENDENTE",
+        "TESTE_ENVIADO",
+        "TESTE_RESPONDIDO",
       ])
     );
 
@@ -79,17 +85,9 @@ export async function renderizarEntrevistas(state) {
       const candidatoId = docSnap.id;
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      let corStatus = "info";
-      if (statusAtual.includes("Aprovada")) {
-        corStatus = "success";
-      } else if (statusAtual.includes("Testes")) {
-        // "Testes Respondido" também é um status de 'warning' (atenção)
-        corStatus = "warning";
-      }
-      // ✅ CORREÇÃO: "Testes Respondido" agora usa o status 'success'
-      if (statusAtual.includes("Testes Respondido")) {
-        corStatus = "success";
-      }
+      // ✅ FORMATAÇÃO DE STATUS E CLASSE CSS (Usando Utils)
+      const statusLegivel = formatarStatusLegivel(statusAtual);
+      const statusClass = getStatusBadgeClass(statusAtual);
 
       const telefone = cand.telefone_contato
         ? cand.telefone_contato.replace(/\D/g, "")
@@ -103,11 +101,16 @@ export async function renderizarEntrevistas(state) {
       listaHtml += `
         <div class="card card-candidato-triagem" data-id="${candidatoId}">
           <div class="info-primaria">
-            <h4>Nome: ${cand.nome_candidato || "Candidato Sem Nome"}</h4>
-            <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
-        /_/g,
-        " "
-      )}</span></p>
+            <h4>Nome: ${
+              cand.nome_candidato || cand.nome_completo || "Candidato Sem Nome"
+            }</h4>
+            
+            <p>Status: 
+               <span class="status-badge ${statusClass}">
+                 ${statusLegivel}
+               </span>
+            </p>
+            
             <p class="small-info">
               <i class="fas fa-briefcase"></i> Etapa: Entrevistas e avaliações
             </p>
@@ -137,8 +140,15 @@ export async function renderizarEntrevistas(state) {
             </button>
       `;
 
-      // LÓGICA: EXIBIÇÃO DOS BOTÕES
-      if (statusAtual.includes("Entrevista Pendente")) {
+      // ==========================================================
+      // ✅ LÓGICA DE BOTÕES ATUALIZADA (Novos Status)
+      // ==========================================================
+
+      // 1. Fase de Entrevista RH
+      if (
+        statusAtual === "ENTREVISTA_RH_PENDENTE" ||
+        statusAtual === "ENTREVISTA_RH_AGENDADA"
+      ) {
         listaHtml += `
             <button 
               class="action-button secondary btn-agendar-rh" 
@@ -153,28 +163,30 @@ export async function renderizarEntrevistas(state) {
               <i class="fas fa-edit me-1"></i> Avaliar RH
             </button>
         `;
-
-        // ==========================================================
-        // ✅ CORREÇÃO 2: Adicionado "Testes Respondido" à lógica dos botões
-        // ==========================================================
-      } else if (
-        statusAtual === "Entrevista RH Aprovada (Testes Pendente)" ||
-        statusAtual === "Testes Pendente" ||
-        statusAtual === "Testes Pendente (Enviado)" ||
-        statusAtual === "Testes Respondido" // <-- ADICIONADO AQUI
+      }
+      // 2. Fase de Testes
+      else if (
+        ["TESTE_PENDENTE", "TESTE_ENVIADO", "TESTE_RESPONDIDO"].includes(
+          statusAtual
+        )
       ) {
-        // Se o teste ainda não foi respondido, mostra "Enviar Teste"
-
-        listaHtml += `
+        // Se ainda não respondeu (Pendente ou Enviado), permite enviar/reenviar
+        if (statusAtual !== "TESTE_RESPONDIDO") {
+          listaHtml += `
               <button 
                 class="action-button primary btn-enviar-teste" 
                 data-id="${candidatoId}"
                 data-candidato-data='${jsonCand}'>
-                <i class="fas fa-vial me-1"></i> Enviar Teste
+                <i class="fas fa-vial me-1"></i> ${
+                  statusAtual === "TESTE_ENVIADO"
+                    ? "Reenviar Teste"
+                    : "Enviar Teste"
+                }
               </button>
           `;
+        }
 
-        // Mostra "Avaliar Teste" (seja pendente ou respondido)
+        // Avaliar Teste (Sempre disponível nesta fase para correções ou visualização)
         listaHtml += `
             <button 
               class="action-button success btn-avaliar-teste" 
@@ -183,7 +195,9 @@ export async function renderizarEntrevistas(state) {
               <i class="fas fa-clipboard-check me-1"></i> Avaliar Teste
             </button>
         `;
-      } else {
+      }
+      // Fallback
+      else {
         listaHtml += `
             <button 
               class="action-button primary btn-avaliar-rh" 
@@ -193,13 +207,14 @@ export async function renderizarEntrevistas(state) {
             </button>
         `;
       }
+
       listaHtml += `</div></div>`;
     });
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // ✅ 3. Anexar Listeners (Nenhuma mudança aqui)
+    // ✅ 3. Anexar Listeners (Nenhuma mudança funcional, apenas re-bind)
     document.querySelectorAll(".btn-detalhes-entrevista").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -212,6 +227,7 @@ export async function renderizarEntrevistas(state) {
         );
       });
     });
+
     document.querySelectorAll(".btn-agendar-rh").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -220,6 +236,7 @@ export async function renderizarEntrevistas(state) {
         window.abrirModalAgendamentoRH(e.currentTarget.dataset.id, dados);
       });
     });
+
     document.querySelectorAll(".btn-enviar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -228,6 +245,7 @@ export async function renderizarEntrevistas(state) {
         window.abrirModalEnviarTeste(e.currentTarget.dataset.id, dados);
       });
     });
+
     document.querySelectorAll(".btn-avaliar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -236,6 +254,7 @@ export async function renderizarEntrevistas(state) {
         window.abrirModalAvaliacaoTeste(e.currentTarget.dataset.id, dados);
       });
     });
+
     document.querySelectorAll(".btn-avaliar-rh").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
@@ -250,8 +269,7 @@ export async function renderizarEntrevistas(state) {
   }
 }
 
-// ✅ 4. Anexar as funções ao 'window' para que outros módulos
-// (como tabGestor.js) possam chamá-las se necessário.
+// ✅ 4. Anexar as funções ao 'window' para acesso global
 window.abrirModalAgendamentoRH = abrirModalAgendamentoRH;
 window.abrirModalAvaliacaoRH = abrirModalAvaliacaoRH;
 window.abrirModalEnviarTeste = abrirModalEnviarTeste;
