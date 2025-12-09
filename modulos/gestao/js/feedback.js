@@ -1,5 +1,5 @@
 // /modulos/gestao/js/feedback.js
-// VERSÃO 5.0 (Card UI + Validação de Palavras + Feedback Visual)
+// VERSÃO 5.1 (Card UI + Validação de Palavras + Feedback Visual + Estilo Login Melhorado)
 
 import { db as firestoreDb, auth } from "../../../assets/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -32,7 +32,11 @@ function initializePage() {
         renderError(error.message);
       }
     } else {
-      renderError("Acesso Negado. Faça login para acessar.", true);
+      // Exibe erro específico de login necessário
+      renderError(
+        "É necessário estar logado para registrar sua presença.",
+        true
+      );
     }
   });
 }
@@ -40,7 +44,7 @@ function initializePage() {
 async function findMeetingAndRender(userData) {
   try {
     const hash = window.location.hash.substring(1);
-    if (!hash) throw new Error("Link inválido.");
+    if (!hash) throw new Error("Link inválido ou incompleto.");
 
     const partes = hash.split("_");
     const docId = partes[0];
@@ -230,7 +234,7 @@ function renderFeedbackForm(
             <form id="feedback-form" novalidate>
                 <div class="form-group">
                     <label>Profissional</label>
-                    <input type="text" value="${loggedInUser.nome}" disabled>
+                    <input type="text" value="${loggedInUser.nome}" disabled class="form-control" style="background-color: #e9ecef;">
                 </div>`;
 
   // Renderização Dinâmica das Perguntas
@@ -244,12 +248,16 @@ function renderFeedbackForm(
         <div class="form-group">
             <label>
                 ${p.texto} 
-                ${isRequired ? '<span class="required-asterisk">*</span>' : ""}
+                ${
+                  isRequired
+                    ? '<span class="required-asterisk" style="color: var(--cor-erro);">*</span>'
+                    : ""
+                }
             </label>`;
 
     if (p.tipo === "select") {
       formHtml += `
-            <select id="${p.id}" required>
+            <select id="${p.id}" required class="form-control">
                 <option value="">Selecione...</option>
                 ${p.opcoes
                   .map((o) => `<option value="${o}">${o}</option>`)
@@ -260,6 +268,7 @@ function renderFeedbackForm(
       formHtml += `
             <textarea 
                 id="${p.id}" 
+                class="form-control"
                 rows="3" 
                 required 
                 data-min-words="${minWords}"
@@ -272,7 +281,7 @@ function renderFeedbackForm(
   });
 
   formHtml += `
-            <button type="submit" class="btn-confirmar">Confirmar Presença</button>
+            <button type="submit" class="btn-confirmar" style="width: 100%;">Confirmar Presença</button>
         </form>
     </div>`; // Fim form-body
 
@@ -293,8 +302,10 @@ function renderFeedbackForm(
       if (numPalavras >= min) {
         counterDiv.classList.add("valid"); // Fica verde (definir no CSS)
         this.classList.remove("input-error");
+        this.style.borderColor = "var(--cor-sucesso)";
       } else {
         counterDiv.classList.remove("valid");
+        this.style.borderColor = "";
       }
     });
   });
@@ -305,7 +316,7 @@ function renderFeedbackForm(
     .addEventListener("submit", async (e) => {
       e.preventDefault();
       const form = e.target;
-      const btn = form.querySelector("button");
+      const btn = form.querySelector("button[type='submit']");
 
       let formValido = true;
       let erroMsg = "";
@@ -315,12 +326,10 @@ function renderFeedbackForm(
       selects.forEach((sel) => {
         if (!sel.value) {
           formValido = false;
-          sel.classList.add("input-error");
-          sel.addEventListener(
-            "change",
-            () => sel.classList.remove("input-error"),
-            { once: true }
-          );
+          sel.style.borderColor = "var(--cor-erro)";
+          sel.addEventListener("change", () => (sel.style.borderColor = ""), {
+            once: true,
+          });
         }
       });
 
@@ -334,7 +343,7 @@ function renderFeedbackForm(
 
         if (numPalavras < min) {
           formValido = false;
-          txt.classList.add("input-error");
+          txt.style.borderColor = "var(--cor-erro)";
 
           const counterDiv = document.getElementById(`counter-${txt.id}`);
           counterDiv.style.color = "var(--cor-erro)";
@@ -346,10 +355,8 @@ function renderFeedbackForm(
           // Remove erro visualmente assim que atingir a meta
           txt.addEventListener("input", function () {
             if (contarPalavras(this.value) >= min) {
-              this.classList.remove("input-error");
+              this.style.borderColor = "var(--cor-sucesso)";
               document.getElementById(`counter-${this.id}`).style.color = "";
-              document.getElementById(`counter-${this.id}`).style.fontWeight =
-                "";
             }
           });
         }
@@ -358,11 +365,6 @@ function renderFeedbackForm(
       // Se houver erro, para tudo e mostra
       if (!formValido) {
         alert(erroMsg || "Preencha todos os campos obrigatórios corretamente.");
-        const primeiroErro = form.querySelector(".input-error");
-        if (primeiroErro) {
-          primeiroErro.scrollIntoView({ behavior: "smooth", block: "center" });
-          primeiroErro.focus();
-        }
         return;
       }
 
@@ -395,10 +397,14 @@ function renderFeedbackForm(
         }
 
         feedbackContainer.innerHTML = `
-            <div class="info-header"><h2>Sucesso!</h2></div>
+            <div class="info-header" style="background-color: var(--cor-sucesso);">
+                <h2>Sucesso!</h2>
+            </div>
             <div class="message-box">
-                <span class="material-symbols-outlined" style="font-size: 64px; color: #28a745;">check_circle</span>
-                <p>Presença confirmada e feedback registrado com sucesso!</p>
+                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--cor-sucesso);">check_circle</span>
+                <h3 style="margin-top: 15px;">Presença Confirmada!</h3>
+                <p>Obrigado por registrar seu feedback.</p>
+                <a href="../../../index.html" class="btn-confirmar" style="margin-top: 20px;">Voltar ao Painel</a>
             </div>`;
       } catch (err) {
         alert("Erro ao salvar: " + err.message);
@@ -416,16 +422,23 @@ function contarPalavras(texto) {
   return limpo.split(/\s+/).length;
 }
 
-// Renderiza erros gerais de carregamento
+// ✅ Renderiza erros gerais ou tela de login com estilo melhorado
 function renderError(msg, isCritical = false) {
+  const icon = isCritical ? "lock" : "error";
+  const title = isCritical ? "Acesso Restrito" : "Aviso";
+
+  // HTML estilizado usando as novas classes CSS
   const btn = isCritical
-    ? '<br><a href="../../../index.html" class="btn-confirmar" style="display:inline-block; text-decoration:none; margin-top:20px;">Ir para Login</a>'
+    ? `<a href="../../../index.html" class="btn-login-action">
+         <span class="material-symbols-outlined">login</span> Fazer Login
+       </a>`
     : "";
 
   feedbackContainer.innerHTML = `
-    <div class="alert alert-danger" style="text-align:center; margin: 20px;">
-        <h3>Aviso</h3>
-        <p>${msg}</p>
+    <div class="access-denied-wrapper">
+        <span class="material-symbols-outlined access-denied-icon">${icon}</span>
+        <h3 class="access-denied-title">${title}</h3>
+        <p class="access-denied-text">${msg}</p>
         ${btn}
     </div>`;
 }
