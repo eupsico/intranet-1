@@ -1,14 +1,14 @@
 /* /modulos/gestao/css/plano-de-acao.css */
-/* VERSÃO SCOPED - Integrada ao Design System */
+/* VERSÃO OTIMIZADA - Scoped ao Design System */
 
 #plano-de-acao-content {
-  padding: 0; /* Remove padding extra pois o container pai já tem */
+  padding: 0;
 }
 
 /* ===== KANBAN BOARD LAYOUT ===== */
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
   align-items: flex-start;
   margin-top: 20px;
@@ -20,40 +20,81 @@
   border: 1px solid var(--cor-borda);
   display: flex;
   flex-direction: column;
-  min-height: 500px;
-  max-height: 80vh; /* Scroll interno na coluna */
+  min-height: 600px;
+  max-height: 80vh;
+  box-shadow: var(--sombra-suave);
+  transition: box-shadow var(--transicao-padrao);
 }
 
-/* ===== HEADERS DAS COLUNAS ===== */
+.kanban-column:hover {
+  box-shadow: var(--sombra-media);
+}
+
+/* ===== HEADER DAS COLUNAS ===== */
 .column-header {
-  padding: 15px;
-  border-bottom: 1px solid var(--cor-borda);
+  padding: 16px;
+  border-bottom: 2px solid var(--cor-borda);
   border-radius: var(--borda-radius) var(--borda-radius) 0 0;
-  background: var(--cor-surface);
+  background: linear-gradient(135deg, var(--cor-fundo) 0%, var(--cor-fundo-box) 100%);
+  flex-shrink: 0;
 }
 
 .column-header h5 {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--cor-texto-principal);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-/* Cores específicas das colunas baseadas no Design System */
-#coluna-a-fazer .column-header { border-left: 4px solid var(--cor-info); }
-#coluna-a-fazer .material-symbols-outlined { color: var(--cor-info); }
+.column-header .column-count {
+  background-color: var(--cor-borda);
+  color: var(--cor-texto-principal);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: auto;
+}
 
-#coluna-em-andamento .column-header { border-left: 4px solid var(--cor-alerta); }
-#coluna-em-andamento .material-symbols-outlined { color: var(--cor-alerta); }
+/* Cores específicas das colunas */
+#coluna-a-fazer .column-header {
+  border-left: 5px solid var(--cor-info);
+}
 
-#coluna-atrasado .column-header { border-left: 4px solid var(--cor-erro); }
-#coluna-atrasado .material-symbols-outlined { color: var(--cor-erro); }
+#coluna-a-fazer .material-symbols-outlined {
+  color: var(--cor-info);
+  font-size: 1.3rem;
+}
 
-#coluna-concluido .column-header { border-left: 4px solid var(--cor-sucesso); }
-#coluna-concluido .material-symbols-outlined { color: var(--cor-sucesso); }
+#coluna-em-andamento .column-header {
+  border-left: 5px solid var(--cor-alerta);
+}
+
+#coluna-em-andamento .material-symbols-outlined {
+  color: var(--cor-alerta);
+  font-size: 1.3rem;
+}
+
+#coluna-atrasado .column-header {
+  border-left: 5px solid var(--cor-erro);
+}
+
+#coluna-atrasado .material-symbols-outlined {
+  color: var(--cor-erro);
+  font-size: 1.3rem;
+}
+
+#coluna-concluido .column-header {
+  border-left: 5px solid var(--cor-sucesso);
+}
+
+#coluna-concluido .material-symbols-outlined {
+  color: var(--cor-sucesso);
+  font-size: 1.3rem;
+}
 
 /* ===== CARDS CONTAINER (Área de Drop) ===== */
 .cards-container {
@@ -62,59 +103,212 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
+  min-height: 0;
 }
 
-/* Scrollbar fina para as colunas */
-.cards-container::-webkit-scrollbar { width: 6px; }
-.cards-container::-webkit-scrollbar-thumb { background: var(--cor-borda); border-radius: 3px; }
+/* Scrollbar customizada */
+.cards-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cards-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cards-container::-webkit-scrollbar-thumb {
+  background: var(--cor-borda);
+  border-radius: 4px;
+}
+
+.cards-container::-webkit-scrollbar-thumb:hover {
+  background: var(--cor-texto-secundario);
+}
 
 /* ===== CARD DE TAREFA ===== */
 .kanban-board .card {
   background-color: var(--cor-surface);
   border: 1px solid var(--cor-borda);
+  border-left: 4px solid var(--cor-texto-secundario);
   border-radius: var(--borda-radius-pequeno);
-  padding: 15px;
+  padding: 14px;
   box-shadow: var(--sombra-suave);
   cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all var(--transicao-padrao);
   position: relative;
-  /* Borda lateral indicando tipo */
-  border-left: 4px solid var(--cor-texto-secundario); 
+  user-select: none;
 }
 
 .kanban-board .card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--sombra-media);
+  border-color: var(--cor-secundaria);
 }
 
 .kanban-board .card:active {
   cursor: grabbing;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
-.kanban-board .card.atividade { border-left-color: var(--cor-primaria); }
-.kanban-board .card.encaminhamento { border-left-color: var(--cor-info); }
+.kanban-board .card:focus {
+  outline: 2px solid var(--cor-primaria);
+  outline-offset: 2px;
+}
+
+/* Cores por Tipo de Tarefa */
+.kanban-board .card.atividade {
+  border-left-color: var(--cor-primaria);
+}
+
+.kanban-board .card.encaminhamento {
+  border-left-color: var(--cor-info);
+}
+
+.kanban-board .card.observacao {
+  border-left-color: var(--cor-alerta);
+}
+
+/* ===== CONTEÚDO DO CARD ===== */
+.kanban-board .card-body {
+  padding: 0;
+}
 
 .kanban-board .card-body p {
   font-size: 0.95rem;
-  margin-bottom: 10px;
+  margin: 0 0 8px 0;
   color: var(--cor-texto-principal);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .kanban-board .card small {
   display: block;
   color: var(--cor-texto-secundario);
   font-size: 0.8rem;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 
-/* Badge de Urgência dentro do Card */
+.kanban-board .card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cor-borda);
+}
+
+.kanban-board .card-assignee {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--cor-fundo-box);
+  color: var(--cor-primaria);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ===== BADGES ===== */
 .kanban-board .urgencia-badge {
   display: inline-flex;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.kanban-board .urgencia-badge.alta {
+  background-color: #f8d7da;
+  color: var(--cor-erro);
+}
+
+.kanban-board .urgencia-badge.media {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.kanban-board .urgencia-badge.baixa {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+/* ===== DRAG AND DROP FEEDBACK ===== */
+.cards-container.drag-over {
+  background-color: rgba(4, 57, 109, 0.05);
+  border: 2px dashed var(--cor-primaria);
+  border-radius: var(--borda-radius);
+}
+
+.kanban-board .card.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+.kanban-board .card.drop-target {
+  opacity: 0.3;
+}
+
+/* ===== EMPTY STATE ===== */
+.cards-container.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cor-texto-secundario);
+  font-size: 0.9rem;
+  text-align: center;
+  min-height: 200px;
+  padding: 30px;
+}
+
+.cards-container.empty::before {
+  content: '📭';
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 1024px) {
+  .kanban-board {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+
+  .kanban-column {
+    min-height: 400px;
+    max-height: 60vh;
+  }
+
+  .column-header {
+    padding: 12px;
+  }
+
+  .column-header h5 {
+    font-size: 0.95rem;
+  }
+
+  .cards-container {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .kanban-board .card {
+    padding: 12px;
+  }
+
+  .kanban-board .card-body p {
+    font-size: 0.9rem;
+  }
 }
