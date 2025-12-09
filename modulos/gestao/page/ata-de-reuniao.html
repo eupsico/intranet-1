@@ -1,31 +1,31 @@
 <div class="view-container">
-    <div id="lista-reunioes-agendadas" class="card">
-        <h3>Selecione uma Reunião Agendada para Registar a Ata</h3>
-    </div>
-    <div class="card mb-3" id="filtros-ata-container">
-        <div class="card-body d-flex flex-wrap gap-3 align-items-end">
-            <div class="flex-grow-1">
-                <label class="form-label small text-muted mb-1">Período (Mês/Ano)</label>
-                <input type="month" id="filtro-mes-ata" class="form-control">
-            </div>
-            <div class="flex-grow-1">
-                <label class="form-label small text-muted mb-1">Status</label>
-                <select id="filtro-status-ata" class="form-select">
-                    <option value="pendente" selected>Pendentes (A Fazer)</option>
-                    <option value="concluida">Atas Salvas (Histórico)</option>
-                </select>
-            </div>
-            <div>
-                <button id="btn-atualizar-lista" class="btn btn-primary">
-                    <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">refresh</span>
-                    Atualizar
-                </button>
+    <div id="lista-reunioes-wrapper">
+        
+        <div class="card mb-3" id="filtros-ata-container">
+            <div class="card-body d-flex flex-wrap gap-3 align-items-end" style="padding: 20px;">
+                <div class="flex-grow-1">
+                    <label class="form-label small text-muted mb-1">Período (Mês/Ano)</label>
+                    <input type="month" id="filtro-mes-ata" class="form-control">
+                </div>
+                <div class="flex-grow-1">
+                    <label class="form-label small text-muted mb-1">Status</label>
+                    <select id="filtro-status-ata" class="form-select">
+                        <option value="pendente" selected>Pendentes (A Fazer)</option>
+                        <option value="concluida">Atas Salvas (Histórico)</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="btn-atualizar-lista" class="btn btn-primary action-button">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">refresh</span>
+                        Atualizar
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="lista-reunioes-agendadas">
-        <div class="loading-spinner"></div>
+        <div id="lista-reunioes-content">
+            <div class="loading-spinner"></div>
+        </div>
     </div>
 
     <div id="form-ata-container" class="card" style="display: none;">
