@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/dashboard.js
-// --- VERSÃO ATUALIZADA (Inclui Card Próxima Reunião) ---
+// --- VERSÃO ATUALIZADA (Correção do Botão Próxima Reunião) ---
 
 import {
   db,
@@ -78,7 +78,7 @@ export function init(user, userData) {
     sabado: "Sábado",
   };
 
-  // --- FUNÇÃO 1: Carregar Próxima Reunião (NOVO) ---
+  // --- FUNÇÃO 1: Carregar Próxima Reunião (CORRIGIDA) ---
   async function loadNextMeeting() {
     if (!nextMeetingContainer) return;
 
@@ -110,7 +110,7 @@ export function init(user, userData) {
                   titulo: dados.tipo,
                   data: dataHora,
                   gestor: slot.gestorNome || "Gestão",
-                  link: slot.linkReuniao || "#",
+                  link: slot.linkReuniao || dados.link || "#", // Tenta link do slot ou da raiz
                   pauta: dados.descricao || "Sem pauta",
                 });
               }
@@ -149,6 +149,19 @@ export function init(user, userData) {
           minute: "2-digit",
         });
 
+        // Verifica se há um link válido para habilitar o botão corretamente
+        const linkHref =
+          prox.link && prox.link !== "#" ? prox.link : "javascript:void(0)";
+        const linkTarget = prox.link && prox.link !== "#" ? "_blank" : "_self";
+        const linkTitle =
+          prox.link && prox.link !== "#"
+            ? "Abrir link da reunião"
+            : "Link não disponível";
+        const linkOnClick =
+          prox.link && prox.link !== "#"
+            ? ""
+            : "alert('O link para esta reunião ainda não foi disponibilizado.');";
+
         nextMeetingContainer.innerHTML = `
                 <h4><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Próxima Reunião</h4>
                 <h2>${prox.titulo}</h2>
@@ -162,10 +175,9 @@ export function init(user, userData) {
                     </div>
                 </div>
                 <div class="meeting-actions">
-                    <button class="btn-meeting-action" onclick="alert('Detalhes: ${prox.pauta.replace(
-                      /'/g,
-                      ""
-                    )}')">Ver Detalhes</button>
+                    <a href="${linkHref}" target="${linkTarget}" title="${linkTitle}" onclick="${linkOnClick}" class="btn-meeting-action" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none;">
+                        Ver Detalhes / Inscrever-se
+                    </a>
                 </div>
             `;
         nextMeetingContainer.style.display = "block";
