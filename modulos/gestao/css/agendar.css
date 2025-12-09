@@ -1,48 +1,58 @@
 /* /modulos/gestao/css/agendar.css */
-/* VERSÃO SCOPED - Integrada ao Design System */
+/* VERSÃO OTIMIZADA - Scoped ao Design System */
 
 #agendar-reuniao-container {
-  /* Layout e Espaçamento Local */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 25px;
 }
 
-/* ===== CARD PRINCIPAL & CABEÇALHO ===== */
+/* ===== CABEÇALHO ===== */
 #agendar-reuniao-container h3 {
   color: var(--cor-primaria);
   font-family: var(--fonte-principal);
-  font-weight: 600;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--cor-borda);
-  padding-bottom: 10px;
+  font-weight: 700;
+  margin: 0 0 15px 0;
+  font-size: 1.3rem;
+  border-bottom: 2px solid var(--cor-borda);
+  padding-bottom: 12px;
 }
 
-/* ===== FORMULÁRIOS ESPECÍFICOS ===== */
-/* Reutiliza .form-group e .form-control do Design System, 
-   apenas ajusta especificidades do módulo se necessário */
-
+/* ===== TEXTAREA ESPECÍFICA ===== */
 #agendar-reuniao-container textarea.form-control {
   resize: vertical;
   min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius-pequeno);
+  font-family: var(--fonte-principal);
 }
 
-/* ===== CHECKBOX ESTILIZADO (Wrapper específico) ===== */
+/* ===== CHECKBOX ESTILIZADO ===== */
 #agendar-reuniao-container .checkbox-wrapper {
   background: var(--cor-fundo);
-  padding: 15px;
+  padding: 16px;
   border-radius: var(--borda-radius);
   border: 1px solid var(--cor-borda);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 20px;
-  transition: background-color var(--transicao-padrao);
+  transition: all var(--transicao-padrao);
+  cursor: pointer;
 }
 
 #agendar-reuniao-container .checkbox-wrapper:hover {
   background-color: var(--cor-fundo-box);
   border-color: var(--cor-secundaria);
+  box-shadow: var(--sombra-suave);
+}
+
+#agendar-reuniao-container .checkbox-wrapper input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--cor-primaria);
 }
 
 #agendar-reuniao-container .checkbox-wrapper label {
@@ -50,112 +60,167 @@
   cursor: pointer;
   font-weight: 500;
   color: var(--cor-texto-principal);
+  user-select: none;
 }
 
 #agendar-reuniao-container .help-text {
   display: block;
   font-size: 0.8rem;
   color: var(--cor-texto-secundario);
-  margin-top: 5px;
+  margin-top: 6px;
   font-style: italic;
 }
 
-/* ===== CONTAINER DE SLOTS (Grade de Horários) ===== */
+/* ===== CONTAINER DE SLOTS ===== */
 #agendar-reuniao-container #slots-container,
 #agendar-reuniao-container #novos-slots-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 #agendar-reuniao-container .slot-item {
   display: grid;
   grid-template-columns: 1fr 1fr auto 1fr 2fr auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   background: var(--cor-fundo);
-  padding: 15px;
+  padding: 16px;
   border-radius: var(--borda-radius);
   border: 1px solid var(--cor-borda);
-  transition: box-shadow var(--transicao-padrao);
+  transition: all var(--transicao-padrao);
+  position: relative;
 }
 
 #agendar-reuniao-container .slot-item:hover {
   box-shadow: var(--sombra-suave);
   border-color: var(--cor-secundaria);
+  background: var(--cor-fundo-box);
 }
 
 #agendar-reuniao-container .slot-item small {
   display: block;
   color: var(--cor-texto-secundario);
   font-size: 0.75rem;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-/* Botão Remover Slot */
+#agendar-reuniao-container .slot-item input {
+  padding: 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius-pequeno);
+  font-size: 0.9rem;
+}
+
+/* ===== BOTÃO REMOVER SLOT ===== */
 #agendar-reuniao-container .btn-remove-slot {
   background-color: transparent;
   color: var(--cor-erro);
   border: 1px solid var(--cor-erro);
   border-radius: var(--borda-radius-pequeno);
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all var(--transicao-padrao);
+  font-weight: bold;
+  font-size: 1rem;
 }
 
 #agendar-reuniao-container .btn-remove-slot:hover {
   background-color: var(--cor-erro);
   color: var(--cor-texto-inverso);
+  transform: scale(1.05);
 }
 
-/* ===== CARDS DE AGENDAMENTOS EXISTENTES (Lista) ===== */
+/* ===== CARDS DE AGENDAMENTOS ===== */
 #agendar-reuniao-container .agendamento-card {
   background: var(--cor-surface);
   border: 1px solid var(--cor-borda);
   border-radius: var(--borda-radius);
   padding: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   box-shadow: var(--sombra-suave);
-  transition: transform var(--transicao-padrao);
+  transition: all var(--transicao-padrao);
 }
 
 #agendar-reuniao-container .agendamento-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--sombra-media);
+  border-color: var(--cor-secundaria);
 }
 
 #agendar-reuniao-container .agendamento-card h4 {
   color: var(--cor-primaria);
-  margin-top: 0;
+  margin: 0 0 12px 0;
   font-size: 1.1rem;
+  font-weight: 600;
 }
 
-/* Botões de Ação Específicos */
+#agendar-reuniao-container .agendamento-card p {
+  margin: 8px 0;
+  color: var(--cor-texto-principal);
+  font-size: 0.95rem;
+}
+
+#agendar-reuniao-container .agendamento-card small {
+  color: var(--cor-texto-secundario);
+  font-size: 0.8rem;
+}
+
+/* ===== ACTION BUTTONS ===== */
 #agendar-reuniao-container .action-button {
-  /* Herda base do design system, ajustes locais se necessário */
-  font-size: 0.9rem;
   padding: 8px 16px;
+  border-radius: var(--borda-radius-pequeno);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transicao-padrao);
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+}
+
+#agendar-reuniao-container .action-button:hover {
+  background-color: var(--cor-secundaria);
+  transform: translateY(-1px);
+}
+
+#agendar-reuniao-container .action-button.secondary {
+  background-color: var(--cor-fundo);
+  color: var(--cor-texto-principal);
+  border: 1px solid var(--cor-borda);
+}
+
+#agendar-reuniao-container .action-button.secondary:hover {
+  background-color: var(--cor-borda);
 }
 
 /* ===== RESPONSIVIDADE ===== */
+@media (max-width: 1024px) {
+  #agendar-reuniao-container .slot-item {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
 @media (max-width: 768px) {
   #agendar-reuniao-container .slot-item {
     grid-template-columns: 1fr;
-    gap: 5px;
-    position: relative;
-    padding-bottom: 40px; /* Espaço para o botão remover */
+    gap: 8px;
   }
 
   #agendar-reuniao-container .btn-remove-slot {
     position: absolute;
-    bottom: 10px;
+    top: 10px;
     right: 10px;
-    width: 100%;
-    max-width: 100px;
+  }
+
+  #agendar-reuniao-container .slot-item {
+    padding-top: 35px;
   }
 }
