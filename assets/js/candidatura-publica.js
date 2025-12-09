@@ -356,26 +356,26 @@ function mostrarSucessoCandidatura(nomeCandidato) {
     return;
   }
 
-  // ATUALIZADO: HTML de sucesso reescrito para usar
-  // classes do Design System (alert, alert-success) e incluir a logo azul.
+  // ATUALIZADO: Layout vertical e mensagem melhorada.
+  // 'flex-direction: column' é essencial aqui pois a classe .alert do CSS original possui display:flex padrão.
   formBody.innerHTML = `
-<div class="alert alert-success" style="text-align: center; padding: 30px;">
-    <img src="../assets/img/logo-eupsico.png" alt="Logo" style="max-width: 160px; margin-bottom: 20px;">
-    
-    <p style="font-size: 1.1rem;">Olá, <strong>${
-      nomeCandidato || "Candidato(a)"
-    }</strong>!</p>
-    
-    <h2 style="color: var(--cor-texto-principal); margin-bottom: 15px;">Obrigado por se candidatar!</h2>
-    
-    <p>Recebemos sua candidatura com sucesso. Seu currículo será analisado cuidadosamente pela nossa equipe de RH.</p>
-    <p>Entraremos em contato após o término do processo de recrutamento.</p>
-    
-    <p style="margin-top: 20px; font-weight: 600; color: var(--cor-primaria);">
-        Atenciosamente,<br>Equipe EuPsico
-    </p>
-</div>
-
+    <div class="alert alert-success" style="flex-direction: column; text-align: center; padding: 40px 20px; gap: 20px; justify-content: center;">
+        <img src="../assets/img/logo-eupsico.png" alt="Logo" style="max-width: 80px; margin-bottom: 10px;">
+        
+        <h3 style="color: #155724; margin: 0; font-size: 1.4rem;">Candidatura Recebida!</h3>
+        
+        <div style="font-size: 1rem; color: #155724; line-height: 1.6;">
+            <p style="margin-bottom: 15px;">Olá, <strong>${
+              nomeCandidato || "Candidato(a)"
+            }</strong>.</p>
+            <p style="margin-bottom: 10px;">Confirmamos o recebimento dos seus dados e currículo.</p>
+            <p>Nossa equipe de Talentos fará a análise do seu perfil. Caso suas qualificações estejam alinhadas aos requisitos da vaga, entraremos em contato para os próximos passos.</p>
+        </div>
+        
+        <p style="margin-top: 15px; font-weight: 600; font-size: 0.95rem; color: #155724;">
+            Atenciosamente,<br>Equipe EuPsico
+        </p>
+    </div>
     `;
 }
 
