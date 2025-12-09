@@ -19,6 +19,11 @@ import {
   functions,
   httpsCallable,
 } from "../../../assets/js/firebase-init.js";
+// ✅ Importação do Utilitário de Status (Centralizado)
+import {
+  formatarStatusLegivel,
+  getStatusBadgeClass,
+} from "../utils/status_utils.js";
 
 // Importação dos módulos de abas (tabs)
 import { renderizarCronograma } from "./tabs/tabCronograma.js";
@@ -26,12 +31,6 @@ import { renderizarTriagem } from "./tabs/tabTriagem.js";
 import { renderizarEntrevistas } from "./tabs/tabEntrevistas.js";
 import { renderizarEntrevistaGestor } from "./tabs/tabGestor.js";
 import { renderizarFinalizados } from "./tabs/tabFinalizados.js";
-
-// ✅ Importação do Utilitário de Status (Centralizado)
-import {
-  formatarStatusLegivel,
-  getStatusBadgeClass,
-} from "./js/utils/status_utils.js";
 
 // ============================================
 // CONSTANTES E COLEÇÕES DO FIRESTORE
