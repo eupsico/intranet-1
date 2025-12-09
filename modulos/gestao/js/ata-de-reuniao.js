@@ -1,5 +1,5 @@
 // /modulos/gestao/js/ata-de-reuniao.js
-// VERSÃO 4.1 (Filtro Estrito de Tipos de Reunião)
+// VERSÃO 4.2 (Correção de Loop e Filtro de Data Robusto)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -16,7 +16,6 @@ import {
 let usuariosCache = [];
 let unsubscribeListener = null;
 
-// CONFIGURAÇÃO: Tipos permitidos para Ata (Códigos e Nomes Legíveis)
 const TIPOS_PERMITIDOS = [
   "reuniao_gestor",
   "reuniao_conselho",
@@ -25,11 +24,11 @@ const TIPOS_PERMITIDOS = [
 ];
 
 export async function init() {
-  console.log("[ATA] Módulo Registar Ata iniciado (v4.1).");
+  console.log("[ATA] Iniciando v4.2...");
 
-  // Define o mês atual como filtro padrão
+  // Define mês atual no filtro se estiver vazio
   const inputMes = document.getElementById("filtro-mes-ata");
-  if (inputMes) {
+  if (inputMes && !inputMes.value) {
     const hoje = new Date();
     const mes = String(hoje.getMonth() + 1).padStart(2, "0");
     const ano = hoje.getFullYear();
@@ -60,21 +59,25 @@ async function fetchTodosUsuarios() {
     const snapshot = await getDocs(q);
     usuariosCache = snapshot.docs.map((doc) => doc.data().nome);
   } catch (error) {
-    console.error("[ATA] Erro ao buscar usuários:", error);
+    console.error("[ATA] Erro usuarios:", error);
   }
 }
 
 async function carregarReunioesAgendadas() {
-  const container = document.getElementById("lista-reunioes-agendadas");
+  const container = document.getElementById("lista-reunioes-content"); // ALTERADO: ID Específico do conteúdo
   const formContainer = document.getElementById("form-ata-container");
 
+  if (!container) return console.error("Container da lista não encontrado!");
+
   // Reseta visualização
-  container.style.display = "flex";
+  document.getElementById("lista-reunioes-wrapper").style.display = "block"; // Mostra o wrapper da lista
   formContainer.style.display = "none";
   container.innerHTML = '<div class="loading-spinner"></div>';
 
-  const mesFiltro = document.getElementById("filtro-mes-ata").value;
+  const mesFiltro = document.getElementById("filtro-mes-ata").value; // YYYY-MM
   const statusFiltro = document.getElementById("filtro-status-ata").value;
+
+  console.log(`[ATA] Filtrando por: Mês=${mesFiltro}, Status=${statusFiltro}`);
 
   try {
     const q = query(
@@ -90,87 +93,98 @@ async function carregarReunioesAgendadas() {
 
       if (snapshot.empty) {
         container.innerHTML =
-          '<div class="alert alert-info">Nenhuma reunião encontrada.</div>';
+          '<div class="alert alert-info">Nenhum evento registrado no sistema.</div>';
         return;
       }
 
       snapshot.forEach((docSnap) => {
-        const evento = docSnap.data();
-        const slots = evento.slots || [];
+        try {
+          const evento = docSnap.data();
+          const slots = evento.slots || [];
 
-        // FILTRO PRINCIPAL: Ignora se não for Gestor ou Conselho
-        if (!TIPOS_PERMITIDOS.includes(evento.tipo)) {
-          return;
-        }
+          // 1. Filtro de Tipo (Gestor ou Conselho)
+          if (!TIPOS_PERMITIDOS.includes(evento.tipo)) return;
 
-        const processarItem = (itemData, slotIndex) => {
-          const dataItem = itemData.data || evento.dataReuniao;
-          if (!dataItem) return;
+          const processarItem = (itemData, slotIndex) => {
+            const dataRaw = itemData.data || evento.dataReuniao;
+            if (!dataRaw) return;
 
-          // Filtro de Data
-          if (mesFiltro && !dataItem.startsWith(mesFiltro)) return;
+            // 2. Filtro de Data (Robusto)
+            // Converte string '2025-12-08' ou '2025-12' para comparação
+            if (mesFiltro) {
+              const [anoFiltro, mesFiltroNum] = mesFiltro
+                .split("-")
+                .map(Number);
+              // Cria data evitando problemas de timezone (apenas data string)
+              const dataEvt = new Date(dataRaw + "T12:00:00");
 
-          // Filtro de Status
-          const statusItem = itemData.status || "Agendada";
-          const isConcluida = statusItem === "Concluída";
+              const evtAno = dataEvt.getFullYear();
+              const evtMes = dataEvt.getMonth() + 1;
 
-          if (statusFiltro === "pendente" && isConcluida) return;
-          if (statusFiltro === "concluida" && !isConcluida) return;
+              if (evtAno !== anoFiltro || evtMes !== mesFiltroNum) {
+                return; // Data não bate
+              }
+            }
 
-          // Renderização
-          const nomeTipo = formatarNomeTipo(evento.tipo);
-          const classeTipo = getClassePorTipo(evento.tipo);
-          const dataFormatada = new Date(
-            dataItem + "T00:00:00"
-          ).toLocaleDateString("pt-BR");
-          const hora = itemData.horaInicio || "N/A";
-          const responsavel =
-            itemData.gestorNome || evento.responsavel || "N/A";
-          const badgeLabel = isConcluida ? "Ata Salva" : "Pendente";
-          const badgeClass = isConcluida ? "concluida" : "pendente";
+            // 3. Filtro de Status
+            const statusItem = itemData.status || "Agendada";
+            const isConcluida = statusItem === "Concluída";
 
-          html += `
-                <div class="reuniao-card-item ${classeTipo}" onclick="abrirFormulario('${
-            docSnap.id
-          }', ${slotIndex})">
-                    <div class="reuniao-card-header">
-                        <div>
-                            <h4 class="reuniao-card-title">${nomeTipo}</h4>
-                            <div class="reuniao-card-date">
-                                <span class="material-symbols-outlined" style="font-size:18px">calendar_month</span>
-                                ${dataFormatada} às ${hora}
+            if (statusFiltro === "pendente" && isConcluida) return;
+            if (statusFiltro === "concluida" && !isConcluida) return;
+
+            // Renderização
+            const nomeTipo = formatarNomeTipo(evento.tipo);
+            const classeTipo = getClassePorTipo(evento.tipo);
+
+            // Formatação visual da data
+            const dataObj = new Date(dataRaw + "T12:00:00");
+            const dataFormatada = dataObj.toLocaleDateString("pt-BR");
+
+            const hora = itemData.horaInicio || "N/A";
+            const responsavel =
+              itemData.gestorNome || evento.responsavel || "N/A";
+            const badgeLabel = isConcluida ? "Ata Salva" : "Pendente";
+            const badgeClass = isConcluida ? "concluida" : "pendente";
+
+            html += `
+                    <div class="reuniao-card-item ${classeTipo}" onclick="abrirFormulario('${docSnap.id}', ${slotIndex})">
+                        <div class="reuniao-card-header">
+                            <div>
+                                <h4 class="reuniao-card-title">${nomeTipo}</h4>
+                                <div class="reuniao-card-date">
+                                    <span class="material-symbols-outlined" style="font-size:18px">calendar_month</span>
+                                    ${dataFormatada} às ${hora}
+                                </div>
                             </div>
+                            <span class="badge-status ${badgeClass}">${badgeLabel}</span>
                         </div>
-                        <span class="badge-status ${badgeClass}">${badgeLabel}</span>
+                        <div class="reuniao-card-meta">
+                            <strong>Resp:</strong> ${responsavel}
+                        </div>
                     </div>
-                    <div class="reuniao-card-meta">
-                        <strong>Responsável:</strong> ${responsavel}<br>
-                        ${
-                          evento.pauta
-                            ? `<em class="text-muted">"${evento.pauta.substring(
-                                0,
-                                80
-                              )}..."</em>`
-                            : ""
-                        }
-                    </div>
-                </div>
-            `;
-          count++;
-        };
+                `;
+            count++;
+          };
 
-        if (slots.length > 0) {
-          slots.forEach((slot, idx) => processarItem(slot, idx));
-        } else {
-          processarItem(evento, -1);
+          if (slots.length > 0) {
+            slots.forEach((slot, idx) => processarItem(slot, idx));
+          } else {
+            processarItem(evento, -1);
+          }
+        } catch (errLoop) {
+          console.error("Erro ao processar item individual:", errLoop);
         }
       });
 
       if (count === 0) {
         container.innerHTML = `
-            <div class="alert alert-light text-center border">
+            <div class="alert alert-light text-center border" style="padding: 30px;">
                 <span class="material-symbols-outlined" style="font-size: 48px; color: #ccc;">filter_list_off</span>
-                <p class="mt-2 text-muted">Nenhuma Ata de <strong>Gestor</strong> ou <strong>Conselho</strong> encontrada neste filtro.</p>
+                <p class="mt-3 text-muted">
+                    Nenhuma Ata de <strong>Gestor</strong> ou <strong>Conselho</strong> encontrada.<br>
+                    <small>Verifique se o mês selecionado está correto.</small>
+                </p>
             </div>`;
       } else {
         container.innerHTML = html;
@@ -178,16 +192,16 @@ async function carregarReunioesAgendadas() {
       }
     });
   } catch (error) {
-    console.error("[ATA] Erro ao carregar:", error);
-    container.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados.</div>`;
+    console.error("Erro fatal ao carregar lista:", error);
+    container.innerHTML = `<div class="alert alert-danger">Erro técnico ao buscar dados.</div>`;
   }
 }
 
 async function abrirFormulario(docId, slotIndex) {
-  const containerLista = document.getElementById("lista-reunioes-agendadas");
+  const wrapperLista = document.getElementById("lista-reunioes-wrapper");
   const containerForm = document.getElementById("form-ata-container");
 
-  containerLista.style.display = "none";
+  wrapperLista.style.display = "none";
   containerForm.style.display = "block";
   containerForm.innerHTML = '<div class="loading-spinner"></div>';
 
@@ -255,7 +269,7 @@ function renderizarFormulario(dados) {
         <form id="form-ata-registro">
             <div class="alert alert-info py-2 mb-4">
                 <strong>${titulo}</strong> - ${new Date(
-    dataDisplay
+    dataDisplay + "T12:00:00"
   ).toLocaleDateString("pt-BR")} às ${horaDisplay}
             </div>
             
@@ -308,7 +322,7 @@ function renderizarFormulario(dados) {
 
   window.cancelarEdicao = () => {
     container.style.display = "none";
-    document.getElementById("lista-reunioes-agendadas").style.display = "flex";
+    document.getElementById("lista-reunioes-wrapper").style.display = "block";
   };
 
   document
