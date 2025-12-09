@@ -90,7 +90,7 @@ export async function renderizarSolicitacaoEmail(state) {
   try {
     const q = query(
       candidatosCollection,
-      where("status_recrutamento", "==", "AGUARDANDO_ADMISSAO")
+      where("status_recrutamento", "==", "ADMISSAO_INICIADA")
     );
 
     const snapshot = await getDocs(q);
@@ -305,7 +305,7 @@ async function salvarSolicitacaoEmail(
   try {
     let emailCriadoComSucesso = false;
     let logAcao = "";
-    const novoStatus = "AGUARDANDO_CADASTRO";
+    const novoStatus = "CADASTRO_PENDENTE";
     const solicitanteId = currentUserData?.uid || "rhadmin-fallback-uid";
     const solicitanteNome =
       currentUserData?.nome || currentUserData?.email || "Usuário RH";

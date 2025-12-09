@@ -128,7 +128,7 @@ async function carregarVagasAtivas() {
       "Em Divulgação",
       "Cronograma Pendente",
       "Cronograma Definido (Triagem Pendente)",
-      "Entrevista RH Pendente",
+      "ENTREVISTA_RH_PENDENTE",
       "TESTE_PENDENTE",
       "ENTREVISTA_GESTOR_PENDENTE",
       "CONTRATADO",
@@ -797,7 +797,7 @@ window.reprovarCandidatura = async function (
     const candidatoRef = doc(candidatosCollection, candidatoId);
 
     await updateDoc(candidatoRef, {
-      status_recrutamento: "Rejeitado (Comunicação Pendente)",
+      status_recrutamento: "REPROVADO",
       "rejeicao.etapa": etapa,
       "rejeicao.data": new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
       "rejeicao.justificativa": justificativa,

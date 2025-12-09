@@ -36,8 +36,8 @@ export async function renderizarAvaliacao3Meses(state) {
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
-        "AGUARDANDO_AVALIACAO_3MESES",
-        "AVALIACAO_3MESES_AGENDADA",
+        "EXPERIENCIA_EM_ANDAMENTO",
+        "AVALIACAO_EXP_AGENDADA",
       ])
     );
     const snapshot = await getDocs(q);
@@ -95,7 +95,7 @@ export async function renderizarAvaliacao3Meses(state) {
       const dadosCodificados = encodeURIComponent(JSON.stringify(dadosUsuario));
 
       // --- LÓGICA DOS BOTÕES ---
-      if (statusAtual === "AVALIACAO_3MESES_AGENDADA") {
+      if (statusAtual === "AVALIACAO_EXP_AGENDADA") {
         statusClass = "status-info";
         // Botão Roxo: Registrar Avaliação (Já agendado)
         actionButtonHtml = `
@@ -291,7 +291,7 @@ async function submeterAgendamento3Meses(e) {
 
     // Atualiza status para AGENDADO
     await updateDoc(usuarioRef, {
-      status_admissao: "AVALIACAO_3MESES_AGENDADA",
+      status_admissao: "AVALIACAO_EXP_AGENDADA",
       "avaliacao_experiencia.agendamento": {
         data: data,
         hora: hora,
@@ -413,7 +413,7 @@ async function submeterAvaliacao3Meses(e) {
 
     const isAprovado = resultado === "Aprovado";
     const novoStatusAdmissao = isAprovado
-      ? "ENVIAR_ASSINATURA_FASE2"
+      ? "DOCS_FASE2_PREPARACAO"
       : "REPROVADO_EXPERIENCIA";
 
     const dadosUpdate = {

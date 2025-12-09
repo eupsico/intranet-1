@@ -3350,7 +3350,7 @@ exports.salvarDadosAdmissao = onRequest({ timeoutSeconds: 60 }, (req, res) => {
           certificados: dadosFormulario.certificadosUrls || [],
         },
         // ✅ NOVOS CAMPOS DE CONTROLE
-        status_admissao: "ENVIAR_ASSINATURA_FASE1", // <--- AQUI COMEÇA O FLUXO NOVO
+        status_admissao: "DOCS_FASE1_PREPARACAO", // <--- AQUI COMEÇA O FLUXO NOVO
         primeiraFase: true,
         inativo: false,
         recebeDireto: true,
@@ -3433,7 +3433,7 @@ exports.verificarAssinaturaCompleta = onDocumentUpdated(
 
         if (fase === 1) {
           // Fase 1 concluída -> Vai para Integração
-          novoStatusAdmissao = "AGUARDANDO_INTEGRACAO";
+          novoStatusAdmissao = "INTEGRACAO_PENDENTE";
         } else if (fase === 2) {
           // Fase 2 concluída -> Processo finalizado
           novoStatusAdmissao = "CONCLUIDO";

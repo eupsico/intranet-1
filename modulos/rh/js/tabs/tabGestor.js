@@ -685,7 +685,7 @@ window.salvarAvaliacaoGestorModal = async function (candidatoId, vagaId) {
     }
 
     const ref = doc(db, "candidaturas", candidatoId);
-    let novoStatus = res === "aprovado" ? "AGUARDANDO_ADMISSAO" : "REPROVADO";
+    let novoStatus = res === "aprovado" ? "ADMISSAO_INICIADA" : "REPROVADO";
 
     await updateDoc(ref, {
       status_recrutamento: novoStatus,

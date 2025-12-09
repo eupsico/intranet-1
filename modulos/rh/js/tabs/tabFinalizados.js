@@ -38,7 +38,7 @@ export async function renderizarFinalizados(state) {
       where("status_recrutamento", "in", [
         "REPROVADO_TRIAGEM",
         "REPROVADO",
-        "AGUARDANDO_ADMISSAO",
+        "ADMISSAO_INICIADA",
       ])
     );
 

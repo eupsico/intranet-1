@@ -36,7 +36,7 @@ export async function renderizarDocsPos3Meses(state) {
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
-        "ENVIAR_ASSINATURA_FASE2",
+        "DOCS_FASE2_PREPARACAO",
         "AGUARDANDO_ASSINATURA_FASE2",
       ])
     );
@@ -90,7 +90,7 @@ export async function renderizarDocsPos3Meses(state) {
                <i class="fab fa-whatsapp me-1"></i> Lembrar Assinatura
             </button>`;
       } else {
-        // ENVIAR_ASSINATURA_FASE2
+        // DOCS_FASE2_PREPARACAO
         statusClass = "status-success";
         // Botão de Envio (Função renomeada para evitar conflito)
         botaoAcao = `

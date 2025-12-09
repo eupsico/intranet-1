@@ -41,7 +41,7 @@ export async function renderizarIntegracao(state) {
     const q = query(
       usuariosCollection,
       where("status_admissao", "in", [
-        "AGUARDANDO_INTEGRACAO",
+        "INTEGRACAO_PENDENTE",
         "INTEGRACAO_AGENDADA",
       ])
     );
@@ -404,7 +404,7 @@ async function submeterAvaliacaoIntegracao(e) {
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
     await updateDoc(usuarioRef, {
-      status_admissao: "AGUARDANDO_AVALIACAO_3MESES",
+      status_admissao: "EXPERIENCIA_EM_ANDAMENTO",
       "integracao.conclusao": {
         realizada: true,
         observacoes: observacoes,

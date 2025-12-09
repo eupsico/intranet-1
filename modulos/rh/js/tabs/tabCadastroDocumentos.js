@@ -34,8 +34,8 @@ export async function renderizarCadastroDocumentos(state) {
     const q = query(
       candidatosCollection,
       where("status_recrutamento", "in", [
-        "AGUARDANDO_CADASTRO",
-        "FORM_ENVIADO",
+        "CADASTRO_PENDENTE",
+        "CADASTRO_ENVIADO",
       ])
     );
 
@@ -90,7 +90,7 @@ export async function renderizarCadastroDocumentos(state) {
       const dataEnvioTimestamp = cand.admissaoinfo?.data_envio_formulario;
       let aguardando = false;
 
-      if (statusAtual === "FORM_ENVIADO" && dataEnvioTimestamp) {
+      if (statusAtual === "CADASTRO_ENVIADO" && dataEnvioTimestamp) {
         const dataEnvio = dataEnvioTimestamp.toDate
           ? dataEnvioTimestamp.toDate()
           : new Date(dataEnvioTimestamp);
@@ -117,7 +117,7 @@ export async function renderizarCadastroDocumentos(state) {
       } else {
         // Botão Ativo (Enviar ou Reenviar)
         const labelBotao =
-          statusAtual === "FORM_ENVIADO"
+          statusAtual === "CADASTRO_ENVIADO"
             ? "Reenviar Formulário"
             : "Enviar Formulário";
 
@@ -568,7 +568,7 @@ Equipe EuPsico 💙`;
     const candidatoRef = doc(candidatosCollection, candidatoId);
 
     await updateDoc(candidatoRef, {
-      status_recrutamento: "FORM_ENVIADO",
+      status_recrutamento: "CADASTRO_ENVIADO",
       "admissaoinfo.link_formulario": linkFormulario,
       "admissaoinfo.data_envio_formulario": new Date(),
       historico: arrayUnion({
