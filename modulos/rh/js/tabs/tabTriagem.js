@@ -1,6 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabTriagem.js
  * Versão: 3.4.0 (Status Simplificado + Utils)
+ * Descrição: Gerencia a etapa de Triagem de Currículos.
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -256,7 +257,7 @@ async function submeterAvaliacaoTriagem(e) {
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
 
-  // Validação
+  // Validação: Motivo de Rejeição é obrigatório
   if (!decisao && !motivoRejeicaoEl?.value.trim()) {
     window.showToast?.(
       "Por favor, preencha o motivo detalhado da reprovação.",
@@ -363,11 +364,11 @@ export async function renderizarTriagem(state) {
     '<div class="loading-spinner">Carregando candidaturas para Triagem...</div>';
 
   try {
-    // ✅ QUERY ATUALIZADA
+    // ✅ QUERY ATUALIZADA (Busca TRIAGEM_PENDENTE ou legado)
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where("status_recrutamento", "==", "TRIAGEM_PENDENTE")
+      where("status_recrutamento", "in", ["TRIAGEM_PENDENTE"])
     );
     const snapshot = await getDocs(q);
 
@@ -381,7 +382,7 @@ export async function renderizarTriagem(state) {
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML =
-        '<p class="alert alert-warning">Nenhuma candidatura para triagem ou todas já foram processadas.</p>';
+        '<p class="alert alert-warning">Nenhuma candidatura para triagem.</p>';
       return;
     }
 
