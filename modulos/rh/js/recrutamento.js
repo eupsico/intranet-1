@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.6.0 (Refatorado para usar status_utils.js)
- * Data: 09/12/2025
+ * Versão: 3.4.0 (CORREÇÃO DE CONFLITO: Removida lógica duplicada de Avaliação de Teste)
+ * Data: 04/11/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
 
@@ -19,11 +19,6 @@ import {
   functions,
   httpsCallable,
 } from "../../../assets/js/firebase-init.js";
-// ✅ Importação do Utilitário de Status (Centralizado)
-import {
-  formatarStatusLegivel,
-  getStatusBadgeClass,
-} from "./tabs/utils/status_utils.js";
 
 // Importação dos módulos de abas (tabs)
 import { renderizarCronograma } from "./tabs/tabCronograma.js";
@@ -106,8 +101,6 @@ export const getGlobalState = () => ({
   candidatosCollection,
   vagasCollection,
   formatarTimestamp,
-  formatarStatusLegivel, // ✅ Exportado do Utils
-  getStatusBadgeClass, // ✅ Exportado do Utils
   conteudoRecrutamento,
   statusCandidaturaTabs,
   handleTabClick,
@@ -276,15 +269,12 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   sel("habilidades").textContent =
     candidato.habilidades_competencias || "Não informadas";
 
-  // 5. Preencher status (USANDO O NOVO FORMATADOR)
+  // 5. Preencher status
   sel("vaga-aplicada").textContent = candidato.titulo_vaga_original || "N/A";
   const statusBadge = sel("status-recrutamento");
-  const statusTecnico = candidato.status_recrutamento || "N/A";
-
-  // ✅ USA AS FUNÇÕES DO UTILS
-  statusBadge.textContent = formatarStatusLegivel(statusTecnico);
-  statusBadge.className = `status-badge ${getStatusBadgeClass(statusTecnico)}`;
-
+  const statusTexto = candidato.status_recrutamento || "N/A";
+  statusBadge.textContent = statusTexto;
+  statusBadge.className = `status-badge ${getStatusBadgeClass(statusTexto)}`;
   sel("data-candidatura").textContent = formatarTimestamp(
     candidato.data_candidatura
   );
@@ -405,6 +395,32 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
 
   console.log("✅ Recrutamento: Modal de detalhes aberto com template");
 }
+
+/**
+ * Retorna a classe CSS apropriada para o badge de status
+ * @param {string} status - Status do candidato
+ * @returns {string} Classe CSS
+ */
+function getStatusBadgeClass(status) {
+  if (!status) return "status-pendente";
+
+  const statusLower = status.toLowerCase();
+
+  if (
+    statusLower.includes("aprovad") ||
+    statusLower.includes("contratad") ||
+    statusLower.includes("concluída")
+  ) {
+    return "status-concluída";
+  } else if (statusLower.includes("rejeit") || statusLower.includes("reprov")) {
+    return "status-rejeitada";
+  } else {
+    return "status-pendente";
+  }
+}
+
+// Expõe a função globalmente
+window.abrirModalCandidato = abrirModalCandidato;
 
 // ====================================================
 // FUNÇÕES RESTAURADAS (DASHBOARD, MONITOR, TOGGLES)
@@ -780,14 +796,13 @@ window.reprovarCandidatura = async function (
   try {
     const candidatoRef = doc(candidatosCollection, candidatoId);
 
-    // ✅ CORREÇÃO: Usa "REPROVADO" como status padronizado
     await updateDoc(candidatoRef, {
-      status_recrutamento: "REPROVADO",
+      status_recrutamento: "Rejeitado (Comunicação Pendente)",
       "rejeicao.etapa": etapa,
-      "rejeicao.data": new Date(),
+      "rejeicao.data": new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
       "rejeicao.justificativa": justificativa,
       historico: arrayUnion({
-        data: new Date(),
+        data: new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
         acao: `Candidatura REJEITADA na etapa de ${etapa}. Motivo: ${justificativa}`,
         usuario: currentUserData.uid || "sistema",
       }),
