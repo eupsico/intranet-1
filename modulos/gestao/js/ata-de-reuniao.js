@@ -1,5 +1,5 @@
 // /modulos/gestao/js/ata-de-reuniao.js
-// VERSÃO 4.0 (Filtros de Data, Tipo Obrigatório e Layout em Cards)
+// VERSÃO 4.1 (Filtro Estrito de Tipos de Reunião)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -16,13 +16,18 @@ import {
 let usuariosCache = [];
 let unsubscribeListener = null;
 
-// TIPOS QUE EXIGEM ATA (Business Logic)
-const TIPOS_COM_ATA = ["reuniao_gestor", "reuniao_conselho"];
+// CONFIGURAÇÃO: Tipos permitidos para Ata (Códigos e Nomes Legíveis)
+const TIPOS_PERMITIDOS = [
+  "reuniao_gestor",
+  "reuniao_conselho",
+  "Reunião com Gestor",
+  "Reunião Conselho Administrativo",
+];
 
 export async function init() {
-  console.log("[ATA] Módulo Registar Ata iniciado (v4.0).");
+  console.log("[ATA] Módulo Registar Ata iniciado (v4.1).");
 
-  // Configura data padrão para o mês atual
+  // Define o mês atual como filtro padrão
   const inputMes = document.getElementById("filtro-mes-ata");
   if (inputMes) {
     const hoje = new Date();
@@ -64,13 +69,12 @@ async function carregarReunioesAgendadas() {
   const formContainer = document.getElementById("form-ata-container");
 
   // Reseta visualização
-  container.style.display = "flex"; // Flex para column layout
+  container.style.display = "flex";
   formContainer.style.display = "none";
   container.innerHTML = '<div class="loading-spinner"></div>';
 
-  // Pega valores dos filtros
-  const mesFiltro = document.getElementById("filtro-mes-ata").value; // YYYY-MM
-  const statusFiltro = document.getElementById("filtro-status-ata").value; // 'pendente' ou 'concluida'
+  const mesFiltro = document.getElementById("filtro-mes-ata").value;
+  const statusFiltro = document.getElementById("filtro-status-ata").value;
 
   try {
     const q = query(
@@ -86,7 +90,7 @@ async function carregarReunioesAgendadas() {
 
       if (snapshot.empty) {
         container.innerHTML =
-          '<div class="alert alert-info">Nenhuma reunião encontrada no sistema.</div>';
+          '<div class="alert alert-info">Nenhuma reunião encontrada.</div>';
         return;
       }
 
@@ -94,27 +98,26 @@ async function carregarReunioesAgendadas() {
         const evento = docSnap.data();
         const slots = evento.slots || [];
 
-        // Verifica se o tipo da reunião exige ata
-        if (!TIPOS_COM_ATA.includes(evento.tipo)) {
-          return; // Pula iteração se não for Gestor ou Conselho
+        // FILTRO PRINCIPAL: Ignora se não for Gestor ou Conselho
+        if (!TIPOS_PERMITIDOS.includes(evento.tipo)) {
+          return;
         }
 
-        // Processamento (Raiz ou Slots)
         const processarItem = (itemData, slotIndex) => {
           const dataItem = itemData.data || evento.dataReuniao;
           if (!dataItem) return;
 
-          // 1. Filtro de Data (Mês/Ano)
+          // Filtro de Data
           if (mesFiltro && !dataItem.startsWith(mesFiltro)) return;
 
-          // 2. Filtro de Status
+          // Filtro de Status
           const statusItem = itemData.status || "Agendada";
           const isConcluida = statusItem === "Concluída";
 
           if (statusFiltro === "pendente" && isConcluida) return;
           if (statusFiltro === "concluida" && !isConcluida) return;
 
-          // Renderização do Card
+          // Renderização
           const nomeTipo = formatarNomeTipo(evento.tipo);
           const classeTipo = getClassePorTipo(evento.tipo);
           const dataFormatada = new Date(
@@ -166,18 +169,17 @@ async function carregarReunioesAgendadas() {
       if (count === 0) {
         container.innerHTML = `
             <div class="alert alert-light text-center border">
-                <span class="material-symbols-outlined" style="font-size: 48px; color: #ccc;">event_busy</span>
-                <p class="mt-2 text-muted">Nenhuma reunião de <strong>Gestor</strong> ou <strong>Conselho</strong> encontrada com os filtros atuais.</p>
+                <span class="material-symbols-outlined" style="font-size: 48px; color: #ccc;">filter_list_off</span>
+                <p class="mt-2 text-muted">Nenhuma Ata de <strong>Gestor</strong> ou <strong>Conselho</strong> encontrada neste filtro.</p>
             </div>`;
       } else {
         container.innerHTML = html;
-        // Torna a função global para o onclick funcionar
         window.abrirFormulario = abrirFormulario;
       }
     });
   } catch (error) {
     console.error("[ATA] Erro ao carregar:", error);
-    container.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados: ${error.message}</div>`;
+    container.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados.</div>`;
   }
 }
 
@@ -210,7 +212,7 @@ async function abrirFormulario(docId, slotIndex) {
 
     renderizarFormulario(dadosItem);
   } catch (e) {
-    alert("Erro ao abrir formulário: " + e.message);
+    alert("Erro: " + e.message);
     location.reload();
   }
 }
@@ -218,13 +220,11 @@ async function abrirFormulario(docId, slotIndex) {
 function renderizarFormulario(dados) {
   const container = document.getElementById("form-ata-container");
 
-  // Prepara checkboxes de participantes
   const participantesCheckboxes = usuariosCache
     .map((nome) => {
-      // Verifica se já estava presente (para edição) ou se estava inscrito (sugestão)
       const listaVerificacao = dados.participantesConfirmados
-        ? dados.participantesConfirmados.split(", ") // Se já tem ata salva, usa os confirmados
-        : (dados.vagas || []).map((v) => v.nome || v.profissionalNome); // Senão, usa os inscritos
+        ? dados.participantesConfirmados.split(", ")
+        : (dados.vagas || []).map((v) => v.nome || v.profissionalNome);
 
       const isPresente = listaVerificacao.includes(nome) ? "checked" : "";
 
@@ -336,7 +336,7 @@ async function salvarAta(e, dadosContexto) {
       temasProximaReuniao: document.getElementById("ata-temas-proxima").value,
       participantesConfirmados: participantes,
       ataRegistradaEm: new Date().toISOString(),
-      status: "Concluída", // Marca como concluída para sair da lista de pendentes
+      status: "Concluída",
     };
 
     const docRef = doc(firestoreDb, "eventos", dadosContexto.docId);
@@ -358,7 +358,7 @@ async function salvarAta(e, dadosContexto) {
     }
 
     alert("Ata salva com sucesso!");
-    window.cancelarEdicao(); // Volta para a lista
+    window.cancelarEdicao();
   } catch (error) {
     console.error("Erro ao salvar ata:", error);
     alert("Erro ao salvar: " + error.message);
@@ -367,15 +367,10 @@ async function salvarAta(e, dadosContexto) {
   }
 }
 
-// Helpers
 function formatarNomeTipo(t) {
   const map = {
-    reuniao_tecnica: "Reunião Técnica",
-    reuniao_conselho: "Reunião Conselho Administrativo",
     reuniao_gestor: "Reunião com Gestor",
-    reuniao_voluntario: "Reunião com Voluntário",
-    treinamento: "Treinamento",
-    alinhamento: "Alinhamento",
+    reuniao_conselho: "Reunião Conselho Administrativo",
   };
   return map[t] || t;
 }
@@ -383,5 +378,5 @@ function formatarNomeTipo(t) {
 function getClassePorTipo(t) {
   if (t === "reuniao_gestor") return "tipo-gestor";
   if (t === "reuniao_conselho") return "tipo-conselho";
-  return "tipo-outros";
+  return "";
 }
