@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/dashboard.js
-// --- VERSÃO ATUALIZADA (Correção do Botão Próxima Reunião) ---
+// --- VERSÃO ATUALIZADA (Correção Definitiva do Link de Inscrição) ---
 
 import {
   db,
@@ -97,6 +97,10 @@ export function init(user, userData) {
         const dados = docSnap.data();
         const slots = dados.slots || [];
 
+        // Link padrão de inscrição (interno)
+        // Ajuste o caminho '/public/' se sua estrutura de pastas for diferente no servidor
+        const linkInscricaoPadrao = `${window.location.origin}/public/agendamento-voluntario.html?agendamentoId=${docSnap.id}`;
+
         // Normaliza para array de objetos com data unificada
         if (slots.length > 0) {
           slots.forEach((slot) => {
@@ -110,7 +114,8 @@ export function init(user, userData) {
                   titulo: dados.tipo,
                   data: dataHora,
                   gestor: slot.gestorNome || "Gestão",
-                  link: slot.linkReuniao || dados.link || "#", // Tenta link do slot ou da raiz
+                  // Prioriza link específico, senão link geral, senão link de inscrição gerado
+                  link: slot.linkReuniao || dados.link || linkInscricaoPadrao,
                   pauta: dados.descricao || "Sem pauta",
                 });
               }
@@ -127,7 +132,8 @@ export function init(user, userData) {
                 titulo: dados.tipo || "Reunião Geral",
                 data: dataHora,
                 gestor: dados.responsavel || "Gestão",
-                link: dados.link || "#",
+                // Prioriza link geral, senão link de inscrição gerado
+                link: dados.link || linkInscricaoPadrao,
                 pauta: dados.pauta || "Sem pauta",
               });
             }
@@ -149,18 +155,10 @@ export function init(user, userData) {
           minute: "2-digit",
         });
 
-        // Verifica se há um link válido para habilitar o botão corretamente
-        const linkHref =
-          prox.link && prox.link !== "#" ? prox.link : "javascript:void(0)";
-        const linkTarget = prox.link && prox.link !== "#" ? "_blank" : "_self";
-        const linkTitle =
-          prox.link && prox.link !== "#"
-            ? "Abrir link da reunião"
-            : "Link não disponível";
-        const linkOnClick =
-          prox.link && prox.link !== "#"
-            ? ""
-            : "alert('O link para esta reunião ainda não foi disponibilizado.');";
+        // Configuração segura do link
+        const linkHref = prox.link;
+        const linkTarget = "_blank"; // Sempre abre em nova aba
+        const linkOnClick = ""; // Sem alert
 
         nextMeetingContainer.innerHTML = `
                 <h4><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Próxima Reunião</h4>
@@ -175,7 +173,7 @@ export function init(user, userData) {
                     </div>
                 </div>
                 <div class="meeting-actions">
-                    <a href="${linkHref}" target="${linkTarget}" title="${linkTitle}" onclick="${linkOnClick}" class="btn-meeting-action" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none;">
+                    <a href="${linkHref}" target="${linkTarget}" class="btn-meeting-action" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none;">
                         Ver Detalhes / Inscrever-se
                     </a>
                 </div>
