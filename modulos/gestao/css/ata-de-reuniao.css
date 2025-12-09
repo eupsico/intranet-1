@@ -1,112 +1,139 @@
+
 /* /modulos/gestao/css/ata-de-reuniao.css */
-/* VERSÃO SCOPED - Design System + Cards Coloridos */
+/* VERSÃO OTIMIZADA - Scoped ao Design System */
 
-/* Filtros */
+/* ===== FILTROS ===== */
 #filtros-ata-container {
-    background-color: var(--cor-surface);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
+  background-color: var(--cor-surface);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--sombra-suave);
 }
 
-/* Container da Lista */
+/* ===== CONTAINER DA LISTA ===== */
 #lista-reunioes-agendadas {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Separação entre os cards */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-/* Card de Reunião Individual */
+/* ===== CARD DE REUNIÃO INDIVIDUAL ===== */
 .reuniao-card-item {
-    background-color: var(--cor-surface);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--borda-radius);
-    padding: 20px;
-    box-shadow: var(--sombra-suave);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    
-    /* Borda lateral padrão (cinza) */
-    border-left: 5px solid var(--cor-texto-secundario);
+  background-color: var(--cor-surface);
+  border: 1px solid var(--cor-borda);
+  border-left: 5px solid var(--cor-texto-secundario);
+  border-radius: var(--borda-radius);
+  padding: 20px;
+  box-shadow: var(--sombra-suave);
+  transition: all var(--transicao-padrao);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 .reuniao-card-item:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-media);
-    background-color: #fafbff;
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-media);
+  background-color: #fafbff;
 }
 
-/* Cores por Tipo de Reunião (Borda Lateral) */
+/* Cores por Tipo de Reunião */
 .reuniao-card-item.tipo-gestor {
-    border-left-color: var(--cor-primaria); /* Azul escuro */
+  border-left-color: var(--cor-primaria);
 }
 
 .reuniao-card-item.tipo-conselho {
-    border-left-color: #6f42c1; /* Roxo/Dourado para destaque */
+  border-left-color: #6f42c1;
 }
 
 .reuniao-card-item.tipo-outros {
-    border-left-color: var(--cor-texto-secundario);
+  border-left-color: var(--cor-texto-secundario);
 }
 
-/* Conteúdo do Card */
+/* ===== CABEÇALHO DO CARD ===== */
 .reuniao-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 15px;
 }
 
 .reuniao-card-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--cor-primaria);
-    margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--cor-primaria);
+  margin: 0;
 }
 
 .reuniao-card-date {
-    font-size: 0.9rem;
-    color: var(--cor-texto-principal);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  font-size: 0.9rem;
+  color: var(--cor-texto-principal);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .reuniao-card-meta {
-    font-size: 0.85rem;
-    color: var(--cor-texto-secundario);
-    margin-top: 5px;
+  font-size: 0.85rem;
+  color: var(--cor-texto-secundario);
+  margin-top: 8px;
+  line-height: 1.5;
 }
 
-/* Badges de Status */
+/* ===== BADGES DE STATUS ===== */
 .badge-status {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    font-weight: bold;
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
 }
 
 .badge-status.pendente {
-    background-color: #fff3cd;
-    color: #856404;
+  background-color: #fff3cd;
+  color: #856404;
 }
 
 .badge-status.concluida {
-    background-color: #d1e7dd;
-    color: #0f5132;
+  background-color: #d1e7dd;
+  color: #0f5132;
 }
 
-/* Formulário Container */
+/* ===== CONTAINER DO FORMULÁRIO ===== */
 #form-ata-container {
-    padding: 30px;
-    border-top: 5px solid var(--cor-primaria);
-    animation: fadeIn 0.3s ease;
+  padding: 30px;
+  background-color: var(--cor-surface);
+  border-top: 5px solid var(--cor-primaria);
+  border-radius: var(--borda-radius);
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+  .reuniao-card-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #form-ata-container {
+    padding: 20px;
+  }
 }
