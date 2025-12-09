@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoRH.js
- * Versão: 2.0.0 (Completo + Status Simplificado)
- * Data: 05/11/2025
+ * Versão: 2.1.0 (Correção: Importação de Utils para exibição de status)
+ * Data: 09/12/2025
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
 
@@ -11,6 +11,9 @@ import {
   arrayUnion,
 } from "../../../../../assets/js/firebase-init.js";
 import { getCurrentUserName } from "./helpers.js";
+
+// ✅ Importação do Utilitário (Adicionado)
+import { formatarStatusLegivel } from "../utils/status_utils.js";
 
 let dadosCandidatoAtual = null;
 
@@ -31,7 +34,6 @@ function fecharModalAvaliacao() {
 
 /**
  * Gerencia a exibição dos campos "Pontos Fortes" e "Pontos de Atenção"
- * (Refatorado para usar .classList)
  */
 function toggleCamposAvaliacaoRH() {
   const form = document.getElementById("form-avaliacao-entrevista-rh");
@@ -60,26 +62,23 @@ function toggleCamposAvaliacaoRH() {
     !textareaPontosAtencao ||
     !textareaPontosFortes
   ) {
-    console.warn(
-      "toggleCamposAvaliacaoRH: Não foi possível encontrar os containers ou textareas."
-    );
     return;
   }
 
   if (radioAprovado && radioAprovado.checked) {
-    containerPontosFortes.classList.remove("hidden"); // Usa classe
+    containerPontosFortes.classList.remove("hidden");
     textareaPontosFortes.required = true;
-    containerPontosAtencao.classList.add("hidden"); // Usa classe
+    containerPontosAtencao.classList.add("hidden");
     textareaPontosAtencao.required = false;
   } else if (radioReprovado && radioReprovado.checked) {
-    containerPontosFortes.classList.add("hidden"); // Usa classe
+    containerPontosFortes.classList.add("hidden");
     textareaPontosFortes.required = false;
-    containerPontosAtencao.classList.remove("hidden"); // Usa classe
+    containerPontosAtencao.classList.remove("hidden");
     textareaPontosAtencao.required = true;
   } else {
     // Estado inicial (nenhum selecionado)
-    containerPontosFortes.classList.add("hidden"); // Usa classe
-    containerPontosAtencao.classList.add("hidden"); // Usa classe
+    containerPontosFortes.classList.add("hidden");
+    containerPontosAtencao.classList.add("hidden");
     textareaPontosFortes.required = false;
     textareaPontosAtencao.required = false;
   }
@@ -116,7 +115,10 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
   const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
-  if (statusEl) statusEl.textContent = statusAtual;
+
+  // ✅ CORREÇÃO: Usando o formatador para exibir status bonito no modal
+  if (statusEl) statusEl.textContent = formatarStatusLegivel(statusAtual);
+
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
   // Configura o botão "Ver Currículo"
@@ -127,12 +129,8 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (btnVerCurriculo && modalFooter) {
     btnVerCurriculo.href = linkCurriculo;
-
-    // Limpa classes e estilos antigos
     btnVerCurriculo.className = "";
-    btnVerCurriculo.style = ""; // Limpa qualquer CSS inline
-
-    // Adiciona classes do Design System
+    btnVerCurriculo.style = "";
     btnVerCurriculo.classList.add("action-button", "warning", "ms-auto");
     btnVerCurriculo.target = "_blank";
     btnVerCurriculo.innerHTML =
@@ -144,7 +142,6 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
       btnVerCurriculo.classList.remove("hidden");
     }
 
-    // Garante que ele seja o primeiro item no footer
     if (modalFooter.firstChild !== btnVerCurriculo) {
       modalFooter.prepend(btnVerCurriculo);
     }
@@ -152,7 +149,7 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Preenche dados da avaliação existente (RESTAURADO)
+  // Preenche dados da avaliação existente
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
@@ -226,7 +223,7 @@ async function submeterAvaliacaoRH(e) {
 
   if (!candidaturaId || !btnRegistrarAvaliacao) {
     console.error(
-      "❌ Erro crítico: ID da candidatura ou botão de registro não encontrado."
+      "❌ Erro crítico: ID da candidatura ou botão não encontrado."
     );
     return;
   }
@@ -251,7 +248,6 @@ async function submeterAvaliacaoRH(e) {
     return;
   }
 
-  // Validação: Aprovação exige Pontos Fortes (RESTAURADO)
   if (
     resultado === "Aprovado" &&
     (!pontosFortes || pontosFortes.trim().length === 0)
@@ -263,13 +259,12 @@ async function submeterAvaliacaoRH(e) {
     return;
   }
 
-  // Validação: Reprovação exige Pontos de Atenção (RESTAURADO)
   if (
     resultado === "Reprovado" &&
     (!pontosAtencao || pontosAtencao.trim().length === 0)
   ) {
     window.showToast?.(
-      "Para reprovar, é obrigatório preencher os Motivos da Reprovação (Pontos de Atenção).",
+      "Para reprovar, é obrigatório preencher os Motivos da Reprovação.",
       "error"
     );
     return;
@@ -281,10 +276,10 @@ async function submeterAvaliacaoRH(e) {
 
   const isAprovado = resultado === "Aprovado";
 
-  // ✅ CORREÇÃO AQUI: STATUS SIMPLIFICADOS
+  // ✅ STATUS SIMPLIFICADOS
   const novoStatusCandidato = isAprovado
-    ? "TESTE_PENDENTE" // Vai para Testes
-    : "REPROVADO"; // Vai para Finalizados
+    ? "TESTE_PENDENTE" // Vai para a fase de testes
+    : "REPROVADO"; // Vai para a aba finalizados
 
   const abaRecarregar = statusCandidaturaTabs
     .querySelector(".tab-link.active")
@@ -308,7 +303,7 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // Monta objeto de atualização
+    // Objeto de update
     const updatePayload = {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
@@ -324,11 +319,11 @@ async function submeterAvaliacaoRH(e) {
       }),
     };
 
-    // ✅ Se reprovado, adiciona objeto de rejeição para aparecer corretamente na aba Finalizados
+    // ✅ Se reprovado, adiciona rejeição
     if (!isAprovado) {
       updatePayload.rejeicao = {
         etapa: "Entrevista com RH",
-        justificativa: pontosAtencao, // Usa o motivo preenchido
+        justificativa: pontosAtencao,
         data: new Date(),
       };
     }
@@ -336,14 +331,12 @@ async function submeterAvaliacaoRH(e) {
     await updateDoc(candidaturaRef, updatePayload);
 
     window.showToast?.(
-      `Avaliação de Entrevista RH registrada. Status: ${novoStatusCandidato}`,
+      `Avaliação registrada. Status: ${novoStatusCandidato}`,
       "success"
     );
     console.log("✅ Entrevistas: Avaliação salva no Firestore");
 
     fecharModalAvaliacao();
-
-    // Atualiza a aba
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
