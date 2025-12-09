@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalEnviarTeste.js
- * Versão: 1.0.0 (Módulo Refatorado)
- * Data: 05/11/2025
+ * Versão: 2.0.0 (Status Simplificado + Código Completo)
+ * Data: 09/12/2025
  * Descrição: Gerencia o modal de envio de testes (com Cloud Functions).
  */
 
@@ -424,6 +424,8 @@ async function salvarEnvioTeste(
   const usuarioNome = await getCurrentUserName();
   try {
     const candidatoRef = doc(db, "candidaturas", candidatoId);
+
+    // ✅ STATUS ATUALIZADO PARA O NOVO PADRÃO
     await updateDoc(candidatoRef, {
       status_recrutamento: "TESTE_ENVIADO",
       testes_enviados: arrayUnion({
