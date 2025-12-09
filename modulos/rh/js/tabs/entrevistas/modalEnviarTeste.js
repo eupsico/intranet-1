@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalEnviarTeste.js
- * Versão: 2.1.0 (Com import status_utils.js e Status Simplificado)
- * Data: 09/12/2025
+ * Versão: 1.0.0 (Módulo Refatorado)
+ * Data: 05/11/2025
  * Descrição: Gerencia o modal de envio de testes (com Cloud Functions).
  */
 
@@ -18,9 +18,6 @@ import {
   where,
 } from "../../../../../assets/js/firebase-init.js";
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
-
-// ✅ Importação do Utilitário de Status
-import { formatarStatusLegivel } from "../utils/status_utils.js";
 
 // ============================================
 // CONSTANTES E VARIÁVEIS
@@ -427,8 +424,6 @@ async function salvarEnvioTeste(
   const usuarioNome = await getCurrentUserName();
   try {
     const candidatoRef = doc(db, "candidaturas", candidatoId);
-
-    // ✅ STATUS ATUALIZADO PARA O NOVO PADRÃO
     await updateDoc(candidatoRef, {
       status_recrutamento: "TESTE_ENVIADO",
       testes_enviados: arrayUnion({
