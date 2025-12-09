@@ -23,7 +23,7 @@ import {
 import {
   formatarStatusLegivel,
   getStatusBadgeClass,
-} from "../utils/status_utils.js";
+} from "./utils/status_utils.js";
 
 // Importação dos módulos de abas (tabs)
 import { renderizarCronograma } from "./tabs/tabCronograma.js";
