@@ -1,11 +1,10 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAgendamentoRH.js
- * Versão: 1.1.0 (Corrigida dependência circular e código completo)
- * Data: 05/11/2025
+ * Versão: 1.2.0 (Status Atualizado para ENTREVISTA_RH_AGENDADA)
+ * Data: 09/12/2025
  * Descrição: Gerencia o modal de agendamento de entrevista com RH.
  */
 
-// ✅ CORREÇÃO: Remove 'getGlobalState' da importação
 import {
   doc,
   updateDoc,
@@ -19,9 +18,6 @@ let dadosCandidatoAtual = null;
 // FUNÇÕES DE UTILIDADE (WhatsApp)
 // ============================================
 
-/**
- * Formata uma mensagem humanizada de agendamento para WhatsApp
- */
 function formatarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   const [ano, mes, dia] = dataEntrevista.split("-");
   const dataFormatada = `${dia}/${mes}/${ano}`;
@@ -54,9 +50,6 @@ Estamos ansiosos para conhecê-lo(a) melhor!
   return mensagem;
 }
 
-/**
- * Envia mensagem de WhatsApp com agendamento
- */
 function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
   if (!candidato.telefone_contato) {
     console.warn(
@@ -87,12 +80,9 @@ function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
 }
 
 // ============================================
-// FUNÇÕES DO MODAL (Abrir/Fechar/Submeter)
+// FUNÇÕES DO MODAL
 // ============================================
 
-/**
- * Fecha o modal de agendamento
- */
 function fecharModalAgendamento() {
   console.log("🔹 Entrevistas: Fechando modal de agendamento");
   const modalOverlay = document.getElementById("modal-agendamento-rh");
@@ -101,9 +91,6 @@ function fecharModalAgendamento() {
   }
 }
 
-/**
- * Abre o modal de agendamento da Entrevista RH
- */
 export function abrirModalAgendamentoRH(candidatoId, dadosCandidato) {
   console.log(
     `🔹 Entrevistas: Abrindo modal de agendamento para ${candidatoId}`
@@ -114,24 +101,21 @@ export function abrirModalAgendamentoRH(candidatoId, dadosCandidato) {
 
   if (!modalAgendamentoRH || !form) {
     window.showToast?.("Erro: Modal de Agendamento não encontrado.", "error");
-    console.error(
-      "❌ Entrevistas: Elemento modal-agendamento-rh não encontrado"
-    );
     return;
   }
 
   dadosCandidatoAtual = dadosCandidato;
   modalAgendamentoRH.dataset.candidaturaId = candidatoId;
 
-  // ==========================================================
-  // ✅ CÓDIGO RESTAURADO (Como você solicitou)
-  // ==========================================================
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
     "N/A";
+
+  // Exibição apenas (não afeta lógica)
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
+
   const dataAgendada = dadosCandidato.entrevista_rh?.agendamento?.data || "";
   const horaAgendada = dadosCandidato.entrevista_rh?.agendamento?.hora || "";
 
@@ -142,13 +126,13 @@ export function abrirModalAgendamentoRH(candidatoId, dadosCandidato) {
   const horaEl = document.getElementById("hora-entrevista-agendada");
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
+
+  // Se quiser usar o formatador aqui também, pode importar, mas não é crítico
   if (statusEl) statusEl.textContent = statusAtual;
+
   if (resumoEl) resumoEl.textContent = resumoTriagem;
   if (dataEl) dataEl.value = dataAgendada;
   if (horaEl) horaEl.value = horaAgendada;
-  // ==========================================================
-  // FIM DO CÓDIGO RESTAURADO
-  // ==========================================================
 
   form.removeEventListener("submit", submeterAgendamentoRH);
   form.addEventListener("submit", submeterAgendamentoRH);
@@ -161,49 +145,34 @@ export function abrirModalAgendamentoRH(candidatoId, dadosCandidato) {
     });
 
   modalAgendamentoRH.classList.add("is-visible");
-  console.log("✅ Entrevistas: Modal de agendamento aberto");
 }
 
-/**
- * Submete o agendamento da Entrevista RH
- */
 async function submeterAgendamentoRH(e) {
   e.preventDefault();
 
   console.log("🔹 Entrevistas: Submetendo agendamento");
 
-  const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
-  const btnRegistrarAgendamento = document.getElementById(
-    "btn-registrar-agendamento-rh"
-  );
-
-  // ==========================================================
-  // ✅ CÓDIGO RESTAURADO (Como você solicitou)
-  // Esta verificação é crucial para a função de submissão.
-  // ==========================================================
   const state = window.getGlobalRecrutamentoState();
   if (!state) {
     window.showToast?.("Erro: Estado global não iniciado.", "error");
     return;
   }
-  // ==========================================================
 
+  const modalAgendamentoRH = document.getElementById("modal-agendamento-rh");
+  const btnRegistrarAgendamento = document.getElementById(
+    "btn-registrar-agendamento-rh"
+  );
   const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
   const candidaturaId = modalAgendamentoRH?.dataset.candidaturaId;
 
   if (!candidaturaId || !btnRegistrarAgendamento) return;
 
   const form = document.getElementById("form-agendamento-entrevista-rh");
-  if (!form) return;
-
   const dataEntrevista = form.querySelector("#data-entrevista-agendada").value;
   const horaEntrevista = form.querySelector("#hora-entrevista-agendada").value;
 
   if (!dataEntrevista || !horaEntrevista) {
-    window.showToast?.(
-      "Por favor, preencha a data e hora da entrevista.",
-      "error"
-    );
+    window.showToast?.("Por favor, preencha a data e hora.", "error");
     return;
   }
 
@@ -211,25 +180,21 @@ async function submeterAgendamentoRH(e) {
   btnRegistrarAgendamento.innerHTML =
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
-  const statusAtual =
-    dadosCandidatoAtual.status_recrutamento || "ENTREVISTA_RH_PENDENTE";
-  const abaRecarregar = statusCandidaturaTabs
-    .querySelector(".tab-link.active")
-    .getAttribute("data-status");
-
   const usuarioNome = await getCurrentUserName();
 
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
+    // ✅ CORREÇÃO: Atualiza o status para ENTREVISTA_RH_AGENDADA
     const updateData = {
+      status_recrutamento: "ENTREVISTA_RH_AGENDADA",
       "entrevista_rh.agendamento": {
         data: dataEntrevista,
         hora: horaEntrevista,
       },
       historico: arrayUnion({
         data: new Date(),
-        acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}. Status: ${statusAtual}`,
+        acao: `Agendamento Entrevista RH registrado para ${dataEntrevista} às ${horaEntrevista}.`,
         usuario: usuarioNome,
       }),
     };
@@ -237,10 +202,10 @@ async function submeterAgendamentoRH(e) {
     await updateDoc(candidaturaRef, updateData);
 
     window.showToast?.(
-      `Entrevista RH agendada com sucesso para ${dataEntrevista} às ${horaEntrevista}.`,
+      `Entrevista agendada para ${dataEntrevista} às ${horaEntrevista}.`,
       "success"
     );
-    console.log("✅ Entrevistas: Agendamento salvo no Firestore");
+    console.log("✅ Entrevistas: Agendamento e Status salvos");
 
     if (dadosCandidatoAtual.telefone_contato) {
       setTimeout(() => {
@@ -253,16 +218,14 @@ async function submeterAgendamentoRH(e) {
     }
 
     fecharModalAgendamento();
-    const activeTab = statusCandidaturaTabs.querySelector(
-      `[data-status="${abaRecarregar}"]`
-    );
-    if (activeTab) handleTabClick({ currentTarget: activeTab });
+
+    // Atualiza a aba
+    const activeTab = statusCandidaturaTabs.querySelector(`.tab-link.active`);
+    if (activeTab && handleTabClick)
+      handleTabClick({ currentTarget: activeTab });
   } catch (error) {
     console.error("❌ Erro ao salvar agendamento:", error);
-    window.showToast?.(
-      `Erro ao registrar o agendamento: ${error.message}`,
-      "error"
-    );
+    window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
     btnRegistrarAgendamento.disabled = false;
     btnRegistrarAgendamento.innerHTML =
