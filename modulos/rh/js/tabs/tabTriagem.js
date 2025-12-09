@@ -265,8 +265,8 @@ async function submeterAvaliacaoTriagem(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
   const novoStatusCandidato = decisao
-    ? "Triagem Aprovada (Entrevista Pendente)"
-    : "Triagem Reprovada (Encerrada)";
+    ? "ENTREVISTA_RH_PENDENTE"
+    : "REPROVADO_TRIAGEM";
 
   const abaRecarregar = decisao ? "entrevistas" : "finalizados";
 

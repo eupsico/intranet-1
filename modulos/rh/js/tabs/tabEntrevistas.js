@@ -49,7 +49,7 @@ export async function renderizarEntrevistas(state) {
       // ✅ CORREÇÃO 1: Adicionado "Testes Respondido" à query
       // ==========================================================
       where("status_recrutamento", "in", [
-        "Triagem Aprovada (Entrevista Pendente)",
+        "ENTREVISTA_RH_PENDENTE",
         "Entrevista RH Aprovada (Testes Pendente)",
         "Testes Pendente",
         "Testes Pendente (Enviado)",

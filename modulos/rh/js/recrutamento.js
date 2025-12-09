@@ -1,7 +1,7 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.4.0 (CORREÇÃO DE CONFLITO: Removida lógica duplicada de Avaliação de Teste)
- * Data: 04/11/2025
+ * Versão: 3.5.0 (Status Simplificado + Mapa de Descrições)
+ * Data: 09/12/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
 
@@ -35,6 +35,28 @@ const CANDIDATOS_COLLECTION_NAME = "candidaturas";
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 const candidatosCollection = collection(db, CANDIDATOS_COLLECTION_NAME);
+
+// ============================================
+// MAPA DE STATUS (Técnico -> Legível)
+// ============================================
+const MAPA_STATUS = {
+  TRIAGEM_PENDENTE: "Candidatura Recebida",
+  ENTREVISTA_RH_PENDENTE: "Aguardando Entrevista RH",
+  ENTREVISTA_RH_AGENDADA: "Entrevista RH Agendada",
+  TESTE_PENDENTE: "Aguardando Envio de Teste",
+  TESTE_ENVIADO: "Teste Enviado (Aguardando Resposta)",
+  TESTE_RESPONDIDO: "Teste Respondido (Aguardando Correção)",
+  ENTREVISTA_GESTOR_PENDENTE: "Aguardando Entrevista Gestor",
+  ENTREVISTA_GESTOR_AGENDADA: "Entrevista Gestor Agendada",
+  AGUARDANDO_ADMISSAO: "Aprovado (Aguardando Admissão)",
+  REPROVADO: "Processo Encerrado (Reprovado)",
+  REPROVADO_TRIAGEM: "Reprovado na Triagem",
+  CONTRATADO: "Contratado",
+  DESISTENCIA: "Desistência",
+  // Mantém compatibilidade visual com status antigos se necessário
+  "Candidatura Recebida (Triagem Pendente)": "Candidatura Recebida",
+  "Triagem Aprovada (Entrevista Pendente)": "Aguardando Entrevista RH",
+};
 
 // ============================================
 // ELEMENTOS DO DOM (CACHE)
@@ -92,6 +114,16 @@ function formatarTimestamp(timestamp) {
 }
 
 /**
+ * Converte status técnico (SNAKE_CASE) para texto legível para exibição
+ * @param {string} statusTecnico - O status salvo no banco
+ * @returns {string} Texto formatado para exibição
+ */
+export function formatarStatusLegivel(statusTecnico) {
+  if (!statusTecnico) return "N/A";
+  return MAPA_STATUS[statusTecnico] || statusTecnico;
+}
+
+/**
  * Retorna o estado global para uso em módulos filhos
  * @returns {Object} Estado global compartilhado
  */
@@ -101,6 +133,7 @@ export const getGlobalState = () => ({
   candidatosCollection,
   vagasCollection,
   formatarTimestamp,
+  formatarStatusLegivel, // ✅ Exportado para uso nas abas
   conteudoRecrutamento,
   statusCandidaturaTabs,
   handleTabClick,
@@ -272,9 +305,12 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   // 5. Preencher status
   sel("vaga-aplicada").textContent = candidato.titulo_vaga_original || "N/A";
   const statusBadge = sel("status-recrutamento");
-  const statusTexto = candidato.status_recrutamento || "N/A";
-  statusBadge.textContent = statusTexto;
-  statusBadge.className = `status-badge ${getStatusBadgeClass(statusTexto)}`;
+  const statusTecnico = candidato.status_recrutamento || "N/A";
+
+  // ✅ USA O FORMATADOR PARA EXIBIÇÃO NO MODAL
+  statusBadge.textContent = formatarStatusLegivel(statusTecnico);
+  statusBadge.className = `status-badge ${getStatusBadgeClass(statusTecnico)}`;
+
   sel("data-candidatura").textContent = formatarTimestamp(
     candidato.data_candidatura
   );
@@ -412,7 +448,11 @@ function getStatusBadgeClass(status) {
     statusLower.includes("concluída")
   ) {
     return "status-concluída";
-  } else if (statusLower.includes("rejeit") || statusLower.includes("reprov")) {
+  } else if (
+    statusLower.includes("rejeit") ||
+    statusLower.includes("reprov") ||
+    statusLower === "reprovado" // ✅ Match exato para o novo status
+  ) {
     return "status-rejeitada";
   } else {
     return "status-pendente";
@@ -796,13 +836,14 @@ window.reprovarCandidatura = async function (
   try {
     const candidatoRef = doc(candidatosCollection, candidatoId);
 
+    // ✅ CORREÇÃO: Usa "REPROVADO" como status padronizado
     await updateDoc(candidatoRef, {
       status_recrutamento: "REPROVADO",
       "rejeicao.etapa": etapa,
-      "rejeicao.data": new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
+      "rejeicao.data": new Date(),
       "rejeicao.justificativa": justificativa,
       historico: arrayUnion({
-        data: new Date(), // Corrigido: usar new Date() em vez de serverTimestamp
+        data: new Date(),
         acao: `Candidatura REJEITADA na etapa de ${etapa}. Motivo: ${justificativa}`,
         usuario: currentUserData.uid || "sistema",
       }),

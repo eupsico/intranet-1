@@ -212,8 +212,7 @@ async function submeterAgendamentoRH(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
   const statusAtual =
-    dadosCandidatoAtual.status_recrutamento ||
-    "Triagem Aprovada (Entrevista Pendente)";
+    dadosCandidatoAtual.status_recrutamento || "ENTREVISTA_RH_PENDENTE";
   const abaRecarregar = statusCandidaturaTabs
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
