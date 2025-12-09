@@ -16,7 +16,7 @@ import {
 import {
   formatarStatusLegivel,
   getStatusBadgeClass,
-} from "../utils/status_utils.js";
+} from "./utils/status_utils.js";
 
 // ✅ Importar a lógica dos submódulos (Modais)
 import { abrirModalAgendamentoRH } from "../tabs/entrevistas/modalAgendamentoRH.js";

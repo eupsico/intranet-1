@@ -19,7 +19,7 @@ import {
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
 
 // ✅ Importação do Utilitário de Status
-import { formatarStatusLegivel } from "../../utils/status_utils.js";
+import { formatarStatusLegivel } from "../utils/status_utils.js";
 
 let dadosCandidatoAtual = null;
 

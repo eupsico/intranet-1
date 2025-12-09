@@ -18,7 +18,7 @@ import {
 import {
   formatarStatusLegivel,
   getStatusBadgeClass,
-} from "../utils/status_utils.js";
+} from "./utils/status_utils.js";
 
 // Elementos do Modal de Triagem
 const modalAvaliacaoTriagem = document.getElementById(

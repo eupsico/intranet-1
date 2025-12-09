@@ -19,7 +19,7 @@ import {
 import {
   formatarStatusLegivel,
   getStatusBadgeClass,
-} from "../utils/status_utils.js";
+} from "./utils/status_utils.js";
 
 export async function renderizarEntrevistaGestor(state) {
   const {
