@@ -1,5 +1,5 @@
 // assets/js/agendamento-voluntario.js
-// VERSÃO 5.0 - Troca de Horários (Switch) e Verificação de Inscrição Existente
+// VERSÃO 5.1 - Atualizado para coleção 'eventos' (Unificada)
 
 import {
   db as firestoreDb,
@@ -74,12 +74,13 @@ async function inicializar() {
 
 async function carregarAgendamento() {
   try {
+    // CORREÇÃO: Alterado de 'agendamentos_voluntarios' para 'eventos'
     const agendamentoDoc = await getDoc(
-      doc(firestoreDb, "agendamentos_voluntarios", agendamentoId)
+      doc(firestoreDb, "eventos", agendamentoId)
     );
 
     if (!agendamentoDoc.exists()) {
-      mostrarErro("Agendamento não encontrado.");
+      mostrarErro("Agendamento não encontrado ou link expirado.");
       return;
     }
 
@@ -87,7 +88,7 @@ async function carregarAgendamento() {
     renderizarFormulario();
   } catch (error) {
     console.error("[AGENDAMENTO] Erro ao carregar agendamento:", error);
-    mostrarErro("Erro ao carregar informações da reunião.");
+    mostrarErro("Erro ao carregar informações da reunião: " + error.message);
   }
 }
 
@@ -122,7 +123,6 @@ function renderizarFormulario() {
   }
 
   // --- ORDENAÇÃO ---
-  // Cria cópia para não perder índices originais
   const slotsParaExibir = [...(agendamentoData.slots || [])];
   slotsParaExibir.sort((a, b) => {
     if (a.data !== b.data) return a.data.localeCompare(b.data);
@@ -145,14 +145,15 @@ function renderizarFormulario() {
     );
     const diferencaHoras = (dataInicioSlot - agora) / (1000 * 60 * 60);
 
-    if (diferencaHoras < 12) return false;
+    // Ajuste: Permitir visualizar se já estiver inscrito, mesmo se faltar menos de 12h
+    const souEu = (slot.vagas || []).some(
+      (v) => v.profissionalId === usuarioLogado.uid
+    );
+
+    if (diferencaHoras < 12 && !souEu) return false;
 
     // 2. Filtro de Capacidade
-    // Se for limitado, esconde se estiver cheio, A MENOS que seja o slot do próprio usuário
     if (ehLimitado) {
-      const souEu = (slot.vagas || []).some(
-        (v) => v.profissionalId === usuarioLogado.uid
-      );
       if (!souEu && slot.vagas && slot.vagas.length >= 1) {
         return false;
       }
@@ -166,7 +167,7 @@ function renderizarFormulario() {
           agendamentoData.tipo || "Agendamento"
         }</h1></div>
         <div>${voluntarioInfo}</div>
-        <div class="error-message">Desculpe, todos os horários já foram preenchidos ou estão muito próximos.</div>
+        <div class="error-message">Desculpe, todos os horários já foram preenchidos ou o prazo de inscrição encerrou.</div>
       `;
     return;
   }
@@ -266,7 +267,6 @@ function renderizarFormulario() {
           .querySelectorAll(".slot-option")
           .forEach((opt) => opt.classList.remove("selected"));
 
-        // Se clicar no próprio agendamento, não marca como 'selected' visualmente da mesma forma
         const parent = radio.closest(".slot-option");
         if (!parent.classList.contains("disabled")) {
           parent.classList.add("selected");
@@ -288,23 +288,18 @@ async function confirmarAgendamento(e) {
     return;
   }
 
-  // Verifica se o usuário clicou no horário que ele JÁ tem
   const parentLabel = slotSelecionado.closest(".slot-option");
   if (parentLabel && parentLabel.classList.contains("disabled")) {
     alert("Você já está confirmado neste horário.");
     return;
   }
 
-  // --- LÓGICA DE VERIFICAÇÃO E TROCA ---
   const slotIndexNovo = parseInt(slotSelecionado.value);
   const dataNova = slotSelecionado.dataset.data;
   const horaInicioNova = slotSelecionado.dataset.horaInicio;
   const horaFimNova = slotSelecionado.dataset.horaFim;
   const gestorNomeNova = slotSelecionado.dataset.gestorNome;
-  const gestorIdNova = slotSelecionado.dataset.gestorId;
 
-  // Procura se já existe algum agendamento antigo em OUTRO slot
-  // (Lembre-se: o array original 'agendamentoData.slots' contém todos)
   const slotAntigo = agendamentoData.slots.find((s) =>
     (s.vagas || []).some((v) => v.profissionalId === usuarioLogado.uid)
   );
@@ -323,13 +318,13 @@ async function confirmarAgendamento(e) {
 
   if (!confirmacaoTroca) return;
 
-  // --- EXECUÇÃO DA TROCA NO BANCO ---
   const btn = document.querySelector(".btn-confirmar");
   btn.disabled = true;
   btn.textContent = "Processando...";
 
   try {
-    const docRef = doc(firestoreDb, "agendamentos_voluntarios", agendamentoId);
+    // CORREÇÃO: Alterado de 'agendamentos_voluntarios' para 'eventos'
+    const docRef = doc(firestoreDb, "eventos", agendamentoId);
 
     await runTransaction(firestoreDb, async (transaction) => {
       const docSnap = await transaction.get(docRef);
@@ -340,7 +335,6 @@ async function confirmarAgendamento(e) {
 
       if (!slotAlvo) throw "O novo horário selecionado não existe mais.";
 
-      // Verifica capacidade do NOVO slot
       const ehLimitado =
         dadosAtuais.vagasLimitadas !== undefined
           ? dadosAtuais.vagasLimitadas
@@ -350,14 +344,14 @@ async function confirmarAgendamento(e) {
         throw "Desculpe, a vaga foi preenchida por outra pessoa neste exato momento.";
       }
 
-      // 1. REMOVE do slot antigo (se existir)
+      // 1. REMOVE do slot antigo
       dadosAtuais.slots.forEach((s) => {
         if (s.vagas) {
           const idx = s.vagas.findIndex(
             (v) => v.profissionalId === usuarioLogado.uid
           );
           if (idx !== -1) {
-            s.vagas.splice(idx, 1); // Remove
+            s.vagas.splice(idx, 1);
           }
         }
       });
@@ -374,7 +368,7 @@ async function confirmarAgendamento(e) {
         id: Date.now().toString(),
         profissionalId: usuarioLogado.uid,
         profissionalNome: nomeUsuario,
-        nome: nomeUsuario,
+        nome: nomeUsuario, // Manter compatibilidade com ambos os campos
         email: usuarioLogado.email || "Não informado",
         telefone: telefoneUsuario,
         presente: false,
