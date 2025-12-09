@@ -1,22 +1,23 @@
 /* /modulos/gestao/css/relatorio-feedback.css */
-/* VERSÃO SCOPED - Integrada ao Design System */
+/* VERSÃO OTIMIZADA - Scoped ao Design System */
 
-/* Navegação de Abas Interna */
+/* ===== NAVEGAÇÃO DE ABAS ===== */
 .tab-nav-relatorios {
   display: flex;
-  gap: 10px;
+  gap: 5px;
   border-bottom: 2px solid var(--cor-borda);
   padding-bottom: 0;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .rel-tab {
   background: none;
   border: none;
-  padding: 10px 20px;
+  padding: 12px 20px;
   color: var(--cor-texto-secundario);
-  font-weight: 500;
+  font-weight: 600;
   border-bottom: 3px solid transparent;
   transition: all var(--transicao-padrao);
   display: flex;
@@ -25,6 +26,7 @@
   cursor: pointer;
   white-space: nowrap;
   font-family: var(--fonte-principal);
+  font-size: 0.95rem;
 }
 
 .rel-tab:hover {
@@ -36,44 +38,86 @@
   color: var(--cor-primaria);
   border-bottom-color: var(--cor-primaria);
   background-color: var(--cor-fundo-box);
+  font-weight: 700;
 }
 
-/* Tabelas de Relatório Específicas */
+.rel-tab span.material-symbols-outlined {
+  font-size: 1.2rem;
+}
+
+/* ===== TABELAS DE RELATÓRIO ===== */
 .table-relatorio {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
   background-color: var(--cor-surface);
   border: 1px solid var(--cor-borda);
+  border-radius: var(--borda-radius);
+  overflow: hidden;
 }
 
 .table-relatorio th {
   background-color: var(--cor-fundo);
-  padding: 12px;
+  padding: 14px;
   text-align: left;
   border-bottom: 2px solid var(--cor-borda);
   color: var(--cor-texto-principal);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
 }
 
 .table-relatorio td {
-  padding: 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--cor-borda);
   vertical-align: middle;
+  color: var(--cor-texto-principal);
 }
 
-.table-relatorio tr:hover {
+.table-relatorio tbody tr:hover {
   background-color: var(--cor-fundo-box);
 }
 
-/* Badges em Tabela */
+.table-relatorio tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== STATUS BADGES EM TABELA ===== */
 .status-atrasado {
   color: var(--cor-erro);
-  background-color: #f8d7da; /* Fundo claro erro */
-  padding: 4px 8px;
+  background-color: #f8d7da;
+  padding: 6px 10px;
   border-radius: 4px;
-  font-weight: bold;
-  font-size: 0.8rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-block;
+}
+
+.status-pendente {
+  color: #856404;
+  background-color: #fff3cd;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-block;
+}
+
+.status-concluido {
+  color: #0f5132;
+  background-color: #d1e7dd;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-block;
 }
 
 /* ===== DOCUMENTO DE ATA (Visualização Impressa) ===== */
@@ -83,58 +127,169 @@
   margin-bottom: 30px;
   background: var(--cor-surface);
   box-shadow: var(--sombra-padrao);
-  font-family: 'Times New Roman', serif; /* Estilo formal */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  page-break-inside: avoid;
 }
 
 .ata-header {
-  border-bottom: 2px solid #000;
-  margin-bottom: 20px;
+  border-bottom: 2px solid #333;
+  margin-bottom: 25px;
   padding-bottom: 15px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.ata-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #000;
+  font-weight: 700;
+}
+
+.ata-header .ata-date {
+  font-size: 0.9rem;
+  color: #333;
 }
 
 .ata-section {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  page-break-inside: avoid;
 }
 
 .ata-section h5 {
-  font-size: 1.1em;
-  font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: #000;
   text-transform: uppercase;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 5px;
-  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  margin-top: 0;
 }
 
 .ata-content-text {
   white-space: pre-wrap;
-  line-height: 1.6;
+  word-wrap: break-word;
+  line-height: 1.8;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.ata-signatures {
+  margin-top: 40px;
+  border-top: 1px solid #ddd;
+  padding-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+}
+
+.signature-block {
+  text-align: center;
+}
+
+.signature-line {
+  border-top: 1px solid #000;
+  margin-bottom: 5px;
+  height: 60px;
+}
+
+.signature-label {
+  font-size: 0.85rem;
+  font-weight: 600;
   color: #000;
 }
 
-/* Ajustes de Impressão */
+/* ===== BOTÕES DE AÇÃO ===== */
+.btn-export {
+  background-color: var(--cor-primaria);
+  color: var(--cor-texto-inverso);
+  padding: 10px 18px;
+  border-radius: var(--borda-radius-pequeno);
+  border: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transicao-padrao);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-export:hover {
+  background-color: var(--cor-secundaria);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-media);
+}
+
+.btn-print {
+  background-color: var(--cor-info);
+  color: var(--cor-texto-inverso);
+}
+
+.btn-print:hover {
+  filter: brightness(0.9);
+}
+
+/* ===== AJUSTES DE IMPRESSÃO ===== */
 @media print {
   body * {
     visibility: hidden;
   }
-  #relatorio-content, #relatorio-content * {
+
+  #relatorio-content,
+  #relatorio-content * {
     visibility: visible;
   }
+
   #relatorio-content {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
   }
+
   .ata-documento {
     border: none;
     box-shadow: none;
     padding: 0;
+    margin: 0;
+    page-break-inside: avoid;
   }
-  .tab-nav-relatorios, .btn, .card-header {
+
+  .tab-nav-relatorios,
+  .btn,
+  .btn-export,
+  .btn-print {
     display: none !important;
+  }
+
+  .ata-section {
+    page-break-inside: avoid;
+  }
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+  .table-relatorio {
+    font-size: 0.85rem;
+  }
+
+  .table-relatorio th,
+  .table-relatorio td {
+    padding: 10px;
+  }
+
+  .ata-documento {
+    padding: 20px;
+  }
+
+  .ata-signatures {
+    grid-template-columns: 1fr;
+    gap: 30px;
   }
 }
