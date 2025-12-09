@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalEnviarTeste.js
- * Versão: 2.0.0 (Status Simplificado + Código Completo)
+ * Versão: 2.1.0 (Com import status_utils.js e Status Simplificado)
  * Data: 09/12/2025
  * Descrição: Gerencia o modal de envio de testes (com Cloud Functions).
  */
@@ -18,6 +18,9 @@ import {
   where,
 } from "../../../../../assets/js/firebase-init.js";
 import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
+
+// ✅ Importação do Utilitário de Status
+import { formatarStatusLegivel } from "../../utils/status_utils.js";
 
 // ============================================
 // CONSTANTES E VARIÁVEIS
