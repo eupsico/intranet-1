@@ -425,7 +425,7 @@ async function salvarEnvioTeste(
   try {
     const candidatoRef = doc(db, "candidaturas", candidatoId);
     await updateDoc(candidatoRef, {
-      status_recrutamento: "Testes Pendente (Enviado)",
+      status_recrutamento: "TESTE_ENVIADO",
       testes_enviados: arrayUnion({
         id: tokenId,
         testeId: testeId,

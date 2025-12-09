@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoRH.js
- * Versão: 1.0.0 (Módulo Refatorado)
+ * Versão: 2.0.0 (Completo + Status Simplificado)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
@@ -152,7 +152,7 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Preenche dados da avaliação existente
+  // Preenche dados da avaliação existente (RESTAURADO)
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
@@ -251,6 +251,7 @@ async function submeterAvaliacaoRH(e) {
     return;
   }
 
+  // Validação: Aprovação exige Pontos Fortes (RESTAURADO)
   if (
     resultado === "Aprovado" &&
     (!pontosFortes || pontosFortes.trim().length === 0)
@@ -262,6 +263,7 @@ async function submeterAvaliacaoRH(e) {
     return;
   }
 
+  // Validação: Reprovação exige Pontos de Atenção (RESTAURADO)
   if (
     resultado === "Reprovado" &&
     (!pontosAtencao || pontosAtencao.trim().length === 0)
@@ -278,9 +280,12 @@ async function submeterAvaliacaoRH(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
   const isAprovado = resultado === "Aprovado";
+
+  // ✅ CORREÇÃO AQUI: STATUS SIMPLIFICADOS
   const novoStatusCandidato = isAprovado
-    ? "Entrevista RH Aprovada (Testes Pendente)"
-    : "Rejeitado (Comunicação Pendente)";
+    ? "TESTE_PENDENTE" // Vai para Testes
+    : "REPROVADO"; // Vai para Finalizados
+
   const abaRecarregar = statusCandidaturaTabs
     .querySelector(".tab-link.active")
     .getAttribute("data-status");
@@ -303,7 +308,8 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    await updateDoc(candidaturaRef, {
+    // Monta objeto de atualização
+    const updatePayload = {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
         ...(dadosCandidatoAtual.entrevista_rh || {}),
@@ -316,7 +322,18 @@ async function submeterAvaliacaoRH(e) {
         }. Status: ${novoStatusCandidato}`,
         usuario: avaliadorNome,
       }),
-    });
+    };
+
+    // ✅ Se reprovado, adiciona objeto de rejeição para aparecer corretamente na aba Finalizados
+    if (!isAprovado) {
+      updatePayload.rejeicao = {
+        etapa: "Entrevista com RH",
+        justificativa: pontosAtencao, // Usa o motivo preenchido
+        data: new Date(),
+      };
+    }
+
+    await updateDoc(candidaturaRef, updatePayload);
 
     window.showToast?.(
       `Avaliação de Entrevista RH registrada. Status: ${novoStatusCandidato}`,
@@ -325,6 +342,8 @@ async function submeterAvaliacaoRH(e) {
     console.log("✅ Entrevistas: Avaliação salva no Firestore");
 
     fecharModalAvaliacao();
+
+    // Atualiza a aba
     const activeTab = statusCandidaturaTabs.querySelector(
       `[data-status="${abaRecarregar}"]`
     );
