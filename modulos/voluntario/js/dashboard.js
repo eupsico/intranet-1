@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/dashboard.js
-// --- VERSÃO MODIFICADA (Solicitações Expansíveis) ---
+// --- VERSÃO ATUALIZADA (Inclui Card Próxima Reunião) ---
 
 import {
   db,
@@ -23,11 +23,10 @@ function formatarData(timestamp) {
       month: "2-digit",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit", // Adiciona hora
+      minute: "2-digit",
     });
   }
   if (timestamp instanceof Date) {
-    // Fallback para objeto Date
     return timestamp.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
@@ -39,7 +38,6 @@ function formatarData(timestamp) {
   return "N/A";
 }
 
-// Função auxiliar para formatar tipo de solicitação
 function formatarTipoSolicitacao(tipoInterno) {
   const mapaTipos = {
     novas_sessoes: "Novas Sessões",
@@ -53,18 +51,19 @@ function formatarTipoSolicitacao(tipoInterno) {
 }
 
 export function init(user, userData) {
-  console.log("Módulo dashboard.js V.SOLICITACOES_EXPANSIVEIS iniciado.");
+  console.log("Módulo dashboard.js iniciado.");
+
   const summaryContainer = document.getElementById("summary-panel-container");
   const infoCardContainer = document.getElementById("info-card-container");
   const solicitacoesContainer = document.getElementById(
     "solicitacoes-container"
   );
+  const nextMeetingContainer = document.getElementById(
+    "proxima-reuniao-voluntario"
+  );
 
   if (!summaryContainer || !infoCardContainer || !solicitacoesContainer) {
-    // Verifica solicitacoesContainer também
-    console.error(
-      "Um ou mais containers principais do dashboard não foram encontrados."
-    );
+    console.error("Containers principais do dashboard não encontrados.");
     return;
   }
 
@@ -78,6 +77,106 @@ export function init(user, userData) {
     sexta: "Sexta-feira",
     sabado: "Sábado",
   };
+
+  // --- FUNÇÃO 1: Carregar Próxima Reunião (NOVO) ---
+  async function loadNextMeeting() {
+    if (!nextMeetingContainer) return;
+
+    try {
+      const agora = new Date();
+      const q = query(
+        collection(db, "eventos"),
+        orderBy("criadoEm", "desc"),
+        limit(20)
+      );
+
+      const querySnapshot = await getDocs(q);
+      let eventosFuturos = [];
+
+      querySnapshot.forEach((docSnap) => {
+        const dados = docSnap.data();
+        const slots = dados.slots || [];
+
+        // Normaliza para array de objetos com data unificada
+        if (slots.length > 0) {
+          slots.forEach((slot) => {
+            if (slot.data && slot.horaInicio) {
+              const dataHora = new Date(
+                slot.data + "T" + slot.horaInicio + ":00"
+              );
+              if (dataHora > agora) {
+                eventosFuturos.push({
+                  id: docSnap.id,
+                  titulo: dados.tipo,
+                  data: dataHora,
+                  gestor: slot.gestorNome || "Gestão",
+                  link: slot.linkReuniao || "#",
+                  pauta: dados.descricao || "Sem pauta",
+                });
+              }
+            }
+          });
+        } else {
+          // Evento Simples
+          if (dados.dataReuniao) {
+            const hora = dados.horaInicio || "00:00";
+            const dataHora = new Date(dados.dataReuniao + "T" + hora + ":00");
+            if (dataHora > agora) {
+              eventosFuturos.push({
+                id: docSnap.id,
+                titulo: dados.tipo || "Reunião Geral",
+                data: dataHora,
+                gestor: dados.responsavel || "Gestão",
+                link: dados.link || "#",
+                pauta: dados.pauta || "Sem pauta",
+              });
+            }
+          }
+        }
+      });
+
+      // Ordena por data (mais próxima primeiro)
+      eventosFuturos.sort((a, b) => a.data - b.data);
+
+      if (eventosFuturos.length > 0) {
+        const prox = eventosFuturos[0];
+        const diffMs = prox.data - agora;
+        const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+        const dataFormatada = prox.data.toLocaleDateString("pt-BR");
+        const horaFormatada = prox.data.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        nextMeetingContainer.innerHTML = `
+                <h4><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Próxima Reunião</h4>
+                <h2>${prox.titulo}</h2>
+                <div class="meeting-details">
+                    <div class="meeting-date">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        ${dataFormatada} às ${horaFormatada}
+                    </div>
+                    <div class="meeting-countdown">
+                        Faltam ${diasRestantes} dia(s)
+                    </div>
+                </div>
+                <div class="meeting-actions">
+                    <button class="btn-meeting-action" onclick="alert('Detalhes: ${prox.pauta.replace(
+                      /'/g,
+                      ""
+                    )}')">Ver Detalhes</button>
+                </div>
+            `;
+        nextMeetingContainer.style.display = "block";
+      } else {
+        nextMeetingContainer.style.display = "none";
+      }
+    } catch (e) {
+      console.error("Erro ao carregar próxima reunião:", e);
+      nextMeetingContainer.style.display = "none";
+    }
+  }
 
   async function fetchValoresConfig() {
     try {
@@ -96,11 +195,11 @@ export function init(user, userData) {
   }
 
   function renderSummaryPanel() {
-    if (!userData || (!userData.username && !userData.nome)) {
+    if (!userData || (!userData.username && !userData.name)) {
       summaryContainer.innerHTML = "<p>Usuário não identificado.</p>";
       return;
     }
-    const userIdentifier = userData.username || userData.nome;
+    const userIdentifier = userData.username || userData.name;
     const userFullName = userData.nome || userIdentifier;
     let horasOnline = 0,
       horasPresencial = 0;
@@ -242,7 +341,6 @@ export function init(user, userData) {
     }
   }
 
-  // --- FUNÇÃO MODIFICADA (renderMinhasSolicitacoes) ---
   async function renderMinhasSolicitacoes() {
     solicitacoesContainer.innerHTML = `
             <div class="info-card" id="card-minhas-solicitacoes">
@@ -263,7 +361,6 @@ export function init(user, userData) {
     const umMesAtras = new Date();
     umMesAtras.setDate(umMesAtras.getDate() - 30);
 
-    // Busca TODAS as solicitações do usuário
     const q = query(
       collection(db, "solicitacoes"),
       where("solicitanteId", "==", user.uid),
@@ -280,11 +377,10 @@ export function init(user, userData) {
         concluidasContent.innerHTML =
           "<p>Nenhuma solicitação recente no histórico.</p>";
       } else {
-        querySnapshot.forEach((doc, index) => {
-          // Adiciona index para IDs únicos
+        querySnapshot.forEach((doc) => {
           const sol = doc.data();
           const detalhes = sol.detalhes || {};
-          const solicitacaoId = doc.id; // ID único para o item
+          const solicitacaoId = doc.id;
 
           const tipoSolicitacaoFormatado = formatarTipoSolicitacao(sol.tipo);
           const dataSolFormatada = formatarData(sol.dataSolicitacao);
@@ -314,7 +410,6 @@ export function init(user, userData) {
                                  </p>`;
           }
 
-          // *** HTML MODIFICADO PARA EXPANSÃO ***
           const itemHtml = `
                   <li class="solicitacao-item-container">
                       <div class="solicitacao-item-header" data-target-details="details-${solicitacaoId}">
@@ -426,7 +521,6 @@ export function init(user, userData) {
                            ${feedbackAdminHtml}
                       </div>
                   </li>`;
-          // *** FIM HTML MODIFICADO ***
 
           if (sol.status === "Pendente") {
             abertasHtml += itemHtml;
@@ -436,7 +530,7 @@ export function init(user, userData) {
               concluidasHtml += itemHtml;
             }
           }
-        }); // Fim forEach
+        });
 
         abertasContent.innerHTML = abertasHtml
           ? `<ul class="solicitacoes-list">${abertasHtml}</ul>`
@@ -444,9 +538,8 @@ export function init(user, userData) {
         concluidasContent.innerHTML = concluidasHtml
           ? `<ul class="solicitacoes-list">${concluidasHtml}</ul>`
           : "<p>Nenhuma solicitação recente no histórico.</p>";
-      } // Fim else (snapshot não vazio)
+      }
 
-      // *** NOVO: Adiciona o listener para expansão após renderizar ***
       addToggleDetailsListener();
     } catch (error) {
       console.error("Erro ao buscar solicitações:", error);
@@ -454,35 +547,28 @@ export function init(user, userData) {
       concluidasContent.innerHTML = "";
     }
   }
-  // --- FIM FUNÇÃO MODIFICADA ---
 
-  // *** NOVA FUNÇÃO: Adiciona listener de clique para expandir/colapsar ***
   function addToggleDetailsListener() {
-    // Usa delegação de evento no container principal das solicitações
-    solicitacoesContainer.removeEventListener("click", handleSolicitacaoClick); // Remove listener antigo se houver
+    solicitacoesContainer.removeEventListener("click", handleSolicitacaoClick);
     solicitacoesContainer.addEventListener("click", handleSolicitacaoClick);
   }
 
-  // *** NOVA FUNÇÃO: Handler para o clique na solicitação ***
   function handleSolicitacaoClick(event) {
     const header = event.target.closest(".solicitacao-item-header");
-    if (!header) return; // Sai se o clique não foi no cabeçalho
+    if (!header) return;
 
     const targetId = header.dataset.targetDetails;
     const details = document.getElementById(targetId);
     const indicator = header.querySelector(".solicitacao-indicator");
 
     if (details) {
-      // Alterna a classe 'expanded' no container do item e no cabeçalho
       const container = header.closest(".solicitacao-item-container");
       if (container) container.classList.toggle("expanded");
       header.classList.toggle("expanded");
 
-      // Alterna a visibilidade dos detalhes
       details.style.display =
         details.style.display === "block" ? "none" : "block";
 
-      // Alterna o indicador
       if (indicator) {
         indicator.textContent = details.style.display === "block" ? "-" : "+";
       }
@@ -490,14 +576,17 @@ export function init(user, userData) {
       console.warn(`Elemento de detalhes não encontrado: #${targetId}`);
     }
   }
-  // *** FIM NOVAS FUNÇÕES ***
 
   async function start() {
     summaryContainer.innerHTML = '<div class="loading-spinner"></div>';
     infoCardContainer.innerHTML = '<div class="loading-spinner"></div>';
+
+    // --- CHAMADA DO NOVO RECURSO ---
+    loadNextMeeting();
+
     await fetchValoresConfig();
     await renderInfoCards();
-    renderMinhasSolicitacoes().catch(console.error); // Renderiza o card de solicitações
+    renderMinhasSolicitacoes().catch(console.error);
 
     const gradesDocRef = doc(db, "administrativo", "grades");
     const unsubscribe = onSnapshot(
@@ -511,7 +600,6 @@ export function init(user, userData) {
         summaryContainer.innerHTML = `<p class="alert alert-error">Erro ao carregar resumo.</p>`;
       }
     );
-    // Guardar unsubscribe para limpar ao sair da view
   }
 
   start().catch(console.error);
