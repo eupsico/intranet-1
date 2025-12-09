@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.1 (Código Completo: Assiduidade, Histórico Formal e Exportação)
+// VERSÃO 2.2 (Atualizado: Modal de Detalhes Qualitativo)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -13,8 +13,17 @@ let todosEventos = [];
 let todosUsuarios = []; // Cache de todos os profissionais do sistema
 let vistaAtual = "pendencias";
 
+// Mapa de perguntas padrão para o resumo
+const MAPA_PERGUNTAS = {
+  clareza: "O tema foi claro?",
+  objetivos: "Objetivos alcançados?",
+  aprendizado: "Qual foi o maior aprendizado?",
+  sugestaoTema: "Sugestões/Comentários",
+  // Adicione outros IDs personalizados se houver
+};
+
 export async function init() {
-  console.log("[RELATÓRIOS] Iniciando módulo...");
+  console.log("[RELATÓRIOS] Iniciando módulo v2.2...");
   configurarEventos();
   // Carrega usuários e eventos em paralelo para otimizar
   await Promise.all([carregarEventos(), carregarUsuarios()]);
@@ -144,8 +153,6 @@ function filtrarDados() {
     filtrados = filtrados.filter((d) => d.dataObj <= dFim);
   }
 
-  // O filtro de texto (busca) é retornado para ser aplicado especificamente em cada renderização
-  // pois a busca pode ser por nome de usuário (Assiduidade) ou por tema (Histórico)
   return { eventos: filtrados, termoBusca: busca };
 }
 
@@ -192,7 +199,6 @@ function renderPendencias(dados, busca, container) {
 
   let count = 0;
   dados.forEach((evento) => {
-    // Junta Plano de Ação e Encaminhamentos com identificador de origem
     const tarefas = [
       ...evento.planoDeAcao.map((t) => ({ ...t, origemTipo: "Ação" })),
       ...evento.encaminhamentos.map((t) => ({
@@ -205,7 +211,6 @@ function renderPendencias(dados, busca, container) {
       const responsavel = t.responsavel || t.nomeEncaminhado || "N/A";
       const desc = t.descricao || t.motivo || "Sem descrição";
 
-      // Filtro: Apenas Atrasados E (Busca vazia OU Busca coincide)
       if (
         t.status === "Atrasado" &&
         (!busca ||
@@ -242,7 +247,6 @@ function renderPendencias(dados, busca, container) {
 // B. RELATÓRIO DE ASSIDUIDADE (TODOS OS PROFISSIONAIS)
 // ============================================================================
 function renderAssiduidade(eventos, busca, container) {
-  // 1. Mapa inicial com todos os usuários do sistema
   const mapaAssiduidade = {};
   todosUsuarios.forEach((u) => {
     mapaAssiduidade[u.uid] = {
@@ -253,21 +257,16 @@ function renderAssiduidade(eventos, busca, container) {
     };
   });
 
-  // 2. Contar presenças baseadas no feedback enviado
   let totalEventosNoPeriodo = eventos.length;
 
   eventos.forEach((ev) => {
     if (ev.feedbacks && ev.feedbacks.length > 0) {
       ev.feedbacks.forEach((fb) => {
         let userKey = fb.uid;
-
-        // Fallback: se não tiver UID no feedback, tenta achar usuário pelo nome
         if (!userKey) {
           const found = todosUsuarios.find((u) => u.nome === fb.nome);
           if (found) userKey = found.uid;
         }
-
-        // Se encontrou o usuário no mapa (é um profissional cadastrado)
         if (userKey && mapaAssiduidade[userKey]) {
           mapaAssiduidade[userKey].totalPresencas++;
           mapaAssiduidade[userKey].eventosParticipados.push({
@@ -279,17 +278,14 @@ function renderAssiduidade(eventos, busca, container) {
     }
   });
 
-  // 3. Filtragem e Ordenação
   let listaFinal = Object.values(mapaAssiduidade);
 
   if (busca) {
     listaFinal = listaFinal.filter((u) => u.nome.toLowerCase().includes(busca));
   }
 
-  // Ordena por quem foi em mais reuniões
   listaFinal.sort((a, b) => b.totalPresencas - a.totalPresencas);
 
-  // 4. Renderização
   let html = `
         <div class="alert alert-light border">
             <strong>Total de Reuniões no Período Selecionado:</strong> ${totalEventosNoPeriodo}
@@ -312,11 +308,10 @@ function renderAssiduidade(eventos, busca, container) {
         ? Math.round((u.totalPresencas / totalEventosNoPeriodo) * 100)
         : 0;
 
-    // Cores de status
     let classCor = "text-muted";
     if (totalEventosNoPeriodo > 0) {
       if (perc >= 75) classCor = "text-success";
-      else if (perc >= 50) classCor = "text-warning"; // ou uma cor neutra
+      else if (perc >= 50) classCor = "text-warning";
       else classCor = "text-danger";
     }
 
@@ -353,7 +348,7 @@ function renderAssiduidade(eventos, busca, container) {
 }
 
 // ============================================================================
-// C. RELATÓRIO QUALITATIVO (FEEDBACKS ESCRITOS)
+// C. RELATÓRIO QUALITATIVO (MODIFICADO - VER DETALHES)
 // ============================================================================
 function renderQualitativo(dados, busca, container) {
   let html = `
@@ -363,17 +358,15 @@ function renderQualitativo(dados, busca, container) {
                     <th>Data</th>
                     <th>Reunião</th>
                     <th>Participante</th>
-                    <th>Avaliação</th>
-                    <th>Sugestões / Comentários</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>`;
 
   let count = 0;
   dados.forEach((evento) => {
-    evento.feedbacks.forEach((fb) => {
+    evento.feedbacks.forEach((fb, index) => {
       const nome = fb.nome || "Anônimo";
-      const sugestao = fb.sugestaoTema || fb.comentarios || "-";
 
       // Filtro de Busca
       if (
@@ -383,19 +376,27 @@ function renderQualitativo(dados, busca, container) {
       ) {
         const dataF = evento.dataObj.toLocaleDateString("pt-BR");
 
-        // Calcula "Nota" aproximada
-        let nota = 0;
-        if (fb.clareza === "Sim") nota += 5;
-        if (fb.objetivos === "Sim") nota += 5;
+        // Encode dos dados para o botão
+        const dadosFeedback = encodeURIComponent(JSON.stringify(fb));
+        const dadosEvento = encodeURIComponent(
+          JSON.stringify({
+            titulo: evento.titulo,
+            data: dataF,
+            gestor: evento.gestor,
+          })
+        );
 
         html += `
-                    <tr>
-                        <td>${dataF}</td>
-                        <td>${evento.titulo}</td>
-                        <td>${nome}</td>
-                        <td>${nota}/10</td>
-                        <td>${sugestao}</td>
-                    </tr>`;
+            <tr>
+                <td>${dataF}</td>
+                <td>${evento.titulo}</td>
+                <td>${nome}</td>
+                <td class="text-end">
+                    <button class="btn-export" onclick="abrirModalDetalhesFeedback('${dadosFeedback}', '${dadosEvento}')">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">visibility</span> Ver Respostas
+                    </button>
+                </td>
+            </tr>`;
         count++;
       }
     });
@@ -406,6 +407,75 @@ function renderQualitativo(dados, busca, container) {
     container.innerHTML = `<div class="alert alert-info">Nenhum feedback encontrado com os filtros atuais.</div>`;
   else container.innerHTML = html;
 }
+
+// ============================================================================
+// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (NOVO)
+// ============================================================================
+window.abrirModalDetalhesFeedback = function (
+  dadosFeedbackEnc,
+  dadosEventoEnc
+) {
+  const feedback = JSON.parse(decodeURIComponent(dadosFeedbackEnc));
+  const evento = JSON.parse(decodeURIComponent(dadosEventoEnc));
+
+  const modalId = "modal-detalhes-feedback";
+  let modal = document.getElementById(modalId);
+  if (modal) modal.remove();
+
+  // Gera o resumo das respostas (Q&A)
+  let resumoHtml = `<div class="qa-list">`;
+
+  // Itera sobre as chaves do feedback ignorando metadados
+  for (const [key, value] of Object.entries(feedback)) {
+    if (["timestamp", "uid", "nome", "email"].includes(key)) continue;
+
+    const perguntaTexto = MAPA_PERGUNTAS[key] || `Questão: ${key}`;
+    resumoHtml += `
+            <div class="qa-item mb-3 p-3 bg-light rounded border">
+                <p class="mb-1 text-primary fw-bold">${perguntaTexto}</p>
+                <p class="mb-0 text-dark">${
+                  value || "<em>Sem resposta</em>"
+                }</p>
+            </div>
+        `;
+  }
+  resumoHtml += `</div>`;
+
+  modal = document.createElement("div");
+  modal.id = modalId;
+  modal.innerHTML = `
+        <div class="modal-overlay is-visible" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+            <div class="modal-content bg-white rounded shadow-lg" style="width: 90%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                    <h5 class="mb-0">Resumo do Feedback</h5>
+                    <button onclick="fecharModalDetalhesFeedback()" class="btn-close border-0 bg-transparent" style="font-size: 1.5rem;">&times;</button>
+                </div>
+                <div class="modal-body p-4" style="overflow-y: auto;">
+                    <div class="info-reuniao mb-4 pb-3 border-bottom">
+                        <h6 class="text-uppercase text-muted small mb-2">Detalhes da Reunião</h6>
+                        <p class="mb-1"><strong>Tema:</strong> ${evento.titulo}</p>
+                        <p class="mb-1"><strong>Data:</strong> ${evento.data}</p>
+                        <p class="mb-0"><strong>Profissional:</strong> ${feedback.nome}</p>
+                    </div>
+                    
+                    <h6 class="text-uppercase text-muted small mb-3">Respostas do Formulário</h6>
+                    ${resumoHtml}
+                </div>
+                <div class="modal-footer p-3 border-top text-end">
+                    <button onclick="fecharModalDetalhesFeedback()" class="btn btn-secondary btn-sm">Fechar</button>
+                </div>
+            </div>
+        </div>
+    `;
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+};
+
+window.fecharModalDetalhesFeedback = function () {
+  const modal = document.getElementById("modal-detalhes-feedback");
+  if (modal) modal.remove();
+  document.body.style.overflow = "";
+};
 
 // ============================================================================
 // D. RELATÓRIO DE PERFORMANCE DE GESTORES
@@ -422,7 +492,6 @@ function renderPerformance(dados, container) {
     stats[gestor].atendimentos += evento.vagas.length || 0;
   });
 
-  // Converte para array e ordena
   const lista = Object.values(stats).sort(
     (a, b) => b.atendimentos - a.atendimentos
   );
@@ -470,7 +539,6 @@ function renderPerformance(dados, container) {
 // E. HISTÓRICO COMPLETO DE ATAS (DOCUMENTO FORMAL)
 // ============================================================================
 function renderHistorico(dados, container) {
-  // Filtra apenas atas concluídas e ordena por data (mais recente primeiro)
   const concluidas = dados
     .filter((d) => d.status === "Concluída")
     .sort((a, b) => b.dataObj - a.dataObj);
@@ -485,7 +553,6 @@ function renderHistorico(dados, container) {
   concluidas.forEach((ata) => {
     const dataF = ata.dataObj.toLocaleDateString("pt-BR");
 
-    // Lista de Participantes (Inscritos ou Lista de Presença manual se existir no futuro)
     const listaPart =
       (ata.vagas.length > 0
         ? ata.vagas.map((v) => v.nome || v.profissionalNome)
@@ -494,7 +561,6 @@ function renderHistorico(dados, container) {
         : []
       ).join(", ") || "Conforme lista de presença digital.";
 
-    // Lista de Tarefas formatada
     let tarefasHtml = "<ul>";
     [...ata.planoDeAcao, ...ata.encaminhamentos].forEach((t) => {
       tarefasHtml += `<li><strong>${t.responsavel || "N/A"}:</strong> ${
@@ -561,10 +627,9 @@ function renderHistorico(dados, container) {
 // EXPORTAÇÃO CSV
 // ============================================================================
 function exportarCSV() {
-  const { eventos, termoBusca } = filtrarDados();
-  let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM para suporte a acentos no Excel
+  const { eventos } = filtrarDados();
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
 
-  // Define colunas baseado na vista atual
   if (vistaAtual === "pendencias") {
     csvContent += "Data,Evento,Tarefa,Responsavel,Status\n";
     eventos.forEach((ev) => {
@@ -600,7 +665,6 @@ function exportarCSV() {
     });
   } else if (vistaAtual === "assiduidade") {
     csvContent += "Profissional,Email,TotalPresencas\n";
-    // Recalcula lista de assiduidade para CSV (reutiliza lógica simples)
     const mapa = {};
     todosUsuarios.forEach(
       (u) => (mapa[u.uid] = { nome: u.nome, email: u.email, count: 0 })
@@ -621,7 +685,6 @@ function exportarCSV() {
 
     Object.values(mapa).forEach((u) => {
       if (u.count > 0) {
-        // Opcional: exportar todos ou só quem participou
         csvContent += `"${u.nome}","${u.email}","${u.count}"\n`;
       }
     });
