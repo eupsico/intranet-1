@@ -1190,18 +1190,6 @@ export async function abrirModalAvaliacaoTeste(candidatoId, dadosCandidato) {
   // ========== EXIBE O MODAL ==========
   console.log("🎬 ========== EXIBINDO MODAL ==========");
   modalAvaliacaoTeste.classList.add("is-visible");
-  console.log("✅ [MODAL] Classe 'is-visible' adicionada");
-  console.log("✅ [MODAL] Modal de avaliação de teste ABERTO COM SUCESSO");
-
-  console.log(
-    "╔════════════════════════════════════════════════════════════════╗"
-  );
-  console.log(
-    "║       ✅ MODAL ABERTO - FUNÇÃO CONCLUÍDA                      ║"
-  );
-  console.log(
-    "╚════════════════════════════════════════════════════════════════╝\n"
-  );
 }
 
 /**
@@ -1284,7 +1272,6 @@ async function handleSubmitAvaliacaoTeste(e) {
     if (resultado === "Aprovado" && gestorId) {
       updateData.avaliacaoTeste.gestorDesignado = gestorId;
 
-      // ANTES: updateData.status_recrutamento = "Testes Respondido"; (ERRADO)
       // AGORA: Status que move para a próxima aba
       updateData.status_recrutamento = "ENTREVISTA_GESTOR_PENDENTE";
 

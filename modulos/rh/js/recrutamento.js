@@ -129,9 +129,9 @@ async function carregarVagasAtivas() {
       "Cronograma Pendente",
       "Cronograma Definido (Triagem Pendente)",
       "Entrevista RH Pendente",
-      "Testes Pendente",
-      "Entrevista Gestor Pendente",
-      "Contratado",
+      "TESTE_PENDENTE",
+      "ENTREVISTA_GESTOR_PENDENTE",
+      "CONTRATADO",
       "Encerrada",
     ];
 

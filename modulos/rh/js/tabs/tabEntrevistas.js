@@ -87,7 +87,7 @@ export async function renderizarEntrevistas(state) {
         corStatus = "warning";
       }
       // ✅ CORREÇÃO: "Testes Respondido" agora usa o status 'success'
-      if (statusAtual.includes("Testes Respondido")) {
+      if (statusAtual.includes("TESTE_RESPONDIDO")) {
         corStatus = "success";
       }
 

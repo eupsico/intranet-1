@@ -350,7 +350,7 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
       await setDoc(
         candidatoRef,
         {
-          status_recrutamento: "Entrevista Gestor Agendada",
+          status_recrutamento: "ENTREVISTA_GESTOR_AGENDADA",
           entrevista_gestor: {
             agendamento: {
               data: dataAgendada,

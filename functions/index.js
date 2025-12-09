@@ -1405,7 +1405,7 @@ exports.salvarRespostasTeste = functions.https.onRequest((req, res) =>
           // ==========================================================
           // ✅ CORREÇÃO 2: Atualiza o status do candidato
           // ==========================================================
-          status_recrutamento: "Testes Respondido",
+          status_recrutamento: "TESTE_RESPONDIDO",
 
           historico: admin.firestore.FieldValue.arrayUnion({
             data: new Date(),
