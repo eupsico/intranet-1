@@ -3,9 +3,6 @@
   <p class="subtitle">Visão geral e métricas do módulo RH.</p>
 </div>
 
-<!-- ============================================
-     ABAS: Dashboard vs Relatórios
-     ============================================ -->
 <div class="tabs-container rh-dashboard-tabs" id="rh-dashboard-tabs">
   <button class="tab-link active" data-tab="dashboard">
     <i class="fas fa-chart-line me-2"></i> Dashboard
@@ -15,9 +12,6 @@
   </button>
 </div>
 
-<!-- ============================================
-     ABA 1: DASHBOARD ORIGINAL
-     ============================================ -->
 <div id="tab-dashboard" class="tab-content active">
 
   <div class="summary-cards rh-stats-grid">
@@ -62,9 +56,6 @@
 
 </div>
 
-<!-- ============================================
-     ABA 2: RELATÓRIOS DE RECRUTAMENTO ✅ NOVA
-     ============================================ -->
 <div id="tab-relatorios" class="tab-content" style="display: none;">
 
   <div class="page-header">
@@ -72,7 +63,6 @@
     <p>Visualize dados sobre inscrições, candidatos e respostas aos testes.</p>
   </div>
 
-  <!-- ✅ FILTROS PADRONIZADOS -->
   <div class="card filtros-card">
     <h4 style="margin-top: 0;"><i class="fas fa-filter me-2"></i> Filtros</h4>
     
@@ -105,7 +95,6 @@
     </div>
   </div>
 
-  <!-- ✅ CARDS DE RESUMO PADRONIZADOS -->
   <div class="summary-cards rh-stats-grid">
     <div class="card">
       <h3><i class="fas fa-users me-2"></i> Total de Inscrições</h3>
@@ -129,7 +118,29 @@
     </div>
   </div>
 
-  <!-- ✅ TABS DE RELATÓRIOS -->
+  <div class="row mb-4" style="margin-top: 20px;">
+    <div class="col-md-6">
+       <div class="card h-100" style="padding: 25px;">
+         <h4 style="margin-top: 0; color: #333; font-weight: 600;"><i class="fas fa-stopwatch me-2"></i> Tempo Médio de Contratação</h4>
+         <div style="display:flex; align-items:center; justify-content:center; height: 150px; flex-direction: column;">
+            <div>
+              <span class="metric-value" id="rel-tempo-medio" style="font-size: 3.5rem;">-</span>
+              <span class="text-muted ms-2" style="font-size: 1.5rem;">dias</span>
+            </div>
+            <p class="text-center text-muted small mt-2">Média entre candidatura e contratação</p>
+         </div>
+       </div>
+    </div>
+    <div class="col-md-6">
+       <div class="card h-100" style="padding: 25px;">
+         <h4 style="margin-top: 0; color: #333; font-weight: 600;"><i class="fas fa-globe me-2"></i> Origem dos Candidatos</h4>
+         <div style="height: 200px; position: relative;">
+            <canvas id="rel-chart-origem"></canvas>
+         </div>
+       </div>
+    </div>
+  </div>
+
   <div class="tabs-container" id="rel-relatorios-tabs" style="margin-top: 20px;">
     <button class="tab-link active" data-rel-tab="inscricoes">
       <i class="fas fa-list me-2"></i> Inscrições por Vaga
@@ -142,7 +153,6 @@
     </button>
   </div>
 
-  <!-- ✅ RELATÓRIO 1: INSCRIÇÕES POR VAGA -->
   <div id="rel-tab-inscricoes" class="tab-content-rel active card" style="margin-top: 20px; padding: 25px;">
     <div class="relatorio-header">
       <h4 style="margin: 0;"><i class="fas fa-chart-bar me-2"></i> Inscrições por Vaga</h4>
@@ -183,7 +193,6 @@
     
   </div>
 
-<!-- ✅ RELATÓRIO 2: LISTA DE CANDIDATOS -->
 <div id="rel-tab-candidatos" class="tab-content-rel card" style="margin-top: 20px; padding: 25px; display: none;">
   <div class="relatorio-header">
     <h4 style="margin: 0;"><i class="fas fa-users me-2"></i> Lista de Candidatos</h4>
@@ -212,8 +221,7 @@
           <th>Vaga</th>
           <th>Status</th>
           <th>Teste</th>
-          <!-- ✅ REMOVIDA COLUNA "AÇÕES" -->
-        </tr>
+          </tr>
       </thead>
       <tbody id="rel-tbody-candidatos">
         <tr>
@@ -225,7 +233,6 @@
 </div>
 
 
-  <!-- ✅ RELATÓRIO 3: RESPOSTAS AOS TESTES -->
   <div id="rel-tab-respostas" class="tab-content-rel card" style="margin-top: 20px; padding: 25px; display: none;">
     <div class="relatorio-header">
       <h4 style="margin: 0;"><i class="fas fa-comments me-2"></i> Respostas aos Testes</h4>
@@ -254,8 +261,7 @@
         <th>Teste</th>
         <th>Data de Resposta</th>
         <th class="text-center">Tempo Gasto</th>
-        <th class="text-center">Nota</th> <!-- ✅ NOVA COLUNA -->
-        <th>Status</th>
+        <th class="text-center">Nota</th> <th>Status</th>
         <th class="text-center">Ações</th>
       </tr>
     </thead>
@@ -271,7 +277,6 @@
 
 </div>
 
-<!-- ✅ CSS COMPLETO E PADRONIZADO -->
 <style>
   /* ===== TABS ===== */
   .tabs-container {
@@ -516,6 +521,5 @@
   }
 </style>
 
-<!-- ✅ IMPORTAR CHART.JS (COLOCAR NO HEAD DO HTML) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
