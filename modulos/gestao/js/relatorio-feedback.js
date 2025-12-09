@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.2 (Atualizado: Modal de Detalhes Qualitativo)
+// VERSÃO 2.3 (Atualizado: Mapa Dinâmico de Perguntas)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -7,27 +7,66 @@ import {
   getDocs,
   query,
   orderBy,
+  doc, // ✅ ADICIONADO
+  getDoc, // ✅ ADICIONADO
 } from "../../../assets/js/firebase-init.js";
 
 let todosEventos = [];
 let todosUsuarios = []; // Cache de todos os profissionais do sistema
 let vistaAtual = "pendencias";
 
-// Mapa de perguntas padrão para o resumo
+// Mapa de perguntas padrão (Fallback + IDs conhecidos)
 const MAPA_PERGUNTAS = {
   clareza: "O tema foi claro?",
   objetivos: "Objetivos alcançados?",
   aprendizado: "Qual foi o maior aprendizado?",
   sugestaoTema: "Sugestões/Comentários",
-  // Adicione outros IDs personalizados se houver
+
+  // ✅ ADIÇÕES PARA CORREÇÃO IMEDIATA
+  competencias: "Quais competências foram trabalhadas?",
+  competências: "Quais competências foram trabalhadas?",
+  Objetivos: "Objetivos alcançados?", // Caso esteja com maiúscula no banco
+  objetivo: "Objetivos alcançados?",
 };
 
 export async function init() {
-  console.log("[RELATÓRIOS] Iniciando módulo v2.2...");
+  console.log("[RELATÓRIOS] Iniciando módulo v2.3...");
   configurarEventos();
-  // Carrega usuários e eventos em paralelo para otimizar
-  await Promise.all([carregarEventos(), carregarUsuarios()]);
+
+  // ✅ AGORA CARREGA TAMBÉM A CONFIGURAÇÃO DE PERGUNTAS
+  await Promise.all([
+    carregarConfiguracaoFeedback(),
+    carregarEventos(),
+    carregarUsuarios(),
+  ]);
+
   renderizarVistaAtual();
+}
+
+// ✅ NOVA FUNÇÃO: Busca os textos das perguntas no banco
+async function carregarConfiguracaoFeedback() {
+  try {
+    const docRef = doc(firestoreDb, "configuracoesSistema", "modelo_feedback");
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data.perguntas && Array.isArray(data.perguntas)) {
+        data.perguntas.forEach((p) => {
+          // Mapeia o ID para o Texto da pergunta
+          if (p.id && p.texto) {
+            MAPA_PERGUNTAS[p.id] = p.texto;
+          }
+        });
+        console.log("✅ Mapa de perguntas atualizado via configurações.");
+      }
+    }
+  } catch (e) {
+    console.warn(
+      "⚠️ Erro ao carregar configurações de feedback (usando padrão):",
+      e
+    );
+  }
 }
 
 function configurarEventos() {
@@ -429,7 +468,9 @@ window.abrirModalDetalhesFeedback = function (
   for (const [key, value] of Object.entries(feedback)) {
     if (["timestamp", "uid", "nome", "email"].includes(key)) continue;
 
+    // ✅ CORREÇÃO: Usa o mapa atualizado com o texto do banco
     const perguntaTexto = MAPA_PERGUNTAS[key] || `Questão: ${key}`;
+
     resumoHtml += `
             <div class="qa-item mb-3 p-3 bg-light rounded border">
                 <p class="mb-1 text-primary fw-bold">${perguntaTexto}</p>
