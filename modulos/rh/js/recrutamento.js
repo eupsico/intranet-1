@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/recrutamento.js
- * Versão: 3.5.0 (Status Simplificado + Mapa de Descrições)
+ * Versão: 3.6.0 (Refatorado para usar status_utils.js)
  * Data: 09/12/2025
  * Descrição: Controlador principal do módulo de Recrutamento e Seleção
  */
@@ -27,6 +27,12 @@ import { renderizarEntrevistas } from "./tabs/tabEntrevistas.js";
 import { renderizarEntrevistaGestor } from "./tabs/tabGestor.js";
 import { renderizarFinalizados } from "./tabs/tabFinalizados.js";
 
+// ✅ Importação do Utilitário de Status (Centralizado)
+import {
+  formatarStatusLegivel,
+  getStatusBadgeClass,
+} from "./utils/status_utils.js";
+
 // ============================================
 // CONSTANTES E COLEÇÕES DO FIRESTORE
 // ============================================
@@ -35,28 +41,6 @@ const CANDIDATOS_COLLECTION_NAME = "candidaturas";
 
 const vagasCollection = collection(db, VAGAS_COLLECTION_NAME);
 const candidatosCollection = collection(db, CANDIDATOS_COLLECTION_NAME);
-
-// ============================================
-// MAPA DE STATUS (Técnico -> Legível)
-// ============================================
-const MAPA_STATUS = {
-  TRIAGEM_PENDENTE: "Candidatura Recebida",
-  ENTREVISTA_RH_PENDENTE: "Aguardando Entrevista RH",
-  ENTREVISTA_RH_AGENDADA: "Entrevista RH Agendada",
-  TESTE_PENDENTE: "Aguardando Envio de Teste",
-  TESTE_ENVIADO: "Teste Enviado (Aguardando Resposta)",
-  TESTE_RESPONDIDO: "Teste Respondido (Aguardando Correção)",
-  ENTREVISTA_GESTOR_PENDENTE: "Aguardando Entrevista Gestor",
-  ENTREVISTA_GESTOR_AGENDADA: "Entrevista Gestor Agendada",
-  AGUARDANDO_ADMISSAO: "Aprovado (Aguardando Admissão)",
-  REPROVADO: "Processo Encerrado (Reprovado)",
-  REPROVADO_TRIAGEM: "Reprovado na Triagem",
-  CONTRATADO: "Contratado",
-  DESISTENCIA: "Desistência",
-  // Mantém compatibilidade visual com status antigos se necessário
-  "Candidatura Recebida (Triagem Pendente)": "Candidatura Recebida",
-  "Triagem Aprovada (Entrevista Pendente)": "Aguardando Entrevista RH",
-};
 
 // ============================================
 // ELEMENTOS DO DOM (CACHE)
@@ -114,16 +98,6 @@ function formatarTimestamp(timestamp) {
 }
 
 /**
- * Converte status técnico (SNAKE_CASE) para texto legível para exibição
- * @param {string} statusTecnico - O status salvo no banco
- * @returns {string} Texto formatado para exibição
- */
-export function formatarStatusLegivel(statusTecnico) {
-  if (!statusTecnico) return "N/A";
-  return MAPA_STATUS[statusTecnico] || statusTecnico;
-}
-
-/**
  * Retorna o estado global para uso em módulos filhos
  * @returns {Object} Estado global compartilhado
  */
@@ -133,7 +107,8 @@ export const getGlobalState = () => ({
   candidatosCollection,
   vagasCollection,
   formatarTimestamp,
-  formatarStatusLegivel, // ✅ Exportado para uso nas abas
+  formatarStatusLegivel, // ✅ Exportado do Utils
+  getStatusBadgeClass, // ✅ Exportado do Utils
   conteudoRecrutamento,
   statusCandidaturaTabs,
   handleTabClick,
@@ -302,12 +277,12 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   sel("habilidades").textContent =
     candidato.habilidades_competencias || "Não informadas";
 
-  // 5. Preencher status
+  // 5. Preencher status (USANDO O NOVO FORMATADOR)
   sel("vaga-aplicada").textContent = candidato.titulo_vaga_original || "N/A";
   const statusBadge = sel("status-recrutamento");
   const statusTecnico = candidato.status_recrutamento || "N/A";
 
-  // ✅ USA O FORMATADOR PARA EXIBIÇÃO NO MODAL
+  // ✅ USA AS FUNÇÕES DO UTILS
   statusBadge.textContent = formatarStatusLegivel(statusTecnico);
   statusBadge.className = `status-badge ${getStatusBadgeClass(statusTecnico)}`;
 
@@ -431,36 +406,6 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
 
   console.log("✅ Recrutamento: Modal de detalhes aberto com template");
 }
-
-/**
- * Retorna a classe CSS apropriada para o badge de status
- * @param {string} status - Status do candidato
- * @returns {string} Classe CSS
- */
-function getStatusBadgeClass(status) {
-  if (!status) return "status-pendente";
-
-  const statusLower = status.toLowerCase();
-
-  if (
-    statusLower.includes("aprovad") ||
-    statusLower.includes("contratad") ||
-    statusLower.includes("concluída")
-  ) {
-    return "status-concluída";
-  } else if (
-    statusLower.includes("rejeit") ||
-    statusLower.includes("reprov") ||
-    statusLower === "reprovado" // ✅ Match exato para o novo status
-  ) {
-    return "status-rejeitada";
-  } else {
-    return "status-pendente";
-  }
-}
-
-// Expõe a função globalmente
-window.abrirModalCandidato = abrirModalCandidato;
 
 // ====================================================
 // FUNÇÕES RESTAURADAS (DASHBOARD, MONITOR, TOGGLES)
