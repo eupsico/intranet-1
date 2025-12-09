@@ -360,8 +360,7 @@ function mostrarSucessoCandidatura(nomeCandidato) {
   // 'flex-direction: column' é essencial aqui pois a classe .alert do CSS original possui display:flex padrão.
   formBody.innerHTML = `
     <div class="alert alert-success" style="flex-direction: column; text-align: center; padding: 40px 20px; gap: 20px; justify-content: center;">
-        <img src="../assets/img/logo-eupsico.png" alt="Logo" style="max-width: 80px; margin-bottom: 10px;">
-        
+               
         <h3 style="color: #155724; margin: 0; font-size: 1.4rem;">Candidatura Recebida!</h3>
         
         <div style="font-size: 1rem; color: #155724; line-height: 1.6;">
