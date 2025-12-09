@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.3 (Atualizado: Mapa Dinâmico de Perguntas)
+// VERSÃO 2.5 (Atualizado: Ordem Exata da Configuração + Negrito)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -7,33 +7,32 @@ import {
   getDocs,
   query,
   orderBy,
-  doc, // ✅ ADICIONADO
-  getDoc, // ✅ ADICIONADO
+  doc,
+  getDoc,
 } from "../../../assets/js/firebase-init.js";
 
 let todosEventos = [];
-let todosUsuarios = []; // Cache de todos os profissionais do sistema
+let todosUsuarios = [];
 let vistaAtual = "pendencias";
 
-// Mapa de perguntas padrão (Fallback + IDs conhecidos)
-const MAPA_PERGUNTAS = {
+// Armazena a LISTA ORDENADA vinda do banco de dados
+let listaPerguntasOrdenada = [];
+
+// Mapa de fallback caso o banco falhe
+const MAPA_PERGUNTAS_FALLBACK = {
   clareza: "O tema foi claro?",
   objetivos: "Objetivos alcançados?",
-  aprendizado: "Qual foi o maior aprendizado?",
-  sugestaoTema: "Sugestões/Comentários",
-
-  // ✅ ADIÇÕES PARA CORREÇÃO IMEDIATA
-  competencias: "Quais competências foram trabalhadas?",
-  competências: "Quais competências foram trabalhadas?",
-  Objetivos: "Objetivos alcançados?", // Caso esteja com maiúscula no banco
-  objetivo: "Objetivos alcançados?",
+  duracao: "O tempo da reunião foi bem aproveitado?",
+  competencias: "Pensando em seu papel, quais competências foram trabalhadas?",
+  aprendizado: "Qual aprendizado adquirido?",
+  valor: "Quais aspectos da cultura foram reforçados?",
+  sugestoes: "Sugestões/Comentários",
 };
 
 export async function init() {
-  console.log("[RELATÓRIOS] Iniciando módulo v2.3...");
+  console.log("[RELATÓRIOS] Iniciando módulo v2.5...");
   configurarEventos();
 
-  // ✅ AGORA CARREGA TAMBÉM A CONFIGURAÇÃO DE PERGUNTAS
   await Promise.all([
     carregarConfiguracaoFeedback(),
     carregarEventos(),
@@ -43,7 +42,7 @@ export async function init() {
   renderizarVistaAtual();
 }
 
-// ✅ NOVA FUNÇÃO: Busca os textos das perguntas no banco
+// ✅ ATUALIZADO: Salva a lista completa para manter a ordem
 async function carregarConfiguracaoFeedback() {
   try {
     const docRef = doc(firestoreDb, "configuracoesSistema", "modelo_feedback");
@@ -52,25 +51,17 @@ async function carregarConfiguracaoFeedback() {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data.perguntas && Array.isArray(data.perguntas)) {
-        data.perguntas.forEach((p) => {
-          // Mapeia o ID para o Texto da pergunta
-          if (p.id && p.texto) {
-            MAPA_PERGUNTAS[p.id] = p.texto;
-          }
-        });
-        console.log("✅ Mapa de perguntas atualizado via configurações.");
+        // Salva a lista exata como está no banco (preserva a ordem da sua imagem)
+        listaPerguntasOrdenada = data.perguntas;
+        console.log("✅ Lista de perguntas carregada e ordenada.");
       }
     }
   } catch (e) {
-    console.warn(
-      "⚠️ Erro ao carregar configurações de feedback (usando padrão):",
-      e
-    );
+    console.warn("⚠️ Erro ao carregar configurações (usando fallback):", e);
   }
 }
 
 function configurarEventos() {
-  // Alternância de Abas
   document.querySelectorAll(".rel-tab").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       document
@@ -79,7 +70,6 @@ function configurarEventos() {
       e.currentTarget.classList.add("active");
       vistaAtual = e.currentTarget.dataset.view;
 
-      // Controle do botão de impressão (só aparece no histórico)
       const btnPrint = document.getElementById("btn-imprimir");
       if (btnPrint)
         btnPrint.style.display = vistaAtual === "historico" ? "block" : "none";
@@ -88,7 +78,6 @@ function configurarEventos() {
     });
   });
 
-  // Botões de Ação
   document
     .getElementById("btn-aplicar-filtros")
     .addEventListener("click", renderizarVistaAtual);
@@ -120,7 +109,6 @@ async function carregarEventos() {
   container.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // Busca na coleção unificada 'eventos'
     const q = query(
       collection(firestoreDb, "eventos"),
       orderBy("criadoEm", "desc")
@@ -133,13 +121,11 @@ async function carregarEventos() {
       const data = docSnap.data();
       const slots = data.slots || [];
 
-      // Se for evento com slots (moderno/múltiplos horários)
       if (slots.length > 0) {
         slots.forEach((slot) => {
           todosEventos.push(normalizarEvento(data, slot));
         });
       } else {
-        // Evento simples/legado (raiz)
         todosEventos.push(normalizarEvento(data, null));
       }
     });
@@ -150,7 +136,6 @@ async function carregarEventos() {
 }
 
 function normalizarEvento(raiz, slot) {
-  // Se slot existe, usa dados dele, senão usa dados da raiz
   const base = slot || raiz;
   const dataIso = slot
     ? slot.data
@@ -159,16 +144,13 @@ function normalizarEvento(raiz, slot) {
   return {
     titulo: raiz.tipo,
     dataObj: new Date(dataIso + "T00:00:00"),
-    dataStr: dataIso, // YYYY-MM-DD
+    dataStr: dataIso,
     gestor: base.gestorNome || raiz.responsavel || "N/A",
-    // Arrays de interesse
     planoDeAcao: base.planoDeAcao || [],
     encaminhamentos: base.encaminhamentos || [],
-    feedbacks: base.feedbacks || [], // Aqui estão as presenças confirmadas
-    vagas: base.vagas || [], // Inscritos prévios
-    // Status
+    feedbacks: base.feedbacks || [],
+    vagas: base.vagas || [],
     status: base.status || "Agendada",
-    // Detalhes da Ata
     pontos: base.pontos || "",
     decisoes: base.decisoes || "",
     pauta: raiz.descricao || raiz.pauta || "",
@@ -219,9 +201,6 @@ function renderizarVistaAtual() {
   }
 }
 
-// ============================================================================
-// A. RELATÓRIO DE PENDÊNCIAS E GARGALOS (ATRASADOS)
-// ============================================================================
 function renderPendencias(dados, busca, container) {
   let html = `
         <table class="table-relatorio">
@@ -282,9 +261,6 @@ function renderPendencias(dados, busca, container) {
   }
 }
 
-// ============================================================================
-// B. RELATÓRIO DE ASSIDUIDADE (TODOS OS PROFISSIONAIS)
-// ============================================================================
 function renderAssiduidade(eventos, busca, container) {
   const mapaAssiduidade = {};
   todosUsuarios.forEach((u) => {
@@ -386,9 +362,6 @@ function renderAssiduidade(eventos, busca, container) {
   container.innerHTML = html;
 }
 
-// ============================================================================
-// C. RELATÓRIO QUALITATIVO (MODIFICADO - VER DETALHES)
-// ============================================================================
 function renderQualitativo(dados, busca, container) {
   let html = `
         <table class="table-relatorio">
@@ -407,7 +380,6 @@ function renderQualitativo(dados, busca, container) {
     evento.feedbacks.forEach((fb, index) => {
       const nome = fb.nome || "Anônimo";
 
-      // Filtro de Busca
       if (
         !busca ||
         nome.toLowerCase().includes(busca) ||
@@ -415,7 +387,6 @@ function renderQualitativo(dados, busca, container) {
       ) {
         const dataF = evento.dataObj.toLocaleDateString("pt-BR");
 
-        // Encode dos dados para o botão
         const dadosFeedback = encodeURIComponent(JSON.stringify(fb));
         const dadosEvento = encodeURIComponent(
           JSON.stringify({
@@ -448,7 +419,7 @@ function renderQualitativo(dados, busca, container) {
 }
 
 // ============================================================================
-// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (NOVO)
+// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (ATUALIZADO)
 // ============================================================================
 window.abrirModalDetalhesFeedback = function (
   dadosFeedbackEnc,
@@ -461,45 +432,83 @@ window.abrirModalDetalhesFeedback = function (
   let modal = document.getElementById(modalId);
   if (modal) modal.remove();
 
-  // Gera o resumo das respostas (Q&A)
   let resumoHtml = `<div class="qa-list">`;
 
-  // Itera sobre as chaves do feedback ignorando metadados
-  for (const [key, value] of Object.entries(feedback)) {
-    if (["timestamp", "uid", "nome", "email"].includes(key)) continue;
+  const chavesIgnoradas = new Set(["timestamp", "uid", "nome", "email"]);
+  const chavesProcessadas = new Set();
 
-    // ✅ CORREÇÃO: Usa o mapa atualizado com o texto do banco
-    const perguntaTexto = MAPA_PERGUNTAS[key] || `Questão: ${key}`;
+  // 1. Tenta renderizar na ordem correta usando a lista carregada do banco
+  if (listaPerguntasOrdenada.length > 0) {
+    listaPerguntasOrdenada.forEach((pergunta) => {
+      const key = pergunta.id; // Ex: 'clareza', 'competencias'
+      const textoPergunta = pergunta.texto;
 
-    resumoHtml += `
-            <div class="qa-item mb-3 p-3 bg-light rounded border">
-                <p class="mb-1 text-primary fw-bold">${perguntaTexto}</p>
-                <p class="mb-0 text-dark">${
-                  value || "<em>Sem resposta</em>"
-                }</p>
-            </div>
-        `;
+      if (feedback[key] !== undefined) {
+        resumoHtml += `
+                    <div class="qa-item mb-3 p-3 bg-light rounded border">
+                        <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${textoPergunta}</strong></p>
+                        <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-primary">${
+                          feedback[key] || "<em>Sem resposta</em>"
+                        }</p>
+                    </div>
+                `;
+        chavesProcessadas.add(key);
+      }
+    });
+  } else {
+    // Fallback: Usa o MAPA_PERGUNTAS_FALLBACK se a lista não carregou
+    Object.keys(MAPA_PERGUNTAS_FALLBACK).forEach((key) => {
+      if (feedback[key] !== undefined) {
+        const textoPergunta = MAPA_PERGUNTAS_FALLBACK[key];
+        resumoHtml += `
+                    <div class="qa-item mb-3 p-3 bg-light rounded border">
+                        <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${textoPergunta}</strong></p>
+                        <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-primary">${
+                          feedback[key] || "<em>Sem resposta</em>"
+                        }</p>
+                    </div>
+                `;
+        chavesProcessadas.add(key);
+      }
+    });
   }
+
+  // 2. Renderiza perguntas que podem ter ficado de fora (legado ou novas não mapeadas)
+  Object.entries(feedback).forEach(([key, value]) => {
+    if (!chavesIgnoradas.has(key) && !chavesProcessadas.has(key)) {
+      const perguntaTexto = `Questão (${key})`;
+
+      resumoHtml += `
+                <div class="qa-item mb-3 p-3 bg-light rounded border">
+                    <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${perguntaTexto}</strong></p>
+                    <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-secondary">${
+                      value || "<em>Sem resposta</em>"
+                    }</p>
+                </div>
+            `;
+    }
+  });
+
   resumoHtml += `</div>`;
 
   modal = document.createElement("div");
   modal.id = modalId;
   modal.innerHTML = `
         <div class="modal-overlay is-visible" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-            <div class="modal-content bg-white rounded shadow-lg" style="width: 90%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-content bg-white rounded shadow-lg" style="width: 90%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
                 <div class="modal-header p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
                     <h5 class="mb-0">Resumo do Feedback</h5>
                     <button onclick="fecharModalDetalhesFeedback()" class="btn-close border-0 bg-transparent" style="font-size: 1.5rem;">&times;</button>
                 </div>
                 <div class="modal-body p-4" style="overflow-y: auto;">
                     <div class="info-reuniao mb-4 pb-3 border-bottom">
-                        <h6 class="text-uppercase text-muted small mb-2">Detalhes da Reunião</h6>
+                        <h6 class="text-uppercase text-muted small mb-2 fw-bold">Detalhes da Reunião</h6>
                         <p class="mb-1"><strong>Tema:</strong> ${evento.titulo}</p>
                         <p class="mb-1"><strong>Data:</strong> ${evento.data}</p>
                         <p class="mb-0"><strong>Profissional:</strong> ${feedback.nome}</p>
                     </div>
                     
-                    <h6 class="text-uppercase text-muted small mb-3">Respostas do Formulário</h6>
+                    <h6 class="text-uppercase text-muted small mb-3 fw-bold">Respostas do Formulário</h6>
                     ${resumoHtml}
                 </div>
                 <div class="modal-footer p-3 border-top text-end">
@@ -518,9 +527,6 @@ window.fecharModalDetalhesFeedback = function () {
   document.body.style.overflow = "";
 };
 
-// ============================================================================
-// D. RELATÓRIO DE PERFORMANCE DE GESTORES
-// ============================================================================
 function renderPerformance(dados, container) {
   const stats = {};
 
@@ -576,9 +582,6 @@ function renderPerformance(dados, container) {
   container.innerHTML = html;
 }
 
-// ============================================================================
-// E. HISTÓRICO COMPLETO DE ATAS (DOCUMENTO FORMAL)
-// ============================================================================
 function renderHistorico(dados, container) {
   const concluidas = dados
     .filter((d) => d.status === "Concluída")
@@ -664,9 +667,6 @@ function renderHistorico(dados, container) {
   container.innerHTML = html;
 }
 
-// ============================================================================
-// EXPORTAÇÃO CSV
-// ============================================================================
 function exportarCSV() {
   const { eventos } = filtrarDados();
   let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
