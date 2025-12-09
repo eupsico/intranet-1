@@ -1248,7 +1248,7 @@ exports.salvarCandidatura = onCall(
 
         // Campos automáticos do servidor
         data_candidatura: FieldValue.serverTimestamp(),
-        status_recrutamento: "Candidatura Recebida (Triagem Pendente)",
+        status_recrutamento: "TRIAGEM_PENDENTE",
       };
 
       const docRef = await db

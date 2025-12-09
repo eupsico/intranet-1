@@ -348,11 +348,7 @@ export async function renderizarTriagem(state) {
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
-      where(
-        "status_recrutamento",
-        "==",
-        "Candidatura Recebida (Triagem Pendente)"
-      )
+      where("status_recrutamento", "==", "TRIAGEM_PENDENTE")
     );
     const snapshot = await getDocs(q);
 
