@@ -4,6 +4,9 @@
         <h3><p>Seja bem-vindo(a)! Aqui estão algumas informações e avisos importantes para você.</p></h3>
     </div>
 
+    <div id="proxima-reuniao-voluntario" class="next-meeting-card" style="display: none;">
+        </div>
+
     <div id="summary-panel-container">
         <div class="loading-spinner"></div>
     </div>
@@ -16,24 +19,21 @@
              <table>
                  <thead>
                      <tr>
-                         <th>Tipo</th> {/* Nova Coluna */}
+                         <th>Tipo</th>
                          <th>Paciente</th>
                          <th>Status</th>
                          <th>Data</th>
-                         {/* Adicionar <th>Ações</th> se quiser botões */}
                      </tr>
                  </thead>
                  <tbody id="dashboard-solicitacoes-tbody">
-                     {/* Linhas serão inseridas pelo JS */}
-                 </tbody>
+                     </tbody>
              </table>
         </div>
         <div id="dashboard-solicitacoes-empty" class="empty-state" style="display: none; padding-top: 15px;">
             <p>Você não possui solicitações recentes.</p>
         </div>
-         {/* Link opcional para ver todas as solicitações */}
-         </div>
-    <div id="info-card-container">
-        {/* Avisos Gerais renderizados pelo JS */}
     </div>
+    
+    <div id="info-card-container">
+        </div>
 </div>

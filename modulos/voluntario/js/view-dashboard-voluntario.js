@@ -1,23 +1,31 @@
 // Arquivo: /modulos/voluntario/js/view-dashboard-voluntario.js
-// --- VERSÃO CORRIGIDA: Adiciona busca e exibição de 'Minhas Solicitações' ---
+// --- VERSÃO ATUALIZADA: Com Card Próxima Reunião e Código Completo ---
 
 import {
   db,
   doc,
   getDoc,
   onSnapshot,
-  // Novas importações:
   collection,
   query,
   where,
   orderBy,
   limit,
+  getDocs,
+  Timestamp, // Adicionado caso precise manipular timestamp diretamente
 } from "../../../assets/js/firebase-init.js";
 
 // --- Funções Auxiliares ---
 function formatarData(timestamp) {
   if (timestamp && typeof timestamp.toDate === "function") {
     return timestamp.toDate().toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+  if (timestamp instanceof Date) {
+    return timestamp.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -33,7 +41,7 @@ function formatarTipoSolicitacao(tipoInterno) {
     desfecho: "Registro de Desfecho",
     reavaliacao: "Solicitação Reavaliação",
     exclusao_horario: "Exclusão de Horário",
-    inclusao_alteracao_grade: "Inclusão/Alt. Grade", // Nome mais curto para dashboard
+    inclusao_alteracao_grade: "Inclusão/Alt. Grade",
   };
   // Retorna nome amigável ou o próprio tipo se não mapeado
   return (
@@ -45,12 +53,14 @@ function formatarTipoSolicitacao(tipoInterno) {
 export function init(db_ignored, user, userData) {
   const summaryContainer = document.getElementById("summary-panel-container");
   const infoCardContainer = document.getElementById("info-card-container");
-  // Seletores para Minhas Solicitações
   const solicitacoesTableBody = document.getElementById(
     "dashboard-solicitacoes-tbody"
   );
   const solicitacoesEmptyState = document.getElementById(
     "dashboard-solicitacoes-empty"
+  );
+  const nextMeetingContainer = document.getElementById(
+    "proxima-reuniao-voluntario"
   );
 
   // Verifica se todos os elementos essenciais existem
@@ -60,20 +70,11 @@ export function init(db_ignored, user, userData) {
     !solicitacoesTableBody ||
     !solicitacoesEmptyState
   ) {
-    console.error(
-      "Elementos essenciais do dashboard (resumo, avisos ou tabela de solicitações) não encontrados. Verifique os IDs no HTML."
-    );
-    // Decide se quer parar ou continuar sem a seção que falta
+    console.error("Elementos essenciais do dashboard não encontrados.");
     if (summaryContainer)
       summaryContainer.innerHTML =
         '<p class="alert alert-error">Erro ao carregar componente de resumo.</p>';
-    if (infoCardContainer)
-      infoCardContainer.innerHTML =
-        '<p class="alert alert-error">Erro ao carregar componente de avisos.</p>';
-    if (solicitacoesTableBody)
-      solicitacoesTableBody.innerHTML =
-        '<tr><td colspan="4" class="alert alert-error">Erro ao carregar componente de solicitações.</td></tr>';
-    return; // Interrompe a inicialização se elementos cruciais faltam
+    return;
   }
 
   let dadosDasGrades = {};
@@ -90,7 +91,109 @@ export function init(db_ignored, user, userData) {
   const hasFinanceAccess =
     userRoles.includes("admin") || userRoles.includes("financeiro");
 
-  // --- Funções de Carregamento e Renderização (Resumo Semanal e Avisos) ---
+  // --- Função 1: Carregar Próxima Reunião (NOVO) ---
+  async function loadNextMeeting() {
+    if (!nextMeetingContainer) return;
+
+    try {
+      const agora = new Date();
+      // Busca eventos recentes criados (para performance, pegamos os últimos 20 e filtramos em memória)
+      const q = query(
+        collection(db, "eventos"),
+        orderBy("criadoEm", "desc"),
+        limit(20)
+      );
+
+      const querySnapshot = await getDocs(q);
+      let eventosFuturos = [];
+
+      querySnapshot.forEach((docSnap) => {
+        const dados = docSnap.data();
+        const slots = dados.slots || [];
+
+        // Normaliza para array de objetos com data unificada
+        if (slots.length > 0) {
+          // Eventos com Slots (Múltiplos horários)
+          slots.forEach((slot) => {
+            if (slot.data && slot.horaInicio) {
+              const dataHora = new Date(
+                slot.data + "T" + slot.horaInicio + ":00"
+              );
+              if (dataHora > agora) {
+                eventosFuturos.push({
+                  id: docSnap.id,
+                  titulo: dados.tipo,
+                  data: dataHora,
+                  gestor: slot.gestorNome || "Gestão",
+                  link: slot.linkReuniao || "#",
+                  pauta: dados.descricao || "Sem pauta",
+                });
+              }
+            }
+          });
+        } else {
+          // Evento Simples (Sem Slots)
+          if (dados.dataReuniao) {
+            const hora = dados.horaInicio || "00:00";
+            const dataHora = new Date(dados.dataReuniao + "T" + hora + ":00");
+            if (dataHora > agora) {
+              eventosFuturos.push({
+                id: docSnap.id,
+                titulo: dados.tipo || "Reunião Geral",
+                data: dataHora,
+                gestor: dados.responsavel || "Gestão",
+                link: dados.link || "#",
+                pauta: dados.pauta || "Sem pauta",
+              });
+            }
+          }
+        }
+      });
+
+      // Ordena por data (mais próxima primeiro)
+      eventosFuturos.sort((a, b) => a.data - b.data);
+
+      if (eventosFuturos.length > 0) {
+        const prox = eventosFuturos[0];
+        const diffMs = prox.data - agora;
+        const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+        const dataFormatada = prox.data.toLocaleDateString("pt-BR");
+        const horaFormatada = prox.data.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        nextMeetingContainer.innerHTML = `
+                <h4><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Próxima Reunião</h4>
+                <h2>${prox.titulo}</h2>
+                <div class="meeting-details">
+                    <div class="meeting-date">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        ${dataFormatada} às ${horaFormatada}
+                    </div>
+                    <div class="meeting-countdown">
+                        Faltam ${diasRestantes} dia(s)
+                    </div>
+                </div>
+                <div class="meeting-actions">
+                    <button class="btn-meeting-action" onclick="alert('Detalhes: ${prox.pauta.replace(
+                      /'/g,
+                      ""
+                    )}')">Ver Detalhes</button>
+                    </div>
+            `;
+        nextMeetingContainer.style.display = "block";
+      } else {
+        nextMeetingContainer.style.display = "none";
+      }
+    } catch (e) {
+      console.error("Erro ao carregar próxima reunião:", e);
+      nextMeetingContainer.style.display = "none";
+    }
+  }
+
+  // --- Função 2: Carregar Configurações Financeiras ---
   async function fetchValoresConfig() {
     if (!hasFinanceAccess) {
       valoresConfig = { online: 0, presencial: 0 };
@@ -103,7 +206,7 @@ export function init(db_ignored, user, userData) {
         const data = docSnap.data();
         valoresConfig = data.valores || { online: 0, presencial: 0 };
       } else {
-        console.warn("Documento 'financeiro/configuracoes' não encontrado!"); // Warn em vez de Error
+        console.warn("Documento 'financeiro/configuracoes' não encontrado!");
         valoresConfig = { online: 0, presencial: 0 };
       }
     } catch (error) {
@@ -112,15 +215,15 @@ export function init(db_ignored, user, userData) {
     }
   }
 
+  // --- Função 3: Renderizar Painel de Resumo ---
   function renderSummaryPanel() {
     if (!userData || (!userData.username && !userData.name)) {
-      // Verifica nome também
       summaryContainer.innerHTML =
         '<p class="info-card alert alert-warning">Não foi possível identificar o usuário para exibir o resumo.</p>';
       return;
     }
 
-    const userIdentifier = userData.username || userData.name; // Usa username ou nome completo
+    const userIdentifier = userData.username || userData.name;
     let horasOnline = 0;
     let horasPresencial = 0;
     const agendamentosOnline = [];
@@ -129,7 +232,6 @@ export function init(db_ignored, user, userData) {
     // Itera sobre a grade achatada
     for (const path in dadosDasGrades) {
       const nomeNaGrade = dadosDasGrades[path];
-      // Compara com identificador do usuário (username ou nome)
       if (
         nomeNaGrade &&
         (nomeNaGrade === userIdentifier || nomeNaGrade === userData.name)
@@ -137,7 +239,6 @@ export function init(db_ignored, user, userData) {
         const parts = path.split("."); // ex: online.segunda.09-00.col0
         if (parts.length === 4) {
           const [tipo, diaKey, horaRaw] = parts;
-          // Verifica se diaKey é válido antes de acessar diasDaSemana
           if (diasDaSemana[diaKey]) {
             const horaFormatada = horaRaw.replace("-", ":");
             const diaNome = diasDaSemana[diaKey];
@@ -150,14 +251,7 @@ export function init(db_ignored, user, userData) {
               horasPresencial++;
               agendamentosPresencial.push(horarioCompleto);
             }
-          } else {
-            console.warn(
-              `Chave de dia inválida encontrada na grade: ${diaKey} em ${path}`
-            );
           }
-        } else {
-          // Loga caminhos inesperados para depuração
-          // console.log("Caminho inesperado na grade:", path);
         }
       }
     }
@@ -199,13 +293,13 @@ export function init(db_ignored, user, userData) {
     }
 
     summaryContainer.innerHTML = `
-        <div class="summary-panel dashboard-section"> {/* Adiciona classe dashboard-section */}
-            <div class="section-header"> {/* Adiciona header */}
+        <div class="summary-panel dashboard-section">
+            <div class="section-header">
                  <h2>Meu Resumo Semanal da Grade</h2>
             </div>
-            <div id="summary-details-container" class="summary-cards"> {/* Usa grid de cards */}
+            <div id="summary-details-container" class="summary-cards">
                 ${financeiroHtml}
-                <div class="card"> {/* Usa classe card */}
+                <div class="card">
                     <h3>🖥️ Grade Online (${horasOnline})</h3>
                     <ul>${
                       agendamentosOnline.length > 0
@@ -213,7 +307,7 @@ export function init(db_ignored, user, userData) {
                         : "<li>Nenhum horário online.</li>"
                     }</ul>
                 </div>
-                <div class="card"> {/* Usa classe card */}
+                <div class="card">
                     <h3>🏢 Grade Presencial (${horasPresencial})</h3>
                     <ul>${
                       agendamentosPresencial.length > 0
@@ -225,25 +319,24 @@ export function init(db_ignored, user, userData) {
         </div>`;
   }
 
+  // --- Função 4: Renderizar Card de Avisos ---
   function renderInfoCard() {
-    // TODO: Buscar avisos dinamicamente do Firestore se necessário
     infoCardContainer.innerHTML = `
-        <div class="dashboard-section"> {/* Adiciona classe dashboard-section */}
-            <div class="section-header"> {/* Adiciona header */}
+        <div class="dashboard-section">
+            <div class="section-header">
                 <h2>📢 Avisos Gerais</h2>
             </div>
             <div class="info-card-grid">
-                <div class="info-card"> {/* Mantém info-card para estilo */}
+                <div class="info-card">
                     <ul>
                         <li>Nenhum aviso no momento.</li>
-                        {/* Adicionar mais avisos aqui se necessário */}
                     </ul>
                 </div>
             </div>
         </div>`;
   }
 
-  // --- Função: Carregar e Renderizar Minhas Solicitações ---
+  // --- Função 5: Carregar e Renderizar Minhas Solicitações ---
   function loadAndRenderMinhasSolicitacoes() {
     console.log("Carregando Minhas Solicitações...");
     solicitacoesTableBody.innerHTML = `<tr><td colspan="4"><div class="loading-spinner-small" style="margin: 10px auto;"></div> Carregando...</td></tr>`;
@@ -252,17 +345,15 @@ export function init(db_ignored, user, userData) {
     try {
       const q = query(
         collection(db, "solicitacoes"),
-        where("solicitanteId", "==", user.uid), // Filtra pelo ID do usuário logado
+        where("solicitanteId", "==", user.uid),
         orderBy("dataSolicitacao", "desc"),
-        limit(15) // Limita para não sobrecarregar o dashboard
+        limit(15)
       );
 
-      // Usa onSnapshot
       const unsubscribe = onSnapshot(
         q,
         (querySnapshot) => {
-          // Guarda unsubscribe
-          solicitacoesTableBody.innerHTML = ""; // Limpa antes de popular
+          solicitacoesTableBody.innerHTML = "";
 
           if (querySnapshot.empty) {
             solicitacoesEmptyState.style.display = "block";
@@ -270,7 +361,6 @@ export function init(db_ignored, user, userData) {
             solicitacoesEmptyState.style.display = "none";
             querySnapshot.forEach((doc) => {
               const sol = doc.data();
-              const docId = doc.id;
               const dataFormatada = formatarData(sol.dataSolicitacao);
               const tipoFormatado = formatarTipoSolicitacao(sol.tipo);
               const statusClass = `status-${String(
@@ -285,15 +375,13 @@ export function init(db_ignored, user, userData) {
                 sol.status
               }</span></td>
                         <td>${dataFormatada}</td>
-                        {/* <td><button class="action-button small" data-sol-id="${docId}">Detalhes</button></td> */} {/* Botão opcional */}
                     `;
               solicitacoesTableBody.appendChild(tr);
 
-              // Mostra feedback do admin se existir e não estiver pendente
+              // Mostra feedback do admin se existir
               if (sol.adminFeedback && sol.status !== "Pendente") {
                 const trFeedback = document.createElement("tr");
                 trFeedback.classList.add("feedback-row");
-                // Usa textContent para segurança contra XSS na mensagem do admin
                 const feedbackMsg = document.createElement("small");
                 feedbackMsg.innerHTML = `<strong>Resposta (${formatarData(
                   sol.adminFeedback.dataResolucao
@@ -306,7 +394,7 @@ export function init(db_ignored, user, userData) {
                 feedbackMsg.appendChild(msgText);
 
                 const tdFeedback = document.createElement("td");
-                tdFeedback.colSpan = 4; // Abrange todas as colunas
+                tdFeedback.colSpan = 4;
                 tdFeedback.classList.add("feedback-admin");
                 if (sol.status === "Rejeitada") {
                   tdFeedback.classList.add("feedback-rejeitado");
@@ -325,7 +413,6 @@ export function init(db_ignored, user, userData) {
           solicitacoesEmptyState.style.display = "none";
         }
       );
-      // TODO: Gerenciar 'unsubscribe'
     } catch (error) {
       console.error(
         "Falha ao construir query para Minhas Solicitações:",
@@ -336,35 +423,33 @@ export function init(db_ignored, user, userData) {
     }
   }
 
-  // --- Função Start (Inicialização) ---
+  // --- Função Start (Inicialização Geral) ---
   async function start() {
-    summaryContainer.innerHTML = '<div class="loading-spinner"></div>'; // Loading inicial resumo
-    renderInfoCard(); // Renderiza avisos estáticos (ou com loading se buscar dados)
-    loadAndRenderMinhasSolicitacoes(); // Inicia carregamento das solicitações
-    await fetchValoresConfig(); // Busca configs financeiras em paralelo
+    summaryContainer.innerHTML = '<div class="loading-spinner"></div>';
 
-    // Listener para a grade (mantido)
+    // Inicia carregamentos
+    renderInfoCard();
+    loadAndRenderMinhasSolicitacoes();
+    loadNextMeeting(); // <--- CHAMADA DA NOVA FUNÇÃO
+    await fetchValoresConfig();
+
     const gradesDocRef = doc(db, "administrativo", "grades");
     const unsubscribeGrade = onSnapshot(
-      // Guarda unsubscribe
       gradesDocRef,
       (docSnap) => {
         dadosDasGrades = docSnap.exists() ? docSnap.data() : {};
-        renderSummaryPanel(); // Renderiza/Atualiza resumo da grade
+        renderSummaryPanel();
       },
       (error) => {
         console.error("Erro ao escutar atualizações da grade:", error);
         summaryContainer.innerHTML = `<div class="info-card alert alert-error">Não foi possível carregar o resumo semanal da grade.</div>`;
       }
     );
-    // TODO: Gerenciar 'unsubscribeGrade'
   }
 
-  // Inicia o processo
   start().catch((error) => {
     console.error("Erro geral na inicialização do dashboard:", error);
-    // Exibe mensagem de erro geral se a inicialização falhar
     document.body.innerHTML =
       '<p class="alert alert-error" style="margin: 20px;">Erro crítico ao carregar o dashboard. Tente recarregar a página.</p>';
   });
-} // Fim da função init
+}
