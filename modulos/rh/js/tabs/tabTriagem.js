@@ -159,7 +159,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   dadosCandidatoAtual = dadosCandidato;
   modalAvaliacaoTriagem.dataset.candidaturaId = candidatoId;
 
-  const nomeCompleto = dadosCandidato.nome_completo || "Candidato(a)";
+  const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
 
   const candidatoNomeEl = document.getElementById("candidato-modal-nome");
   if (candidatoNomeEl) candidatoNomeEl.textContent = nomeCompleto;
@@ -398,56 +398,75 @@ export async function renderizarTriagem(state) {
       const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
 
       listaHtml += `
-        <div class="module-card" data-id="${candidatoId}">
-          
-          <div class="card-icon">
-            <div>
-              <h3>
-                ${cand.nome_completo || "Candidato Sem Nome"}
-              </h3>
-              <p class="text-muted" style="font-size: 0.9rem;">
-                <i class="fas fa-briefcase me-2"></i> Etapa: Avaliação de Currículo
-              </p>
-            </div>
-            <span class="status-badge ${statusClass}">
-              ${statusTriagem.replace(/_/g, " ")}
-            </span>
-          </div>
+  <div class="module-card" data-id="${candidatoId}">
+    
+    <div class="card-icon">
+      <div>
+        <h3>
+          ${cand.nome_candidato || "Candidato Sem Nome"}
+        </h3>
+        <p class="text-muted" style="font-size: 0.9rem;">
+          <i class="fas fa-briefcase me-2"></i> Etapa: Avaliação de Currículo
+        </p>
+      </div>
+      <span class="status-badge ${statusClass}">
+        ${statusTriagem.replace(/_/g, " ")}
+      </span>
+    </div>
 
-          <div class="card-content">
-            <a href="mailto:${
-              cand.email_candidato || ""
-            }" class="contact-link ${!cand.email_candidato ? "disabled" : ""}">
-              <i class="fas fa-envelope"></i> ${
-                cand.email_candidato || "Email não informado"
-              }
-            </a>
-            <a href="${linkWhatsApp}" target="_blank" class="contact-link ${
-        !telefone ? "disabled" : ""
-      }">
-              <i class="fab fa-whatsapp"></i> ${
-                cand.telefone_contato || "WhatsApp não informado"
-              }
-            </a>
-          </div>
+    <div class="card-content">
+      <a href="mailto:${cand.email_candidato || ""}" 
+         class="contact-link ${!cand.email_candidato ? "disabled" : ""}">
+        <i class="fas fa-envelope"></i> 
+        ${cand.email_candidato || "Email não informado"}
+      </a>
 
-          <div class="modal-footer">
-            <button 
-              class="action-button secondary btn-detalhes-triagem" 
-              data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
-              <i class="fas fa-eye me-2"></i> Detalhes
-            </button>
-            <button 
-              class="action-button warning btn-avaliar-triagem" 
-              data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
-              <i class="fas fa-edit me-2"></i> Avaliar Currículo
-            </button>
-          </div>
-          
-        </div>
-      `;
+      <a href="${linkWhatsApp}" target="_blank" 
+         class="contact-link ${!telefone ? "disabled" : ""}">
+        <i class="fab fa-whatsapp"></i> 
+        ${cand.telefone_contato || "WhatsApp não informado"}
+      </a>
+
+      <a href="${cand.portfolio_url_candidato || ""}" target="_blank" 
+         class="contact-link ${
+           !cand.portfolio_url_candidato ? "disabled" : ""
+         }">
+        <i class="fab fa-instagram"></i> 
+        ${cand.portfolio_url_candidato || "Instagram não informado"}
+      </a>
+
+      <a href="${cand.linkedin_url_candidato || ""}" target="_blank" 
+         class="contact-link ${!cand.linkedin_url_candidato ? "disabled" : ""}">
+        <i class="fab fa-linkedin"></i> 
+        ${cand.linkedin_url_candidato || "LinkedIn não informado"}
+      </a>
+
+      <p><strong>PCD:</strong> ${cand.pcd_candidato || "Não informado"}</p>
+      <p><strong>Formação:</strong> ${
+        cand.area_formacao_candidato || "Não informado"
+      }</p>
+      <p><strong>Experiência:</strong> ${
+        cand.resumo_experiencia || "Não informado"
+      }</p>
+    </div>
+
+    <div class="modal-footer">
+      <button 
+        class="action-button secondary btn-detalhes-triagem" 
+        data-id="${candidatoId}"
+        data-candidato-data='${jsonCand}'>
+        <i class="fas fa-eye me-2"></i> Detalhes
+      </button>
+      <button 
+        class="action-button warning btn-avaliar-triagem" 
+        data-id="${candidatoId}"
+        data-candidato-data='${jsonCand}'>
+        <i class="fas fa-edit me-2"></i> Avaliar Currículo
+      </button>
+    </div>
+    
+  </div>
+`;
     });
     // ======================================================
     // ✅ FIM DA ATUALIZAÇÃO DO LAYOUT
