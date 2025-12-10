@@ -24,6 +24,7 @@ import {
 import { renderizarCronograma } from "./tabs/tabCronograma.js";
 import { renderizarTriagem } from "./tabs/tabTriagem.js";
 import { renderizarEntrevistas } from "./tabs/tabEntrevistas.js";
+import { renderizarTestes } from "./tabs/tabTestes.js";
 import { renderizarEntrevistaGestor } from "./tabs/tabGestor.js";
 import { renderizarFinalizados } from "./tabs/tabFinalizados.js";
 
@@ -110,19 +111,9 @@ export const getGlobalState = () => ({
 // CARREGAMENTO DE VAGAS
 // ============================================
 
-/**
- * Carrega lista de vagas ativas no filtro
- */
 async function carregarVagasAtivas() {
-  if (!filtroVaga) {
-    console.warn("⚠️ Recrutamento: Elemento filtro-vaga não encontrado");
-    return;
-  }
-
-  console.log("🔹 Recrutamento: Carregando vagas ativas...");
-
+  if (!filtroVaga) return;
   try {
-    // Query para vagas em processo de recrutamento
     const statusValidos = [
       "em-divulgacao",
       "Em Divulgação",
@@ -134,69 +125,34 @@ async function carregarVagasAtivas() {
       "CONTRATADO",
       "Encerrada",
     ];
-
-    // Tenta primeiro com campo "status"
     let q = query(vagasCollection, where("status", "in", statusValidos));
     let snapshot = await getDocs(q);
-
-    // Se não encontrar, tenta com campo "status_vaga"
     if (snapshot.empty) {
       q = query(vagasCollection, where("status_vaga", "in", statusValidos));
       snapshot = await getDocs(q);
     }
-
-    // Monta as opções do select
     let htmlOptions = '<option value="">Selecione uma Vaga...</option>';
-
     if (snapshot.empty) {
-      htmlOptions =
-        '<option value="">Nenhuma vaga em processo de recrutamento.</option>';
-      console.log("ℹ️ Recrutamento: Nenhuma vaga ativa encontrada");
+      htmlOptions = '<option value="">Nenhuma vaga ativa.</option>';
     } else {
       snapshot.docs.forEach((docSnap) => {
         const vaga = docSnap.data();
-        const titulo =
-          vaga.titulo_vaga || vaga.nome || vaga.titulo || "Vaga sem título";
-        const status = vaga.status_vaga || vaga.status || "Status desconhecido";
-
-        htmlOptions += `<option value="${docSnap.id}">${titulo} - (${status})</option>`;
+        const titulo = vaga.titulo_vaga || vaga.nome || "Vaga sem título";
+        htmlOptions += `<option value="${docSnap.id}">${titulo}</option>`;
       });
-      console.log(`✅ Recrutamento: ${snapshot.size} vagas carregadas`);
     }
-
     filtroVaga.innerHTML = htmlOptions;
 
-    // Verifica se há vaga na URL (ex: ?vaga=xxx)
+    // Tratamento de URL
     const urlParams = new URLSearchParams(window.location.search);
     const vagaFromUrl = urlParams.get("vaga");
-
     if (vagaFromUrl && snapshot.docs.some((d) => d.id === vagaFromUrl)) {
       vagaSelecionadaId = vagaFromUrl;
       filtroVaga.value = vagaSelecionadaId;
       handleFiltroVagaChange();
-    } else if (snapshot.size > 0 && filtroVaga.options.length > 1) {
-      // Seleciona a primeira vaga automaticamente
-      vagaSelecionadaId = snapshot.docs[0].id;
-      filtroVaga.value = vagaSelecionadaId;
-      handleFiltroVagaChange();
-    }
-
-    // Verifica se há etapa na URL (ex: ?etapa=triagem)
-    const etapaFromUrl = urlParams.get("etapa");
-    if (etapaFromUrl) {
-      const targetTab = statusCandidaturaTabs.querySelector(
-        `[data-status="${etapaFromUrl}"]`
-      );
-      if (targetTab) {
-        handleTabClick({ currentTarget: targetTab });
-      }
     }
   } catch (error) {
-    console.error("❌ Recrutamento: Erro ao carregar vagas:", error);
-    window.showToast?.("Erro ao carregar lista de vagas.", "error");
-
-    filtroVaga.innerHTML =
-      '<option value="">Erro ao carregar vagas. Tente novamente.</option>';
+    console.error(error);
   }
 }
 
@@ -895,6 +851,9 @@ function handleTabClick(e) {
       break;
     case "entrevistas":
       renderizarEntrevistas(globalState);
+      break;
+    case "testes": // ✅ NOVO CASE
+      renderizarTestes(globalState);
       break;
     case "gestor":
       renderizarEntrevistaGestor(globalState);

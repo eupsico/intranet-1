@@ -1,7 +1,7 @@
 /**
- * Arquivo: modulos/rh/js/tabs/tabEntrevistas.js
- * Versão: 9.0.0 (Separado de Testes)
- * Descrição: Gerencia exclusivamente a Entrevista com RH.
+ * Arquivo: modulos/rh/js/tabs/tabTestes.js
+ * Versão: 1.0.0 (Novo módulo separado)
+ * Descrição: Gerencia exclusivamente a etapa de testes (envio e avaliação).
  */
 
 import {
@@ -12,15 +12,16 @@ import {
   db,
 } from "../../../../assets/js/firebase-init.js";
 
-import { abrirModalAgendamentoRH } from "../tabs/entrevistas/modalAgendamentoRH.js";
-import { abrirModalAvaliacaoRH } from "../tabs/entrevistas/modalAvaliacaoRH.js";
+// Importar a lógica dos modais de teste
+import { abrirModalEnviarTeste } from "../tabs/entrevistas/modalEnviarTeste.js";
+import { abrirModalAvaliacaoTeste } from "../tabs/entrevistas/modalAvaliacaoTeste.js";
 
 // ============================================
-// RENDERIZAÇÃO DA LISTAGEM (RH APENAS)
+// RENDERIZAÇÃO DA LISTAGEM DE TESTES
 // ============================================
 
-export async function renderizarEntrevistas(state) {
-  console.log("🔹 Entrevistas RH: Iniciando renderização");
+export async function renderizarTestes(state) {
+  console.log("🔹 Testes: Iniciando renderização");
 
   const {
     vagaSelecionadaId,
@@ -38,28 +39,30 @@ export async function renderizarEntrevistas(state) {
   conteudoRecrutamento.innerHTML = '<div class="loading-spinner"></div>';
 
   try {
-    // ✅ QUERY: Apenas status de ENTREVISTA RH
+    // ✅ QUERY: Apenas status relacionados a TESTES
     const q = query(
       candidatosCollection,
       where("vaga_id", "==", vagaSelecionadaId),
       where("status_recrutamento", "in", [
-        "ENTREVISTA_RH_PENDENTE",
-        "ENTREVISTA_RH_AGENDADA",
+        "TESTE_PENDENTE",
+        "TESTE_ENVIADO",
+        "TESTE_RESPONDIDO",
       ])
     );
 
     const snapshot = await getDocs(q);
 
+    // Atualiza o contador na aba de Testes
     const tab = statusCandidaturaTabs.querySelector(
-      '.tab-link[data-status="entrevistas"]'
+      '.tab-link[data-status="testes"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-comments me-2"></i> 3. Entrevista RH (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-file-alt me-2"></i> 4. Testes (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
       conteudoRecrutamento.innerHTML =
-        '<p class="alert alert-warning">Nenhum candidato na fase de Entrevista com RH.</p>';
+        '<p class="alert alert-warning">Nenhum candidato na fase de Testes.</p>';
       return;
     }
 
@@ -70,8 +73,8 @@ export async function renderizarEntrevistas(state) {
       const candidatoId = docSnap.id;
       const statusAtual = cand.status_recrutamento || "N/A";
 
-      let corStatus = "info";
-      if (statusAtual.includes("AGENDADA")) {
+      let corStatus = "warning"; // Padrão para testes pendentes/enviados
+      if (statusAtual.includes("TESTE_RESPONDIDO")) {
         corStatus = "success";
       }
 
@@ -85,7 +88,7 @@ export async function renderizarEntrevistas(state) {
       const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
 
       listaHtml += `
-        <div class="card card-candidato-triagem" data-id="${candidatoId}" style="border-left-color: #17a2b8;">
+        <div class="card card-candidato-triagem" data-id="${candidatoId}" style="border-left-color: #6f42c1;">
           <div class="info-primaria">
             <h4>Nome: ${cand.nome_candidato || "Candidato Sem Nome"}</h4>
             <p>Status: <span class="status-badge status-${corStatus}">${statusAtual.replace(
@@ -93,7 +96,7 @@ export async function renderizarEntrevistas(state) {
         " "
       )}</span></p>
             <p class="small-info">
-              <i class="fas fa-user-friends"></i> Etapa: Entrevista Cultural/RH
+              <i class="fas fa-vial"></i> Etapa: Avaliação de Testes
             </p>
           </div>
 
@@ -114,64 +117,85 @@ export async function renderizarEntrevistas(state) {
           
           <div class="acoes-candidato">
             <button 
-              class="action-button info btn-detalhes-entrevista" 
+              class="action-button info btn-detalhes-candidato" 
               data-id="${candidatoId}"
               data-candidato-data='${jsonCand}'>
               <i class="fas fa-info-circle me-1"></i> Detalhes
             </button>
+      `;
+
+      // LÓGICA DE BOTÕES ESPECÍFICA PARA TESTES
+      if (statusAtual === "TESTE_PENDENTE" || statusAtual === "TESTE_ENVIADO") {
+        listaHtml += `
+              <button 
+                class="action-button primary btn-enviar-teste" 
+                data-id="${candidatoId}"
+                data-candidato-data='${jsonCand}'>
+                <i class="fas fa-paper-plane me-1"></i> Enviar Teste
+              </button>
+              <button 
+                class="action-button success btn-avaliar-teste" 
+                data-id="${candidatoId}"
+                data-candidato-data='${jsonCand}'>
+                <i class="fas fa-clipboard-check me-1"></i> Avaliar (Manual)
+              </button>
+        `;
+      } else if (statusAtual === "TESTE_RESPONDIDO") {
+        listaHtml += `
             <button 
-              class="action-button secondary btn-agendar-rh" 
+              class="action-button success btn-avaliar-teste" 
               data-id="${candidatoId}"
               data-candidato-data='${jsonCand}'>
-              <i class="fas fa-calendar-alt me-1"></i> Agendar
+              <i class="fas fa-check-double me-1"></i> Corrigir/Avaliar
             </button>
-            <button 
-              class="action-button primary btn-avaliar-rh" 
-              data-id="${candidatoId}"
-              data-candidato-data='${jsonCand}'>
-              <i class="fas fa-edit me-1"></i> Avaliar
-            </button>
-          </div>
-        </div>`;
+        `;
+      }
+
+      listaHtml += `</div></div>`;
     });
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // Listeners
-    document.querySelectorAll(".btn-detalhes-entrevista").forEach((btn) => {
+    // ANEXAR LISTENERS
+    document.querySelectorAll(".btn-detalhes-candidato").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
           e.currentTarget.dataset.candidatoData.replace(/&#39;/g, "'")
         );
-        window.abrirModalCandidato(
-          e.currentTarget.dataset.id,
-          "detalhes",
-          dados
-        );
+        if (window.abrirModalCandidato) {
+          window.abrirModalCandidato(
+            e.currentTarget.dataset.id,
+            "detalhes",
+            dados
+          );
+        }
       });
     });
-    document.querySelectorAll(".btn-agendar-rh").forEach((btn) => {
+
+    document.querySelectorAll(".btn-enviar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
           e.currentTarget.dataset.candidatoData.replace(/&#39;/g, "'")
         );
-        window.abrirModalAgendamentoRH(e.currentTarget.dataset.id, dados);
+        window.abrirModalEnviarTeste(e.currentTarget.dataset.id, dados);
       });
     });
-    document.querySelectorAll(".btn-avaliar-rh").forEach((btn) => {
+
+    document.querySelectorAll(".btn-avaliar-teste").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const dados = JSON.parse(
           e.currentTarget.dataset.candidatoData.replace(/&#39;/g, "'")
         );
-        window.abrirModalAvaliacaoRH(e.currentTarget.dataset.id, dados);
+        window.abrirModalAvaliacaoTeste(e.currentTarget.dataset.id, dados);
       });
     });
   } catch (error) {
-    console.error("❌ Entrevistas RH: Erro ao renderizar:", error);
+    console.error("❌ Testes: Erro ao renderizar:", error);
     conteudoRecrutamento.innerHTML = `<p class="alert alert-error">Erro ao carregar: ${error.message}</p>`;
   }
 }
 
-window.abrirModalAgendamentoRH = abrirModalAgendamentoRH;
-window.abrirModalAvaliacaoRH = abrirModalAvaliacaoRH;
+// Expor funções necessárias
+window.abrirModalEnviarTeste = abrirModalEnviarTeste;
+window.abrirModalAvaliacaoTeste = abrirModalAvaliacaoTeste;
