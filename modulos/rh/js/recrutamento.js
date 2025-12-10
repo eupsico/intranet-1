@@ -284,14 +284,29 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     }
     if (candidato.entrevista_rh.notas) {
       sel("container-entrevista-rh-notas").classList.remove("hidden");
-      sel("entrevista-rh-notas").innerHTML = `Motivação: <strong>${
-        candidato.entrevista_rh.notas.motivacao || "N/A"
+      sel("entrevista-rh-notas").innerHTML = `Adaptacao: <strong>${
+        candidato.entrevista_rh.notas.adaptacao || "N/A"
       }</strong> | 
         Aderência: <strong>${
           candidato.entrevista_rh.notas.aderencia || "N/A"
         }</strong> | 
         Comunicação: <strong>${
           candidato.entrevista_rh.notas.comunicacao || "N/A"
+        }</strong>
+        Experiencia: <strong>${
+          candidato.entrevista_rh.notas.experiencia || "N/A"
+        }</strong>
+        Motivacao: <strong>${
+          candidato.entrevista_rh.notas.motivacao || "N/A"
+        }</strong>
+        Postura: <strong>${
+          candidato.entrevista_rh.notas.postura || "N/A"
+        }</strong>
+        Resolucao: <strong>${
+          candidato.entrevista_rh.notas.resolucao || "N/A"
+        }</strong>
+        Tecnica: <strong>${
+          candidato.entrevista_rh.notas.tecnica || "N/A"
         }</strong>`;
     }
     if (candidato.entrevista_rh.pontos_fortes) {
