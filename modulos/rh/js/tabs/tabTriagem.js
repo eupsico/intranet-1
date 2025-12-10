@@ -172,7 +172,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   document.getElementById("modal-dado-telefone").textContent =
     dadosCandidato.telefone_candidato || "Não informado";
   document.getElementById("modal-dado-cidade-estado").textContent = `${
-    dadosCandidato.cidade || "N/I"
+    dadosCandidato.cidade_candidato || "N/I"
   } / ${dadosCandidato.estado || "UF"}`;
   document.getElementById("modal-dado-como-conheceu").textContent =
     dadosCandidato.como_conheceu || "Não informado";
