@@ -131,7 +131,7 @@ export async function renderizarSolicitacaoEmail(state) {
         id: candidaturaId,
         nome_candidato: cand.nome_candidato, // ✅ CORRIGIDO
         email_pessoal: cand.email_candidato,
-        telefone_contato: cand.telefone_contato,
+        telefone_candidato: cand.telefone_candidato,
         status_recrutamento: statusAtual,
         vaga_titulo: vagaTitulo,
         gestor_aprovador: cand.avaliacao_gestor?.avaliador || "N/A",
@@ -161,8 +161,8 @@ export async function renderizarSolicitacaoEmail(state) {
                 : ""
             }
             ${
-              cand.telefone_contato
-                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
+              cand.telefone_candidato
+                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_candidato}</p>`
                 : ""
             }
           </div>

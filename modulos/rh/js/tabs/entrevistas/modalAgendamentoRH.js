@@ -51,7 +51,7 @@ Estamos ansiosos para conhecê-lo(a) melhor!
 }
 
 function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
-  if (!candidato.telefone_contato) {
+  if (!candidato.telefone_candidato) {
     console.warn(
       "⚠️ Entrevistas: Telefone não disponível para envio de WhatsApp"
     );
@@ -65,7 +65,7 @@ function enviarMensagemWhatsApp(candidato, dataEntrevista, horaEntrevista) {
       horaEntrevista
     );
     const mensagemCodificada = encodeURIComponent(mensagem);
-    const telefoneLimpo = candidato.telefone_contato.replace(/\D/g, "");
+    const telefoneLimpo = candidato.telefone_candidato.replace(/\D/g, "");
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
 
     window.open(linkWhatsApp, "_blank");
@@ -207,7 +207,7 @@ async function submeterAgendamentoRH(e) {
     );
     console.log("✅ Entrevistas: Agendamento e Status salvos");
 
-    if (dadosCandidatoAtual.telefone_contato) {
+    if (dadosCandidatoAtual.telefone_candidato) {
       setTimeout(() => {
         enviarMensagemWhatsApp(
           dadosCandidatoAtual,

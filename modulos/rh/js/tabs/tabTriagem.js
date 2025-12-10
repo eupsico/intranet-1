@@ -170,7 +170,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   document.getElementById("modal-dado-email").textContent =
     dadosCandidato.email_candidato || "Não informado";
   document.getElementById("modal-dado-telefone").textContent =
-    dadosCandidato.telefone_contato || "Não informado";
+    dadosCandidato.telefone_candidato || "Não informado";
   document.getElementById("modal-dado-cidade-estado").textContent = `${
     dadosCandidato.cidade || "N/I"
   } / ${dadosCandidato.estado || "UF"}`;
@@ -390,7 +390,7 @@ export async function renderizarTriagem(state) {
         statusClass = "status-rejeitada"; // Vermelho
       }
 
-      const telefone = cand.telefone_contato?.replace(/\D/g, "") || "";
+      const telefone = cand.telefone_candidato?.replace(/\D/g, "") || "";
       const linkWhatsApp = telefone
         ? `https://api.whatsapp.com/send?phone=55${telefone}&text=Olá`
         : "#";
@@ -424,7 +424,7 @@ export async function renderizarTriagem(state) {
       <a href="${linkWhatsApp}" target="_blank" 
          class="contact-link ${!telefone ? "disabled" : ""}">
         <i class="fab fa-whatsapp"></i> 
-        ${cand.telefone_contato || "WhatsApp não informado"}
+        ${cand.telefone_candidato || "WhatsApp não informado"}
       </a>
 
       <a href="${cand.portfolio_url_candidato || ""}" target="_blank" 

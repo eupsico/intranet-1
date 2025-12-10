@@ -75,7 +75,7 @@ export async function renderizarCadastroDocumentos(state) {
         email_pessoal: cand.email_candidato,
         email_novo: cand.admissaoinfo?.email_solicitado || "Não solicitado",
         senha_temporaria: cand.admissaoinfo?.senha_temporaria || "N/A",
-        telefone_contato: cand.telefone_contato,
+        telefone_candidato: cand.telefone_candidato,
         vaga_titulo: vagaTitulo,
         status_recrutamento: statusAtual,
       };
@@ -349,7 +349,7 @@ async function salvarEEnviarMensagens(candidatoId, urlFormularioLink) {
     email_pessoal,
     email_novo,
     senha_temporaria,
-    telefone_contato,
+    telefone_candidato,
   } = dadosCandidatoAtual;
 
   // Validação de Senha
@@ -372,7 +372,7 @@ async function salvarEEnviarMensagens(candidatoId, urlFormularioLink) {
     !nome_candidato ||
     !email_pessoal ||
     !email_novo ||
-    !telefone_contato ||
+    !telefone_candidato ||
     !linkFormulario
   ) {
     window.showToast?.("Erro: Dados do candidato incompletos.", "error");
@@ -380,7 +380,7 @@ async function salvarEEnviarMensagens(candidatoId, urlFormularioLink) {
       nome_candidato,
       email_pessoal,
       email_novo,
-      telefone_contato,
+      telefone_candidato,
       linkFormulario,
     });
     return;
@@ -400,7 +400,7 @@ async function salvarEEnviarMensagens(candidatoId, urlFormularioLink) {
       const resultado = await criarProfissional({
         nome: nome_candidato,
         email: email_novo,
-        contato: telefone_contato,
+        contato: telefone_candidato,
         profissao: "",
         funcoes: ["todos"],
       });
@@ -447,7 +447,7 @@ Qualquer dúvida, estamos à disposição pelo RH.
 Equipe EuPsico 💙`;
 
     console.log("📱 Abrindo WhatsApp...");
-    const telefoneLimpo = telefone_contato.replace(/\D/g, "");
+    const telefoneLimpo = telefone_candidato.replace(/\D/g, "");
     const mensagemCodificada = encodeURIComponent(mensagemWhatsApp);
     const linkWhatsApp = `https://api.whatsapp.com/send?phone=55${telefoneLimpo}&text=${mensagemCodificada}`;
     window.open(linkWhatsApp, "_blank");

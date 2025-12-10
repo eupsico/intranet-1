@@ -115,7 +115,7 @@ export async function renderizarDocsPos3Meses(state) {
         id: userId,
         nome_candidato: user.nome || "Usuário Sem Nome",
         email_candidato: user.email || "Sem e-mail",
-        telefone_contato: user.contato || user.telefone || "",
+        telefone_candidato: user.contato || user.telefone || "",
         titulo_vaga_original: user.profissao || "Cargo não informado",
         status_recrutamento: statusAtual,
         email_novo: user.email,
@@ -242,7 +242,7 @@ async function abrirModalEnviarDocumentosPos3Meses(
         dadosObj.email || dadosObj.email_novo || dadosObj.email_candidato || "",
       telefone:
         dadosObj.telefone ||
-        dadosObj.telefone_contato ||
+        dadosObj.telefone_candidato ||
         dadosObj.contato ||
         "",
     };

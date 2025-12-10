@@ -113,7 +113,7 @@ export async function renderizarAssinaturaDocs(state) {
         // Chaves esperadas pelo modal 'abrirModalCandidato':
         nome_candidato: user.nome || "Usuário Sem Nome",
         email_candidato: user.email || "Sem e-mail",
-        telefone_contato: user.contato || user.telefone || "",
+        telefone_candidato: user.contato || user.telefone || "",
         titulo_vaga_original: user.profissao || "Cargo não informado",
         status_recrutamento: statusAtual,
         // Campos extras úteis
@@ -242,7 +242,7 @@ async function abrirModalEnviarDocumentos(
     const dadosUsuario = {
       nome: dadosObj.nome_candidato || dadosObj.nome,
       email: dadosObj.email_candidato || dadosObj.email_novo,
-      telefone: dadosObj.telefone_contato,
+      telefone: dadosObj.telefone_candidato,
     };
 
     dadosUsuarioAtual = dadosUsuario;

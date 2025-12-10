@@ -629,7 +629,7 @@ export async function initdashboard(user, userData) {
       tr.innerHTML = `
         <td><strong>${nomeCandidato}</strong></td>
         <td>${candidato.email_candidato || "-"}</td>
-        <td>${candidato.telefone_contato || "-"}</td>
+        <td>${candidato.telefone_candidato || "-"}</td>
         <td>${vagaNome}</td>
         <td><span class="badge bg-info">${statusLegivel}</span></td>
         <td><span class="badge ${badgeTeste}">${statusTeste}</span></td>
@@ -688,7 +688,7 @@ export async function initdashboard(user, userData) {
       tr.innerHTML = `
    <td><strong>${nomeCandidato}</strong></td>
    <td>${cand.email_candidato || "-"}</td>
-   <td>${cand.telefone_contato || "-"}</td>
+   <td>${cand.telefone_candidato || "-"}</td>
    <td><strong>${vagaNome}</strong></td>
    <td><span class="badge bg-info">${
      cand.status_recrutamento || "Pendente"
@@ -1054,8 +1054,8 @@ export async function initdashboard(user, userData) {
         "Nome Completo":
           candidato.nome_completo || candidato.nome_candidato || "-", // ✅ CORRIGIDO: nome_completo ou nome_candidato
         Email: candidato.email_candidato || "-",
-        Telefone: candidato.telefone_contato || "-",
-        WhatsApp: candidato.telefone_contato || "-",
+        Telefone: candidato.telefone_candidato || "-",
+        WhatsApp: candidato.telefone_candidato || "-",
         CPF: candidato.cpf || "-",
         Cidade: candidato.cidade || "-",
         Estado: candidato.estado || "-",

@@ -141,7 +141,7 @@ function abrirModalAdmissaoCandidato(candidatoId, modo, candidato) {
   // Garante leitura das propriedades (aceita snake_case do banco ou camelCase do objeto mapeado)
   const nome = candidato.nome_candidato || candidato.nome_completo || "N/A";
   const email = candidato.email_pessoal || candidato.email_candidato || "N/A";
-  const telefone = candidato.telefone_contato || "N/A";
+  const telefone = candidato.telefone_candidato || "N/A";
   const vaga = candidato.titulo_vaga_original || candidato.vaga_titulo || "N/A";
   const status = candidato.status_recrutamento || "N/A";
   const novoEmail =

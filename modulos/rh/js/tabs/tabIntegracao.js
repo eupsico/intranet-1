@@ -81,7 +81,7 @@ export async function renderizarIntegracao(state) {
         id: userId,
         nome_completo: user.nome || "Usuário Sem Nome",
         email_novo: user.email || "Sem e-mail",
-        telefone_contato: user.contato || user.telefone || "",
+        telefone_candidato: user.contato || user.telefone || "",
         vaga_titulo: user.profissao || "Cargo não informado",
         status_recrutamento: statusAtual,
       };
@@ -305,7 +305,7 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     window.showToast?.(`Agendado com sucesso!`, "success");
 
     // Envia WhatsApp usando a lógica simplificada
-    if (dadosUsuarioAtual && dadosUsuarioAtual.telefone_contato) {
+    if (dadosUsuarioAtual && dadosUsuarioAtual.telefone_candidato) {
       setTimeout(() => {
         enviarWhatsAppAgendamento(
           dadosUsuarioAtual,
@@ -338,7 +338,7 @@ function enviarWhatsAppAgendamento(candidato, data, hora) {
   const nome = candidato.nome_completo
     ? candidato.nome_completo.split(" ")[0]
     : "Colaborador";
-  const telefone = candidato.telefone_contato.replace(/\D/g, "");
+  const telefone = candidato.telefone_candidato.replace(/\D/g, "");
 
   const msg = `Olá ${nome}, tudo bem? 👋\n\nSua *Reunião de Integração* na EuPsico foi agendada!\n\n📅 Data: ${dataFormatada}\n⏰ Horário: ${horaFormatada}\n\nO link da reunião será enviado para seu e-mail corporativo. Contamos com sua presença!`;
 
@@ -450,7 +450,7 @@ async function abrirModalEnviarTreinamento(userId, dadosUsuario) {
     document.getElementById("treinamento-email-candidato").textContent =
       dadosUsuario.email_novo;
     document.getElementById("treinamento-whatsapp-candidato").textContent =
-      dadosUsuario.telefone_contato;
+      dadosUsuario.telefone_candidato;
 
     await carregarTreinamentosDisponiveis();
 
@@ -518,7 +518,7 @@ async function enviarTreinamentoWhatsApp() {
   const linkTreinamento = option?.dataset.link;
   const prazoDias = option?.dataset.prazo || "14";
 
-  const telefone = dadosUsuarioAtual?.telefone_contato;
+  const telefone = dadosUsuarioAtual?.telefone_candidato;
   const mensagemPersonalizada = document.getElementById(
     "treinamento-mensagem"
   )?.value;

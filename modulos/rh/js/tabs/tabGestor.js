@@ -117,7 +117,7 @@ export async function renderizarEntrevistaGestor(state) {
         id: candidaturaId,
         nome_completo: cand.nome_candidato || cand.nome_completo,
         email_candidato: cand.email_candidato,
-        telefone_contato: cand.telefone_contato,
+        telefone_candidato: cand.telefone_candidato,
         status_recrutamento: statusAtual,
         vaga_id: vagaId,
         titulo_vaga_original:
@@ -155,8 +155,8 @@ export async function renderizarEntrevistaGestor(state) {
                 : ""
             }
             ${
-              cand.telefone_contato
-                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
+              cand.telefone_candidato
+                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_candidato}</p>`
                 : ""
             }
           </div>
@@ -371,12 +371,12 @@ function abrirModalAgendamentoGestorLocal(candidatoId, dadosCandidato) {
       modal.classList.remove("is-visible");
 
       // ⚠️ AQUI: Envia o WhatsApp automaticamente se tiver telefone
-      if (dadosCandidato.telefone_contato) {
+      if (dadosCandidato.telefone_candidato) {
         console.log("📱 Iniciando envio de WhatsApp...");
         setTimeout(() => {
           enviarMensagemWhatsAppGestor(
             dadosCandidato.nome_completo,
-            dadosCandidato.telefone_contato,
+            dadosCandidato.telefone_candidato,
             dataAgendada,
             horaAgendada
           );
@@ -495,7 +495,7 @@ function abrirModalAvaliacaoGestorModal(candidatoId, vagaId, dadosCodificados) {
               </div>
               <div class="info-item">
                 <strong>Telefone</strong>
-                <span>${dadosCandidato.telefone_contato || "N/A"}</span>
+                <span>${dadosCandidato.telefone_candidato || "N/A"}</span>
               </div>
             </div>
           </div>
@@ -607,7 +607,9 @@ function abrirModalDetalhesModal(candidatoId, dadosCodificados) {
               </div>
               <div class="info-item">
                 <div class="info-label">Telefone</div>
-                <div class="info-value">${dados.telefone_contato || "N/A"}</div>
+                <div class="info-value">${
+                  dados.telefone_candidato || "N/A"
+                }</div>
               </div>
               <div class="info-item">
                 <div class="info-label">ID Candidato</div>

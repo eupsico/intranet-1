@@ -86,7 +86,7 @@ async function handleGerarLink() {
 
 function enviarWhatsApp(url) {
   const nome = candidatoAtual.nome_candidato.split(" ")[0];
-  const telefone = candidatoAtual.telefone_contato || "";
+  const telefone = candidatoAtual.telefone_candidato || "";
 
   const msg =
     `Olá ${nome}! Parabéns por avançar em nosso processo.\n\n` +

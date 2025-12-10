@@ -79,7 +79,7 @@ export async function renderizarAvaliacao3Meses(state) {
         // Chaves para o Modal Global de Detalhes (window.abrirModalCandidato)
         nome_candidato: user.nome || "Usuário Sem Nome",
         email_candidato: user.email || "Sem e-mail",
-        telefone_contato: user.contato || user.telefone || "",
+        telefone_candidato: user.contato || user.telefone || "",
         titulo_vaga_original: cargo,
         status_recrutamento: statusAtual,
 

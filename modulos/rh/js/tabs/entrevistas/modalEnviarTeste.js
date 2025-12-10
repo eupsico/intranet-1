@@ -68,7 +68,7 @@ export async function abrirModalEnviarTeste(candidatoId, dadosCandidato) {
     document.getElementById("teste-email-candidato").textContent =
       dadosCandidato.email_candidato || "N/A";
     document.getElementById("teste-whatsapp-candidato").textContent =
-      dadosCandidato.telefone_contato || "N/A";
+      dadosCandidato.telefone_candidato || "N/A";
 
     // Listar testes já enviados
     const containerTestesEnviados = document.getElementById(
@@ -340,7 +340,7 @@ async function enviarTesteWhatsApp() {
 
   const candidatoId = modalEnviarTeste?.dataset.candidaturaId;
   const testeId = document.getElementById("teste-selecionado")?.value;
-  const telefone = dadosCandidatoAtual?.telefone_contato;
+  const telefone = dadosCandidatoAtual?.telefone_candidato;
   const mensagemPersonalizada =
     document.getElementById("teste-mensagem")?.value;
   const btnEnviar = document.getElementById("btn-enviar-teste-whatsapp");

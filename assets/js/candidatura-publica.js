@@ -317,7 +317,7 @@ async function handleCandidatura(e) {
       titulo_vaga_original: tituloVagaOriginal,
       nome_candidato: nome,
       email_candidato: email,
-      telefone_contato: telefone,
+      telefone_candidato: telefone,
       cep_candidato: cep,
       endereco_num_candidato: numero,
       endereco_rua_candidato: rua,

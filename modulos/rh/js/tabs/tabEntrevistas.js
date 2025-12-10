@@ -75,8 +75,8 @@ export async function renderizarEntrevistas(state) {
         corStatus = "success";
       }
 
-      const telefone = cand.telefone_contato
-        ? cand.telefone_contato.replace(/\D/g, "")
+      const telefone = cand.telefone_candidato
+        ? cand.telefone_candidato.replace(/\D/g, "")
         : "";
       const linkWhatsApp = telefone
         ? `https://api.whatsapp.com/send?phone=55${telefone}`
@@ -107,7 +107,7 @@ export async function renderizarEntrevistas(state) {
         !telefone ? "disabled" : ""
       }>
                <i class="fab fa-whatsapp me-1"></i> ${
-                 cand.telefone_contato || "N/A"
+                 cand.telefone_candidato || "N/A"
                }
             </a>
           </div>

@@ -57,7 +57,7 @@ export async function renderizarReprovadosAdmissao(state) {
         id: candidatoId,
         nome_completo: cand.nome_completo,
         email_pessoal: cand.email_candidato,
-        telefone_contato: cand.telefone_contato,
+        telefone_candidato: cand.telefone_candidato,
         motivo_rejeicao: cand.rejeicao?.justificativa || "Não informado",
         etapa_rejeicao: cand.rejeicao?.etapa || "N/A",
       };

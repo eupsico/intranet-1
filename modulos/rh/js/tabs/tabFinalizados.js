@@ -97,7 +97,7 @@ export async function renderizarFinalizados(state) {
         id: candidaturaId,
         nome_completo: cand.nome_completo || "N/A",
         email_candidato: cand.email_candidato || "N/A",
-        telefone_contato: cand.telefone_contato || "N/A",
+        telefone_candidato: cand.telefone_candidato || "N/A",
         status_recrutamento: statusAtual,
         vaga_id: vagaSelecionadaId,
         data_finalizacao: cand.data_finalizacao || "N/A",
@@ -135,8 +135,8 @@ export async function renderizarFinalizados(state) {
                 : ""
             }
             ${
-              cand.telefone_contato
-                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_contato}</p>`
+              cand.telefone_candidato
+                ? `<p><i class="fas fa-phone"></i> ${cand.telefone_candidato}</p>`
                 : ""
             }
             ${
@@ -165,7 +165,7 @@ export async function renderizarFinalizados(state) {
 
             <!-- Contato (WhatsApp/Email) -->
             ${
-              cand.telefone_contato
+              cand.telefone_candidato
                 ? `
               <button class="action-button info btn-contato-finalizado" 
                       data-id="${candidaturaId}"
@@ -251,7 +251,7 @@ export async function renderizarFinalizados(state) {
         const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
 
         // Prioridade: WhatsApp se telefone existir
-        if (dadosCandidato.telefone_contato) {
+        if (dadosCandidato.telefone_candidato) {
           enviarMensagemWhatsAppFinalizado(candidatoId, dadosCodificados);
         } else if (dadosCandidato.email_candidato) {
           // Fallback para email
@@ -589,7 +589,7 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
                 <div class="detalhe-item">
                   <span class="detalhe-label">Telefone</span>
                   <span class="detalhe-value">${
-                    dadosCandidato.telefone_contato || "N/A"
+                    dadosCandidato.telefone_candidato || "N/A"
                   }</span>
                 </div>
                 <div class="detalhe-item">
@@ -686,7 +686,7 @@ window.fecharModalDetalhesFinalizado = function () {
 function contatarCandidatoFinalizado(candidatoId, dadosCodificados) {
   const dadosCandidato = JSON.parse(decodeURIComponent(dadosCodificados));
 
-  if (dadosCandidato.telefone_contato) {
+  if (dadosCandidato.telefone_candidato) {
     // WhatsApp para contratados ou feedback para rejeitados
     if (dadosCandidato.status_recrutamento.includes("Contratado")) {
       const mensagem = `Olá ${dadosCandidato.nome_completo}!
@@ -702,7 +702,7 @@ Aguarde nosso contato para agilizar sua admissão!
 
 Bem-vindo(a) à EuPsico! 💙`;
 
-      const telefone = dadosCandidato.telefone_contato.replace(/\D/g, "");
+      const telefone = dadosCandidato.telefone_candidato.replace(/\D/g, "");
       const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(
         mensagem
       )}`;
@@ -723,7 +723,7 @@ Obrigado e sucesso na sua jornada profissional! 🙏
 
 Equipe EuPsico`;
 
-      const telefone = dadosCandidato.telefone_contato.replace(/\D/g, "");
+      const telefone = dadosCandidato.telefone_candidato.replace(/\D/g, "");
       const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(
         mensagem
       )}`;
@@ -1046,7 +1046,7 @@ function enviarMensagemWhatsAppFinalizado(candidatoId, dadosCodificados) {
     const dados = JSON.parse(decodeURIComponent(dadosCodificados));
     const status = dados.status_recrutamento;
     const nome = dados.nome_completo;
-    const telefone = dados.telefone_contato.replace(/\D/g, "");
+    const telefone = dados.telefone_candidato.replace(/\D/g, "");
 
     let mensagem = "";
 

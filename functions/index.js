@@ -1218,7 +1218,7 @@ exports.salvarCandidatura = onCall(
         titulo_vaga_original: data.titulo_vaga_original || "",
         nome_candidato: data.nome_candidato,
         email_candidato: data.email_candidato || "",
-        telefone_contato: data.telefone_contato || "",
+        telefone_candidato: data.telefone_candidato || "",
         cep_candidato: data.cep_candidato || "",
         endereco_num_candidato: data.endereco_num_candidato || "",
         complemento_end_candidato: data.complemento_end_candidato || "",
