@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.6 (Otimizado: Perguntas Dinâmicas do Firebase)
+// VERSÃO 2.7 (Correção: Match Case-Insensitive para evitar 'Não Mapeada')
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -15,14 +15,13 @@ let todosEventos = [];
 let todosUsuarios = [];
 let vistaAtual = "pendencias";
 
-// Armazena a LISTA ORDENADA vinda do banco de dados (configuracoesSistema/modelo_feedback)
+// Armazena a LISTA ORDENADA vinda do banco de dados
 let listaPerguntasOrdenada = [];
 
 export async function init() {
-  console.log("[RELATÓRIOS] Iniciando módulo v2.6 (Perguntas Dinâmicas)...");
+  console.log("[RELATÓRIOS] Iniciando módulo v2.7...");
   configurarEventos();
 
-  // Carrega tudo em paralelo: Configuração das Perguntas, Eventos e Usuários
   await Promise.all([
     carregarConfiguracaoFeedback(),
     carregarEventos(),
@@ -32,7 +31,6 @@ export async function init() {
   renderizarVistaAtual();
 }
 
-// ✅ BUSCA DINÂMICA: Traz as perguntas e ordem definidas no Firebase
 async function carregarConfiguracaoFeedback() {
   try {
     const docRef = doc(firestoreDb, "configuracoesSistema", "modelo_feedback");
@@ -41,17 +39,14 @@ async function carregarConfiguracaoFeedback() {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data.perguntas && Array.isArray(data.perguntas)) {
-        // Salva a lista exata do banco
         listaPerguntasOrdenada = data.perguntas;
         console.log(
-          `✅ ${listaPerguntasOrdenada.length} perguntas carregadas do Firebase.`
+          `✅ ${listaPerguntasOrdenada.length} perguntas carregadas.`
         );
       }
-    } else {
-      console.warn("⚠️ Configuração de feedback não encontrada no Firebase.");
     }
   } catch (e) {
-    console.error("❌ Erro ao buscar perguntas no Firebase:", e);
+    console.warn("⚠️ Erro ao carregar configurações:", e);
   }
 }
 
@@ -413,7 +408,7 @@ function renderQualitativo(dados, busca, container) {
 }
 
 // ============================================================================
-// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (ATUALIZADO - PERGUNTAS DO FIREBASE)
+// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (CORRIGIDO PARA BUSCA FLEXÍVEL)
 // ============================================================================
 window.abrirModalDetalhesFeedback = function (
   dadosFeedbackEnc,
@@ -432,28 +427,32 @@ window.abrirModalDetalhesFeedback = function (
   const chavesIgnoradas = new Set(["timestamp", "uid", "nome", "email"]);
   const chavesProcessadas = new Set();
 
-  // 1. Prioridade: Renderiza usando a lista ordenada do Firebase
+  // 1. Itera sobre a lista ORDENADA do Firebase e busca no feedback (case-insensitive)
   if (listaPerguntasOrdenada.length > 0) {
     listaPerguntasOrdenada.forEach((pergunta) => {
-      const key = pergunta.id; // Ex: 'clareza', 'competencias'
+      const keyConfig = pergunta.id; // Ex: 'clareza'
       const textoPergunta = pergunta.texto;
 
-      // Se existe resposta para esta pergunta no feedback
-      if (feedback[key] !== undefined && !chavesIgnoradas.has(key)) {
+      // Busca chave no feedback que corresponda (ignorando case)
+      const chaveEncontrada = Object.keys(feedback).find(
+        (k) => k.toLowerCase() === keyConfig.toLowerCase()
+      );
+
+      if (chaveEncontrada && !chavesIgnoradas.has(chaveEncontrada)) {
         resumoHtml += `
                     <div class="qa-item mb-3 p-3 bg-light rounded border">
                         <p class="mb-2 text-primary"><strong>${textoPergunta}</strong></p>
                         <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-primary">${
-                          feedback[key] || "<em>Sem resposta</em>"
+                          feedback[chaveEncontrada] || "<em>Sem resposta</em>"
                         }</p>
                     </div>
                 `;
-        chavesProcessadas.add(key);
+        chavesProcessadas.add(chaveEncontrada);
       }
     });
   }
 
-  // 2. Renderiza perguntas que podem ter ficado de fora (ex: perguntas antigas ou não configuradas)
+  // 2. Renderiza perguntas RESTANTES (que não bateram com a configuração atual)
   Object.entries(feedback).forEach(([key, value]) => {
     if (!chavesIgnoradas.has(key) && !chavesProcessadas.has(key)) {
       // Formata o ID para ficar legível (Ex: sugestaoTema -> Sugestao Tema)
@@ -462,7 +461,7 @@ window.abrirModalDetalhesFeedback = function (
 
       resumoHtml += `
                 <div class="qa-item mb-3 p-3 bg-light rounded border">
-                    <p class="mb-2 text-primary"><strong>${perguntaTexto} (Não mapeada)</strong></p>
+                    <p class="mb-2 text-primary"><strong>${perguntaTexto}</strong></p>
                     <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-secondary">${
                       value || "<em>Sem resposta</em>"
                     }</p>
