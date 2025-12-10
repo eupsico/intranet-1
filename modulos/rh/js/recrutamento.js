@@ -205,8 +205,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   const sel = (id) => clone.querySelector(`[data-id="${id}"]`);
 
   // 3. Preencher dados pessoais (CORREÇÃO AQUI: Verificação segura de propriedades)
-  sel("nome-candidato").textContent =
-    candidato.nome_completo || candidato.nome_candidato || "N/A";
+  sel("nome-candidato").textContent = candidato.nome_candidato || "N/A";
   sel("email-candidato").textContent = candidato.email_candidato || "N/A";
   sel("telefone-contato").textContent = candidato.telefone_candidato || "N/A";
 
