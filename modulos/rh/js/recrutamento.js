@@ -213,7 +213,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   sel("nome-candidato").textContent =
     candidato.nome_completo || candidato.nome_candidato || "N/A";
   sel("email-candidato").textContent = candidato.email_candidato || "N/A";
-  sel("telefone-contato").textContent = candidato.telefone_canditado || "N/A";
+  sel("telefone-contato").textContent = candidato.telefone_candidato || "N/A";
   sel("localidade").textContent = `${cidade_candidato || "N/A"} / ${
     candidato.estado || "N/A"
   }`;
