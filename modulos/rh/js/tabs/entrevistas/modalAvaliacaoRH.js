@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoRH.js
- * Versão: 1.0.0 (Módulo Refatorado)
+ * Versão: 2.0.0 (Matriz de Competências - 8 Critérios)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
@@ -123,30 +123,14 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );
-  const modalFooter = modalAvaliacaoRH.querySelector(".modal-footer");
 
-  if (btnVerCurriculo && modalFooter) {
+  if (btnVerCurriculo) {
     btnVerCurriculo.href = linkCurriculo;
-
-    // Limpa classes e estilos antigos
-    btnVerCurriculo.className = "";
-    btnVerCurriculo.style = ""; // Limpa qualquer CSS inline
-
-    // Adiciona classes do Design System
-    btnVerCurriculo.classList.add("action-button", "warning", "ms-auto");
-    btnVerCurriculo.target = "_blank";
-    btnVerCurriculo.innerHTML =
-      '<i class="fas fa-file-alt me-2"></i> Ver Currículo';
-
+    // Lógica simples para mostrar/esconder o botão se tiver link
     if (!linkCurriculo || linkCurriculo === "#") {
       btnVerCurriculo.classList.add("hidden");
     } else {
       btnVerCurriculo.classList.remove("hidden");
-    }
-
-    // Garante que ele seja o primeiro item no footer
-    if (modalFooter.firstChild !== btnVerCurriculo) {
-      modalFooter.prepend(btnVerCurriculo);
     }
   }
 
@@ -156,12 +140,27 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
   if (avaliacaoExistente) {
     if (form) {
+      // Notas - Critérios Antigos
       form.querySelector("#nota-motivacao").value =
         avaliacaoExistente.notas?.motivacao || "";
       form.querySelector("#nota-aderencia").value =
         avaliacaoExistente.notas?.aderencia || "";
       form.querySelector("#nota-comunicacao").value =
         avaliacaoExistente.notas?.comunicacao || "";
+
+      // Notas - Novos Critérios
+      form.querySelector("#nota-tecnica").value =
+        avaliacaoExistente.notas?.tecnica || "";
+      form.querySelector("#nota-experiencia").value =
+        avaliacaoExistente.notas?.experiencia || "";
+      form.querySelector("#nota-postura").value =
+        avaliacaoExistente.notas?.postura || "";
+      form.querySelector("#nota-adaptacao").value =
+        avaliacaoExistente.notas?.adaptacao || "";
+      form.querySelector("#nota-resolucao").value =
+        avaliacaoExistente.notas?.resolucao || "";
+
+      // Campos de Texto
       form.querySelector("#pontos-fortes").value =
         avaliacaoExistente.pontos_fortes || "";
       form.querySelector("#pontos-atencao").value =
@@ -237,9 +236,17 @@ async function submeterAvaliacaoRH(e) {
   const resultado = form.querySelector(
     'input[name="resultado_entrevista"]:checked'
   )?.value;
+
+  // Coleta das Notas (8 critérios)
   const notaMotivacao = form.querySelector("#nota-motivacao").value;
   const notaAderencia = form.querySelector("#nota-aderencia").value;
   const notaComunicacao = form.querySelector("#nota-comunicacao").value;
+  const notaTecnica = form.querySelector("#nota-tecnica").value;
+  const notaExperiencia = form.querySelector("#nota-experiencia").value;
+  const notaPostura = form.querySelector("#nota-postura").value;
+  const notaAdaptacao = form.querySelector("#nota-adaptacao").value;
+  const notaResolucao = form.querySelector("#nota-resolucao").value;
+
   const pontosFortes = form.querySelector("#pontos-fortes").value;
   const pontosAtencao = form.querySelector("#pontos-atencao").value;
 
@@ -293,6 +300,11 @@ async function submeterAvaliacaoRH(e) {
       motivacao: notaMotivacao,
       aderencia: notaAderencia,
       comunicacao: notaComunicacao,
+      tecnica: notaTecnica,
+      experiencia: notaExperiencia,
+      postura: notaPostura,
+      adaptacao: notaAdaptacao,
+      resolucao: notaResolucao,
     },
     pontos_fortes: isAprovado ? pontosFortes : "",
     pontos_atencao: !isAprovado ? pontosAtencao : "",
@@ -301,7 +313,8 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    await updateDoc(candidaturaRef, {
+    // Se reprovado, adiciona campo de rejeição para histórico/estatísticas
+    const updatePayload = {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
         ...(dadosCandidatoAtual.entrevista_rh || {}),
@@ -314,7 +327,17 @@ async function submeterAvaliacaoRH(e) {
         }. Status: ${novoStatusCandidato}`,
         usuario: avaliadorNome,
       }),
-    });
+    };
+
+    if (!isAprovado) {
+      updatePayload.rejeicao = {
+        etapa: "Entrevista RH",
+        justificativa: pontosAtencao,
+        data: new Date(),
+      };
+    }
+
+    await updateDoc(candidaturaRef, updatePayload);
 
     window.showToast?.(
       `Avaliação de Entrevista RH registrada. Status: ${novoStatusCandidato}`,
