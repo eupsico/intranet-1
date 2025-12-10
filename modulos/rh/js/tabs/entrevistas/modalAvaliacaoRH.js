@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoRH.js
- * Versão: 2.0.0 (Matriz de Competências - 8 Critérios)
+ * Versão: 2.1.0 (Layout Ficha do Candidato Reorganizado)
  * Data: 05/11/2025
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
@@ -111,15 +111,35 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const linkCurriculo = dadosCandidato.link_curriculo_drive || "#";
 
+  // Elementos do DOM
   const nomeEl = document.getElementById("entrevista-rh-nome-candidato");
   const statusEl = document.getElementById("entrevista-rh-status-atual");
   const resumoEl = document.getElementById("entrevista-rh-resumo-triagem");
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
-  if (statusEl) statusEl.textContent = statusAtual;
+
+  // Preenche e estiliza o Status
+  if (statusEl) {
+    statusEl.textContent = statusAtual;
+    // Remove classes antigas de status (se houver) e adiciona a base
+    statusEl.className = "status-badge";
+
+    // Adiciona classe específica baseada no texto do status (lógica simples)
+    if (statusAtual.includes("PENDENTE")) {
+      statusEl.classList.add("status-pendente");
+    } else if (
+      statusAtual.includes("AGENDADA") ||
+      statusAtual.includes("APROVADO")
+    ) {
+      statusEl.classList.add("status-concluida"); // ou status-success se preferir
+    } else {
+      statusEl.classList.add("status-info");
+    }
+  }
+
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
-  // Configura o botão "Ver Currículo"
+  // Configura o botão "Ver Currículo" (agora no footer)
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );

@@ -726,18 +726,14 @@
                   </div>
                   <div class="form-group">
                     <label>Status Atual:</label>
-                    <p id="entrevista-rh-status-atual">...</p>
+                    <p>
+                        <span id="entrevista-rh-status-atual" class="status-badge">...</span>
+                    </p>
                   </div>
-                  <div class="form-group">
-                    <label>Resumo da Triagem:</label>
+                  <div class="form-group" style="grid-column: 1 / -1;"> <label>Resumo da Triagem:</label>
                     <p id="entrevista-rh-resumo-triagem" class="text-muted">
                       ...
                     </p>
-                  </div>
-                  <div class="form-group">
-                    <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="hidden action-button info small">
-                      <i class="fas fa-file-pdf me-2"></i>Ver currículo
-                    </a>
                   </div>
                 </div>
               </fieldset>
@@ -920,6 +916,9 @@
         </div>
 
         <div class="modal-footer">
+          <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="action-button info hidden">
+            <i class="fas fa-file-pdf me-2"></i>Ver currículo
+          </a>
           <button
             type="button"
             class="action-button secondary"
