@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabTriagem.js
- * Versão: 3.3.0 (Refatorado para Design System - module-card e classList)
+ * Versão: 3.4.0 (Checklist Aprimorado e Auto-Save)
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -24,25 +24,27 @@ const btnFinalizarTriagem = document.getElementById(
 
 let dadosCandidatoAtual = null;
 
-// Checklist estático
+// ✅ Checklist Aprimorado com HTML para melhor visualização
 const CHECKLIST_TRIAGEM = [
   {
     id: "check-pre-req",
     label:
-      "Candidato atende aos pré-requisitos básicos (Formação/Conselho/Exp. Mínima).",
+      "✅ <strong>Requisitos Obrigatórios:</strong> Possui formação, registro no conselho e tempo de experiência exigidos?",
   },
   {
     id: "check-link-curriculo",
-    label: "Link do currículo (Drive/PDF) está acessível e válido.",
+    label:
+      "📄 <strong>Currículo:</strong> O arquivo/link está acessível, atualizado e bem formatado?",
   },
   {
     id: "check-salario-compativel",
     label:
-      "Expectativa salarial (se informada) está compatível com a faixa da vaga.",
+      "💰 <strong>Expectativa Salarial:</strong> Está dentro da faixa orçamentária da vaga (se informada)?",
   },
   {
     id: "check-fit-cultural",
-    label: "Perfil aparente (resumo/habilidades) possui bom fit cultural.",
+    label:
+      "🤝 <strong>Fit Cultural:</strong> O perfil demonstra alinhamento com a missão e valores da EuPsico?",
   },
 ];
 
@@ -84,17 +86,17 @@ window.toggleMotivoAprovacaoRejeicao = function () {
 };
 
 /**
- * Renderiza o checklist com os valores salvos
+ * Renderiza o checklist com os valores salvos e anexa o auto-save
  */
 function renderizarChecklistTriagem(savedChecks = {}) {
   const container = document.getElementById("checklist-triagem-container");
   if (!container) return;
 
-  // HTML do checklist está correto, usa .form-check
+  // HTML do checklist usa .form-check e permite HTML na label
   container.innerHTML = CHECKLIST_TRIAGEM.map((item) => {
     const isChecked = savedChecks[item.id] === true ? "checked" : "";
     return `
-      <div class="form-check checklist-item">
+      <div class="form-check checklist-item" style="margin-bottom: 8px;">
         <input 
           class="form-check-input" 
           type="checkbox" 
@@ -103,13 +105,14 @@ function renderizarChecklistTriagem(savedChecks = {}) {
           data-check-id="${item.id}"
           ${isChecked}
         />
-        <label class="form-check-label" for="${item.id}">
+        <label class="form-check-label" for="${item.id}" style="cursor: pointer;">
           ${item.label}
         </label>
       </div>
     `;
   }).join("");
 
+  // ✅ Anexa o listener de mudança para salvamento automático
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.removeEventListener("change", handleSalvarChecklist);
     checkbox.addEventListener("change", handleSalvarChecklist);
@@ -144,6 +147,8 @@ async function handleSalvarChecklist(e) {
     if (dadosCandidatoAtual?.triagem_rh) {
       dadosCandidatoAtual.triagem_rh.checklist = currentChecks;
     }
+
+    console.log("✅ Checklist de triagem salvo automaticamente.");
   } catch (error) {
     console.error("Erro ao salvar checklist:", error);
     window.showToast?.("Erro ao salvar o checklist automaticamente.", "error");
@@ -255,8 +260,6 @@ async function submeterAvaliacaoTriagem(e) {
       "Por favor, preencha o motivo detalhado da reprovação.",
       "warning"
     );
-    // IMPORTANTE: A lógica de validação estava correta, o problema
-    // era o campo não aparecer (corrigido em toggleMotivoAprovacaoRejeicao).
     return;
   }
 
@@ -366,9 +369,6 @@ export async function renderizarTriagem(state) {
       return;
     }
 
-    // ======================================================
-    // ✅ INÍCIO DA ATUALIZAÇÃO DO LAYOUT (REFATORADO)
-    // ======================================================
     let listaHtml = '<div class="candidatos-container modules-grid">';
 
     snapshot.docs.forEach((docSnap) => {
@@ -377,17 +377,16 @@ export async function renderizarTriagem(state) {
 
       const statusTriagem = cand.status_recrutamento || "TRIAGEM_PENDENTE";
 
-      // Lógica de classe de status (igual ao tabGestor.js)
-      let statusClass = "status-pendente"; // Default
+      let statusClass = "status-pendente";
       if (
         statusTriagem.toLowerCase().includes("pendente") ||
         statusTriagem.toLowerCase().includes("recebida")
       ) {
-        statusClass = "status-pendente"; // Amarelo
+        statusClass = "status-pendente";
       } else if (statusTriagem.toLowerCase().includes("aprovada")) {
-        statusClass = "status-concluída"; // Verde
+        statusClass = "status-concluída";
       } else if (statusTriagem.toLowerCase().includes("reprovada")) {
-        statusClass = "status-rejeitada"; // Vermelho
+        statusClass = "status-rejeitada";
       }
 
       const telefone = cand.telefone_candidato?.replace(/\D/g, "") || "";
@@ -468,9 +467,6 @@ export async function renderizarTriagem(state) {
   </div>
 `;
     });
-    // ======================================================
-    // ✅ FIM DA ATUALIZAÇÃO DO LAYOUT
-    // ======================================================
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
