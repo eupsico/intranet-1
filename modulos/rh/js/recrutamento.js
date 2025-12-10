@@ -178,7 +178,6 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   modalCandidatoBody.innerHTML = '<div class="loading-spinner"></div>';
   modalCandidato.classList.add("is-visible");
 
-  // Se os dados não foram passados, busca no Firestore
   if (!candidato) {
     try {
       const candSnap = await getDoc(doc(candidatosCollection, candidatoId));
@@ -198,25 +197,24 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
 
   dadosCandidatoAtual = candidato;
 
-  // Atualiza título do modal
   document.getElementById("candidato-nome-titulo").textContent = `Detalhes: ${
     candidato.nome_completo || candidato.nome_candidato || "Candidato(a)"
   }`;
 
-  // 1. Clonar o template
   const clone = templateModalCandidato.content.cloneNode(true);
-
-  // 2. Selecionar elementos pelo data-id (Helper function)
   const sel = (id) => clone.querySelector(`[data-id="${id}"]`);
 
-  // 3. Preencher dados pessoais
+  // 3. Preencher dados pessoais (CORREÇÃO AQUI: Verificação segura de propriedades)
   sel("nome-candidato").textContent =
     candidato.nome_completo || candidato.nome_candidato || "N/A";
   sel("email-candidato").textContent = candidato.email_candidato || "N/A";
   sel("telefone-contato").textContent = candidato.telefone_candidato || "N/A";
-  sel("localidade").textContent = `${cidade_candidato || "N/A"} / ${
-    candidato.estado || "N/A"
-  }`;
+
+  // ✅ FIX: Usa as propriedades do objeto 'candidato' com fallback seguro
+  const cidade = candidato.cidade || candidato.cidade_candidato || "N/A";
+  const estado = candidato.estado || candidato.estado_candidato || "N/A";
+  sel("localidade").textContent = `${cidade} / ${estado}`;
+
   sel("como-conheceu").textContent = candidato.como_conheceu || "N/A";
 
   // 4. Preencher dados profissionais
@@ -235,7 +233,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     candidato.data_candidatura
   );
 
-  // 6. Preencher Triagem (se existir)
+  // 6. Preencher Triagem
   if (candidato.triagem_rh) {
     sel("container-triagem").classList.remove("hidden");
     const resultadoTriagem = candidato.triagem_rh.apto_entrevista || "N/A";
@@ -261,13 +259,12 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
         candidato.triagem_rh.info_aprovacao;
     }
   } else {
-    // Exibe placeholder se nenhuma outra avaliação existir
     if (!candidato.entrevista_rh && !candidato.rejeicao) {
       sel("container-sem-avaliacao").classList.remove("hidden");
     }
   }
 
-  // 7. Preencher Entrevista RH (se existir)
+  // 7. Preencher Entrevista RH
   if (candidato.entrevista_rh) {
     sel("container-entrevista-rh").classList.remove("hidden");
     if (candidato.entrevista_rh.agendamento) {
@@ -310,7 +307,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     }
   }
 
-  // 8. Preencher Rejeição (se existir)
+  // 8. Preencher Rejeição
   if (candidato.rejeicao?.etapa) {
     sel("container-rejeicao").classList.remove("hidden");
     sel("rejeicao-etapa").textContent = candidato.rejeicao.etapa;
@@ -321,11 +318,9 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
       candidato.rejeicao.justificativa || "N/A";
   }
 
-  // 9. Inserir o clone preenchido no DOM
   modalCandidatoBody.innerHTML = "";
   modalCandidatoBody.appendChild(clone);
 
-  // 10. Atualiza o footer com botão de currículo e fechar
   const linkCurriculo =
     candidato.link_curriculo_drive || candidato.link_curriculo_drive || "#";
   modalCandidatoFooter.innerHTML = `
@@ -339,7 +334,6 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     </button>
   `;
 
-  // Anexa listener ao botão de fechar (precisa ser re-anexado)
   const btnFechar = modalCandidatoFooter.querySelector(
     ".fechar-modal-candidato"
   );
@@ -359,9 +353,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
  */
 function getStatusBadgeClass(status) {
   if (!status) return "status-pendente";
-
   const statusLower = status.toLowerCase();
-
   if (
     statusLower.includes("aprovad") ||
     statusLower.includes("contratad") ||
