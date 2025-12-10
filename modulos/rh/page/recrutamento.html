@@ -177,7 +177,6 @@
                   <select id="avaliacao-teste-gestor" required>
                     <option value="">Selecione um gestor...</option>
                   </select>
-                  <!-- ✅ CORREÇÃO: Alterado de enviarWhatsAppGestor() para window.enviarWhatsAppGestor() -->
                   <button
                     type="button"
                     id="btn-whatsapp-gestor-avaliacao"
@@ -684,8 +683,7 @@
   </div>
 
   <div id="modal-avaliacao-rh" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
+    <div class="modal-content" style="max-width: 900px;"> <div class="modal-header">
         <h3 class="modal-title-text">Avaliação da Entrevista com RH</h3>
         <button
           type="button"
@@ -705,18 +703,17 @@
           value=""
         />
 
-        <div class="modal-body">
+        <div class="modal-body modal-body-scroll">
           <p class="description-box">
             Avaliação de aderência cultural, soft skills e aprofundamento do
             perfil para a vaga.
           </p>
 
           <div class="row">
-            <div class="col-lg-6">
+            <div class="col-lg-12">
               <fieldset>
                 <legend><i class="fas fa-user me-2"></i>Ficha do Candidato</legend>
-                <div class="details-grid">
-                  <div class="form-group">
+                <div class="details-grid cols-2"> <div class="form-group">
                     <label>Nome:</label>
                     <p>
                       <strong
@@ -738,55 +735,126 @@
                     </p>
                   </div>
                   <div class="form-group">
-                    <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="hidden">
-                      Ver currículo
+                    <a href="#" id="entrevista-rh-ver-curriculo" target="_blank" class="hidden action-button info small">
+                      <i class="fas fa-file-pdf me-2"></i>Ver currículo
                     </a>
                   </div>
                 </div>
               </fieldset>
             </div>
-
-            <div class="col-lg-6">
-              <fieldset>
-                <legend><i class="fas fa-star me-2"></i>Notas da Entrevista</legend>
-                <p class="text-muted small mb-3">
-                  Avalie de 1 a 5 os seguintes critérios:
-                </p>
-                <div class="row">
-                  <div class="col-md-4 form-group">
-                    <label for="nota-motivacao">Motivação</label>
-                    <input
-                      type="number"
-                      id="nota-motivacao"
-                      min="1"
-                      max="5"
-                      placeholder="1-5"
-                    />
-                  </div>
-                  <div class="col-md-4 form-group">
-                    <label for="nota-aderencia">Aderência Cultural</label>
-                    <input
-                      type="number"
-                      id="nota-aderencia"
-                      min="1"
-                      max="5"
-                      placeholder="1-5"
-                    />
-                  </div>
-                  <div class="col-md-4 form-group">
-                    <label for="nota-comunicacao">Comunicação</label>
-                    <input
-                      type="number"
-                      id="nota-comunicacao"
-                      min="1"
-                      max="5"
-                      placeholder="1-5"
-                    />
-                  </div>
-                </div>
-              </fieldset>
-            </div>
           </div>
+
+          <fieldset>
+            <legend><i class="fas fa-chart-bar me-2"></i>Matriz de Avaliação de Competências</legend>
+            <p class="text-muted small mb-3">
+              Avalie de 1 a 5 os seguintes critérios (1 = Insatisfatório, 5 = Excelente):
+            </p>
+            <div class="row">
+              <div class="col-md-6 form-group">
+                <label for="nota-motivacao">Motivação</label>
+                <input
+                  type="number"
+                  id="nota-motivacao"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Interesse genuíno pela vaga e pela empresa; entusiasmo e preparo.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-aderencia">Aderência Cultural</label>
+                <input
+                  type="number"
+                  id="nota-aderencia"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Alinhamento com valores, missão e cultura organizacional.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-comunicacao">Comunicação</label>
+                <input
+                  type="number"
+                  id="nota-comunicacao"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Clareza, objetividade, escuta ativa e postura durante a entrevista.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-tecnica">Competências Técnicas</label>
+                <input
+                  type="number"
+                  id="nota-tecnica"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Conhecimento e habilidades específicas da função.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-experiencia">Experiência Profissional</label>
+                <input
+                  type="number"
+                  id="nota-experiencia"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Relevância e resultados obtidos em trabalhos anteriores.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-postura">Postura Profissional</label>
+                <input
+                  type="number"
+                  id="nota-postura"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Ética, respeito, vestimenta e comportamento adequado.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-adaptacao">Capacidade de Adaptação</label>
+                <input
+                  type="number"
+                  id="nota-adaptacao"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Flexibilidade diante de mudanças e novos desafios.</small>
+              </div>
+
+              <div class="col-md-6 form-group">
+                <label for="nota-resolucao">Resolução de Problemas</label>
+                <input
+                  type="number"
+                  id="nota-resolucao"
+                  min="1"
+                  max="5"
+                  placeholder="1-5"
+                  class="form-control"
+                />
+                <small class="text-muted d-block mt-1">Habilidade de lidar com dificuldades e propor soluções eficazes.</small>
+              </div>
+            </div>
+          </fieldset>
 
           <fieldset>
             <legend><i class="fas fa-gavel me-2"></i>Decisão Final</legend>
