@@ -1977,8 +1977,9 @@ info-item.status-badge{
     color: #333;
 }
 /* Ajuste Específico APENAS para o Nome do Candidato */
-[data-id="nome-candidato"] {
-    font-size: 1.25rem !important; /* Um pouco maior que o resto, mas menor que antes */
+[data-id="nome-candidato"],
+#candidato-modal-nome {
+    font-size: 1.2rem !important; /* Um pouco maior que o resto, mas menor que antes */
     color: var(--cor-primaria);
 }
 
