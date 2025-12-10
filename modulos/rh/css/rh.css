@@ -1,8 +1,7 @@
 /**
  * Arquivo: modulos/rh/css/rh.css
- * Versão: 3.0.0 (Padronização de Cards em Grid para Todas as Abas)
+ * Versão: 3.1.0 (Padronização de Fontes de Nomes em Modais)
  * Data: 04/11/2025
- * Descrição: Estilos específicos do módulo de RH (não duplicados do design-system.css)
  */
 
 /* ============================================
@@ -1977,11 +1976,8 @@ info-item.status-badge{
     color: #333;
 }
 /* Ajuste Específico APENAS para o Nome do Candidato */
-[data-id="nome-candidato"],
-#candidato-modal-nome 
-#agendamento-rh-nome-candidato
-#entrevista-rh-nome-candidato{
-    font-size: 1rem !important; /* Um pouco maior que o resto, mas menor que antes */
+[data-id="nome-candidato"] {
+    font-size: 1.25rem !important; /* Um pouco maior que o resto, mas menor que antes */
     color: var(--cor-primaria);
 }
 
@@ -2187,4 +2183,21 @@ info-item.status-badge{
     #resumo-pontuacao h5 {
         font-size: 1.1rem;
     }
+}
+
+/* Ajuste Específico APENAS para o Nome do Candidato em Modais */
+[data-id="nome-candidato"],
+#candidato-modal-nome,
+#agendamento-rh-nome-candidato,
+#entrevista-rh-nome-candidato,
+#teste-nome-candidato,
+#avaliacao-teste-nome-candidato,
+#solicitacao-nome-candidato,
+#agendamento-int-nome-candidato,
+#treinamento-nome-candidato,
+#avaliacao-int-nome-candidato,
+#avaliacao-3meses-nome {
+    font-size: 1.2rem !important;
+    color: var(--cor-primaria);
+    font-weight: 700; /* Ensure bold */
 }
