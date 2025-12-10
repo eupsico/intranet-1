@@ -1969,12 +1969,23 @@ info-item.status-badge{
     color: white;
 }
 /* Grid de estatísticas */
-.details-grid {
-    display: grid;
-    gap: 20px;
-    margin-top: 15px;
+.details-grid p strong {
+    display: block;
+    font-size: 1.1rem; /* ✅ Reduzido de 1.5rem para 1.1rem */
+    font-weight: 700;
+    margin-top: 5px;
+    color: #333;
+}
+/* Ajuste Específico APENAS para o Nome do Candidato */
+[data-id="nome-candidato"] {
+    font-size: 1.25rem !important; /* Um pouco maior que o resto, mas menor que antes */
+    color: var(--cor-primaria);
 }
 
+/* Ajuste do Título do Modal */
+#candidato-nome-titulo {
+    font-size: 1.3rem; /* Ajustado para não ficar gigante no header */
+}
 /* ✅ CORRIGIDO: Força sempre 4 colunas lado a lado */
 .details-grid.cols-4 {
     grid-template-columns: repeat(4, 1fr);
