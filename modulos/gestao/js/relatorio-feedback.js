@@ -1,5 +1,5 @@
 // /modulos/gestao/js/relatorio-feedback.js
-// VERSÃO 2.5 (Atualizado: Ordem Exata da Configuração + Negrito)
+// VERSÃO 2.6 (Otimizado: Perguntas Dinâmicas do Firebase)
 
 import { db as firestoreDb } from "../../../assets/js/firebase-init.js";
 import {
@@ -15,24 +15,14 @@ let todosEventos = [];
 let todosUsuarios = [];
 let vistaAtual = "pendencias";
 
-// Armazena a LISTA ORDENADA vinda do banco de dados
+// Armazena a LISTA ORDENADA vinda do banco de dados (configuracoesSistema/modelo_feedback)
 let listaPerguntasOrdenada = [];
 
-// Mapa de fallback caso o banco falhe
-const MAPA_PERGUNTAS_FALLBACK = {
-  clareza: "O tema foi claro?",
-  objetivos: "Objetivos alcançados?",
-  duracao: "O tempo da reunião foi bem aproveitado?",
-  competencias: "Pensando em seu papel, quais competências foram trabalhadas?",
-  aprendizado: "Qual aprendizado adquirido?",
-  valor: "Quais aspectos da cultura foram reforçados?",
-  sugestoes: "Sugestões/Comentários",
-};
-
 export async function init() {
-  console.log("[RELATÓRIOS] Iniciando módulo v2.5...");
+  console.log("[RELATÓRIOS] Iniciando módulo v2.6 (Perguntas Dinâmicas)...");
   configurarEventos();
 
+  // Carrega tudo em paralelo: Configuração das Perguntas, Eventos e Usuários
   await Promise.all([
     carregarConfiguracaoFeedback(),
     carregarEventos(),
@@ -42,7 +32,7 @@ export async function init() {
   renderizarVistaAtual();
 }
 
-// ✅ ATUALIZADO: Salva a lista completa para manter a ordem
+// ✅ BUSCA DINÂMICA: Traz as perguntas e ordem definidas no Firebase
 async function carregarConfiguracaoFeedback() {
   try {
     const docRef = doc(firestoreDb, "configuracoesSistema", "modelo_feedback");
@@ -51,13 +41,17 @@ async function carregarConfiguracaoFeedback() {
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data.perguntas && Array.isArray(data.perguntas)) {
-        // Salva a lista exata como está no banco (preserva a ordem da sua imagem)
+        // Salva a lista exata do banco
         listaPerguntasOrdenada = data.perguntas;
-        console.log("✅ Lista de perguntas carregada e ordenada.");
+        console.log(
+          `✅ ${listaPerguntasOrdenada.length} perguntas carregadas do Firebase.`
+        );
       }
+    } else {
+      console.warn("⚠️ Configuração de feedback não encontrada no Firebase.");
     }
   } catch (e) {
-    console.warn("⚠️ Erro ao carregar configurações (usando fallback):", e);
+    console.error("❌ Erro ao buscar perguntas no Firebase:", e);
   }
 }
 
@@ -419,7 +413,7 @@ function renderQualitativo(dados, busca, container) {
 }
 
 // ============================================================================
-// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (ATUALIZADO)
+// FUNÇÃO: ABRIR MODAL DETALHES FEEDBACK (ATUALIZADO - PERGUNTAS DO FIREBASE)
 // ============================================================================
 window.abrirModalDetalhesFeedback = function (
   dadosFeedbackEnc,
@@ -434,35 +428,21 @@ window.abrirModalDetalhesFeedback = function (
 
   let resumoHtml = `<div class="qa-list">`;
 
+  // Controle para não repetir perguntas e ignorar metadados
   const chavesIgnoradas = new Set(["timestamp", "uid", "nome", "email"]);
   const chavesProcessadas = new Set();
 
-  // 1. Tenta renderizar na ordem correta usando a lista carregada do banco
+  // 1. Prioridade: Renderiza usando a lista ordenada do Firebase
   if (listaPerguntasOrdenada.length > 0) {
     listaPerguntasOrdenada.forEach((pergunta) => {
       const key = pergunta.id; // Ex: 'clareza', 'competencias'
       const textoPergunta = pergunta.texto;
 
-      if (feedback[key] !== undefined) {
+      // Se existe resposta para esta pergunta no feedback
+      if (feedback[key] !== undefined && !chavesIgnoradas.has(key)) {
         resumoHtml += `
                     <div class="qa-item mb-3 p-3 bg-light rounded border">
-                        <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${textoPergunta}</strong></p>
-                        <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-primary">${
-                          feedback[key] || "<em>Sem resposta</em>"
-                        }</p>
-                    </div>
-                `;
-        chavesProcessadas.add(key);
-      }
-    });
-  } else {
-    // Fallback: Usa o MAPA_PERGUNTAS_FALLBACK se a lista não carregou
-    Object.keys(MAPA_PERGUNTAS_FALLBACK).forEach((key) => {
-      if (feedback[key] !== undefined) {
-        const textoPergunta = MAPA_PERGUNTAS_FALLBACK[key];
-        resumoHtml += `
-                    <div class="qa-item mb-3 p-3 bg-light rounded border">
-                        <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${textoPergunta}</strong></p>
+                        <p class="mb-2 text-primary"><strong>${textoPergunta}</strong></p>
                         <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-primary">${
                           feedback[key] || "<em>Sem resposta</em>"
                         }</p>
@@ -473,14 +453,16 @@ window.abrirModalDetalhesFeedback = function (
     });
   }
 
-  // 2. Renderiza perguntas que podem ter ficado de fora (legado ou novas não mapeadas)
+  // 2. Renderiza perguntas que podem ter ficado de fora (ex: perguntas antigas ou não configuradas)
   Object.entries(feedback).forEach(([key, value]) => {
     if (!chavesIgnoradas.has(key) && !chavesProcessadas.has(key)) {
-      const perguntaTexto = `Questão (${key})`;
+      // Formata o ID para ficar legível (Ex: sugestaoTema -> Sugestao Tema)
+      const perguntaTexto =
+        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
 
       resumoHtml += `
                 <div class="qa-item mb-3 p-3 bg-light rounded border">
-                    <p class="mb-2 text-primary" style="font-size: 1.05rem;"><strong>${perguntaTexto}</strong></p>
+                    <p class="mb-2 text-primary"><strong>${perguntaTexto} (Não mapeada)</strong></p>
                     <p class="mb-0 text-dark bg-white p-2 rounded border-start border-3 border-secondary">${
                       value || "<em>Sem resposta</em>"
                     }</p>
