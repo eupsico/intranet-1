@@ -1,7 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/entrevistas/modalAvaliacaoRH.js
- * Versão: 2.1.0 (Layout Ficha do Candidato Reorganizado)
- * Data: 05/11/2025
+ * Versão: 2.2.0 (Correção Layout Ficha e Status Igual ao Card)
  * Descrição: Gerencia o modal de avaliação da entrevista com RH.
  */
 
@@ -31,7 +30,6 @@ function fecharModalAvaliacao() {
 
 /**
  * Gerencia a exibição dos campos "Pontos Fortes" e "Pontos de Atenção"
- * (Refatorado para usar .classList)
  */
 function toggleCamposAvaliacaoRH() {
   const form = document.getElementById("form-avaliacao-entrevista-rh");
@@ -60,26 +58,22 @@ function toggleCamposAvaliacaoRH() {
     !textareaPontosAtencao ||
     !textareaPontosFortes
   ) {
-    console.warn(
-      "toggleCamposAvaliacaoRH: Não foi possível encontrar os containers ou textareas."
-    );
     return;
   }
 
   if (radioAprovado && radioAprovado.checked) {
-    containerPontosFortes.classList.remove("hidden"); // Usa classe
+    containerPontosFortes.classList.remove("hidden");
     textareaPontosFortes.required = true;
-    containerPontosAtencao.classList.add("hidden"); // Usa classe
+    containerPontosAtencao.classList.add("hidden");
     textareaPontosAtencao.required = false;
   } else if (radioReprovado && radioReprovado.checked) {
-    containerPontosFortes.classList.add("hidden"); // Usa classe
+    containerPontosFortes.classList.add("hidden");
     textareaPontosFortes.required = false;
-    containerPontosAtencao.classList.remove("hidden"); // Usa classe
+    containerPontosAtencao.classList.remove("hidden");
     textareaPontosAtencao.required = true;
   } else {
-    // Estado inicial (nenhum selecionado)
-    containerPontosFortes.classList.add("hidden"); // Usa classe
-    containerPontosAtencao.classList.add("hidden"); // Usa classe
+    containerPontosFortes.classList.add("hidden");
+    containerPontosAtencao.classList.add("hidden");
     textareaPontosFortes.required = false;
     textareaPontosAtencao.required = false;
   }
@@ -96,7 +90,6 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (!modalAvaliacaoRH || !form) {
     window.showToast?.("Erro: Modal de Avaliação não encontrado.", "error");
-    console.error("❌ Entrevistas: Elemento modal-avaliacao-rh não encontrado");
     return;
   }
 
@@ -108,6 +101,8 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
     dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
     dadosCandidato.triagem_rh?.comentarios_gerais ||
     "N/A";
+
+  // Pega o status cru do banco
   const statusAtual = dadosCandidato.status_recrutamento || "N/A";
   const linkCurriculo = dadosCandidato.link_curriculo_drive || "#";
 
@@ -118,35 +113,38 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (nomeEl) nomeEl.textContent = nomeCompleto;
 
-  // Preenche e estiliza o Status
+  // ✅ ALTERADO: Lógica de Status igual ao Card
   if (statusEl) {
-    statusEl.textContent = statusAtual;
-    // Remove classes antigas de status (se houver) e adiciona a base
+    // 1. Substitui underscores por espaços para ficar legível
+    statusEl.textContent = statusAtual.replace(/_/g, " ");
+
+    // 2. Define a classe base
     statusEl.className = "status-badge";
 
-    // Adiciona classe específica baseada no texto do status (lógica simples)
-    if (statusAtual.includes("PENDENTE")) {
-      statusEl.classList.add("status-pendente");
-    } else if (
+    // 3. Aplica a cor correta (Azul para pendente, Verde para agendada/aprovada)
+    if (
       statusAtual.includes("AGENDADA") ||
-      statusAtual.includes("APROVADO")
+      statusAtual.includes("APROVADO") ||
+      statusAtual.includes("CONTRATADO")
     ) {
-      statusEl.classList.add("status-concluida"); // ou status-success se preferir
+      statusEl.classList.add("status-success");
+    } else if (statusAtual.includes("REPROVADO")) {
+      statusEl.classList.add("status-rejeitada");
     } else {
+      // Para "ENTREVISTA_RH_PENDENTE" ou outros, usa Azul (info) igual ao card
       statusEl.classList.add("status-info");
     }
   }
 
   if (resumoEl) resumoEl.textContent = resumoTriagem;
 
-  // Configura o botão "Ver Currículo" (agora no footer)
+  // Configura o botão "Ver Currículo"
   const btnVerCurriculo = document.getElementById(
     "entrevista-rh-ver-curriculo"
   );
 
   if (btnVerCurriculo) {
     btnVerCurriculo.href = linkCurriculo;
-    // Lógica simples para mostrar/esconder o botão se tiver link
     if (!linkCurriculo || linkCurriculo === "#") {
       btnVerCurriculo.classList.add("hidden");
     } else {
@@ -156,46 +154,43 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 
   if (form) form.reset();
 
-  // Preenche dados da avaliação existente
+  // Preenche dados da avaliação existente se houver
   const avaliacaoExistente = dadosCandidato.entrevista_rh;
-  if (avaliacaoExistente) {
-    if (form) {
-      // Notas - Critérios Antigos
-      form.querySelector("#nota-motivacao").value =
-        avaliacaoExistente.notas?.motivacao || "";
-      form.querySelector("#nota-aderencia").value =
-        avaliacaoExistente.notas?.aderencia || "";
-      form.querySelector("#nota-comunicacao").value =
-        avaliacaoExistente.notas?.comunicacao || "";
+  if (avaliacaoExistente && form) {
+    // Notas - Critérios Antigos
+    form.querySelector("#nota-motivacao").value =
+      avaliacaoExistente.notas?.motivacao || "";
+    form.querySelector("#nota-aderencia").value =
+      avaliacaoExistente.notas?.aderencia || "";
+    form.querySelector("#nota-comunicacao").value =
+      avaliacaoExistente.notas?.comunicacao || "";
 
-      // Notas - Novos Critérios
-      form.querySelector("#nota-tecnica").value =
-        avaliacaoExistente.notas?.tecnica || "";
-      form.querySelector("#nota-experiencia").value =
-        avaliacaoExistente.notas?.experiencia || "";
-      form.querySelector("#nota-postura").value =
-        avaliacaoExistente.notas?.postura || "";
-      form.querySelector("#nota-adaptacao").value =
-        avaliacaoExistente.notas?.adaptacao || "";
-      form.querySelector("#nota-resolucao").value =
-        avaliacaoExistente.notas?.resolucao || "";
+    // Notas - Novos Critérios
+    form.querySelector("#nota-tecnica").value =
+      avaliacaoExistente.notas?.tecnica || "";
+    form.querySelector("#nota-experiencia").value =
+      avaliacaoExistente.notas?.experiencia || "";
+    form.querySelector("#nota-postura").value =
+      avaliacaoExistente.notas?.postura || "";
+    form.querySelector("#nota-adaptacao").value =
+      avaliacaoExistente.notas?.adaptacao || "";
+    form.querySelector("#nota-resolucao").value =
+      avaliacaoExistente.notas?.resolucao || "";
 
-      // Campos de Texto
-      form.querySelector("#pontos-fortes").value =
-        avaliacaoExistente.pontos_fortes || "";
-      form.querySelector("#pontos-atencao").value =
-        avaliacaoExistente.pontos_atencao || "";
+    // Campos de Texto
+    form.querySelector("#pontos-fortes").value =
+      avaliacaoExistente.pontos_fortes || "";
+    form.querySelector("#pontos-atencao").value =
+      avaliacaoExistente.pontos_atencao || "";
 
-      if (avaliacaoExistente.resultado) {
-        const radio = form.querySelector(
-          `input[name="resultado_entrevista"][value="${avaliacaoExistente.resultado}"]`
-        );
-        if (radio) radio.checked = true;
-      }
+    if (avaliacaoExistente.resultado) {
+      const radio = form.querySelector(
+        `input[name="resultado_entrevista"][value="${avaliacaoExistente.resultado}"]`
+      );
+      if (radio) radio.checked = true;
     }
   }
 
-  // Adicionar listeners para os radio buttons
   const radiosResultado = form.querySelectorAll(
     'input[name="resultado_entrevista"]'
   );
@@ -204,14 +199,11 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
     radio.addEventListener("change", toggleCamposAvaliacaoRH);
   });
 
-  // Chamar a função uma vez para setar o estado inicial
   toggleCamposAvaliacaoRH();
 
-  // Adiciona listener de submit
   form.removeEventListener("submit", submeterAvaliacaoRH);
   form.addEventListener("submit", submeterAvaliacaoRH);
 
-  // Adiciona listeners de fechar
   document
     .querySelectorAll(`[data-modal-id='modal-avaliacao-rh']`)
     .forEach((btn) => {
@@ -220,7 +212,6 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
     });
 
   modalAvaliacaoRH.classList.add("is-visible");
-  console.log("✅ Entrevistas: Modal de avaliação aberto");
 }
 
 /**
@@ -229,7 +220,6 @@ export function abrirModalAvaliacaoRH(candidatoId, dadosCandidato) {
 async function submeterAvaliacaoRH(e) {
   e.preventDefault();
 
-  console.log("🔹 Entrevistas: Submetendo avaliação");
   const state = window.getGlobalRecrutamentoState();
   if (!state) {
     window.showToast?.("Erro: Estado global não iniciado.", "error");
@@ -243,21 +233,14 @@ async function submeterAvaliacaoRH(e) {
   const { candidatosCollection, handleTabClick, statusCandidaturaTabs } = state;
   const candidaturaId = modalAvaliacaoRH?.dataset.candidaturaId;
 
-  if (!candidaturaId || !btnRegistrarAvaliacao) {
-    console.error(
-      "❌ Erro crítico: ID da candidatura ou botão de registro não encontrado."
-    );
-    return;
-  }
+  if (!candidaturaId || !btnRegistrarAvaliacao) return;
 
   const form = document.getElementById("form-avaliacao-entrevista-rh");
-  if (!form) return;
-
   const resultado = form.querySelector(
     'input[name="resultado_entrevista"]:checked'
   )?.value;
 
-  // Coleta das Notas (8 critérios)
+  // Coleta das Notas
   const notaMotivacao = form.querySelector("#nota-motivacao").value;
   const notaAderencia = form.querySelector("#nota-aderencia").value;
   const notaComunicacao = form.querySelector("#nota-comunicacao").value;
@@ -271,10 +254,7 @@ async function submeterAvaliacaoRH(e) {
   const pontosAtencao = form.querySelector("#pontos-atencao").value;
 
   if (!resultado) {
-    window.showToast?.(
-      "Por favor, selecione o Resultado da Entrevista.",
-      "error"
-    );
+    window.showToast?.("Por favor, selecione o Resultado.", "error");
     return;
   }
 
@@ -282,10 +262,7 @@ async function submeterAvaliacaoRH(e) {
     resultado === "Aprovado" &&
     (!pontosFortes || pontosFortes.trim().length === 0)
   ) {
-    window.showToast?.(
-      "Para aprovar, é obrigatório preencher os Pontos Fortes.",
-      "error"
-    );
+    window.showToast?.("Para aprovar, preencha os Pontos Fortes.", "error");
     return;
   }
 
@@ -294,7 +271,7 @@ async function submeterAvaliacaoRH(e) {
     (!pontosAtencao || pontosAtencao.trim().length === 0)
   ) {
     window.showToast?.(
-      "Para reprovar, é obrigatório preencher os Motivos da Reprovação (Pontos de Atenção).",
+      "Para reprovar, preencha os Motivos da Reprovação.",
       "error"
     );
     return;
@@ -302,14 +279,10 @@ async function submeterAvaliacaoRH(e) {
 
   btnRegistrarAvaliacao.disabled = true;
   btnRegistrarAvaliacao.innerHTML =
-    '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
+    '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   const isAprovado = resultado === "Aprovado";
   const novoStatusCandidato = isAprovado ? "TESTE_PENDENTE" : "REPROVADO";
-  const abaRecarregar = statusCandidaturaTabs
-    .querySelector(".tab-link.active")
-    .getAttribute("data-status");
-
   const avaliadorNome = await getCurrentUserName();
 
   const dadosAvaliacao = {
@@ -333,7 +306,6 @@ async function submeterAvaliacaoRH(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
-    // Se reprovado, adiciona campo de rejeição para histórico/estatísticas
     const updatePayload = {
       status_recrutamento: novoStatusCandidato,
       entrevista_rh: {
@@ -344,7 +316,7 @@ async function submeterAvaliacaoRH(e) {
         data: new Date(),
         acao: `Avaliação Entrevista RH: ${
           isAprovado ? "APROVADO" : "REPROVADO"
-        }. Status: ${novoStatusCandidato}`,
+        }.`,
         usuario: avaliadorNome,
       }),
     };
@@ -359,23 +331,15 @@ async function submeterAvaliacaoRH(e) {
 
     await updateDoc(candidaturaRef, updatePayload);
 
-    window.showToast?.(
-      `Avaliação de Entrevista RH registrada. Status: ${novoStatusCandidato}`,
-      "success"
-    );
-    console.log("✅ Entrevistas: Avaliação salva no Firestore");
-
+    window.showToast?.("Avaliação registrada com sucesso!", "success");
     fecharModalAvaliacao();
-    const activeTab = statusCandidaturaTabs.querySelector(
-      `[data-status="${abaRecarregar}"]`
-    );
+
+    // Recarrega a aba
+    const activeTab = statusCandidaturaTabs.querySelector(".tab-link.active");
     if (activeTab) handleTabClick({ currentTarget: activeTab });
   } catch (error) {
     console.error("❌ Erro ao salvar avaliação:", error);
-    window.showToast?.(
-      `Erro ao registrar a decisão: ${error.message}`,
-      "error"
-    );
+    window.showToast?.(`Erro: ${error.message}`, "error");
   } finally {
     btnRegistrarAvaliacao.disabled = false;
     btnRegistrarAvaliacao.innerHTML =
