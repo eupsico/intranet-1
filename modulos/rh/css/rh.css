@@ -2243,3 +2243,9 @@ fieldset .col-md-6 select {
     color: var(--cor-primaria);
     font-weight: 700; /* Ensure bold */
 }
+#entrevista-rh-notas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px; /* espaço entre os itens */
+  font-size: 0.9rem; /* tamanho menor */
+}

@@ -284,31 +284,34 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     }
     if (candidato.entrevista_rh.notas) {
       sel("container-entrevista-rh-notas").classList.remove("hidden");
-      sel("entrevista-rh-notas").innerHTML = `Adaptacao: <strong>${
-        candidato.entrevista_rh.notas.adaptacao || "N/A"
-      }</strong> | 
-        Aderência: <strong>${
-          candidato.entrevista_rh.notas.aderencia || "N/A"
-        }</strong> | 
-        Comunicação: <strong>${
-          candidato.entrevista_rh.notas.comunicacao || "N/A"
-        }</strong>
-        Experiencia: <strong>${
-          candidato.entrevista_rh.notas.experiencia || "N/A"
-        }</strong>
-        Motivacao: <strong>${
-          candidato.entrevista_rh.notas.motivacao || "N/A"
-        }</strong>
-        Postura: <strong>${
-          candidato.entrevista_rh.notas.postura || "N/A"
-        }</strong>
-        Resolucao: <strong>${
-          candidato.entrevista_rh.notas.resolucao || "N/A"
-        }</strong>
-        Tecnica: <strong>${
-          candidato.entrevista_rh.notas.tecnica || "N/A"
-        }</strong>`;
+      sel("entrevista-rh-notas").innerHTML = `
+    <span>Adaptação: <strong>${
+      candidato.entrevista_rh.notas.adaptacao || "N/A"
+    }</strong></span>
+    <span>Aderência: <strong>${
+      candidato.entrevista_rh.notas.aderencia || "N/A"
+    }</strong></span>
+    <span>Comunicação: <strong>${
+      candidato.entrevista_rh.notas.comunicacao || "N/A"
+    }</strong></span>
+    <span>Experiência: <strong>${
+      candidato.entrevista_rh.notas.experiencia || "N/A"
+    }</strong></span>
+    <span>Motivação: <strong>${
+      candidato.entrevista_rh.notas.motivacao || "N/A"
+    }</strong></span>
+    <span>Postura: <strong>${
+      candidato.entrevista_rh.notas.postura || "N/A"
+    }</strong></span>
+    <span>Resolução: <strong>${
+      candidato.entrevista_rh.notas.resolucao || "N/A"
+    }</strong></span>
+    <span>Técnica: <strong>${
+      candidato.entrevista_rh.notas.tecnica || "N/A"
+    }</strong></span>
+  `;
     }
+
     if (candidato.entrevista_rh.pontos_fortes) {
       sel("container-entrevista-rh-fortes").classList.remove("hidden");
       sel("entrevista-rh-pontos-fortes").textContent =
