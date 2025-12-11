@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabIntegracao.js
- * Versão: 3.0.0 (Refatorado: Sem Tokens, CSS Padronizado e WhatsApp Direto)
+ * Versão: 3.1.0 (Padronização de Auth - Nome do Usuário Real)
  * Descrição: Gerencia agendamento, avaliação de integração e envio de treinamentos.
  */
 
@@ -16,6 +16,9 @@ import {
   updateDoc,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
+
+// ✅ Importação da função auxiliar para pegar o NOME do usuário
+import { getCurrentUserName } from "./entrevistas/helpers.js";
 
 // ============================================
 // VARIÁVEIS DE ESTADO
@@ -263,8 +266,6 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
   const usuarioId = modalAgendamento?.dataset.usuarioId;
   const { currentUserData } = getGlobalState();
 
-  const uidResponsavel =
-    auth.currentUser?.uid || currentUserData?.uid || "rh_system_user";
   const dataIntegracao = document.getElementById(
     "data-integracao-agendada"
   ).value;
@@ -282,6 +283,9 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
+    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente
+    const usuarioNome = await getCurrentUserName();
+
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
     // Salva no banco
@@ -291,14 +295,14 @@ async function submeterAgendamentoIntegracao(e, btnRegistrar) {
         agendamento: {
           data: dataIntegracao,
           hora: horaIntegracao,
-          agendado_por_uid: uidResponsavel,
+          agendado_por_uid: usuarioNome, // ✅ Usa o nome correto
           data_agendamento: new Date(),
         },
       },
       historico: arrayUnion({
         data: new Date(),
         acao: `Integração agendada para ${dataIntegracao}.`,
-        usuario: uidResponsavel,
+        usuario: usuarioNome, // ✅ Usa o nome correto
       }),
     });
 
@@ -386,8 +390,6 @@ async function submeterAvaliacaoIntegracao(e) {
   const btnSalvar = modal.querySelector('button[type="submit"]');
   const usuarioId = modal.dataset.usuarioId;
   const { currentUserData } = getGlobalState();
-  const uidResponsavel =
-    auth.currentUser?.uid || currentUserData?.uid || "rh_user";
 
   const realizou = document.getElementById("integracao-realizada").value;
   const observacoes = document.getElementById("integracao-observacoes").value;
@@ -401,6 +403,9 @@ async function submeterAvaliacaoIntegracao(e) {
   btnSalvar.innerHTML = "Salvando...";
 
   try {
+    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente
+    const usuarioNome = await getCurrentUserName();
+
     const usuarioRef = doc(db, "usuarios", usuarioId);
 
     await updateDoc(usuarioRef, {
@@ -409,12 +414,12 @@ async function submeterAvaliacaoIntegracao(e) {
         realizada: true,
         observacoes: observacoes,
         concluido_em: new Date(),
-        responsavel_uid: uidResponsavel,
+        responsavel_uid: usuarioNome, // ✅ Usa o nome correto
       },
       historico: arrayUnion({
         data: new Date(),
         acao: "Integração concluída.",
-        usuario: uidResponsavel,
+        usuario: usuarioNome, // ✅ Usa o nome correto
       }),
     });
 
@@ -577,8 +582,10 @@ Como você já possui login na Intranet, basta acessar o link acima. Bom estudo!
 
 async function salvarEnvioTreinamento(userId, treinamentoId, titulo, link) {
   const { currentUserData } = getGlobalState();
-  const uidResponsavel =
-    auth.currentUser?.uid || currentUserData?.uid || "rh_system_user";
+
+  // ✅ CORREÇÃO: Pega o nome do usuário assincronamente
+  const usuarioNome = await getCurrentUserName();
+
   const usuarioRef = doc(db, "usuarios", userId);
 
   await updateDoc(usuarioRef, {
@@ -587,13 +594,13 @@ async function salvarEnvioTreinamento(userId, treinamentoId, titulo, link) {
       titulo: titulo,
       link: link,
       data_envio: new Date(),
-      enviado_por_uid: uidResponsavel,
+      enviado_por_uid: usuarioNome, // ✅ Usa o nome correto
       status: "enviado",
     }),
     historico: arrayUnion({
       data: new Date(),
       acao: `Treinamento '${titulo}' enviado (Link direto).`,
-      usuario: uidResponsavel,
+      usuario: usuarioNome, // ✅ Usa o nome correto
     }),
   });
 }

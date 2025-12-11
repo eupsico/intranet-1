@@ -198,7 +198,6 @@ async function submeterCronograma(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
-    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente (resolvendo problema de rh_system_user)
     const usuarioNome = await getCurrentUserName();
 
     const vagaRef = doc(vagasCollection, vagaId);
