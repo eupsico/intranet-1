@@ -284,7 +284,7 @@ async function submeterAvaliacaoTriagem(e) {
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao ? infoAprovacaoEl?.value.trim() || "" : "",
     data_avaliacao: new Date().toISOString(),
-    avaliador_uid: usuarioNome, // Salva o nome correto
+    nome_avaliador: usuarioNome, // Salva o nome correto
     checklist: checklistAtual,
   };
 
