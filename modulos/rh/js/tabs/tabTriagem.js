@@ -13,7 +13,10 @@ import {
   arrayUnion,
   serverTimestamp,
 } from "../../../../assets/js/firebase-init.js";
+import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
 
+// Obter o nome do usuário para o histórico
+const usuarioNome = await getCurrentUserName();
 // Elementos do Modal de Triagem
 const modalAvaliacaoTriagem = document.getElementById(
   "modal-avaliacao-triagem"
@@ -238,8 +241,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
 async function submeterAvaliacaoTriagem(e) {
   e.preventDefault();
 
-  const { candidatosCollection, currentUserData, statusCandidaturaTabs } =
-    getGlobalState();
+  const { candidatosCollection, statusCandidaturaTabs } = getGlobalState();
   const candidaturaId = modalAvaliacaoTriagem?.dataset.candidaturaId;
   if (!candidaturaId) return;
 
@@ -279,7 +281,7 @@ async function submeterAvaliacaoTriagem(e) {
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao ? infoAprovacaoEl?.value.trim() || "" : "",
     data_avaliacao: new Date().toISOString(),
-    avaliador_uid: currentUserData.uid || "rh_system_user",
+    avaliador_uid: usuarioNome,
     checklist: dadosCandidatoAtual?.triagem_rh?.checklist || {},
   };
 
@@ -294,7 +296,7 @@ async function submeterAvaliacaoTriagem(e) {
         acao: `Triagem ${
           decisao ? "APROVADA" : "REPROVADA"
         }. Status: ${novoStatusCandidato}`,
-        usuario: currentUserData.uid || "rh_system_user",
+        usuario: usuarioNome,
       }),
     });
 
