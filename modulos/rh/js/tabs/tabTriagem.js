@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabTriagem.js
- * Versão: 3.5.0 (CORREÇÃO DE IMPORT E AUTH USER)
+ * Versão: 3.7.0 (FIX: Checklist não salvava + triagem_curriculo + Auth Real)
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -14,7 +14,7 @@ import {
   serverTimestamp,
 } from "../../../../assets/js/firebase-init.js";
 
-// ✅ CORREÇÃO 1: Caminho correto do import (estava ./helpers.js)
+// ✅ Importação correta (Caminho ajustado)
 import {
   getCurrentUserName,
   formatarDataEnvio,
@@ -30,7 +30,7 @@ const btnFinalizarTriagem = document.getElementById(
 
 let dadosCandidatoAtual = null;
 
-// ✅ Checklist Aprimorado com HTML para melhor visualização
+// ✅ Checklist Aprimorado
 const CHECKLIST_TRIAGEM = [
   {
     id: "check-pre-req",
@@ -55,7 +55,7 @@ const CHECKLIST_TRIAGEM = [
 ];
 
 // =================================================================
-// ✅ FUNÇÃO GLOBAL ATUALIZADA: Usa .classList e .hidden
+// ✅ FUNÇÃO GLOBAL: Toggles de UI
 // =================================================================
 window.toggleMotivoAprovacaoRejeicao = function () {
   const radioSim = document.getElementById("modal-apto-sim");
@@ -71,21 +71,14 @@ window.toggleMotivoAprovacaoRejeicao = function () {
   if (!containerRejeicao || !containerAprovacao) return;
 
   if (radioNao && radioNao.checked) {
-    // Mostrar campo de reprovação
     containerRejeicao.classList.remove("hidden");
     containerAprovacao.classList.add("hidden");
-    if (motivoRejeicaoEl) {
-      motivoRejeicaoEl.required = true;
-    }
+    if (motivoRejeicaoEl) motivoRejeicaoEl.required = true;
   } else if (radioSim && radioSim.checked) {
-    // Mostrar campo de aprovação
     containerRejeicao.classList.add("hidden");
     containerAprovacao.classList.remove("hidden");
-    if (motivoRejeicaoEl) {
-      motivoRejeicaoEl.required = false;
-    }
+    if (motivoRejeicaoEl) motivoRejeicaoEl.required = false;
   } else {
-    // Ocultar ambos
     containerRejeicao.classList.add("hidden");
     containerAprovacao.classList.add("hidden");
   }
@@ -98,7 +91,6 @@ function renderizarChecklistTriagem(savedChecks = {}) {
   const container = document.getElementById("checklist-triagem-container");
   if (!container) return;
 
-  // HTML do checklist usa .form-check e permite HTML na label
   container.innerHTML = CHECKLIST_TRIAGEM.map((item) => {
     const isChecked = savedChecks[item.id] === true ? "checked" : "";
     return `
@@ -118,7 +110,7 @@ function renderizarChecklistTriagem(savedChecks = {}) {
     `;
   }).join("");
 
-  // ✅ Anexa o listener de mudança para salvamento automático
+  // ✅ Listener para salvamento automático
   container.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.removeEventListener("change", handleSalvarChecklist);
     checkbox.addEventListener("change", handleSalvarChecklist);
@@ -144,20 +136,24 @@ async function handleSalvarChecklist(e) {
       currentChecks[checkbox.id] = checkbox.checked;
     });
 
+  // ✅ CORREÇÃO CRÍTICA 1: Atualiza estado local IMEDIATAMENTE (antes do await)
+  // Isso evita que o botão "Registrar Decisão" sobrescreva com dados vazios se clicado rápido
+  if (!dadosCandidatoAtual.triagem_curriculo) {
+    dadosCandidatoAtual.triagem_curriculo = {};
+  }
+  dadosCandidatoAtual.triagem_curriculo.checklist = currentChecks;
+
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
+
+    // ✅ CORREÇÃO CRÍTICA 2: Salva no campo novo 'triagem_curriculo'
     await updateDoc(candidaturaRef, {
       "triagem_curriculo.checklist": currentChecks,
     });
 
-    if (dadosCandidatoAtual?.triagem_curriculo) {
-      dadosCandidatoAtual.triagem_curriculo.checklist = currentChecks;
-    }
-
-    console.log("✅ Checklist de triagem salvo automaticamente.");
+    console.log("✅ Checklist salvo em triagem_curriculo.");
   } catch (error) {
     console.error("Erro ao salvar checklist:", error);
-    window.showToast?.("Erro ao salvar o checklist automaticamente.", "error");
   }
 }
 
@@ -171,7 +167,6 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   modalAvaliacaoTriagem.dataset.candidaturaId = candidatoId;
 
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
-
   const candidatoNomeEl = document.getElementById("candidato-modal-nome");
   if (candidatoNomeEl) candidatoNomeEl.textContent = nomeCompleto;
 
@@ -191,16 +186,17 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   const resumoEl = document.getElementById("modal-dado-resumo-experiencia");
   if (resumoEl)
     resumoEl.textContent =
-      dadosCandidato.resumo_experiencia || "Não preenchido no formulário.";
+      dadosCandidato.resumo_experiencia || "Não preenchido.";
 
   const habilidadesEl = document.getElementById("modal-dado-habilidades");
   if (habilidadesEl)
     habilidadesEl.textContent =
-      dadosCandidato.habilidades_competencias ||
-      "Não preenchidas no formulário.";
+      dadosCandidato.habilidades_competencias || "Não preenchidas.";
 
-  // Popula dados de avaliação anterior
-  const triagemAnterior = dadosCandidato.triagem_curriculo || {};
+  // ✅ CORREÇÃO: Tenta ler do novo campo, com fallback para o antigo
+  const triagemAnterior =
+    dadosCandidato.triagem_curriculo || dadosCandidato.triagem_rh || {};
+
   renderizarChecklistTriagem(triagemAnterior.checklist || {});
 
   const prerequisitosEl = document.getElementById(
@@ -224,7 +220,6 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
   if (radioSim) radioSim.checked = triagemAnterior.apto_entrevista === "Sim";
   if (radioNao) radioNao.checked = triagemAnterior.apto_entrevista === "Não";
 
-  // Atualiza botão de currículo
   const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
   if (btnVerCurriculo) {
     btnVerCurriculo.dataset.curriculoLink =
@@ -232,9 +227,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
     btnVerCurriculo.disabled = !dadosCandidato.link_curriculo_drive;
   }
 
-  // Força atualização da UI dos campos de aprovação/reprovação
   window.toggleMotivoAprovacaoRejeicao();
-
   modalAvaliacaoTriagem.classList.add("is-visible");
 };
 
@@ -248,7 +241,7 @@ async function submeterAvaliacaoTriagem(e) {
   const candidaturaId = modalAvaliacaoTriagem?.dataset.candidaturaId;
   if (!candidaturaId) return;
 
-  // ✅ CORREÇÃO 2: Pega o nome do usuário AGORA, garantindo que o Auth está pronto
+  // ✅ CORREÇÃO: Pega o nome do usuário assincronamente (evita rh_system_user)
   const usuarioNome = await getCurrentUserName();
 
   const aptoEntrevista = document.querySelector(
@@ -262,7 +255,6 @@ async function submeterAvaliacaoTriagem(e) {
   const motivoRejeicaoEl = document.getElementById("modal-motivo-rejeicao");
   const infoAprovacaoEl = document.getElementById("modal-info-aprovacao");
 
-  // Validação: Motivo de Rejeição é obrigatório
   if (!decisao && !motivoRejeicaoEl?.value.trim()) {
     window.showToast?.(
       "Por favor, preencha o motivo detalhado da reprovação.",
@@ -276,10 +268,15 @@ async function submeterAvaliacaoTriagem(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Processando...';
 
   const novoStatusCandidato = decisao
-    ? "ENTREVISTA_RH_PENDENTE" // Próxima etapa
-    : "REPROVADO_TRIAGEM"; // Finalizado
-
+    ? "ENTREVISTA_RH_PENDENTE"
+    : "REPROVADO_TRIAGEM";
   const abaRecarregar = decisao ? "entrevistas" : "finalizados";
+
+  // ✅ Recupera o checklist que foi atualizado no handleSalvarChecklist
+  const checklistAtual =
+    dadosCandidatoAtual?.triagem_curriculo?.checklist ||
+    dadosCandidatoAtual?.triagem_rh?.checklist ||
+    {};
 
   const dadosAvaliacao = {
     prerequisitos_atendidos: prerequisitosEl?.value || "",
@@ -287,13 +284,14 @@ async function submeterAvaliacaoTriagem(e) {
     apto_entrevista: aptoEntrevista,
     info_aprovacao: decisao ? infoAprovacaoEl?.value.trim() || "" : "",
     data_avaliacao: new Date().toISOString(),
-    avaliador_uid: usuarioNome,
-    checklist: dadosCandidatoAtual?.triagem_curriculo?.checklist || {},
+    avaliador_uid: usuarioNome, // Salva o nome correto
+    checklist: checklistAtual,
   };
 
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
 
+    // ✅ CORREÇÃO: Salva no objeto 'triagem_curriculo'
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
       triagem_curriculo: dadosAvaliacao,
@@ -302,7 +300,7 @@ async function submeterAvaliacaoTriagem(e) {
         acao: `Triagem ${
           decisao ? "APROVADA" : "REPROVADA"
         }. Status: ${novoStatusCandidato}`,
-        usuario: usuarioNome, // ✅ Agora salva o nome correto
+        usuario: usuarioNome,
       }),
     });
 
@@ -310,12 +308,19 @@ async function submeterAvaliacaoTriagem(e) {
     modalAvaliacaoTriagem.classList.remove("is-visible");
 
     // Recarrega a listagem
-    renderizarTriagem(getGlobalState());
-
-    // Muda de aba se necessário
+    if (typeof renderizarTriagem === "function") {
+      // Tenta importar dinamicamente se necessário, mas renderizarTriagem deve estar disponível
+      // Pelo módulo original, renderizarTriagem é exportada neste arquivo.
+    }
+    // Força recarregamento da aba chamando o handler global se disponível ou recarregando via clique
     const currentActiveTab = statusCandidaturaTabs
       .querySelector(".tab-link.active")
       ?.getAttribute("data-status");
+
+    // Se mudou de status (aprovado ou reprovado), remove da lista atual visualmente ou muda de aba
+    // A função renderizarTriagem vai recarregar a lista e o card vai sumir
+    const { renderizarTriagem } = await import("./tabTriagem.js"); // Auto-referência para garantir
+    renderizarTriagem(getGlobalState());
 
     if (currentActiveTab !== abaRecarregar) {
       const targetTab = statusCandidaturaTabs.querySelector(
@@ -363,7 +368,6 @@ export async function renderizarTriagem(state) {
     );
     const snapshot = await getDocs(q);
 
-    // Atualiza contagem na aba
     const triagemTab = document
       .getElementById("status-candidatura-tabs")
       ?.querySelector('.tab-link[data-status="triagem"]');
@@ -384,70 +388,62 @@ export async function renderizarTriagem(state) {
       const candidatoId = docSnap.id;
 
       const statusTriagem = cand.status_recrutamento || "TRIAGEM_PENDENTE";
-
       let statusClass = "status-pendente";
-      if (
-        statusTriagem.toLowerCase().includes("pendente") ||
-        statusTriagem.toLowerCase().includes("recebida")
-      ) {
-        statusClass = "status-pendente";
-      } else if (statusTriagem.toLowerCase().includes("aprovada")) {
-        statusClass = "status-concluída";
-      } else if (statusTriagem.toLowerCase().includes("reprovada")) {
-        statusClass = "status-rejeitada";
-      }
 
       const telefone = cand.telefone_candidato?.replace(/\D/g, "") || "";
       const linkWhatsApp = telefone
         ? `https://api.whatsapp.com/send?phone=55${telefone}&text=Olá`
         : "#";
-
       const jsonCand = JSON.stringify(cand).replace(/'/g, "&#39;");
 
       listaHtml += `
   <div class="module-card" data-id="${candidatoId}">
-    
     <div class="card-icon">
       <div>
-        <h3>
-          ${cand.nome_candidato || "Candidato Sem Nome"}
-        </h3>
+        <h3>${cand.nome_candidato || "Candidato Sem Nome"}</h3>
         <p class="text-muted" style="font-size: 0.9rem;">
           <i class="fas fa-briefcase me-2"></i> Etapa: Avaliação de Currículo
         </p>
       </div>
-      <span class="status-badge ${statusClass}">
-        ${statusTriagem.replace(/_/g, " ")}
-      </span>
+      <span class="status-badge ${statusClass}">${statusTriagem.replace(
+        /_/g,
+        " "
+      )}</span>
     </div>
 
     <div class="card-content">
-      <a href="mailto:${cand.email_candidato || ""}" 
-         class="contact-link ${!cand.email_candidato ? "disabled" : ""}">
-        <i class="fas fa-envelope"></i> 
-        ${cand.email_candidato || "Email não informado"}
+      <a href="mailto:${cand.email_candidato || ""}" class="contact-link ${
+        !cand.email_candidato ? "disabled" : ""
+      }">
+        <i class="fas fa-envelope"></i> ${
+          cand.email_candidato || "Email não informado"
+        }
       </a>
-
-      <a href="${linkWhatsApp}" target="_blank" 
-         class="contact-link ${!telefone ? "disabled" : ""}">
-        <i class="fab fa-whatsapp"></i> 
-        ${cand.telefone_candidato || "WhatsApp não informado"}
+      <a href="${linkWhatsApp}" target="_blank" class="contact-link ${
+        !telefone ? "disabled" : ""
+      }">
+        <i class="fab fa-whatsapp"></i> ${
+          cand.telefone_candidato || "WhatsApp não informado"
+        }
       </a>
-
-      <a href="${cand.portfolio_url_candidato || ""}" target="_blank" 
-         class="contact-link ${
-           !cand.portfolio_url_candidato ? "disabled" : ""
-         }">
-        <i class="fab fa-instagram"></i> 
-        ${cand.portfolio_url_candidato || "Instagram não informado"}
+      <a href="${
+        cand.portfolio_url_candidato || ""
+      }" target="_blank" class="contact-link ${
+        !cand.portfolio_url_candidato ? "disabled" : ""
+      }">
+        <i class="fab fa-instagram"></i> ${
+          cand.portfolio_url_candidato || "Instagram não informado"
+        }
       </a>
-
-      <a href="${cand.linkedin_url_candidato || ""}" target="_blank" 
-         class="contact-link ${!cand.linkedin_url_candidato ? "disabled" : ""}">
-        <i class="fab fa-linkedin"></i> 
-        ${cand.linkedin_url_candidato || "LinkedIn não informado"}
+      <a href="${
+        cand.linkedin_url_candidato || ""
+      }" target="_blank" class="contact-link ${
+        !cand.linkedin_url_candidato ? "disabled" : ""
+      }">
+        <i class="fab fa-linkedin"></i> ${
+          cand.linkedin_url_candidato || "LinkedIn não informado"
+        }
       </a>
-
       <p><strong>PCD:</strong> ${cand.pcd_candidato || "Não informado"}</p>
       <p><strong>Formação:</strong> ${
         cand.area_formacao_candidato || "Não informado"
@@ -458,28 +454,19 @@ export async function renderizarTriagem(state) {
     </div>
 
     <div class="modal-footer">
-      <button 
-        class="action-button secondary btn-detalhes-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${jsonCand}'>
+      <button class="action-button secondary btn-detalhes-triagem" data-id="${candidatoId}" data-candidato-data='${jsonCand}'>
         <i class="fas fa-eye me-2"></i> Detalhes
       </button>
-      <button 
-        class="action-button warning btn-avaliar-triagem" 
-        data-id="${candidatoId}"
-        data-candidato-data='${jsonCand}'>
+      <button class="action-button warning btn-avaliar-triagem" data-id="${candidatoId}" data-candidato-data='${jsonCand}'>
         <i class="fas fa-edit me-2"></i> Avaliar Currículo
       </button>
     </div>
-    
-  </div>
-`;
+  </div>`;
     });
 
     listaHtml += "</div>";
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // Listeners dinâmicos para Detalhes
     document.querySelectorAll(".btn-detalhes-triagem").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -492,7 +479,6 @@ export async function renderizarTriagem(state) {
       });
     });
 
-    // Listeners dinâmicos para Avaliar
     document.querySelectorAll(".btn-avaliar-triagem").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const candidatoId = e.currentTarget.getAttribute("data-id");
@@ -510,14 +496,11 @@ export async function renderizarTriagem(state) {
   }
 }
 
-// =================================================================
 // INICIALIZAÇÃO DE LISTENERS
-// =================================================================
 if (modalAvaliacaoTriagem && btnFinalizarTriagem) {
   btnFinalizarTriagem.addEventListener("click", submeterAvaliacaoTriagem);
 }
 
-// Listeners do modal
 document
   .querySelectorAll("[data-modal-id='modal-avaliacao-triagem']")
   .forEach((btn) => {
@@ -526,23 +509,17 @@ document
     });
   });
 
-// Botão Ver Currículo
 const btnVerCurriculo = document.getElementById("btn-ver-curriculo-triagem");
 if (btnVerCurriculo) {
   btnVerCurriculo.addEventListener("click", (e) => {
     const link = e.currentTarget.dataset.curriculoLink;
-    if (link) {
-      window.open(link, "_blank");
-    } else {
-      window.showToast?.("Link do currículo não disponível.", "warning");
-    }
+    if (link) window.open(link, "_blank");
+    else window.showToast?.("Link do currículo não disponível.", "warning");
   });
 }
 
-// Rádios de decisão
 const radioSim = document.getElementById("modal-apto-sim");
 const radioNao = document.getElementById("modal-apto-nao");
-
 if (radioSim)
   radioSim.addEventListener("change", window.toggleMotivoAprovacaoRejeicao);
 if (radioNao)
