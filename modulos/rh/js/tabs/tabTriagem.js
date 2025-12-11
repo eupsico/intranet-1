@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabTriagem.js
- * Versão: 3.4.0 (Checklist Aprimorado e Auto-Save)
+ * Versão: 3.5.0 (CORREÇÃO DE IMPORT E AUTH USER)
  */
 
 import { getGlobalState } from "../recrutamento.js";
@@ -13,10 +13,16 @@ import {
   arrayUnion,
   serverTimestamp,
 } from "../../../../assets/js/firebase-init.js";
-import { getCurrentUserName, formatarDataEnvio } from "./helpers.js";
 
-// Obter o nome do usuário para o histórico
-const usuarioNome = await getCurrentUserName();
+// ✅ CORREÇÃO 1: Caminho correto do import (estava ./helpers.js)
+import {
+  getCurrentUserName,
+  formatarDataEnvio,
+} from "./entrevistas/helpers.js";
+
+// ❌ REMOVIDO: const usuarioNome = await getCurrentUserName();
+// (Isso rodava antes do Auth estar pronto, causando "rh_system_user")
+
 // Elementos do Modal de Triagem
 const modalAvaliacaoTriagem = document.getElementById(
   "modal-avaliacao-triagem"
@@ -245,6 +251,9 @@ async function submeterAvaliacaoTriagem(e) {
   const candidaturaId = modalAvaliacaoTriagem?.dataset.candidaturaId;
   if (!candidaturaId) return;
 
+  // ✅ CORREÇÃO 2: Pega o nome do usuário AGORA, garantindo que o Auth está pronto
+  const usuarioNome = await getCurrentUserName();
+
   const aptoEntrevista = document.querySelector(
     'input[name="modal-apto-entrevista"]:checked'
   )?.value;
@@ -292,11 +301,11 @@ async function submeterAvaliacaoTriagem(e) {
       status_recrutamento: novoStatusCandidato,
       triagem_rh: dadosAvaliacao,
       historico: arrayUnion({
-        data: new Date().toISOString(),
+        data: new Date(),
         acao: `Triagem ${
           decisao ? "APROVADA" : "REPROVADA"
         }. Status: ${novoStatusCandidato}`,
-        usuario: usuarioNome,
+        usuario: usuarioNome, // ✅ Agora salva o nome correto
       }),
     });
 
