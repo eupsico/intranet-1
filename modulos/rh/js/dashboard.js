@@ -41,13 +41,6 @@ export async function initdashboard(user, userData) {
     REPROVADO_TRIAGEM: "Reprovado na Triagem",
     CONTRATADO: "Contratado",
     DESISTENCIA: "Desistência",
-
-    // Status Legados (Manter para compatibilidade)
-    "Candidatura Recebida (Triagem Pendente)": "Candidatura Recebida",
-    "Triagem Aprovada (Entrevista Pendente)": "Aguardando Entrevista RH",
-    "Entrevista RH Aprovada (Testes Pendente)": "Aguardando Testes",
-    "Testes Pendente": "Aguardando Testes",
-    "Rejeitado (Comunicação Pendente)": "Reprovado",
   };
 
   function formatarStatusLegivel(statusTecnico) {

@@ -51,13 +51,13 @@ export function initrhPanel(user, db, userData) {
     },
     {
       id: "recrutamento",
-      name: "Recrutamento e Fluxo",
+      name: "Recrutamento",
       roles: ["admin", "rh"],
       icon: icons.recrutamento,
     },
     {
       id: "admissao",
-      name: "Processo de Admissão",
+      name: "Admissão",
       roles: ["admin", "rh"],
       icon: icons.admissao,
     },

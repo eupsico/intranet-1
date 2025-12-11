@@ -57,7 +57,7 @@ export async function renderizarTestes(state) {
       '.tab-link[data-status="testes"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-file-alt me-2"></i> 4. Testes (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-file-alt me-2"></i>Testes (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

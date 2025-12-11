@@ -282,7 +282,7 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
     if (candidato.entrevista_rh.notas) {
       sel("container-entrevista-rh-notas").classList.remove("hidden");
       sel("entrevista-rh-notas").innerHTML = `
-        <span>Adaptação: <strong>${
+        <span>Adaptação:<strong>${
           candidato.entrevista_rh.notas.adaptacao || "N/A"
         }</strong></span>
         <span>Aderência: <strong>${
