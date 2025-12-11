@@ -97,15 +97,28 @@
 .action-button.edit-button { background-color: var(--cor-alerta); }
 .action-button.new-button { background-color: var(--cor-sucesso); }
 
-#message-container.alert-error {
+#message-container .alert-error {
     color: #721c24;
     background-color: #f8d7da;
     padding: 25px;
-    
     border-radius: var(--borda-radius);
     font-size: 1.3em;
     margin-bottom: 30px;
-    border-left: 4px solid var(--cor-perigo);
+    border-left: 6px solid var(--cor-perigo);
+    font-weight: 500;
+
+    /* Sombra leve para destacar */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+
+    /* Animação de piscar */
+    animation: alertaBlink 1.5s infinite;
+}
+
+/* Animação */
+@keyframes alertaBlink {
+    0% { background-color: #f8d7da; }
+    50% { background-color: #f3c6c9; }
+    100% { background-color: #f8d7da; }
 }
 .confirmation-summary p {
     font-size: 1.1em;
