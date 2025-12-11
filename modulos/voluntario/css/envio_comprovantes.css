@@ -1,9 +1,49 @@
 /* Arquivo: /modulos/voluntario/css/envio_comprovantes.css
-   Versão: 2.0
-   Descrição: Estilos refatorados para se alinharem ao design system da intranet.
+   Versão: 2.1
+   Descrição: Estilos refatorados com suporte a abas e histórico.
 */
 
+/* --- Estilos das Abas --- */
+.tabs-container {
+    display: flex;
+    border-bottom: 2px solid var(--cor-borda);
+    gap: 5px;
+}
 
+.tab-link {
+    padding: 10px 20px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 1.1em;
+    color: var(--cor-texto-secundario);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.tab-link:hover {
+    color: var(--cor-primaria);
+    background-color: var(--cor-fundo-hover);
+}
+
+.tab-link.active {
+    color: var(--cor-primaria);
+    border-bottom-color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+/* Oculta conteúdo inativo por padrão, manipulado via JS/Inline Style */
+.tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Estilos Originais Mantidos --- */
 .instructions {
     background-color: var(--cor-fundo);
     padding: 25px;
@@ -27,7 +67,6 @@
     margin-bottom: 8px;
 }
 
-/* Seções de conteúdo principal (formulário, confirmação, etc.) */
 .form-section, .confirmation-section, .final-message-section {
     background-color: var(--cor-surface);
     padding: 30px;
@@ -43,7 +82,6 @@
     padding-bottom: 10px;
 }
 
-/* Layout do formulário */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -56,15 +94,9 @@
     gap: 10px;
 }
 
-/* Estilos para botões específicos desta tela */
-.action-button.edit-button {
-    background-color: var(--cor-alerta);
-}
-.action-button.new-button {
-    background-color: var(--cor-sucesso);
-}
+.action-button.edit-button { background-color: var(--cor-alerta); }
+.action-button.new-button { background-color: var(--cor-sucesso); }
 
-/* Mensagens de alerta */
 #message-container {
     padding: 15px;
     margin-bottom: 20px;
@@ -83,7 +115,6 @@
     border-color: #bee5eb;
 }
 
-/* Seção de confirmação e resumo */
 .confirmation-summary p {
     font-size: 1.1em;
     margin: 12px 0;
@@ -103,8 +134,7 @@
     border: 1px solid #ffeeba;
 }
 
-/* --- NOVOS ESTILOS PARA HISTÓRICO (FILTROS E TABELA) --- */
-
+/* --- ESTILOS DO HISTÓRICO --- */
 .filters-bar {
     display: flex;
     gap: 20px;
@@ -161,20 +191,9 @@
     background-color: var(--cor-primaria);
 }
 
-/* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
 @media (max-width: 768px) {
-    .button-container {
-        flex-direction: column;
-    }
-    .action-button {
-        width: 100%;
-        text-align: center;
-    }
-    .filters-bar {
-        flex-direction: column;
-    }
-    .comprovantes-table th, .comprovantes-table td {
-        padding: 8px;
-        font-size: 0.85em;
-    }
+    .button-container { flex-direction: column; }
+    .action-button { width: 100%; text-align: center; }
+    .filters-bar { flex-direction: column; }
+    .comprovantes-table th, .comprovantes-table td { padding: 8px; font-size: 0.85em; }
 }
