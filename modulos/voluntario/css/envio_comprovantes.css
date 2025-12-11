@@ -103,6 +103,64 @@
     border: 1px solid #ffeeba;
 }
 
+/* --- NOVOS ESTILOS PARA HISTÓRICO (FILTROS E TABELA) --- */
+
+.filters-bar {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    background-color: var(--cor-fundo);
+    padding: 15px;
+    border-radius: var(--borda-radius);
+}
+
+.filters-bar .form-group {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.comprovantes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.comprovantes-table th, 
+.comprovantes-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--cor-borda);
+    text-align: left;
+    font-size: 0.95em;
+}
+
+.comprovantes-table th {
+    background-color: var(--cor-fundo-hover);
+    color: var(--cor-primaria);
+    font-weight: 600;
+}
+
+.comprovantes-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.btn-view-receipt {
+    background-color: var(--cor-secundaria);
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    transition: background-color 0.2s;
+}
+
+.btn-view-receipt:hover {
+    background-color: var(--cor-primaria);
+}
+
 /* --- OTIMIZAÇÃO PARA CELULAR (Responsividade) --- */
 @media (max-width: 768px) {
     .button-container {
@@ -111,5 +169,12 @@
     .action-button {
         width: 100%;
         text-align: center;
+    }
+    .filters-bar {
+        flex-direction: column;
+    }
+    .comprovantes-table th, .comprovantes-table td {
+        padding: 8px;
+        font-size: 0.85em;
     }
 }
