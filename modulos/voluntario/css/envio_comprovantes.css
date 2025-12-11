@@ -97,39 +97,39 @@
 .action-button.edit-button { background-color: var(--cor-alerta); }
 .action-button.new-button { background-color: var(--cor-sucesso); }
 
-#message-container .alert-error {
+#message-container .alert-dark {
     display: flex;
     align-items: center;
     gap: 14px;
 
-    color: #856404;
-    background-color: #fff8e1;
+    color: #f5f5f5;
+    background-color: #2b2b2b;
     padding: 25px;
     border-radius: var(--borda-radius);
     font-size: 1.3em;
     margin-bottom: 30px;
 
-    border-left: 6px solid #fbc02d;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    border-left: 6px solid #bb86fc;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
 
-    animation: pulseBorderYellow 1.5s infinite;
+    animation: pulseBorderDark 1.5s infinite;
 }
 
-#message-container .alert-error::before {
+#message-container .alert-dark::before {
     content: "⚠️";
     font-size: 1.8em;
-    animation: blinkIcon 1s infinite;
+    animation: blinkIconDark 1s infinite;
 }
 
-@keyframes pulseBorderYellow {
-    0% { border-left-color: #fbc02d; }
-    50% { border-left-color: #ffe082; }
-    100% { border-left-color: #fbc02d; }
+@keyframes pulseBorderDark {
+    0% { border-left-color: #bb86fc; }
+    50% { border-left-color: #d6b3ff; }
+    100% { border-left-color: #bb86fc; }
 }
 
-@keyframes blinkIcon {
+@keyframes blinkIconDark {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    50% { opacity: 0.2; }
 }
 
 .confirmation-summary p {
