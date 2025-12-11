@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/envio_comprovantes.js
-// Versão: 3.4 (Histórico com Abas)
+// Versão: 3.5 (Seleção de Profissional Fixa ao Usuário Logado)
 
 import {
   db,
@@ -110,36 +110,16 @@ export function init(user, userData) {
       console.error("Erro ao buscar dia limite dos comprovantes:", error);
     }
 
-    try {
-      const q = query(
-        collection(db, "usuarios"),
-        where("inativo", "==", false),
-        where("recebeDireto", "==", true),
-        where("fazAtendimento", "==", true),
-        orderBy("nome")
-      );
-      const snapshot = await getDocs(q);
-      const profissionais = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      const optionsHtml = [
-        '<option value="">Selecione seu nome...</option>',
-        ...profissionais.map(
-          (p) => `<option value="${p.nome}">${p.nome}</option>`
-        ),
-      ].join("");
-      elements.selectProfissional.innerHTML = optionsHtml;
-
-      if (userData && userData.nome) {
-        elements.selectProfissional.value = userData.nome;
-      }
-    } catch (error) {
-      console.error("Erro ao buscar profissionais:", error);
+    // --- ALTERAÇÃO AQUI: Define apenas o nome do profissional logado ---
+    if (userData && userData.nome) {
+      elements.selectProfissional.innerHTML = `<option value="${userData.nome}" selected>${userData.nome}</option>`;
+      // Opcional: Desabilitar o campo para evitar confusão, já que só tem uma opção
+      // elements.selectProfissional.disabled = true;
+    } else {
       elements.selectProfissional.innerHTML =
-        '<option value="">Erro ao carregar</option>';
+        '<option value="">Usuário não identificado</option>';
     }
+    // --- FIM DA ALTERAÇÃO ---
 
     const meses = [
       "Janeiro",
