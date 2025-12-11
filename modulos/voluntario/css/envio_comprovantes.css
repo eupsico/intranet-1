@@ -100,12 +100,13 @@
 #message-container.alert-error {
     color: #721c24;
     background-color: #f8d7da;
-    border-color: #f5c6cb;
+    padding: 25px;
+    
+    border-radius: var(--borda-radius);
     font-size: 1.3em;
+    margin-bottom: 30px;
     border-left: 4px solid var(--cor-perigo);
 }
-
-
 .confirmation-summary p {
     font-size: 1.1em;
     margin: 12px 0;
