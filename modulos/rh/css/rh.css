@@ -1967,14 +1967,14 @@ info-item.status-badge{
     background-color: var(--cor-erro);
     color: white;
 }
-/* Grid de estatísticas
+/* Grid de estatísticas*/
 .details-grid p strong {
     display: block;
     font-size: 1.1rem; 
     font-weight: 700;
     margin-top: 5px;
     color: #333;
-}*/
+}
 
 /* Ajuste Específico APENAS para o Nome do Candidato */
 [data-id="nome-candidato"] {
@@ -2249,7 +2249,7 @@ fieldset .col-md-6 select {
    ============================================ */
 
 /* Container principal das notas */
-#entrevista-rh-notas {
+[data-id="entrevista-rh-notas"] {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: wrap !important;
@@ -2258,7 +2258,7 @@ fieldset .col-md-6 select {
 }
 
 /* Cada item de nota (Ex: "Adaptação: 5") */
-#entrevista-rh-notas span {
+[data-id="entrevista-rh-notas"] span {
   display: inline-flex !important; /* Garante que fique na linha */
   align-items: center !important;  /* Centraliza verticalmente texto e número */
   gap: 6px !important;             /* Espaço entre o nome e a nota */
@@ -2274,7 +2274,7 @@ fieldset .col-md-6 select {
 }
 
 /* O valor da nota (Ex: "5") - Sobrescreve regra global de .details-grid */
-#entrevista-rh-notas span strong {
+[data-id="entrevista-rh-notas"] span strong {
   display: inline-block !important; /* Remove o comportamento de bloco que joga para baixo */
   margin-top: 0 !important;         /* Remove margem superior */
   font-size: 1.05rem !important;    /* Reduz a fonte gigante */
