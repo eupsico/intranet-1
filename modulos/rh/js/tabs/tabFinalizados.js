@@ -72,6 +72,9 @@ export async function renderizarFinalizados(state) {
       const statusAtual = cand.status_recrutamento || "N/A";
       const candidaturaId = doc.id;
 
+      // CORREÇÃO: Busca o nome corretamente (priorizando nome_candidato)
+      const nomeCandidato = cand.nome_candidato || "Candidato Sem Nome";
+
       // Determina classe de status baseada no conteúdo (igual tabGestor)
       let statusClass = "status-secondary";
       let statusIcon = "fa-circle";
@@ -79,7 +82,8 @@ export async function renderizarFinalizados(state) {
       if (
         statusAtual.includes("Contratado") ||
         statusAtual.includes("Finalizado") ||
-        statusAtual.includes("Concluído")
+        statusAtual.includes("Concluído") ||
+        statusAtual.includes("ADMISSAO_INICIADA")
       ) {
         statusClass = "status-success";
         statusIcon = "fa-check-circle";
@@ -95,13 +99,14 @@ export async function renderizarFinalizados(state) {
       // Dados encoded para modais (padrão das outras abas)
       const dadosCandidato = {
         id: candidaturaId,
-        nome_completo: cand.nome_completo || "N/A",
+        nome_completo: nomeCandidato, // Usando o nome corrigido
         email_candidato: cand.email_candidato || "N/A",
         telefone_candidato: cand.telefone_candidato || "N/A",
         status_recrutamento: statusAtual,
         vaga_id: vagaSelecionadaId,
         data_finalizacao: cand.data_finalizacao || "N/A",
-        motivo_rejeicao: cand.motivo_rejeicao || "N/A",
+        motivo_rejeicao:
+          cand.motivo_rejeicao || cand.rejeicao?.justificativa || "N/A",
       };
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
@@ -110,7 +115,7 @@ export async function renderizarFinalizados(state) {
         <div class="card card-candidato-finalizado" data-id="${candidaturaId}">
           <div class="info-primaria">
             <h4 class="nome-candidato">
-              ${cand.nome_completo || "Candidato Sem Nome"}
+              ${nomeCandidato}
               <span class="status-badge ${statusClass}">
                 <i class="fas ${statusIcon}"></i> ${statusAtual}
               </span>
@@ -127,7 +132,6 @@ export async function renderizarFinalizados(state) {
             </p>
           </div>
 
-          <!-- Informações de contato (igual tabEntrevistas) -->
           <div class="info-contato">
             ${
               cand.email_candidato
@@ -140,22 +144,22 @@ export async function renderizarFinalizados(state) {
                 : ""
             }
             ${
-              cand.motivo_rejeicao &&
+              (cand.motivo_rejeicao || cand.rejeicao?.justificativa) &&
               (statusAtual.includes("Rejeitado") ||
                 statusAtual.includes("Reprovado"))
                 ? `
               <div class="motivo-rejeicao" style="background: #fff5f5; padding: 10px; border-radius: 6px; border-left: 3px solid var(--cor-danger); margin-top: 10px;">
                 <i class="fas fa-exclamation-triangle" style="color: var(--cor-danger); margin-right: 8px;"></i>
-                <strong>Motivo:</strong> ${cand.motivo_rejeicao}
+                <strong>Motivo:</strong> ${
+                  cand.motivo_rejeicao || cand.rejeicao?.justificativa
+                }
               </div>
             `
                 : ""
             }
           </div>
 
-          <!-- Ações padronizadas (igual tabGestor) -->
           <div class="acoes-candidato">
-            <!-- Detalhes Completo -->
             <button class="action-button primary btn-detalhes-finalizado"
                     data-id="${candidaturaId}"
                     data-dados="${dadosCodificados}"
@@ -163,7 +167,6 @@ export async function renderizarFinalizados(state) {
               <i class="fas fa-eye"></i> Detalhes Completos
             </button>
 
-            <!-- Contato (WhatsApp/Email) -->
             ${
               cand.telefone_candidato
                 ? `
@@ -177,9 +180,9 @@ export async function renderizarFinalizados(state) {
                 : ""
             }
 
-            <!-- Contratados: Ver Contrato | Rejeitados: Feedback -->
             ${
-              statusAtual.includes("Contratado")
+              statusAtual.includes("Contratado") ||
+              statusAtual.includes("ADMISSAO_INICIADA")
                 ? `
               <button class="action-button success btn-contrato" 
                       data-id="${candidaturaId}"
@@ -333,7 +336,10 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
     let statusColor = "#6c757d";
     let tituloStatus = "Processo Finalizado";
 
-    if (statusAtual.includes("Contratado")) {
+    if (
+      statusAtual.includes("Contratado") ||
+      statusAtual.includes("ADMISSAO_INICIADA")
+    ) {
       statusClass = "status-success";
       statusColor = "#28a745";
       tituloStatus = "Contratado com Sucesso";
@@ -547,7 +553,8 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
           <div class="status-header">
             <div class="status-icon">
               <i class="fas ${
-                statusAtual.includes("Contratado")
+                statusAtual.includes("Contratado") ||
+                statusAtual.includes("ADMISSAO_INICIADA")
                   ? "fa-check-circle"
                   : statusAtual.includes("Rejeitado")
                   ? "fa-times-circle"
@@ -609,7 +616,8 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
                   <span class="detalhe-value">
                     <span class="status-badge ${statusClass}" style="background: ${statusColor}20; color: ${statusColor}; padding: 6px 12px; border-radius: 20px; font-size: 13px;">
                       <i class="fas fa-${
-                        statusAtual.includes("Contratado")
+                        statusAtual.includes("Contratado") ||
+                        statusAtual.includes("ADMISSAO_INICIADA")
                           ? "check"
                           : statusAtual.includes("Rejeitado")
                           ? "times"
@@ -621,7 +629,9 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
                 </div>
                 <div class="detalhe-item">
                   <span class="detalhe-label">ID da Vaga</span>
-                  <span class="detalhe-value"><code>${vagaId}</code></span>
+                  <span class="detalhe-value"><code>${
+                    dadosCandidato.vaga_id
+                  }</code></span>
                 </div>
                 <div class="detalhe-item">
                   <span class="detalhe-label">Data Finalização</span>
@@ -688,7 +698,10 @@ function contatarCandidatoFinalizado(candidatoId, dadosCodificados) {
 
   if (dadosCandidato.telefone_candidato) {
     // WhatsApp para contratados ou feedback para rejeitados
-    if (dadosCandidato.status_recrutamento.includes("Contratado")) {
+    if (
+      dadosCandidato.status_recrutamento.includes("Contratado") ||
+      dadosCandidato.status_recrutamento.includes("ADMISSAO_INICIADA")
+    ) {
       const mensagem = `Olá ${dadosCandidato.nome_completo}!
 
 🎉 Parabéns por ser selecionado(a) para nossa equipe!
@@ -733,7 +746,10 @@ Equipe EuPsico`;
     let subject = "EuPsico - ";
     let body = "";
 
-    if (dadosCandidato.status_recrutamento.includes("Contratado")) {
+    if (
+      dadosCandidato.status_recrutamento.includes("Contratado") ||
+      dadosCandidato.status_recrutamento.includes("ADMISSAO_INICIADA")
+    ) {
       subject += "Bem-vindo à Equipe!";
       body = `Olá ${dadosCandidato.nome_completo},
 
@@ -1050,7 +1066,7 @@ function enviarMensagemWhatsAppFinalizado(candidatoId, dadosCodificados) {
 
     let mensagem = "";
 
-    if (status.includes("Contratado")) {
+    if (status.includes("Contratado") || status.includes("ADMISSAO_INICIADA")) {
       mensagem = `Olá ${nome}!
 
 🎉 PARABÉNS! Você foi selecionado(a) para nossa equipe!
