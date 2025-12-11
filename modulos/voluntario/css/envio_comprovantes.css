@@ -102,7 +102,7 @@
     margin-bottom: 20px;
     border-radius: var(--borda-radius);
     border: 1px solid transparent;
-    display: none;
+    
 }
 #message-container.alert-error {
     color: #721c24;
