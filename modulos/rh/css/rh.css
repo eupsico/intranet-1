@@ -2244,20 +2244,24 @@ fieldset .col-md-6 select {
     font-weight: 700; /* Ensure bold */
 }
 /* ============================================
-   AJUSTE DE NOTAS DA ENTREVISTA (ALINHAMENTO)
+   CORREÇÃO DE NOTAS DA ENTREVISTA (ALINHAMENTO FORÇADO)
    ============================================ */
 
+/* Container principal das notas */
 #entrevista-rh-notas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
 }
 
+/* Cada item de nota (Ex: "Adaptação: 5") */
 #entrevista-rh-notas span {
-  display: flex; /* Força o alinhamento na mesma linha */
-  align-items: center; /* Centraliza verticalmente */
-  gap: 6px; /* Espaço entre o texto e a nota */
+  display: inline-flex !important; /* Garante que fique na linha */
+  align-items: center !important;  /* Centraliza verticalmente texto e número */
+  gap: 6px !important;             /* Espaço entre o nome e a nota */
+  
   background-color: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 6px;
@@ -2265,12 +2269,15 @@ fieldset .col-md-6 select {
   font-size: 0.9rem;
   color: #555;
   font-weight: 500;
+  white-space: nowrap !important; /* Impede quebra de linha interna */
 }
 
+/* O valor da nota (Ex: "5") - Sobrescreve regra global de .details-grid */
 #entrevista-rh-notas span strong {
+  display: inline-block !important; /* Remove o comportamento de bloco que joga para baixo */
+  margin-top: 0 !important;         /* Remove margem superior */
+  font-size: 1.05rem !important;    /* Reduz a fonte gigante */
   color: var(--cor-primaria);
-  font-size: 1.05rem; /* Tamanho da nota ajustado para alinhar com texto */
   font-weight: 700;
-  display: inline-block;
-  margin-top: 0; /* Remove margem que causava quebra de linha */
+  width: auto !important;
 }
