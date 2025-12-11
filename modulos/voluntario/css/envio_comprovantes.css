@@ -97,24 +97,14 @@
 .action-button.edit-button { background-color: var(--cor-alerta); }
 .action-button.new-button { background-color: var(--cor-sucesso); }
 
-#message-container {
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: var(--borda-radius);
-    border: 1px solid transparent;
-    
-}
 #message-container.alert-error {
     color: #721c24;
     background-color: #f8d7da;
     border-color: #f5c6cb;
     font-size: 1.3em;
+    border-left: 4px solid var(--cor-perigo);
 }
-#message-container.alert-info {
-    color: #0c5460;
-    background-color: #d1ecf1;
-    border-color: #bee5eb;
-}
+
 
 .confirmation-summary p {
     font-size: 1.1em;
