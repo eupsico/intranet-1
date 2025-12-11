@@ -73,7 +73,8 @@ export async function renderizarFinalizados(state) {
       const candidaturaId = doc.id;
 
       // CORREÇÃO: Busca o nome corretamente (priorizando nome_candidato)
-      const nomeCandidato = cand.nome_candidato || "Candidato Sem Nome";
+      const nomeCandidato =
+        cand.nome_candidato || cand.nome_completo || "Candidato Sem Nome";
 
       // Determina classe de status baseada no conteúdo (igual tabGestor)
       let statusClass = "status-secondary";
@@ -90,24 +91,61 @@ export async function renderizarFinalizados(state) {
       } else if (
         statusAtual.includes("Rejeitado") ||
         statusAtual.includes("Reprovado") ||
-        statusAtual.includes("Não Selecionado")
+        statusAtual.includes("Não Selecionado") ||
+        statusAtual.includes("REPROVADO_TRIAGEM")
       ) {
         statusClass = "status-danger";
         statusIcon = "fa-times-circle";
       }
 
-      // Dados encoded para modais (padrão das outras abas)
+      // =================================================================
+      // ✅ CORREÇÃO SOLICITADA: Extração de dados do mapa triagem_curriculo
+      // =================================================================
+
+      // 1. Data de Finalização: Tenta raiz -> tenta triagem -> null
+      let dataFinalizacao = cand.data_finalizacao;
+      if (!dataFinalizacao && cand.triagem_curriculo?.data_avaliacao) {
+        dataFinalizacao = cand.triagem_curriculo.data_avaliacao;
+      }
+
+      // 2. Motivo: Tenta raiz -> tenta objeto rejeicao -> tenta triagem -> N/A
+      let motivoDecisao = cand.motivo_rejeicao || cand.rejeicao?.justificativa;
+      if (!motivoDecisao && cand.triagem_curriculo?.motivo_rejeicao) {
+        motivoDecisao = cand.triagem_curriculo.motivo_rejeicao;
+      }
+      if (!motivoDecisao) motivoDecisao = "N/A";
+
+      // 3. Nome Avaliador: Tenta raiz -> tenta triagem -> tenta outros -> Sistema
+      let nomeAvaliador = cand.nome_avaliador;
+      if (!nomeAvaliador && cand.triagem_curriculo?.nome_avaliador) {
+        nomeAvaliador = cand.triagem_curriculo.nome_avaliador;
+      }
+      if (!nomeAvaliador) nomeAvaliador = "Sistema / Não informado";
+
+      // Formatação da data para exibição no card (resumida)
+      let dataFinalizacaoTexto = "N/A";
+      if (dataFinalizacao) {
+        const dateObj = dataFinalizacao.toDate
+          ? dataFinalizacao.toDate()
+          : new Date(dataFinalizacao);
+        if (!isNaN(dateObj)) {
+          dataFinalizacaoTexto = dateObj.toLocaleDateString("pt-BR");
+        }
+      }
+
+      // Dados encoded para modais
       const dadosCandidato = {
         id: candidaturaId,
-        nome_completo: nomeCandidato, // Usando o nome corrigido
+        nome_completo: nomeCandidato,
         email_candidato: cand.email_candidato || "N/A",
         telefone_candidato: cand.telefone_candidato || "N/A",
         status_recrutamento: statusAtual,
         vaga_id: vagaSelecionadaId,
-        data_finalizacao: cand.data_finalizacao || "N/A",
-        motivo_rejeicao:
-          cand.motivo_rejeicao || cand.rejeicao?.justificativa || "N/A",
+        data_finalizacao: dataFinalizacao, // Passa o objeto/string original para o modal tratar
+        motivo_rejeicao: motivoDecisao,
+        nome_avaliador: nomeAvaliador, // ✅ Campo novo adicionado
       };
+
       const dadosJSON = JSON.stringify(dadosCandidato);
       const dadosCodificados = encodeURIComponent(dadosJSON);
 
@@ -122,13 +160,7 @@ export async function renderizarFinalizados(state) {
             </h4>
             <p class="small-info">
               <i class="fas fa-flag-checkered"></i> Processo Concluído
-              ${
-                cand.data_finalizacao
-                  ? `<br><small style="color: var(--cor-texto-secundario);">Finalizado em: ${new Date(
-                      cand.data_finalizacao
-                    ).toLocaleDateString("pt-BR")}</small>`
-                  : ""
-              }
+              <br><small style="color: var(--cor-texto-secundario);">Finalizado em: ${dataFinalizacaoTexto}</small>
             </p>
           </div>
 
@@ -144,15 +176,14 @@ export async function renderizarFinalizados(state) {
                 : ""
             }
             ${
-              (cand.motivo_rejeicao || cand.rejeicao?.justificativa) &&
+              motivoDecisao !== "N/A" &&
               (statusAtual.includes("Rejeitado") ||
-                statusAtual.includes("Reprovado"))
+                statusAtual.includes("Reprovado") ||
+                statusAtual.includes("TRIAGEM"))
                 ? `
               <div class="motivo-rejeicao" style="background: #fff5f5; padding: 10px; border-radius: 6px; border-left: 3px solid var(--cor-danger); margin-top: 10px;">
                 <i class="fas fa-exclamation-triangle" style="color: var(--cor-danger); margin-right: 8px;"></i>
-                <strong>Motivo:</strong> ${
-                  cand.motivo_rejeicao || cand.rejeicao?.justificativa
-                }
+                <strong>Motivo:</strong> ${motivoDecisao}
               </div>
             `
                 : ""
@@ -213,7 +244,7 @@ export async function renderizarFinalizados(state) {
 
     conteudoRecrutamento.innerHTML = listaHtml;
 
-    // === EVENT LISTENERS PARA AÇÕES (PADRÃO DAS OUTRAS ABAS) ===
+    // === EVENT LISTENERS PARA AÇÕES ===
     console.log("🔗 Finalizados: Anexando event listeners...");
 
     // Botão Detalhes Completos
@@ -350,6 +381,15 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
       statusClass = "status-danger";
       statusColor = "#dc3545";
       tituloStatus = "Processo Não Selecionado";
+    }
+
+    // Tratamento da data para o Modal (Full Date Time)
+    let dataFinalizacaoModal = "N/A";
+    if (dadosCandidato.data_finalizacao) {
+      const d = new Date(dadosCandidato.data_finalizacao);
+      if (!isNaN(d)) {
+        dataFinalizacaoModal = d.toLocaleString("pt-BR");
+      }
     }
 
     modal.innerHTML = `
@@ -635,16 +675,17 @@ function abrirModalDetalhesFinalizado(candidatoId, dadosCodificados) {
                 </div>
                 <div class="detalhe-item">
                   <span class="detalhe-label">Data Finalização</span>
+                  <span class="detalhe-value">${dataFinalizacaoModal}</span>
+                </div>
+                <div class="detalhe-item">
+                  <span class="detalhe-label">Avaliador Responsável</span>
                   <span class="detalhe-value">${
-                    dadosCandidato.data_finalizacao
-                      ? new Date(
-                          dadosCandidato.data_finalizacao
-                        ).toLocaleString("pt-BR")
-                      : "N/A"
+                    dadosCandidato.nome_avaliador
                   }</span>
                 </div>
                 ${
-                  dadosCandidato.motivo_rejeicao
+                  dadosCandidato.motivo_rejeicao &&
+                  dadosCandidato.motivo_rejeicao !== "N/A"
                     ? `
                   <div class="detalhe-item">
                     <span class="detalhe-label">Motivo da Decisão</span>
