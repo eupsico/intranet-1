@@ -108,6 +108,7 @@
     color: #721c24;
     background-color: #f8d7da;
     border-color: #f5c6cb;
+    font-size: 1.3em;
 }
 #message-container.alert-info {
     color: #0c5460;
