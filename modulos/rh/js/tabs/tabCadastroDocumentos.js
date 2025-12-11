@@ -45,7 +45,7 @@ export async function renderizarCadastroDocumentos(state) {
       '.tab-link[data-status="cadastro-documentos"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-id-card me-2"></i> 2. Cadastro e Documentos (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-id-card me-2"></i>Cadastro e Documentos (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

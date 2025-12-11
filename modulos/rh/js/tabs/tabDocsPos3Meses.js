@@ -48,7 +48,7 @@ export async function renderizarDocsPos3Meses(state) {
     );
 
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-file-contract me-2"></i> 6. Documentos (Pós-3 Meses) (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-file-contract me-2"></i>Documentos (Pós-3 Meses) (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

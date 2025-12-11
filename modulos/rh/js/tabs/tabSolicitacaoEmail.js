@@ -99,7 +99,7 @@ export async function renderizarSolicitacaoEmail(state) {
       '.tab-link[data-status="solicitacao-email"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-envelope-open-text me-2"></i> 1. Solicitação de E-mail (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-envelope-open-text me-2"></i>Solicitação de E-mail (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

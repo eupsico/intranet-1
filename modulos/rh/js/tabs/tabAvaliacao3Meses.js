@@ -47,7 +47,7 @@ export async function renderizarAvaliacao3Meses(state) {
       '.tab-link[data-status="avaliacao-3-meses"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-calendar-check me-2"></i> 5. Avaliação (3 Meses) (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-calendar-check me-2"></i>Avaliação (3 Meses) (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

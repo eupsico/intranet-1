@@ -46,7 +46,7 @@ export async function renderizarAssinaturaDocs(state) {
       '.tab-link[data-status="assinatura-documentos"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-file-signature me-2"></i> 3. Assinatura de Documentos (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-file-signature me-2"></i>Assinatura de Documentos (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

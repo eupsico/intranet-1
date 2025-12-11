@@ -52,7 +52,7 @@ export async function renderizarIntegracao(state) {
       '.tab-link[data-status="integracao-treinamentos"]'
     );
     if (tab) {
-      tab.innerHTML = `<i class="fas fa-chalkboard-teacher me-2"></i> 4. Integração e Treinamentos (${snapshot.size})`;
+      tab.innerHTML = `<i class="fas fa-chalkboard-teacher me-2"></i>Integração e Treinamentos (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
