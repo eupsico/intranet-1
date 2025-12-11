@@ -1967,14 +1967,15 @@ info-item.status-badge{
     background-color: var(--cor-erro);
     color: white;
 }
-/* Grid de estatísticas */
+/* Grid de estatísticas
 .details-grid p strong {
     display: block;
-    font-size: 1.1rem; /* ✅ Reduzido de 1.5rem para 1.1rem */
+    font-size: 1.1rem; 
     font-weight: 700;
     margin-top: 5px;
     color: #333;
-}
+}*/
+
 /* Ajuste Específico APENAS para o Nome do Candidato */
 [data-id="nome-candidato"] {
     font-size: 1.25rem !important; /* Um pouco maior que o resto, mas menor que antes */
