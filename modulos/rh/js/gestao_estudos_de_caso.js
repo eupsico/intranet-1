@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/gestao_estudos_de_caso.js
- * Versão: 3.0.0 (Com Prazo de Validade + Tipo de Pergunta)
+ * Versão: 3.1.0 (Correção de Auth - Nome do Usuário Real)
  * Data: 05/11/2025
  * Descrição: Gerencia a criação, edição e listagem de modelos de avaliação com prazo e tipos de pergunta
  */
@@ -18,6 +18,9 @@ import {
   getDoc,
   arrayUnion,
 } from "../../../assets/js/firebase-init.js";
+
+// ✅ Importação da função auxiliar correta para pegar o NOME do usuário
+import { getCurrentUserName } from "./tabs/entrevistas/helpers.js";
 
 // ============================================
 // CONSTANTES
@@ -129,7 +132,6 @@ function adicionarCampoPergunta() {
       </button>
     </div>
 
-    <!-- ✅ CAMPOS CONDICIONAIS: Múltipla Escolha -->
     <div class="campos-multipla-escolha" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">
       <label><strong>Opções (uma por linha):</strong></label>
       <textarea 
@@ -149,7 +151,6 @@ function adicionarCampoPergunta() {
       />
     </div>
 
-    <!-- ✅ CAMPOS CONDICIONAIS: Verdadeiro/Falso -->
     <div class="campos-verdadeiro-falso" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;">
       <label><strong>Resposta Correta:</strong></label>
       <select class="form-control resposta-correta-vf" data-id="${perguntaId}">
@@ -159,7 +160,6 @@ function adicionarCampoPergunta() {
       </select>
     </div>
 
-    <!-- ✅ CAMPOS CONDICIONAIS: Preenchimento -->
     <div class="campos-preenchimento" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
       <label><strong>Resposta Padrão/Esperada:</strong></label>
       <input 
@@ -173,7 +173,6 @@ function adicionarCampoPergunta() {
       </small>
     </div>
 
-    <!-- ✅ CAMPOS CONDICIONAIS: Dissertativa -->
     <div class="campos-dissertativa" style="display: none; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #6c757d;">
       <label><strong>Resposta Padrão/Modelo (opcional):</strong></label>
       <textarea 
@@ -386,6 +385,9 @@ async function salvarModelo(e) {
     return;
   }
 
+  // ✅ CORREÇÃO: Usa getCurrentUserName() para pegar o nome real
+  const usuarioNome = await getCurrentUserName();
+
   const dadosModelo = {
     titulo: titulo,
     tipo: tipo,
@@ -393,7 +395,7 @@ async function salvarModelo(e) {
     perguntas: perguntas,
     prazo_validade_dias: prazoDias,
     data_atualizacao: new Date(),
-    criado_por_uid: currentUserData?.id || "rh_system_user",
+    criado_por: usuarioNome, // ✅ Salva o NOME (conforme solicitado), removendo fallbacks
     ativo: true,
   };
 
@@ -517,7 +519,6 @@ async function abrirModalEdicaoModelo(id) {
             </button>
           </div>
 
-          <!-- Múltipla Escolha -->
           <div class="campos-multipla-escolha" style="display: ${
             showMultipla ? "block" : "none"
           }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">
@@ -527,7 +528,6 @@ async function abrirModalEdicaoModelo(id) {
             <input type="number" class="form-control resposta-correta" data-id="${perguntaId}" min="1" value="${respostaCorretaMultipla}" />
           </div>
 
-          <!-- Verdadeiro/Falso -->
           <div class="campos-verdadeiro-falso" style="display: ${
             showVF ? "block" : "none"
           }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745;">
@@ -543,7 +543,6 @@ async function abrirModalEdicaoModelo(id) {
             </select>
           </div>
 
-          <!-- Preenchimento -->
           <div class="campos-preenchimento" style="display: ${
             showPreenchimento ? "block" : "none"
           }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
@@ -551,7 +550,6 @@ async function abrirModalEdicaoModelo(id) {
             <input type="text" class="form-control resposta-padrao" data-id="${perguntaId}" value="${respostaPadraoPreench}" />
           </div>
 
-          <!-- Dissertativa -->
           <div class="campos-dissertativa" style="display: ${
             showDissertativa ? "block" : "none"
           }; margin-top: 10px; background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #6c757d;">
@@ -762,6 +760,9 @@ async function excluirModelo(id) {
   console.log(`🔹 Estudos: Excluindo modelo: ${id}`);
 
   try {
+    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente para o histórico
+    const usuarioNome = await getCurrentUserName();
+
     const modeloRef = doc(estudosCollection, id);
 
     await updateDoc(modeloRef, {
@@ -770,7 +771,7 @@ async function excluirModelo(id) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Modelo desativado (soft delete)",
-        usuario: currentUserData?.id || "rh_system_user",
+        usuario: usuarioNome, // ✅ Usa o nome correto obtido do helper
       }),
     });
 

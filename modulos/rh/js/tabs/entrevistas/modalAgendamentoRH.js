@@ -109,8 +109,8 @@ export function abrirModalAgendamentoRH(candidatoId, dadosCandidato) {
 
   const nomeCompleto = dadosCandidato.nome_candidato || "Candidato(a)";
   const resumoTriagem =
-    dadosCandidato.triagem_rh?.prerequisitos_atendidos ||
-    dadosCandidato.triagem_rh?.comentarios_gerais ||
+    dadosCandidato.triagem_curriculo?.prerequisitos_atendidos ||
+    dadosCandidato.triagem_curriculo?.comentarios_gerais ||
     "N/A";
 
   // Exibição apenas (não afeta lógica)

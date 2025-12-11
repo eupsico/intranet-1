@@ -20,9 +20,6 @@ import {
   formatarDataEnvio,
 } from "./entrevistas/helpers.js";
 
-// ❌ REMOVIDO: const usuarioNome = await getCurrentUserName();
-// (Isso rodava antes do Auth estar pronto, causando "rh_system_user")
-
 // Elementos do Modal de Triagem
 const modalAvaliacaoTriagem = document.getElementById(
   "modal-avaliacao-triagem"
@@ -150,11 +147,11 @@ async function handleSalvarChecklist(e) {
   try {
     const candidaturaRef = doc(candidatosCollection, candidaturaId);
     await updateDoc(candidaturaRef, {
-      "triagem_rh.checklist": currentChecks,
+      "triagem_curriculo.checklist": currentChecks,
     });
 
-    if (dadosCandidatoAtual?.triagem_rh) {
-      dadosCandidatoAtual.triagem_rh.checklist = currentChecks;
+    if (dadosCandidatoAtual?.triagem_curriculo) {
+      dadosCandidatoAtual.triagem_curriculo.checklist = currentChecks;
     }
 
     console.log("✅ Checklist de triagem salvo automaticamente.");
@@ -203,7 +200,7 @@ window.abrirModalAvaliacaoTriagem = function (candidatoId, dadosCandidato) {
       "Não preenchidas no formulário.";
 
   // Popula dados de avaliação anterior
-  const triagemAnterior = dadosCandidato.triagem_rh || {};
+  const triagemAnterior = dadosCandidato.triagem_curriculo || {};
   renderizarChecklistTriagem(triagemAnterior.checklist || {});
 
   const prerequisitosEl = document.getElementById(
@@ -291,7 +288,7 @@ async function submeterAvaliacaoTriagem(e) {
     info_aprovacao: decisao ? infoAprovacaoEl?.value.trim() || "" : "",
     data_avaliacao: new Date().toISOString(),
     avaliador_uid: usuarioNome,
-    checklist: dadosCandidatoAtual?.triagem_rh?.checklist || {},
+    checklist: dadosCandidatoAtual?.triagem_curriculo?.checklist || {},
   };
 
   try {
@@ -299,7 +296,7 @@ async function submeterAvaliacaoTriagem(e) {
 
     await updateDoc(candidaturaRef, {
       status_recrutamento: novoStatusCandidato,
-      triagem_rh: dadosAvaliacao,
+      triagem_curriculo: dadosAvaliacao,
       historico: arrayUnion({
         data: new Date(),
         acao: `Triagem ${

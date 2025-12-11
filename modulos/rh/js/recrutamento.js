@@ -228,29 +228,30 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   );
 
   // 6. Preencher Triagem
-  if (candidato.triagem_rh) {
+  if (candidato.triagem_curriculo) {
     sel("container-triagem").classList.remove("hidden");
-    const resultadoTriagem = candidato.triagem_rh.apto_entrevista || "N/A";
+    const resultadoTriagem =
+      candidato.triagem_curriculo.apto_entrevista || "N/A";
     const badgeTriagem = sel("triagem-resultado");
     badgeTriagem.textContent = resultadoTriagem;
     badgeTriagem.className = `status-badge ${
       resultadoTriagem === "Sim" ? "status-concluída" : "status-rejeitada"
     }`;
     sel("triagem-data").textContent = formatarTimestamp(
-      candidato.triagem_rh.data_avaliacao
+      candidato.triagem_curriculo.data_avaliacao
     );
     sel("triagem-prerequisitos").textContent =
-      candidato.triagem_rh.prerequisitos_atendidos || "N/A";
+      candidato.triagem_curriculo.prerequisitos_atendidos || "N/A";
 
-    if (candidato.triagem_rh.motivo_rejeicao) {
+    if (candidato.triagem_curriculo.motivo_rejeicao) {
       sel("container-triagem-rejeicao").classList.remove("hidden");
       sel("triagem-motivo-rejeicao").textContent =
-        candidato.triagem_rh.motivo_rejeicao;
+        candidato.triagem_curriculo.motivo_rejeicao;
     }
-    if (candidato.triagem_rh.info_aprovacao) {
+    if (candidato.triagem_curriculo.info_aprovacao) {
       sel("container-triagem-aprovacao").classList.remove("hidden");
       sel("triagem-info-aprovacao").textContent =
-        candidato.triagem_rh.info_aprovacao;
+        candidato.triagem_curriculo.info_aprovacao;
     }
   } else {
     if (!candidato.entrevista_rh && !candidato.rejeicao) {

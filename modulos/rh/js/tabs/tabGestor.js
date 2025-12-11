@@ -126,7 +126,7 @@ export async function renderizarEntrevistaGestor(state) {
           "Vaga não identificada",
         data_cadastro_formatada: dataCadastroFormatada,
         resumo_triagem:
-          cand.triagem_rh?.prerequisitos_atendidos ||
+          cand.triagem_curriculo?.prerequisitos_atendidos ||
           "Sem informações de triagem.",
         agendamento_existente: cand.entrevista_gestor?.agendamento || null,
       };

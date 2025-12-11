@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/gestao_documentos.js
- * Versão: 2.0.0 (Correção - Baseado em 'estudos_de_caso' com textarea principal)
+ * Versão: 2.2.0 (Padronização com getCurrentUserName - Nome em vez de ID)
  * Data: 05/11/2025
  * Descrição: Gerencia a criação de modelos de documentos (contratos, termos) com o texto completo.
  */
@@ -18,6 +18,9 @@ import {
   getDoc,
   arrayUnion,
 } from "../../../assets/js/firebase-init.js";
+
+// ✅ Importação da função auxiliar correta para pegar o NOME do usuário
+import { getCurrentUserName } from "./tabs/entrevistas/helpers.js";
 
 // ============================================
 // CONSTANTES
@@ -40,8 +43,6 @@ const listaDocumentosSalvos = document.getElementById(
 );
 // Textarea principal (mantida)
 const documentoTextoInput = document.getElementById("documento-texto");
-
-// Referências de Perguntas e Modal de Link removidas
 
 // ============================================
 // VARIÁVEIS DE ESTADO
@@ -89,11 +90,6 @@ function configurarAbas() {
 }
 
 // ============================================
-// GERENCIAMENTO DE PERGUNTAS (REMOVIDO)
-// ============================================
-// Funções 'adicionarCampoPergunta' e 'reordenarPerguntas' removidas.
-
-// ============================================
 // SALVAR MODELO (CRIAÇÃO E EDIÇÃO)
 // ============================================
 async function salvarModeloDocumento(e) {
@@ -119,14 +115,18 @@ async function salvarModeloDocumento(e) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Salvar Modelo de Documento';
     return;
-  } // Lógica de coleta de Perguntas removida // Objeto de dados atualizado para incluir o 'texto_conteudo'
+  }
 
+  // ✅ CORREÇÃO: Usa getCurrentUserName() para pegar o nome real, assim como no tabTriagem.js
+  const usuarioNome = await getCurrentUserName();
+
+  // Objeto de dados atualizado
   const dadosModelo = {
     titulo: titulo,
     tipo: tipo,
     texto_conteudo: textoConteudo, // Campo principal com o texto do contrato
     data_atualizacao: new Date(),
-    criado_por_uid: currentUserData?.id || "rh_system_user",
+    criado_por: usuarioNome, // ✅ Salva o NOME (conforme solicitado), removendo fallbacks
     ativo: true,
   };
 
@@ -312,6 +312,9 @@ async function excluirDocumento(id) {
   console.log(`🔹 Documentos: Excluindo modelo: ${id}`);
 
   try {
+    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente para o histórico
+    const usuarioNome = await getCurrentUserName();
+
     const modeloRef = doc(documentosCollection, id);
 
     await updateDoc(modeloRef, {
@@ -320,7 +323,7 @@ async function excluirDocumento(id) {
       historico: arrayUnion({
         data: new Date(),
         acao: "Modelo desativado (soft delete)",
-        usuario: currentUserData?.id || "rh_system_user",
+        usuario: usuarioNome, // ✅ Usa o nome correto, sem fallbacks
       }),
     });
 
@@ -338,15 +341,11 @@ async function excluirDocumento(id) {
 }
 
 // ============================================
-// GERAÇÃO DE LINK PÚBLICO (REMOVIDO)
-// ============================================
-
-// ============================================
 // INICIALIZAÇÃO
 // ============================================
 
 export async function initGestaoDocumentos(user, userData) {
-  console.log("🔹 Gestão de Documentos: Iniciando módulo (v2)");
+  console.log("🔹 Gestão de Documentos: Iniciando módulo (v2.2)");
 
   currentUserData = userData || {};
 
@@ -356,7 +355,9 @@ export async function initGestaoDocumentos(user, userData) {
     formNovoDocumento.addEventListener("submit", salvarModeloDocumento);
   }
 
-  console.log("✅ Gestão de Documentos: Módulo inicializado com sucesso (v2)");
+  console.log(
+    "✅ Gestão de Documentos: Módulo inicializado com sucesso (v2.2)"
+  );
 }
 
 export { initGestaoDocumentos as init };
