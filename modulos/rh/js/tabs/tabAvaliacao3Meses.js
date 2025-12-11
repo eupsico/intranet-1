@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabAvaliacao3Meses.js
- * Versão: 4.2.0 (Fluxo Completo: Agendamento + WhatsApp Empático + Correção Detalhes)
+ * Versão: 4.3.0 (Padronização de Auth com getCurrentUserName)
  * Descrição: Gerencia o agendamento e a avaliação de experiência (3 Meses).
  */
 
@@ -16,6 +16,9 @@ import {
   auth,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
+
+// ✅ Importação da função auxiliar para pegar o NOME do usuário
+import { getCurrentUserName } from "./entrevistas/helpers.js";
 
 // Variável global do módulo
 let dadosUsuarioAtual = null;
@@ -57,10 +60,10 @@ export async function renderizarAvaliacao3Meses(state) {
     }
 
     let listaHtml = `
-  	<div class="description-box" style="margin-top: 15px;">
-   	<p>Colaboradores que completaram o período de experiência. Agende a reunião de feedback e registre a decisão de efetivação.</p>
-  	</div>
-  	<div class="candidatos-container candidatos-grid">
+    <div class="description-box" style="margin-top: 15px;">
+    <p>Colaboradores que completaram o período de experiência. Agende a reunião de feedback e registre a decisão de efetivação.</p>
+    </div>
+    <div class="candidatos-container candidatos-grid">
   `;
 
     snapshot.docs.forEach((docSnap) => {
@@ -123,14 +126,14 @@ export async function renderizarAvaliacao3Meses(state) {
      <div class="info-primaria">
       <h4 class="nome-candidato">
        ${dadosUsuario.nome}
-      	<span class="status-badge ${statusClass}">
-       	<i class="fas fa-tag"></i> ${statusAtual.replace(/_/g, " ")}
-      	</span>
+        <span class="status-badge ${statusClass}">
+        <i class="fas fa-tag"></i> ${statusAtual.replace(/_/g, " ")}
+        </span>
       </h4>
-     	<p class="small-info">
+      <p class="small-info">
        <i class="fas fa-briefcase"></i> Cargo: ${cargo}
       </p>
-     	<p class="small-info" style="color: var(--cor-primaria);">
+      <p class="small-info" style="color: var(--cor-primaria);">
        <i class="fas fa-envelope"></i> Email: ${dadosUsuario.email}
       </p>
      </div>
@@ -274,9 +277,9 @@ async function submeterAgendamento3Meses(e) {
   const modal = document.getElementById("modal-agendamento-3meses");
   const btnSalvar = modal.querySelector('button[type="submit"]');
   const usuarioId = modal.dataset.usuarioId;
-  const { currentUserData } = getGlobalState();
-  const uidResponsavel =
-    auth.currentUser?.uid || currentUserData?.uid || "rh_system_user";
+
+  // ✅ CORREÇÃO: Pega o nome do usuário assincronamente
+  const usuarioNome = await getCurrentUserName();
 
   const data = document.getElementById("data-avaliacao-3meses").value;
   const hora = document.getElementById("hora-avaliacao-3meses").value;
@@ -295,13 +298,13 @@ async function submeterAgendamento3Meses(e) {
       "avaliacao_experiencia.agendamento": {
         data: data,
         hora: hora,
-        agendado_por: uidResponsavel,
+        agendado_por: usuarioNome, // ✅ Salva o nome correto
         criado_em: new Date(),
       },
       historico: arrayUnion({
         data: new Date(),
         acao: `Avaliação de 3 meses agendada para ${data} às ${hora}.`,
-        usuario: uidResponsavel,
+        usuario: usuarioNome, // ✅ Salva o nome correto
       }),
     });
 
@@ -382,11 +385,13 @@ function abrirModalAvaliacao3Meses(userId, dadosUsuario) {
 
 async function submeterAvaliacao3Meses(e) {
   e.preventDefault();
-  const { currentUserData } = getGlobalState();
   const modal = document.getElementById("modal-avaliacao-3meses");
   const btnSalvar = modal.querySelector('button[type="submit"]');
   const form = document.getElementById("form-avaliacao-3meses");
   const usuarioUid = modal.dataset.usuarioId;
+
+  // ✅ CORREÇÃO: Pega o nome do usuário assincronamente
+  const usuarioNome = await getCurrentUserName();
 
   const resultado = form.querySelector(
     'input[name="resultado_3meses"]:checked'
@@ -408,9 +413,6 @@ async function submeterAvaliacao3Meses(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
-    let nomeAvaliador = currentUserData?.nome || "RH";
-    // let uidAvaliador = auth.currentUser?.uid || "rh_user";
-
     const isAprovado = resultado === "Aprovado";
     const novoStatusAdmissao = isAprovado
       ? "DOCS_FASE2_PREPARACAO"
@@ -420,7 +422,7 @@ async function submeterAvaliacao3Meses(e) {
       "avaliacao_experiencia.resultado": resultado,
       "avaliacao_experiencia.feedback_positivo": feedbackPositivo,
       "avaliacao_experiencia.feedback_desenvolver": feedbackDesenvolver,
-      "avaliacao_experiencia.avaliador": nomeAvaliador,
+      "avaliacao_experiencia.avaliador": usuarioNome, // ✅ Salva o nome correto
       "avaliacao_experiencia.data_avaliacao": new Date(),
       status_admissao: novoStatusAdmissao,
       efetivado: isAprovado,

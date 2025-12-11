@@ -1,6 +1,6 @@
 /**
  * Arquivo: modulos/rh/js/tabs/tabCronograma.js
- * Versão: 3.0.0 (Revisão Completa com Correções de Modal e Funcionalidades)
+ * Versão: 3.1.0 (Correção de Auth - Nome do Usuário Real)
  * Data: 04/11/2025
  * Descrição: Gerencia a aba de Cronograma e Orçamento do Recrutamento
  */
@@ -12,6 +12,9 @@ import {
   updateDoc,
   arrayUnion,
 } from "../../../../assets/js/firebase-init.js";
+
+// ✅ Importação da função auxiliar para pegar o NOME do usuário
+import { getCurrentUserName } from "./entrevistas/helpers.js";
 
 // ============================================
 // FUNÇÕES DE UTILIDADE - FORMATAÇÃO
@@ -155,7 +158,7 @@ async function submeterCronograma(e) {
   }
 
   const state = getGlobalState();
-  const { vagasCollection, currentUserData } = state;
+  const { vagasCollection } = state;
 
   // Coleta os dados do formulário
   const form = document.getElementById("form-edicao-cronograma");
@@ -195,6 +198,9 @@ async function submeterCronograma(e) {
     '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
 
   try {
+    // ✅ CORREÇÃO: Pega o nome do usuário assincronamente (resolvendo problema de rh_system_user)
+    const usuarioNome = await getCurrentUserName();
+
     const vagaRef = doc(vagasCollection, vagaId);
 
     // Atualiza o documento da vaga
@@ -203,7 +209,7 @@ async function submeterCronograma(e) {
       historico: arrayUnion({
         data: new Date(),
         acao: `Cronograma e Orçamento atualizado. Início: ${dadosAtualizados.data_inicio_recrutamento}, Término: ${dadosAtualizados.data_fechamento_recrutamento}`,
-        usuario: currentUserData.uid || "rh_system_user",
+        usuario: usuarioNome, // ✅ Usa o nome correto
       }),
     });
 
@@ -306,7 +312,6 @@ export async function renderizarCronograma(state) {
       </div>
 
       <div class="row">
-        <!-- Coluna 1: Datas -->
         <div class="col-lg-6">
           <fieldset>
             <legend><i class="fas fa-calendar-check me-2"></i>Datas Previstas</legend>
@@ -333,7 +338,6 @@ export async function renderizarCronograma(state) {
           </fieldset>
         </div>
 
-        <!-- Coluna 2: Orçamento -->
         <div class="col-lg-6">
           <fieldset>
             <legend><i class="fas fa-dollar-sign me-2"></i>Recursos e Orçamento</legend>
@@ -355,7 +359,6 @@ export async function renderizarCronograma(state) {
         </div>
       </div>
 
-      <!-- Observações -->
       <fieldset>
         <legend><i class="fas fa-sticky-note me-2"></i>Observações e Detalhes</legend>
         <p class="card-text pre-wrap">${
@@ -364,7 +367,6 @@ export async function renderizarCronograma(state) {
         }</p>
       </fieldset>
 
-      <!-- Botão de Edição -->
       <div class="button-bar" style="margin-top: 30px;">
         <button type="button" class="action-button primary" 
                 onclick='window.abrirModalCronograma("${vagaSelecionadaId}", ${dadosCronogramaJson})'>
