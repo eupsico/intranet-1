@@ -102,17 +102,17 @@
     align-items: center;
     gap: 14px;
 
-    color: #7a4a00;
-    background-color: #ffe8cc;
+    color: #856404;
+    background-color: #fff8e1;
     padding: 25px;
     border-radius: var(--borda-radius);
     font-size: 1.3em;
     margin-bottom: 30px;
 
-    border-left: 6px solid #ff9800;
+    border-left: 6px solid #fbc02d;
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 
-    animation: pulseBorderOrange 1.5s infinite;
+    animation: pulseBorderYellow 1.5s infinite;
 }
 
 #message-container .alert-error::before {
@@ -121,18 +121,16 @@
     animation: blinkIcon 1s infinite;
 }
 
-@keyframes pulseBorderOrange {
-    0% { border-left-color: #ff9800; }
-    50% { border-left-color: #ffc107; }
-    100% { border-left-color: #ff9800; }
+@keyframes pulseBorderYellow {
+    0% { border-left-color: #fbc02d; }
+    50% { border-left-color: #ffe082; }
+    100% { border-left-color: #fbc02d; }
 }
 
 @keyframes blinkIcon {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
 }
-
-
 
 .confirmation-summary p {
     font-size: 1.1em;
