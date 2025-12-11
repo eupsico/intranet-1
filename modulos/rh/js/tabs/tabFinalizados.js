@@ -49,7 +49,7 @@ export async function renderizarFinalizados(state) {
       '.tab-link[data-status="finalizados"]'
     );
     if (tab) {
-      tab.textContent = `5. Finalizados (${snapshot.size})`;
+      tab.textContent = `Finalizados (${snapshot.size})`;
     }
 
     if (snapshot.empty) {

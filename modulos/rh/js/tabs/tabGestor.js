@@ -55,7 +55,7 @@ export async function renderizarEntrevistaGestor(state) {
       '.tab-link[data-status="gestor"]'
     );
     if (tab) {
-      tab.textContent = `4. Entrevista com Gestor (${snapshot.size})`;
+      tab.textContent = `Entrevista com Gestor (${snapshot.size})`;
     }
 
     if (snapshot.empty) {
