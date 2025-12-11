@@ -105,21 +105,17 @@
     font-size: 1.3em;
     margin-bottom: 30px;
     border-left: 6px solid var(--cor-perigo);
-    font-weight: 500;
-
-    /* Sombra leve para destacar */
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 
-    /* Animação de piscar */
-    animation: alertaBlink 1.5s infinite;
+    animation: pulseBorder 1.5s infinite;
 }
 
-/* Animação */
-@keyframes alertaBlink {
-    0% { background-color: #f8d7da; }
-    50% { background-color: #f3c6c9; }
-    100% { background-color: #f8d7da; }
+@keyframes pulseBorder {
+    0% { border-left-color: var(--cor-perigo); }
+    50% { border-left-color: #ff8a8a; }
+    100% { border-left-color: var(--cor-perigo); }
 }
+
 .confirmation-summary p {
     font-size: 1.1em;
     margin: 12px 0;
