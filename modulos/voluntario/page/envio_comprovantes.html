@@ -80,4 +80,51 @@
             <button id="btn-new-form" class="action-button new-button" type="button">Inserir Novo Comprovante</button>
         </div>
     </div>
-</div>
+
+    <div id="history-section" class="form-section" style="margin-top: 30px;">
+        <h3>Histórico de Comprovantes Enviados</h3>
+        
+        <div class="filters-bar">
+            <div class="form-group">
+                <label for="filter-paciente">Filtrar por Paciente:</label>
+                <input type="text" id="filter-paciente" class="form-control" placeholder="Nome do paciente...">
+            </div>
+            <div class="form-group">
+                <label for="filter-mes">Filtrar por Mês:</label>
+                <select id="filter-mes" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="Janeiro">Janeiro</option>
+                    <option value="Fevereiro">Fevereiro</option>
+                    <option value="Março">Março</option>
+                    <option value="Abril">Abril</option>
+                    <option value="Maio">Maio</option>
+                    <option value="Junho">Junho</option>
+                    <option value="Julho">Julho</option>
+                    <option value="Agosto">Agosto</option>
+                    <option value="Setembro">Setembro</option>
+                    <option value="Outubro">Outro</option>
+                    <option value="Novembro">Novembro</option>
+                    <option value="Dezembro">Dezembro</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="comprovantes-table">
+                <thead>
+                    <tr>
+                        <th>Profissional</th>
+                        <th>Paciente</th>
+                        <th>Data Pagto.</th>
+                        <th>Mês Ref.</th>
+                        <th>Valor</th>
+                        <th>Comprovante</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    <tr><td colspan="6" style="text-align:center;">Carregando histórico...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
