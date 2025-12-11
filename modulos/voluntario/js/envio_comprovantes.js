@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/envio_comprovantes.js
-// Versão: 3.3 (Adicionado Histórico e Filtros para Admin/Profissional)
+// Versão: 3.4 (Histórico com Abas)
 
 import {
   db,
@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   doc,
   getDoc,
-  limit, // Importado limit se quiser paginar no futuro, mas não usado agora para trazer todos
+  limit,
 } from "../../../assets/js/firebase-init.js";
 
 export function init(user, userData) {
@@ -20,7 +20,6 @@ export function init(user, userData) {
     "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
   let formData = {};
 
-  // Variável para armazenar o cache dos comprovantes carregados
   let todosComprovantes = [];
 
   const elements = {
@@ -44,7 +43,32 @@ export function init(user, userData) {
     filterPaciente: document.getElementById("filter-paciente"),
     filterMes: document.getElementById("filter-mes"),
     tableBody: document.getElementById("history-table-body"),
+    // Elementos das Abas
+    tabs: document.querySelectorAll("#comprovantes-tabs .tab-link"),
+    tabContents: document.querySelectorAll(".tab-content"),
   };
+
+  function setupTabs() {
+    elements.tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        // Remove active de todos
+        elements.tabs.forEach((t) => t.classList.remove("active"));
+        elements.tabContents.forEach((c) => {
+          c.classList.remove("active");
+          c.style.display = "none";
+        });
+
+        // Ativa o clicado
+        tab.classList.add("active");
+        const targetId = tab.dataset.tab;
+        const targetContent = document.getElementById(targetId);
+        if (targetContent) {
+          targetContent.classList.add("active");
+          targetContent.style.display = "block";
+        }
+      });
+    });
+  }
 
   function formatCurrency(input) {
     let value = input.value.replace(/\D/g, "");
@@ -70,6 +94,8 @@ export function init(user, userData) {
   }
 
   async function initializeView() {
+    setupTabs(); // Inicializa lógica das abas
+
     // Busca a configuração do dia limite
     try {
       const configRef = doc(db, "configuracoesSistema", "geral");
@@ -144,6 +170,7 @@ export function init(user, userData) {
 
   // --- FUNÇÃO PARA CARREGAR O HISTÓRICO ---
   async function carregarHistoricoComprovantes() {
+    if (!elements.tableBody) return;
     elements.tableBody.innerHTML =
       '<tr><td colspan="6" style="text-align:center;"><div class="loading-spinner-small"></div> Carregando...</td></tr>';
 
@@ -151,11 +178,9 @@ export function init(user, userData) {
       let q;
       const isAdmin = userData.funcoes && userData.funcoes.includes("admin");
 
-      // Se for Admin, busca todos ordenados pela data de criação (mais recente primeiro)
       if (isAdmin) {
         q = query(collection(db, "comprovantes"), orderBy("timestamp", "desc"));
       } else {
-        // Se for Profissional, busca apenas os seus pelo userId
         q = query(
           collection(db, "comprovantes"),
           where("userId", "==", user.uid),
@@ -198,7 +223,6 @@ export function init(user, userData) {
             })
           : item.valor;
 
-      // Tenta formatar a data que vem como string YYYY-MM-DD
       let dataFormatada = item.dataPagamento;
       if (dataFormatada && dataFormatada.includes("-")) {
         const parts = dataFormatada.split("-");
@@ -225,7 +249,7 @@ export function init(user, userData) {
     elements.tableBody.innerHTML = html;
   }
 
-  // --- FUNÇÃO DE FILTRAGEM (Executada localmente) ---
+  // --- FUNÇÃO DE FILTRAGEM ---
   function filtrarTabela() {
     const nomeFiltro = elements.filterPaciente.value.toLowerCase().trim();
     const mesFiltro = elements.filterMes.value;
@@ -234,7 +258,6 @@ export function init(user, userData) {
       const matchNome =
         !nomeFiltro ||
         (item.paciente && item.paciente.toLowerCase().includes(nomeFiltro));
-      // O mês salvo no banco pode estar em minúsculo ou maiúsculo, normalizamos para comparar
       const itemMes = (item.mesReferencia || "").toLowerCase();
       const filtroMesLower = mesFiltro.toLowerCase();
       const matchMes = !mesFiltro || itemMes === filtroMesLower;
@@ -245,7 +268,6 @@ export function init(user, userData) {
     renderizarTabela(filtrados);
   }
 
-  // Listeners dos filtros
   if (elements.filterPaciente) {
     elements.filterPaciente.addEventListener("input", filtrarTabela);
   }
@@ -335,7 +357,7 @@ export function init(user, userData) {
               paciente: payload.paciente,
               valor: payload.valor,
               dataPagamento: payload.dataPagamento,
-              mesReferencia: payload.mesReferencia, // Mantém casing original
+              mesReferencia: payload.mesReferencia,
               anoReferencia: new Date(
                 payload.dataPagamento + "T03:00:00"
               ).getFullYear(),
@@ -371,7 +393,6 @@ export function init(user, userData) {
           document.getElementById("sent-data-summary").innerHTML = summaryHtml;
           elements.finalMessageSection.style.display = "block";
           elements.form.reset();
-          // Recarrega o histórico para mostrar o novo item
           carregarHistoricoComprovantes();
         })
         .catch((error) => {
