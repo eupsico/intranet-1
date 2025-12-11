@@ -1,5 +1,5 @@
 // Arquivo: /modulos/voluntario/js/envio_comprovantes.js
-// Versão: 3.2 (Integrado com as Configurações do Sistema)
+// Versão: 3.3 (Adicionado Histórico e Filtros para Admin/Profissional)
 
 import {
   db,
@@ -12,12 +12,16 @@ import {
   serverTimestamp,
   doc,
   getDoc,
+  limit, // Importado limit se quiser paginar no futuro, mas não usado agora para trazer todos
 } from "../../../assets/js/firebase-init.js";
 
 export function init(user, userData) {
   const WEB_APP_URL =
     "https://script.google.com/macros/s/AKfycbxgukbZwtnRj-uNRYkl-x2PGRIY1LtDBRAxEYdelM4B_B_5ijpahZqCEOAuPk9XT50y/exec";
   let formData = {};
+
+  // Variável para armazenar o cache dos comprovantes carregados
+  let todosComprovantes = [];
 
   const elements = {
     formContainer: document.getElementById("form-container"),
@@ -35,7 +39,11 @@ export function init(user, userData) {
     btnEdit: document.getElementById("btn-edit"),
     btnConfirmSend: document.getElementById("btn-confirm-send"),
     btnNewForm: document.getElementById("btn-new-form"),
-    prazoDiaElement: document.getElementById("prazo-dia"), // Elemento do prazo
+    prazoDiaElement: document.getElementById("prazo-dia"),
+    // Elementos do Histórico
+    filterPaciente: document.getElementById("filter-paciente"),
+    filterMes: document.getElementById("filter-mes"),
+    tableBody: document.getElementById("history-table-body"),
   };
 
   function formatCurrency(input) {
@@ -62,7 +70,6 @@ export function init(user, userData) {
   }
 
   async function initializeView() {
-    // --- INÍCIO DA ALTERAÇÃO ---
     // Busca a configuração do dia limite
     try {
       const configRef = doc(db, "configuracoesSistema", "geral");
@@ -76,7 +83,6 @@ export function init(user, userData) {
     } catch (error) {
       console.error("Erro ao buscar dia limite dos comprovantes:", error);
     }
-    // --- FIM DA ALTERAÇÃO ---
 
     try {
       const q = query(
@@ -131,6 +137,120 @@ export function init(user, userData) {
     const today = new Date();
     elements.selectMes.value = meses[today.getMonth()];
     elements.inputDataPagamento.value = today.toISOString().split("T")[0];
+
+    // Inicia o carregamento do histórico
+    carregarHistoricoComprovantes();
+  }
+
+  // --- FUNÇÃO PARA CARREGAR O HISTÓRICO ---
+  async function carregarHistoricoComprovantes() {
+    elements.tableBody.innerHTML =
+      '<tr><td colspan="6" style="text-align:center;"><div class="loading-spinner-small"></div> Carregando...</td></tr>';
+
+    try {
+      let q;
+      const isAdmin = userData.funcoes && userData.funcoes.includes("admin");
+
+      // Se for Admin, busca todos ordenados pela data de criação (mais recente primeiro)
+      if (isAdmin) {
+        q = query(collection(db, "comprovantes"), orderBy("timestamp", "desc"));
+      } else {
+        // Se for Profissional, busca apenas os seus pelo userId
+        q = query(
+          collection(db, "comprovantes"),
+          where("userId", "==", user.uid),
+          orderBy("timestamp", "desc")
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      todosComprovantes = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      renderizarTabela(todosComprovantes);
+    } catch (error) {
+      console.error("Erro ao carregar histórico:", error);
+      let errorMsg = "Erro ao carregar dados.";
+      if (error.code === "failed-precondition") {
+        errorMsg = "Erro de índice no banco de dados. Contate o administrador.";
+      }
+      elements.tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">${errorMsg}</td></tr>`;
+    }
+  }
+
+  // --- FUNÇÃO PARA RENDERIZAR TABELA ---
+  function renderizarTabela(comprovantes) {
+    if (comprovantes.length === 0) {
+      elements.tableBody.innerHTML =
+        '<tr><td colspan="6" style="text-align:center;">Nenhum comprovante encontrado.</td></tr>';
+      return;
+    }
+
+    let html = "";
+    comprovantes.forEach((item) => {
+      const valorFormatado =
+        typeof item.valor === "number"
+          ? item.valor.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })
+          : item.valor;
+
+      // Tenta formatar a data que vem como string YYYY-MM-DD
+      let dataFormatada = item.dataPagamento;
+      if (dataFormatada && dataFormatada.includes("-")) {
+        const parts = dataFormatada.split("-");
+        dataFormatada = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+
+      html += `
+        <tr>
+            <td>${item.profissional || "N/A"}</td>
+            <td>${item.paciente || "N/A"}</td>
+            <td>${dataFormatada || "N/A"}</td>
+            <td>${item.mesReferencia || "N/A"}</td>
+            <td>${valorFormatado}</td>
+            <td style="text-align: center;">
+                <a href="${
+                  item.comprovanteUrl
+                }" target="_blank" class="btn-view-receipt">
+                    Visualizar
+                </a>
+            </td>
+        </tr>
+      `;
+    });
+    elements.tableBody.innerHTML = html;
+  }
+
+  // --- FUNÇÃO DE FILTRAGEM (Executada localmente) ---
+  function filtrarTabela() {
+    const nomeFiltro = elements.filterPaciente.value.toLowerCase().trim();
+    const mesFiltro = elements.filterMes.value;
+
+    const filtrados = todosComprovantes.filter((item) => {
+      const matchNome =
+        !nomeFiltro ||
+        (item.paciente && item.paciente.toLowerCase().includes(nomeFiltro));
+      // O mês salvo no banco pode estar em minúsculo ou maiúsculo, normalizamos para comparar
+      const itemMes = (item.mesReferencia || "").toLowerCase();
+      const filtroMesLower = mesFiltro.toLowerCase();
+      const matchMes = !mesFiltro || itemMes === filtroMesLower;
+
+      return matchNome && matchMes;
+    });
+
+    renderizarTabela(filtrados);
+  }
+
+  // Listeners dos filtros
+  if (elements.filterPaciente) {
+    elements.filterPaciente.addEventListener("input", filtrarTabela);
+  }
+  if (elements.filterMes) {
+    elements.filterMes.addEventListener("change", filtrarTabela);
   }
 
   function showMessage(message, type = "error") {
@@ -215,7 +335,7 @@ export function init(user, userData) {
               paciente: payload.paciente,
               valor: payload.valor,
               dataPagamento: payload.dataPagamento,
-              mesReferencia: payload.mesReferencia.toLowerCase(),
+              mesReferencia: payload.mesReferencia, // Mantém casing original
               anoReferencia: new Date(
                 payload.dataPagamento + "T03:00:00"
               ).getFullYear(),
@@ -251,6 +371,8 @@ export function init(user, userData) {
           document.getElementById("sent-data-summary").innerHTML = summaryHtml;
           elements.finalMessageSection.style.display = "block";
           elements.form.reset();
+          // Recarrega o histórico para mostrar o novo item
+          carregarHistoricoComprovantes();
         })
         .catch((error) => {
           console.error("Erro no processo de envio:", error);
