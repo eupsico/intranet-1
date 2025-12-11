@@ -156,10 +156,6 @@ async function carregarVagasAtivas() {
   }
 }
 
-// ============================================
-// MODAL DE DETALHES DO CANDIDATO (REFATORADO)
-// ============================================
-
 /**
  * Abre modal com detalhes completos do candidato usando <template>
  * @param {string} candidatoId - ID do documento do candidato
@@ -204,12 +200,11 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
   const clone = templateModalCandidato.content.cloneNode(true);
   const sel = (id) => clone.querySelector(`[data-id="${id}"]`);
 
-  // 3. Preencher dados pessoais (CORREÇÃO AQUI: Verificação segura de propriedades)
+  // 3. Preencher dados pessoais
   sel("nome-candidato").textContent = candidato.nome_candidato || "N/A";
   sel("email-candidato").textContent = candidato.email_candidato || "N/A";
   sel("telefone-contato").textContent = candidato.telefone_candidato || "N/A";
 
-  // ✅ FIX: Usa as propriedades do objeto 'candidato' com fallback seguro
   const cidade = candidato.cidade || candidato.cidade_candidato || "N/A";
   const estado = candidato.estado || candidato.estado_candidato || "N/A";
   sel("localidade").textContent = `${cidade} / ${estado}`;
@@ -282,34 +277,36 @@ export async function abrirModalCandidato(candidatoId, modo, candidato) {
           : "status-rejeitada"
       }`;
     }
+
+    // ATUALIZAÇÃO: Notas alinhadas (Label: Valor)
     if (candidato.entrevista_rh.notas) {
       sel("container-entrevista-rh-notas").classList.remove("hidden");
       sel("entrevista-rh-notas").innerHTML = `
-    <span>Adaptação: <strong>${
-      candidato.entrevista_rh.notas.adaptacao || "N/A"
-    }</strong></span>
-    <span>Aderência: <strong>${
-      candidato.entrevista_rh.notas.aderencia || "N/A"
-    }</strong></span>
-    <span>Comunicação: <strong>${
-      candidato.entrevista_rh.notas.comunicacao || "N/A"
-    }</strong></span>
-    <span>Experiência: <strong>${
-      candidato.entrevista_rh.notas.experiencia || "N/A"
-    }</strong></span>
-    <span>Motivação: <strong>${
-      candidato.entrevista_rh.notas.motivacao || "N/A"
-    }</strong></span>
-    <span>Postura: <strong>${
-      candidato.entrevista_rh.notas.postura || "N/A"
-    }</strong></span>
-    <span>Resolução: <strong>${
-      candidato.entrevista_rh.notas.resolucao || "N/A"
-    }</strong></span>
-    <span>Técnica: <strong>${
-      candidato.entrevista_rh.notas.tecnica || "N/A"
-    }</strong></span>
-  `;
+        <span>Adaptação: <strong>${
+          candidato.entrevista_rh.notas.adaptacao || "N/A"
+        }</strong></span>
+        <span>Aderência: <strong>${
+          candidato.entrevista_rh.notas.aderencia || "N/A"
+        }</strong></span>
+        <span>Comunicação: <strong>${
+          candidato.entrevista_rh.notas.comunicacao || "N/A"
+        }</strong></span>
+        <span>Experiência: <strong>${
+          candidato.entrevista_rh.notas.experiencia || "N/A"
+        }</strong></span>
+        <span>Motivação: <strong>${
+          candidato.entrevista_rh.notas.motivacao || "N/A"
+        }</strong></span>
+        <span>Postura: <strong>${
+          candidato.entrevista_rh.notas.postura || "N/A"
+        }</strong></span>
+        <span>Resolução: <strong>${
+          candidato.entrevista_rh.notas.resolucao || "N/A"
+        }</strong></span>
+        <span>Técnica: <strong>${
+          candidato.entrevista_rh.notas.tecnica || "N/A"
+        }</strong></span>
+      `;
     }
 
     if (candidato.entrevista_rh.pontos_fortes) {

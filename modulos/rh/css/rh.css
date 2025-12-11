@@ -2243,9 +2243,34 @@ fieldset .col-md-6 select {
     color: var(--cor-primaria);
     font-weight: 700; /* Ensure bold */
 }
+/* ============================================
+   AJUSTE DE NOTAS DA ENTREVISTA (ALINHAMENTO)
+   ============================================ */
+
 #entrevista-rh-notas {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px; /* espaço entre os itens */
-  font-size: 0.9rem; /* tamanho menor */
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#entrevista-rh-notas span {
+  display: flex; /* Força o alinhamento na mesma linha */
+  align-items: center; /* Centraliza verticalmente */
+  gap: 6px; /* Espaço entre o texto e a nota */
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  color: #555;
+  font-weight: 500;
+}
+
+#entrevista-rh-notas span strong {
+  color: var(--cor-primaria);
+  font-size: 1.05rem; /* Tamanho da nota ajustado para alinhar com texto */
+  font-weight: 700;
+  display: inline-block;
+  margin-top: 0; /* Remove margem que causava quebra de linha */
 }
