@@ -5,9 +5,11 @@
         <button class="tab-link active" data-tab="tab-envio">Enviar Comprovante</button>
         <button class="tab-link" data-tab="tab-historico">Histórico</button>
     </nav>
-    <div class="alert-error">
-                <strong>Atenção:</strong>Para garantir o processamento correto, verifique no histórico se o comprovante já foi registrado antes de enviar um novo.
+    <div id="message-container" style="display: none;">
+            <div class="alert-error">
+                <strong>Atenção:</strong> Para garantir o processamento correto, verifique no histórico se o comprovante já foi registrado antes de enviar um novo.
             </div>
+        </div>
     <div id="tab-envio" class="tab-content active">
         <div class="instructions">
             <h2>Instruções para Inserção de Comprovantes de Pagamento</h2>
@@ -21,8 +23,7 @@
             </ul>
             <p>Agradecemos a sua colaboração!</p>
         </div>
-
-        <div id="message-container" style="display: none;"></div>
+       
 
         <div id="form-container">
             <div class="form-section">
